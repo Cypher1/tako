@@ -1,20 +1,26 @@
 name:                Htriple
 version:             0.1.0.0
--- synopsis:
--- description:
+synopsis:            A Haskell implementation of Triple based Hoare Logic
+description:         A Hoare Logic processor designed to form a proof system for pure, proof based languages
 homepage:            https://github.com/Cypher1/Htriple#readme
 license:             BSD3
 license-file:        LICENSE
 author:              Joshua Pratt
 maintainer:          jp10010101010000@gmail.com
 copyright:           BSD3
-category:            Web
+category:            Language
 build-type:          Simple
 cabal-version:       >=1.10
 extra-source-files:  README.md
 
 executable Htriple
-  hs-source-dirs:      src
+  hs-source-dirs:      lib, app
+  main-is:             Main.hs
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+
+executable Htriple-test
+  hs-source-dirs:      lib, test
   main-is:             Main.hs
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
