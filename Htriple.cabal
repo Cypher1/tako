@@ -16,11 +16,27 @@ extra-source-files:  README.md
 executable Htriple
   hs-source-dirs:      lib, app
   main-is:             Main.hs
+  other-modules:
+      Triple
+      Expr
+      Sat
+      Util
   default-language:    Haskell2010
-  build-depends:       base >= 4.7 && < 5
+  build-depends:
+      base >= 4.7 && < 5,
+      containers
+  default-extensions: StandaloneDeriving InstanceSigs AllowAmbiguousTypes DataKinds DeriveGeneric FlexibleContexts FlexibleInstances GADTs ExistentialQuantification UndecidableInstances LambdaCase MultiParamTypeClasses PartialTypeSignatures PatternSynonyms RankNTypes ScopedTypeVariables TypeApplications TypeInType TypeOperators ViewPatterns
 
 executable Htriple-test
   hs-source-dirs:      lib, test
   main-is:             Main.hs
+  other-modules:
+      Triple
+      Expr
+      Sat
+      Util
   default-language:    Haskell2010
-  build-depends:       base >= 4.7 && < 5
+  build-depends:
+      base >= 4.7 && < 5,
+      containers
+  default-extensions: StandaloneDeriving InstanceSigs AllowAmbiguousTypes DataKinds DeriveGeneric FlexibleContexts FlexibleInstances GADTs ExistentialQuantification UndecidableInstances LambdaCase MultiParamTypeClasses PartialTypeSignatures PatternSynonyms RankNTypes ScopedTypeVariables TypeApplications TypeInType TypeOperators ViewPatterns
