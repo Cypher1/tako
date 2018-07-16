@@ -3,7 +3,7 @@ import Prelude hiding (not, and, or)
 
 -- import Triple
 import Expr
-import Sat
+import Logic
 -- import Util
 
 -- import qualified Data.Map.Lazy as M
@@ -24,21 +24,38 @@ main = do
   let both1 = Many [req1, contra1]
   print divP
   mapM_ print [contra1, req1, both1] -}
-  let a = var "a"
-  let b = var "b"
-  let na = not a
-  let a_or_b = or [a, b]
-  let n_a_or_b = not a_or_b
-  let a_or_na = or [a, not a]
   print $ a_or_b
   print $ n_a_or_b
   print $ or [a_or_b, a]
   print $ or [n_a_or_b, na]
   putStrLn ""
   print $ a_or_na
+  putStrLn "Test simplification (not, or, and)"
+  print $ not a_or_na
+  print $ or [a_or_na]
+  print $ and [a_or_na]
+  putStrLn "Test simplification (not, or, and, with T+Fs)"
+  print $ not (and [a_or_na])
+  print $ or [and [a_or_na]]
+  print $ and [a_or_na, true, true, true, true]
+  print $ and [a_or_na, true, true, true, true, false]
+  print $ or [and [a_or_na, true, true, true, true], false, false, false]
   -- putStrLn ""
   -- print $ sat_expr $ implies a_or_b a
   -- print $ sat_expr $ implies n_a_or_b a
   -- print $ sat_expr $ implies a_or_b na
   -- print $ sat_expr $ implies n_a_or_b na
   -- print $ sat_expr $ implies a_or_a a
+ where
+   a :: DNF
+   a = varS "a"
+   b :: DNF
+   b = varS "b"
+   na :: DNF
+   na = not a
+   a_or_b :: DNF
+   a_or_b = or [a, b]
+   n_a_or_b :: DNF
+   n_a_or_b = not a_or_b
+   a_or_na :: DNF
+   a_or_na = or [a, not a]

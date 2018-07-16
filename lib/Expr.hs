@@ -3,93 +3,109 @@ module Expr where
 -- import Debug.Trace (trace)
 
 import Prelude hiding (and, not, or)
-import Sat
+import Logic
 import Util (join)
 
 data Sym = S String -- needs to be more restricted, hashable, etc.
   deriving (Show, Eq, Ord)
 
-data Expr where
-  -- Some core concepts need to be built in so that they can be simplified more easy
-  -- Any higher level concept should be able to converted to these as they should have full generality... Not sure how to prove that... would be nice to have a full generality proof of them, down to lambda calculus
-  T :: Expr
-  F :: Expr
-  Var :: Bool -> Sym -> Expr
-  -- Built in reasoning about boolean relationships
-  And :: [Expr] -> Expr
-  Or :: [Expr] -> Expr
-  -- This allows predicates
-  -- Apply :: Expr -> Expr -> Expr
-  deriving (Eq, Ord)
+data Disjunction a
+  = Or [a] deriving (Eq, Ord)
 
-sub :: Expr -> Expr -> Expr -> Expr
-sub find rep tree | find == tree = rep
-sub (Var f_t f_var) rep (Var t_t t_var)
-  | f_var == t_var && f_t == t_t = rep
-  | f_var == t_var && f_t /= t_t = not rep
-sub find rep (And xs) = and $ map (sub find rep) xs
-sub find rep (Or xs)  = or  $ map (sub find rep) xs
-sub _ _ tree = tree
+instance Show a => Show (Disjunction a) where
+  show (Or xs) = "("++(join "v" xs)++")"
 
-instance Logic Expr where
-  true = T
-  false = F
-  not T = F
-  not F = T
-  not (Var True s) = Var False s
-  not (Var False s) = Var True s -- This gives us double negation
-  -- Possible infinite loop here (De' Morgen's Laws)
-  not (And xs) = or $ map not xs
-  not (Or xs) = and $ map not xs
+{-
+instance (Not a, Eq a) => Or (Disjunction a) where
+  or_or ors = Or $ filter (/=not_false) $ concatMap (\(Or xs)->xs) ors
 
-  -- Definition of and
-  and [] = T
-  and (F:_) = F
-  and (T:xs) = and xs
-  -- Distributive laws
-  and ((Or q):p) = or $ map (\x -> and (x:p)) q
-  -- Associativity laws / Flattening
-  and ((And x):xs) = and (x++xs)
-  -- Duplicate variable elimination and check for (a^~a)=F
-  and (x:xs)
-    | x `elem` xs = and xs
-    | (not x) `elem` xs = F
-    | otherwise = let and_xs = and xs in case and_xs of
-                      F -> F
-                      T -> x
-                      And xs' -> And (x:xs')
-                      _ -> And [x, and_xs]
+instance (Not a, And a, Eq a) => And (Disjunction a) where
+  and_and xs' = foldr and_each (Or [not_false]) xs'
+    where
+      and_each :: Disjunction a -> Disjunction a -> Disjunction a
+      and_each (Or xs) (Or rs)
+        = Or $ filter (/=not_true) [and_and [x,and_r]|x<-xs,and_r<-rs]
 
-  -- Definition of or
-  or [] = F
-  or (T:_) = T
-  or (F:xs) = or xs
+instance (Not a, And a, Eq a) => Not (Disjunction a) where
+  not_not (Or xs) = Or [and_and $ map not_not xs]
+  not_true = Or [not_true]
+  not_false = Or []
+-}
 
-  -- Distributive laws
-  or ((And q):p) = and $ map (\x -> or (x:p)) q
+data Conjunction a
+  = And [a] deriving (Eq, Ord)
 
-  -- Associativity laws / Flattening
-  or ((Or x):xs) = or (x++xs)
+instance Show a => Show (Conjunction a) where
+  show (And xs) = "("++(join "^" xs)++")"
 
-  -- Duplicate variable elimination and check for (av~a)=T
-  or (x:xs)
-    | x `elem` xs = or xs
-    | (not x) `elem` xs = T
-    | otherwise = let or_xs = or xs in case or_xs of
-                      T -> T
-                      F -> x
-                      Or xs' -> Or (x:xs')
-                      _ -> Or [x, or_xs]
+{-
+instance (Not a, And a, Eq a) => And (Conjunction a) where
+  and_and ands = And $ filter (/=not_true) $ concatMap (\(And xs)->xs) ands
 
-var :: String -> Expr
+instance (Not a, Or a, Eq a) => Or (Conjunction a) where
+  or_or xs' = foldr or_each (And [not_true]) xs'
+    where
+      or_each :: Conjunction a -> Conjunction a -> Conjunction a
+      or_each (And xs) (And rs)
+        = And $ filter (/=not_true) [or_or [x,or_r]|x<-xs,or_r<-rs]
+
+instance (Not a, Or a) => Not (Conjunction a) where
+  not_not (And xs) = And [or_or $ map not_not xs]
+  not_true = And [not_true]
+  not_false = And [not_false]
+
+  -- show (Apply f x) = show f++" "++show x
+-}
+
+data Term
+  = T
+  | F
+  | Var Bool Sym deriving (Eq, Ord)
+
+var :: String -> Term
 var s = Var True (S s)
 
-instance Show Expr where
+instance Show Term where
   show T = "T"
   show F = "F"
   show (Var f (S x))
     | f = x
     | otherwise = "~"++x
-    -- show (Apply f x) = show f++" "++show x
-  show (Or xs) = "("++(join "v" xs)++")"
-  show (And xs) = "("++(join "^" xs)++")"
+
+instance Not Term where
+  not_true = T
+  not_false = F
+  not_not T = F
+  not_not F = T
+  not_not (Var x s) = Var (not_not x) s -- This gives us double negation
+
+
+type CNF = Conjunction (Disjunction Term)
+
+type DNF = Disjunction (Conjunction Term)
+instance Not DNF where
+  not_true = Or [And [not_true]]
+  not_false = Or []
+  not_not (Or xs) = Or $ foldr distribute [And []] $ map (\(And ys)->And (map not_not ys)) xs
+
+instance Or DNF where
+  or_or xs = Or $ concatMap (\(Or x)->x) xs -- can sort, uniq and filter this
+
+instance And DNF where
+  and_and [] = Or [And []]
+  and_and ((Or ys):xs) = Or [And (filter (/=not_true) (y++x))|(And y)<-ys,(And x)<-xs']
+    where
+      Or xs' = and_and xs
+
+varS :: String -> DNF
+varS s = Or [And [var s]]
+
+type Expr = CNF
+
+distribute :: Conjunction Term -> [Conjunction Term] -> [Conjunction Term]
+distribute (And ts) ands = concatMap (addTermToAll ands) ts
+
+addTermToAll :: [Conjunction a] -> a -> [Conjunction a]
+addTermToAll ands t = map (`addRequirement` t) ands
+addRequirement :: Conjunction a -> a -> Conjunction a
+addRequirement (And ys) t = And (t:ys)

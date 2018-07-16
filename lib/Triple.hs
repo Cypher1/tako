@@ -3,9 +3,7 @@ module Triple where
 import Data.List(nub)
 -- import Debug.Trace
 import Prelude hiding (not, and, or)
-
 import Util (line)
-import Sat
 
 import Expr (Sym, Expr)
 
@@ -35,17 +33,17 @@ getErrors (Many xs) = nub $ concatMap getErrors xs
 getErrors x = [x]
 
 
-instance (Logic a) => Logic (Either a Failure) where
+{-instance (Logic a) => Logic (Either a Failure) where
   true = Left true
   false = Left false
-  and [] = true
+  and [] = Left true
   and ((Left x):xs) = case (and xs) of
                         Left y -> Left (and [x,y])
                         Right y -> Right y
   and ((Right x):xs) = case (and xs) of
                          Left _ -> Right x
                          Right y -> Right (getAllErrors [x,y])
-  or [] = false
+  or [] = Left false
   or ((Left x):xs) = case (or xs) of
                         Left y -> Left (or [x,y])
                         Right y -> Right y
@@ -54,7 +52,7 @@ instance (Logic a) => Logic (Either a Failure) where
                         Right y -> Right (getAllErrors [x,y])
   not (Left x) = Left $ not x
   not x = x
-
+-}
 instance Show Failure where
   show (Contradiction a b) = "Contradiction:\n"++(line a)++"\nand\n"++(line b)++"."
   show (Unspecified a) = "Cannot prove:\n"++(line a)++"."
