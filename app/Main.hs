@@ -34,23 +34,27 @@ main = do
   print $ not a_or_na
   print $ or [a_or_na]
   print $ and [a_or_na]
-  putStrLn "Test simplification (not, or, and, with T+Fs)"
+  putStrLn "Test simplification, removal of nops (not, or, and, with T+Fs)"
   print $ not (and [a_or_na])
   print $ or [and [a_or_na]]
   print $ and [a_or_na, true, true, true, true]
+  print $ and [a_or_na, false, false, false, false, true, true, true, true]
   print $ and [a_or_na, true, true, true, true, false]
   print $ or [and [a_or_na, true, true, true, true], false, false, false]
-  -- putStrLn ""
-  -- print $ sat_expr $ implies a_or_b a
-  -- print $ sat_expr $ implies n_a_or_b a
-  -- print $ sat_expr $ implies a_or_b na
-  -- print $ sat_expr $ implies n_a_or_b na
-  -- print $ sat_expr $ implies a_or_a a
+  putStrLn "Test simplification, removal of a^~a"
+  print $ and [a, na]
+  putStrLn "Test simplification, removal of av~a"
+  print $ or [a, na]
+  putStrLn "??? CNF -> DNF == DNF test"
+  print $ or [and [a, b], and [na, c]]
+  print $ and [or [b, na], or [a, c], or [b,c]]
  where
    a :: DNF
    a = varS "a"
    b :: DNF
    b = varS "b"
+   c :: DNF
+   c = varS "c"
    na :: DNF
    na = not a
    a_or_b :: DNF
