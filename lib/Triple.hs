@@ -5,7 +5,7 @@ import Data.List(nub)
 import Prelude hiding (not, and, or)
 import Util (line)
 
-import Expr (Sym, Expr)
+import Expr (Sym, AbstractExpr, Expr, Known)
 
 data Env
   = Env [Expr] deriving Show

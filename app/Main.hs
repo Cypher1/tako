@@ -45,21 +45,21 @@ main = do
   print $ and [a, na]
   putStrLn "Test simplification, removal of av~a"
   print $ or [a, na]
-  putStrLn "??? CNF -> DNF == DNF test"
+  putStrLn "??? CNF -> Expr == Expr test"
   print $ or [and [a, b], and [na, c]]
   print $ and [or [b, na], or [a, c], or [b,c]]
  where
-   a :: DNF
+   a :: Expr
    a = varS "a"
-   b :: DNF
+   b :: Expr
    b = varS "b"
-   c :: DNF
+   c :: Expr
    c = varS "c"
-   na :: DNF
+   na :: Expr
    na = not a
-   a_or_b :: DNF
+   a_or_b :: Expr
    a_or_b = or [a, b]
-   n_a_or_b :: DNF
+   n_a_or_b :: Expr
    n_a_or_b = not a_or_b
-   a_or_na :: DNF
+   a_or_na :: Expr
    a_or_na = or [a, not a]
