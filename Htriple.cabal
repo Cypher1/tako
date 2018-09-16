@@ -18,9 +18,8 @@ executable Htriple
   main-is:             Main.hs
   other-modules:
       Triple
+      Pred
       Expr
-      Logic
-      Sat
       Util
   default-language:    Haskell2010
   build-depends:
@@ -33,9 +32,8 @@ executable Htriple-test
   main-is:             Main.hs
   other-modules:
       Triple
+      Pred
       Expr
-      Logic
-      Sat
       Util
   default-language:    Haskell2010
   build-depends:

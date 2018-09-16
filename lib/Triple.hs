@@ -5,17 +5,55 @@ import Data.List(nub)
 import Prelude hiding (not, and, or)
 import Util (line)
 
-import Expr (Sym, AbstractExpr, Expr, Known)
+data Triple a b = Tri
+  { pre :: b -- things it consumes
+  , op :: a
+  , post :: b -- things it produces
+  } deriving (Eq, Ord)
 
-data Env
-  = Env [Expr] deriving Show
+instance Show (HTriple) where
+  show t = "{"++pre'++"} "++show op'++" {"++post'++"}"
+    where
+      pre' = show' $ pre t
+      op' = op t
+      post' = show' $ post t
+      show' :: [[Sym]] -> String
+      show' x = drop 2 $ concatMap (", "++) $ map show'' x
+      show'' :: [Sym] -> String
+      show'' x = drop 1 $ concatMap (" "++) x
 
-data Triple
-  = Tri { pre :: Env
-      , name :: Sym
-      , op :: Expr
-      , post :: Env
-      } deriving Show
+-- TODO(jopra): Replace with new repr:
+-- - should be restricted to the syntax of the language
+-- - should be printable
+-- - should be interpretable
+-- - should have representation information or some way of storing it.
+type Sym = String -- deriving (Show, Eq, Ord)
+
+type Scope = [Sym] -- TODO(jopra): Use set
+
+type Statement = [Sym]
+
+type Pred = [Sym] -- Predicates are triples over statements in a scope, producing a scope
+type Check = [Pred]
+
+type HTriple = Triple Op Check -- HTriples are triples over operations, with checks, in a scope
+
+data Instruction
+  = And Sym Sym Sym
+  | Or  Sym Sym Sym
+  | Not Sym Sym
+  | Add Sym Sym Sym
+  | Sub Sym Sym Sym
+  | Div Sym Sym Sym
+  | New Sym Sym
+  | Free Sym
+  deriving (Show, Eq, Ord)
+
+data Op = I Instruction
+        | Algo [HTriple]
+        deriving (Show, Eq, Ord)
+
+data Expr = E String deriving (Show, Eq, Ord)
 
 data Failure
   = Contradiction Expr Expr
@@ -32,51 +70,27 @@ getErrors :: Failure -> [Failure]
 getErrors (Many xs) = nub $ concatMap getErrors xs
 getErrors x = [x]
 
+func :: Sym -> Op -> [Pred] -> [Pred] -> HTriple
+func n algo pre' post' =
+  Tri { pre = pre'
+      , op = algo
+      , post = post'
+      }
 
-{-instance (Logic a) => Logic (Either a Failure) where
-  true = Left true
-  false = Left false
-  and [] = Left true
-  and ((Left x):xs) = case (and xs) of
-                        Left y -> Left (and [x,y])
-                        Right y -> Right y
-  and ((Right x):xs) = case (and xs) of
-                         Left _ -> Right x
-                         Right y -> Right (getAllErrors [x,y])
-  or [] = Left false
-  or ((Left x):xs) = case (or xs) of
-                        Left y -> Left (or [x,y])
-                        Right y -> Right y
-  or ((Right x):xs) = case (or xs) of
-                        Left y -> Left y
-                        Right y -> Right (getAllErrors [x,y])
-  not (Left x) = Left $ not x
-  not x = x
--}
-instance Show Failure where
-  show (Contradiction a b) = "Contradiction:\n"++(line a)++"\nand\n"++(line b)++"."
-  show (Unspecified a) = "Cannot prove:\n"++(line a)++"."
-  show (Many ers) = "Multiple errors:\n"++concatMap line ers++"."
+val :: String -> Sym
+val = id
 
--- Assuming x, can we show that y is true.
--- sat_expr :: Expr -> Either Sat Failure
--- sat_expr x = trace (show x++" --> "++show cnf) $ Many []
-  -- where cnf = convert_to_cnf x
+var :: String -> Sym
+var = id
 
+add_pre :: Pred -> HTriple -> HTriple
+add_pre p h = h {pre = p:(pre h)}
 
-unmet :: Env -> Env -> Env
-unmet (Env _) (Env []) = Env [] -- No conditions, no failure
-unmet (Env []) (Env _ys) = Env [] -- No env, no success
-unmet (Env _xs) (Env _ys) = undefined
+add_post :: Pred -> HTriple -> HTriple
+add_post p h = h {post = p:(post h)}
 
-sat :: Env -> Env -> Maybe (Env, Failure)
-sat e r = let left_over = unmet e r in case left_over of
-            (Env []) -> Nothing
-            (Env [x]) -> Just (left_over, Unspecified x)
-            (Env xs) -> Just (left_over, Many (map Unspecified xs))
+exists :: Sym -> Pred
+exists v = [v]
 
-apply :: Env -> Triple -> Either Env Failure
-apply _e _t = error "UNDEFINED!"
--- Check for Missing requirements (pre)
--- Check for Contradictions (???)
--- Update the env (removing old stuff?)
+creates :: Sym -> Pred
+creates v = [v]
