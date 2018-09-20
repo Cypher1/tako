@@ -1,9 +1,11 @@
 module Triple where
 
 import Data.List(nub)
--- import Debug.Trace
-import Prelude hiding (not, and, or)
+import Debug.Trace
+import Prelude hiding (showList)
 import Util (line)
+import qualified Data.Set as S
+import Data.Set (Set)
 
 data Triple a b = Tri
   { pre :: b -- things it consumes
@@ -11,32 +13,45 @@ data Triple a b = Tri
   , post :: b -- things it produces
   } deriving (Eq, Ord)
 
+showList :: Show a => [a] -> String
+showList xs = drop (length joiner) $ concatMap (\x->joiner++show x) xs
+  where
+    joiner = ", "
+
 instance Show (HTriple) where
-  show t = "{"++pre'++"} "++show op'++" {"++post'++"}"
+  show t = "{"++pre'++"}"++showList op'++"{"++post'++"}"
     where
       pre' = show' $ pre t
       op' = op t
       post' = show' $ post t
-      show' :: [[Sym]] -> String
-      show' x = drop 2 $ concatMap (", "++) $ map show'' x
+      show' :: State -> String
+      show' x = drop 2 $ concatMap (", "++) $ map show'' $ S.toList x
       show'' :: [Sym] -> String
-      show'' x = drop 1 $ concatMap (" "++) x
+      show'' x = drop 1 $ concatMap (\s->" "++show s) x
 
 -- TODO(jopra): Replace with new repr:
 -- - should be restricted to the syntax of the language
 -- - should be printable
 -- - should be interpretable
 -- - should have representation information or some way of storing it.
-type Sym = String -- deriving (Show, Eq, Ord)
+data Sym = S String -- deriving (Show, Eq, Ord)
+  deriving (Eq, Ord)
+instance Show Sym where
+  show (S s) = s
 
-type Scope = [Sym] -- TODO(jopra): Use set
+type Pred = [Sym]
+type State = Set Pred
+emptyState :: State
+emptyState = S.empty
 
-type Statement = [Sym]
+emp :: HTriple
+emp =
+  Tri { pre = S.empty
+      , op = []
+      , post = S.empty
+      }
 
-type Pred = [Sym] -- Predicates are triples over statements in a scope, producing a scope
-type Check = [Pred]
-
-type HTriple = Triple Op Check -- HTriples are triples over operations, with checks, in a scope
+type HTriple = Triple Op State -- HTriples are triples over operations, with states/checks
 
 data Instruction
   = And Sym Sym Sym
@@ -49,17 +64,13 @@ data Instruction
   | Free Sym
   deriving (Show, Eq, Ord)
 
-data Op = I Instruction
-        | Algo [HTriple]
-        deriving (Show, Eq, Ord)
-
-data Expr = E String deriving (Show, Eq, Ord)
+type Op = [Instruction]
 
 data Failure
-  = Contradiction Expr Expr
-  | Unspecified Expr
+  = Contradiction State
+  | Unresolved State State
   | Many [Failure]
-  deriving (Ord, Eq)
+  deriving (Show, Ord, Eq)
 
 getAllErrors :: [Failure] -> Failure
 getAllErrors xs = case (getErrors (Many xs)) of
@@ -70,27 +81,55 @@ getErrors :: Failure -> [Failure]
 getErrors (Many xs) = nub $ concatMap getErrors xs
 getErrors x = [x]
 
-func :: Sym -> Op -> [Pred] -> [Pred] -> HTriple
-func n algo pre' post' =
+func :: Op -> State -> State -> HTriple
+func algo pre' post' =
   Tri { pre = pre'
       , op = algo
       , post = post'
       }
 
 val :: String -> Sym
-val = id
+val = S
 
 var :: String -> Sym
-var = id
+var = S
 
 add_pre :: Pred -> HTriple -> HTriple
-add_pre p h = h {pre = p:(pre h)}
+add_pre p h = h {pre = S.union (S.singleton p) (pre h)}
 
 add_post :: Pred -> HTriple -> HTriple
-add_post p h = h {post = p:(post h)}
+add_post p h = h {post = S.union (S.singleton p) (post h)}
 
 exists :: Sym -> Pred
 exists v = [v]
 
 creates :: Sym -> Pred
 creates v = [v]
+
+
+update :: HTriple -> HTriple -> Either HTriple Failure
+update ht sh
+  | not(null unresolved_pre)= Right $ Unresolved unresolved_pre (post ht)
+  | otherwise = Left sh
+  where
+    unresolved_pre = S.filter (not.(resolved (post ht))) (pre sh)
+    -- unconsumed_post = S.filter (not.(resolved (post ht))) (pre sh) -- the left overs {R}
+    pre' = pre ht
+    post' = post ht
+    op' = op ht
+
+resolved :: State -> Pred -> Bool
+resolved sh pred
+  | null sh = False -- can't prove without axioms / a world
+  | any(\x-> [x]`notElem` sh) pred = False -- can't prove things without their parts existing
+  | pred `elem` sh = True -- we know what we know
+  | otherwise = trace ("TODO(jopra): Find "++show pred++" in "++show sh) True -- proofs... are hard...
+
+assume :: [Pred] -> HTriple
+assume ps = promise (S.fromList ps) emp
+
+promise :: State -> HTriple -> HTriple
+promise ps' sh = sh {post=S.union elems $ S.union ps' (post sh)}
+  where
+    elems :: Set Pred
+    elems = S.fromList $ map(:[]) $ concat ps' -- TODO(jopra): use sets
