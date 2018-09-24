@@ -101,7 +101,6 @@ findMissing sh pred = map head $ (map(:[])pred) \\ (S.toList sh)
 -- TODO(jopra): Should return a proper error type, too much work is being done here
 resolved :: State -> Pred -> Bool
 resolved sh pred
-  | trace (show (sh, pred)) False = error "WAT"
 -- can't prove things without their parts existing
   | findMissing sh pred /= [] = False -- trace ("TODO(jopra): Missing "++show(findMissing sh pred)) False
   | pred `elem` sh = True -- we know what we know
