@@ -16,3 +16,8 @@ showEither (Right a) = show a
 printEither :: (Show a, Show b) => Either a b -> IO ()
 printEither (Left a) = print a
 printEither (Right a) = print a
+
+showList :: Show a => [a] -> String
+showList xs = drop (length joiner) $ concatMap (\x->joiner++show x) xs
+  where
+    joiner = ", "

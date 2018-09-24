@@ -1,22 +1,18 @@
 module Triple where
 
+import Prelude hiding (showList)
 import Data.List(nub, (\\))
 import Debug.Trace
-import Prelude hiding (showList)
-import Util (line)
+import Util (line, showList)
+import Pred (Pred, State)
+import Operation (Sym (S), Op)
 import qualified Data.Set as S
-import Data.Set (Set)
 
 data Triple a b = Tri
   { pre :: b -- things it consumes
   , op :: a
   , post :: b -- things it produces
   } deriving (Eq, Ord)
-
-showList :: Show a => [a] -> String
-showList xs = drop (length joiner) $ concatMap (\x->joiner++show x) xs
-  where
-    joiner = ", "
 
 instance Show (HTriple) where
   show t = "{"++pre'++"}"++showList op'++"{"++post'++"}"
@@ -34,15 +30,6 @@ instance Show (HTriple) where
 -- - should be printable
 -- - should be interpretable
 -- - should have representation information or some way of storing it.
-data Sym = S String -- deriving (Show, Eq, Ord)
-  deriving (Eq, Ord)
-instance Show Sym where
-  show (S s) = s
-
-type Pred = [Sym]
-type State = Set Pred
-emptyState :: State
-emptyState = S.empty
 
 emp :: HTriple
 emp =
@@ -52,19 +39,6 @@ emp =
       }
 
 type HTriple = Triple Op State -- HTriples are triples over operations, with states/checks
-
-data Instruction
-  = And Sym Sym Sym
-  | Or  Sym Sym Sym
-  | Not Sym Sym
-  | Add Sym Sym Sym
-  | Sub Sym Sym Sym
-  | Div Sym Sym Sym
-  | New Sym Sym
-  | Free Sym
-  deriving (Show, Eq, Ord)
-
-type Op = [Instruction]
 
 data Failure
   = Contradiction State

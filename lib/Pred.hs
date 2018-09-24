@@ -1,9 +1,15 @@
 module Pred where
 
-data Sym = String -- TODO(jopra): Use something more ... useful?
+import qualified Data.Set as S
+import Data.Set (Set)
 
-type Scope = [Sym]
+import Operation (Sym (S), Instruction, Op)
 
-data Pred = Pred { ins :: Scope, requires :: Scope, outs :: Scope, rels :: [Sym]}
+-- TODO(jopra): Use something more ... useful?
+type Pred = [Sym]
 
 type Check = [Pred]
+
+type State = Set Pred
+emptyState :: State
+emptyState = S.empty

@@ -2,10 +2,11 @@ module Main where
 import Prelude hiding (showList)
 
 import Data.Either (isLeft, isRight)
+import Util (showList)
 import Triple
 import Expr
+import Operation
 import qualified Data.Set as S
-import Data.Set (Set)
 
 labelL :: Show a => String -> a -> String
 labelL l a = l ++ ":\t" ++ show a ++ "\n"
