@@ -1,6 +1,6 @@
 module Triple where
 
-import Data.List(nub)
+import Data.List(nub, (\\))
 import Debug.Trace
 import Prelude hiding (showList)
 import Util (line)
@@ -68,7 +68,8 @@ type Op = [Instruction]
 
 data Failure
   = Contradiction State
-  | Unresolved State State
+  | Unproven State HTriple
+  | Undefined [Sym] HTriple
   | Many [Failure]
   deriving (Show, Ord, Eq)
 
@@ -94,12 +95,14 @@ val = S
 var :: String -> Sym
 var = S
 
+-- TODO(jopra): Use lenses for these patterns
 add_pre :: Pred -> HTriple -> HTriple
 add_pre p h = h {pre = S.union (S.singleton p) (pre h)}
 
 add_post :: Pred -> HTriple -> HTriple
 add_post p h = h {post = S.union (S.singleton p) (post h)}
 
+-- TODO(jopra): Consider new typing pre vs post conditions to ensure they aren't mixed up
 exists :: Sym -> Pred
 exists v = [v]
 
@@ -109,27 +112,30 @@ creates v = [v]
 
 update :: HTriple -> HTriple -> Either HTriple Failure
 update ht sh
-  | not(null unresolved_pre)= Right $ Unresolved unresolved_pre (post ht)
+  | not(null unresolved_pre)= Right $ Unproven unresolved_pre ht
   | otherwise = Left sh
   where
-    unresolved_pre = S.filter (not.(resolved (post ht))) (pre sh)
+    unresolved_pre = S.filter (not.(resolved post')) (pre sh)
     -- unconsumed_post = S.filter (not.(resolved (post ht))) (pre sh) -- the left overs {R}
     pre' = pre ht
     post' = post ht
     op' = op ht
 
+findMissing :: State -> Pred -> [Sym]
+findMissing sh pred = map head $ (map(:[])pred) \\ (S.toList sh)
+
+-- TODO(jopra): Should return a proper error type, too much work is being done here
 resolved :: State -> Pred -> Bool
 resolved sh pred
-  | null sh = False -- can't prove without axioms / a world
-  | any(\x-> [x]`notElem` sh) pred = False -- can't prove things without their parts existing
+  | trace (show (sh, pred)) False = error "WAT"
+-- can't prove things without their parts existing
+  | findMissing sh pred /= [] = False -- trace ("TODO(jopra): Missing "++show(findMissing sh pred)) False
   | pred `elem` sh = True -- we know what we know
-  | otherwise = trace ("TODO(jopra): Find "++show pred++" in "++show sh) True -- proofs... are hard...
+-- proofs... are hard...
+  | otherwise = True -- trace ("TODO(jopra): Find "++show pred++" in "++show sh) True
 
 assume :: [Pred] -> HTriple
 assume ps = promise (S.fromList ps) emp
 
 promise :: State -> HTriple -> HTriple
-promise ps' sh = sh {post=S.union elems $ S.union ps' (post sh)}
-  where
-    elems :: Set Pred
-    elems = S.fromList $ map(:[]) $ concat ps' -- TODO(jopra): use sets
+promise ps' sh = sh {post=S.union ps' (post sh)}
