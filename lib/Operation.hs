@@ -7,6 +7,11 @@ data Sym = S String -- deriving (Show, Eq, Ord)
 instance Show Sym where
   show (S s) = s
 
+instance Read Sym where
+  readsPrec p s = [(S h, t)]
+    where
+      (h,t) = break (==' ') s
+
 data Instruction
   = T TriOp Sym Sym Sym
   | B BiOp Sym Sym
@@ -14,11 +19,27 @@ data Instruction
   | L Val Sym
   deriving (Show, Eq, Ord)
 
+only :: a -> [(a, String)]
+only a = [(a, "")]
+
+instance Read Instruction where
+  readsPrec p s
+    | null w = []
+    | n == 3 && c == "L" = only $ L (read$w!!1) (read$w!!2)
+    | n == 3 && c == "U" = only $ U (read$w!!1) (read$w!!2)
+    | n == 4 && c == "B" = only $ B (read$w!!1) (read$w!!2) (read$w!!3)
+    | n == 5 && c == "T" = only $ T (read$w!!1) (read$w!!2) (read$w!!3) (read$w!!4)
+    | otherwise = []
+    where
+      n = length w
+      c = head w
+      w = words s
+
 type Val = Int
 
-data TriOp = And | Or | Add | Sub | Div | Mul deriving (Show, Eq, Ord)
-data BiOp = Not | New deriving (Show, Eq, Ord)
-data UnOp = Free deriving (Show, Eq, Ord)
+data TriOp = And | Or | Add | Sub | Div | Mul deriving (Show, Read, Eq, Ord)
+data BiOp = Not | New deriving (Show, Read, Eq, Ord)
+data UnOp = Free deriving (Show, Read, Eq, Ord)
 
 type Op = [Instruction] -- deriving (Show, Eq, Ord)
 
