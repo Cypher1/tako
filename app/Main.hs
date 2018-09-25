@@ -49,9 +49,9 @@ a = var "a"
 b = var "b"
 ne = var "!="
 b_ne_zero = [b, ne, zero]
-fdiv = func [Div a b ret] (S.fromList [exists a, exists b]) (S.fromList [creates ret])
+fdiv = func [T Div a b ret] (S.fromList [exists a, exists b]) (S.fromList [creates ret])
 frac = add_pre b_ne_zero fdiv
-minus = func [Sub a b ret] (S.fromList [exists a, exists b]) $ S.fromList [creates ret]
+minus = func [T Sub a b ret] (S.fromList [exists a, exists b]) $ S.fromList [creates ret]
 needs_ret = add_pre [ret] emp
 
 -- Test types
@@ -83,11 +83,37 @@ tests
     , mkTest "neets ret <*> frac is unsat" fails $ update needs_ret frac
     , mkTest "frac <*> neets ret is sat" passes $ update frac needs_ret
     , mkLog "frac <*> needs_ret" $ update frac needs_ret
+    ]++operationTests
     -- TODO(jopra): Execute a triple
     -- TODO(jopra): Compile a triple
     -- TODO(jopra): Resolve predicates for triples
     -- TODO(jopra): Check separation for triples
     -- TODO(jopra): Check parallelisation for triples
+
+operationTests :: [Test]
+operationTests
+  = [ mkTest "Introducing a literal gives the same value" (==[(a, 3)])
+      $ run (L 3 a) []
+    , mkTest "Introducing a literal overwrites the old value" (==[(a, 3)])
+      $ run (L 3 a) [(a, 100)]
+    , mkTest "Free empties memory" (==[])
+      $ run (U Free a) [(a, 3)]
+    , mkTest "Free doesn't remove un-freed vars" (==[(b, 4)])
+      $ run (U Free a) [(a, 3), (b, 4)]
+    , mkTest "Complement 10 = -11" ((ret, -11)`elem`)
+      $ run (B Not a ret) [(a, 10)]
+    , mkTest "Complement -11 = 10" ((ret, 10)`elem`)
+      $ run (B Not a ret) [(a, -11)]
+    , mkTest "New a b copies a into b" ((b, 2)`elem`)
+      $ run (B New a b) [(a, 2)]
+    , mkTest "And 10&3 =" ((ret, 2)`elem`)
+      $ run (T And a b ret) [(a, 10), (b, 6)]
+    , mkTest "Or 10|3 =" ((ret, 14)`elem`)
+      $ run (T Or a b ret) [(a, 10), (b, 6)]
+    , mkTest "Add 10+3 =" ((ret, 13)`elem`)
+      $ run (T Add a b ret) [(a, 10), (b, 3)]
+    , mkTest "Sub 10-3 =" ((ret, 7)`elem`)
+      $ run (T Sub a b ret) [(a, 10), (b, 3)]
     ]
 
 -- Run all tests
