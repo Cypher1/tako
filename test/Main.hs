@@ -1,6 +1,6 @@
 module Main where
 import Prelude hiding (showList)
-
+import System.Exit (exitFailure, exitSuccess)
 import Data.Either (isLeft, isRight)
 import Util (showList)
 import Triple
@@ -121,8 +121,14 @@ main :: IO ()
 main = do
   res <- mapM printT tests
   putStrLn ""
-  putStrLn $ "Passed: "++ ( show $ sum $ map fst res)
-  putStrLn $ "Failed: "++ ( show $ sum $ map snd res)
+  let n_failed = sum $ map snd res
+  let n_passed = sum $ map fst res
+  putStrLn $ "Passed: "++ show n_passed
+  putStrLn $ "Failed: "++ show n_failed
+  if n_failed /= 0
+     then exitFailure
+     else exitSuccess
+
   -- let (Left if_update_succeeded) = update_with_requires 
   -- printL "require ret + update" $ update needs_ret if_update_succeeded
   -- printL "update + require ret" $ update if_update_succeeded needs_ret

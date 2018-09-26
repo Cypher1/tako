@@ -64,8 +64,6 @@ interpreter :: Op -> Mem -> Mem
 interpreter is m = foldr run m is
 
 run :: Instruction -> Mem -> Mem
-
-
 run (L r' r) m = setV  r r' m
 
 run (U o a) m = m'
