@@ -29,12 +29,13 @@ executable Htriple
   default-extensions: StandaloneDeriving InstanceSigs AllowAmbiguousTypes DataKinds DeriveGeneric FlexibleContexts FlexibleInstances GADTs ExistentialQuantification UndecidableInstances LambdaCase MultiParamTypeClasses PartialTypeSignatures PatternSynonyms RankNTypes ScopedTypeVariables TypeApplications TypeInType TypeOperators ViewPatterns
 
 Test-Suite Htriple-test
-  type:       exitcode-stdio-1.0
+  type:       detailed-0.9
   hs-source-dirs:      lib, test
-  main-is:             Main.hs
+  test-module:         Core
   build-depends:
       base >= 4.7 && < 5,
-      containers
+      containers,
+      Cabal >= 1.9.2
   other-modules:
       Triple
       Pred

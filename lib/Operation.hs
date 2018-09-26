@@ -61,23 +61,23 @@ setV :: Sym -> Val -> Mem -> Mem
 setV k v m = (k, v):removeV k m
 
 interpreter :: Op -> Mem -> Mem
-interpreter is m = foldr run m is
+interpreter is m = foldr exec m is
 
-run :: Instruction -> Mem -> Mem
-run (L r' r) m = setV  r r' m
+exec :: Instruction -> Mem -> Mem
+exec (L r' r) m = setV  r r' m
 
-run (U o a) m = m'
+exec (U o a) m = m'
   where
     m' = case o of
            Free -> removeV a m
 
-run (B o a r) m = setV r r' m
+exec (B o a r) m = setV r r' m
   where
     a' = getV a m
     r' = case o of
            Not -> complement a'
            New -> a'
-run (T o a b r) m = setV r r' m
+exec (T o a b r) m = setV r r' m
   where
     a' = getV a m
     b' = getV b m

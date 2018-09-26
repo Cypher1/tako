@@ -1,5 +1,12 @@
-module Main where
+module Core where
+
+import Distribution.TestSuite
+  ( Test(Test)
+  , TestInstance (TestInstance, run, name, tags, options, setOption)
+  , Progress(Finished)
+  , Result(Fail, Pass))
 import Prelude hiding (showList)
+
 import System.Exit (exitFailure, exitSuccess)
 import Data.Either (isLeft, isRight)
 import Util (showList)
@@ -13,35 +20,6 @@ labelL l a = l ++ ":\t" ++ show a ++ "\n"
 printL :: Show a => String -> a -> IO ()
 printL label val = putStr $ labelL label val
 
-type TestResult = Bool
-data Test
-  = Check String TestResult String
-  | Log String String
-  -- TODO(jopra): Add support for sets of tests
-
-mkTest :: Show a => String -> (a -> TestResult) -> a -> Test
-mkTest name res val = Check name (res val) $ show val
-
-mkLog :: Show a => String -> a -> Test
-mkLog name val = Log name $ show val
-
-spacing = 48
-printT :: Test -> IO (Int, Int) -- (#Passed, #Failed)
-printT (Log name s) = do
-  putStrLn $ name ++":"++(replicate spc ' ')++s
-  return (0, 0)
-  where
-    spc = spacing - length (name++":")
-printT (Check name res err') = do
-  putStrLn $ name ++":"++(replicate spc ' ')++res'
-  return $ if res then (1, 0) else (0, 1)
-  where
-    spc = spacing-length (name++":")
-    res' = if res
-             then "Passed"
-             else "Failed\n"++err'
-
--- List of Tests
 -- Constants
 zero = val "0"
 ret = var "ret"
@@ -62,8 +40,8 @@ passes = isLeft
 debug = const False
 
 -- Tests
-tests :: [Test]
-tests
+testList :: [TestInstance]
+testList
   = [ mkTest "constantsExist" (not.null) $ showList [zero, ret, a, b, ne]
     , mkTest "a-b" prints minus
     , mkTest "unsafe a/b" prints fdiv
@@ -82,7 +60,6 @@ tests
     , mkTest "require ret" prints needs_ret
     , mkTest "neets ret <*> frac is unsat" fails $ update needs_ret frac
     , mkTest "frac <*> neets ret is sat" passes $ update frac needs_ret
-    , mkLog "frac <*> needs_ret" $ update frac needs_ret
     ]++operationTests
     -- TODO(jopra): Execute a triple
     -- TODO(jopra): Compile a triple
@@ -90,45 +67,43 @@ tests
     -- TODO(jopra): Check separation for triples
     -- TODO(jopra): Check parallelisation for triples
 
-operationTests :: [Test]
+operationTests :: [TestInstance]
 operationTests
   = [ mkTest "Introducing a literal gives the same value" (==[(a, 3)])
-      $ run (L 3 a) []
+      $ exec (L 3 a) []
     , mkTest "Introducing a literal overwrites the old value" (==[(a, 3)])
-      $ run (L 3 a) [(a, 100)]
+      $ exec (L 3 a) [(a, 100)]
     , mkTest "Free empties memory" (==[])
-      $ run (U Free a) [(a, 3)]
+      $ exec (U Free a) [(a, 3)]
     , mkTest "Free doesn't remove un-freed vars" (==[(b, 4)])
-      $ run (U Free a) [(a, 3), (b, 4)]
+      $ exec (U Free a) [(a, 3), (b, 4)]
     , mkTest "Complement 10 = -11" ((ret, -11)`elem`)
-      $ run (B Not a ret) [(a, 10)]
+      $ exec (B Not a ret) [(a, 10)]
     , mkTest "Complement -11 = 10" ((ret, 10)`elem`)
-      $ run (B Not a ret) [(a, -11)]
+      $ exec (B Not a ret) [(a, -11)]
     , mkTest "New a b copies a into b" ((b, 2)`elem`)
-      $ run (B New a b) [(a, 2)]
+      $ exec (B New a b) [(a, 2)]
     , mkTest "And 10&3 =" ((ret, 2)`elem`)
-      $ run (T And a b ret) [(a, 10), (b, 6)]
+      $ exec (T And a b ret) [(a, 10), (b, 6)]
     , mkTest "Or 10|3 =" ((ret, 14)`elem`)
-      $ run (T Or a b ret) [(a, 10), (b, 6)]
+      $ exec (T Or a b ret) [(a, 10), (b, 6)]
     , mkTest "Add 10+3 =" ((ret, 13)`elem`)
-      $ run (T Add a b ret) [(a, 10), (b, 3)]
+      $ exec (T Add a b ret) [(a, 10), (b, 3)]
     , mkTest "Sub 10-3 =" ((ret, 7)`elem`)
-      $ run (T Sub a b ret) [(a, 10), (b, 3)]
+      $ exec (T Sub a b ret) [(a, 10), (b, 3)]
     ]
 
--- Run all tests
-main :: IO ()
-main = do
-  res <- mapM printT tests
-  putStrLn ""
-  let n_failed = sum $ map snd res
-  let n_passed = sum $ map fst res
-  putStrLn $ "Passed: "++ show n_passed
-  putStrLn $ "Failed: "++ show n_failed
-  if n_failed /= 0
-     then exitFailure
-     else exitSuccess
+mkTest :: Show a => String -> (a -> Bool) -> a -> TestInstance
+mkTest name' check' val'
+  = TestInstance
+    { run = return $ if check' val'
+                        then Finished $ Pass
+                        else Finished $ Fail $ show val'
+    , name = name'
+    , tags = []
+    , options = []
+    , setOption = \op_n op -> Right $ mkTest name' check' val'
+    }
 
-  -- let (Left if_update_succeeded) = update_with_requires 
-  -- printL "require ret + update" $ update needs_ret if_update_succeeded
-  -- printL "update + require ret" $ update if_update_succeeded needs_ret
+tests :: IO [Test]
+tests = return $ map Test testList
