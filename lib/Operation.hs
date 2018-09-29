@@ -1,6 +1,7 @@
 module Operation where
 
 import Data.Bits
+import Debug.Trace (trace)
 
 data Sym = S String -- deriving (Show, Eq, Ord)
   deriving (Eq, Ord)
@@ -22,24 +23,37 @@ data Instruction
 only :: a -> [(a, String)]
 only a = [(a, "")]
 
+-- TODO(jopra): Ensure array access safety.
 instance Read Instruction where
   readsPrec p s
     | null w = []
-    | n == 3 && c == "L" = only $ L (read$w!!1) (read$w!!2)
-    | n == 3 && c == "U" = only $ U (read$w!!1) (read$w!!2)
-    | n == 4 && c == "B" = only $ B (read$w!!1) (read$w!!2) (read$w!!3)
-    | n == 5 && c == "T" = only $ T (read$w!!1) (read$w!!2) (read$w!!3) (read$w!!4)
-    | otherwise = []
+    | n == 3 && c == "L" = only $ L (read opa) (read opb)
+    | n == 2 && c`elem`(map show unops) = only $ U (read c) (read opa)
+    | n == 3 && c`elem`(map show biops) = only $ B (read c) (read opa) (read opb)
+    | n == 4 && c`elem`(map show triops) = only $ T (read c) (read opa) (read opb) (read opr)
+    | trace (show w) True = []
     where
       n = length w
       c = head w
+      opa = w!!1
+      opb = w!!2
+      opr = w!!3
       w = words s
 
 type Val = Int
 
-data TriOp = And | Or | Add | Sub | Div | Mul deriving (Show, Read, Eq, Ord)
-data BiOp = Not | New deriving (Show, Read, Eq, Ord)
-data UnOp = Free deriving (Show, Read, Eq, Ord)
+data TriOp = And | Or | Add | Sub | Div | Mul deriving (Show, Read, Eq, Ord, Enum, Bounded)
+data BiOp = Not | New deriving (Show, Read, Eq, Ord, Enum, Bounded)
+data UnOp = Free deriving (Show, Read, Eq, Ord, Enum, Bounded)
+
+unops :: [UnOp]
+unops = [minBound..maxBound]
+
+biops :: [BiOp]
+biops = [minBound..maxBound]
+
+triops :: [TriOp]
+triops = [minBound..maxBound]
 
 type Op = [Instruction] -- deriving (Show, Eq, Ord)
 
@@ -77,6 +91,7 @@ exec (B o a r) m = setV r r' m
     r' = case o of
            Not -> complement a'
            New -> a'
+
 exec (T o a b r) m = setV r r' m
   where
     a' = getV a m

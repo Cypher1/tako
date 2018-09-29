@@ -9,12 +9,8 @@ import Expr
 import Operation
 import qualified Data.Set as S
 
--- Run all tests
 main :: IO ()
-main = do
-  print ((read "a")::Sym)
-  print ((read "L 3 a")::Instruction)
-  mainLoop []
+main = mainLoop []
 
 mainLoop :: Mem -> IO ()
 mainLoop mem = do
@@ -23,7 +19,7 @@ mainLoop mem = do
   case (readMaybe command)::Maybe Instruction of
     Just instruction -> do
       print instruction
-      mainLoop $ run instruction mem
+      mainLoop $ exec instruction mem
     Nothing -> do
       print $ "Sorry '"++command++"' couldn't be parsed."
       mainLoop mem
