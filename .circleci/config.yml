@@ -15,7 +15,6 @@ jobs:
       - run: cabal install --only-dependencies --enable-tests
       # Save time building core code
       - run: cabal configure --disable-optimization
-      - run: cabal build
       - run: cabal test
       - save_cache:
           key: cabal_packages-{{ checksum "Htriple.cabal" }}
