@@ -1,19 +1,13 @@
 version: 2
 jobs:
   build_project:
-    machine: true
+    docker:
+      - image: haskell:8.0.2
     steps:
       - checkout
-      - restore-cache:
-            keys:
-              - {{ checksum “Htriple.cabal” }}
-      - run: wget https://www.haskell.org/cabal/release/cabal-install-2.2.0.0/cabal-install-2.2.0.0-i386-unknown-linux.tar.gz /tmp/cabal.tar.gz
-      - run: sudo mkdir /tmp/cabal-download
-      - run: sudo tar -xzf /tmp/cabal.tar.gz /tmp/cabal-download
-      - run: sudo chmod +x /tmp/cabal-download/cabal-install-2.2.0.0/cabal
-      - run: sudo mv +x /tmp/cabal-download/cabal-install-2.2.0.0 /usr/bin/cabal
-      - run: cabal install
+      - run: cabal build
       - run: cabal test
+
 workflows:
   version: 2
   build_and_test:
