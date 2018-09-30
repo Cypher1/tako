@@ -6,8 +6,7 @@ jobs:
     steps:
       - restore_cache:
           keys:
-          keys:
-            - cabal_packages-{{ checksum "HTriple.cabal" }}
+            - cabal_packages-{{ checksum "Htriple.cabal" }}
             # Install dependencies fresh if we change the dependencies or compilation options to ensure
             # that they are 'mostly' stateless
       - checkout
@@ -17,7 +16,7 @@ jobs:
       - run: cabal build
       - run: cabal test
       - save_cache:
-          key: cabal_packages-{{ checksum "HTriple.cabal" }}
+          key: cabal_packages-{{ checksum "Htriple.cabal" }}
           paths:
             - ~/.cabal/
             - dist
