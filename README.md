@@ -1,6 +1,6 @@
 # Htriple
 
-[![CircleCI](https://circleci.com/gh/Cypher1/HTriple/tree/master.svg?style=svg)](https://circleci.com/gh/Cypher1/HTriple/tree/master)
+[![CircleCI](https://circleci.com/gh/Cypher1/HTriple/tree/master.svg?style=svg&circle-token=044e2d53c34ded9fef2189ab4f828a2eae3a8dd5)](https://circleci.com/gh/Cypher1/HTriple/tree/master)
 
 ## Plan
 
