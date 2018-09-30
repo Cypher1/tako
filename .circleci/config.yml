@@ -14,8 +14,6 @@ jobs:
       - run: sudo mv +x /tmp/cabal-download/cabal-install-2.2.0.0 /usr/bin/cabal
       - run: cabal install
       - run: cabal test
-
-
 workflows:
   version: 2
   build_and_test:
