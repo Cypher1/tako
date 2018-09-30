@@ -1,5 +1,7 @@
 # Htriple
 
+[![CircleCI](https://circleci.com/gh/Cypher1/HTriple/tree/master.svg?style=svg)](https://circleci.com/gh/Cypher1/HTriple/tree/master)
+
 ## Plan
 
 - Construct a set of logics and forms that can represent statements and requirements
