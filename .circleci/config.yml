@@ -11,8 +11,7 @@ jobs:
             # Install dependencies fresh if we change the dependencies or compilation options to ensure
             # that they are 'mostly' stateless
       - run: cabal update
-      - run: cabal install QuickCheck
-      - run: cabal configure --enable-tests
+      - run: cabal install --only-dependencies --enable-tests
       # Ensure that everything type checks
       - run: cabal build --ghc-option=-fno-code
       # Build and run tests
