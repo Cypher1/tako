@@ -11,11 +11,10 @@ jobs:
             # Install dependencies fresh if we change the dependencies or compilation options to ensure
             # that they are 'mostly' stateless
       - run: cabal update
-      - run: cabal configure --enable-optimization
+      - run: cabal configure --enable-optimization --enable-tests
       - run: cabal install --only-dependencies
       # Save time building core code
       - run: cabal configure --disable-optimization
-      - run: cabal configure --enable-tests
       - run: cabal build
       - run: cabal test
       - save_cache:
