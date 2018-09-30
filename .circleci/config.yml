@@ -5,6 +5,7 @@ jobs:
       - image: haskell:8.0.2
     steps:
       - checkout
+      - run: cabal update
       - run: cabal build
       - run: cabal test
 
