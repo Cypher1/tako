@@ -13,7 +13,9 @@ jobs:
       - run: cabal update
       - run: cabal install QuickCheck
       - run: cabal configure --enable-tests
-      - run: cabal build
+      # Ensure that everything type checks
+      - run: cabal build --ghc-option=-fno-code
+      # Build and run tests
       - run: cabal test
       - save_cache:
           key: cabal_packages-{{ checksum "Htriple.cabal" }}
