@@ -37,7 +37,7 @@ instance Read Instruction where
     | n == 2 && c`elem`(map show unops) = only $ U (read c) (read opa)
     | n == 3 && c`elem`(map show biops) = only $ B (read c) (read opa) (read opb)
     | n == 4 && c`elem`(map show triops) = only $ T (read c) (read opa) (read opb) (read opr)
-    | trace (show w) True = []
+    | otherwise = []
     where
       n = length w
       c = head w
