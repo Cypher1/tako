@@ -12,9 +12,7 @@ jobs:
             # that they are 'mostly' stateless
       - run: cabal update
       - run: cabal install --only-dependencies --enable-tests
-      # Ensure that everything type checks
-      - run: cabal build --ghc-option=-fno-code
-      # Build and run tests
+      - run: cabal build
       - run: cabal test
       - save_cache:
           key: cabal_packages-{{ checksum "Htriple.cabal" }}
