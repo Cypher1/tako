@@ -4,12 +4,12 @@ jobs:
     docker:
       - image: haskell:8.0.2
     steps:
+      - checkout
       - restore_cache:
           keys:
             - cabal_packages-{{ checksum "Htriple.cabal" }}
             # Install dependencies fresh if we change the dependencies or compilation options to ensure
             # that they are 'mostly' stateless
-      - checkout
       - run: cabal update
       - run: cabal install QuickCheck
       - run: cabal configure --enable-tests
