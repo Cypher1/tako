@@ -8,16 +8,11 @@ import Distribution.TestSuite
 import Prelude hiding (showList)
 
 import Data.Either (isLeft, isRight)
-import Util (showList)
+import Util (showList, labelL, printL)
+import Pred (exists, creates)
 import Triple
-import Expr
 import Operation
 import qualified Data.Set as S
-
-labelL :: Show a => String -> a -> String
-labelL l a = l ++ ":\t" ++ show a ++ "\n"
-printL :: Show a => String -> a -> IO ()
-printL label val = putStr $ labelL label val
 
 mkTest :: Show a => String -> (a -> Bool) -> a -> [String]-> TestInstance
 mkTest name' check' val' tags'

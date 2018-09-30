@@ -21,3 +21,9 @@ showList :: Show a => [a] -> String
 showList xs = drop (length joiner) $ concatMap (\x->joiner++show x) xs
   where
     joiner = ", "
+
+labelL :: Show a => String -> a -> String
+labelL l a = l ++ ":\t" ++ show a ++ "\n"
+
+printL :: Show a => String -> a -> IO ()
+printL label val = putStr $ labelL label val
