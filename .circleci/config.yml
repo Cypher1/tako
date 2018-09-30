@@ -6,6 +6,7 @@ jobs:
     steps:
       - checkout
       - run: cabal update
+      - run: cabal install
       - run: cabal build
       - run: cabal test
 
