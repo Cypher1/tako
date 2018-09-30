@@ -36,7 +36,8 @@ Test-Suite Htriple-test
   build-depends:
       base >= 4.7 && < 5,
       containers,
-      Cabal >= 1.9.2
+      Cabal >= 1.9.2,
+      QuickCheck >= 2.12 && < 2.13
   other-modules:
       Triple
       Pred

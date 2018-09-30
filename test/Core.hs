@@ -6,6 +6,7 @@ import Distribution.TestSuite
   , Progress(Finished, Progress)
   , Result(Fail, Pass))
 import Prelude hiding (showList)
+import Test.QuickCheck
 
 import Data.Either (isLeft, isRight)
 import Util (showList, labelL, printL)
