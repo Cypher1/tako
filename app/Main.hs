@@ -1,5 +1,5 @@
 module Main where
-import Prelude hiding (showList)
+import Prelude
 import System.Console.Haskeline
 
 import Text.Read (readMaybe)
@@ -14,20 +14,22 @@ main :: IO ()
 main = runInputT defaultSettings (mainLoop [])
 
 mainLoop :: Mem -> InputT IO ()
-mainLoop mem = do
+mainLoop mem
+  = do
+    outputStrLn $ show mem
     minput <- getInputLine "% "
     case minput of
-        Nothing -> return ()
-        Just "exit" -> return ()
-        Just command ->handleCommand command mem
+      Nothing      -> return ()
+      Just "exit"  -> return ()
+      Just ""      -> mainLoop mem
+      Just cmd -> do
+        mem' <- handleCommand cmd mem
+        mainLoop mem'
 
-handleCommand :: String -> Mem -> InputT IO ()
-handleCommand command mem
- = case (readMaybe command)::Maybe Instruction of
-     Just instruction -> do
-       let mem' = exec instruction mem
-       outputStrLn $ show mem'
-       mainLoop mem'
-     Nothing -> do
-       outputStrLn $ "Sorry '"++command++"' couldn't be parsed."
-       mainLoop mem
+handleCommand :: String -> Mem -> InputT IO Mem
+handleCommand cmd mem
+  = case readMaybe cmd of
+      Just ins -> return $ exec ins mem
+      Nothing -> do
+        outputStrLn $ "Sorry '"++cmd++"' couldn't be parsed."
+        return mem

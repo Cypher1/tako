@@ -16,7 +16,7 @@ data Triple a b = Tri
 
 type HTriple = Triple Op State -- HTriples are triples over operations, with states/checks
 
-instance Show (HTriple) where
+instance Show HTriple where
   show t = "{"++pre'++"}"++showList op'++"{"++post'++"}"
     where
       pre' = show' $ pre t
@@ -48,7 +48,7 @@ data Failure
   deriving (Show, Ord, Eq)
 
 getAllErrors :: [Failure] -> Failure
-getAllErrors xs = case (getErrors (Many xs)) of
+getAllErrors xs = case getErrors (Many xs) of
                     [x] -> x
                     xs' -> Many xs'
 
@@ -64,19 +64,19 @@ func algo pre' post' =
       }
 
 -- TODO(jopra): Use lenses for these patterns
-add_pre :: Pred -> HTriple -> HTriple
-add_pre p h = h {pre = S.union (S.singleton p) (pre h)}
+addPre :: Pred -> HTriple -> HTriple
+addPre p h = h {pre = S.union (S.singleton p) (pre h)}
 
-add_post :: Pred -> HTriple -> HTriple
-add_post p h = h {post = S.union (S.singleton p) (post h)}
+addPost :: Pred -> HTriple -> HTriple
+addPost p h = h {post = S.union (S.singleton p) (post h)}
 
 update :: HTriple -> HTriple -> Either HTriple Failure
 update ht sh
-  | not(null unresolved_pre)= Right $ Unproven unresolved_pre ht
+  | not(null unresolvedPre)= Right $ Unproven unresolvedPre ht
   | otherwise = Left sh
   where
-    unresolved_pre = S.filter (not.(resolved post')) (pre sh)
-    -- unconsumed_post = S.filter (not.(resolved (post ht))) (pre sh) -- the left overs {R}
+    unresolvedPre = S.filter (not.resolved post') (pre sh)
+    -- unconsumedPost = S.filter (not.(resolved (post ht))) (pre sh) -- the left overs {R}
     pre' = pre ht
     post' = post ht
     op' = op ht
