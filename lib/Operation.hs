@@ -3,7 +3,7 @@ module Operation where
 import Data.Bits
 import Debug.Trace (trace)
 
-data Sym = S String -- deriving (Show, Eq, Ord)
+newtype Sym = S String -- deriving (Show, Eq, Ord)
   deriving (Eq, Ord)
 instance Show Sym where
   show (S s) = s
@@ -34,9 +34,9 @@ instance Read Instruction where
   readsPrec p s
     | null w = []
     | n == 3 && c == "L" = only $ L (read opa) (read opb)
-    | n == 2 && c`elem`(map show unops) = only $ U (read c) (read opa)
-    | n == 3 && c`elem`(map show biops) = only $ B (read c) (read opa) (read opb)
-    | n == 4 && c`elem`(map show triops) = only $ T (read c) (read opa) (read opb) (read opr)
+    | n == 2 && c`elem`map show unops = only $ U (read c) (read opa)
+    | n == 3 && c`elem`map show biops = only $ B (read c) (read opa) (read opb)
+    | n == 4 && c`elem`map show triops = only $ T (read c) (read opa) (read opb) (read opr)
     | otherwise = []
     where
       n = length w
@@ -75,7 +75,7 @@ getV k h = case v of
 
 
 removeV :: Sym -> Mem -> Mem
-removeV k m = filter ((/=k).fst) m
+removeV k = filter ((/=k).fst)
 
 setV :: Sym -> Val -> Mem -> Mem
 setV k v m = (k, v):removeV k m

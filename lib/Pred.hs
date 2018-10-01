@@ -23,7 +23,7 @@ emptyState :: State
 emptyState = S.empty
 
 findMissing :: State -> Pred -> [Sym]
-findMissing sh pred = map head $ atoms_needed \\ (S.toList sh)
+findMissing sh pred = map head $ atoms_needed \\ S.toList sh
   where
     atoms_needed = map (:[]) pred
 

@@ -19,12 +19,12 @@ mkTest :: Show a => String -> (a -> Bool) -> a -> [String]-> TestInstance
 mkTest name' check' val' tags'
   = TestInstance
     { run = return $ if check' val'
-                        then Finished $ Pass
+                        then Finished Pass
                         else Finished $ Fail $ show val'
     , name = name'
     , tags = tags'
     , options = []
-    , setOption = \op_n op -> Right $ mkTest name' check' val' tags'
+    , setOption = \opN op -> Right $ mkTest name' check' val' tags'
     }
 
 addTags :: [String] -> ([String] -> TestInstance) -> TestInstance
@@ -39,11 +39,11 @@ ret = var "ret"
 a = var "a"
 b = var "b"
 ne = var "!="
-b_ne_zero = [b, ne, zero]
+bNeZero = [b, ne, zero]
 fdiv = func [T Div a b ret] (S.fromList [exists a, exists b]) (S.fromList [creates ret])
-frac = add_pre b_ne_zero fdiv
+frac = addPre bNeZero fdiv
 minus = func [T Sub a b ret] (S.fromList [exists a, exists b]) $ S.fromList [creates ret]
-needs_ret = add_pre [ret] emp
+needsRet = addPre [ret] emp
 
 -- Test types
 prints = (/= "").show
@@ -70,18 +70,18 @@ tripleTests
   , mkTest "safe a/b" prints frac
   , mkTest "updateFrac with emp fails" fails $ update emp frac
   , mkTest "updateFrac with b!=0 fails" fails
-    $ update (assume [b_ne_zero]) frac
+    $ update (assume [bNeZero]) frac
   , mkTest "updateFrac with b!=0 and a fails" fails
-    $ update (assume [b_ne_zero, [a]]) frac
+    $ update (assume [bNeZero, [a]]) frac
   , mkTest "updateFrac with b!=0, b and a succeeds" fails
-    $ update (assume [b_ne_zero, [a], [b]]) frac
+    $ update (assume [bNeZero, [a], [b]]) frac
   , mkTest "updateFrac with b!=0, !=, b and a succeeds" fails
-    $ update (assume [b_ne_zero, [a], [b], [ne]]) frac
+    $ update (assume [bNeZero, [a], [b], [ne]]) frac
   , mkTest "updateFrac with b!=0, !=, 0, b and a succeeds" passes
-    $ update (assume [b_ne_zero, [a], [b], [ne], [zero]]) frac
-  , mkTest "require ret" prints needs_ret
-  , mkTest "neets ret <*> frac is unsat" fails $ update needs_ret frac
-  , mkTest "frac <*> neets ret is sat" passes $ update frac needs_ret
+    $ update (assume [bNeZero, [a], [b], [ne], [zero]]) frac
+  , mkTest "require ret" prints needsRet
+  , mkTest "neets ret <*> frac is unsat" fails $ update needsRet frac
+  , mkTest "frac <*> neets ret is sat" passes $ update frac needsRet
   ]
 
 operationTests :: [TestInstance]
