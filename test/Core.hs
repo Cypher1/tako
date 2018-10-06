@@ -7,10 +7,10 @@ import Distribution.TestSuite
   , Result(Fail, Pass))
 import Prelude hiding (showList)
 import Test.QuickCheck
+import TestUtil
 
-import Data.Either (isLeft, isRight)
-import Util (showList, labelL, printL)
-import Pred (exists, creates)
+import Util (showList, labelL, printL, fails, passes)
+import Pred (exists, creates, Atom(Value, Predicate))
 import Triple
 import Operation
 import qualified Data.Set as S
@@ -39,18 +39,11 @@ ret = var "ret"
 a = var "a"
 b = var "b"
 ne = var "!="
-bNeZero = [b, ne, zero]
+bNeZero = map Value [b, ne, zero]
 fdiv = func [T Div a b ret] (S.fromList [exists a, exists b]) (S.fromList [creates ret])
 frac = addPre bNeZero fdiv
 minus = func [T Sub a b ret] (S.fromList [exists a, exists b]) $ S.fromList [creates ret]
-needsRet = addPre [ret] emp
-
--- Test types
-prints = (/= "").show
-
-fails = isRight
-passes = isLeft
-debug = const False
+needsRet = addPre (exists ret) emp
 
 -- Tests
 testList :: [TestInstance]
@@ -72,13 +65,13 @@ tripleTests
   , mkTest "updateFrac with b!=0 fails" fails
     $ update (assume [bNeZero]) frac
   , mkTest "updateFrac with b!=0 and a fails" fails
-    $ update (assume [bNeZero, [a]]) frac
+    $ update (assume [bNeZero, exists a]) frac
   , mkTest "updateFrac with b!=0, b and a succeeds" fails
-    $ update (assume [bNeZero, [a], [b]]) frac
+    $ update (assume [bNeZero, exists a, exists b]) frac
   , mkTest "updateFrac with b!=0, !=, b and a succeeds" fails
-    $ update (assume [bNeZero, [a], [b], [ne]]) frac
+    $ update (assume [bNeZero, exists a, exists b, exists ne]) frac
   , mkTest "updateFrac with b!=0, !=, 0, b and a succeeds" passes
-    $ update (assume [bNeZero, [a], [b], [ne], [zero]]) frac
+    $ update (assume [bNeZero, exists a, exists b, exists ne, exists zero]) frac
   , mkTest "require ret" prints needsRet
   , mkTest "neets ret <*> frac is unsat" fails $ update needsRet frac
   , mkTest "frac <*> neets ret is sat" passes $ update frac needsRet
