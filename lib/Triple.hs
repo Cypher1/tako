@@ -4,7 +4,7 @@ import Prelude hiding (showList)
 import Data.List(nub, (\\))
 import Debug.Trace
 import Util (line, showList, passes, fails)
-import Pred (Pred, State, resolutions, Assignment)
+import Pred (Pred, State, solutions, Assignment)
 import Operation (Sym (S), Op)
 import qualified Data.Set as S
 import Data.Either (partitionEithers)
@@ -43,7 +43,7 @@ emp =
 
 data Failure
   = Contradiction State
-  | Unproven State HTriple
+  | Unsolved State State
   | Undefined [Sym] HTriple
   | Many [Failure]
   | Underspecified [Assignment] HTriple HTriple
@@ -74,12 +74,12 @@ addPost p h = h {post = S.union (S.singleton p) (post h)}
 
 update :: HTriple -> HTriple -> Either HTriple Failure
 update accepted extension
-  = case solutions of
-      [] -> Right $ Unproven state extension
-      [sol] -> trace ("Specialising with "++show sol) $ Left $ mergeTriples accepted extension
+  = case solutions' of
+      [] -> Right $ Unsolved state requirements
+      [sol] -> trace ("TODO(jopra): Specialising with "++show (accepted, sol, extension)) $ Left $ mergeTriples accepted extension
       sols -> Right $ Underspecified sols accepted extension
   where
-    solutions = resolutions state requirements
+    solutions' = solutions state requirements
     state = post accepted
     requirements = pre extension
 

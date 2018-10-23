@@ -1,16 +1,16 @@
 module Core where
 
+import Prelude hiding (showList)
 import Distribution.TestSuite
   ( Test(Test)
   , TestInstance (TestInstance, run, name, tags, options, setOption)
   , Progress(Finished, Progress)
   , Result(Fail, Pass))
-import Prelude hiding (showList)
 import Test.QuickCheck
 import TestUtil
 
 import Util (showList, labelL, printL, fails, passes)
-import Pred (exists, creates, Atom(Value, Predicate))
+import Pred (exists, creates, Atom(Value, Predicate), solutions)
 import Triple
 import Operation
 import qualified Data.Set as S
@@ -47,12 +47,16 @@ needsRet = addPre (exists ret) emp
 
 -- Tests
 testList :: [TestInstance]
-testList = tripleTests ++ operationTests
-    -- TODO(jopra): Execute a triple
-    -- TODO(jopra): Compile a triple
-    -- TODO(jopra): Resolve predicates for triples
-    -- TODO(jopra): Check separation for triples
-    -- TODO(jopra): Check parallelisation for triples
+testList
+  = concat
+  [ tripleTests
+  , operationTests
+  , resolutionTests
+  ]
+  -- TODO(jopra): Execute a triple
+  -- TODO(jopra): Compile a triple
+  -- TODO(jopra): Check separation for triples
+  -- TODO(jopra): Check parallelisation for triples
 
 tripleTests :: [TestInstance]
 tripleTests
@@ -64,13 +68,13 @@ tripleTests
   , mkTest "updateFrac with emp fails" fails $ update emp frac
   , mkTest "updateFrac with b!=0 fails" fails
     $ update (assume [bNeZero]) frac
-  , mkTest "updateFrac with b!=0 and a fails" fails
+  , mkTest "updateFrac with b!=0 and a should fail" fails
     $ update (assume [bNeZero, exists a]) frac
-  , mkTest "updateFrac with b!=0, b and a succeeds" fails
+  , mkTest "updateFrac with b!=0, b and a should fail" fails
     $ update (assume [bNeZero, exists a, exists b]) frac
-  , mkTest "updateFrac with b!=0, !=, b and a succeeds" fails
+  , mkTest "updateFrac with b!=0, !=, b and a should fail" fails
     $ update (assume [bNeZero, exists a, exists b, exists ne]) frac
-  , mkTest "updateFrac with b!=0, !=, 0, b and a succeeds" passes
+  , mkTest "updateFrac with b!=0, !=, 0, b and a should succeed" passes
     $ update (assume [bNeZero, exists a, exists b, exists ne, exists zero]) frac
   , mkTest "require ret" prints needsRet
   , mkTest "neets ret <*> frac is unsat" fails $ update needsRet frac
@@ -102,4 +106,13 @@ operationTests
     $ exec (T Add a b ret) [(a, 10), (b, 3)]
   , mkTest "Sub 10-3 =" ((ret, 7)`elem`)
     $ exec (T Sub a b ret) [(a, 10), (b, 3)]
+  ]
+
+resolutionTests :: [TestInstance]
+resolutionTests
+  = map (addTags ["resolution", "predicate", "variable", "assignment"])
+  [ mkTest "Value resolution fails if there is no heap" (==[])
+    $ solutions (post (assume [])) $ S.fromList [exists a]
+  , mkTest "Value resolution passes if the state contains the value" (==[[]])
+    $ solutions (post (assume [exists a])) $ S.fromList [exists a]
   ]

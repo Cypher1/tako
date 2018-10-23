@@ -10,8 +10,8 @@ import Data.List ((\\))
 import Operation (Sym (S), Instruction, Op)
 
 data Atom
-  = Value Sym
-  | Variable Sym
+  = Value Sym -- a particular symbol
+  | Variable Sym -- a variable that can match any symbol (in its context)
   | Predicate Pred
   deriving (Eq, Ord)
 
@@ -33,13 +33,6 @@ type State = Set Pred
 emptyState :: State
 emptyState = S.empty
 
--- TODO: flatten to set
-flatten :: Pred -> [Sym]
-flatten = foldr f' []
-  where
-    f' (Value s) xs = s:xs
-    f' (Predicate p) xs = flatten p++xs
-
 type Assignment = [(Sym, Sym)]
 -- TODO(jopra): Use hash mapping
 
@@ -48,13 +41,16 @@ emptyAssignment = []
 
 -- TODO(jopra): Should return a proper error type, too much work is being done here
 -- TODO(jopra): Should check that each value is defined (not just used)
-resolutions :: State -> State -> [Assignment]
-resolutions known preds = resolution' known (S.toList preds) emptyAssignment
+solutions :: State -> State -> [Assignment]
+solutions known preds = trace (show sols) sols
+  where
+    sols = resolution' known (S.toList preds) emptyAssignment
 
+-- Finds assignments (that are specialisations of the input assignment) for which the Preds are resolvable.
 resolution' :: State -> [Pred] -> Assignment -> [Assignment]
 resolution' known [] ass = [ass]
 resolution' known (p:ps) ass
-  = [sol | ass' <- assignments_with_p, sol <- resolution' known ps ass']
+  = trace ("SOLS:"++show (p, known, assignments_with_p)) [sol | ass' <- assignments_with_p, sol <- resolution' known ps ass']
     where
       assignments_with_p = lefts $ map (restrict ass) $ assignments known p
 
@@ -71,4 +67,24 @@ restrictOne (k, v) (Left xs)
 restrictOne _ _ = Right ()
 
 assignments :: State -> Pred -> [Assignment]
-assignments state pred = trace "TODO(jopra): implement assignments" []
+assignments state pred
+  | not(hasVariable pred) && pred `elem` state && containsAll state pred = [emptyAssignment]-- Check existence
+  | otherwise = [] -- TODO(jopra): Perform substitution
+
+hasVariable :: Pred -> Bool
+hasVariable = isVariable . Predicate
+
+isVariable :: Atom -> Bool
+isVariable (Variable _) = True
+isVariable (Value _) = False
+isVariable (Predicate atoms) = any isVariable atoms
+
+-- Checks that the atom is defined in the current state.
+contains :: State -> Atom -> Bool
+contains state (Predicate p) = containsAll state p
+contains state (Value s) = [Value s] `elem` state
+contains state (Variable s) = False -- TODO(jopra): Don't require assignment?
+
+-- Checks that all atoms in a predicate are defined in the current state.
+containsAll :: State -> Pred -> Bool
+containsAll = all.contains

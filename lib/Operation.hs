@@ -52,24 +52,28 @@ data TriOp = And | Or | Add | Sub | Div | Mul deriving (Show, Read, Eq, Ord, Enu
 data BiOp = Not | New deriving (Show, Read, Eq, Ord, Enum, Bounded)
 data UnOp = Free deriving (Show, Read, Eq, Ord, Enum, Bounded)
 
+boundedAll :: (Enum a, Bounded a) => [a]
+boundedAll = [minBound..maxBound]
+
 unops :: [UnOp]
-unops = [minBound..maxBound]
+unops = boundedAll
 
 biops :: [BiOp]
-biops = [minBound..maxBound]
+biops = boundedAll
 
 triops :: [TriOp]
-triops = [minBound..maxBound]
+triops = boundedAll
 
 type Op = [Instruction] -- deriving (Show, Eq, Ord)
 
 type Mem = [(Sym, Val)] -- deriving (Show, Eq, Ord)
 
 getV :: Sym -> Mem -> Val
-getV k h = case v of
-               [x] -> x
-               [] -> error $ show k++" not defined in "++show h
-               v' -> error $ show k++" multiply defined in "++show h++" as "++show v'
+getV k h
+  = case v of
+    [x] -> x
+    [] -> error $ show k++" not defined in "++show h
+    v' -> error $ show k++" multiply defined in "++show h++" as "++show v'
   where
     v = map snd $ filter ((==k).fst) h
 
