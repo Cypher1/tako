@@ -3,10 +3,11 @@ module Triple where
 import Prelude hiding (showList)
 import Data.List(nub, (\\))
 import Debug.Trace
-import Util (line, showList)
-import Pred (Pred, State, resolved)
+import Util (line, showList, passes, fails)
+import Pred (Pred, State, solutions, Assignment)
 import Operation (Sym (S), Op)
 import qualified Data.Set as S
+import Data.Either (partitionEithers)
 
 data Triple a b = Tri
   { pre :: b -- things it consumes
@@ -42,9 +43,10 @@ emp =
 
 data Failure
   = Contradiction State
-  | Unproven State HTriple
+  | Unsolved State State
   | Undefined [Sym] HTriple
   | Many [Failure]
+  | Underspecified [Assignment] HTriple HTriple
   deriving (Show, Ord, Eq)
 
 getAllErrors :: [Failure] -> Failure
@@ -71,15 +73,24 @@ addPost :: Pred -> HTriple -> HTriple
 addPost p h = h {post = S.union (S.singleton p) (post h)}
 
 update :: HTriple -> HTriple -> Either HTriple Failure
-update ht sh
-  | not(null unresolvedPre)= Right $ Unproven unresolvedPre ht
-  | otherwise = Left sh
+update accepted extension
+  = case solutions' of
+      [] -> Right $ Unsolved state requirements
+      [sol] -> trace ("TODO(jopra): Specialising with "++show (accepted, sol, extension)) $ Left $ mergeTriples accepted extension
+      sols -> Right $ Underspecified sols accepted extension
   where
-    unresolvedPre = S.filter (not.resolved post') (pre sh)
-    -- unconsumedPost = S.filter (not.(resolved (post ht))) (pre sh) -- the left overs {R}
-    pre' = pre ht
-    post' = post ht
-    op' = op ht
+    solutions' = solutions state requirements
+    state = post accepted
+    requirements = pre extension
+
+-- Unchecked 'merge' of two triples, running one after the other.
+mergeTriples :: HTriple -> HTriple -> HTriple
+mergeTriples accepted extension
+  = Tri { pre = pre accepted
+        -- TODO(jopra): Add anything needed to make function calls etc.
+        , op = op accepted ++ op extension
+        , post = post extension
+        }
 
 assume :: [Pred] -> HTriple
 assume ps = promise (S.fromList ps) emp

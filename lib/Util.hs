@@ -1,5 +1,14 @@
 module Util where
 
+import Data.Either (isLeft, isRight)
+
+
+fails :: Either a b -> Bool
+fails = isRight
+
+passes :: Either a b -> Bool
+passes = isLeft
+
 indent :: String -> String
 indent x = unlines $ map ("  "++) $ lines x
 
