@@ -115,4 +115,10 @@ resolutionTests
     $ solutions (post (assume [])) $ S.fromList [exists a]
   , mkTest "Value resolution passes if the state contains the value" (==[[]])
     $ solutions (post (assume [exists a])) $ S.fromList [exists a]
+  , mkTest "Predicate resolution fails if state doesn't contain the predicate" (==[])
+    $ solutions (post (assume [[Value a, Value ne, Value zero]])) $ S.fromList [[Value a, Value ne, Value zero]]
+  , mkTest "Predicate resolution fails if state only contains the predicate" (==[])
+    $ solutions (post (assume [[Value a, Value ne, Value zero]])) $ S.fromList [[Value a, Value ne, Value zero]]
+  , mkTest "Predicate resolution fails if state contains the predicate and its contents" (==[[]])
+    $ solutions (post (assume [exists a, exists ne, exists zero, [Value a, Value ne, Value zero]])) $ S.fromList [[Value a, Value ne, Value zero]]
   ]

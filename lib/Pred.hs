@@ -42,7 +42,7 @@ emptyAssignment = []
 -- TODO(jopra): Should return a proper error type, too much work is being done here
 -- TODO(jopra): Should check that each value is defined (not just used)
 solutions :: State -> State -> [Assignment]
-solutions known preds = trace (show sols) sols
+solutions known preds = sols
   where
     sols = resolution' known (S.toList preds) emptyAssignment
 
