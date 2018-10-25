@@ -39,6 +39,7 @@ ret = var "ret"
 a = var "a"
 b = var "b"
 ne = var "!="
+aNeZero = map Value [a, ne, zero]
 bNeZero = map Value [b, ne, zero]
 fdiv = func [T Div a b ret] (S.fromList [exists a, exists b]) (S.fromList [creates ret])
 frac = addPre bNeZero fdiv
@@ -79,6 +80,9 @@ tripleTests
   , mkTest "require ret" prints needsRet
   , mkTest "neets ret <*> frac is unsat" fails $ update needsRet frac
   , mkTest "frac <*> neets ret is sat" passes $ update frac needsRet
+  , mkTest "post.assume == Set.fromList"
+      (==S.fromList [aNeZero, exists a, bNeZero])
+      (post$assume [aNeZero, exists a, bNeZero, bNeZero])
   ]
 
 operationTests :: [TestInstance]
