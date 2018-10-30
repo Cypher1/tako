@@ -3,7 +3,7 @@ module Triple where
 import Prelude hiding (showList)
 import Data.List(nub, (\\))
 import Debug.Trace
-import Util (line, showList, passes, fails)
+import Util (line, showList)
 import Pred (Pred, State, solutions, Assignment)
 import Operation (Sym (S), Op)
 import qualified Data.Set as S
