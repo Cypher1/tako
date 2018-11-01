@@ -96,14 +96,3 @@ isVariable (Value _) = False
 isVariable (Variable _) = True
 isVariable (Predicate atoms) = any isVariable atoms
 isVariable (Pattern atoms) = any isVariable atoms
-
--- Checks that the atom is defined in the current state.
-contains :: State -> Atom -> Bool
-contains state (Predicate p) = containsAll state p
-contains state (Value s) = [Value s] `elem` state
-contains state (Variable s) = False -- TODO(jopra): Don't require assignment?
--- TODO(jopra) Patterns
-
--- Checks that all atoms in a predicate are defined in the current state.
-containsAll :: State -> Pred -> Bool
-containsAll = all.contains
