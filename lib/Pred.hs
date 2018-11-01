@@ -44,21 +44,19 @@ emptyAssignment = []
 -- TODO(jopra): Should return a proper error type, too much work is being done here
 -- TODO(jopra): Should check that each value is defined (not just used)
 solutions :: State -> State -> [Assignment]
-solutions known preds = trace (show sols) sols
-  where
-    sols = resolution known (S.toList preds) emptyAssignment
+solutions known preds
+  = resolution known (S.toList preds) emptyAssignment
 
 -- Finds assignments (that are specialisations of the input assignment) for which the Preds are resolvable.
 resolution :: State -> [Pred] -> Assignment -> [Assignment]
 resolution known [] ass = [ass]
 resolution known (p:ps) ass
-  = trace ("SOLS:"++show (p, known, assignments_with_p)) [sol | ass' <- assignments_with_p, sol <- resolution known ps ass']
+  = [sol | ass' <- assignments_with_p, sol <- resolution known ps ass']
     where
       assignments_with_p = lefts $ map (restrict ass) $ assignments known p
 
 restrict :: Assignment -> Assignment -> Either Assignment () --TODO(jopra): Report errors?
 restrict xs ys
-  | trace ("restrict: "++show xs++", "++show ys) True
   = foldr (try restrictOne) (Left xs) ys
 
 restrictOne :: (Sym, Sym) -> Assignment -> Either Assignment ()
@@ -87,9 +85,8 @@ restrictPred pred poss
   | otherwise = foldr (try restrictAtoms) (Left []) $ zip pred poss
 
 assignments :: State -> Pred -> [Assignment]
-assignments state pred = trace (">>"++show (pred, state, poss)) poss
-    where
-      poss = lefts $ map (restrictPred pred) $ S.toList state
+assignments state pred
+  = lefts $ map (restrictPred pred) $ S.toList state
 
 hasVariable :: Pred -> Bool
 hasVariable = isVariable . Predicate
