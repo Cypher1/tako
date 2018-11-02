@@ -9,8 +9,8 @@ import Distribution.TestSuite
 import Test.QuickCheck
 import TestUtil
 
-import Util (showList, labelL, printL, fails, passes)
-import Pred (exists, creates, Atom(Value, Predicate), solutions)
+import Util (showList, labelL, printL)
+import Pred (exists, creates, Atom(Value, Variable, Predicate), solutions, Assignment)
 import Triple
 import Operation
 import qualified Data.Set as S
@@ -39,11 +39,15 @@ ret = var "ret"
 a = var "a"
 b = var "b"
 ne = var "!="
+aNeZero = map Value [a, ne, zero]
 bNeZero = map Value [b, ne, zero]
 fdiv = func [T Div a b ret] (S.fromList [exists a, exists b]) (S.fromList [creates ret])
 frac = addPre bNeZero fdiv
 minus = func [T Sub a b ret] (S.fromList [exists a, exists b]) $ S.fromList [creates ret]
 needsRet = addPre (exists ret) emp
+
+x = var "x"
+varXNeZero = [Variable x, Value ne, Value zero]
 
 -- Tests
 testList :: [TestInstance]
@@ -65,20 +69,23 @@ tripleTests
   , mkTest "a-b" prints minus
   , mkTest "unsafe a/b" prints fdiv
   , mkTest "safe a/b" prints frac
-  , mkTest "updateFrac with emp fails" fails $ update emp frac
-  , mkTest "updateFrac with b!=0 fails" fails
+  , mkTest "updateFrac with emp should fail" fails $ update emp frac
+  , mkTest "updateFrac with b!=0 should fail " fails
     $ update (assume [bNeZero]) frac
   , mkTest "updateFrac with b!=0 and a should fail" fails
     $ update (assume [bNeZero, exists a]) frac
-  , mkTest "updateFrac with b!=0, b and a should fail" fails
-    $ update (assume [bNeZero, exists a, exists b]) frac
-  , mkTest "updateFrac with b!=0, !=, b and a should fail" fails
-    $ update (assume [bNeZero, exists a, exists b, exists ne]) frac
-  , mkTest "updateFrac with b!=0, !=, 0, b and a should succeed" passes
-    $ update (assume [bNeZero, exists a, exists b, exists ne, exists zero]) frac
+  , mkTest "updateFrac with b!=0 and b should fail" fails
+    $ update (assume [bNeZero, exists b]) frac
+  , mkTest "updateFrac with a, b should fail" fails
+    $ update (assume [exists a, exists b]) frac
+  , mkTest "updateFrac with b!=0, a, b, should pass" passes
+    $ update (assume [exists a, exists b, bNeZero]) frac
   , mkTest "require ret" prints needsRet
   , mkTest "neets ret <*> frac is unsat" fails $ update needsRet frac
   , mkTest "frac <*> neets ret is sat" passes $ update frac needsRet
+  , mkTest "post.assume == Set.fromList"
+      (==S.fromList [aNeZero, exists a, bNeZero])
+      (post$assume [aNeZero, exists a, bNeZero, bNeZero])
   ]
 
 operationTests :: [TestInstance]
@@ -111,14 +118,25 @@ operationTests
 resolutionTests :: [TestInstance]
 resolutionTests
   = map (addTags ["resolution", "predicate", "variable", "assignment"])
-  [ mkTest "Value resolution fails if there is no heap" (==[])
-    $ solutions (post (assume [])) $ S.fromList [exists a]
-  , mkTest "Value resolution passes if the state contains the value" (==[[]])
-    $ solutions (post (assume [exists a])) $ S.fromList [exists a]
-  , mkTest "Predicate resolution fails if state doesn't contain the predicate" (==[])
-    $ solutions (post (assume [[Value a, Value ne, Value zero]])) $ S.fromList [[Value a, Value ne, Value zero]]
-  , mkTest "Predicate resolution fails if state only contains the predicate" (==[])
-    $ solutions (post (assume [[Value a, Value ne, Value zero]])) $ S.fromList [[Value a, Value ne, Value zero]]
-  , mkTest "Predicate resolution fails if state contains the predicate and its contents" (==[[]])
-    $ solutions (post (assume [exists a, exists ne, exists zero, [Value a, Value ne, Value zero]])) $ S.fromList [[Value a, Value ne, Value zero]]
+  [ mkTest "Value resolution fails if there is no heap"
+      hasNoSolution
+    $ solutions (S.fromList []) $ S.fromList [exists a]
+  , mkTest "Value resolution passes if the state contains the value"
+      hasEmptySolution
+    $ solutions (S.fromList [exists a]) $ S.fromList [exists a]
+  , mkTest "Predicate resolution succeeds if state contains the predicate"
+      hasEmptySolution
+      $ solutions (S.fromList [aNeZero]) $ S.fromList [aNeZero]
+  , mkTest "Predicate resolution fails on simple pred with variable (no matches)"
+      hasNoSolution
+      $ solutions (S.fromList [exists a, exists ne, exists zero])
+        $ S.fromList [varXNeZero]
+  , mkTest "Predicate resolution succeeds on simple pred with variable (with matches)"
+      (==[[(x, a)]])
+      $ solutions (S.fromList [exists a, aNeZero])
+        $ S.fromList [varXNeZero]
+  , mkTest "Predicate resolution correct on simple pred with variable (with matches)"
+      (==[[(x, a)]])
+      $ solutions (S.fromList [exists a, exists b, aNeZero])
+        $ S.fromList [varXNeZero]
   ]
