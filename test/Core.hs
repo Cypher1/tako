@@ -128,42 +128,42 @@ resolutionTests
   , mkTest "Value resolution passes if the state contains the value"
       hasEmptySolution
     $ solutions (S.fromList [exists a]) $ S.fromList [exists a]
-  , mkTest "Predicate resolution succeeds if state contains the predicate"
+  , mkTest "Resolution succeeds if state contains the predicate"
       hasEmptySolution
       $ solutions (S.fromList [aNeZero]) $ S.fromList [aNeZero]
-  , mkTest "Predicate resolution fails on simple pred with variable (no matches)"
+  , mkTest "Resolution fails on 1-pred with variable (no matches)"
       hasNoSolution
       $ solutions (S.fromList [exists a, exists ne, exists zero])
         $ S.fromList [varXNeZero]
-  , mkTest "Predicate resolution succeeds on simple pred with variable (with matches)"
+  , mkTest "Resolution succeeds on 1-pred with variable (with matches)"
       (==[[(x, a)]])
       $ solutions (S.fromList [exists a, aNeZero])
         $ S.fromList [varXNeZero]
-  , mkTest "Predicate resolution correct on simple pred with variable (with matches)"
+  , mkTest "Resolution correct on 1-pred with variable (with matches)"
       (==[[(x, a)]])
       $ solutions (S.fromList [exists a, exists b, aNeZero])
         $ S.fromList [varXNeZero]
-  , mkTest "Predicate resolution fails on simple pred with variable (with matches)"
+  , mkTest "Resolution fails on 1-pred with variable (with matches)"
       hasNoSolution
       $ solutions (S.fromList [exists a, exists b, [Value a, Value ne, Value b]])
         $ S.fromList [exists y, [Variable x, Value ne, Variable y]]
-  , mkTest "Predicate resolution fails on simple pred with variable (with matches)"
+  , mkTest "Resolution fails on 1-pred with variable (with matches)"
       hasNoSolution
       $ solutions (S.fromList [exists a, exists b, [Value a, Value ne, Value b]])
         $ S.fromList [exists x, [Variable x, Value ne, Variable y]]
-  , mkTest "Predicate resolution correct on simple pred with variable (with matches)"
+  , mkTest "Resolution correct on 1-pred with variable (with matches)"
       (==[[(x, a), (y, b)]])
       $ solutions (S.fromList [exists a, exists b, [Value a, Value ne, Value b]])
         $ S.fromList [[Variable x, Value ne, Variable y]]
-  , mkTest "Predicate resolution fails on double pred with variable (with matches)"
+  , mkTest "Resolution fails on 2-pred with variable (with matches)"
       hasNoSolution
       $ solutions (S.fromList [[Value b, Value isa, Value c]])
         $ S.fromList [[Variable x, Value isa, Variable y], [Variable y, Value isa, Variable z]]
-  , mkTest "Predicate resolution fails on double pred with variable (with matches)"
+  , mkTest "Resolution fails on 2-pred with variable (with matches)"
       hasNoSolution
       $ solutions (S.fromList [[Value a, Value isa, Value b]])
         $ S.fromList [[Variable x, Value isa, Variable y], [Variable y, Value isa, Variable z]]
-  , mkTest "Predicate resolution correct on double pred with variable (with matches)"
+  , mkTest "Resolution correct on 2-pred with variable (with matches)"
       (==[[(z, c), (x, a), (y, b)]])
       $ solutions (S.fromList [[Value a, Value isa, Value b], [Value b, Value isa, Value c]])
         $ S.fromList [[Variable x, Value isa, Variable y], [Variable y, Value isa, Variable z]]
