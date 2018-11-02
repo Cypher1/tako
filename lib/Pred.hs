@@ -13,14 +13,12 @@ data Atom
   = Value Sym -- a particular symbol
   | Variable Sym -- a variable that can match any symbol (in its context)
   | Predicate Pred
-  | Pattern Pred -- a variable predicate
   deriving (Eq, Ord)
 
 instance Show Atom where
   show (Value s) = show s
   show (Variable s) = "{"++show s++"}"
   show (Predicate atoms) = Util.showList atoms
-  show (Pattern atoms) = "{"++Util.showList atoms++"}"
 
 type Pred = [Atom]
 
@@ -73,7 +71,7 @@ restrictAtoms (Value k, Value v) ass
   | k == v = Right ass
   | otherwise = Left ()
 restrictAtoms (Variable k, Value v) ass = restrictOne (k, v) ass
-restrictAtoms (Pattern vs, Predicate xs) ass = try restrict ass (restrictPred vs xs)
+restrictAtoms (Predicate vs, Predicate xs) ass = try restrict ass (restrictPred vs xs)
 restrictAtoms (k, v) ass = trace ("Unimplemented restrictAtoms for: "++show (k, v, ass)) $ Left ()
 
 restrictPred :: Pred -> Pred -> Either () Assignment

@@ -167,4 +167,7 @@ resolutionTests
       (==[[(z, c), (x, a), (y, b)]])
       $ solutions (S.fromList [[Value a, Value isa, Value b], [Value b, Value isa, Value c]])
         $ S.fromList [[Variable x, Value isa, Variable y], [Variable y, Value isa, Variable z]]
+  --TODO(jopra): Add tests for pattern matching (nested predicates)
+  --TODO(jopra): Add tests for implication
+  --TODO(jopra): Add tests for skolemisation (convert forall to exists)
   ]
