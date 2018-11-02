@@ -38,6 +38,7 @@ zero = val "0"
 ret = var "ret"
 a = var "a"
 b = var "b"
+c = var "c"
 ne = var "!="
 aNeZero = map Value [a, ne, zero]
 bNeZero = map Value [b, ne, zero]
@@ -47,6 +48,9 @@ minus = func [T Sub a b ret] (S.fromList [exists a, exists b]) $ S.fromList [cre
 needsRet = addPre (exists ret) emp
 
 x = var "x"
+y = var "y"
+z = var "z"
+isa = var "isa"
 varXNeZero = [Variable x, Value ne, Value zero]
 
 -- Tests
@@ -139,4 +143,28 @@ resolutionTests
       (==[[(x, a)]])
       $ solutions (S.fromList [exists a, exists b, aNeZero])
         $ S.fromList [varXNeZero]
+  , mkTest "Predicate resolution fails on simple pred with variable (with matches)"
+      hasNoSolution
+      $ solutions (S.fromList [exists a, exists b, [Value a, Value ne, Value b]])
+        $ S.fromList [exists y, [Variable x, Value ne, Variable y]]
+  , mkTest "Predicate resolution fails on simple pred with variable (with matches)"
+      hasNoSolution
+      $ solutions (S.fromList [exists a, exists b, [Value a, Value ne, Value b]])
+        $ S.fromList [exists x, [Variable x, Value ne, Variable y]]
+  , mkTest "Predicate resolution correct on simple pred with variable (with matches)"
+      (==[[(x, a), (y, b)]])
+      $ solutions (S.fromList [exists a, exists b, [Value a, Value ne, Value b]])
+        $ S.fromList [[Variable x, Value ne, Variable y]]
+  , mkTest "Predicate resolution fails on double pred with variable (with matches)"
+      hasNoSolution
+      $ solutions (S.fromList [[Value b, Value isa, Value c]])
+        $ S.fromList [[Variable x, Value isa, Variable y], [Variable y, Value isa, Variable z]]
+  , mkTest "Predicate resolution fails on double pred with variable (with matches)"
+      hasNoSolution
+      $ solutions (S.fromList [[Value a, Value isa, Value b]])
+        $ S.fromList [[Variable x, Value isa, Variable y], [Variable y, Value isa, Variable z]]
+  , mkTest "Predicate resolution correct on double pred with variable (with matches)"
+      (==[[(z, c), (x, a), (y, b)]])
+      $ solutions (S.fromList [[Value a, Value isa, Value b], [Value b, Value isa, Value c]])
+        $ S.fromList [[Variable x, Value isa, Variable y], [Variable y, Value isa, Variable z]]
   ]
