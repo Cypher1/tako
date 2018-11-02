@@ -72,6 +72,12 @@ tripleTests
   , mkTest "updateFrac with emp should fail" fails $ update emp frac
   , mkTest "updateFrac with b!=0 should fail " fails
     $ update (assume [bNeZero]) frac
+  , mkTest "updateFrac with b!=0 and a should fail" fails
+    $ update (assume [bNeZero, exists a]) frac
+  , mkTest "updateFrac with b!=0 and b should fail" fails
+    $ update (assume [bNeZero, exists b]) frac
+  , mkTest "updateFrac with a, b should fail" fails
+    $ update (assume [exists a, exists b]) frac
   , mkTest "updateFrac with b!=0, a, b, should pass" passes
     $ update (assume [exists a, exists b, bNeZero]) frac
   , mkTest "require ret" prints needsRet
@@ -133,4 +139,4 @@ resolutionTests
       (==[[(x, a)]])
       $ solutions (S.fromList [exists a, exists b, aNeZero])
         $ S.fromList [varXNeZero]
-    ]
+  ]

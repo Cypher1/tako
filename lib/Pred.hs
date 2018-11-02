@@ -45,7 +45,7 @@ emptyAssignment = []
 -- TODO(jopra): Should check that each value is defined (not just used)
 solutions :: State -> State -> [Assignment]
 solutions known preds
-  = resolution known (S.toList preds) emptyAssignment
+   = resolution known (S.toList preds) emptyAssignment
 
 -- Finds assignments (that are specialisations of the input assignment) for which the Preds are resolvable.
 resolution :: State -> [Pred] -> Assignment -> [Assignment]
@@ -56,8 +56,8 @@ resolution known (p:ps) ass
       assignments_with_p = lefts $ map (restrict ass) $ assignments known p
 
 restrict :: Assignment -> Assignment -> Either Assignment () --TODO(jopra): Report errors?
-restrict xs ys
-  = foldr (try restrictOne) (Left xs) ys
+restrict xs
+  = foldr (try restrictOne) (Left xs)
 
 restrictOne :: (Sym, Sym) -> Assignment -> Either Assignment ()
 -- TODO(jopra): remove repetitions
@@ -87,12 +87,3 @@ restrictPred pred poss
 assignments :: State -> Pred -> [Assignment]
 assignments state pred
   = lefts $ map (restrictPred pred) $ S.toList state
-
-hasVariable :: Pred -> Bool
-hasVariable = isVariable . Predicate
-
-isVariable :: Atom -> Bool
-isVariable (Value _) = False
-isVariable (Variable _) = True
-isVariable (Predicate atoms) = any isVariable atoms
-isVariable (Pattern atoms) = any isVariable atoms
