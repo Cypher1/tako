@@ -1,14 +1,7 @@
 module Main where
-import Prelude
 import System.Console.Haskeline
-
 import Text.Read (readMaybe)
-import Data.Either (isLeft, isRight)
-import Util (showList)
-import Triple
-import Expr
-import Operation
-import qualified Data.Set as S
+import Operation (Mem, exec)
 
 main :: IO ()
 main = runInputT defaultSettings (mainLoop [])
