@@ -1,7 +1,7 @@
 module Pred where
 import Debug.Trace (trace)
 
-import Util (showList)
+import Util (showList, try)
 import Data.Either (lefts)
 import qualified Data.Set as S
 import Data.Set (Set)
@@ -74,10 +74,6 @@ restrictAtoms (Value k, Value v) ass
 restrictAtoms (Variable k, Value v) ass = restrictOne (k, v) ass
 restrictAtoms (Pattern vs, Predicate xs) ass = try restrict ass (restrictPred vs xs)
 restrictAtoms (k, v) ass = trace ("Unimplemented restrictAtoms for: "++show (k, v, ass)) $ Right ()
-
-try :: (a -> b -> Either c d) -> a -> Either b d -> Either c d
-try f a (Left b) = f a b
-try f a (Right d) = Right d
 
 restrictPred :: Pred -> Pred -> Either Assignment ()
 restrictPred pred poss
