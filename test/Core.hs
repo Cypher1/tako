@@ -9,7 +9,7 @@ import Distribution.TestSuite
 import Test.QuickCheck
 import TestUtil
 
-import Util (showList, labelL, printL)
+import Util (showList)
 import Pred (exists, creates, Atom(Value, Variable, Predicate), solutions, Assignment)
 import Triple
 import Operation
