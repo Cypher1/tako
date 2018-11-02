@@ -19,7 +19,6 @@ executable Htriple
   other-modules:
       Triple
       Pred
-      Expr
       Util
       Operation
   default-language:    Haskell2010
@@ -41,7 +40,6 @@ Test-Suite Htriple-test
   other-modules:
       Triple
       Pred
-      Expr
       Util
       TestUtil
       Operation
