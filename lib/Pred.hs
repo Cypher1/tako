@@ -1,8 +1,8 @@
 module Pred where
 import Debug.Trace (trace)
 
-import Util (showList)
-import Data.Either (lefts)
+import Util (showList, try)
+import Data.Either (rights)
 import qualified Data.Set as S
 import Data.Set (Set)
 
@@ -53,37 +53,33 @@ resolution known [] ass = [ass]
 resolution known (p:ps) ass
   = [sol | ass' <- assignments_with_p, sol <- resolution known ps ass']
     where
-      assignments_with_p = lefts $ map (restrict ass) $ assignments known p
+      assignments_with_p = rights $ map (restrict ass) $ assignments known p
 
-restrict :: Assignment -> Assignment -> Either Assignment () --TODO(jopra): Report errors?
+restrict :: Assignment -> Assignment -> Either () Assignment --TODO(jopra): Report errors?
 restrict xs
-  = foldr (try restrictOne) (Left xs)
+  = foldr (try restrictOne) (Right xs)
 
-restrictOne :: (Sym, Sym) -> Assignment -> Either Assignment ()
+restrictOne :: (Sym, Sym) -> Assignment -> Either () Assignment
 -- TODO(jopra): remove repetitions
 restrictOne (k, v) xs
-  | null v' = Left ((k, v):xs)
-  | all (==v) v' = Left xs
-  | otherwise = Right ()
+  | null v' = Right ((k, v):xs)
+  | all (==v) v' = Right xs
+  | otherwise = Left ()
   where
     v' = map snd $ filter ((==k).fst) xs
 
-restrictAtoms :: (Atom, Atom) -> Assignment -> Either Assignment ()
+restrictAtoms :: (Atom, Atom) -> Assignment -> Either () Assignment
 restrictAtoms (Value k, Value v) ass
-  | k == v = Left ass
+  | k == v = Right ass
 restrictAtoms (Variable k, Value v) ass = restrictOne (k, v) ass
 restrictAtoms (Pattern vs, Predicate xs) ass = try restrict ass (restrictPred vs xs)
-restrictAtoms (k, v) ass = trace ("Unimplemented restrictAtoms for: "++show (k, v, ass)) $ Right ()
+restrictAtoms (k, v) ass = trace ("Unimplemented restrictAtoms for: "++show (k, v, ass)) $ Left ()
 
-try :: (a -> b -> Either c d) -> a -> Either b d -> Either c d
-try f a (Left b) = f a b
-try f a (Right d) = Right d
-
-restrictPred :: Pred -> Pred -> Either Assignment ()
+restrictPred :: Pred -> Pred -> Either () Assignment
 restrictPred pred poss
-  | length pred /= length poss = Right ()
-  | otherwise = foldr (try restrictAtoms) (Left []) $ zip pred poss
+  | length pred /= length poss = Left ()
+  | otherwise = foldr (try restrictAtoms) (Right []) $ zip pred poss
 
 assignments :: State -> Pred -> [Assignment]
 assignments state pred
-  = lefts $ map (restrictPred pred) $ S.toList state
+  = rights $ map (restrictPred pred) $ S.toList state
