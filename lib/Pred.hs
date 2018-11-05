@@ -18,7 +18,7 @@ data Atom
 instance Show Atom where
   show (Value s) = show s
   show (Variable s) = "{"++show s++"}"
-  show (Predicate atoms) = Util.showList atoms
+  show (Predicate atoms) = "("++Util.showList atoms++")"
 
 type Pred = [Atom]
 
@@ -33,7 +33,7 @@ type State = Set Pred
 emptyState :: State
 emptyState = S.empty
 
-type Assignment = [(Sym, Sym)]
+type Assignment = [(Sym, Atom)]
 -- TODO(jopra): Use hash mapping
 
 emptyAssignment :: Assignment
@@ -57,7 +57,7 @@ restrict :: Assignment -> Assignment -> Either () Assignment --TODO(jopra): Repo
 restrict xs
   = foldr (try restrictOne) (Right xs)
 
-restrictOne :: (Sym, Sym) -> Assignment -> Either () Assignment
+restrictOne :: (Sym, Atom) -> Assignment -> Either () Assignment
 -- TODO(jopra): remove repetitions
 restrictOne (k, v) xs
   | null v' = Right ((k, v):xs)
@@ -70,9 +70,12 @@ restrictAtoms :: (Atom, Atom) -> Assignment -> Either () Assignment
 restrictAtoms (Value k, Value v) ass
   | k == v = Right ass
   | otherwise = Left ()
-restrictAtoms (Variable k, Value v) ass = restrictOne (k, v) ass
+restrictAtoms (Variable k, Value v) ass = restrictOne (k, Value v) ass --TODO(handle this for Preds
 restrictAtoms (Predicate vs, Predicate xs) ass = try restrict ass (restrictPred vs xs)
-restrictAtoms (k, v) ass = trace ("Unimplemented restrictAtoms for: "++show (k, v, ass)) $ Left ()
+restrictAtoms (Variable k, Predicate xs) ass = restrictAtoms (Predicate (ks' k), Predicate xs) ass
+  where
+    ks' (S k')= [Variable $ S(k'++show i)|i<-[0..length xs-1]]
+restrictAtoms (k, v) ass = trace ("Unimplemented restrictAtoms for: k:"++show k ++" v:"++ show v) $ Left ()
 
 restrictPred :: Pred -> Pred -> Either () Assignment
 restrictPred pred poss

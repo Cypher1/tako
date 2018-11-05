@@ -8,6 +8,7 @@ import Distribution.TestSuite
   , Result(Fail, Pass))
 import Test.QuickCheck
 import TestUtil
+import Debug.Trace (trace)
 
 import Util (showList)
 import Pred (exists, creates, Atom(Value, Variable, Predicate), solutions, Assignment)
@@ -40,6 +41,9 @@ a = var "a"
 b = var "b"
 c = var "c"
 ne = var "!="
+cons = var "cons"
+nil = var "nil"
+list = var "list"
 aNeZero = map Value [a, ne, zero]
 bNeZero = map Value [b, ne, zero]
 fdiv = func [T Div a b ret] (S.fromList [exists a, exists b]) (S.fromList [creates ret])
@@ -136,11 +140,11 @@ resolutionTests
       $ solutions (S.fromList [exists a, exists ne, exists zero])
         $ S.fromList [varXNeZero]
   , mkTest "Resolution succeeds on 1-pred with variable (with matches)"
-      (==[[(x, a)]])
+      (==[[(x, Value a)]])
       $ solutions (S.fromList [exists a, aNeZero])
         $ S.fromList [varXNeZero]
   , mkTest "Resolution correct on 1-pred with variable (with matches)"
-      (==[[(x, a)]])
+      (==[[(x, Value a)]])
       $ solutions (S.fromList [exists a, exists b, aNeZero])
         $ S.fromList [varXNeZero]
   , mkTest "Resolution fails on 1-pred with variable (with matches)"
@@ -152,7 +156,7 @@ resolutionTests
       $ solutions (S.fromList [exists a, exists b, [Value a, Value ne, Value b]])
         $ S.fromList [exists x, [Variable x, Value ne, Variable y]]
   , mkTest "Resolution correct on 1-pred with variable (with matches)"
-      (==[[(x, a), (y, b)]])
+      (==[[(x, Value a), (y, Value b)]])
       $ solutions (S.fromList [exists a, exists b, [Value a, Value ne, Value b]])
         $ S.fromList [[Variable x, Value ne, Variable y]]
   , mkTest "Resolution fails on 2-pred with variable (with matches)"
@@ -164,9 +168,18 @@ resolutionTests
       $ solutions (S.fromList [[Value a, Value isa, Value b]])
         $ S.fromList [[Variable x, Value isa, Variable y], [Variable y, Value isa, Variable z]]
   , mkTest "Resolution correct on 2-pred with variable (with matches)"
-      (==[[(z, c), (x, a), (y, b)]])
+      (==[[(z, Value c), (x, Value a), (y, Value b)]])
       $ solutions (S.fromList [[Value a, Value isa, Value b], [Value b, Value isa, Value c]])
         $ S.fromList [[Variable x, Value isa, Variable y], [Variable y, Value isa, Variable z]]
+  , mkTest "Resolution correct on nested 1-pred"
+      (==[[(S "x0", Value a), (S "x1", Value cons), (S "x2", Value b)]])
+      -- (==[[(x, Predicate [Value a, Value cons, Value b])]])
+      $ solutions (S.fromList [[Predicate [Value a, Value cons, Value b], Value isa, Value list]])
+        $ S.fromList [[Variable x, Value isa, Value list]]
+  , mkTest "Resolution correct on pattern matched nested 1-pred"
+      (==[[(x, Value a), (y, Value b)]])
+      $ solutions (S.fromList [[Predicate [Value a, Value cons, Value b], Value isa, Value list]])
+        $ S.fromList [[Predicate [Variable x, Value cons, Variable y], Value isa, Value list]]
   --TODO(jopra): Add tests for pattern matching (nested predicates)
   --TODO(jopra): Add tests for implication
   --TODO(jopra): Add tests for skolemisation (convert forall to exists)
