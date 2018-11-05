@@ -76,7 +76,7 @@ update :: HTriple -> HTriple -> Either HTriple Failure
 update accepted extension
   = case solutions' of
       [] -> Right $ Unsolved state requirements
-      [sol] -> trace ("TODO(jopra): Specialising with "++show (accepted, sol, extension)) $ Left $ mergeTriples accepted extension
+      [sol] -> Left $ mergeTriples accepted extension
       sols -> Right $ Underspecified sols accepted extension
   where
     solutions' = solutions state requirements
