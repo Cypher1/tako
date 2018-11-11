@@ -1,13 +1,7 @@
 module Util where
 
-import Data.Either (isRight, isLeft)
-
-
-fails :: Either a b -> Bool
-fails = isLeft
-
-passes :: Either a b -> Bool
-passes = isRight
+import qualified Data.Map as M
+import Data.Map (Map)
 
 indent :: String -> String
 indent x = unlines $ map ("  "++) $ lines x
@@ -34,3 +28,9 @@ showList :: Show a => [a] -> String
 showList xs = drop (length joiner) $ concatMap (\x->joiner++show x) xs
   where
     joiner = ", "
+
+showMap :: (Show a, Show b) => Map a b -> String
+showMap xs = drop (length joiner) $ concatMap (\(k, v)->joiner++show k++k_to_v++show v) $ M.toList xs
+  where
+    joiner = ", "
+    k_to_v = ":"

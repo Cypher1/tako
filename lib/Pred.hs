@@ -1,10 +1,12 @@
 module Pred where
 import Debug.Trace (trace)
 
-import Util (showList, try)
+import Util (showList, showMap, try)
 import Data.Either (rights)
 import qualified Data.Set as S
 import Data.Set (Set)
+import qualified Data.Map as M
+import Data.Map (Map)
 
 import Data.List ((\\))
 import Operation (Sym (S), Instruction, Op)
@@ -18,16 +20,30 @@ data Atom
 instance Show Atom where
   show (Value s) = show s
   show (Variable s) = "{"++show s++"}"
-  show (Predicate atoms) = "("++Util.showList atoms++")"
+  show (Predicate atoms) = show atoms
 
-type Pred = [Atom]
+
+val :: String -> Atom
+val = Value . S
+
+var :: String -> Atom
+var = Variable . S
+
+
+newtype Pred = Pred (Map Sym Atom) deriving (Eq, Ord)
+
+toMap :: Pred -> Map Sym Atom
+toMap (Pred atoms) = atoms
+
+instance Show Pred where
+  show (Pred atoms) = "("++Util.showMap atoms++")"
+
+toPred :: [(String, Atom)] -> Pred
+toPred xs = Pred $ M.fromList $ map (\(n, a) -> (S n, a)) xs
 
 -- TODO(jopra): Consider new typing pre vs post conditions to ensure they aren't mixed up
-exists :: Sym -> Pred
-exists v = [Value v]
-
-creates :: Sym -> Pred
-creates v = [Value v]
+exists :: Atom -> Pred
+exists v = toPred [("exists", v)]
 
 type State = Set Pred
 emptyState :: State
@@ -47,6 +63,7 @@ solutions known preds
 
 -- Finds assignments (that are specialisations of the input assignment) for which the Preds are resolvable.
 resolution :: State -> [Pred] -> Assignment -> [Assignment]
+-- resolution known ps ass | trace ("(K,P,A): "++show (known,ps,ass)) False = undefined
 resolution known [] ass = [ass]
 resolution known (p:ps) ass
   = [sol | ass' <- assignments_with_p, sol <- resolution known ps ass']
@@ -69,18 +86,23 @@ restrictOne (k, v) xs
 restrictAtoms :: (Atom, Atom) -> Assignment -> Either () Assignment
 restrictAtoms (Value k, Value v) ass
   | k == v = Right ass
-  | otherwise = Left ()
+-- | otherwise = trace ("Non-match: "++show (k, v)) $ Left ()
 restrictAtoms (Variable k, Value v) ass = restrictOne (k, Value v) ass --TODO(handle this for Preds
 restrictAtoms (Predicate vs, Predicate xs) ass = try restrict ass (restrictPred vs xs)
-restrictAtoms (Variable k, Predicate xs) ass = restrictAtoms (Predicate (ks' k), Predicate xs) ass
+restrictAtoms (Variable k, Predicate xs) ass = ass''
   where
-    ks' (S k')= [Variable $ S(k'++show i)|i<-[0..length xs-1]]
+    ass'' = foldr (try restrictOne) (Right ass) (ks' k)
+    ks' :: Sym -> Map Sym (Sym, Atom)
+    ks' (S k') = M.mapWithKey (\(S k'') ps -> (S(k'++"."++k''), ps)) (toMap xs)
 restrictAtoms (k, v) ass = trace ("Unimplemented restrictAtoms for: k:"++show k ++" v:"++ show v) $ Left ()
 
 restrictPred :: Pred -> Pred -> Either () Assignment
 restrictPred pred poss
-  | length pred /= length poss = Left ()
-  | otherwise = foldr (try restrictAtoms) (Right []) $ zip pred poss
+  | M.keysSet (toMap pred) /= M.keysSet (toMap poss) = trace ("Non-matching keys"++show (pred, poss)) $ Left ()
+  | otherwise = ass''
+  where
+    ass'' = foldr (try restrictAtoms) (Right []) $ trace ("unrestricted: "++show ass') ass'
+    ass' = M.intersectionWithKey (\k pr po -> (pr, po)) (toMap pred) (toMap poss)
 
 assignments :: State -> Pred -> [Assignment]
 assignments state pred

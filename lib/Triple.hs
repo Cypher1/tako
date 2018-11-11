@@ -1,8 +1,8 @@
 module Triple where
 
+import Debug.Trace(trace)
 import Prelude hiding (showList)
 import Data.List(nub, (\\))
-import Debug.Trace
 import Util (line, showList)
 import Pred (Pred, State, solutions, Assignment)
 import Operation (Sym (S), Op)
@@ -43,8 +43,8 @@ emp =
 
 data Failure
   = Contradiction State
-  | Unsolved State State
-  | Undefined [Sym] HTriple
+  | Unsolved { state_::State, requirements_::State}
+  | Undefined { missing_::[Sym], in_::HTriple}
   | Many [Failure]
   | Underspecified [Assignment] HTriple HTriple
   deriving (Show, Ord, Eq)
@@ -72,13 +72,14 @@ addPre p h = h {pre = S.union (S.singleton p) (pre h)}
 addPost :: Pred -> HTriple -> HTriple
 addPost p h = h {post = S.union (S.singleton p) (post h)}
 
-update :: HTriple -> HTriple -> Either HTriple Failure
+update :: HTriple -> HTriple -> Either Failure HTriple
 update accepted extension
   = case solutions' of
-      [] -> Right $ Unsolved state requirements
-      [sol] -> Left $ mergeTriples accepted extension
-      sols -> Right $ Underspecified sols accepted extension
+      [] -> Left $ Unsolved state requirements
+      [sol] -> Right $ mergeTriples accepted extension
+      sols -> Left $ Underspecified sols accepted extension
   where
+    -- TODO(jopra): Also return some debug info
     solutions' = solutions state requirements
     state = post accepted
     requirements = pre extension
