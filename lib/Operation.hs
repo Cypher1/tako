@@ -13,12 +13,6 @@ instance Read Sym where
     where
       (h,t) = break (==' ') s
 
-val :: String -> Sym
-val = S
-
-var :: String -> Sym
-var = S
-
 data Instruction
   = T TriOp Sym Sym Sym
   | B BiOp Sym Sym
