@@ -7,7 +7,7 @@ import Distribution.TestSuite
 
 import Debug.Trace
 import Data.Either (isLeft, isRight)
-import Pred (Assignment)
+import Pred (Assignment, emptyAssignment)
 
 -- Test types
 prints :: Show a => a -> Bool
@@ -20,7 +20,7 @@ hasNoSolution :: [Assignment] -> Bool
 hasNoSolution = (==[])
 
 hasEmptySolution :: [Assignment] -> Bool
-hasEmptySolution = (==[[]])
+hasEmptySolution = (==[emptyAssignment])
 
 mkTest :: Show a => String -> (a -> Bool) -> a -> [String]-> TestInstance
 mkTest name' check' val' tags'

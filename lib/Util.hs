@@ -12,10 +12,6 @@ line a = indent $ show a
 join :: (Show x, Foldable f) => String -> f x -> String
 join j xs = drop (length j) $ concatMap (\x->j++show x) xs
 
-try :: (a -> b -> Either d c) -> a -> Either d b -> Either d c
-try f a (Right b) = f a b
-try f a (Left d) = Left d
-
 showEither :: (Show a, Show b) => Either a b -> String
 showEither (Right a) = show a
 showEither (Left a) = show a

@@ -1,7 +1,7 @@
 module Pred where
 import Debug.Trace (trace)
 
-import Util (showList, showMap, try)
+import Util (showList, showMap)
 import Data.Either (rights)
 import qualified Data.Set as S
 import Data.Set (Set)
@@ -49,11 +49,11 @@ type State = Set Pred
 emptyState :: State
 emptyState = S.empty
 
-type Assignment = [(Sym, Atom)]
+type Assignment = Map Sym Atom
 -- TODO(jopra): Use hash mapping
 
 emptyAssignment :: Assignment
-emptyAssignment = []
+emptyAssignment = M.empty
 
 -- TODO(jopra): Should return a proper error type, too much work is being done here
 -- TODO(jopra): Should check that each value is defined (not just used)
@@ -72,26 +72,26 @@ resolution known (p:ps) ass
 
 restrict :: Assignment -> Assignment -> Either () Assignment --TODO(jopra): Report errors?
 restrict xs
-  = foldr (try restrictOne) (Right xs)
+  = M.foldrWithKey (\k v a' -> a'>>=restrictOne k v) (Right xs)
 
-restrictOne :: (Sym, Atom) -> Assignment -> Either () Assignment
+restrictOne :: Sym -> Atom -> Assignment -> Either () Assignment
 -- TODO(jopra): remove repetitions
-restrictOne (k, v) xs
-  | null v' = Right ((k, v):xs)
-  | all (==v) v' = Right xs
-  | otherwise = Left ()
-  where
-    v' = map snd $ filter ((==k).fst) xs
+restrictOne k v xs
+  = case M.lookup k xs of
+      Nothing -> Right $ M.insert k v xs
+      Just v' -> case v == v' of
+                   True -> Right xs
+                   False -> Left ()
 
 restrictAtoms :: (Atom, Atom) -> Assignment -> Either () Assignment
 restrictAtoms (Value k, Value v) ass
   | k == v = Right ass
 -- | otherwise = trace ("Non-match: "++show (k, v)) $ Left ()
-restrictAtoms (Variable k, Value v) ass = restrictOne (k, Value v) ass --TODO(handle this for Preds
-restrictAtoms (Predicate vs, Predicate xs) ass = try restrict ass (restrictPred vs xs)
+restrictAtoms (Variable k, Value v) ass = restrictOne k (Value v) ass --TODO(handle this for Preds
+restrictAtoms (Predicate vs, Predicate xs) ass = restrictPred vs xs >>= restrict ass
 restrictAtoms (Variable k, Predicate xs) ass = ass''
   where
-    ass'' = foldr (try restrictOne) (Right ass) (ks' k)
+    ass'' = M.foldrWithKey (\k (var, v) a' -> a' >>= (restrictOne var v)) (Right ass) (ks' k)
     ks' :: Sym -> Map Sym (Sym, Atom)
     ks' (S k') = M.mapWithKey (\(S k'') ps -> (S(k'++"."++k''), ps)) (toMap xs)
 restrictAtoms (k, v) ass = trace ("Unimplemented restrictAtoms for: k:"++show k ++" v:"++ show v) $ Left ()
@@ -101,7 +101,7 @@ restrictPred pred poss
   | M.keysSet (toMap pred) /= M.keysSet (toMap poss) = trace ("Non-matching keys"++show (pred, poss)) $ Left ()
   | otherwise = ass''
   where
-    ass'' = foldr (try restrictAtoms) (Right []) $ trace ("unrestricted: "++show ass') ass'
+    ass'' = foldr (\(k, v) a' -> a' >>= restrictAtoms (k, v)) (Right emptyAssignment) $ trace ("unrestricted: "++show ass') ass'
     ass' = M.intersectionWithKey (\k pr po -> (pr, po)) (toMap pred) (toMap poss)
 
 assignments :: State -> Pred -> [Assignment]
