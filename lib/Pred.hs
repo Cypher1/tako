@@ -22,6 +22,29 @@ instance Show Atom where
   show (Variable s) = "{"++show s++"}"
   show (Predicate atoms) = show atoms
 
+newtype Pred = Pred (Map Sym Atom) deriving (Eq, Ord)
+
+instance Show Pred where
+  show (Pred atoms) = "("++Util.showMap atoms++")"
+
+type State = Set Pred
+type Assignment = Map Sym Atom
+data ResolutionFailure
+  = VariableAssignmentContradiction
+    { key :: Sym
+    , value :: Atom
+    , in_ :: Assignment
+    }
+  | ConcreteMismatch
+    { key :: Sym
+    , value :: Atom
+    , in_ :: Assignment
+    }
+  | PredicatesOfDifferentShapes
+    { requirement :: Pred
+    , possible_solution :: Pred
+    }
+type Resolution = Either ResolutionFailure Assignment
 
 val :: String -> Atom
 val = Value . S
@@ -29,14 +52,8 @@ val = Value . S
 var :: String -> Atom
 var = Variable . S
 
-
-newtype Pred = Pred (Map Sym Atom) deriving (Eq, Ord)
-
 toMap :: Pred -> Map Sym Atom
 toMap (Pred atoms) = atoms
-
-instance Show Pred where
-  show (Pred atoms) = "("++Util.showMap atoms++")"
 
 toPred :: [(String, Atom)] -> Pred
 toPred xs = Pred $ M.fromList $ map (\(n, a) -> (S n, a)) xs
@@ -45,12 +62,8 @@ toPred xs = Pred $ M.fromList $ map (\(n, a) -> (S n, a)) xs
 exists :: Atom -> Pred
 exists v = toPred [("exists", v)]
 
-type State = Set Pred
 emptyState :: State
 emptyState = S.empty
-
-type Assignment = Map Sym Atom
--- TODO(jopra): Use hash mapping
 
 emptyAssignment :: Assignment
 emptyAssignment = M.empty
@@ -59,51 +72,54 @@ emptyAssignment = M.empty
 -- TODO(jopra): Should check that each value is defined (not just used)
 solutions :: State -> State -> [Assignment]
 solutions known preds
-   = resolution known (S.toList preds) emptyAssignment
+   = rights $ resolution known (S.toList preds) (Right emptyAssignment)
 
 -- Finds assignments (that are specialisations of the input assignment) for which the Preds are resolvable.
-resolution :: State -> [Pred] -> Assignment -> [Assignment]
+resolution :: State -> [Pred] -> Resolution -> [Resolution]
 -- resolution known ps ass | trace ("(K,P,A): "++show (known,ps,ass)) False = undefined
 resolution known [] ass = [ass]
 resolution known (p:ps) ass
   = [sol | ass' <- assignments_with_p, sol <- resolution known ps ass']
     where
-      assignments_with_p = rights $ map (restrict ass) $ assignments known p
+      assignments_with_p = map (restrict ass) $ assignments known p
 
-restrict :: Assignment -> Assignment -> Either () Assignment --TODO(jopra): Report errors?
-restrict xs
-  = M.foldrWithKey (\k v a' -> a'>>=restrictOne k v) (Right xs)
+restrict :: Resolution -> Resolution -> Resolution
+restrict xs ys
+  = xs >>= M.foldrWithKey restrictOne ys
 
-restrictOne :: Sym -> Atom -> Assignment -> Either () Assignment
--- TODO(jopra): remove repetitions
-restrictOne k v xs
+restrictOne :: Sym -> Atom -> Resolution -> Resolution
+restrictOne k v (Right xs)
   = case M.lookup k xs of
       Nothing -> Right $ M.insert k v xs
       Just v' -> case v == v' of
                    True -> Right xs
-                   False -> Left ()
+                   False -> Left $ VariableAssignmentContradiction {key = k, value = v, in_ = xs}
+restrictOne _ _ err = err
 
-restrictAtoms :: (Atom, Atom) -> Assignment -> Either () Assignment
+restrictAtoms :: (Atom, Atom) -> Resolution -> Resolution
+restrictAtoms _ err@(Left _) = err
 restrictAtoms (Value k, Value v) ass
-  | k == v = Right ass
--- | otherwise = trace ("Non-match: "++show (k, v)) $ Left ()
-restrictAtoms (Variable k, Value v) ass = restrictOne k (Value v) ass --TODO(handle this for Preds
-restrictAtoms (Predicate vs, Predicate xs) ass = restrictPred vs xs >>= restrict ass
-restrictAtoms (Variable k, Predicate xs) ass = ass''
-  where
-    ass'' = M.foldrWithKey (\k (var, v) a' -> a' >>= (restrictOne var v)) (Right ass) (ks' k)
-    ks' :: Sym -> Map Sym (Sym, Atom)
-    ks' (S k') = M.mapWithKey (\(S k'') ps -> (S(k'++"."++k''), ps)) (toMap xs)
-restrictAtoms (k, v) ass = trace ("Unimplemented restrictAtoms for: k:"++show k ++" v:"++ show v) $ Left ()
+  = if k == v
+       then ass
+       else do
+         ass' <- ass
+         Left $ ConcreteMismatch { key = k, value = Value v, in_ = ass' }
+restrictAtoms (Variable k, Value v) ass = restrictOne k (Value v) ass
+restrictAtoms (Predicate vs, Predicate xs) ass = restrict (restrictPred vs xs) ass
+restrictAtoms (Variable (S k), Predicate xs) ass = do
+  let ks = M.mapWithKey (\(S k') ps -> (S(k++"."++k'), ps)) (toMap xs)
+  M.foldr (\(var, v)->restrictOne var v) ass ks
+restrictAtoms (k, v) ass = error $ "Unimplemented restrictAtoms for: k:"++show k ++" v:"++ show v
 
-restrictPred :: Pred -> Pred -> Either () Assignment
+restrictPred :: Pred -> Pred -> Resolution
 restrictPred pred poss
-  | M.keysSet (toMap pred) /= M.keysSet (toMap poss) = trace ("Non-matching keys"++show (pred, poss)) $ Left ()
+  | M.keysSet (toMap pred) /= M.keysSet (toMap poss) = Left $
+    PredicatesOfDifferentShapes { requirement = pred, possible_solution = poss}
   | otherwise = ass''
   where
-    ass'' = foldr (\(k, v) a' -> a' >>= restrictAtoms (k, v)) (Right emptyAssignment) $ trace ("unrestricted: "++show ass') ass'
+    ass'' = foldr (\(k, v) -> restrictAtoms (k, v)) (Right emptyAssignment) ass'
     ass' = M.intersectionWithKey (\k pr po -> (pr, po)) (toMap pred) (toMap poss)
 
-assignments :: State -> Pred -> [Assignment]
+assignments :: State -> Pred -> [Resolution]
 assignments state pred
-  = rights $ map (restrictPred pred) $ S.toList state
+  = map (restrictPred pred) $ S.toList state
