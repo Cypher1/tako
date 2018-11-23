@@ -29,7 +29,22 @@ instance Show Pred where
 
 type State = Set Pred
 type Assignment = Map Sym Atom
-type Resolution = Either () Assignment
+data ResolutionFailure
+  = VariableAssignmentContradiction
+    { key :: Sym
+    , value :: Atom
+    , in_ :: Assignment
+    }
+  | ConcreteMismatch
+    { key :: Sym
+    , value :: Atom
+    , in_ :: Assignment
+    }
+  | PredicatesOfDifferentShapes
+    { requirement :: Pred
+    , possible_solution :: Pred
+    }
+type Resolution = Either ResolutionFailure Assignment
 
 val :: String -> Atom
 val = Value . S
@@ -78,29 +93,31 @@ restrictOne k v (Right xs)
       Nothing -> Right $ M.insert k v xs
       Just v' -> case v == v' of
                    True -> Right xs
-                   False -> Left ()
+                   False -> Left $ VariableAssignmentContradiction {key = k, value = v, in_ = xs}
 restrictOne _ _ err = err
 
 restrictAtoms :: (Atom, Atom) -> Resolution -> Resolution
 restrictAtoms _ err@(Left _) = err
 restrictAtoms (Value k, Value v) ass
-  | k == v = ass
--- | otherwise = trace ("Non-match: "++show (k, v)) $ Left ()
-restrictAtoms (Variable k, Value v) ass = restrictOne k (Value v) ass --TODO(handle this for Preds
+  = if k == v
+       then ass
+       else do
+         ass' <- ass
+         Left $ ConcreteMismatch { key = k, value = Value v, in_ = ass' }
+restrictAtoms (Variable k, Value v) ass = restrictOne k (Value v) ass
 restrictAtoms (Predicate vs, Predicate xs) ass = restrict (restrictPred vs xs) ass
-restrictAtoms (Variable k, Predicate xs) ass = ass''
-  where
-    ass'' = M.foldrWithKey (\k (var, v)->restrictOne var v) ass (ks' k)
-    ks' :: Sym -> Map Sym (Sym, Atom)
-    ks' (S k') = M.mapWithKey (\(S k'') ps -> (S(k'++"."++k''), ps)) (toMap xs)
-restrictAtoms (k, v) ass = trace ("Unimplemented restrictAtoms for: k:"++show k ++" v:"++ show v) $ Left ()
+restrictAtoms (Variable (S k), Predicate xs) ass = do
+  let ks = M.mapWithKey (\(S k') ps -> (S(k++"."++k'), ps)) (toMap xs)
+  M.foldr (\(var, v)->restrictOne var v) ass ks
+restrictAtoms (k, v) ass = error $ "Unimplemented restrictAtoms for: k:"++show k ++" v:"++ show v
 
 restrictPred :: Pred -> Pred -> Resolution
 restrictPred pred poss
-  | M.keysSet (toMap pred) /= M.keysSet (toMap poss) = trace ("Non-matching keys"++show (pred, poss)) $ Left ()
+  | M.keysSet (toMap pred) /= M.keysSet (toMap poss) = Left $
+    PredicatesOfDifferentShapes { requirement = pred, possible_solution = poss}
   | otherwise = ass''
   where
-    ass'' = foldr (\(k, v) -> restrictAtoms (k, v)) (Right emptyAssignment) $ trace ("unrestricted: "++show ass') ass'
+    ass'' = foldr (\(k, v) -> restrictAtoms (k, v)) (Right emptyAssignment) ass'
     ass' = M.intersectionWithKey (\k pr po -> (pr, po)) (toMap pred) (toMap poss)
 
 assignments :: State -> Pred -> [Resolution]
