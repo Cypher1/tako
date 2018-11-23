@@ -22,6 +22,13 @@ instance Show Atom where
   show (Variable s) = "{"++show s++"}"
   show (Predicate atoms) = show atoms
 
+newtype Pred = Pred (Map Sym Atom) deriving (Eq, Ord)
+
+instance Show Pred where
+  show (Pred atoms) = "("++Util.showMap atoms++")"
+
+type State = Set Pred
+type Assignment = Map Sym Atom
 
 val :: String -> Atom
 val = Value . S
@@ -29,14 +36,8 @@ val = Value . S
 var :: String -> Atom
 var = Variable . S
 
-
-newtype Pred = Pred (Map Sym Atom) deriving (Eq, Ord)
-
 toMap :: Pred -> Map Sym Atom
 toMap (Pred atoms) = atoms
-
-instance Show Pred where
-  show (Pred atoms) = "("++Util.showMap atoms++")"
 
 toPred :: [(String, Atom)] -> Pred
 toPred xs = Pred $ M.fromList $ map (\(n, a) -> (S n, a)) xs
@@ -45,12 +46,8 @@ toPred xs = Pred $ M.fromList $ map (\(n, a) -> (S n, a)) xs
 exists :: Atom -> Pred
 exists v = toPred [("exists", v)]
 
-type State = Set Pred
 emptyState :: State
 emptyState = S.empty
-
-type Assignment = Map Sym Atom
--- TODO(jopra): Use hash mapping
 
 emptyAssignment :: Assignment
 emptyAssignment = M.empty
