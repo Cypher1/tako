@@ -29,6 +29,7 @@ instance Show Pred where
 
 type State = Set Pred
 type Assignment = Map Sym Atom
+type Resolution = Either () Assignment
 
 val :: String -> Atom
 val = Value . S
@@ -59,7 +60,7 @@ solutions known preds
    = rights $ resolution known (S.toList preds) (Right emptyAssignment)
 
 -- Finds assignments (that are specialisations of the input assignment) for which the Preds are resolvable.
-resolution :: State -> [Pred] -> Either () Assignment -> [Either () Assignment]
+resolution :: State -> [Pred] -> Resolution -> [Resolution]
 -- resolution known ps ass | trace ("(K,P,A): "++show (known,ps,ass)) False = undefined
 resolution known [] ass = [ass]
 resolution known (p:ps) ass
@@ -67,11 +68,11 @@ resolution known (p:ps) ass
     where
       assignments_with_p = map (restrict ass) $ assignments known p
 
-restrict :: Either () Assignment -> Either () Assignment -> Either () Assignment
+restrict :: Resolution -> Resolution -> Resolution
 restrict xs ys
   = xs >>= M.foldrWithKey restrictOne ys
 
-restrictOne :: Sym -> Atom -> Either () Assignment -> Either () Assignment
+restrictOne :: Sym -> Atom -> Resolution -> Resolution
 restrictOne k v (Right xs)
   = case M.lookup k xs of
       Nothing -> Right $ M.insert k v xs
@@ -80,7 +81,7 @@ restrictOne k v (Right xs)
                    False -> Left ()
 restrictOne _ _ err = err
 
-restrictAtoms :: (Atom, Atom) -> Either () Assignment -> Either () Assignment
+restrictAtoms :: (Atom, Atom) -> Resolution -> Resolution
 restrictAtoms _ err@(Left _) = err
 restrictAtoms (Value k, Value v) ass
   | k == v = ass
@@ -94,7 +95,7 @@ restrictAtoms (Variable k, Predicate xs) ass = ass''
     ks' (S k') = M.mapWithKey (\(S k'') ps -> (S(k'++"."++k''), ps)) (toMap xs)
 restrictAtoms (k, v) ass = trace ("Unimplemented restrictAtoms for: k:"++show k ++" v:"++ show v) $ Left ()
 
-restrictPred :: Pred -> Pred -> Either () Assignment
+restrictPred :: Pred -> Pred -> Resolution
 restrictPred pred poss
   | M.keysSet (toMap pred) /= M.keysSet (toMap poss) = trace ("Non-matching keys"++show (pred, poss)) $ Left ()
   | otherwise = ass''
@@ -102,6 +103,6 @@ restrictPred pred poss
     ass'' = foldr (\(k, v) -> restrictAtoms (k, v)) (Right emptyAssignment) $ trace ("unrestricted: "++show ass') ass'
     ass' = M.intersectionWithKey (\k pr po -> (pr, po)) (toMap pred) (toMap poss)
 
-assignments :: State -> Pred -> [Either () Assignment]
+assignments :: State -> Pred -> [Resolution]
 assignments state pred
   = map (restrictPred pred) $ S.toList state
