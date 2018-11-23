@@ -14,7 +14,6 @@ import Pred (exists, val, var, toPred, Pred, Atom(Predicate), solutions, Assignm
 import Triple
 import Operation
 import qualified Data.Set as S
-import qualified Data.Map as M
 
 tests :: IO [Test]
 tests = return $ map Test testList
@@ -140,15 +139,15 @@ resolutionTests
       $ solutions (S.fromList [exists a, exists ne, exists zero])
         $ S.fromList [varXNeZero]
   , mkTest "Resolution succeeds on 1-pred with variable (with matches)"
-      (==[[(px, a)]])
+      (hasSingleSolution [(px, a)])
       $ solutions (S.fromList [exists a, aNeZero])
         $ S.fromList [varXNeZero]
   , mkTest "Resolution correct on 1-pred with variable (with alternate matches)"
-      (==[[(px, a)]])
+      (hasSingleSolution [(px, a)])
       $ solutions (S.fromList [exists a, exists b, aNeZero])
         $ S.fromList [varXNeZero]
   , mkTest "Resolution correct on 1-pred with variable"
-      (==[[(px, a), (py, b)]])
+      (hasSingleSolution [(px, a), (py, b)])
       $ solutions (S.fromList [exists a, exists b, aNeb])
         $ S.fromList [xNeY]
   , mkTest "Resolution fails on 1-pred with variable"
@@ -173,15 +172,15 @@ resolutionTests
       $ solutions (S.fromList [pred3 isa a b])
         $ S.fromList [pred3 isa x y, pred3 isa y z]
   , mkTest "Resolution correct on 2-pred with variable"
-      (==[[(pz, c), (px, a), (py, b)]])
+      (hasSingleSolution [(pz, c), (px, a), (py, b)])
       $ solutions (S.fromList [pred3 isa a b, pred3 isa b c])
         $ S.fromList [pred3 isa x y, pred3 isa y z]
   , mkTest "Resolution correct on pattern matched nested 1-pred"
-      (==[[(px, a), (py, b)]])
+      (hasSingleSolution [(px, a), (py, b)])
       $ solutions (S.fromList [pred3 isa (Predicate $ pred3 cons a b) list])
         $ S.fromList [pred3 isa (Predicate $ pred3 cons x y) list]
   , mkTest "Resolution correct on nested 1-pred"
-      (\x->map M.fromList x==[M.fromList[(S "x.#0", a), (S "x.rel", cons), (S "x.#1", b)]])
+      (hasSingleSolution [(S "x.#0", a), (S "x.rel", cons), (S "x.#1", b)])
       -- (==[[(x, Predicate [a, cons, b])]])
       $ solutions (S.fromList [pred3 isa (Predicate $pred3 cons a b) list])
         $ S.fromList [pred3 isa x list]

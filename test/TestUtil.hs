@@ -7,7 +7,10 @@ import Distribution.TestSuite
 
 import Debug.Trace
 import Data.Either (isLeft, isRight)
-import Pred (Assignment)
+import qualified Data.Map as M
+
+import Pred (Assignment, emptyAssignment, Atom)
+import Operation (Sym)
 
 -- Test types
 prints :: Show a => a -> Bool
@@ -20,7 +23,13 @@ hasNoSolution :: [Assignment] -> Bool
 hasNoSolution = (==[])
 
 hasEmptySolution :: [Assignment] -> Bool
-hasEmptySolution = (==[[]])
+hasEmptySolution = (==[emptyAssignment])
+
+hasSingleSolution :: [(Sym, Atom)] -> [Assignment] -> Bool
+hasSingleSolution req = hasOnlySolutions [req]
+
+hasOnlySolutions :: [[(Sym, Atom)]] -> [Assignment] -> Bool
+hasOnlySolutions reqs = (==)(map M.fromList reqs)
 
 mkTest :: Show a => String -> (a -> Bool) -> a -> [String]-> TestInstance
 mkTest name' check' val' tags'
