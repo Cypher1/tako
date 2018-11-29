@@ -1,12 +1,10 @@
 module Triple where
 
-import Debug.Trace(trace)
 import Prelude hiding (showList)
 import Util (showList)
 import Pred (Pred, State, solutionsAndErrors, filterErrors, ignoreErrors, Assignment, ResolutionFailure)
 import Operation (Sym, Op)
 import qualified Data.Set as S
-import Data.Either (partitionEithers)
 
 data Triple a b = Tri
   { pre :: b -- things it consumes
@@ -25,8 +23,6 @@ instance Show HTriple where
       post' = show' $ post t
       show' :: State -> String
       show' x = showList $ S.toList x
-      show'' :: [Sym] -> String
-      show'' x = drop 1 $ concatMap (\s->" "++show s) x
 
 -- TODO(jopra): Replace with new repr:
 -- - should be restricted to the syntax of the language

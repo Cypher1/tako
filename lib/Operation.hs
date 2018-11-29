@@ -1,7 +1,6 @@
 module Operation where
 
 import Data.Bits
-import Debug.Trace (trace)
 
 newtype Sym = S String -- deriving (Show, Eq, Ord)
   deriving (Eq, Ord)
@@ -9,7 +8,7 @@ instance Show Sym where
   show (S s) = s
 
 instance Read Sym where
-  readsPrec p s = [(S h, t)]
+  readsPrec _p s = [(S h, t)]
     where
       (h,t) = break (==' ') s
 
@@ -25,7 +24,7 @@ only a = [(a, "")]
 
 -- TODO(jopra): Ensure array access safety.
 instance Read Instruction where
-  readsPrec p s
+  readsPrec _p s
     | null w = []
     | n == 3 && c == "L" = only $ L (read opa) (read opb)
     | n == 2 && c`elem`map show unops = only $ U (read c) (read opa)

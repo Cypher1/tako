@@ -1,14 +1,12 @@
 module Pred where
-import Debug.Trace (trace)
 
-import Util (showList, showMap, onPair)
+import Util (showMap, onPair)
 import qualified Data.Set as S
 import Data.Set (Set)
 import qualified Data.Map as M
 import Data.Map (Map)
 
-import Data.List ((\\))
-import Operation (Sym (S), Instruction, Op)
+import Operation (Sym (S))
 
 data Atom
   = Value Sym -- a particular symbol
@@ -37,6 +35,11 @@ data ResolutionFailure
     }
   | ConcreteMismatch
     { key :: Sym
+    , value :: Atom
+    , in_ :: Assignment
+    }
+  | ValueVsPredicateMismatch
+    { predicate :: Pred
     , value :: Atom
     , in_ :: Assignment
     }
@@ -118,10 +121,10 @@ resolution :: State -> [Pred] -> Resolution -> [Resolution]
 resolution known ps ass = foldr (concatMap.(partialResolution known)) [ass] ps
 
 partialResolution :: State -> Pred -> Resolution -> [Resolution]
-partialResolution known pred ass
+partialResolution known pred' ass
   = do
   poss <- S.toList known
-  return $ ass <> assignmentFromPred pred poss
+  return $ ass <> assignmentFromPred pred' poss
 
 restrictOne :: Sym -> Atom -> Resolution -> Resolution
 restrictOne k v (Partial xs)
@@ -141,15 +144,23 @@ restrictAtoms (Value k) (Value v) ass
 restrictAtoms (Predicate vs) (Predicate xs) ass = (assignmentFromPred vs xs) <> ass
 restrictAtoms (Variable (S _k)) (Variable (S _v)) _ass = error "Unification of multiple variables not currently implemented" --TODO(jopra): Replace one variable with the other after taking the intersection.
 restrictAtoms (Variable k) (Value v) ass = restrictOne k (Value v) ass
+restrictAtoms (Value v) (Variable k) ass = restrictAtoms (Variable k) (Value v) ass
+
 restrictAtoms (Variable (S k)) (Predicate (Pred xs)) ass = do
-  M.foldrWithKey (\(S var)->restrictOne (S$k<>"."<>var)) ass xs
-restrictAtoms k v ass = error $ "Unimplemented restrictAtoms for: k:"++show k ++" v:"++ show v
+  M.foldrWithKey (\(S v)->restrictOne (S$k<>"."<>v)) ass xs
+restrictAtoms (Predicate (Pred xs)) (Variable (S k)) ass
+  = restrictAtoms (Variable (S k)) (Predicate (Pred xs)) ass
+
+restrictAtoms v@(Value _) (Predicate p) ass
+  = (\ass' -> Error $ ValueVsPredicateMismatch {predicate = p, value = v, in_ = ass'}) =<< ass
+restrictAtoms (Predicate p) v@(Value _) ass
+  = (\ass' -> Error $ ValueVsPredicateMismatch {predicate = p, value = v, in_ = ass'}) =<< ass
 
 assignmentFromPred :: Pred -> Pred -> Resolution
-assignmentFromPred pred poss
-  | M.keysSet (toMap pred) /= M.keysSet (toMap poss) = Error $
-    PredicatesOfDifferentShapes { requirement = pred, possible_solution = poss}
+assignmentFromPred pred' poss
+  | M.keysSet (toMap pred') /= M.keysSet (toMap poss) = Error $
+    PredicatesOfDifferentShapes { requirement = pred', possible_solution = poss}
   | otherwise = ass''
   where
     ass'' = foldr (uncurry restrictAtoms) mempty ass'
-    ass' = M.intersectionWithKey (\k pr po -> (pr, po)) (toMap pred) (toMap poss)
+    ass' = M.intersectionWithKey (\_ pr po -> (pr, po)) (toMap pred') (toMap poss)
