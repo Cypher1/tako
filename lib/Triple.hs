@@ -16,6 +16,7 @@ data Triple a b = Tri
   } deriving (Eq, Ord)
 
 type HTriple = Triple Op State -- HTriples are triples over operations, with states/checks
+-- TODO(jopra): Consider new typing pre vs post conditions to ensure they aren't mixed up
 
 instance Show HTriple where
   show t = "{"++pre'++"}"++showList op'++"{"++post'++"}"

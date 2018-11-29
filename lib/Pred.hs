@@ -1,8 +1,7 @@
 module Pred where
 import Debug.Trace (trace)
 
-import Util (showList, showMap)
-import Data.Either (rights)
+import Util (showList, showMap, onPair)
 import qualified Data.Set as S
 import Data.Set (Set)
 import qualified Data.Map as M
@@ -29,6 +28,7 @@ instance Show Pred where
 
 type State = Set Pred
 type Assignment = Map Sym Atom
+
 data ResolutionFailure
   = VariableAssignmentContradiction
     { key :: Sym
@@ -44,7 +44,42 @@ data ResolutionFailure
     { requirement :: Pred
     , possible_solution :: Pred
     }
-type Resolution = Either ResolutionFailure Assignment
+    deriving (Eq, Ord, Show)
+
+data System a
+  = Partial a
+  | Error ResolutionFailure
+  deriving (Eq, Ord, Show)
+
+instance Functor System where
+  fmap f (Partial a) = Partial $ f a
+  fmap _ (Error e) = (Error e)
+
+instance Applicative System where
+  pure = Partial
+  (Partial fs) <*> (Partial xs) = Partial $ fs xs
+  (Error fs) <*> _ = Error fs
+  _ <*> (Error xs) = Error xs
+
+instance Monad System where
+  (Partial xs) >>= f = f xs
+  (Error xs) >>= _ = Error xs
+
+type Resolution = System Assignment
+
+instance Semigroup Resolution where
+  xs <> ys = xs >>= M.foldrWithKey restrictOne ys
+
+instance Monoid Resolution where
+  mempty :: Resolution
+  mempty = pure M.empty
+
+
+ignoreErrors :: [Resolution] -> [Assignment]
+ignoreErrors xs = foldr next' [] xs
+  where
+    next' (Partial ass) xs' = ass:xs'
+    next' (Error _) xs' = xs'
 
 val :: String -> Atom
 val = Value . S
@@ -56,70 +91,55 @@ toMap :: Pred -> Map Sym Atom
 toMap (Pred atoms) = atoms
 
 toPred :: [(String, Atom)] -> Pred
-toPred xs = Pred $ M.fromList $ map (\(n, a) -> (S n, a)) xs
+toPred xs = Pred $ M.fromList $ map (onPair S id) xs
 
--- TODO(jopra): Consider new typing pre vs post conditions to ensure they aren't mixed up
 exists :: Atom -> Pred
 exists v = toPred [("exists", v)]
 
 emptyState :: State
 emptyState = S.empty
 
-emptyAssignment :: Assignment
-emptyAssignment = M.empty
-
--- TODO(jopra): Should return a proper error type, too much work is being done here
 -- TODO(jopra): Should check that each value is defined (not just used)
 solutions :: State -> State -> [Assignment]
 solutions known preds
-   = rights $ resolution known (S.toList preds) (Right emptyAssignment)
+   = ignoreErrors $ resolution known (S.toList preds) $ mempty
 
 -- Finds assignments (that are specialisations of the input assignment) for which the Preds are resolvable.
 resolution :: State -> [Pred] -> Resolution -> [Resolution]
--- resolution known ps ass | trace ("(K,P,A): "++show (known,ps,ass)) False = undefined
-resolution known [] ass = [ass]
-resolution known (p:ps) ass
-  = [sol | ass' <- assignments_with_p, sol <- resolution known ps ass']
-    where
-      assignments_with_p = map (restrict ass) $ assignments known p
+resolution known ps ass = foldr (concatMap.(partialResolution known)) [ass] ps
 
-restrict :: Resolution -> Resolution -> Resolution
-restrict xs ys
-  = xs >>= M.foldrWithKey restrictOne ys
+partialResolution :: State -> Pred -> Resolution -> [Resolution]
+partialResolution known pred ass
+  = do
+  poss <- S.toList known
+  return $ ass <> assignmentFromPred pred poss
 
 restrictOne :: Sym -> Atom -> Resolution -> Resolution
-restrictOne k v (Right xs)
+restrictOne k v (Partial xs)
   = case M.lookup k xs of
-      Nothing -> Right $ M.insert k v xs
-      Just v' -> case v == v' of
-                   True -> Right xs
-                   False -> Left $ VariableAssignmentContradiction {key = k, value = v, in_ = xs}
+      Nothing -> return $ M.insert k v xs
+      Just v' -> if v == v'
+                    then return xs
+                    else Error $ VariableAssignmentContradiction {key = k, value = v, in_ = xs}
 restrictOne _ _ err = err
 
-restrictAtoms :: (Atom, Atom) -> Resolution -> Resolution
-restrictAtoms _ err@(Left _) = err
-restrictAtoms (Value k, Value v) ass
+restrictAtoms :: Atom -> Atom -> Resolution -> Resolution
+restrictAtoms _ _ err@(Error _) = err
+restrictAtoms (Value k) (Value v) ass
   = if k == v
        then ass
-       else do
-         ass' <- ass
-         Left $ ConcreteMismatch { key = k, value = Value v, in_ = ass' }
-restrictAtoms (Variable k, Value v) ass = restrictOne k (Value v) ass
-restrictAtoms (Predicate vs, Predicate xs) ass = restrict (restrictPred vs xs) ass
-restrictAtoms (Variable (S k), Predicate xs) ass = do
-  let ks = M.mapWithKey (\(S k') ps -> (S(k++"."++k'), ps)) (toMap xs)
-  M.foldr (\(var, v)->restrictOne var v) ass ks
-restrictAtoms (k, v) ass = error $ "Unimplemented restrictAtoms for: k:"++show k ++" v:"++ show v
+       else (\ass' -> Error $ ConcreteMismatch { key = k, value = Value v, in_ = ass' }) =<< ass
+restrictAtoms (Predicate vs) (Predicate xs) ass = (assignmentFromPred vs xs) <> ass
+restrictAtoms (Variable k) (Value v) ass = restrictOne k (Value v) ass
+restrictAtoms (Variable (S k)) (Predicate (Pred xs)) ass = do
+  M.foldrWithKey (\(S var)->restrictOne (S$k<>"."<>var)) ass xs
+restrictAtoms k v ass = error $ "Unimplemented restrictAtoms for: k:"++show k ++" v:"++ show v
 
-restrictPred :: Pred -> Pred -> Resolution
-restrictPred pred poss
-  | M.keysSet (toMap pred) /= M.keysSet (toMap poss) = Left $
+assignmentFromPred :: Pred -> Pred -> Resolution
+assignmentFromPred pred poss
+  | M.keysSet (toMap pred) /= M.keysSet (toMap poss) = Error $
     PredicatesOfDifferentShapes { requirement = pred, possible_solution = poss}
   | otherwise = ass''
   where
-    ass'' = foldr (\(k, v) -> restrictAtoms (k, v)) (Right emptyAssignment) ass'
+    ass'' = foldr (uncurry restrictAtoms) mempty ass'
     ass' = M.intersectionWithKey (\k pr po -> (pr, po)) (toMap pred) (toMap poss)
-
-assignments :: State -> Pred -> [Resolution]
-assignments state pred
-  = map (restrictPred pred) $ S.toList state
