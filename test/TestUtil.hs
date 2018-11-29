@@ -9,7 +9,7 @@ import Debug.Trace
 import Data.Either (isLeft, isRight)
 import qualified Data.Map as M
 
-import Pred (Assignment, emptyAssignment, Atom)
+import Pred (Assignment, Atom)
 import Operation (Sym)
 
 -- Test types
@@ -23,7 +23,7 @@ hasNoSolution :: [Assignment] -> Bool
 hasNoSolution = (==[])
 
 hasEmptySolution :: [Assignment] -> Bool
-hasEmptySolution = (==[emptyAssignment])
+hasEmptySolution = (==[mempty])
 
 hasSingleSolution :: [(Sym, Atom)] -> [Assignment] -> Bool
 hasSingleSolution req = hasOnlySolutions [req]
