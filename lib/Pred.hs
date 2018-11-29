@@ -9,7 +9,6 @@ import Data.Map (Map)
 
 import Data.List ((\\))
 import Operation (Sym (S), Instruction, Op)
-import GHC.Base (Semigroup)
 
 data Atom
   = Value Sym -- a particular symbol
