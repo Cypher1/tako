@@ -56,7 +56,7 @@ data System a
 
 instance Functor System where
   fmap f (Partial a) = Partial $ f a
-  fmap _ (Error e) = (Error e)
+  fmap _ (Error e) = Error e
 
 instance Applicative System where
   pure = Partial
@@ -79,13 +79,13 @@ instance Monoid Resolution where
 
 
 filterErrors :: [Resolution] -> [ResolutionFailure]
-filterErrors xs = foldr next' [] xs
+filterErrors = foldr next' []
   where
     next' (Partial _) xs' = xs'
     next' (Error err) xs' = err:xs'
 
 ignoreErrors :: [Resolution] -> [Assignment]
-ignoreErrors xs = foldr next' [] xs
+ignoreErrors = foldr next' []
   where
     next' (Partial ass) xs' = ass:xs'
     next' (Error _) xs' = xs'
@@ -114,11 +114,11 @@ solutions known preds = ignoreErrors $ solutionsAndErrors known preds
 -- TODO(jopra): Should check that each value is defined (not just used)
 solutionsAndErrors :: State -> State -> [Resolution]
 solutionsAndErrors known preds
-   = resolution known (S.toList preds) $ mempty
+   = resolution known (S.toList preds) mempty
 
 -- Finds assignments (that are specialisations of the input assignment) for which the Preds are resolvable.
 resolution :: State -> [Pred] -> Resolution -> [Resolution]
-resolution known ps ass = foldr (concatMap.(partialResolution known)) [ass] ps
+resolution known ps ass = foldr (concatMap.partialResolution known) [ass] ps
 
 partialResolution :: State -> Pred -> Resolution -> [Resolution]
 partialResolution known pred' ass
@@ -141,13 +141,14 @@ restrictAtoms (Value k) (Value v) ass
   = if k == v
        then ass
        else (\ass' -> Error $ ConcreteMismatch { key = k, value = Value v, in_ = ass' }) =<< ass
-restrictAtoms (Predicate vs) (Predicate xs) ass = (assignmentFromPred vs xs) <> ass
-restrictAtoms (Variable (S _k)) (Variable (S _v)) _ass = error "Unification of multiple variables not currently implemented" --TODO(jopra): Replace one variable with the other after taking the intersection.
+restrictAtoms (Predicate vs) (Predicate xs) ass = assignmentFromPred vs xs <> ass
+restrictAtoms (Variable (S _k)) (Variable (S _v)) _ass
+  = error "Unification of multiple variables not currently implemented" --TODO(jopra): Replace one variable with the other after taking the intersection.
 restrictAtoms (Variable k) (Value v) ass = restrictOne k (Value v) ass
 restrictAtoms (Value v) (Variable k) ass = restrictAtoms (Variable k) (Value v) ass
 
-restrictAtoms (Variable (S k)) (Predicate (Pred xs)) ass = do
-  M.foldrWithKey (\(S v)->restrictOne (S$k<>"."<>v)) ass xs
+restrictAtoms (Variable (S k)) (Predicate (Pred xs)) ass
+  = M.foldrWithKey (\(S v)->restrictOne (S$k<>"."<>v)) ass xs
 restrictAtoms (Predicate (Pred xs)) (Variable (S k)) ass
   = restrictAtoms (Variable (S k)) (Predicate (Pred xs)) ass
 
