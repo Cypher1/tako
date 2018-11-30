@@ -75,6 +75,12 @@ instance Monoid Resolution where
   mempty = pure M.empty
 
 
+filterErrors :: [Resolution] -> [ResolutionFailure]
+filterErrors xs = foldr next' [] xs
+  where
+    next' (Partial _) xs' = xs'
+    next' (Error err) xs' = err:xs'
+
 ignoreErrors :: [Resolution] -> [Assignment]
 ignoreErrors xs = foldr next' [] xs
   where
@@ -99,10 +105,13 @@ exists v = toPred [("exists", v)]
 emptyState :: State
 emptyState = S.empty
 
--- TODO(jopra): Should check that each value is defined (not just used)
 solutions :: State -> State -> [Assignment]
-solutions known preds
-   = ignoreErrors $ resolution known (S.toList preds) $ mempty
+solutions known preds = ignoreErrors $ solutionsAndErrors known preds
+
+-- TODO(jopra): Should check that each value is defined (not just used)
+solutionsAndErrors :: State -> State -> [Resolution]
+solutionsAndErrors known preds
+   = resolution known (S.toList preds) $ mempty
 
 -- Finds assignments (that are specialisations of the input assignment) for which the Preds are resolvable.
 resolution :: State -> [Pred] -> Resolution -> [Resolution]
@@ -130,6 +139,7 @@ restrictAtoms (Value k) (Value v) ass
        then ass
        else (\ass' -> Error $ ConcreteMismatch { key = k, value = Value v, in_ = ass' }) =<< ass
 restrictAtoms (Predicate vs) (Predicate xs) ass = (assignmentFromPred vs xs) <> ass
+restrictAtoms (Variable (S _k)) (Variable (S _v)) _ass = error "Unification of multiple variables not currently implemented" --TODO(jopra): Replace one variable with the other after taking the intersection.
 restrictAtoms (Variable k) (Value v) ass = restrictOne k (Value v) ass
 restrictAtoms (Variable (S k)) (Predicate (Pred xs)) ass = do
   M.foldrWithKey (\(S var)->restrictOne (S$k<>"."<>var)) ass xs

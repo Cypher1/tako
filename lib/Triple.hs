@@ -2,10 +2,9 @@ module Triple where
 
 import Debug.Trace(trace)
 import Prelude hiding (showList)
-import Data.List(nub, (\\))
-import Util (line, showList)
-import Pred (Pred, State, solutions, Assignment)
-import Operation (Sym (S), Op)
+import Util (showList)
+import Pred (Pred, State, solutionsAndErrors, filterErrors, ignoreErrors, Assignment, ResolutionFailure)
+import Operation (Sym, Op)
 import qualified Data.Set as S
 import Data.Either (partitionEithers)
 
@@ -42,22 +41,15 @@ emp =
       , post = S.empty
       }
 
-data Failure
+data Failure = Failure FailureMode [ResolutionFailure] deriving (Show, Eq, Ord)
+
+data FailureMode
   = Contradiction State
   | Unsolved { state_::State, requirements_::State}
   | Undefined { missing_::[Sym], in_::HTriple}
   | Many [Failure]
   | Underspecified [Assignment] HTriple HTriple
   deriving (Show, Ord, Eq)
-
-getAllErrors :: [Failure] -> Failure
-getAllErrors xs = case getErrors (Many xs) of
-                    [x] -> x
-                    xs' -> Many xs'
-
-getErrors :: Failure -> [Failure]
-getErrors (Many xs) = nub $ concatMap getErrors xs
-getErrors x = [x]
 
 func :: Op -> State -> State -> HTriple
 func algo pre' post' =
@@ -76,12 +68,14 @@ addPost p h = h {post = S.union (S.singleton p) (post h)}
 update :: HTriple -> HTriple -> Either Failure HTriple
 update accepted extension
   = case solutions' of
-      [] -> Left $ Unsolved state requirements
-      [sol] -> Right $ mergeTriples accepted extension
-      sols -> Left $ Underspecified sols accepted extension
+      [] -> Left $ Failure (Unsolved state requirements) errors'
+      [_sol] -> Right $ mergeTriples accepted extension -- TODO(jopra): This discards the solution's requirements
+      sols -> Left $ Failure (Underspecified sols accepted extension) errors'
   where
     -- TODO(jopra): Also return some debug info
-    solutions' = solutions state requirements
+    solutions' = ignoreErrors possibles
+    errors' = filterErrors possibles
+    possibles = solutionsAndErrors state requirements
     state = post accepted
     requirements = pre extension
 
