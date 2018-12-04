@@ -9,7 +9,7 @@ import Debug.Trace
 import Data.Either (isLeft, isRight)
 import qualified Data.Map as M
 
-import Pred (Assignment, Atom)
+import Pred (Assignment, Atom, Var, Val)
 import Operation (Sym)
 
 -- Test types
@@ -19,16 +19,16 @@ prints = (/= "").show
 debug :: a -> Bool
 debug = const False
 
-hasNoSolution :: [Assignment] -> Bool
+hasNoSolution :: Eq (Assignment a) => [Assignment a] -> Bool
 hasNoSolution = (==[])
 
-hasEmptySolution :: [Assignment] -> Bool
+hasEmptySolution :: Eq (Assignment a) => [Assignment a] -> Bool
 hasEmptySolution = (==[mempty])
 
-hasSingleSolution :: [(Sym, Atom)] -> [Assignment] -> Bool
+hasSingleSolution :: [(Atom Var, Atom Val)] -> [Assignment Val] -> Bool
 hasSingleSolution req = hasOnlySolutions [req]
 
-hasOnlySolutions :: [[(Sym, Atom)]] -> [Assignment] -> Bool
+hasOnlySolutions :: [[(Atom Var, Atom Val)]] -> [Assignment Val] -> Bool
 hasOnlySolutions reqs = (==)(map M.fromList reqs)
 
 mkTest :: Show a => String -> (a -> Bool) -> a -> [String]-> TestInstance

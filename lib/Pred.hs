@@ -6,46 +6,96 @@ import Data.Set (Set)
 import qualified Data.Map as M
 import Data.Map (Map)
 
-import Operation (Sym (S))
+import Operation (Sym)
 
-data Atom
-  = Value Sym -- a particular symbol
-  | Variable Sym -- a variable that can match any symbol (in its context)
-  | Predicate Pred
-  deriving (Eq, Ord)
+data Var
+data Val
 
-instance Show Atom where
-  show (Value s) = show s
-  show (Variable s) = "{"++show s++"}"
+data Atom a where
+  Value :: Sym -> Atom a  -- a particular symbol
+  Variable :: Sym -> Atom Var -- a variable that can match any symbol (in its context)
+  Predicate :: Pred a -> Atom a -- either something to be solved or known
+
+instance Eq (Atom Val) where
+  Value p == Value q = p == q
+  Predicate xs == Predicate ys = xs == ys
+  _ == _ = False
+
+instance Eq (Atom Var) where
+  Variable p == Variable q = p == q
+  Value p == Value q = p == q
+  Predicate xs == Predicate ys = xs == ys
+  _ == _ = False
+
+instance Ord (Atom Val) where
+  compare (Value p) (Value q) = compare p q
+  compare (Value _) (Predicate _) = GT
+  compare (Predicate _) (Value _) = LT
+  compare (Predicate p) (Predicate q) = compare p q
+
+
+instance Ord (Atom Var) where
+  compare (Variable p) (Variable q) = compare p q
+  compare (Value _) (Variable _) = GT
+  compare (Variable _) (Value _) = LT
+  compare (Variable _) (Predicate _) = GT
+  compare (Predicate _) (Variable _) = LT
+  compare (Value p) (Value q) = compare p q
+  compare (Value _) (Predicate _) = GT
+  compare (Predicate _) (Value _) = LT
+  compare (Predicate p) (Predicate q) = compare p q
+
+instance Show (Atom a) where
+  show (Value s) = s
+  show (Variable s) = s++"?"
   show (Predicate atoms) = show atoms
 
-newtype Pred = Pred (Map Sym Atom) deriving (Eq, Ord)
+type Assignment a = Map (Atom Var) (Atom a)
+newtype Pred a = Pred (Assignment a)
 
-instance Show Pred where
+instance Eq (Pred Val) where
+  Pred xs == Pred ys = xs == ys
+
+instance Eq (Pred Var) where
+  Pred xs == Pred ys = xs == ys
+
+instance Ord (Pred Val) where
+  compare (Pred xs) (Pred ys) = compare xs ys
+
+instance Ord (Pred Var) where
+  compare (Pred xs) (Pred ys) = compare xs ys
+
+
+instance Show (Pred a) where
   show (Pred atoms) = "("++Util.showMap atoms++")"
 
-type State = Set Pred
-type Assignment = Map Sym Atom
+type State = Set (Pred Val)
+type Requirements = Set (Pred Var)
 
 data ResolutionFailure
   = VariableAssignmentContradiction
-    { key :: Sym
-    , value :: Atom
-    , in_ :: Assignment
+    { variable :: (Atom Var)
+    , value :: (Atom Val)
+    , in_ :: (Assignment Val)
     }
   | ConcreteMismatch
-    { key :: Sym
-    , value :: Atom
-    , in_ :: Assignment
+    { variable :: (Atom Var)
+    , value :: (Atom Val)
+    , in_ :: (Assignment Val)
+    }
+  | VariableVsPredicateMismatch
+    { variable :: (Atom Var)
+    , predicate :: (Pred Val)
+    , in_ :: (Assignment Val)
     }
   | ValueVsPredicateMismatch
-    { predicate :: Pred
-    , value :: Atom
-    , in_ :: Assignment
+    { predicate_match :: (Pred Var)
+    , value :: (Atom Val)
+    , in_ :: (Assignment Val)
     }
   | PredicatesOfDifferentShapes
-    { requirement :: Pred
-    , possible_solution :: Pred
+    { requirement :: (Pred Var)
+    , possible_solution :: (Pred Val)
     }
     deriving (Eq, Ord, Show)
 
@@ -68,7 +118,7 @@ instance Monad System where
   (Partial xs) >>= f = f xs
   (Error xs) >>= _ = Error xs
 
-type Resolution = System Assignment
+type Resolution = System (Assignment Val)
 
 instance Semigroup Resolution where
   xs <> ys = xs >>= M.foldrWithKey restrictOne ys
@@ -84,80 +134,73 @@ filterErrors = foldr next' []
     next' (Partial _) xs' = xs'
     next' (Error err) xs' = err:xs'
 
-ignoreErrors :: [Resolution] -> [Assignment]
+ignoreErrors :: [System (Assignment a)] -> [Assignment a]
 ignoreErrors = foldr next' []
   where
     next' (Partial ass) xs' = ass:xs'
     next' (Error _) xs' = xs'
 
-val :: String -> Atom
-val = Value . S
+val :: String -> Atom a
+val = Value
 
-var :: String -> Atom
-var = Variable . S
+var :: String -> Atom Var
+var = Variable
 
-toMap :: Pred -> Map Sym Atom
-toMap (Pred atoms) = atoms
+toMap :: Pred a -> Map Sym (Atom a)
+toMap (Pred atoms) = M.mapKeysMonotonic show atoms
 
-toPred :: [(String, Atom)] -> Pred
-toPred xs = Pred $ M.fromList $ map (onPair S id) xs
+toPred :: [(String, Atom a)] -> Pred a
+toPred xs = Pred $ M.fromList $ map (onPair Variable id) xs
 
-exists :: Atom -> Pred
+exists :: Atom a -> Pred a
 exists v = toPred [("exists", v)]
 
 emptyState :: State
 emptyState = S.empty
 
-solutions :: State -> State -> [Assignment]
+solutions :: State -> Requirements -> [Assignment Val]
 solutions known preds = ignoreErrors $ solutionsAndErrors known preds
 
 -- TODO(jopra): Should check that each value is defined (not just used)
-solutionsAndErrors :: State -> State -> [Resolution]
+solutionsAndErrors :: State -> Requirements -> [Resolution]
 solutionsAndErrors known preds
    = resolution known (S.toList preds) mempty
 
 -- Finds assignments (that are specialisations of the input assignment) for which the Preds are resolvable.
-resolution :: State -> [Pred] -> Resolution -> [Resolution]
+resolution :: State -> [Pred Var] -> Resolution -> [Resolution]
 resolution known ps ass = foldr (concatMap.partialResolution known) [ass] ps
 
-partialResolution :: State -> Pred -> Resolution -> [Resolution]
+partialResolution :: State -> Pred Var -> Resolution -> [Resolution]
 partialResolution known pred' ass
   = do
   poss <- S.toList known
   return $ ass <> assignmentFromPred pred' poss
 
-restrictOne :: Sym -> Atom -> Resolution -> Resolution
+restrictOne :: Atom Var -> Atom Val -> Resolution -> Resolution
 restrictOne k v (Partial xs)
   = case M.lookup k xs of
       Nothing -> return $ M.insert k v xs
       Just v' -> if v == v'
                     then return xs
-                    else Error $ VariableAssignmentContradiction {key = k, value = v, in_ = xs}
+                    else Error $ VariableAssignmentContradiction {variable = k, value = v, in_ = xs}
 restrictOne _ _ err = err
 
-restrictAtoms :: Atom -> Atom -> Resolution -> Resolution
+restrictAtoms :: Atom Var -> Atom Val -> Resolution -> Resolution
 restrictAtoms _ _ err@(Error _) = err
-restrictAtoms (Value k) (Value v) ass
-  = if k == v
+restrictAtoms k@(Value k') v@(Value v') ass
+  = if k' == v'
        then ass
-       else (\ass' -> Error $ ConcreteMismatch { key = k, value = Value v, in_ = ass' }) =<< ass
+       else (\ass' -> Error $ ConcreteMismatch { variable = k, value = v, in_ = ass' }) =<< ass
 restrictAtoms (Predicate vs) (Predicate xs) ass = assignmentFromPred vs xs <> ass
-restrictAtoms (Variable (S _k)) (Variable (S _v)) _ass
-  = error "Unification of multiple variables not currently implemented" --TODO(jopra): Replace one variable with the other after taking the intersection.
-restrictAtoms (Variable k) (Value v) ass = restrictOne k (Value v) ass
-restrictAtoms (Value v) (Variable k) ass = restrictAtoms (Variable k) (Value v) ass
-
-restrictAtoms (Variable (S k)) (Predicate (Pred xs)) ass
-  = M.foldrWithKey (\(S v)->restrictOne (S$k<>"."<>v)) ass xs
-restrictAtoms (Predicate (Pred xs)) (Variable (S k)) ass
-  = restrictAtoms (Variable (S k)) (Predicate (Pred xs)) ass
-
+restrictAtoms k@(Variable _) v@(Value _) ass = restrictOne k v ass
+restrictAtoms (Variable k) (Predicate (Pred xs)) ass
+  = M.foldrWithKey (\(Variable v)->restrictOne (Variable$k<>"."<>v)) ass xs
 restrictAtoms v@(Value _) (Predicate p) ass
-  = (\ass' -> Error $ ValueVsPredicateMismatch {predicate = p, value = v, in_ = ass'}) =<< ass
+  = (\ass' -> Error $ VariableVsPredicateMismatch {predicate = p, variable = v, in_ = ass'}) =<< ass
 restrictAtoms (Predicate p) v@(Value _) ass
-  = (\ass' -> Error $ ValueVsPredicateMismatch {predicate = p, value = v, in_ = ass'}) =<< ass
+  = (\ass' -> Error $ ValueVsPredicateMismatch {predicate_match = p, value = v, in_ = ass'}) =<< ass
 
-assignmentFromPred :: Pred -> Pred -> Resolution
+assignmentFromPred :: Pred Var -> Pred Val -> Resolution
 assignmentFromPred pred' poss
   | M.keysSet (toMap pred') /= M.keysSet (toMap poss) = Error $
     PredicatesOfDifferentShapes { requirement = pred', possible_solution = poss}
