@@ -2,15 +2,7 @@ module Operation where
 
 import Data.Bits
 
-newtype Sym = S String -- deriving (Show, Eq, Ord)
-  deriving (Eq, Ord)
-instance Show Sym where
-  show (S s) = s
-
-instance Read Sym where
-  readsPrec _p s = [(S h, t)]
-    where
-      (h,t) = break (==' ') s
+type Sym = String
 
 data Instruction
   = T TriOp Sym Sym Sym

@@ -18,6 +18,7 @@ import qualified Data.Set as S
 tests :: IO [Test]
 tests = return $ map Test testList
 
+pred3 :: Atom a -> Atom a -> Atom a -> Pred a
 pred3 r x y = toPred [("#0", x), ("rel", r), ("#1", y)]
 
 -- Constants
@@ -26,11 +27,10 @@ a = val "a"
 b = val "b"
 c = val "c"
 ret = val "ret"
-pa = S "a"
-pb = S "b"
-pRet = S "ret"
+pa = "a"
+pb = "b"
+pRet = "ret"
 ne = val "!="
-ne' :: Atom -> Atom -> Pred
 ne' = pred3 ne
 cons = val "cons"
 nil = val "nil"
@@ -44,11 +44,11 @@ minus = func [T Sub pa pb pRet] (S.fromList [exists a, exists b]) $ S.fromList [
 needsRet = addPre (exists ret) emp
 
 x = var "x"
-px = S "x"
+px = "x"
 y = var "y"
-py = S "y"
+py = "y"
 z = var "z"
-pz = S "z"
+pz = "z"
 isa = val "isa"
 isa' = pred3 isa
 
@@ -139,15 +139,15 @@ resolutionTests
       $ solutions (S.fromList [exists a, exists ne, exists zero])
         $ S.fromList [varXNeZero]
   , mkTest "Resolution succeeds on 1-pred with variable (with matches)"
-      (hasSingleSolution [(px, a)])
+      (hasSingleSolution [(x, a)])
       $ solutions (S.fromList [exists a, aNeZero])
         $ S.fromList [varXNeZero]
   , mkTest "Resolution correct on 1-pred with variable (with alternate matches)"
-      (hasSingleSolution [(px, a)])
+      (hasSingleSolution [(x, a)])
       $ solutions (S.fromList [exists a, exists b, aNeZero])
         $ S.fromList [varXNeZero]
   , mkTest "Resolution correct on 1-pred with variable"
-      (hasSingleSolution [(px, a), (py, b)])
+      (hasSingleSolution [(x, a), (y, b)])
       $ solutions (S.fromList [exists a, exists b, aNeb])
         $ S.fromList [xNeY]
   , mkTest "Resolution fails on 1-pred with variable"
@@ -172,15 +172,15 @@ resolutionTests
       $ solutions (S.fromList [pred3 isa a b])
         $ S.fromList [pred3 isa x y, pred3 isa y z]
   , mkTest "Resolution correct on 2-pred with variable"
-      (hasSingleSolution [(pz, c), (px, a), (py, b)])
+      (hasSingleSolution [(z, c), (x, a), (y, b)])
       $ solutions (S.fromList [pred3 isa a b, pred3 isa b c])
         $ S.fromList [pred3 isa x y, pred3 isa y z]
   , mkTest "Resolution correct on pattern matched nested 1-pred"
-      (hasSingleSolution [(px, a), (py, b)])
+      (hasSingleSolution [(x, a), (y, b)])
       $ solutions (S.fromList [pred3 isa (Predicate $ pred3 cons a b) list])
         $ S.fromList [pred3 isa (Predicate $ pred3 cons x y) list]
   , mkTest "Resolution correct on nested 1-pred"
-      (hasSingleSolution [(S "x.#0", a), (S "x.rel", cons), (S "x.#1", b)])
+      (hasSingleSolution [(var "x.#0", a), (var "x.rel", cons), (var "x.#1", b)])
       -- (==[[(x, Predicate [a, cons, b])]])
       $ solutions (S.fromList [pred3 isa (Predicate $pred3 cons a b) list])
         $ S.fromList [pred3 isa x list]

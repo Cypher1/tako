@@ -1,7 +1,10 @@
 module Util where
 
+import Prelude hiding (showList)
 import qualified Data.Map as M
 import Data.Map (Map)
+import qualified Data.Set as S
+import Data.Set (Set)
 
 indent :: String -> String
 indent x = unlines $ map ("  "++) $ lines x
@@ -24,6 +27,9 @@ showList :: Show a => [a] -> String
 showList xs = drop (length joiner) $ concatMap (\x->joiner++show x) xs
   where
     joiner = ", "
+
+showSet :: Show a => Set a -> String
+showSet = showList . S.toList
 
 showMap :: (Show a, Show b) => Map a b -> String
 showMap xs = drop (length joiner) $ concatMap (\(k, v)->joiner++show k++k_to_v++show v) $ M.toList xs

@@ -2,17 +2,17 @@ module Triple where
 
 import Prelude hiding (showList)
 import Util (showList)
-import Pred (Pred, State, solutionsAndErrors, filterErrors, ignoreErrors, Assignment, ResolutionFailure)
+import Pred (Pred, State, Requirements, solutionsAndErrors, filterErrors, ignoreErrors, Assignment, Val, Var, ResolutionFailure)
 import Operation (Sym, Op)
 import qualified Data.Set as S
 
-data Triple a b = Tri
-  { pre :: b -- things it consumes
-  , op :: a
-  , post :: b -- things it produces
+data Triple a b c= Tri
+  { pre :: a  -- requirements of the calling environment
+  , op :: b   -- operations to be executed
+  , post :: c -- outcomes of the operations
   } deriving (Eq, Ord)
 
-type HTriple = Triple Op State -- HTriples are triples over operations, with states/checks
+type HTriple = Triple Requirements Op State -- HTriples are triples over operations, with states/checks
 -- TODO(jopra): Consider new typing pre vs post conditions to ensure they aren't mixed up
 
 instance Show HTriple where
@@ -21,7 +21,6 @@ instance Show HTriple where
       pre' = show' $ pre t
       op' = op t
       post' = show' $ post t
-      show' :: State -> String
       show' x = showList $ S.toList x
 
 -- TODO(jopra): Replace with new repr:
@@ -41,13 +40,13 @@ data Failure = Failure FailureMode [ResolutionFailure] deriving (Show, Eq, Ord)
 
 data FailureMode
   = Contradiction State
-  | Unsolved { state_::State, requirements_::State}
+  | Unsolved { state_::State, requirements_::Requirements}
   | Undefined { missing_::[Sym], in_::HTriple}
   | Many [Failure]
-  | Underspecified [Assignment] HTriple HTriple
+  | Underspecified [Assignment Val] HTriple HTriple
   deriving (Show, Ord, Eq)
 
-func :: Op -> State -> State -> HTriple
+func :: Op -> Requirements -> State -> HTriple
 func algo pre' post' =
   Tri { pre = pre'
       , op = algo
@@ -55,10 +54,10 @@ func algo pre' post' =
       }
 
 -- TODO(jopra): Use lenses for these patterns
-addPre :: Pred -> HTriple -> HTriple
+addPre :: Pred Var -> HTriple -> HTriple
 addPre p h = h {pre = S.union (S.singleton p) (pre h)}
 
-addPost :: Pred -> HTriple -> HTriple
+addPost :: Pred Val -> HTriple -> HTriple
 addPost p h = h {post = S.union (S.singleton p) (post h)}
 
 update :: HTriple -> HTriple -> Either Failure HTriple
@@ -84,7 +83,7 @@ mergeTriples accepted extension
         , post = post extension
         }
 
-assume :: [Pred] -> HTriple
+assume :: [Pred Val] -> HTriple
 assume ps = promise (S.fromList ps) emp
 
 promise :: State -> HTriple -> HTriple
