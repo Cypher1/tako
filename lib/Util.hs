@@ -31,5 +31,5 @@ showMap xs = drop (length joiner) $ concatMap (\(k, v)->joiner++show k++k_to_v++
     joiner = ", "
     k_to_v = ":"
 
-onPair :: (a -> b) -> (c -> d) -> ((a, c) -> (b, d))
-onPair f g = (\(a, c) -> (f a, g c))
+onPair :: (a -> b) -> (c -> d) -> (a, c) -> (b, d)
+onPair f g (a, c) = (f a, g c)

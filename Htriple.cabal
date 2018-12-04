@@ -27,6 +27,7 @@ executable Htriple
       containers,
       haskeline >= 0.7 && < 0.8
   default-extensions: StandaloneDeriving InstanceSigs AllowAmbiguousTypes DataKinds DeriveGeneric FlexibleContexts FlexibleInstances GADTs ExistentialQuantification UndecidableInstances LambdaCase MultiParamTypeClasses PartialTypeSignatures PatternSynonyms RankNTypes ScopedTypeVariables TypeApplications TypeInType TypeOperators ViewPatterns
+  GHC-Options:    -Wall
 
 Test-Suite Htriple-test
   type:       detailed-0.9
