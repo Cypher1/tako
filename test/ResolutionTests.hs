@@ -1,23 +1,12 @@
-module Core where
+module ResolutionTests where
 
-import Prelude hiding (showList)
-import Distribution.TestSuite
-  ( Test(Test)
-  , TestInstance (TestInstance, run, name, tags, options, setOption)
-  , Progress(Finished, Progress)
-  , Result(Fail, Pass))
-import Test.QuickCheck
+import Distribution.TestSuite (TestInstance)
 import TestUtil
 
-import Util (showList)
-import Pred (exists, val, var, toPred, Pred (Pred), Atom(Predicate), solutions, solutionsAndErrors, Assignment, System(Partial))
-import Triple
-import Operation
-import qualified Data.Map as M
+import Pred (exists, val, var, toPred, Pred (Pred), Atom(Predicate), solutions)
+import Triple (addPre, emp, func)
+import Operation (Instruction(T), TriOp(Div, Sub))
 import qualified Data.Set as S
-
-tests :: IO [Test]
-tests = return $ map Test testList
 
 pred3 :: Atom a -> Atom a -> Atom a -> Pred a
 pred3 r x y = toPred [("#0", x), ("rel", r), ("#1", y)]
@@ -55,73 +44,6 @@ isa' = pred3 isa
 
 varXNeZero = ne' x zero
 xNeY = ne' x y
-
--- Tests
-testList :: [TestInstance]
-testList
-  = concat
-  [ tripleTests
-  , operationTests
-  , resolutionTests
-  ]
-  -- TODO(jopra): Execute a triple
-  -- TODO(jopra): Compile a triple
-  -- TODO(jopra): Check separation for triples
-  -- TODO(jopra): Check parallelisation for triples
-  -- TODO(jopra): Enforce the KB contains no Variables without implication
-
-tripleTests :: [TestInstance]
-tripleTests
-  = map (addTags ["triples"])
-  [ mkTest "constantsExist" (not.null) $ showList [zero, ret, a, b, ne]
-  , mkTest "a-b" prints minus
-  , mkTest "unsafe a/b" prints fdiv
-  , mkTest "safe a/b" prints frac
-  , mkTest "updateFrac with emp should fail" fails $ update emp frac
-  , mkTest "updateFrac with b!=0 should fail" fails
-    $ update (assume [bNeZero]) frac
-  , mkTest "updateFrac with b!=0 and a should fail" fails
-    $ update (assume [bNeZero, exists a]) frac
-  , mkTest "updateFrac with b!=0 and b should fail" fails
-    $ update (assume [bNeZero, exists b]) frac
-  , mkTest "updateFrac with a, b should fail" fails
-    $ update (assume [exists a, exists b]) frac
-  , mkTest "updateFrac with b!=0, a, b, should pass" passes
-    $ update (assume [exists a, exists b, bNeZero]) frac
-  , mkTest "require ret" prints needsRet
-  , mkTest "needs ret <*> frac is unsat" fails $ update needsRet frac
-  , mkTest "frac <*> needs ret is sat" passes $ update frac needsRet
-  , mkTest "post.assume == Set.fromList"
-      (==S.fromList [aNeZero, exists a, bNeZero])
-      (post$assume [aNeZero, exists a, bNeZero, bNeZero])
-  ]
-
-operationTests :: [TestInstance]
-operationTests
-  = map (addTags ["vm"])
-  [ mkTest "Introducing a literal gives the same value" (==[(pa, 3)])
-    $ exec (L 3 pa) []
-  , mkTest "Introducing a literal overwrites the old value" (==[(pa, 3)])
-    $ exec (L 3 pa) [(pa, 100)]
-  , mkTest "Free empties memory" (==[])
-    $ exec (U Free pa) [(pa, 3)]
-  , mkTest "Free doesn't remove un-freed vars" (==[(pb, 4)])
-    $ exec (U Free pa) [(pa, 3), (pb, 4)]
-  , mkTest "Complement 10 = -11" ((pRet, -11)`elem`)
-    $ exec (B Not pa pRet) [(pa, 10)]
-  , mkTest "Complement -11 = 10" ((pRet, 10)`elem`)
-    $ exec (B Not pa pRet) [(pa, -11)]
-  , mkTest "New a b copies a into b" ((pb, 2)`elem`)
-    $ exec (B New pa pb) [(pa, 2)]
-  , mkTest "And 10&3 =" ((pRet, 2)`elem`)
-    $ exec (T And pa pb pRet) [(pa, 10), (pb, 6)]
-  , mkTest "Or 10|3 =" ((pRet, 14)`elem`)
-    $ exec (T Or pa pb pRet) [(pa, 10), (pb, 6)]
-  , mkTest "Add 10+3 =" ((pRet, 13)`elem`)
-    $ exec (T Add pa pb pRet) [(pa, 10), (pb, 3)]
-  , mkTest "Sub 10-3 =" ((pRet, 7)`elem`)
-    $ exec (T Sub pa pb pRet) [(pa, 10), (pb, 3)]
-  ]
 
 resolutionTests :: [TestInstance]
 resolutionTests

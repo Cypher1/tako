@@ -1,5 +1,7 @@
 module Operation where
 
+import Util (boundedAll)
+
 import Data.Bits
 
 type Sym = String
@@ -36,9 +38,6 @@ type Val = Int
 data TriOp = And | Or | Add | Sub | Div | Mul deriving (Show, Read, Eq, Ord, Enum, Bounded)
 data BiOp = Not | New deriving (Show, Read, Eq, Ord, Enum, Bounded)
 data UnOp = Free deriving (Show, Read, Eq, Ord, Enum, Bounded)
-
-boundedAll :: (Enum a, Bounded a) => [a]
-boundedAll = [minBound..maxBound]
 
 unops :: [UnOp]
 unops = boundedAll

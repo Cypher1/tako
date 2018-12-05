@@ -39,3 +39,6 @@ showMap xs = drop (length joiner) $ concatMap (\(k, v)->joiner++show k++k_to_v++
 
 onPair :: (a -> b) -> (c -> d) -> (a, c) -> (b, d)
 onPair f g (a, c) = (f a, g c)
+
+boundedAll :: (Enum a, Bounded a) => [a]
+boundedAll = [minBound..maxBound]

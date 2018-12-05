@@ -11,7 +11,6 @@ import qualified Data.Map as M
 import qualified Data.Set as S
 
 import Pred (Assignment, Atom, Var, Val, State, System (Partial), Pred (Pred))
-import Operation (Sym)
 
 -- Test types
 prints :: Show a => a -> Bool

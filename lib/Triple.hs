@@ -3,7 +3,7 @@ module Triple where
 import Prelude hiding (showList)
 import Util (showList)
 import Pred (Pred, State, Requirements, solutionsAndErrors, filterErrors, ignoreErrors, Assignment, Val, Var, ResolutionFailure)
-import Operation (Sym, Op)
+import Operation (Op)
 import qualified Data.Set as S
 
 data Triple a b c= Tri
@@ -41,7 +41,6 @@ data Failure = Failure FailureMode [ResolutionFailure] deriving (Show, Eq, Ord)
 data FailureMode
   = Contradiction State
   | Unsolved { state_::State, requirements_::Requirements}
-  | Undefined { missing_::[Sym], in_::HTriple}
   | Many [Failure]
   | Underspecified [Assignment Val] HTriple HTriple
   deriving (Show, Ord, Eq)
