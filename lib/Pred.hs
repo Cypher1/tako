@@ -128,7 +128,6 @@ instance Semigroup Resolution where
   xs <> ys = xs >>= M.foldrWithKey restrictOne ys
 
 instance Monoid Resolution where
-  mempty :: Resolution
   mempty = pure M.empty
 
 

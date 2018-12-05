@@ -26,7 +26,7 @@ executable Htriple
       base >= 4.9 && < 5,
       containers,
       haskeline >= 0.7 && < 0.8
-  default-extensions: StandaloneDeriving InstanceSigs AllowAmbiguousTypes DataKinds DeriveGeneric FlexibleContexts FlexibleInstances GADTs ExistentialQuantification UndecidableInstances LambdaCase MultiParamTypeClasses PartialTypeSignatures PatternSynonyms RankNTypes ScopedTypeVariables TypeApplications TypeInType TypeOperators ViewPatterns
+  default-extensions: StandaloneDeriving FlexibleContexts FlexibleInstances GADTs LambdaCase MultiParamTypeClasses PartialTypeSignatures PatternSynonyms RankNTypes ScopedTypeVariables TypeApplications TypeInType TypeOperators ViewPatterns
   GHC-Options:    -Wall
 
 Test-Suite Htriple-test
@@ -48,5 +48,5 @@ Test-Suite Htriple-test
       TestUtil
       Operation
   default-language:    Haskell2010
-  default-extensions: StandaloneDeriving InstanceSigs AllowAmbiguousTypes DataKinds DeriveGeneric FlexibleContexts FlexibleInstances GADTs ExistentialQuantification UndecidableInstances LambdaCase MultiParamTypeClasses PartialTypeSignatures PatternSynonyms RankNTypes ScopedTypeVariables TypeApplications TypeInType TypeOperators ViewPatterns
+  default-extensions: FlexibleContexts FlexibleInstances GADTs LambdaCase MultiParamTypeClasses PartialTypeSignatures PatternSynonyms RankNTypes ScopedTypeVariables TypeApplications TypeInType TypeOperators ViewPatterns
   GHC-Options:    -Wunused-imports
