@@ -1,6 +1,9 @@
 module OperationTests where
 
-import Distribution.TestSuite (TestInstance)
+import Distribution.TestSuite
+  ( Test(Test)
+  , TestInstance
+  )
 import TestUtil
 
 import Pred (val, var)
@@ -25,6 +28,9 @@ y = var "y"
 py = "y"
 z = var "z"
 pz = "z"
+
+tests :: IO [Test]
+tests = return $ map Test operationTests
 
 operationTests :: [TestInstance]
 operationTests

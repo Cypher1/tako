@@ -1,7 +1,10 @@
 module TripleTests where
 
 import Prelude hiding (showList)
-import Distribution.TestSuite (TestInstance)
+import Distribution.TestSuite
+  ( Test(Test)
+  , TestInstance
+  )
 import TestUtil
 
 import Util (showList)
@@ -46,6 +49,9 @@ isa' = pred3 isa
 
 varXNeZero = ne' x zero
 xNeY = ne' x y
+
+tests :: IO [Test]
+tests = return $ map Test tripleTests
 
 tripleTests :: [TestInstance]
 tripleTests

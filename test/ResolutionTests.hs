@@ -1,6 +1,9 @@
 module ResolutionTests where
 
-import Distribution.TestSuite (TestInstance)
+import Distribution.TestSuite
+  ( Test(Test)
+  , TestInstance
+  )
 import TestUtil
 
 import Pred (val, var, Pred, Atom(Predicate), solutions)
@@ -44,6 +47,9 @@ isa' = pred3 isa
 
 varXNeZero = ne' x zero
 xNeY = ne' x y
+
+tests :: IO [Test]
+tests = return $ map Test resolutionTests
 
 resolutionTests :: [TestInstance]
 resolutionTests
