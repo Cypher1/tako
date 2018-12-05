@@ -5,7 +5,7 @@ import Distribution.TestSuite (TestInstance)
 import TestUtil
 
 import Util (showList)
-import Pred (exists, val, var, toPred, Pred (Pred), Atom(Predicate), solutions, solutionsAndErrors, Assignment, System(Partial))
+import Pred (exists, val, var, toPred, Pred, Atom)
 import Triple
 import Operation (Instruction(T), TriOp(Div, Sub))
 import qualified Data.Set as S
