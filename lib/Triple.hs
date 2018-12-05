@@ -2,7 +2,8 @@ module Triple where
 
 import Prelude hiding (showList)
 import Util (showList)
-import Pred (Pred, State, Requirements, solutionsAndErrors, filterErrors, ignoreErrors, Assignment, Val, Var, ResolutionFailure)
+import Pred (Pred, Assignment, Val, Var)
+import Resolution (State, Requirements, solutionsAndErrors, filterErrors, ignoreErrors, ResolutionFailure)
 import Operation (Op)
 import qualified Data.Set as S
 
