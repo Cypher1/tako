@@ -67,7 +67,6 @@ update accepted extension
       [_sol] -> Right $ mergeTriples accepted extension -- TODO(jopra): This discards the solution's requirements
       sols -> Left $ Failure (Underspecified sols accepted extension) errors'
   where
-    -- TODO(jopra): Also return some debug info
     solutions' = ignoreErrors possibles
     errors' = filterErrors possibles
     possibles = solutionsAndErrors state requirements

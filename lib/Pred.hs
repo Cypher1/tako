@@ -73,7 +73,11 @@ type State = Set (Pred Val)
 type Requirements = Set (Pred Var)
 
 data ResolutionFailure
-  = VariableAssignmentContradiction
+  = VariableNotResolved
+    { variable :: (Atom Var)
+    , in_ :: (Assignment Val)
+    }
+  | VariableAssignmentContradiction
     { variable :: (Atom Var)
     , value :: (Atom Val)
     , in_ :: (Assignment Val)
@@ -152,6 +156,19 @@ toMap (Pred atoms) = M.mapKeysMonotonic show atoms
 toPred :: [(String, Atom a)] -> Pred a
 toPred xs = Pred $ M.fromList $ map (onPair Variable id) xs
 
+isVar :: Atom Var -> Bool
+isVar (Variable _) = True
+isVar _ = False
+
+getVarsFrom :: Pred Var -> [Atom Var]
+getVarsFrom (Pred vs) = filter isVar $ M.elems vs
+
+requireDefined :: Atom Var -> Resolution -> Resolution
+requireDefined _var (Error err) = Error err
+requireDefined var' (Partial par)
+  | M.lookup var' par == Nothing = Error $ VariableNotResolved var' par
+  | otherwise = (Partial par)
+
 exists :: Atom a -> Pred a
 exists v = toPred [("exists", v)]
 
@@ -164,7 +181,9 @@ solutions known preds = ignoreErrors $ solutionsAndErrors known preds
 -- TODO(jopra): Should check that each value is defined (not just used)
 solutionsAndErrors :: State -> Requirements -> [Resolution]
 solutionsAndErrors known preds
-   = resolution known (S.toList preds) mempty
+   = map (\res -> S.foldr requireDefined res vars) $ resolution known (S.toList preds) mempty
+     where
+       vars = S.fromList $ concatMap getVarsFrom $ S.toList preds
 
 -- Finds assignments (that are specialisations of the input assignment) for which the Preds are resolvable.
 resolution :: State -> [Pred Var] -> Resolution -> [Resolution]
@@ -192,9 +211,7 @@ restrictAtoms k@(Value k') v@(Value v') ass
        then ass
        else (\ass' -> Error $ ConcreteMismatch { variable = k, value = v, in_ = ass' }) =<< ass
 restrictAtoms (Predicate vs) (Predicate xs) ass = assignmentFromPred vs xs <> ass
-restrictAtoms k@(Variable _) v@(Value _) ass = restrictOne k v ass
-restrictAtoms (Variable k) (Predicate (Pred xs)) ass
-  = M.foldrWithKey (\(Variable v)->restrictOne (Variable$k<>"."<>v)) ass xs
+restrictAtoms k@(Variable _) v ass = restrictOne k v ass
 restrictAtoms v@(Value _) (Predicate p) ass
   = (\ass' -> Error $ VariableVsPredicateMismatch {predicate = p, variable = v, in_ = ass'}) =<< ass
 restrictAtoms (Predicate p) v@(Value _) ass
