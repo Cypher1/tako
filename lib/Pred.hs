@@ -1,6 +1,6 @@
 module Pred where
 
-import Util (showMap, onPair)
+import Util (showMap)
 import qualified Data.Set as S
 import Data.Set (Set)
 import qualified Data.Map as M
@@ -150,12 +150,6 @@ val = Value
 var :: String -> Atom Var
 var = Variable
 
-toMap :: Pred a -> Map Sym (Atom a)
-toMap (Pred atoms) = M.mapKeysMonotonic show atoms
-
-toPred :: [(String, Atom a)] -> Pred a
-toPred xs = Pred $ M.fromList $ map (onPair Variable id) xs
-
 isVar :: Atom Var -> Bool
 isVar (Variable _) = True
 isVar _ = False
@@ -168,9 +162,6 @@ requireDefined _var (Error err) = Error err
 requireDefined var' (Partial par)
   | M.lookup var' par == Nothing = Error $ VariableNotResolved var' par
   | otherwise = Partial par
-
-exists :: Atom a -> Pred a
-exists v = toPred [("exists", v)]
 
 emptyState :: State
 emptyState = S.empty
@@ -218,10 +209,10 @@ restrictAtoms (Predicate p) v@(Value _) ass
   = (\ass' -> Error $ ValueVsPredicateMismatch {predicate_match = p, value = v, in_ = ass'}) =<< ass
 
 assignmentFromPred :: Pred Var -> Pred Val -> Resolution
-assignmentFromPred pred' poss
-  | M.keysSet (toMap pred') /= M.keysSet (toMap poss) = Error $
-    PredicatesOfDifferentShapes { requirement = pred', possible_solution = poss}
+assignmentFromPred (Pred pred') (Pred poss)
+  | M.keysSet pred' /= M.keysSet poss = Error $
+    PredicatesOfDifferentShapes { requirement = Pred pred', possible_solution = Pred poss}
   | otherwise = ass''
   where
     ass'' = foldr (uncurry restrictAtoms) mempty ass'
-    ass' = M.intersectionWithKey (\_ pr po -> (pr, po)) (toMap pred') (toMap poss)
+    ass' = M.intersectionWithKey (\_ pr po -> (pr, po)) pred' poss

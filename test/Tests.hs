@@ -5,7 +5,7 @@ import TripleTests (tripleTests)
 import ResolutionTests (resolutionTests)
 import Distribution.TestSuite
   ( Test(Test)
-  , TestInstance (TestInstance)
+  , TestInstance
   )
 
 tests :: IO [Test]
