@@ -74,32 +74,32 @@ type Requirements = Set (Pred Var)
 
 data ResolutionFailure
   = VariableNotResolved
-    { variable :: (Atom Var)
-    , in_ :: (Assignment Val)
+    { variable :: Atom Var
+    , in_ :: Assignment Val
     }
   | VariableAssignmentContradiction
-    { variable :: (Atom Var)
-    , value :: (Atom Val)
-    , in_ :: (Assignment Val)
+    { variable :: Atom Var
+    , value :: Atom Val
+    , in_ :: Assignment Val
     }
   | ConcreteMismatch
-    { variable :: (Atom Var)
-    , value :: (Atom Val)
-    , in_ :: (Assignment Val)
+    { variable :: Atom Var
+    , value :: Atom Val
+    , in_ :: Assignment Val
     }
   | VariableVsPredicateMismatch
-    { variable :: (Atom Var)
-    , predicate :: (Pred Val)
-    , in_ :: (Assignment Val)
+    { variable :: Atom Var
+    , predicate :: Pred Val
+    , in_ :: Assignment Val
     }
   | ValueVsPredicateMismatch
-    { predicate_match :: (Pred Var)
-    , value :: (Atom Val)
-    , in_ :: (Assignment Val)
+    { predicate_match :: Pred Var
+    , value :: Atom Val
+    , in_ :: Assignment Val
     }
   | PredicatesOfDifferentShapes
-    { requirement :: (Pred Var)
-    , possible_solution :: (Pred Val)
+    { requirement :: Pred Var
+    , possible_solution :: Pred Val
     }
     deriving (Eq, Ord, Show)
 
@@ -167,7 +167,7 @@ requireDefined :: Atom Var -> Resolution -> Resolution
 requireDefined _var (Error err) = Error err
 requireDefined var' (Partial par)
   | M.lookup var' par == Nothing = Error $ VariableNotResolved var' par
-  | otherwise = (Partial par)
+  | otherwise = Partial par
 
 exists :: Atom a -> Pred a
 exists v = toPred [("exists", v)]
