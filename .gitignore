@@ -2,3 +2,5 @@
 dist
 dist-new
 dist-newstyle
+deps.dot
+deps.png

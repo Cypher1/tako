@@ -1,17 +1,18 @@
 module TestUtil where
 import Distribution.TestSuite
-  ( Test(Test)
-  , TestInstance (TestInstance, run, name, tags, options, setOption)
-  , Progress(Finished, Progress)
+  ( TestInstance (TestInstance, run, name, tags, options, setOption)
+  , Progress(Finished)
   , Result(Fail, Pass))
 
 import Debug.Trace
 import Data.Either (isLeft, isRight)
 import qualified Data.Map as M
-import qualified Data.Set as S
 
-import Pred (Assignment, Atom, Var, Val, State, System (Partial), Pred (Pred))
-import Operation (Sym)
+import Util (onPair)
+import Pred (Assignment, Var, Val, Pred(Pred), Atom(Variable))
+
+toPred :: [(String, Atom a)] -> Pred a
+toPred xs = Pred $ M.fromList $ map (onPair Variable id) xs
 
 -- Test types
 prints :: Show a => a -> Bool
@@ -52,3 +53,6 @@ fails = isLeft
 
 passes :: Either a b -> Bool
 passes = isRight
+
+exists :: Atom a -> Pred a
+exists v = toPred [("exists", v)]
