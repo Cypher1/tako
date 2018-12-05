@@ -8,8 +8,9 @@ import Distribution.TestSuite
 import Debug.Trace
 import Data.Either (isLeft, isRight)
 import qualified Data.Map as M
+import qualified Data.Set as S
 
-import Pred (Assignment, Atom, Var, Val)
+import Pred (Assignment, Atom, Var, Val, State, System (Partial), Pred (Pred))
 import Operation (Sym)
 
 -- Test types

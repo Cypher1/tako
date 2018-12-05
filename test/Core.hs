@@ -10,9 +10,10 @@ import Test.QuickCheck
 import TestUtil
 
 import Util (showList)
-import Pred (exists, val, var, toPred, Pred, Atom(Predicate), solutions, Assignment)
+import Pred (exists, val, var, toPred, Pred (Pred), Atom(Predicate), solutions, solutionsAndErrors, Assignment, System(Partial))
 import Triple
 import Operation
+import qualified Data.Map as M
 import qualified Data.Set as S
 
 tests :: IO [Test]
@@ -180,8 +181,7 @@ resolutionTests
       $ solutions (S.fromList [pred3 isa (Predicate $ pred3 cons a b) list])
         $ S.fromList [pred3 isa (Predicate $ pred3 cons x y) list]
   , mkTest "Resolution correct on nested 1-pred"
-      (hasSingleSolution [(var "x.#0", a), (var "x.rel", cons), (var "x.#1", b)])
-      -- (==[[(x, Predicate [a, cons, b])]])
+      (hasSingleSolution [(var "x", Predicate $ toPred [("#0", a), ("rel", cons), ("#1", b)])])
       $ solutions (S.fromList [pred3 isa (Predicate $pred3 cons a b) list])
         $ S.fromList [pred3 isa x list]
   --TODO(jopra): Add tests for pattern matching (nested predicates)
