@@ -8,13 +8,10 @@ import Distribution.TestSuite
 import TestUtil
 
 import Util (showList)
-import Pred (val, var, Pred, Atom)
+import Pred (val, var)
 import Triple
 import Operation (Instruction(T), TriOp(Div, Sub))
 import qualified Data.Set as S
-
-pred3 :: Atom a -> Atom a -> Atom a -> Pred a
-pred3 r x y = toPred [("#0", x), ("rel", r), ("#1", y)]
 
 -- Constants
 zero = val "0"
