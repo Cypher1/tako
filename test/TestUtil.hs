@@ -14,6 +14,9 @@ import Pred (Assignment, Var, Val, Pred(Pred), Atom(Variable))
 toPred :: [(String, Atom a)] -> Pred a
 toPred xs = Pred $ M.fromList $ map (onPair Variable id) xs
 
+pred3 :: Atom a -> Atom a -> Atom a -> Pred a
+pred3 r x y = toPred [("#0", x), ("rel", r), ("#1", y)]
+
 -- Test types
 prints :: Show a => a -> Bool
 prints = (/= "").show

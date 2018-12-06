@@ -6,13 +6,10 @@ import Distribution.TestSuite
   )
 import TestUtil
 
-import Pred (val, var, Pred, Atom(Predicate), solutions)
+import Pred (val, var, Atom(Predicate), solutions)
 import Triple (addPre, emp, func)
 import Operation (Instruction(T), TriOp(Div, Sub))
 import qualified Data.Set as S
-
-pred3 :: Atom a -> Atom a -> Atom a -> Pred a
-pred3 r x y = toPred [("#0", x), ("rel", r), ("#1", y)]
 
 -- Constants
 zero = val "0"
@@ -89,7 +86,6 @@ resolutionTests
         $ S.fromList [exists x, exists y, xNeY]
   , mkTest "Resolution fails on nested 1-pred without match"
       hasNoSolution
-      -- (==[[(x, Predicate [a, cons, b])]])
       $ solutions (S.fromList [pred3 ne (Predicate $pred3 cons a b) list])
         $ S.fromList [pred3 isa x list]
   , mkTest "Resolution fails on 2-pred with variable"
