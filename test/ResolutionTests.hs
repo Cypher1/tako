@@ -6,7 +6,8 @@ import Distribution.TestSuite
   )
 import TestUtil
 
-import Pred (val, var, Atom(Predicate), solutions)
+import Pred (val, var, Atom(Predicate))
+import Resolution (solutions)
 import Triple (addPre, emp, func)
 import Operation (Instruction(T), TriOp(Div, Sub))
 import qualified Data.Set as S
