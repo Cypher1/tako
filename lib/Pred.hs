@@ -1,6 +1,6 @@
 module Pred where
 
-import Util (showMap, showSet)
+import Util (try, showMap, showSet)
 import qualified Data.Map as M
 import Data.Map (Map)
 import Data.Set (Set)
@@ -44,7 +44,6 @@ instance Ord (Atom Val) where
   compare (Rule _ _) (Value _) = LT
   compare (Rule _ _) (Predicate _) = LT
   compare (Rule conds1 outs1) (Rule conds2 outs2) = compare (conds1, outs1) (conds2, outs2)
-
 
 instance Ord (Atom Var) where
   compare (Value p) (Value q) = compare p q
