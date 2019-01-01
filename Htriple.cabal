@@ -31,6 +31,20 @@ executable Htriple
   default-extensions: StandaloneDeriving FlexibleContexts FlexibleInstances GADTs LambdaCase MultiParamTypeClasses PartialTypeSignatures PatternSynonyms RankNTypes ScopedTypeVariables TypeApplications TypeInType TypeOperators ViewPatterns
   GHC-Options:    -Wall -O2
 
+executable Lambda
+  hs-source-dirs:      lib, app
+  main-is:             Lambda.hs
+  other-modules:
+      LambdaCalculus
+  default-language:    Haskell2010
+  build-depends:
+      base >= 4.9 && < 5,
+      containers,
+      haskeline >= 0.7 && < 0.8,
+      parsec >= 3.1 && < 3.2
+  default-extensions: StandaloneDeriving FlexibleContexts FlexibleInstances GADTs LambdaCase MultiParamTypeClasses PartialTypeSignatures PatternSynonyms RankNTypes ScopedTypeVariables TypeApplications TypeInType TypeOperators ViewPatterns
+  GHC-Options:    -Wall -O2
+
 Test-Suite Htriple-OperationTests
   type:       detailed-0.9
   hs-source-dirs:      lib, test
