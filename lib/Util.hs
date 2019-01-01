@@ -1,13 +1,10 @@
 module Util where
 
-import Data.Either (isLeft, isRight)
-
-
-fails :: Either a b -> Bool
-fails = isRight
-
-passes :: Either a b -> Bool
-passes = isLeft
+import Prelude hiding (showList)
+import qualified Data.Map as M
+import Data.Map (Map)
+import qualified Data.Set as S
+import Data.Set (Set)
 
 indent :: String -> String
 indent x = unlines $ map ("  "++) $ lines x
@@ -23,20 +20,29 @@ try f a (Left b) = f a b
 try f a (Right d) = Right d
 
 showEither :: (Show a, Show b) => Either a b -> String
-showEither (Left a) = show a
 showEither (Right a) = show a
+showEither (Left a) = show a
 
 printEither :: (Show a, Show b) => Either a b -> IO ()
-printEither (Left a) = print a
 printEither (Right a) = print a
+printEither (Left a) = print a
 
 showList :: Show a => [a] -> String
 showList xs = drop (length joiner) $ concatMap (\x->joiner++show x) xs
   where
     joiner = ", "
 
-labelL :: Show a => String -> a -> String
-labelL l a = l ++ ":\t" ++ show a ++ "\n"
+showSet :: Show a => Set a -> String
+showSet = showList . S.toList
 
-printL :: Show a => String -> a -> IO ()
-printL label val = putStr $ labelL label val
+showMap :: (Show a, Show b) => Map a b -> String
+showMap xs = drop (length joiner) $ concatMap (\(k, v)->joiner++show k++k_to_v++show v) $ M.toList xs
+  where
+    joiner = ", "
+    k_to_v = ":"
+
+onPair :: (a -> b) -> (c -> d) -> (a, c) -> (b, d)
+onPair f g (a, c) = (f a, g c)
+
+boundedAll :: (Enum a, Bounded a) => [a]
+boundedAll = [minBound..maxBound]
