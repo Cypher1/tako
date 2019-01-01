@@ -19,29 +19,88 @@ executable Htriple
   other-modules:
       Triple
       Pred
+      Resolution
       Util
       Operation
+      InternalInterpreter
   default-language:    Haskell2010
   build-depends:
-      base >= 4.7 && < 5,
+      base >= 4.9 && < 5,
       containers,
       haskeline >= 0.7 && < 0.8
-  default-extensions: StandaloneDeriving InstanceSigs AllowAmbiguousTypes DataKinds DeriveGeneric FlexibleContexts FlexibleInstances GADTs ExistentialQuantification UndecidableInstances LambdaCase MultiParamTypeClasses PartialTypeSignatures PatternSynonyms RankNTypes ScopedTypeVariables TypeApplications TypeInType TypeOperators ViewPatterns
+  default-extensions: StandaloneDeriving FlexibleContexts FlexibleInstances GADTs LambdaCase MultiParamTypeClasses PartialTypeSignatures PatternSynonyms RankNTypes ScopedTypeVariables TypeApplications TypeInType TypeOperators ViewPatterns
+  GHC-Options:    -Wall -O2
 
-Test-Suite Htriple-test
+executable Lambda
+  hs-source-dirs:      lib, app
+  main-is:             Lambda.hs
+  other-modules:
+      LambdaCalculus
+  default-language:    Haskell2010
+  build-depends:
+      base >= 4.9 && < 5,
+      containers,
+      haskeline >= 0.7 && < 0.8,
+      parsec >= 3.1 && < 3.2
+  default-extensions: StandaloneDeriving FlexibleContexts FlexibleInstances GADTs LambdaCase MultiParamTypeClasses PartialTypeSignatures PatternSynonyms RankNTypes ScopedTypeVariables TypeApplications TypeInType TypeOperators ViewPatterns
+  GHC-Options:    -Wall -O2
+
+Test-Suite Htriple-OperationTests
   type:       detailed-0.9
   hs-source-dirs:      lib, test
-  test-module:         Core
+  test-module:         OperationTests
   build-depends:
-      base >= 4.7 && < 5,
+      base >= 4.9 && < 5,
       containers,
       Cabal >= 1.9.2,
       QuickCheck >= 2.12 && < 2.13
   other-modules:
       Triple
       Pred
+      Resolution
       Util
       TestUtil
       Operation
   default-language:    Haskell2010
-  default-extensions: StandaloneDeriving InstanceSigs AllowAmbiguousTypes DataKinds DeriveGeneric FlexibleContexts FlexibleInstances GADTs ExistentialQuantification UndecidableInstances LambdaCase MultiParamTypeClasses PartialTypeSignatures PatternSynonyms RankNTypes ScopedTypeVariables TypeApplications TypeInType TypeOperators ViewPatterns
+  default-extensions: FlexibleContexts FlexibleInstances GADTs LambdaCase MultiParamTypeClasses PartialTypeSignatures PatternSynonyms RankNTypes ScopedTypeVariables TypeApplications TypeInType TypeOperators ViewPatterns
+  GHC-Options:    -Wunused-imports
+
+Test-Suite Htriple-ResolutionTests
+  type:       detailed-0.9
+  hs-source-dirs:      lib, test
+  test-module:         ResolutionTests
+  build-depends:
+      base >= 4.9 && < 5,
+      containers,
+      Cabal >= 1.9.2,
+      QuickCheck >= 2.12 && < 2.13
+  other-modules:
+      Triple
+      Pred
+      Resolution
+      Util
+      TestUtil
+      Operation
+  default-language:    Haskell2010
+  default-extensions: FlexibleContexts FlexibleInstances GADTs LambdaCase MultiParamTypeClasses PartialTypeSignatures PatternSynonyms RankNTypes ScopedTypeVariables TypeApplications TypeInType TypeOperators ViewPatterns
+  GHC-Options:    -Wunused-imports
+
+Test-Suite Htriple-TripleTests
+  type:       detailed-0.9
+  hs-source-dirs:      lib, test
+  test-module:         TripleTests
+  build-depends:
+      base >= 4.9 && < 5,
+      containers,
+      Cabal >= 1.9.2,
+      QuickCheck >= 2.12 && < 2.13
+  other-modules:
+      Triple
+      Pred
+      Resolution
+      Util
+      TestUtil
+      Operation
+  default-language:    Haskell2010
+  default-extensions: FlexibleContexts FlexibleInstances GADTs LambdaCase MultiParamTypeClasses PartialTypeSignatures PatternSynonyms RankNTypes ScopedTypeVariables TypeApplications TypeInType TypeOperators ViewPatterns
+  GHC-Options:    -Wunused-imports

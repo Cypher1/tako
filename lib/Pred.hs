@@ -1,87 +1,104 @@
 module Pred where
-import Debug.Trace (trace)
 
-import Util (showList, try)
-import Data.Either (rights)
-import qualified Data.Set as S
+import Util (showMap, showSet)
+import qualified Data.Map as M
+import Data.Map (Map)
 import Data.Set (Set)
 
-import Data.List ((\\))
-import Operation (Sym (S), Instruction, Op)
+import Operation (Sym)
 
-data Atom
-  = Value Sym -- a particular symbol
-  | Variable Sym -- a variable that can match any symbol (in its context)
-  | Predicate Pred
-  deriving (Eq, Ord)
+data Var
+data Val
 
-instance Show Atom where
-  show (Value s) = show s
-  show (Variable s) = "{"++show s++"}"
-  show (Predicate atoms) = "("++Util.showList atoms++")"
+data Atom a where
+  Value :: Sym -> Atom a  -- a particular symbol
+  Variable :: Sym -> Atom Var -- a variable that can match any symbol (in its context)
+  Predicate :: Pred a -> Atom a -- either something to be solved or known
+  Rule :: Set (Pred Var) -> Set (Pred Var) -> Atom a -- A sequent
 
-type Pred = [Atom]
+-- TODO(jopra): Represent Forall and Exists as:
+-- Forall :: Atom Var -> Atom Var -> Atom Val
+-- Exists :: Atom Var -> Atom Var -> Atom Val
+-- This should allow Htriples to be specified over Atom Val's and enable quantification for the type system.
 
--- TODO(jopra): Consider new typing pre vs post conditions to ensure they aren't mixed up
-exists :: Sym -> Pred
-exists v = [Value v]
+instance Eq (Atom Val) where
+  Value p == Value q = p == q
+  Predicate xs == Predicate ys = xs == ys
+  Rule conds1 outs1 == Rule conds2 outs2 = (conds1, outs1) == (conds2, outs2)
+  _ == _ = False
 
-creates :: Sym -> Pred
-creates v = [Value v]
+instance Eq (Atom Var) where
+  Variable p == Variable q = p == q
+  Value p == Value q = p == q
+  Predicate xs == Predicate ys = xs == ys
+  Rule conds1 outs1 == Rule conds2 outs2 = (conds1, outs1) == (conds2, outs2)
+  _ == _ = False
 
-type State = Set Pred
-emptyState :: State
-emptyState = S.empty
+instance Ord (Atom Val) where
+  compare (Value p) (Value q) = compare p q
+  compare (Value _) (Predicate _) = GT
+  compare (Value _) (Rule _ _) = GT
+  compare (Predicate _) (Value _) = LT
+  compare (Predicate p) (Predicate q) = compare p q
+  compare (Predicate _) (Rule _ _) = GT
+  compare (Rule _ _) (Value _) = LT
+  compare (Rule _ _) (Predicate _) = LT
+  compare (Rule conds1 outs1) (Rule conds2 outs2) = compare (conds1, outs1) (conds2, outs2)
 
-type Assignment = [(Sym, Atom)]
--- TODO(jopra): Use hash mapping
 
-emptyAssignment :: Assignment
-emptyAssignment = []
+instance Ord (Atom Var) where
+  compare (Value p) (Value q) = compare p q
+  compare (Value _) (Variable _) = GT
+  compare (Value _) (Predicate _) = GT
+  compare (Value _) (Rule _ _) = GT
+  compare (Variable _) (Value _) = LT
+  compare (Variable p) (Variable q) = compare p q
+  compare (Variable _) (Predicate _) = GT
+  compare (Variable _) (Rule _ _) = GT
+  compare (Predicate _) (Variable _) = LT
+  compare (Predicate _) (Value _) = LT
+  compare (Predicate p) (Predicate q) = compare p q
+  compare (Predicate _) (Rule _ _) = GT
+  compare (Rule _ _) (Variable _) = LT
+  compare (Rule _ _) (Value _) = LT
+  compare (Rule _ _) (Predicate _) = LT
+  compare (Rule conds1 outs1) (Rule conds2 outs2) = compare (conds1, outs1) (conds2, outs2)
 
--- TODO(jopra): Should return a proper error type, too much work is being done here
--- TODO(jopra): Should check that each value is defined (not just used)
-solutions :: State -> State -> [Assignment]
-solutions known preds
-   = resolution known (S.toList preds) emptyAssignment
+instance Show (Atom a) where
+  show (Value s) = s
+  show (Variable s) = s++"?"
+  show (Predicate pred') = show pred'
+  show (Rule conds outs) = showSet conds++" |- "++show outs
 
--- Finds assignments (that are specialisations of the input assignment) for which the Preds are resolvable.
-resolution :: State -> [Pred] -> Assignment -> [Assignment]
-resolution known [] ass = [ass]
-resolution known (p:ps) ass
-  = [sol | ass' <- assignments_with_p, sol <- resolution known ps ass']
-    where
-      assignments_with_p = rights $ map (restrict ass) $ assignments known p
+type Assignment a = Map (Atom Var) (Atom a)
+data Pred a = Pred (Assignment a)
 
-restrict :: Assignment -> Assignment -> Either () Assignment --TODO(jopra): Report errors?
-restrict xs
-  = foldr (try restrictOne) (Right xs)
+instance Eq (Pred Val) where
+  Pred xs == Pred ys = xs == ys
 
-restrictOne :: (Sym, Atom) -> Assignment -> Either () Assignment
--- TODO(jopra): remove repetitions
-restrictOne (k, v) xs
-  | null v' = Right ((k, v):xs)
-  | all (==v) v' = Right xs
-  | otherwise = Left ()
-  where
-    v' = map snd $ filter ((==k).fst) xs
+instance Eq (Pred Var) where
+  Pred xs == Pred ys = xs == ys
 
-restrictAtoms :: (Atom, Atom) -> Assignment -> Either () Assignment
-restrictAtoms (Value k, Value v) ass
-  | k == v = Right ass
-  | otherwise = Left ()
-restrictAtoms (Variable k, Value v) ass = restrictOne (k, Value v) ass --TODO(handle this for Preds
-restrictAtoms (Predicate vs, Predicate xs) ass = try restrict ass (restrictPred vs xs)
-restrictAtoms (Variable k, Predicate xs) ass = restrictAtoms (Predicate (ks' k), Predicate xs) ass
-  where
-    ks' (S k')= [Variable $ S(k'++show i)|i<-[0..length xs-1]]
-restrictAtoms (k, v) ass = trace ("Unimplemented restrictAtoms for: k:"++show k ++" v:"++ show v) $ Left ()
+instance Ord (Pred Val) where
+  compare (Pred xs) (Pred ys) = compare xs ys
 
-restrictPred :: Pred -> Pred -> Either () Assignment
-restrictPred pred poss
-  | length pred /= length poss = Left ()
-  | otherwise = foldr (try restrictAtoms) (Right []) $ zip pred poss
+instance Ord (Pred Var) where
+  compare (Pred xs) (Pred ys) = compare xs ys
 
-assignments :: State -> Pred -> [Assignment]
-assignments state pred
-  = rights $ map (restrictPred pred) $ S.toList state
+instance Show (Pred a) where
+  show (Pred atoms) = case M.lookup (Variable "rel") atoms of
+                        Just name -> show name++"("++Util.showMap atoms++")" -- TODO(jopra) hide name from here.
+                        Nothing -> "_("++Util.showMap atoms++")"
+
+val :: String -> Atom a
+val = Value
+
+var :: String -> Atom Var
+var = Variable
+
+isVar :: Atom Var -> Bool
+isVar (Variable _) = True
+isVar _ = False
+
+getVarsFrom :: Pred Var -> [Atom Var]
+getVarsFrom (Pred vs) = filter isVar $ M.elems vs

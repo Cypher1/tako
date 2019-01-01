@@ -1,23 +1,10 @@
 module Operation where
 
+import Util (boundedAll)
+
 import Data.Bits
-import Debug.Trace (trace)
 
-newtype Sym = S String -- deriving (Show, Eq, Ord)
-  deriving (Eq, Ord)
-instance Show Sym where
-  show (S s) = s
-
-instance Read Sym where
-  readsPrec p s = [(S h, t)]
-    where
-      (h,t) = break (==' ') s
-
-val :: String -> Sym
-val = S
-
-var :: String -> Sym
-var = S
+type Sym = String
 
 data Instruction
   = T TriOp Sym Sym Sym
@@ -31,7 +18,7 @@ only a = [(a, "")]
 
 -- TODO(jopra): Ensure array access safety.
 instance Read Instruction where
-  readsPrec p s
+  readsPrec _p s
     | null w = []
     | n == 3 && c == "L" = only $ L (read opa) (read opb)
     | n == 2 && c`elem`map show unops = only $ U (read c) (read opa)
@@ -51,9 +38,6 @@ type Val = Int
 data TriOp = And | Or | Add | Sub | Div | Mul deriving (Show, Read, Eq, Ord, Enum, Bounded)
 data BiOp = Not | New deriving (Show, Read, Eq, Ord, Enum, Bounded)
 data UnOp = Free deriving (Show, Read, Eq, Ord, Enum, Bounded)
-
-boundedAll :: (Enum a, Bounded a) => [a]
-boundedAll = [minBound..maxBound]
 
 unops :: [UnOp]
 unops = boundedAll
