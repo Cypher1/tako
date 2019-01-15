@@ -1,5 +1,5 @@
 module Main where
-import LambdaCalculus (parse, printTm, Term (TmVar, TmAbs, TmApp))
+import LambdaCalculus (parse, printTm, run)
 
 main :: IO ()
 main
