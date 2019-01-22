@@ -1,9 +1,9 @@
 module PredParser where
-import Debug.Trace (trace)
--- import Pred
 
+import Data.List (intersperse)
 import Text.Parsec
--- import Data.List (elemIndex)
+
+import Util (indent)
 
 type Name = String
 type Path = String
@@ -12,7 +12,16 @@ data PTerm
   = TmFuncDef Info PFunc
   | TmFuncCall Info PTerm Scope
   | TmVar Info String
-  deriving Show
+  -- deriving Show
+
+instance Show PTerm where
+  show t = show' t
+    where
+      show' (TmVar _i name) = name
+      show' (TmFuncCall _i name args) = show' name ++ "(\n" ++ args'  ++ ")"
+        where
+          args' = indent $ concat $ intersperse ",\n" $ map (\(name', t) -> name'++ "=" ++ show' t) args
+      show' (TmFuncDef _i func) = show func
 
 type Scope = [(Name, PTerm)]
 
@@ -24,7 +33,13 @@ data PFunc = PFunc
   , post::[PTerm]
   , invar::[PTerm] -- maybe should be called static?
   , defs::Scope -- internal scope
-  } deriving Show
+  }
+
+instance Show PFunc where
+  show f = name f++"("++args'++")\n"++defs'
+    where
+      args' = concat $ intersperse ", " $ map show $ args f
+      defs' = indent $ concat $ intersperse ",\n" $ map (\(name', t) -> name' ++"="++show t) $ defs f
 
 data PModule = PModule Name Path Scope
 
@@ -73,7 +88,7 @@ newlineIndent = do
 
 parseVarName :: Parsec String u String
 parseVarName = do
-  h <- trace ">> parseVarName" letter
+  h <- letter
   ts <- many $ letter <|> digit <|> char '_'
   return (h:ts)
 
@@ -96,13 +111,12 @@ parseAssignment = do
   return (name', term')
 
 parseFuncCallArguments :: Parsec String BoundContext [(Name, PTerm)]
-parseFuncCallArguments = trace ">> parseFuncCallArguments" $
-  sepBy parseAssignment $ withWhiteSpace $ char ','
+parseFuncCallArguments = sepBy parseAssignment $ withWhiteSpace $ char ','
 
 parseFuncCall :: PParser
 parseFuncCall = do
   name' <- try $ do
-    name'' <- trace ">> parseFuncCall" parseVar
+    name'' <- parseVar
     _ <- openParen
     return name''
   args' <- parseFuncCallArguments
@@ -138,7 +152,7 @@ parseFuncDef = do
 
 parseFuncDefTerm :: PParser
 parseFuncDefTerm = do
-  func' <- trace ">> parseFuncDefTerm" parseFuncDef
+  func' <- parseFuncDef
   return $ TmFuncDef (info func') func'
 
 parseTerm :: PParser
