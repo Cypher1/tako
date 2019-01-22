@@ -5,9 +5,10 @@ import qualified Data.Map as M
 import Data.Map (Map)
 import qualified Data.Set as S
 import Data.Set (Set)
+import Data.List (intersperse)
 
 indent :: String -> String
-indent x = unlines $ map ("  "++) $ lines x
+indent x = concat $ intersperse "\n" $ map ("  "++) $ lines x
 
 line :: Show a => a -> String
 line a = indent $ show a
