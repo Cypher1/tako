@@ -70,7 +70,7 @@ instance Show (Atom a) where
   show (Rule conds outs) = showSet conds++" |- "++show outs
 
 type Assignment a = Map (Atom Var) (Atom a)
-data Pred a = Pred (Assignment a)
+newtype Pred a = Pred (Assignment a)
 
 instance Eq (Pred Val) where
   Pred xs == Pred ys = xs == ys
