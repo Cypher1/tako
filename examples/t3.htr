@@ -1,0 +1,21 @@
+divide(n, d)
+  return = div(
+    n=n,
+    d=d
+  )
+
+main()
+  do=sequence(
+    a1=print(
+      out=divide(
+        n=n13,
+        d=n2
+      )
+    ),
+    a2=print(
+      out=divide(
+        n=f13,
+        d=f2
+      )
+    )
+  )
