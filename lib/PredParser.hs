@@ -18,7 +18,7 @@ instance Show PTerm where
   show t = show' t
     where
       show' (TmVar _i name) = name
-      show' (TmFuncCall _i name args) = show' name ++ "(\n" ++ args'  ++ ")"
+      show' (TmFuncCall _i name args) = show' name ++ "(\n" ++ args'  ++ "\n)"
         where
           args' = indent $ concat $ intersperse ",\n" $ map (\(name', t) -> name'++ "=" ++ show' t) args
       show' (TmFuncDef _i func) = show func
