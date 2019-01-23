@@ -15,13 +15,11 @@ data PTerm
   -- deriving Show
 
 instance Show PTerm where
-  show t = show' t
+  show (TmVar _i name) = name
+  show (TmFuncCall _i name args) = show name ++ "(\n" ++ args'  ++ "\n)"
     where
-      show' (TmVar _i name) = name
-      show' (TmFuncCall _i name args) = show' name ++ "(\n" ++ args'  ++ "\n)"
-        where
-          args' = indent $ concat $ intersperse ",\n" $ map (\(name', t) -> name'++ "=" ++ show' t) args
-      show' (TmFuncDef _i func) = show func
+      args' = indent $ concat $ intersperse ",\n" $ map (\(name', t) -> name'++ [assignmentOperator] ++ show t) args
+  show (TmFuncDef _i func) = show func
 
 type Scope = [(Name, PTerm)]
 
@@ -36,10 +34,14 @@ data PFunc = PFunc
   }
 
 instance Show PFunc where
-  show f = name f++"("++args'++")\n"++defs'
+  show f = name f++"("++args'++")\n"++pre'++invar'++post'++defs'
     where
+      subclause f lst = indent $ (++"\n") $ concat $ intersperse ",\n" $ map f lst
+      pre' = subclause (\t -> preConditionKeyword++[assignmentOperator]++show t) $ pre f
+      invar' = subclause (\t -> invarConditionKeyword++[assignmentOperator]++show t) $ invar f
+      post' = subclause (\t -> postConditionKeyword++[assignmentOperator]++show t) $ post f
       args' = concat $ intersperse ", " $ map show $ args f
-      defs' = indent $ concat $ intersperse ",\n" $ map (\(name', t) -> name' ++"="++show t) $ defs f
+      defs' = subclause (\(name', t) -> name' ++[assignmentOperator]++show t) $ defs f
 
 data PModule = PModule Name Path Scope
 
@@ -49,6 +51,21 @@ data Info = Info
   } deriving (Show, Eq)
 
 type BoundContext = [Name]
+
+keywords :: [String]
+keywords = [ preConditionKeyword
+           , postConditionKeyword
+           , invarConditionKeyword
+           ]
+
+postConditionKeyword :: String
+postConditionKeyword = "post"
+
+invarConditionKeyword :: String
+invarConditionKeyword = "invar"
+
+preConditionKeyword :: String
+preConditionKeyword = "pre"
 
 infoFrom :: SourcePos -> Info
 infoFrom pos = Info
@@ -72,11 +89,6 @@ closeParen = do
   return ()
 
 withWhiteSpace :: Parsec String u r -> Parsec String u r
-withWhiteSpace exp = do
-  r <- exp
-  _ <- many $ char ' '<|>char '\n'
-  return r
-
 type PParser = Parsec String BoundContext PTerm
 
 newlineIndent :: Parsec String u ()
@@ -84,6 +96,16 @@ newlineIndent = do
   _ <- char '\n'
   _ <- char ' '
   _ <- char ' '
+  return ()
+
+withWhiteSpace exp = do
+  r <- exp
+  _ <- many $ char ' '<|>char '\n'
+  return r
+
+separator :: Parsec String u ()
+separator = do
+  _ <- withWhiteSpace $ char ','
   return ()
 
 parseVarName :: Parsec String u String
@@ -99,55 +121,73 @@ parseVar = do
   return $ TmVar pos name
 
 parseFuncDefArguments :: Parsec String BoundContext [PTerm]
-parseFuncDefArguments = sepBy parseVar (withWhiteSpace (char ','))
+parseFuncDefArguments = sepBy parseVar separator
+
+assignmentOperator :: Char
+assignmentOperator = '='
+
+parseAssignmentOperator :: Parsec String u ()
+parseAssignmentOperator = do
+  _ <- many space
+  _ <- char assignmentOperator
+  _ <- many space
+  return ()
 
 parseAssignment :: Parsec String BoundContext (Name, PTerm)
 parseAssignment = do
-  name' <- parseVarName
-  _ <- many space
-  _ <- char '='
-  _ <- many space
+  name' <- try namedAssignment <|> anonAssignment
   term' <- parseTerm
   return (name', term')
+  where
+    namedAssignment = do
+      name' <- parseVarName
+      parseAssignmentOperator
+      return name'
+    anonAssignment
+      = return "<TODO find name from context>"
 
 parseFuncCallArguments :: Parsec String BoundContext [(Name, PTerm)]
-parseFuncCallArguments = sepBy parseAssignment $ withWhiteSpace $ char ','
+parseFuncCallArguments = sepBy parseAssignment separator
 
 parseFuncCall :: PParser
 parseFuncCall = do
   name' <- try $ do
     name'' <- parseVar
-    _ <- openParen
+    openParen
     return name''
   args' <- parseFuncCallArguments
-  _ <- closeParen
+  closeParen
   pos <- getInfo
   return $ TmFuncCall pos name' args'
 
 
 parseFuncAssignment :: Parsec String BoundContext (Name, PTerm)
 parseFuncAssignment = do
-    _ <- try newlineIndent
+    try newlineIndent
     parseAssignment
 
 parseFuncDef :: Parsec String BoundContext PFunc
 parseFuncDef = do
   name' <- try $ do
     name'' <- parseVarName
-    _ <- openParen
+    openParen
     return name''
   args' <- label parseFuncDefArguments "'(<arg> = <term>)'"
-  _ <- closeParen
+  closeParen
   pos <- getInfo
   defs' <- many parseFuncAssignment
+  let defs'' = filter (not.(`elem`keywords).fst) defs'
+  let preConditions = snd <$> filter ((==preConditionKeyword).fst) defs'
+  let invarConditions = snd <$> filter ((==invarConditionKeyword).fst) defs'
+  let postConditions = snd <$> filter ((==postConditionKeyword).fst) defs'
   _ <- many space
   return $ PFunc { name = name'
                 , info = pos
                 , args = args'
-                , pre = []
-                , post = []
-                , invar = []
-                , defs = defs'
+                , pre = preConditions
+                , post = postConditions
+                , invar = invarConditions
+                , defs = defs''
                 }
 
 parseFuncDefTerm :: PParser

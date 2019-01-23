@@ -6,9 +6,10 @@ divide(n, d)
 
 main()
   pre=all(
-    hasIO(
+    hasConsoleOutput(
       this_thread
-    )
+    ),
+    hasConsoleInput(this_thread)
   )
   do=sequence(
     a1=print(
@@ -24,3 +25,4 @@ main()
       )
     )
   )
+  post=isEmpty(memory)
