@@ -50,7 +50,6 @@ data Info = Info
   , col :: Int
   } deriving (Show, Eq)
 
-type BoundContext = [Name]
 
 keywords :: [String]
 keywords = [ preConditionKeyword
@@ -89,7 +88,7 @@ closeParen = do
   return ()
 
 withWhiteSpace :: Parsec String u r -> Parsec String u r
-type PParser = Parsec String BoundContext PTerm
+type PParser = Parsec String () PTerm
 
 newlineIndent :: Parsec String u ()
 newlineIndent = do
@@ -120,7 +119,7 @@ parseVar = do
   pos <- getInfo
   return $ TmVar pos name
 
-parseFuncDefArguments :: Parsec String BoundContext [PTerm]
+parseFuncDefArguments :: Parsec String () [PTerm]
 parseFuncDefArguments = sepBy parseVar separator
 
 assignmentOperator :: Char
@@ -133,7 +132,7 @@ parseAssignmentOperator = do
   _ <- many space
   return ()
 
-parseAssignment :: Parsec String BoundContext (Name, PTerm)
+parseAssignment :: Parsec String () (Name, PTerm)
 parseAssignment = do
   name' <- try namedAssignment <|> anonAssignment
   term' <- parseTerm
@@ -146,7 +145,7 @@ parseAssignment = do
     anonAssignment
       = return "<TODO find name from context>"
 
-parseFuncCallArguments :: Parsec String BoundContext [(Name, PTerm)]
+parseFuncCallArguments :: Parsec String () [(Name, PTerm)]
 parseFuncCallArguments = sepBy parseAssignment separator
 
 parseFuncCall :: PParser
@@ -161,12 +160,12 @@ parseFuncCall = do
   return $ TmFuncCall pos name' args'
 
 
-parseFuncAssignment :: Parsec String BoundContext (Name, PTerm)
+parseFuncAssignment :: Parsec String () (Name, PTerm)
 parseFuncAssignment = do
     try newlineIndent
     parseAssignment
 
-parseFuncDef :: Parsec String BoundContext PFunc
+parseFuncDef :: Parsec String () PFunc
 parseFuncDef = do
   name' <- try $ do
     name'' <- parseVarName
@@ -202,14 +201,14 @@ parseTerm
   <|> parseVar
 
 
-parseModule :: Parsec String [Name] [PFunc]
+parseModule :: Parsec String () [PFunc]
 parseModule = do
   defs <- many parseFuncDef
   _ <- eof
   return defs
 
-parseWith :: Parsec String [u] a -> String -> Either ParseError a
-parseWith p = runParser p [] "Predicate Parser"
+parseWith :: Parsec String () a -> String -> Either ParseError a
+parseWith p = runParser p () "Predicate Parser"
 
 parse :: String -> Either ParseError [PFunc]
 parse = parseWith parseModule
