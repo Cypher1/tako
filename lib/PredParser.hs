@@ -1,15 +1,16 @@
 module PredParser where
 
 import Data.List (intersperse)
-import Text.Parsec
 
+import Text.ParserCombinators.Parsec
+import Language
 import Util (indent)
 
 type Name = String
 type Path = String
 
 data PTerm
-  = TmFuncDef Info PFunc
+  = TmFuncDef PFunc
   | TmFuncCall Info PTerm Scope
   | TmVar Info String
   -- deriving Show
@@ -18,13 +19,13 @@ instance Show PTerm where
   show (TmVar _i name) = name
   show (TmFuncCall _i name args) = show name ++ "(\n" ++ args'  ++ "\n)"
     where
-      args' = indent $ concat $ intersperse ",\n" $ map (\(name', t) -> name'++ [assignmentOperator] ++ show t) args
-  show (TmFuncDef _i func) = show func
+      args' = indent $ concat $ intersperse ",\n" $ map (\(name', t) -> name'++ assignmentOperator ++ show t) args
+  show (TmFuncDef func) = show func
 
 type Scope = [(Name, PTerm)]
 
 data PFunc = PFunc
-  { name::Name
+  { name::PTerm
   , info::Info
   , args::[PTerm]
   , pre::[PTerm]
@@ -34,14 +35,15 @@ data PFunc = PFunc
   }
 
 instance Show PFunc where
-  show f = name f++"("++args'++")\n"++pre'++invar'++post'++defs'
+  show f = show(name f)++"("++args'++") {\n"++pre'++invar'++post'++defs'++"\n}"
     where
       subclause f lst = indent $ (++"\n") $ concat $ intersperse ",\n" $ map f lst
-      pre' = subclause (\t -> preConditionKeyword++[assignmentOperator]++show t) $ pre f
-      invar' = subclause (\t -> invarConditionKeyword++[assignmentOperator]++show t) $ invar f
-      post' = subclause (\t -> postConditionKeyword++[assignmentOperator]++show t) $ post f
+      keyw kw getter = subclause (\t -> kw++assignmentOperator++show t) $ getter f
+      pre' = keyw preConditionKeyword pre
+      invar' = keyw invarConditionKeyword invar
+      post' = keyw postConditionKeyword post
       args' = concat $ intersperse ", " $ map show $ args f
-      defs' = subclause (\(name', t) -> name' ++[assignmentOperator]++show t) $ defs f
+      defs' = subclause (\(name', t) -> name' ++assignmentOperator++show t) $ defs f
 
 data PModule = PModule Name Path Scope
 
@@ -51,135 +53,68 @@ data Info = Info
   } deriving (Show, Eq)
 
 
-keywords :: [String]
-keywords = [ preConditionKeyword
-           , postConditionKeyword
-           , invarConditionKeyword
-           ]
-
-postConditionKeyword :: String
-postConditionKeyword = "post"
-
-invarConditionKeyword :: String
-invarConditionKeyword = "invar"
-
-preConditionKeyword :: String
-preConditionKeyword = "pre"
-
 infoFrom :: SourcePos -> Info
 infoFrom pos = Info
   { line = sourceLine pos
   , col = sourceColumn pos
   }
 
-getInfo :: Parsec String u Info
+getInfo :: Parser Info
 getInfo = infoFrom <$> getPosition
 
-openParen :: Parsec String u ()
-openParen = do
-  _ <- char '('
-  _ <- many space
-  return ()
-
-closeParen :: Parsec String u ()
-closeParen = do
-  _ <- many space
-  _ <- char ')'
-  return ()
-
-withWhiteSpace :: Parsec String u r -> Parsec String u r
-type PParser = Parsec String () PTerm
-
-newlineIndent :: Parsec String u ()
-newlineIndent = do
-  _ <- char '\n'
-  _ <- char ' '
-  _ <- char ' '
-  return ()
-
-withWhiteSpace exp = do
-  r <- exp
-  _ <- many $ char ' '<|>char '\n'
-  return r
-
-separator :: Parsec String u ()
+separator :: Parser ()
 separator = do
-  _ <- withWhiteSpace $ char ','
+  many space >> char ',' >> many space
   return ()
 
-parseVarName :: Parsec String u String
-parseVarName = do
-  h <- letter
-  ts <- many $ letter <|> digit <|> char '_'
-  return (h:ts)
+listOf :: Parser a -> Parser [a]
+listOf p = sepBy p separator
 
-parseVar :: PParser
-parseVar = do
-  name <- label parseVarName "variable name (e.g. foo1)"
+variable :: Parser PTerm
+variable = do
+  name <- label identifier "variable name (e.g. foo1)"
   pos <- getInfo
   return $ TmVar pos name
 
-parseFuncDefArguments :: Parsec String () [PTerm]
-parseFuncDefArguments = sepBy parseVar separator
-
-assignmentOperator :: Char
-assignmentOperator = '='
-
-parseAssignmentOperator :: Parsec String u ()
-parseAssignmentOperator = do
+assignment :: Parser (Name, PTerm)
+assignment = do
   _ <- many space
-  _ <- char assignmentOperator
-  _ <- many space
-  return ()
-
-parseAssignment :: Parsec String () (Name, PTerm)
-parseAssignment = do
-  name' <- try namedAssignment <|> anonAssignment
-  term' <- parseTerm
+  name' <- identifier
+  many space >> reservedOp assignmentOperator >> many space
+  term' <- statement
   return (name', term')
-  where
-    namedAssignment = do
-      name' <- parseVarName
-      parseAssignmentOperator
-      return name'
-    anonAssignment
-      = return "<TODO find name from context>"
 
-parseFuncCallArguments :: Parsec String () [(Name, PTerm)]
-parseFuncCallArguments = sepBy parseAssignment separator
+implicitAssignment :: Parser (Name, PTerm)
+implicitAssignment = try assignment <|> do
+  term' <- statement
+  return ("<TODO: Unknown arg>", term')
 
-parseFuncCall :: PParser
-parseFuncCall = do
-  name' <- try $ do
-    name'' <- parseVar
-    openParen
-    return name''
-  args' <- parseFuncCallArguments
-  closeParen
+nameArgs :: Parser a -> Parser (PTerm, [a])
+nameArgs argType = do
+  name' <- variable
+  args' <- parens (listOf argType)
+  return (name', args')
+
+funcCall :: Parser PTerm
+funcCall = do
+  (name', args') <- try $ nameArgs implicitAssignment
   pos <- getInfo
   return $ TmFuncCall pos name' args'
+    where
 
-
-parseFuncAssignment :: Parsec String () (Name, PTerm)
-parseFuncAssignment = do
-    try newlineIndent
-    parseAssignment
-
-parseFuncDef :: Parsec String () PFunc
-parseFuncDef = do
-  name' <- try $ do
-    name'' <- parseVarName
-    openParen
-    return name''
-  args' <- label parseFuncDefArguments "'(<arg> = <term>)'"
-  closeParen
+funcDef :: Parser PFunc
+funcDef = do
+  (name', args') <- try $ nameArgs variable
+  _ <- char '{'
   pos <- getInfo
-  defs' <- many parseFuncAssignment
+  defs' <- many assignment
+  _ <- many space
+  _ <- char '}'
+  _ <- many space
   let defs'' = filter (not.(`elem`keywords).fst) defs'
   let preConditions = snd <$> filter ((==preConditionKeyword).fst) defs'
   let invarConditions = snd <$> filter ((==invarConditionKeyword).fst) defs'
   let postConditions = snd <$> filter ((==postConditionKeyword).fst) defs'
-  _ <- many space
   return $ PFunc { name = name'
                 , info = pos
                 , args = args'
@@ -189,26 +124,25 @@ parseFuncDef = do
                 , defs = defs''
                 }
 
-parseFuncDefTerm :: PParser
-parseFuncDefTerm = do
-  func' <- parseFuncDef
-  return $ TmFuncDef (info func') func'
+funcDefinition :: Parser PTerm
+funcDefinition = TmFuncDef <$> funcDef
 
-parseTerm :: PParser
-parseTerm
-  = parseFuncCall -- func(foo = var, bar = sum(a))
-  <|> parseFuncDefTerm -- func(foo, bar, baz)\n\tbaz=foo+bar
-  <|> parseVar
+statement :: Parser PTerm
+statement
+  = funcCall -- func(foo = var, bar = sum(a))
+  <|> funcDefinition -- func(foo, bar, baz)\n\tbaz=foo+bar
+  <|> variable
 
-
-parseModule :: Parsec String () [PFunc]
-parseModule = do
-  defs <- many parseFuncDef
+moduleDef :: Parser [PFunc]
+moduleDef = do
+  defs <- many funcDef
   _ <- eof
   return defs
 
-parseWith :: Parsec String () a -> String -> Either ParseError a
-parseWith p = runParser p () "Predicate Parser"
+parseString :: String -> Either ParseError [PFunc]
+parseString str = parse moduleDef "" str
 
-parse :: String -> Either ParseError [PFunc]
-parse = parseWith parseModule
+parseFile :: String -> IO (Either ParseError [PFunc])
+parseFile file = do
+  program  <- readFile file
+  return $ parse moduleDef file program

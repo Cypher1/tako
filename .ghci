@@ -1,3 +1,4 @@
 :set -fwarn-unused-binds -fwarn-unused-imports
-:set -iapp -ilib
+:set -iapp -ilib -itest
 :load PredParser
+:load ParserTests

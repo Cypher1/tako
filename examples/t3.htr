@@ -1,10 +1,11 @@
-divide(n, d)
+divide(n, d) {
   return = div(
     n=n,
     d=d
   )
+}
 
-main()
+main() {
   pre=all(
     hasConsoleOutput(
       this_thread
@@ -26,3 +27,4 @@ main()
     )
   )
   post=isEmpty(memory)
+}
