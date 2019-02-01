@@ -1,6 +1,6 @@
 module Pred where
 
-import Util (try, showMap, showSet)
+import Util (showMap, showSet)
 import qualified Data.Map as M
 import Data.Map (Map)
 import Data.Set (Set)
