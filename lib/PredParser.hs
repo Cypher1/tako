@@ -99,7 +99,6 @@ funcCall = do
   (name', args') <- try $ nameArgs implicitAssignment
   pos <- getInfo
   return $ TmFuncCall pos name' args'
-    where
 
 funcDef :: Parser PFunc
 funcDef = do
@@ -139,9 +138,7 @@ moduleDef = do
   return defs
 
 parseString :: String -> Either ParseError [PFunc]
-parseString str = parse moduleDef "" str
+parseString = parse moduleDef ""
 
 parseFile :: String -> IO (Either ParseError [PFunc])
-parseFile file = do
-  program  <- readFile file
-  return $ parse moduleDef file program
+parseFile file = parse moduleDef file <$> readFile file

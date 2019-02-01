@@ -14,7 +14,7 @@ files = [ "examples/t1.htr"
 parseExample :: String -> UntaggedIOTestInstance
 parseExample file = mkTestIO name passes $ parseFile file
   where
-    name = ("Can parse example file("++file++")")
+    name = "Can parse example file("++file++")"
 
 tests :: IO [Test]
 tests = mapM runTest files

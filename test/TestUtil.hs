@@ -28,10 +28,10 @@ prints = (/= "").show
 debug :: a -> Bool
 debug = const False
 
-hasNoSolution :: Eq (Assignment a) => [Assignment a] -> Bool
+hasNoSolution :: Eq (Atom a) => [Assignment a] -> Bool
 hasNoSolution = (==[])
 
-hasEmptySolution :: Eq (Assignment a) => [Assignment a] -> Bool
+hasEmptySolution :: Eq (Atom a) => [Assignment a] -> Bool
 hasEmptySolution = (==[mempty])
 
 hasSingleSolution :: [(Atom Var, Atom Val)] -> [Assignment Val] -> Bool
@@ -40,7 +40,7 @@ hasSingleSolution req = hasOnlySolutions [req]
 hasOnlySolutions :: [[(Atom Var, Atom Val)]] -> [Assignment Val] -> Bool
 hasOnlySolutions reqs = (==)(map M.fromList reqs)
 
-mkTestIO :: Show a => String -> (a -> Bool) -> IO a -> UntaggedIOInstance
+mkTestIO :: Show a => String -> (a -> Bool) -> IO a -> UntaggedIOTestInstance
 mkTestIO name' check' val' tags' = do
   val'' <- val'
   return $ mkTest name' check' val'' tags'
