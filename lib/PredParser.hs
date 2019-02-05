@@ -52,7 +52,6 @@ data Info = Info
   , col :: Int
   } deriving (Show, Eq)
 
-
 infoFrom :: SourcePos -> Info
 infoFrom pos = Info
   { line = sourceLine pos
