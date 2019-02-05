@@ -21,5 +21,5 @@ interpret prog
       Left err -> print err
       Right parsed -> do
         -- print parsed
-        putStrLn $ "<- " ++ printTm [] parseu
+        putStrLn $ "<- " ++ printTm [] parsed
         putStrLn $ "-> " ++ printTm [] $ run parsed
