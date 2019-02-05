@@ -1,6 +1,6 @@
 name:                Htriple
 version:             0.1.0.0
-synopsis:            A Haskell implementation of Triple based on Hoare Logic
+synopsis:            A Haskell implementation of Triple based Hoare Logic
 description:         A Hoare Logic processor designed to form a proof system for pure, proof based languages
 homepage:            https://github.com/Cypher1/Htriple#readme
 license:             BSD3
