@@ -1,10 +1,17 @@
-divide(n, d)
+divide(n, d) {
   return = div(
     n=n,
     d=d
   )
+}
 
-main()
+main() {
+  pre=all(
+    hasConsoleOutput(
+      this_thread
+    ),
+    hasConsoleInput(this_thread)
+  )
   do=sequence(
     a1=print(
       out=divide(
@@ -19,3 +26,5 @@ main()
       )
     )
   )
+  post=isEmpty(memory)
+}
