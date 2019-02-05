@@ -1,5 +1,5 @@
 module Main where
-import LambdaCalculus (parse, printTm, Term (TmVar, TmAbs, TmApp))
+import LambdaCalculus (parse, printTm, run)
 
 main :: IO ()
 main
@@ -21,5 +21,5 @@ interpret prog
       Left err -> print err
       Right parsed -> do
         -- print parsed
-        putStrLn $ "<- " ++ (printTm [] parsed)
-        putStrLn $ "-> " ++ (printTm [] $ run $ parsed)
+        putStrLn $ "<- " ++ printTm [] parsed
+        putStrLn $ "-> " ++ printTm [] $ run parsed

@@ -29,7 +29,7 @@ parseAbs :: LCParser -> LCParser
 parseAbs termParser = do
   _ <- char '\\'
   v <- parseVarName
-  modifyState (v :)
+  modifyState (v:)
   _ <- char '.'
   term <- termParser
   modifyState tail
@@ -92,16 +92,16 @@ showNumbered x n' = x++show (n'-1)
 
 pickFreshName :: Context -> (String, Int) -> (Context, String)
 pickFreshName ctx (x, n)
-  | (x, n) `elem` (map fst ctx) = pickFreshName ctx $ (x, n+1)
+  | (x, n) `elem` map fst ctx = pickFreshName ctx (x, n+1)
   | otherwise = (((x, n), NameBind) : ctx, showNumbered x n)
 
 printTm :: Context -> Term -> String
 printTm ctx t = case t of
   TmAbs _ x t1 -> let
       (ctx', x') = pickFreshName ctx (x,0)
-    in "\\" ++ x' ++ "." ++ (printTm ctx' t1) ++ ""
+    in "\\" ++ x' ++ "." ++ printTm ctx' t1 ++ ""
   TmApp _ t1 t2 ->
-    "(" ++ (printTm ctx t1) ++ " " ++ printTm ctx t2 ++ ")"
+    "(" ++ printTm ctx t1 ++ " " ++ printTm ctx t2 ++ ")"
   TmVar _ x n ->
     if ctxLength ctx == n then
       indexToName ctx x

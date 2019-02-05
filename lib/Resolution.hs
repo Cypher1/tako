@@ -138,16 +138,34 @@ restrictAtoms k@(Value k') v@(Value v') ass
 restrictAtoms (Predicate vs) (Predicate xs) ass = assignmentFromPred vs xs <> ass
 restrictAtoms k@(Variable _) v ass = restrictOne k v ass
 restrictAtoms v@(Value _) (Predicate p) ass
-  = (\ass' -> Error $ VariableVsPredicateMismatch {predicate = p, variable = v, in_ = ass'}) =<< ass
+  = (\ass' -> Error $
+    VariableVsPredicateMismatch
+      { predicate = p
+      , variable = v
+      , in_ = ass'}
+    ) =<< ass
 restrictAtoms (Predicate p) v@(Value _) ass
-  = (\ass' -> Error $ ValueVsPredicateMismatch {predicate_match = p, value = v, in_ = ass'}) =<< ass
+  = (\ass' -> Error $
+    ValueVsPredicateMismatch
+      { predicate_match = p
+      , value = v
+      , in_ = ass'}
+    ) =<< ass
 restrictAtoms (Rule _h1 _t1) (Rule _h2 _t2) _ass = undefined
-restrictAtoms r@(Rule _ _) o ass = (\ass' -> Error $ VariableRuleMismatch { var_rule = r, val_other = o, in_ = ass'}) =<< ass
-restrictAtoms o r@(Rule _ _) ass = (\ass' -> Error $ ValueRuleMismatch { val_rule = r, var_other = o, in_ = ass'}) =<< ass
+restrictAtoms r@(Rule _ _) o ass = (\ass' -> Error $
+  VariableRuleMismatch { var_rule = r, val_other = o, in_ = ass'}) =<< ass
+restrictAtoms o r@(Rule _ _) ass = (\ass' -> Error $
+  ValueRuleMismatch { val_rule = r, var_other = o, in_ = ass'}) =<< ass
 
 assignmentFromPred :: Pred Var -> Pred Val -> Resolution
 assignmentFromPred a@(Pred pred') b@(Pred poss)
-  | M.keysSet pred' /= M.keysSet poss = (\ass''' -> Error $ PredicatesOfDifferentShapes { requirement = a, possible_solution = b, in_ = ass'''}) =<< ass''
+  | M.keysSet pred' /= M.keysSet poss
+  = (\ass''' -> Error $
+    PredicatesOfDifferentShapes
+      { requirement = a
+      , possible_solution = b
+      , in_ = ass'''}
+    ) =<< ass''
   | otherwise = ass''
   where
     ass'' = foldr (uncurry restrictAtoms) mempty ass'
