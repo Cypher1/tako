@@ -17,9 +17,9 @@ data PTerm
 
 instance Show PTerm where
   show (TmVar _i name) = name
-  show (TmFuncCall _i name args) = show name ++ "(\n" ++ args'  ++ "\n)"
+  show (TmFuncCall _i name args) = show name ++ "(" ++ args'  ++ ")"
     where
-      args' = indent $ concat $ intersperse ",\n" $ map (\(name', t) -> name'++ assignmentOperator ++ show t) args
+      args' = concat $ intersperse ", " $ map (\(name', t) -> name'++ assignmentOperator ++ show t) args
   show (TmFuncDef func) = show func
 
 type Scope = [(Name, PTerm)]
@@ -35,9 +35,10 @@ data PFunc = PFunc
   }
 
 instance Show PFunc where
-  show f = show(name f)++"("++args'++") {\n"++pre'++invar'++post'++defs'++"\n}"
+  show f = show(name f)++"("++args'++") {"++contents++"}"
     where
-      subclause f lst = indent $ (++"\n") $ concat $ intersperse ",\n" $ map f lst
+      contents = pre'++invar'++post'++defs'
+      subclause f lst = indent $ concat $ intersperse ", " $ map f lst
       keyw kw getter = subclause (\t -> kw++assignmentOperator++show t) $ getter f
       pre' = keyw preConditionKeyword pre
       invar' = keyw invarConditionKeyword invar
@@ -86,7 +87,7 @@ assignment = do
 implicitAssignment :: Parser (Name, PTerm)
 implicitAssignment = try assignment <|> do
   term' <- statement
-  return ("<TODO: Unknown arg>", term')
+  return ("_n", term') -- TODO(jopra): Find good values for 'n' here
 
 nameArgs :: Parser a -> Parser (PTerm, [a])
 nameArgs argType = do

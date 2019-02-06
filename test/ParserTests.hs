@@ -1,9 +1,11 @@
 module ParserTests where
 
-import Distribution.TestSuite (Test(Test))
+import Test.Tasty
+import Test.Tasty.HUnit
 
 import PredParser (parseFile)
-import TestUtil
+
+import Data.Either (isRight)
 
 files :: [String]
 files = [ "examples/t1.htr"
@@ -11,13 +13,16 @@ files = [ "examples/t1.htr"
         , "examples/t3.htr"
         ]
 
-parseExample :: String -> UntaggedIOTestInstance
-parseExample file = mkTestIO name passes $ parseFile file
-  where
-    name = "Can parse example file("++file++")"
+parserTests :: TestTree
+parserTests = testGroup "Parser tests" $
+  [ parsesExamples
+  ]
 
-tests :: IO [Test]
-tests = mapM runTest files
-  where
-    runTest :: String -> IO Test
-    runTest file = Test <$> parseExample file ["parser", "IO"]
+parsesExamples :: TestTree
+parsesExamples = testGroup "Parsing example files succeeds" $
+  map parsesExample files
+
+parsesExample :: String -> TestTree
+parsesExample file = testCase ("Can parse example file("++file++")") $ do
+  parsed <- parseFile file
+  (isRight parsed) @?= True
