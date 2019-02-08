@@ -18,6 +18,7 @@ jobs:
       # Save time building core code
       - run: cabal configure --disable-optimization
       - run: cabal test
+      - run: cabal run Htriple-tests
       - save_cache:
           key: cabal_packages-{{ checksum "Htriple.cabal" }}
           paths:
