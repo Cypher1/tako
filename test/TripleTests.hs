@@ -1,13 +1,11 @@
 module TripleTests where
 
 import Prelude hiding (showList)
-import Distribution.TestSuite
-  ( Test(Test)
-  , TestInstance
-  )
-import TestUtil
+import Test.Tasty
+import Test.Tasty.HUnit
 
-import Util (showList)
+import TastyUtil (pred3, passes, fails, exists, showList)
+
 import Pred (val, var)
 import Triple
 import Operation (Instruction(T), TriOp(Div, Sub))
@@ -47,31 +45,45 @@ isa' = pred3 isa
 varXNeZero = ne' x zero
 xNeY = ne' x y
 
-tests :: IO [Test]
-tests = return $ map Test tripleTests
-
-tripleTests :: [TestInstance]
+tripleTests :: TestTree
 tripleTests
-  = map (addTags ["triples"])
-  [ mkTest "constantsExist" (not.null) $ showList [zero, ret, a, b, ne]
-  , mkTest "a-b" prints minus
-  , mkTest "unsafe a/b" prints fdiv
-  , mkTest "safe a/b" prints frac
-  , mkTest "updateFrac with emp should fail" fails $ update emp frac
-  , mkTest "updateFrac with b!=0 should fail" fails
-    $ update (assume [bNeZero]) frac
-  , mkTest "updateFrac with b!=0 and a should fail" fails
-    $ update (assume [bNeZero, exists a]) frac
-  , mkTest "updateFrac with b!=0 and b should fail" fails
-    $ update (assume [bNeZero, exists b]) frac
-  , mkTest "updateFrac with a, b should fail" fails
-    $ update (assume [exists a, exists b]) frac
-  , mkTest "updateFrac with b!=0, a, b, should pass" passes
-    $ update (assume [exists a, exists b, bNeZero]) frac
-  , mkTest "require ret" prints needsRet
-  , mkTest "needs ret <*> frac is unsat" fails $ update needsRet frac
-  , mkTest "frac <*> needs ret is sat" passes $ update frac needsRet
-  , mkTest "post.assume == Set.fromList"
-      (==S.fromList [aNeZero, exists a, bNeZero])
-      (post$assume [aNeZero, exists a, bNeZero, bNeZero])
+  = testGroup "Triple tests" $
+    [ expressionConstructionTests
+    , updateExpressionTests
+    ]
+
+expressionConstructionTests :: TestTree
+expressionConstructionTests = testGroup "Expression Construction tests" $
+  [ testCase "Constants Exist" $ do
+    null(showList [zero, ret, a, b, ne]) @?= False
+  , testCase "Operation for a-b contains a single instruction" $ do
+    op minus @?= [T Sub "a" "b" "ret"]
+  , testCase "Printing unsafe a/b" $ do
+    show fdiv == "" @?= False
+  , testCase "Printing safe a/b" $ do
+    show frac == "" @?= False
+  , testCase "require ret" $ do
+    show needsRet == "" @?= False
+  , testCase "post.assume == Set.fromList" $ do
+    S.fromList [aNeZero, exists a, bNeZero] @?= (post $ assume [aNeZero, exists a, bNeZero, bNeZero])
+  ]
+
+updateExpressionTests :: TestTree
+updateExpressionTests = testGroup "Upgrade Operation tests" $
+  [ testCase "updateFrac with emp should fail" $ do
+    fails $ update emp frac
+  , testCase "updateFrac with b!=0 should fail" $ do
+    fails $ update (assume [bNeZero]) frac
+  , testCase "updateFrac with b!=0 and a should fail" $ do
+    fails $ update (assume [bNeZero, exists a]) frac
+  , testCase "updateFrac with b!=0 and b should fail" $ do
+    fails $ update (assume [bNeZero, exists b]) frac
+  , testCase "updateFrac with a, b should fail" $ do
+    fails $ update (assume [exists a, exists b]) frac
+  , testCase "updateFrac with b!=0, a, b, should pass" $ do
+    passes $ update (assume [exists a, exists b, bNeZero]) frac
+  , testCase "needs ret <*> frac is unsat" $ do
+    fails $ update needsRet frac
+  , testCase "frac <*> needs ret is sat" $ do
+    passes $ update frac needsRet
   ]

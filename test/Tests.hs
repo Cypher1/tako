@@ -3,9 +3,9 @@ module Main where
 import Test.Tasty
 
 import ParserTests (parserTests)
--- import OperationTests (operationTests)
+import OperationTests (operationTests)
+import TripleTests (tripleTests)
 -- import ResolutionTests (resolutionTests)
--- import TripleTests (tripleTests)
 
 main :: IO ()
 main = defaultMain tests
@@ -17,4 +17,6 @@ tests = testGroup "Tests" [unitTests]
 unitTests :: TestTree
 unitTests = testGroup "Unit tests"
   [ parserTests
+  , operationTests
+  , tripleTests
   ]
