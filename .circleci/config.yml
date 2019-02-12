@@ -15,7 +15,6 @@ jobs:
       - run: cabal update
       - run: cabal install --only-dependencies --enable-tests
       - run: cabal test
-      - run: cabal run Htriple-tests
       - save_cache:
           key: cabal_packages-{{ checksum "Htriple.cabal" }}
           paths:
