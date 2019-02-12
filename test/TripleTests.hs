@@ -4,9 +4,8 @@ import Prelude hiding (showList)
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import TastyUtil (pred3, passes, fails, exists)
+import TastyUtil (pred3, passes, fails, exists, showList)
 
-import Util (showList)
 import Pred (val, var)
 import Triple
 import Operation (Instruction(T), TriOp(Div, Sub))
