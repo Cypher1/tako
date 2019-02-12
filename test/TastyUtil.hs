@@ -1,0 +1,38 @@
+module TastyUtil where
+
+import Data.Either (isLeft, isRight)
+import qualified Data.Map as M
+
+import Util (onPair)
+import Pred (Assignment, Var, Val, Pred(Pred), Atom(Variable))
+import Test.Tasty ()
+import Test.Tasty.HUnit (assertFailure)
+
+toPred :: [(String, Atom a)] -> Pred a
+toPred xs = Pred $ M.fromList $ map (onPair Variable id) xs
+
+pred3 :: Atom a -> Atom a -> Atom a -> Pred a
+pred3 r x y = toPred [("#0", x), ("rel", r), ("#1", y)]
+
+exists :: Atom a -> Pred a
+exists v = toPred [("exists", v)]
+
+hasNoSolution :: Eq (Atom a) => [Assignment a] -> Bool
+hasNoSolution = (==[])
+
+hasEmptySolution :: Eq (Atom a) => [Assignment a] -> Bool
+hasEmptySolution = (==[mempty])
+
+hasSingleSolution :: [(Atom Var, Atom Val)] -> [Assignment Val] -> Bool
+hasSingleSolution req = hasOnlySolutions [req]
+
+hasOnlySolutions :: [[(Atom Var, Atom Val)]] -> [Assignment Val] -> Bool
+hasOnlySolutions reqs = (==)(map M.fromList reqs)
+
+passes :: Show a => Either a b -> IO ()
+passes (Left err) = assertFailure $ "Function returned an error: "++show err
+passes (Right _) = return ()
+
+fails :: Either a b -> IO ()
+fails (Left _) = return ()
+fails (Right _) = assertFailure $ "Function was expected to return an error"

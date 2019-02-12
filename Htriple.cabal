@@ -48,6 +48,9 @@ executable Htriple-tests
       Util
       Operation
       ParserTests
+      OperationTests
+      TripleTests
+      TastyUtil
   default-language:    Haskell2010
   build-depends:
       base >= 4.9 && < 5,
@@ -76,28 +79,6 @@ Test-Suite Htriple-ResolutionTests
   type:       detailed-0.9
   hs-source-dirs:      lib, test
   test-module:         ResolutionTests
-  build-depends:
-      base >= 4.9 && < 5,
-      containers,
-      Cabal >= 1.9.2,
-      QuickCheck >= 2.12 && < 2.13,
-      parsec >= 3.1 && < 3.2
-  other-modules:
-      Language
-      Triple
-      Pred
-      Resolution
-      Util
-      TestUtil
-      Operation
-  default-language:    Haskell2010
-  default-extensions: FlexibleContexts FlexibleInstances GADTs LambdaCase MultiParamTypeClasses PartialTypeSignatures PatternSynonyms RankNTypes ScopedTypeVariables TypeApplications TypeInType TypeOperators ViewPatterns
-  GHC-Options:    -Wunused-imports
-
-Test-Suite Htriple-TripleTests
-  type:       detailed-0.9
-  hs-source-dirs:      lib, test
-  test-module:         TripleTests
   build-depends:
       base >= 4.9 && < 5,
       containers,

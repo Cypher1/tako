@@ -4,8 +4,8 @@ import Test.Tasty
 
 import ParserTests (parserTests)
 import OperationTests (operationTests)
+import TripleTests (tripleTests)
 -- import ResolutionTests (resolutionTests)
--- import TripleTests (tripleTests)
 
 main :: IO ()
 main = defaultMain tests
@@ -18,4 +18,5 @@ unitTests :: TestTree
 unitTests = testGroup "Unit tests"
   [ parserTests
   , operationTests
+  , tripleTests
   ]
