@@ -14,8 +14,10 @@ files = [ "examples/t1.htr"
         ]
 
 parserTests :: TestTree
-parserTests = testGroup "Parser tests" $
+parserTests = testGroup "Parser tests"
   [ parsesExamples
+  -- TODO(jopra): Test more properties
+  -- TODO(jopra): Test whitespace flexibility
   ]
 
 parsesExamples :: TestTree
@@ -25,4 +27,4 @@ parsesExamples = testGroup "Parsing example files succeeds" $
 parsesExample :: String -> TestTree
 parsesExample file = testCase ("Can parse example file("++file++")") $ do
   parsed <- parseFile file
-  (isRight parsed) @?= True
+  isRight parsed @?= True
