@@ -18,7 +18,7 @@ join j xs = drop (length j) $ concatMap (\x->j++show x) xs
 
 try :: (a -> b -> Either c d) -> a -> Either b d -> Either c d
 try f a (Left b) = f a b
-try f a (Right d) = Right d
+try _ _ (Right d) = Right d
 
 showEither :: (Show a, Show b) => Either a b -> String
 showEither (Right a) = show a

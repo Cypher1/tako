@@ -16,10 +16,10 @@ data PTerm
   -- deriving Show
 
 instance Show PTerm where
-  show (TmVar _i name) = name
-  show (TmFuncCall _i name args) = show name ++ "(" ++ args'  ++ ")"
+  show (TmVar _i name') = name'
+  show (TmFuncCall _i name' args'') = show name' ++ "(" ++ args'  ++ ")"
     where
-      args' = concat $ intersperse ", " $ map (\(name', t) -> name'++ assignmentOperator ++ show t) args
+      args' = concat $ intersperse ", " $ map (\(name'', t) -> name''++ assignmentOperator ++ show t) args''
   show (TmFuncDef func) = show func
 
 type Scope = [(Name, PTerm)]
@@ -35,16 +35,16 @@ data PFunc = PFunc
   }
 
 instance Show PFunc where
-  show f = show(name f)++"("++args'++") {"++contents++"}"
+  show fun = show(name fun)++"("++args'++") {"++contents++"}"
     where
       contents = pre'++invar'++post'++defs'
       subclause f lst = indent $ concat $ intersperse ", " $ map f lst
-      keyw kw getter = subclause (\t -> kw++assignmentOperator++show t) $ getter f
+      keyw kw getter = subclause (\t -> kw++assignmentOperator++show t) $ getter fun
       pre' = keyw preConditionKeyword pre
       invar' = keyw invarConditionKeyword invar
       post' = keyw postConditionKeyword post
-      args' = concat $ intersperse ", " $ map show $ args f
-      defs' = subclause (\(name', t) -> name' ++assignmentOperator++show t) $ defs f
+      args' = concat $ intersperse ", " $ map show $ args fun
+      defs' = subclause (\(name', t) -> name' ++assignmentOperator++show t) $ defs fun
 
 data PModule = PModule Name Path Scope
 
@@ -64,7 +64,7 @@ getInfo = infoFrom <$> getPosition
 
 separator :: Parser ()
 separator = do
-  many space >> char ',' >> many space
+  _ <- many space >> char ',' >> many space
   return ()
 
 listOf :: Parser a -> Parser [a]
@@ -72,15 +72,15 @@ listOf p = sepBy p separator
 
 variable :: Parser PTerm
 variable = do
-  name <- label identifier "variable name (e.g. foo1)"
+  name' <- label identifier "variable name (e.g. foo1)"
   pos <- getInfo
-  return $ TmVar pos name
+  return $ TmVar pos name'
 
 assignment :: Parser (Name, PTerm)
 assignment = do
   _ <- many space
   name' <- identifier
-  many space >> reservedOp assignmentOperator >> many space
+  _ <- many space >> reservedOp assignmentOperator >> many space
   term' <- statement
   return (name', term')
 
@@ -134,9 +134,9 @@ statement
 
 moduleDef :: Parser [PFunc]
 moduleDef = do
-  defs <- many funcDef
+  defs' <- many funcDef
   _ <- eof
-  return defs
+  return defs'
 
 parseString :: String -> Either ParseError [PFunc]
 parseString = parse moduleDef ""

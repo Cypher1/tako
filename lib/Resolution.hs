@@ -1,3 +1,6 @@
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
 module Resolution where
 
 import qualified Data.Set as S

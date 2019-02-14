@@ -1,6 +1,5 @@
 module TestUtil where
 
-import Data.Either (isLeft, isRight)
 import qualified Data.Map as M
 
 import Pred (Assignment, Var, Val, Pred(Pred), Atom(Variable))

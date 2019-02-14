@@ -1,3 +1,5 @@
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
 module Triple where
 
 import Prelude hiding (showList)
