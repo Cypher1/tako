@@ -6,44 +6,43 @@ import Test.Tasty.HUnit
 
 import TestUtil (pred3, passes, fails, exists, showList)
 
-import Pred (val, var)
+import Pred (val, Pred, Atom)
 import Triple
 import Operation (Instruction(T), TriOp(Div, Sub))
 import qualified Data.Set as S
 
 -- Constants
+zero :: Atom a
 zero = val "0"
+a :: Atom a
 a = val "a"
+b :: Atom a
 b = val "b"
+c :: Atom a
 c = val "c"
+ret :: Atom a
 ret = val "ret"
-pa = "a"
-pb = "b"
-pRet = "ret"
+
+ne :: Atom a
 ne = val "!="
-ne' = pred3 ne
-cons = val "cons"
-nil = val "nil"
-list = val "list"
-aNeZero = ne' a zero
-bNeZero = ne' b zero
-aNeb = ne' a b
-fdiv = func [T Div pa pb pRet] (S.fromList [exists a, exists b]) (S.fromList [exists ret])
+
+aNeZero :: Pred a
+aNeZero = pred3 ne a zero
+
+bNeZero :: Pred a
+bNeZero = pred3 ne b zero
+
+fdiv :: HTriple
+fdiv = func [T Div "a" "b" "ret"] (S.fromList [exists a, exists b]) (S.fromList [exists ret])
+
+frac :: HTriple
 frac = addPre bNeZero fdiv
-minus = func [T Sub pa pb pRet] (S.fromList [exists a, exists b]) $ S.fromList [exists ret]
+
+minus :: HTriple
+minus = func [T Sub "a" "b" "ret"] (S.fromList [exists a, exists b]) $ S.fromList [exists ret]
+
+needsRet :: HTriple
 needsRet = addPre (exists ret) emp
-
-x = var "x"
-px = "x"
-y = var "y"
-py = "y"
-z = var "z"
-pz = "z"
-isa = val "isa"
-isa' = pred3 isa
-
-varXNeZero = ne' x zero
-xNeY = ne' x y
 
 tripleTests :: TestTree
 tripleTests
