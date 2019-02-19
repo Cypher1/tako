@@ -4,7 +4,7 @@ import Prelude hiding (showList)
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import TastyUtil (pred3, passes, fails, exists, showList)
+import TestUtil (pred3, passes, fails, exists, showList)
 
 import Pred (val, var)
 import Triple
@@ -47,43 +47,44 @@ xNeY = ne' x y
 
 tripleTests :: TestTree
 tripleTests
-  = testGroup "Triple tests" $
+  = testGroup "Triple tests"
     [ expressionConstructionTests
     , updateExpressionTests
     ]
 
 expressionConstructionTests :: TestTree
-expressionConstructionTests = testGroup "Expression Construction tests" $
-  [ testCase "Constants Exist" $ do
+expressionConstructionTests = testGroup "Expression Construction tests"
+  [ testCase "Constants Exist" $
     null(showList [zero, ret, a, b, ne]) @?= False
-  , testCase "Operation for a-b contains a single instruction" $ do
+  , testCase "Operation for a-b contains a single instruction" $
     op minus @?= [T Sub "a" "b" "ret"]
-  , testCase "Printing unsafe a/b" $ do
+  , testCase "Printing unsafe a/b" $
     show fdiv == "" @?= False
-  , testCase "Printing safe a/b" $ do
+  , testCase "Printing safe a/b" $
     show frac == "" @?= False
-  , testCase "require ret" $ do
+  , testCase "require ret" $
     show needsRet == "" @?= False
-  , testCase "post.assume == Set.fromList" $ do
-    S.fromList [aNeZero, exists a, bNeZero] @?= (post $ assume [aNeZero, exists a, bNeZero, bNeZero])
+  , testCase "post.assume == Set.fromList" $
+    S.fromList [aNeZero, exists a, bNeZero] @?=
+      (post $ assume [aNeZero, exists a, bNeZero, bNeZero])
   ]
 
 updateExpressionTests :: TestTree
-updateExpressionTests = testGroup "Upgrade Operation tests" $
-  [ testCase "updateFrac with emp should fail" $ do
+updateExpressionTests = testGroup "Upgrade Operation tests"
+  [ testCase "updateFrac with emp should fail" $
     fails $ update emp frac
-  , testCase "updateFrac with b!=0 should fail" $ do
+  , testCase "updateFrac with b!=0 should fail" $
     fails $ update (assume [bNeZero]) frac
-  , testCase "updateFrac with b!=0 and a should fail" $ do
+  , testCase "updateFrac with b!=0 and a should fail" $
     fails $ update (assume [bNeZero, exists a]) frac
-  , testCase "updateFrac with b!=0 and b should fail" $ do
+  , testCase "updateFrac with b!=0 and b should fail" $
     fails $ update (assume [bNeZero, exists b]) frac
-  , testCase "updateFrac with a, b should fail" $ do
+  , testCase "updateFrac with a, b should fail" $
     fails $ update (assume [exists a, exists b]) frac
-  , testCase "updateFrac with b!=0, a, b, should pass" $ do
+  , testCase "updateFrac with b!=0, a, b, should pass" $
     passes $ update (assume [exists a, exists b, bNeZero]) frac
-  , testCase "needs ret <*> frac is unsat" $ do
+  , testCase "needs ret <*> frac is unsat" $
     fails $ update needsRet frac
-  , testCase "frac <*> needs ret is sat" $ do
+  , testCase "frac <*> needs ret is sat" $
     passes $ update frac needsRet
   ]
