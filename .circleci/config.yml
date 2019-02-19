@@ -33,14 +33,14 @@ jobs:
             # Install dependencies fresh if we change the dependencies or compilation options to ensure
             # that they are 'mostly' stateless
       - run: cabal update
-      - run: cabal install --only-dependencies --enable-tests -j4
+      - run: cabal new-install --only-dependencies --enable-tests -j4
       - save_cache:
           key: cabal_packages-{{ .Branch }}-{{ checksum "Htriple.cabal" }}
           paths:
             - "~/.cabal/"
 
       # Run any builds and tests
-      - run: cabal test
+      - run: cabal new-test
 
 workflows:
   version: 2
