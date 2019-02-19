@@ -3,23 +3,46 @@ version: 2
 jobs:
   build_project:
     docker:
-      - image: haskell:8.4.3
-    parallelism: 4
+      - image: haskell:8.6.3
+    parallelism: 1
     steps:
-      - checkout
+      # Ensure that we have git & ssh
+      - run: apt-get update
+      - run: apt-get install -y curl git ssh
+
+      # Git checkout (with caching)
       - restore_cache:
           keys:
-            - cabal_packages-{{ checksum "Htriple.cabal" }}
+            - source-v1-{{ .Branch }}-{{ .Revision }}
+            - source-v1-{{ .Branch }}-
+            - source-v1-
+
+      - checkout
+
+      - save_cache:
+          key: source-v1-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - ".git"
+
+      # Dependency installation (with caching)
+      - restore_cache:
+          keys:
+            - cabal_packages-{{ .Branch }}-{{ checksum "Htriple.cabal" }}
+            - cabal_packages-{{ .Branch }}-
+            - cabal_packages-
             # Install dependencies fresh if we change the dependencies or compilation options to ensure
             # that they are 'mostly' stateless
       - run: cabal update
-      - run: cabal install --only-dependencies --enable-tests
-      - run: cabal test
+
+      # Run any builds and tests
+      - run: cabal new-test
       - save_cache:
-          key: cabal_packages-{{ checksum "Htriple.cabal" }}
+          key: cabal_packages-{{ .Branch }}-{{ checksum "Htriple.cabal" }}
           paths:
-            - ~/.cabal/
-            - dist
+            - "~/.cabal/"
+            - "dist/"
+            - "dist-newstyle/"
+
 
 workflows:
   version: 2

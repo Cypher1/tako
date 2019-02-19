@@ -6,3 +6,4 @@ deps.dot
 deps.png
 **/*.hi
 **/*.o
+.ghc.*
