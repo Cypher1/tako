@@ -20,7 +20,6 @@ library Htriple-lib
       base >= 4.9 && < 5,
       containers,
       parsec >= 3.1 && < 3.2
-  default-extensions: StandaloneDeriving FlexibleContexts FlexibleInstances GADTs LambdaCase MultiParamTypeClasses PartialTypeSignatures PatternSynonyms RankNTypes ScopedTypeVariables TypeApplications TypeInType TypeOperators ViewPatterns
   GHC-Options:    -Wall -O2
   exposed-modules:
       Language
@@ -55,7 +54,6 @@ test-suite Htriple-tests
       parsec >= 3.1 && < 3.2,
       tasty >= 1.2.1 && < 1.2.2,
       tasty-hunit >= 0.10 && < 0.11
-  default-extensions: StandaloneDeriving FlexibleContexts FlexibleInstances GADTs LambdaCase MultiParamTypeClasses PartialTypeSignatures PatternSynonyms RankNTypes ScopedTypeVariables TypeApplications TypeInType TypeOperators ViewPatterns
   GHC-Options:    -Wall -O2
   other-modules:
       TestUtil
@@ -65,7 +63,7 @@ test-suite Htriple-tests
       ResolutionTests
 
 executable Lambda
-  hs-source-dirs:      lib, app
+  hs-source-dirs:      lambda
   main-is:             Lambda.hs
   default-language:    Haskell2010
   build-depends:
@@ -73,7 +71,6 @@ executable Lambda
       containers,
       haskeline >= 0.7 && < 0.8,
       parsec >= 3.1 && < 3.2
-  default-extensions: StandaloneDeriving FlexibleContexts FlexibleInstances GADTs LambdaCase MultiParamTypeClasses PartialTypeSignatures PatternSynonyms RankNTypes ScopedTypeVariables TypeApplications TypeInType TypeOperators ViewPatterns
   GHC-Options:    -Wall -O2
   other-modules:
       LambdaCalculus
