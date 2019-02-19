@@ -29,7 +29,7 @@ jobs:
             # Install dependencies fresh if we change the dependencies or compilation options to ensure
             # that they are 'mostly' stateless
       - run: cabal update
-      - run: cabal install --only-dependencies --enable-tests
+      - run: cabal install --only-dependencies --enable-tests -j4
       - save_cache:
           key: cabal_packages-{{ .Branch }}-{{ checksum "Htriple.cabal" }}
           paths:
