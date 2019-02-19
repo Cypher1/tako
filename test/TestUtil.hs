@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 module TestUtil where
 
 import qualified Data.Map as M
