@@ -4,8 +4,12 @@ jobs:
   build_project:
     docker:
       - image: haskell:8.6.3
-    parallelism: 4
+    parallelism: 1
     steps:
+      # Ensure that we have git & ssh
+      - run: apt-get update
+      - run: apt-get install -y curl git ssh
+
       # Git checkout (with caching)
       - restore_cache:
           keys:
