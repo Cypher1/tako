@@ -4,45 +4,52 @@ import Test.Tasty
 import Test.Tasty.HUnit
 import TestUtil
 
-import Pred (val, var, Atom(Predicate))
+import Pred (val, var, Var, Pred, Atom(Predicate))
 import Resolution (solutions)
-import Triple (addPre, emp, func)
-import Operation (Instruction(T), TriOp(Div, Sub))
 import qualified Data.Set as S
 
 -- Constants
+zero :: Atom a
 zero = val "0"
+
+a :: Atom a
 a = val "a"
+
+b :: Atom a
 b = val "b"
+
+c :: Atom a
 c = val "c"
+
+ret :: Atom a
 ret = val "ret"
-pa = "a"
-pb = "b"
-pRet = "ret"
+
+ne :: Atom a
 ne = val "!="
-ne' = pred3 ne
+
+cons :: Atom a
 cons = val "cons"
-nil = val "nil"
+
+list :: Atom a
 list = val "list"
-aNeZero = ne' a zero
-bNeZero = ne' b zero
-aNeb = ne' a b
-fdiv = func [T Div pa pb pRet] (S.fromList [exists a, exists b]) (S.fromList [exists ret])
-frac = addPre bNeZero fdiv
-minus = func [T Sub pa pb pRet] (S.fromList [exists a, exists b]) $ S.fromList [exists ret]
-needsRet = addPre (exists ret) emp
 
+bNeZero :: Pred a
+bNeZero = pred3 ne b zero
+
+aNeb :: Pred a
+aNeb = pred3 ne a b
+
+x :: Atom Var
 x = var "x"
-px = "x"
-y = var "y"
-py = "y"
-z = var "z"
-pz = "z"
-isa = val "isa"
-isa' = pred3 isa
 
-varXNeZero = ne' x zero
-xNeY = ne' x y
+y :: Atom Var
+y = var "y"
+
+z :: Atom Var
+z = var "z"
+
+isa :: Atom a
+isa = val "isa"
 
 resolutionTests :: TestTree
 resolutionTests = testGroup "Resolution tests"
@@ -70,31 +77,31 @@ singlePredicateResolution = testGroup "Single Predicate Resolution"
     $ solutions (S.fromList [exists a]) $ S.fromList [exists a]
   , testCase "Resolution succeeds if state contains the predicate" $
       hasEmptySolution
-      $ solutions (S.fromList [aNeZero]) $ S.fromList [aNeZero]
+      $ solutions (S.fromList [bNeZero]) $ S.fromList [bNeZero]
   , testCase "Resolution fails on 1-pred with variable (no matches)" $
       hasNoSolution
       $ solutions (S.fromList [exists a, exists ne, exists zero])
-        $ S.fromList [varXNeZero]
+        $ S.fromList [pred3 ne x zero]
   , testCase "Resolution succeeds on 1-pred (with matches)" $
-      hasSingleSolution [(x, a)]
-      $ solutions (S.fromList [exists a, aNeZero])
-        $ S.fromList [varXNeZero]
+      hasSingleSolution [(x, b)]
+      $ solutions (S.fromList [exists b, bNeZero])
+        $ S.fromList [pred3 ne x zero]
   , testCase "Resolution correct on 1-pred (with alternate matches)" $
-      hasSingleSolution [(x, a)]
-      $ solutions (S.fromList [exists a, exists b, aNeZero])
-        $ S.fromList [varXNeZero]
+      hasSingleSolution [(x, b)]
+      $ solutions (S.fromList [exists a, exists b, bNeZero])
+        $ S.fromList [pred3 ne x zero]
   , testCase "Resolution correct on 1-pred with variable" $
       hasSingleSolution [(x, a), (y, b)]
       $ solutions (S.fromList [exists a, exists b, aNeb])
-        $ S.fromList [xNeY]
+        $ S.fromList [pred3 ne x y]
   , testCase "Resolution fails on 1-pred with variable (a)" $
       hasNoSolution
       $ solutions (S.fromList [exists a, aNeb])
-        $ S.fromList [exists x, exists y, xNeY]
+        $ S.fromList [exists x, exists y, pred3 ne x y]
   , testCase "Resolution fails on 1-pred with variable (b)" $
       hasNoSolution
       $ solutions (S.fromList [exists b, aNeb])
-        $ S.fromList [exists x, exists y, xNeY]
+        $ S.fromList [exists x, exists y, pred3 ne x y]
   ]
 
 nestedPredicateTests :: TestTree
@@ -120,7 +127,7 @@ joinResolutionTests :: TestTree
 joinResolutionTests = testGroup "Join resolution tests"
   [ testCase "Resolution fails on 2-pred with variable" $
       hasNoSolution
-      $ solutions (S.fromList [isa' b c])
+      $ solutions (S.fromList [pred3 isa b c])
         $ S.fromList [pred3 isa x y, pred3 isa y z]
   , testCase "Resolution fails on 2-pred with variable" $
       hasNoSolution

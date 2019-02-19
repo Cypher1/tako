@@ -65,7 +65,7 @@ expressionConstructionTests = testGroup "Expression Construction tests"
     show needsRet == "" @?= False
   , testCase "post.assume == Set.fromList" $
     S.fromList [aNeZero, exists a, bNeZero] @?=
-      (post $ assume [aNeZero, exists a, bNeZero, bNeZero])
+      post (assume [aNeZero, exists a, bNeZero, bNeZero])
   ]
 
 updateExpressionTests :: TestTree
