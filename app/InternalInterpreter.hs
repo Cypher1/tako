@@ -3,6 +3,7 @@ import System.Console.Haskeline
 import Text.Read (readMaybe)
 import Operation (Mem, exec)
 
+runIR :: IO ()
 runIR = runInputT defaultSettings (mainLoop [])
 
 mainLoop :: Mem -> InputT IO ()
