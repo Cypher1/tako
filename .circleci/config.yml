@@ -40,6 +40,8 @@ jobs:
           key: cabal_packages-{{ .Branch }}-{{ checksum "Htriple.cabal" }}
           paths:
             - "~/.cabal/"
+            - "dist/"
+            - "dist-newstyle/"
 
 
 workflows:
