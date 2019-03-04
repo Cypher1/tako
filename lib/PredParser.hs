@@ -134,6 +134,7 @@ statement
 
 moduleDef :: Parser [PFunc]
 moduleDef = do
+  _ <- whiteSpace
   defs' <- many funcDef
   _ <- eof
   return defs'

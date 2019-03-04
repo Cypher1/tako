@@ -1,3 +1,5 @@
+// Testing
+
 divide(n, d) {
   return = div(
     n=n,
@@ -5,6 +7,9 @@ divide(n, d) {
   )
 }
 
+/*
+This is a test main program.
+*/
 main() {
   pre=all(
     hasConsoleOutput(

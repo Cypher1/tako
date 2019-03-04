@@ -27,4 +27,4 @@ parsesExamples = testGroup "Parsing example files succeeds" $
 parsesExample :: String -> TestTree
 parsesExample file = testCase ("Can parse example file("++file++")") $ do
   parsed <- parseFile file
-  isRight parsed @?= True
+  assertBool (show parsed) (isRight parsed)

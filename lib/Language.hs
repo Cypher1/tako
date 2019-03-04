@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 module Language where
 
+import Control.Monad
 import Data.Functor.Identity (Identity)
 
 import Text.Parsec
@@ -9,6 +10,18 @@ import qualified Text.ParserCombinators.Parsec.Token as Token
 
 htriple :: Token.TokenParser st
 htriple = Token.makeTokenParser htripleDef
+
+postConditionKeyword :: String
+postConditionKeyword = "post"
+
+invarConditionKeyword :: String
+invarConditionKeyword = "invar"
+
+preConditionKeyword :: String
+preConditionKeyword = "pre"
+
+assignmentOperator :: String
+assignmentOperator = "="
 
 htripleDef :: (Stream s m Char) => GenLanguageDef s u m
 htripleDef = LanguageDef
@@ -49,14 +62,23 @@ keywords = [ preConditionKeyword
            , invarConditionKeyword
            ]
 
-postConditionKeyword :: String
-postConditionKeyword = "post"
+lexeme :: ParsecT String u Identity a -> ParsecT String u Identity a
+lexeme = Token.lexeme htriple
 
-invarConditionKeyword :: String
-invarConditionKeyword = "invar"
+openParen :: ParsecT String u Identity ()
+openParen = void $ char '('
 
-preConditionKeyword :: String
-preConditionKeyword = "pre"
+closeParen :: ParsecT String u Identity ()
+closeParen = void $ char ')'
 
-assignmentOperator :: String
-assignmentOperator = "="
+openBrace :: ParsecT String u Identity ()
+openBrace = void $ char '{'
+
+closeBrace :: ParsecT String u Identity ()
+closeBrace = void $ char '}'
+
+assignmentOp :: ParsecT String u Identity ()
+assignmentOp = void $ Token.symbol htriple assignmentOperator
+
+consOperator :: ParsecT String u Identity ()
+consOperator = void $ Token.comma htriple
