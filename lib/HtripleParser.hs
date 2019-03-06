@@ -1,11 +1,14 @@
 module HtripleParser where
 
+import Text.ParserCombinators.Parsec (parse)
 -- import Control.Monad.State
-import Lexer (Token(..))
+import Lexer (lexer, Token(..), TokenType(..))
 
 
 infixl 0 |-, -|
+(|-) :: a -> (a -> c) -> c
 (|-) = flip ($)
+(-|) :: (a -> c) -> a -> c
 (-|) = ($)
 
 class Pretty a where
@@ -20,27 +23,32 @@ pprint :: Pretty a => a -> IO ()
 pprint = putStrLn . pretty
 
 -- info is used for passing context (e.g. source location, the stack)
-data Id = Id String
+type Id = String
+
+data Arg
+  = Kw Def
+  | A Expr
   deriving Show
 
-instance Pretty Id where
-  pretty (Id name) = name
+instance Pretty Arg where
+  pretty (Kw def) = pretty def
+  pretty (A expr) = pretty expr
 
 data Expr
-  = Call Id [Expr]
+  = Call Id [Arg]
   | Dict Scope
   deriving Show
 
 instance Pretty Expr where
-  pretty (Call name []) = pretty name
-  pretty (Call name args) = pretty name++"("++pretty args++")"
+  pretty (Call name' []) = name'
+  pretty (Call name' args) = name'++"("++pretty args++")"
   pretty (Dict scope) = pretty scope
 
-data Def = Def Expr Expr
+data Def = Def Id [Arg] Expr
   deriving Show
 
 instance Pretty Def where
-  pretty (Def from to) = pretty from++"="++pretty to
+  pretty (Def name args to) = pretty (Call name args) ++"="++pretty to
 
 data Scope = Scope [Def]
   deriving Show
@@ -48,21 +56,14 @@ data Scope = Scope [Def]
 instance Pretty Scope where
   pretty (Scope defs) = "{"++pretty defs++"}"
 
-data Module = Module Id Scope
-  deriving Show
-
-instance Pretty Module where
-  pretty (Module name' defs) = pretty name'++pretty defs
-
-
 type TokenParser tree =  [Token] -> Either (String, [Token]) (tree, [Token])
 
 idT :: TokenParser ()
 idT toks = return ((), toks)
 
-tok :: Token -> TokenParser ()
-tok exp (t:toks) | exp == t = return ((), toks)
-tok exp toks = Left ("Expected "++show exp++" in ", toks)
+tok :: TokenType -> TokenParser ()
+tok expected (Token t _:toks) | expected == t = return ((), toks)
+tok expected toks = Left ("Expected "++show expected++" in ", toks)
 
 with :: TokenParser a -> TokenParser b -> (a->b->c) -> TokenParser c
 with a b f toks = do
@@ -101,11 +102,11 @@ manySep p sep
 -- Actual parsers
 
 parseId :: TokenParser Id
-parseId (Ident name':toks) = return (Id name', toks)
+parseId (Token (Ident name') _:toks) = return (name', toks)
 parseId toks = Left ("Expected Id in ", toks)
 
 parseDef :: TokenParser Def
-parseDef = Def |- head'`with`parseExpr
+parseDef = (\(Call name' args')-> Def name' args') |- head'`with`parseExpr
   where
     head' = const |- parseExpr`with`tok DefinitionOperator
 
@@ -114,16 +115,32 @@ parseCall = Call |- parseId`with`(id`either`const []|- args'`option`idT)
   where
     args' = const |- openArgs' `with` tok CloseParen
     openArgs' = flip const|- tok OpenParen`with`argsList'
-    argsList' = parseExpr`manySep`tok Comma
+    argsList' = parseArg`manySep`tok Comma
+
+parseArg :: TokenParser Arg
+parseArg = Kw`either`A |- parseDef`option`parseExpr
 
 parseExpr :: TokenParser Expr
 parseExpr = Dict`either`id |- parseScope`option`parseCall
 
-parseScope :: TokenParser Scope
-parseScope = const Scope |- tok OpenBrace`with`scope'
+parseDefs :: TokenParser [Def]
+parseDefs = parseDef`manySep`optionalSep
   where
-    scope' = const |- (parseDef`manySep`optionalSep)`with`tok CloseBrace
     optionalSep = id`either`id |- tok Comma`option`idT
 
-parseModule :: TokenParser Module
-parseModule = Module |- parseId`with`parseScope
+parseScope :: TokenParser Scope
+parseScope = const Scope |- tok OpenBrace`with`(const |- parseDefs`with`tok CloseBrace)
+
+parseFile :: String -> IO Scope
+parseFile file = do
+  contents' <- readFile file
+  case parse lexer "" contents' of
+    Right toks -> parseTokens toks
+    Left err' -> error $ show err'
+
+parseTokens :: [Token] -> IO Scope
+parseTokens toks
+  = case parseDefs toks of
+      Right (mod', []) -> return $ Scope mod'
+      Right (_, extra) -> fail $ "Expected EOF, found "++show extra
+      Left (msg, extra) -> fail $ msg ++ show extra

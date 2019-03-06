@@ -1,6 +1,4 @@
-// Testing
-
-divide(n, d) {
+divide(n, d)={
   return = div(
     n=n,
     d=d
@@ -10,7 +8,7 @@ divide(n, d) {
 /*
 This is a test main program.
 */
-main() {
+main()={
   pre=all(
     hasConsoleOutput(
       this_thread
@@ -18,18 +16,8 @@ main() {
     hasConsoleInput(this_thread)
   )
   do=sequence(
-    a1=print(
-      out=divide(
-        n=n13,
-        d=n2
-      )
-    ),
-    a2=print(
-      out=divide(
-        n=f13,
-        d=f2
-      )
-    )
+    a1=print(divide(n13, n2)),
+    a2=print(divide(f13, f2))
   )
   post=isEmpty(memory)
 }

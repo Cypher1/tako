@@ -26,7 +26,7 @@ library Htriple-lib
       Lexer
       Triple
       Pred
-      PredParser
+      HtripleParser
       Resolution
       Operation
   other-modules:
