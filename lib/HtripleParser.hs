@@ -4,15 +4,7 @@ import Text.ParserCombinators.Parsec (parse)
 -- import Control.Monad.State
 import Lexer (lexer, Token(..), TokenType(..))
 
-import Util ((|-), (-|), Pretty(pretty))
-
-instance Pretty a => Pretty [a] where
-  pretty [] = ""
-  pretty [x] = pretty x
-  pretty (x:xs) = pretty x++", "++pretty xs
-
-pprint :: Pretty a => a -> IO ()
-pprint = putStrLn . pretty
+import Util ((|-), (-|), Pretty(pretty), prettyList)
 
 -- info is used for passing context (e.g. source location, the stack)
 type Id = String
@@ -33,7 +25,7 @@ data Expr
 
 instance Pretty Expr where
   pretty (Call name' []) = name'
-  pretty (Call name' args) = name'++"("++pretty args++")"
+  pretty (Call name' args) = name'++"("++prettyList args++")"
   pretty (Dict scope) = pretty scope
 
 data Def = Def Id [Arg] Expr
@@ -42,11 +34,11 @@ data Def = Def Id [Arg] Expr
 instance Pretty Def where
   pretty (Def name args to) = pretty (Call name args) ++"="++pretty to
 
-data Scope = Scope [Def]
+newtype Scope = Scope [Def]
   deriving Show
 
 instance Pretty Scope where
-  pretty (Scope defs) = "{"++pretty defs++"}"
+  pretty (Scope defs) = "{"++prettyList defs++"}"
 
 type TokenParser tree =  [Token] -> Either (String, [Token]) (tree, [Token])
 
@@ -89,7 +81,7 @@ manySep p sep
     where
       end' = (:[])`either`const [] |- p`option`idT
       pWithSep' = (:) |- p`with` tail'
-      tail' = (flip const|- sep`with`manySep p sep)
+      tail' = flip const|- sep`with`manySep p sep
 
 -- Actual parsers
 
