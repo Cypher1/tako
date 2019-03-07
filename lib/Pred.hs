@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Pred where
 
-import Util (showMap, showSet)
+import Util (prettyMap, prettySet, Pretty(pretty), prettyMap)
 import qualified Data.Map as M
 import Data.Map (Map)
 import Data.Set (Set)
@@ -65,11 +65,11 @@ instance Ord (Atom Var) where
   compare (Rule _ _) (Predicate _) = LT
   compare (Rule conds1 outs1) (Rule conds2 outs2) = compare (conds1, outs1) (conds2, outs2)
 
-instance Show (Atom a) where
-  show (Value s) = s
-  show (Variable s) = s++"?"
-  show (Predicate pred') = show pred'
-  show (Rule conds outs) = showSet conds++" |- "++show outs
+instance Pretty (Atom a) where
+  pretty (Value s) = s
+  pretty (Variable s) = s++"?"
+  pretty (Predicate pred') = pretty pred'
+  pretty (Rule conds outs) = prettySet conds++" |- "++prettySet outs
 
 type Assignment a = Map (Atom Var) (Atom a)
 newtype Pred a = Pred (Assignment a)
@@ -86,10 +86,10 @@ instance Ord (Pred Val) where
 instance Ord (Pred Var) where
   compare (Pred xs) (Pred ys) = compare xs ys
 
-instance Show (Pred a) where
-  show (Pred atoms) = case M.lookup (Variable "rel") atoms of
-                        Just name -> show name++"("++Util.showMap atoms++")" -- TODO(jopra) hide name from here.
-                        Nothing -> "_("++Util.showMap atoms++")"
+instance Pretty (Pred a) where
+  pretty (Pred atoms) = case M.lookup (Variable "rel") atoms of
+                        Just name -> pretty name++"("++Util.prettyMap atoms++")" -- TODO(jopra) hide name from here.
+                        Nothing -> "_("++Util.prettyMap atoms++")"
 
 val :: String -> Atom a
 val = Value

@@ -1,11 +1,16 @@
 module Util where
 
-import Prelude hiding (showList)
 import qualified Data.Map as M
 import Data.Map (Map)
 import qualified Data.Set as S
 import Data.Set (Set)
 import Data.List (intersperse)
+
+infixl 0 |-, -|
+(|-) :: a -> (a -> c) -> c
+(|-) = flip ($)
+(-|) :: (a -> c) -> a -> c
+(-|) = ($)
 
 indent :: String -> String
 indent x = concat $ intersperse "\n" $ map ("  "++) $ lines x
@@ -28,22 +33,26 @@ printEither :: (Show a, Show b) => Either a b -> IO ()
 printEither (Right a) = print a
 printEither (Left a) = print a
 
-showList :: Show a => [a] -> String
-showList xs = drop (length joiner) $ concatMap (\x->joiner++show x) xs
-  where
-    joiner = ", "
-
-showSet :: Show a => Set a -> String
-showSet = showList . S.toList
-
-showMap :: (Show a, Show b) => Map a b -> String
-showMap xs = drop (length joiner) $ concatMap (\(k, v)->joiner++show k++k_to_v++show v) $ M.toList xs
-  where
-    joiner = ", "
-    k_to_v = ":"
-
 onPair :: (a -> b) -> (c -> d) -> (a, c) -> (b, d)
 onPair f g (a, c) = (f a, g c)
 
 boundedAll :: (Enum a, Bounded a) => [a]
 boundedAll = [minBound..maxBound]
+
+class Pretty a where
+  pretty :: a -> String
+
+prettyList :: Pretty a => [a] -> String
+prettyList xs = drop (length joiner) $ concatMap (\x->joiner++pretty x) xs
+  where
+    joiner = ", "
+
+prettySet :: Pretty a => Set a -> String
+prettySet = prettyList . S.toList
+
+prettyMap :: (Pretty a, Pretty b) => Map a b -> String
+prettyMap xs = drop (length joiner) $ concatMap
+  (\(k, v)->joiner++pretty k++k_to_v++pretty v) $ M.toList xs
+  where
+    joiner = ", "
+    k_to_v = ":"

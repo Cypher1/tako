@@ -4,15 +4,7 @@ import Text.ParserCombinators.Parsec (parse)
 -- import Control.Monad.State
 import Lexer (lexer, Token(..), TokenType(..))
 
-
-infixl 0 |-, -|
-(|-) :: a -> (a -> c) -> c
-(|-) = flip ($)
-(-|) :: (a -> c) -> a -> c
-(-|) = ($)
-
-class Pretty a where
-  pretty :: a -> String
+import Util ((|-), (-|), Pretty(pretty))
 
 instance Pretty a => Pretty [a] where
   pretty [] = ""
