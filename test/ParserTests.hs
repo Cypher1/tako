@@ -3,9 +3,7 @@ module ParserTests where
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import PredParser (parseFile)
-
-import Data.Either (isRight)
+import HtripleParser (parseFile)
 
 files :: [String]
 files = [ "examples/t1.htr"
@@ -27,4 +25,4 @@ parsesExamples = testGroup "Parsing example files succeeds" $
 parsesExample :: String -> TestTree
 parsesExample file = testCase ("Can parse example file("++file++")") $ do
   parsed <- parseFile file
-  isRight parsed @?= True
+  assertBool (show parsed) (show parsed /= "")

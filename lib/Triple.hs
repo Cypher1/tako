@@ -2,8 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Triple where
 
-import Prelude hiding (showList)
-import Util (showList)
+import Util (Pretty(..), prettyList)
 import Pred (Pred, Assignment, Val, Var)
 import Resolution (State, Requirements, solutionsAndErrors, filterErrors, ignoreErrors, ResolutionFailure)
 import Operation (Op)
@@ -13,18 +12,18 @@ data Triple a b c= Tri
   { pre :: a  -- requirements of the calling environment
   , op :: b   -- operations to be executed
   , post :: c -- outcomes of the operations
-  } deriving (Eq, Ord)
+  } deriving (Eq, Ord, Show)
 
 type HTriple = Triple Requirements Op State -- HTriples are triples over operations, with states/checks
 -- TODO(jopra): Consider new typing pre vs post conditions to ensure they aren't mixed up
 
-instance Show HTriple where
-  show t = "{"++pre'++"}"++showList op'++"{"++post'++"}"
+instance Pretty HTriple where
+  pretty t = "{"++pre'++"}"++prettyList op'++"{"++post'++"}"
     where
-      pre' = show' $ pre t
+      pre' = pretty' $ pre t
       op' = op t
-      post' = show' $ post t
-      show' x = showList $ S.toList x
+      post' = pretty' $ post t
+      pretty' x = prettyList $ S.toList x
 
 -- TODO(jopra): Replace with new repr:
 -- - should be restricted to the syntax of the language

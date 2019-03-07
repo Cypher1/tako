@@ -1,6 +1,6 @@
 module Operation where
 
-import Util (boundedAll)
+import Util (boundedAll, Pretty(..))
 
 import Data.Bits
 
@@ -13,17 +13,21 @@ data Instruction
   | L Val Sym
   deriving (Show, Eq, Ord)
 
+instance Pretty Instruction where
+  pretty = show
+
 only :: a -> [(a, String)]
 only a = [(a, "")]
 
 -- TODO(jopra): Ensure array access safety.
+-- TODO(jopra): Rename this, read and show are reserved.
 instance Read Instruction where
   readsPrec _p s
     | null w = []
-    | n == 3 && c == "L" = only $ L (read opa) (read opb)
-    | n == 2 && c`elem`map show unops = only $ U (read c) (read opa)
-    | n == 3 && c`elem`map show biops = only $ B (read c) (read opa) (read opb)
-    | n == 4 && c`elem`map show triops = only $ T (read c) (read opa) (read opb) (read opr)
+    | n == 3 && c == "L" = only $ L (read opa) opb
+    | n == 2 && c`elem`map show unops = only $ U (read c) opa
+    | n == 3 && c`elem`map show biops = only $ B (read c) opa opb
+    | n == 4 && c`elem`map show triops = only $ T (read c) opa opb opr
     | otherwise = []
     where
       n = length w
@@ -48,9 +52,9 @@ biops = boundedAll
 triops :: [TriOp]
 triops = boundedAll
 
-type Op = [Instruction] -- deriving (Show, Eq, Ord)
+type Op = [Instruction]
 
-type Mem = [(Sym, Val)] -- deriving (Show, Eq, Ord)
+type Mem = [(Sym, Val)]
 
 getV :: Sym -> Mem -> Val
 getV k h
