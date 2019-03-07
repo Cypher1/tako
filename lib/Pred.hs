@@ -17,7 +17,6 @@ data Atom a where
   Variable :: Sym -> Atom Var -- a variable that can match any symbol (in its context)
   Predicate :: Pred a -> Atom a -- either something to be solved or known
   Rule :: Set (Pred Var) -> Set (Pred Var) -> Atom a -- A sequent
-
 -- TODO(jopra): Represent Forall and Exists as:
 -- Forall :: Atom Var -> Atom Var -> Atom Val
 -- Exists :: Atom Var -> Atom Var -> Atom Val
@@ -65,6 +64,12 @@ instance Ord (Atom Var) where
   compare (Rule _ _) (Predicate _) = LT
   compare (Rule conds1 outs1) (Rule conds2 outs2) = compare (conds1, outs1) (conds2, outs2)
 
+instance Show (Atom a) where
+  show (Value s) = "Value "++show s
+  show (Variable s) = "Variable "++show s
+  show (Predicate pred') = "Predicate " ++ show pred'
+  show (Rule conds outs) = "Rule ("++show conds++") ("++show outs++")"
+
 instance Pretty (Atom a) where
   pretty (Value s) = s
   pretty (Variable s) = s++"?"
@@ -85,6 +90,10 @@ instance Ord (Pred Val) where
 
 instance Ord (Pred Var) where
   compare (Pred xs) (Pred ys) = compare xs ys
+
+
+instance Show (Pred a) where
+  show (Pred atoms) = "Pred "++show atoms
 
 instance Pretty (Pred a) where
   pretty (Pred atoms) = case M.lookup (Variable "rel") atoms of

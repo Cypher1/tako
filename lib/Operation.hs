@@ -1,6 +1,6 @@
 module Operation where
 
-import Util (boundedAll)
+import Util (boundedAll, Pretty(..))
 
 import Data.Bits
 
@@ -13,10 +13,14 @@ data Instruction
   | L Val Sym
   deriving (Show, Eq, Ord)
 
+instance Pretty Instruction where
+  pretty = show
+
 only :: a -> [(a, String)]
 only a = [(a, "")]
 
 -- TODO(jopra): Ensure array access safety.
+-- TODO(jopra): Rename this, read and show are reserved.
 instance Read Instruction where
   readsPrec _p s
     | null w = []
@@ -48,9 +52,9 @@ biops = boundedAll
 triops :: [TriOp]
 triops = boundedAll
 
-type Op = [Instruction] -- deriving (Show, Eq, Ord)
+type Op = [Instruction]
 
-type Mem = [(Sym, Val)] -- deriving (Show, Eq, Ord)
+type Mem = [(Sym, Val)]
 
 getV :: Sym -> Mem -> Val
 getV k h
