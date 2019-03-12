@@ -40,7 +40,7 @@ lexer :: ParsecT String u Identity [Token]
 lexer = many lex' <* whiteSpace <* eof
 
 lex' :: ParsecT String u Identity Token
-lex' = Token <$> (choice $ map (try.lexeme) exprs) <*> getInfo
+lex' = Token <$> choice ( map (try.lexeme) exprs) <*> getInfo
 
 data Info = Info
   { line :: Int

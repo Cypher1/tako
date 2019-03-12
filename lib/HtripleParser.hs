@@ -1,4 +1,5 @@
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE LambdaCase #-}
 module HtripleParser where
 
 import Control.Applicative (Alternative(..))
@@ -21,8 +22,8 @@ data Arg
   deriving Show
 
 instance Pretty Arg where
-  pretty (Kw def) = pretty def
-  pretty (A expr) = pretty expr
+  pretty (Kw def') = pretty def'
+  pretty (A expr') = pretty expr'
 
 data Call = Call Id [Arg]
   deriving Show
@@ -37,8 +38,8 @@ data Expr
   deriving Show
 
 instance Pretty Expr where
-  pretty (CallExpr call) = pretty call
-  pretty (Dict scope) = pretty scope
+  pretty (CallExpr call') = pretty call'
+  pretty (Dict scope') = pretty scope'
 
 data Step
   = Step { pre :: [Expr], op :: Expr, post :: [Expr] }
@@ -64,7 +65,7 @@ newtype Scope = Scope [Def]
   deriving Show
 
 instance Pretty Scope where
-  pretty (Scope defs) = "{"++prettyList defs++"}"
+  pretty (Scope defs') = "{"++prettyList defs'++"}"
 
 newtype Parser a = Parser { unParser :: StateT [Token] (Either String) a }
 
@@ -94,7 +95,7 @@ instance Monad Parser where
         runParser (f a') s'
 
 anyToken :: Parser Token
-anyToken = Parser . StateT $ \s -> case s of
+anyToken = Parser . StateT $ \case
     []     -> empty
     (c:cs) -> pure (c, cs)
 
@@ -143,48 +144,48 @@ parseId = do
     Ident name' -> pure name'
     _tok'' -> empty -- fail $ "Expected an Identifier, got '"++show tok''++"' at "++show inf'
 
-parseDef :: Parser Def
-parseDef
-  = Def <$> parseId <*> parseArgList <* tok DefinitionOperator <*> parseStep
+def :: Parser Def
+def
+  = Def <$> parseId <*> argList <* tok DefinitionOperator <*> step
 
-parseArgList :: Parser [Arg]
-parseArgList
-  = tok OpenParen *> parseArg`sepBy`tok Comma <* tok CloseParen
+argList :: Parser [Arg]
+argList
+  = tok OpenParen *> arg`sepBy`tok Comma <* tok CloseParen
   <|> pure []
 
-parseCall :: Parser Call
-parseCall = Call <$> parseId <*> parseArgList
+call :: Parser Call
+call = Call <$> parseId <*> argList
 
-parseArg :: Parser Arg
-parseArg = (Kw <$> parseDef) <|> (A <$> parseStep)
+arg :: Parser Arg
+arg = (Kw <$> def) <|> (A <$> step)
 
-parseExpr :: Parser Expr
-parseExpr = (Dict <$> parseScope) <|> (CallExpr <$> parseCall)
+expr :: Parser Expr
+expr = (Dict <$> scope) <|> (CallExpr <$> call)
 
-parseStep :: Parser Step
-parseStep = Step <$> preds' Minus <*> parseExpr <*> preds' Plus
+step :: Parser Step
+step = Step <$> preds' Minus <*> expr <*> preds' Plus
   where
     preds' :: TokenType -> Parser [Expr]
     preds' t
-      = tok t *> tok OpenBrace *> parseExpr`sepBy`tok Comma <* tok CloseBrace
+      = tok t *> tok OpenBrace *> expr`sepBy`tok Comma <* tok CloseBrace
       <|> pure []
 
-parseDefs :: Parser [Def]
-parseDefs = parseDef`sepBy`(tok Comma <|> pure Comma) 
+defs :: Parser [Def]
+defs = def`sepBy`(tok Comma <|> pure Comma)
 
-parseScope :: Parser Scope
-parseScope = Scope <$> (tok OpenBrace *> parseDefs <* tok CloseBrace)
+scope :: Parser Scope
+scope = Scope <$> (tok OpenBrace *> defs <* tok CloseBrace)
 
 parseFile :: String -> IO Scope
 parseFile file = do
   contents' <- readFile file
   case parse lexer "" contents' of
-    Right toks' -> parseTokens toks'
+    Right toks' -> tokens toks'
     Left err' -> error $ show err'
 
-parseTokens :: [Token] -> IO Scope
-parseTokens toks'
-  = case runParser parseDefs toks' of
+tokens :: [Token] -> IO Scope
+tokens toks'
+  = case runParser defs toks' of
       Right (mod', []) -> pure $ Scope mod'
       Right (_, extra) -> fail $ "Expected EOF, found "++show extra
       Left msg -> fail msg
