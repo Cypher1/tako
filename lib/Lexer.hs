@@ -21,6 +21,7 @@ data TokenType
   | Comma
   | OpenParen | CloseParen
   | OpenBrace | CloseBrace
+  | Plus | Minus
   deriving (Show, Eq)
 
 exprs :: [ParsecT String u Identity TokenType]
@@ -31,6 +32,8 @@ exprs = [ Ident <$> identifier
         , const CloseParen <$> closeParen
         , const OpenBrace <$> openBrace
         , const CloseBrace <$> closeBrace
+        , const Plus <$> plusOp
+        , const Minus <$> minusOp
         ]
 
 lexer :: ParsecT String u Identity [Token]

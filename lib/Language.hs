@@ -23,6 +23,12 @@ preConditionKeyword = "pre"
 assignmentOperator :: String
 assignmentOperator = "="
 
+plusOperator :: String
+plusOperator = "+"
+
+minusOperator :: String
+minusOperator = "-"
+
 htripleDef :: (Stream s m Char) => GenLanguageDef s u m
 htripleDef = LanguageDef
   { commentStart = "/*"
@@ -79,6 +85,12 @@ closeBrace = void $ char '}'
 
 assignmentOp :: ParsecT String u Identity ()
 assignmentOp = void $ Token.symbol htriple assignmentOperator
+
+plusOp :: ParsecT String u Identity ()
+plusOp = void $ Token.symbol htriple plusOperator
+
+minusOp :: ParsecT String u Identity ()
+minusOp = void $ Token.symbol htriple minusOperator
 
 consOperator :: ParsecT String u Identity ()
 consOperator = void $ Token.comma htriple

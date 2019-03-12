@@ -11,24 +11,44 @@ type Id = String
 
 data Arg
   = Kw Def
-  | A Expr
+  | A Step
   deriving Show
 
 instance Pretty Arg where
   pretty (Kw def) = pretty def
   pretty (A expr) = pretty expr
 
+data Call = Call Id [Arg]
+  deriving Show
+
+instance Pretty Call where
+  pretty (Call name' []) = name'
+  pretty (Call name' args) = name'++"("++prettyList args++")"
+
 data Expr
-  = Call Id [Arg]
+  = CallExpr Call
   | Dict Scope
   deriving Show
 
 instance Pretty Expr where
-  pretty (Call name' []) = name'
-  pretty (Call name' args) = name'++"("++prettyList args++")"
+  pretty (CallExpr call) = pretty call
   pretty (Dict scope) = pretty scope
 
-data Def = Def Id [Arg] Expr
+data Step
+  = Step { pre :: [Expr], op :: Expr, post :: [Expr] }
+  deriving Show
+
+instance Pretty Step where
+  pretty st = pre'++pretty (op st)++post'
+    where
+      pre'
+        | null $ pre st = ""
+        | otherwise = "-{"++prettyList (pre st)++"}"
+      post'
+        | null $ post st = ""
+        | otherwise = "+{"++prettyList (post st)++"}"
+
+data Def = Def Id [Arg] Step
   deriving Show
 
 instance Pretty Def where
@@ -40,7 +60,7 @@ newtype Scope = Scope [Def]
 instance Pretty Scope where
   pretty (Scope defs) = "{"++prettyList defs++"}"
 
-type TokenParser tree =  [Token] -> Either (String, [Token]) (tree, [Token])
+type TokenParser tree = [Token] -> Either (String, [Token]) (tree, [Token])
 
 idT :: TokenParser ()
 idT toks = return ((), toks)
@@ -63,11 +83,14 @@ option pa pb f toks
                   Right (b, toks') -> return (f -| Right b, toks')
       Right (a, toks') -> return (f $ Left a, toks')
 
+orJust :: TokenParser v -> v -> TokenParser v
+orJust p v = id`either`const v |- p`option`idT
+
 many1 :: TokenParser v -> TokenParser [v]
 many1 p = (:) |- p`with`many p
 
 many :: TokenParser v -> TokenParser [v]
-many p = id`either`const [] |- many1 p`option`idT
+many p = many1 p`orJust`[]
 
 manySep1 :: TokenParser v -> TokenParser () -> TokenParser [v]
 manySep1 p sep
@@ -78,10 +101,13 @@ manySep1 p sep
 manySep :: TokenParser v -> TokenParser () -> TokenParser [v]
 manySep p sep
   = id`either`id|- pWithSep'`option`end'
-    where
+     where
       end' = (:[])`either`const [] |- p`option`idT
       pWithSep' = (:) |- p`with` tail'
       tail' = flip const|- sep`with`manySep p sep
+
+between :: TokenParser () -> TokenParser a -> TokenParser () -> (a->b) -> TokenParser b
+between open' val cls f = const f |- open'`with`(const |- val`with`cls)
 
 -- Actual parsers
 
@@ -90,30 +116,42 @@ parseId (Token (Ident name') _:toks) = return (name', toks)
 parseId toks = Left ("Expected Id in ", toks)
 
 parseDef :: TokenParser Def
-parseDef = (\(Call name' args')-> Def name' args') |- head'`with`parseExpr
+parseDef = def' |- (const |- ((,) |- (parseId`with`parseArgList))`with`tok DefinitionOperator)`with`parseStep
   where
-    head' = const |- parseExpr`with`tok DefinitionOperator
+    def' :: (Id, [Arg]) -> Step -> Def
+    def' (name', args') val' = Def name' args' val'
 
-parseCall :: TokenParser Expr
-parseCall = Call |- parseId`with`(id`either`const []|- args'`option`idT)
+parseArgList :: TokenParser [Arg]
+parseArgList = (id |- between (tok OpenParen) argsList' (tok CloseParen))`orJust`[]
   where
-    args' = const |- openArgs' `with` tok CloseParen
-    openArgs' = flip const|- tok OpenParen`with`argsList'
+    argsList' :: TokenParser [Arg]
     argsList' = parseArg`manySep`tok Comma
 
+
+parseCall :: TokenParser Call
+parseCall = Call |- parseId`with`parseArgList
+
 parseArg :: TokenParser Arg
-parseArg = Kw`either`A |- parseDef`option`parseExpr
+parseArg = Kw`either`A |- parseDef`option`parseStep
 
 parseExpr :: TokenParser Expr
-parseExpr = Dict`either`id |- parseScope`option`parseCall
+parseExpr = Dict`either`CallExpr |- parseScope`option`parseCall
+
+parseStep :: TokenParser Step
+parseStep = (\pre'' (expr'', post'') -> Step pre'' expr'' post'') |- (pre'`orJust`[])`with`tail'
+  where
+    tail' :: TokenParser (Expr, [Expr])
+    tail' = (,) |- parseExpr`with`(post'`orJust`[])
+    pre' :: TokenParser [Expr]
+    pre' = id |- between (const |- tok Minus`with`tok OpenBrace) (parseExpr`manySep`tok Comma) (tok CloseBrace)
+    post' :: TokenParser [Expr]
+    post' = id |- between (const |- tok Plus`with`tok OpenBrace) (parseExpr`manySep`tok Comma) (tok CloseBrace)
 
 parseDefs :: TokenParser [Def]
-parseDefs = parseDef`manySep`optionalSep
-  where
-    optionalSep = id`either`id |- tok Comma`option`idT
+parseDefs = parseDef`manySep`(tok Comma`orJust`())
 
 parseScope :: TokenParser Scope
-parseScope = const Scope |- tok OpenBrace`with`(const |- parseDefs`with`tok CloseBrace)
+parseScope = Scope |- between (tok OpenBrace) parseDefs (tok CloseBrace)
 
 parseFile :: String -> IO Scope
 parseFile file = do
