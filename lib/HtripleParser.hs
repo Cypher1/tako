@@ -1,10 +1,16 @@
+{-# LANGUAGE InstanceSigs #-}
 module HtripleParser where
+
+import Control.Applicative (Alternative(..))
+import Control.Monad.Trans.State.Strict
+-- import Data.Char (isSpace, isDigit, ord)
 
 import Text.ParserCombinators.Parsec (parse)
 -- import Control.Monad.State
 import Lexer (lexer, Token(..), TokenType(..))
 
-import Util ((|-), (-|), Pretty(pretty), prettyList)
+import Util (Pretty(pretty), prettyList)
+
 
 -- info is used for passing context (e.g. source location, the stack)
 type Id = String
@@ -60,109 +66,125 @@ newtype Scope = Scope [Def]
 instance Pretty Scope where
   pretty (Scope defs) = "{"++prettyList defs++"}"
 
-type TokenParser tree = [Token] -> Either (String, [Token]) (tree, [Token])
+newtype Parser a = Parser { unParser :: StateT [Token] (Either String) a }
 
-idT :: TokenParser ()
-idT toks = return ((), toks)
+runParser :: Parser a -> [Token] -> Either String (a, [Token])
+runParser = runStateT . unParser
 
-tok :: TokenType -> TokenParser ()
-tok expected (Token t _:toks) | expected == t = return ((), toks)
-tok expected toks = Left ("Expected "++show expected++" in ", toks)
+instance Functor Parser where
+    fmap :: (a -> b) -> Parser a -> Parser b
+    fmap f p = Parser $ f <$> unParser p
 
-with :: TokenParser a -> TokenParser b -> (a->b->c) -> TokenParser c
-with a b f toks = do
-  (a', toks') <- a toks
-  (b', toks'') <- b toks'
-  return (f a' b', toks'')
+instance Applicative Parser where
+    pure :: a -> Parser a
+    pure a  = Parser $ pure a
+    (<*>) :: Parser (a -> b) -> Parser a -> Parser b
+    f <*> a = Parser $ unParser f <*> unParser a
 
-option :: TokenParser a -> TokenParser b -> (Either a b -> c) -> TokenParser c
-option pa pb f toks
-  = case pa toks of
-      Left _ -> case pb toks of
-                  Left err -> Left err
-                  Right (b, toks') -> return (f -| Right b, toks')
-      Right (a, toks') -> return (f $ Left a, toks')
+instance Alternative Parser where
+    empty :: Parser a
+    empty   = Parser empty
+    (<|>) :: Parser a -> Parser a -> Parser a
+    a <|> b = Parser $ unParser a <|> unParser b
 
-orJust :: TokenParser v -> v -> TokenParser v
-orJust p v = id`either`const v |- p`option`idT
+instance Monad Parser where
+    (>>=) :: Parser a -> (a -> Parser b) -> Parser b
+    a >>= f = Parser $ StateT $ \s -> do
+        (a', s') <- runParser a s
+        runParser (f a') s'
 
-many1 :: TokenParser v -> TokenParser [v]
-many1 p = (:) |- p`with`many p
+anyToken :: Parser Token
+anyToken = Parser . StateT $ \s -> case s of
+    []     -> empty
+    (c:cs) -> pure (c, cs)
 
-many :: TokenParser v -> TokenParser [v]
-many p = many1 p`orJust`[]
+tok :: TokenType -> Parser TokenType
+tok exp' = do
+  Token got' _inf' <- anyToken
+  if got' == exp'
+     then pure exp'
+     else empty -- fail $ "Expected an '"++show exp'++"', got '"++show got'++"' at "++show inf'
 
-manySep1 :: TokenParser v -> TokenParser () -> TokenParser [v]
-manySep1 p sep
-  = (:) |- pSep`with`many p
+sepBy :: Parser a -> Parser b -> Parser [a]
+sepBy p sep = (p `sepBy1` sep) <|> pure []
+
+sepBy1 :: Parser a -> Parser b -> Parser [a]
+sepBy1 p sep = (:) <$> p <*> many (sep *> p)
+
+chainl :: Parser a -> Parser (a -> a -> a) -> a -> Parser a
+chainl p op' a = (p `chainl1` op') <|> pure a
+
+chainl1 :: Parser a -> Parser (a -> a -> a) -> Parser a
+chainl1 p op' = p >>= rest
+    where 
+        rest a = (do
+            f <- op'
+            b <- p
+            rest (f a b)) <|> pure a
+
+chainr :: Parser a -> Parser (a -> a -> a) -> a -> Parser a
+chainr p op' a = (p `chainr1` op') <|> pure a
+
+chainr1 :: Parser a -> Parser (a -> a -> a) -> Parser a
+chainr1 p op' = scan
     where
-      pSep = const |- p`with`sep
-
-manySep :: TokenParser v -> TokenParser () -> TokenParser [v]
-manySep p sep
-  = id`either`id|- pWithSep'`option`end'
-     where
-      end' = (:[])`either`const [] |- p`option`idT
-      pWithSep' = (:) |- p`with` tail'
-      tail' = flip const|- sep`with`manySep p sep
-
-between :: TokenParser () -> TokenParser a -> TokenParser () -> (a->b) -> TokenParser b
-between open' val cls f = const f |- open'`with`(const |- val`with`cls)
+        scan   = p >>= rest
+        rest a = (do
+            f <- op'
+            b <- scan
+            rest (f a b)) <|> pure a
 
 -- Actual parsers
 
-parseId :: TokenParser Id
-parseId (Token (Ident name') _:toks) = return (name', toks)
-parseId toks = Left ("Expected Id in ", toks)
+parseId :: Parser Id
+parseId = do
+  Token tok' _inf' <- anyToken
+  case tok' of
+    Ident name' -> pure name'
+    _tok'' -> empty -- fail $ "Expected an Identifier, got '"++show tok''++"' at "++show inf'
 
-parseDef :: TokenParser Def
-parseDef = def' |- (const |- ((,) |- (parseId`with`parseArgList))`with`tok DefinitionOperator)`with`parseStep
+parseDef :: Parser Def
+parseDef
+  = Def <$> parseId <*> parseArgList <* tok DefinitionOperator <*> parseStep
+
+parseArgList :: Parser [Arg]
+parseArgList
+  = tok OpenParen *> parseArg`sepBy`tok Comma <* tok CloseParen
+  <|> pure []
+
+parseCall :: Parser Call
+parseCall = Call <$> parseId <*> parseArgList
+
+parseArg :: Parser Arg
+parseArg = (Kw <$> parseDef) <|> (A <$> parseStep)
+
+parseExpr :: Parser Expr
+parseExpr = (Dict <$> parseScope) <|> (CallExpr <$> parseCall)
+
+parseStep :: Parser Step
+parseStep = Step <$> preds' Minus <*> parseExpr <*> preds' Plus
   where
-    def' :: (Id, [Arg]) -> Step -> Def
-    def' (name', args') val' = Def name' args' val'
+    preds' :: TokenType -> Parser [Expr]
+    preds' t
+      = tok t *> tok OpenBrace *> parseExpr`sepBy`tok Comma <* tok CloseBrace
+      <|> pure []
 
-parseArgList :: TokenParser [Arg]
-parseArgList = (id |- between (tok OpenParen) argsList' (tok CloseParen))`orJust`[]
-  where
-    argsList' :: TokenParser [Arg]
-    argsList' = parseArg`manySep`tok Comma
+parseDefs :: Parser [Def]
+parseDefs = parseDef`sepBy`(tok Comma <|> pure Comma) 
 
-
-parseCall :: TokenParser Call
-parseCall = Call |- parseId`with`parseArgList
-
-parseArg :: TokenParser Arg
-parseArg = Kw`either`A |- parseDef`option`parseStep
-
-parseExpr :: TokenParser Expr
-parseExpr = Dict`either`CallExpr |- parseScope`option`parseCall
-
-parseStep :: TokenParser Step
-parseStep = (\pre'' (expr'', post'') -> Step pre'' expr'' post'') |- (pre'`orJust`[])`with`tail'
-  where
-    tail' :: TokenParser (Expr, [Expr])
-    tail' = (,) |- parseExpr`with`(post'`orJust`[])
-    pre' :: TokenParser [Expr]
-    pre' = id |- between (const |- tok Minus`with`tok OpenBrace) (parseExpr`manySep`tok Comma) (tok CloseBrace)
-    post' :: TokenParser [Expr]
-    post' = id |- between (const |- tok Plus`with`tok OpenBrace) (parseExpr`manySep`tok Comma) (tok CloseBrace)
-
-parseDefs :: TokenParser [Def]
-parseDefs = parseDef`manySep`(tok Comma`orJust`())
-
-parseScope :: TokenParser Scope
-parseScope = Scope |- between (tok OpenBrace) parseDefs (tok CloseBrace)
+parseScope :: Parser Scope
+parseScope = Scope <$> (tok OpenBrace *> parseDefs <* tok CloseBrace)
 
 parseFile :: String -> IO Scope
 parseFile file = do
   contents' <- readFile file
   case parse lexer "" contents' of
-    Right toks -> parseTokens toks
+    Right toks' -> parseTokens toks'
     Left err' -> error $ show err'
 
 parseTokens :: [Token] -> IO Scope
-parseTokens toks
-  = case parseDefs toks of
-      Right (mod', []) -> return $ Scope mod'
+parseTokens toks'
+  = case runParser parseDefs toks' of
+      Right (mod', []) -> pure $ Scope mod'
       Right (_, extra) -> fail $ "Expected EOF, found "++show extra
-      Left (msg, extra) -> fail $ msg ++ show extra
+      Left msg -> fail msg

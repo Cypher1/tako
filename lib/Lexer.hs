@@ -37,17 +37,10 @@ exprs = [ Ident <$> identifier
         ]
 
 lexer :: ParsecT String u Identity [Token]
-lexer = do
-  tokens' <- many lex'
-  _ <- whiteSpace
-  _ <- eof
-  return tokens'
+lexer = many lex' <* whiteSpace <* eof
 
 lex' :: ParsecT String u Identity Token
-lex' = do
-  toktype' <- choice $ map (try.lexeme) exprs
-  info' <- getInfo
-  return $ Token toktype' info'
+lex' = Token <$> (choice $ map (try.lexeme) exprs) <*> getInfo
 
 data Info = Info
   { line :: Int
