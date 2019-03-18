@@ -11,9 +11,13 @@ import Text.ParserCombinators.Parsec
   )
 
 import Language
+import Util(Pretty(..))
 
 data Token = Token TokenType Info
   deriving (Show, Eq)
+
+instance Pretty Token where
+  pretty (Token ty inf) = "'"++pretty ty ++ "' at " ++ pretty inf
 
 data TokenType
   = Ident String
@@ -23,6 +27,17 @@ data TokenType
   | OpenBrace | CloseBrace
   | Plus | Minus
   deriving (Show, Eq)
+
+instance Pretty TokenType where
+  pretty (Ident st) = show st
+  pretty DefinitionOperator = assignmentOperator
+  pretty Comma = ","
+  pretty OpenParen = "("
+  pretty CloseParen = ")"
+  pretty OpenBrace = "{"
+  pretty CloseBrace = "}"
+  pretty Plus = plusOperator
+  pretty Minus = minusOperator
 
 exprs :: [ParsecT String u Identity TokenType]
 exprs = [ Ident <$> identifier
@@ -39,19 +54,25 @@ exprs = [ Ident <$> identifier
 lexer :: ParsecT String u Identity [Token]
 lexer = many lex' <* whiteSpace <* eof
 
+makeToken :: SourcePos -> TokenType -> SourcePos -> Token
+makeToken st ty end = Token ty $ infoFrom st end
+
 lex' :: ParsecT String u Identity Token
-lex' = Token <$> choice ( map (try.lexeme) exprs) <*> getInfo
+lex' = makeToken <$> getInfo <*> choice ( map (try.lexeme) exprs) <*> getInfo
 
 data Info = Info
-  { line :: Int
-  , col :: Int
+  { at :: SourcePos
+  , next_token :: SourcePos
   } deriving (Show, Eq)
 
-infoFrom :: SourcePos -> Info
-infoFrom pos = Info
-  { line = sourceLine pos
-  , col = sourceColumn pos
+instance Pretty Info where
+  pretty inf = "Line: " ++ show (sourceLine (at inf)) ++ ", Column: " ++ show (sourceColumn (at inf))
+
+infoFrom :: SourcePos -> SourcePos -> Info
+infoFrom start end = Info
+  { at = start
+  , next_token = end
   }
 
-getInfo :: ParsecT String u Identity Info
-getInfo = infoFrom <$> getPosition
+getInfo :: ParsecT String u Identity SourcePos
+getInfo = getPosition

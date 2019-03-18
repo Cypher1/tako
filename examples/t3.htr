@@ -1,4 +1,4 @@
-divide(n, d)={
+divide(n=a, d=a)={
   return = div(
     n=n,
     d=d
