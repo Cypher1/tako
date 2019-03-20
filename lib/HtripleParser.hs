@@ -1,5 +1,4 @@
 {-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE LambdaCase #-}
 module HtripleParser where
 
 import Data.Functor.Identity (Identity)
@@ -137,5 +136,5 @@ parseFile file = do
 tokens :: String -> [Token] -> Scope
 tokens file toks'
   = case parse (defs <* eof) file toks' of
-      Right mod' -> Scope $ mod'
+      Right mod' -> Scope mod'
       Left err -> error $ show err
