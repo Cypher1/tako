@@ -1,3 +1,3 @@
-c()={
-  a=b(m=n(), o)
+c={
+  a=b(m = n(), -{hasIO}o+{didIO})
 }

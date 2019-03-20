@@ -42,6 +42,9 @@ boundedAll = [minBound..maxBound]
 class Pretty a where
   pretty :: a -> String
 
+pprint :: Pretty a => a -> IO ()
+pprint = putStrLn . pretty
+
 prettyList :: Pretty a => [a] -> String
 prettyList xs = drop (length joiner) $ concatMap (\x->joiner++pretty x) xs
   where

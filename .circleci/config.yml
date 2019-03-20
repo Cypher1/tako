@@ -6,24 +6,13 @@ jobs:
       - image: haskell:8.6.3
     parallelism: 1
     steps:
+      - run: export TERM='Readline'
       # Ensure that we have git & ssh
       - run: apt-get update
       - run: apt-get install -y curl git ssh
 
-      # Git checkout (with caching)
-      - restore_cache:
-          keys:
-            - source-v1-{{ .Branch }}-{{ .Revision }}
-            - source-v1-{{ .Branch }}-
-            - source-v1-
-
+      # Git checkout
       - checkout
-
-      - save_cache:
-          key: source-v1-{{ .Branch }}-{{ .Revision }}
-          paths:
-            - ".git"
-
       # Dependency installation (with caching)
       - restore_cache:
           keys:
