@@ -15,7 +15,7 @@
 - app/ holds all the code for the executable that can be used for experimenting with the DSL
 - test/ holds all the test specific code
 - lib/ holds all the core code for defining the DSL, solvers and data structures
-- examples/ holds some example code in the (experiemental) HTriple interface definition language, these are meant to be used as tests for the parser (which in turn is meant to facilitate writing proofs about code using HTriple)
+- examples/ holds some example code in the (experimental) HTriple interface definition language, these are meant to be used as tests for the parser (which in turn is meant to facilitate writing proofs about code using HTriple)
 
 ----
 Joshua Pratt
