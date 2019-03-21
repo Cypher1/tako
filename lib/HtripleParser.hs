@@ -3,7 +3,7 @@ module HtripleParser where
 
 import Data.Functor.Identity (Identity)
 import Control.Applicative (Alternative(..))
-import Text.Parsec (ParsecT, parse, eof, token, (<?>), SourcePos)
+import Text.Parsec (ParsecT, parse, eof, token, (<?>), SourcePos, try)
 import Lexer (lexer, at, Token(..), TokenType(..))
 
 import Util (Pretty(pretty), prettyList)
@@ -68,7 +68,7 @@ posFromTok (Token _t inf) = at inf
 
 tok :: TokenType -> Parser TokenType
 tok exp'
-   = token pretty posFromTok testTok
+   = token pretty posFromTok testTok <?> ("a "++pretty exp')
    where
      testTok (Token t _inf)
        | exp' == t = Just t
@@ -96,15 +96,16 @@ def = Def <$> ident <*> argList <* tok DefinitionOperator <*> step
 
 argList :: Parser [Arg]
 argList
-  = (tok OpenParen *> (arg`sepBy`tok Comma <* tok CloseParen) <?> fl') <|> pure []
-  where
-    fl' = "a list of arguments"
+  = (tok OpenParen *> args' <* tok CloseParen) <|> return []
+    where
+      args' = (arg`sepBy`(tok Comma)) <?> "a list of arguments"
 
 call :: Parser Call
 call = Call <$> ident <*> argList
 
 arg :: Parser Arg
-arg = (Kw <$> def) <|> (A <$> step)
+arg = (try (Kw <$> def) <?> "a keyword argument")
+      <|> ((A <$> step) <?> "an argument")
 
 expr :: Parser Expr
 expr = (Dict <$> scope) <|> (CallExpr <$> call)
@@ -113,10 +114,10 @@ step :: Parser Step
 step = Step <$> preds' Minus <*> expr <*> preds' Plus
   where
     preds' :: TokenType -> Parser [Expr]
-    preds' t
-      = (tok t *> (tok OpenBrace *> predTail') <?> fl') <|> pure []
+    preds' t = (tok t *> ((tok OpenBrace *> predTail') <?> fl')) <|> pure []
     fl' = "a '{' (at the start of a set of assertions)"
-    predTail' = (expr`sepBy`tok Comma <* tok CloseBrace) <?> "a list of predicates"
+    predTail' = (reqs' <* tok CloseBrace) <?> "a list of predicates"
+    reqs' = expr`sepBy`tok Comma
 
 defs :: Parser [Def]
 defs = def`sepBy`(tok Comma <|> pure Comma)
