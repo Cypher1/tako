@@ -30,7 +30,6 @@ library Htriple-lib
       HtripleParser
       Resolution
       Operation
-  other-modules:
       Util
 
 executable Htriple
@@ -40,7 +39,8 @@ executable Htriple
   build-depends:
       Htriple-lib,
       base >= 4.9 && < 5,
-      haskeline >= 0.7 && < 0.8
+      haskeline >= 0.7 && < 0.8,
+      parseargs >= 0.2 && <0.3
   GHC-Options:    -Wall -O2
   other-modules:
       InternalInterpreter
