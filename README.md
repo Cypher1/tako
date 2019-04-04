@@ -1,6 +1,7 @@
 # HTriple
 
-[![CircleCI](https://circleci.com/gh/Cypher1/HTriple/tree/master.svg?style=svg&circle-token=044e2d53c34ded9fef2189ab4f828a2eae3a8dd5)](https://circleci.com/gh/Cypher1/HTriple/tree/master)
+[![CircleCI](https://img.shields.io/circleci/project/github/Cypher1/HTriple.svg)](https://circleci.com/gh/Cypher1/HTriple/tree/master) ![GitHub issues](https://img.shields.io/github/issues/Cypher1/HTriple.svg) ![GitHub stars](https://img.shields.io/github/stars/Cypher1/HTriple.svg?style=social)
+
 
 ## Plan
 
