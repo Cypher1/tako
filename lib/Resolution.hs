@@ -6,6 +6,7 @@ module Resolution where
 import qualified Data.Set                      as S
 import           Data.Set                       ( Set )
 import qualified Data.Map                      as M
+import           Data.Maybe                     ( isNothing )
 
 import           Pred                           ( Pred(Pred)
                                                 , Val
@@ -109,8 +110,8 @@ ignoreErrors = foldr next' []
 requireDefined :: Atom Var -> Resolution -> Resolution
 requireDefined _var (Error err) = Error err
 requireDefined var' (Partial par)
-  | M.lookup var' par == Nothing = Error $ VariableNotResolved var' par
-  | otherwise                    = Partial par
+  | isNothing (M.lookup var' par) = Error $ VariableNotResolved var' par
+  | otherwise                     = Partial par
 
 emptyState :: State
 emptyState = S.empty
