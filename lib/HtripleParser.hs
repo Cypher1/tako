@@ -1,12 +1,25 @@
 {-# LANGUAGE InstanceSigs #-}
 module HtripleParser where
 
-import Data.Functor.Identity (Identity)
-import Control.Applicative (Alternative(..))
-import Text.Parsec (ParsecT, parse, eof, token, (<?>), SourcePos, try)
-import Lexer (lexer, at, Token(..), TokenType(..))
+import           Data.Functor.Identity          ( Identity )
+import           Control.Applicative            ( Alternative(..) )
+import           Text.Parsec                    ( ParsecT
+                                                , parse
+                                                , eof
+                                                , token
+                                                , (<?>)
+                                                , SourcePos
+                                                , try
+                                                )
+import           Lexer                          ( lexer
+                                                , at
+                                                , Token(..)
+                                                , TokenType(..)
+                                                )
 
-import Util (Pretty(pretty), prettyList)
+import           Util                           ( Pretty(pretty)
+                                                , prettyList
+                                                )
 
 type Id = String
 
@@ -67,12 +80,10 @@ posFromTok :: Token -> SourcePos
 posFromTok (Token _t inf) = at inf
 
 tok :: TokenType -> Parser TokenType
-tok exp'
-   = token pretty posFromTok testTok <?> ("a "++pretty exp')
-   where
-     testTok (Token t _inf)
-       | exp' == t = Just t
-       | otherwise = Nothing
+tok exp' = token pretty posFromTok testTok <?> ("a " ++ pretty exp')
+ where
+  testTok (Token t _inf) | exp' == t = Just t
+                         | otherwise = Nothing
 
 sepBy :: Parser a -> Parser b -> Parser [a]
 sepBy p sep = (p `sepBy1` sep) <|> pure []
@@ -83,59 +94,54 @@ sepBy1 p sep = (:) <$> p <*> many (sep *> p)
 -- Actual parsers
 
 ident :: Parser Id
-ident
-  = token pretty posFromTok testTok
-   where
-     testTok (Token t _)
-       = case t of
-           Ident name' -> Just name'
-           _ -> Nothing
+ident = token pretty posFromTok testTok
+ where
+  testTok (Token t _) = case t of
+    Ident name' -> Just name'
+    _           -> Nothing
 
 def :: Parser Def
 def = Def <$> ident <*> argList <* tok DefinitionOperator <*> step
 
 argList :: Parser [Arg]
-argList
-  = (tok OpenParen *> args' <* tok CloseParen) <|> return []
-    where
-      args' = (arg`sepBy`(tok Comma)) <?> "a list of arguments"
+argList = (tok OpenParen *> args' <* tok CloseParen) <|> return []
+  where args' = (arg `sepBy` (tok Comma)) <?> "a list of arguments"
 
 call :: Parser Call
 call = Call <$> ident <*> argList
 
 arg :: Parser Arg
-arg = (try (Kw <$> def) <?> "a keyword argument")
-      <|> ((A <$> step) <?> "an argument")
+arg =
+  (try (Kw <$> def) <?> "a keyword argument")
+    <|> ((A <$> step) <?> "an argument")
 
 expr :: Parser Expr
 expr = (Dict <$> scope) <|> (CallExpr <$> call)
 
 step :: Parser Step
 step = Step <$> preds' Minus <*> expr <*> preds' Plus
-  where
-    preds' :: TokenType -> Parser [Expr]
-    preds' t = (tok t *> ((tok OpenBrace *> predTail') <?> fl')) <|> pure []
-    fl' = "a '{' (at the start of a set of assertions)"
-    predTail' = (reqs' <* tok CloseBrace) <?> "a list of predicates"
-    reqs' = expr`sepBy`tok Comma
+ where
+  preds' :: TokenType -> Parser [Expr]
+  preds' t = (tok t *> ((tok OpenBrace *> predTail') <?> fl')) <|> pure []
+  fl'       = "a '{' (at the start of a set of assertions)"
+  predTail' = (reqs' <* tok CloseBrace) <?> "a list of predicates"
+  reqs'     = expr `sepBy` tok Comma
 
 defs :: Parser [Def]
-defs = def`sepBy`(tok Comma <|> pure Comma)
+defs = def `sepBy` (tok Comma <|> pure Comma)
 
 scope :: Parser Scope
 scope = Scope <$> (tok OpenBrace *> ((defs <* tok CloseBrace) <?> fl'))
-  where
-    fl' = "a set of declarations followed by a '}'"
+  where fl' = "a set of declarations followed by a '}'"
 
 parseFile :: String -> IO Scope
 parseFile file = do
   contents' <- readFile file
   case parse lexer file contents' of
     Right toks' -> return $ tokens file toks'
-    Left err' -> error $ show err'
+    Left  err'  -> error $ show err'
 
 tokens :: String -> [Token] -> Scope
-tokens file toks'
-  = case parse (defs <* eof) file toks' of
-      Right mod' -> Scope mod'
-      Left err -> error $ show err
+tokens file toks' = case parse (defs <* eof) file toks' of
+  Right mod' -> Scope mod'
+  Left  err  -> error $ show err

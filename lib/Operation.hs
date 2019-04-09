@@ -1,8 +1,10 @@
 module Operation where
 
-import Util (boundedAll, Pretty(..))
+import           Util                           ( boundedAll
+                                                , Pretty(..)
+                                                )
 
-import Data.Bits
+import           Data.Bits
 
 type Sym = String
 
@@ -57,47 +59,46 @@ type Op = [Instruction]
 type Mem = [(Sym, Val)]
 
 getV :: Sym -> Mem -> Val
-getV k h
-  = case v of
-    [x] -> x
-    [] -> error $ show k++" not defined in "++show h
-    v' -> error $ show k++" multiply defined in "++show h++" as "++show v'
-  where
-    v = map snd $ filter ((==k).fst) h
+getV k h = case v of
+  [x] -> x
+  []  -> error $ show k ++ " not defined in " ++ show h
+  v' ->
+    error $ show k ++ " multiply defined in " ++ show h ++ " as " ++ show v'
+  where v = map snd $ filter ((== k) . fst) h
 
 
 removeV :: Sym -> Mem -> Mem
-removeV k = filter ((/=k).fst)
+removeV k = filter ((/= k) . fst)
 
 setV :: Sym -> Val -> Mem -> Mem
-setV k v m = (k, v):removeV k m
+setV k v m = (k, v) : removeV k m
 
 interpreter :: Op -> Mem -> Mem
 interpreter is m = foldr exec m is
 
 exec :: Instruction -> Mem -> Mem
-exec (L r' r) m = setV  r r' m
+exec (L r' r) m = setV r r' m
 
-exec (U o a) m = m'
-  where
-    m' = case o of
-           Free -> removeV a m
+exec (U o  a) m = m'
+ where
+  m' = case o of
+    Free -> removeV a m
 
 exec (B o a r) m = setV r r' m
-  where
-    a' = getV a m
-    r' = case o of
-           Not -> complement a'
-           New -> a'
+ where
+  a' = getV a m
+  r' = case o of
+    Not -> complement a'
+    New -> a'
 
 exec (T o a b r) m = setV r r' m
-  where
-    a' = getV a m
-    b' = getV b m
-    r' = case o of
-           And -> a' .&. b'
-           Or -> a' .|. b'
-           Add -> a' + b'
-           Sub -> a' - b'
-           Div -> a'`div`b'
-           Mul -> a' * b'
+ where
+  a' = getV a m
+  b' = getV b m
+  r' = case o of
+    And -> a' .&. b'
+    Or  -> a' .|. b'
+    Add -> a' + b'
+    Sub -> a' - b'
+    Div -> a' `div` b'
+    Mul -> a' * b'

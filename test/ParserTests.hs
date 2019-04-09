@@ -1,29 +1,26 @@
 module ParserTests where
 
-import Test.Tasty
-import Test.Tasty.HUnit
+import           Test.Tasty
+import           Test.Tasty.HUnit
 
-import HtripleParser (parseFile)
+import           HtripleParser                  ( parseFile )
 
 files :: [String]
-files = [ "examples/t1.htr"
-        , "examples/t2.htr"
-        , "examples/t3.htr"
-        , "examples/t4.htr"
-        ]
+files =
+  ["examples/t1.htr", "examples/t2.htr", "examples/t3.htr", "examples/t4.htr"]
 
 parserTests :: TestTree
-parserTests = testGroup "Parser tests"
-  [ parsesExamples
+parserTests =
+  testGroup "Parser tests" [parsesExamples
   -- TODO(jopra): Test more properties
   -- TODO(jopra): Test whitespace flexibility
-  ]
+                                          ]
 
 parsesExamples :: TestTree
-parsesExamples = testGroup "Parsing example files succeeds" $
-  map parsesExample files
+parsesExamples =
+  testGroup "Parsing example files succeeds" $ map parsesExample files
 
 parsesExample :: String -> TestTree
-parsesExample file = testCase ("Can parse example file("++file++")") $ do
+parsesExample file = testCase ("Can parse example file(" ++ file ++ ")") $ do
   parsed <- parseFile file
-  assertBool (show parsed) (all id $ zipWith (==) "Scope [" (show parsed ))
+  assertBool (show parsed) (all id $ zipWith (==) "Scope [" (show parsed))
