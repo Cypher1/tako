@@ -60,7 +60,7 @@ Htriple can be installed using `cabal install Htriple` but I do not recommend do
 
 ## Contributing
 
-Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c63ec426) for details on our code of conduct, and the process for submitting pull requests to us.
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
 
 ## Versioning
 
@@ -79,4 +79,4 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 ## Acknowledgments
 
 * **Billie Thompson** - *Readme Templates* - [PurpleBooth](https://github.com/PurpleBooth)
-* **Chris Hall**
+* **Chris Hall** - Design advice and instruction in programming language theory - [Chrisosaurus](https://github.com/chrisosaurus)
