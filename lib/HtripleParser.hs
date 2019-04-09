@@ -105,7 +105,7 @@ def = Def <$> ident <*> argList <* tok DefinitionOperator <*> step
 
 argList :: Parser [Arg]
 argList = (tok OpenParen *> args' <* tok CloseParen) <|> return []
-  where args' = (arg `sepBy` (tok Comma)) <?> "a list of arguments"
+  where args' = (arg `sepBy` tok Comma) <?> "a list of arguments"
 
 call :: Parser Call
 call = Call <$> ident <*> argList

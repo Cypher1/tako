@@ -60,9 +60,8 @@ parseNonApp =
 
 parseTerm :: LCParser
 parseTerm = chainl1 parseNonApp $ do
-  _   <- space
-  pos <- getPosition
-  return $ TmApp (infoFrom pos)
+  _ <- space
+  TmApp . infoFrom M $> getPosition
 
 parseLine :: LCParser
 parseLine = do
@@ -85,7 +84,7 @@ ctxLength :: Context -> Int
 ctxLength = length
 
 indexToName :: Context -> Int -> String
-indexToName ctx n = (\(x, n') -> showNumbered x n') $ fst $ ctx !! n
+indexToName ctx n = uncurry showNumbered $ fst $ ctx !! n
 
 showNumbered :: String -> Int -> String
 showNumbered x 0  = x

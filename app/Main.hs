@@ -56,13 +56,13 @@ main = do
 
 main' :: Args String -> IO ()
 main' args = do
-  let verbosity = expect "verbosity" ((getArg args "verbosity") :: Maybe Int)
+  let verbosity = expect "verbosity" (getArg args "verbosity" :: Maybe Int)
   printL "Verbosity" verbosity
-  let steps = (getArg args "steps") :: Maybe Int
+  let steps = getArg args "steps" :: Maybe Int
   printL "Last Step" steps
   let interactive = gotArg args "interactive"
   printL "Interactive Mode" interactive
-  let output = expect "output" ((getArg args "output") :: Maybe String)
+  let output = expect "output" (getArg args "output" :: Maybe String)
   printL "Output" output
   let input = argsRest args
   printL "Input" input
