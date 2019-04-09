@@ -2,11 +2,23 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Triple where
 
-import Util (Pretty(..), prettyList)
-import Pred (Pred, Assignment, Val, Var)
-import Resolution (State, Requirements, solutionsAndErrors, filterErrors, ignoreErrors, ResolutionFailure)
-import Operation (Op)
-import qualified Data.Set as S
+import           Util                           ( Pretty(..)
+                                                , prettyList
+                                                )
+import           Pred                           ( Pred
+                                                , Assignment
+                                                , Val
+                                                , Var
+                                                )
+import           Resolution                     ( State
+                                                , Requirements
+                                                , solutionsAndErrors
+                                                , filterErrors
+                                                , ignoreErrors
+                                                , ResolutionFailure
+                                                )
+import           Operation                      ( Op )
+import qualified Data.Set                      as S
 
 data Triple a b c= Tri
   { pre :: a  -- requirements of the calling environment
@@ -32,11 +44,7 @@ instance Pretty HTriple where
 -- - should have representation information or some way of storing it.
 
 emp :: HTriple
-emp =
-  Tri { pre = S.empty
-      , op = []
-      , post = S.empty
-      }
+emp = Tri {pre = S.empty, op = [], post = S.empty}
 
 data Failure = Failure FailureMode [ResolutionFailure] deriving (Show, Eq, Ord)
 
@@ -48,43 +56,38 @@ data FailureMode
   deriving (Show, Ord, Eq)
 
 func :: Op -> Requirements -> State -> HTriple
-func algo pre' post' =
-  Tri { pre = pre'
-      , op = algo
-      , post = post'
-      }
+func algo pre' post' = Tri {pre = pre', op = algo, post = post'}
 
 -- TODO(jopra): Use lenses for these patterns
 addPre :: Pred Var -> HTriple -> HTriple
-addPre p h = h {pre = S.union (S.singleton p) (pre h)}
+addPre p h = h { pre = S.union (S.singleton p) (pre h) }
 
 addPost :: Pred Val -> HTriple -> HTriple
-addPost p h = h {post = S.union (S.singleton p) (post h)}
+addPost p h = h { post = S.union (S.singleton p) (post h) }
 
 update :: HTriple -> HTriple -> Either Failure HTriple
-update accepted extension
-  = case solutions' of
-      [] -> Left $ Failure (Unsolved state requirements) errors'
-      [_sol] -> Right $ mergeTriples accepted extension -- TODO(jopra): This discards the solution's requirements
-      sols -> Left $ Failure (Underspecified sols accepted extension) errors'
-  where
-    solutions' = ignoreErrors possibles
-    errors' = filterErrors possibles
-    possibles = solutionsAndErrors state requirements
-    state = post accepted
-    requirements = pre extension
+update accepted extension = case solutions' of
+  []     -> Left $ Failure (Unsolved state requirements) errors'
+  [_sol] -> Right $ mergeTriples accepted extension -- TODO(jopra): This discards the solution's requirements
+  sols   -> Left $ Failure (Underspecified sols accepted extension) errors'
+ where
+  solutions'   = ignoreErrors possibles
+  errors'      = filterErrors possibles
+  possibles    = solutionsAndErrors state requirements
+  state        = post accepted
+  requirements = pre extension
 
 -- Unchecked 'merge' of two triples, running one after the other.
 mergeTriples :: HTriple -> HTriple -> HTriple
-mergeTriples accepted extension
-  = Tri { pre = pre accepted
+mergeTriples accepted extension = Tri
+  { pre  = pre accepted
         -- TODO(jopra): Add anything needed to make function calls etc.
-        , op = op accepted ++ op extension
-        , post = post extension
-        }
+  , op   = op accepted ++ op extension
+  , post = post extension
+  }
 
 assume :: [Pred Val] -> HTriple
 assume ps = promise (S.fromList ps) emp
 
 promise :: State -> HTriple -> HTriple
-promise ps' sh = sh {post=S.union ps' (post sh)}
+promise ps' sh = sh { post = S.union ps' (post sh) }

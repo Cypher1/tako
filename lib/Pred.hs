@@ -2,12 +2,16 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Pred where
 
-import Util (prettyMap, prettySet, Pretty(pretty), prettyMap)
-import qualified Data.Map as M
-import Data.Map (Map)
-import Data.Set (Set)
+import           Util                           ( prettyMap
+                                                , prettySet
+                                                , Pretty(pretty)
+                                                , prettyMap
+                                                )
+import qualified Data.Map                      as M
+import           Data.Map                       ( Map )
+import           Data.Set                       ( Set )
 
-import Operation (Sym)
+import           Operation                      ( Sym )
 
 data Var
 data Val
@@ -108,7 +112,7 @@ var = Variable
 
 isVar :: Atom Var -> Bool
 isVar (Variable _) = True
-isVar _ = False
+isVar _            = False
 
 getVarsFrom :: Pred Var -> [Atom Var]
 getVarsFrom (Pred vs) = filter isVar $ M.elems vs
