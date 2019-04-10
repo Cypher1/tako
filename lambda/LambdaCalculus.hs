@@ -61,7 +61,7 @@ parseNonApp =
 parseTerm :: LCParser
 parseTerm = chainl1 parseNonApp $ do
   _ <- space
-  TmApp . infoFrom M $> getPosition
+  TmApp . infoFrom <$> getPosition
 
 parseLine :: LCParser
 parseLine = do
