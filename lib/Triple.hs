@@ -20,14 +20,11 @@ import           Resolution                     ( State
 import           Operation                      ( Op )
 import qualified Data.Set                      as S
 
-data Triple a b c= Tri
-  { pre :: a  -- requirements of the calling environment
-  , op :: b   -- operations to be executed
-  , post :: c -- outcomes of the operations
-  } deriving (Eq, Ord, Show)
-
-type HTriple = Triple Requirements Op State -- HTriples are triples over operations, with states/checks
--- TODO(jopra): Consider new typing pre vs post conditions to ensure they aren't mixed up
+data HTriple = Tri {
+  pre :: Requirements, -- requirements of the calling environment
+  op :: Op, -- operations to be executed
+  post :: State -- state the outcomes of the operations
+} deriving (Eq, Ord, Show)
 
 instance Pretty HTriple where
   pretty t = "{"++pre'++"}"++prettyList op'++"{"++post'++"}"

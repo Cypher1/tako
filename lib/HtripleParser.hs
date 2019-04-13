@@ -18,61 +18,65 @@ import           Lexer                          ( lexer
                                                 )
 
 import           Util                           ( Pretty(pretty)
-                                                , prettyList
+                                                , prettySet
                                                 )
+import qualified Data.Set as S
+import Data.Set (Set)
 
 type Id = String
 
 data Arg
-  = Kw Def
-  | A Step
-  deriving Show
+  = A Int Step
+  | Kw Def
+  deriving (Show, Ord, Eq)
 
 instance Pretty Arg where
   pretty (Kw def') = pretty def'
-  pretty (A expr') = pretty expr'
+  pretty (A _ expr') = pretty expr'
 
-data Call = Call Id [Arg]
-  deriving Show
+data Call = Call Id (Set Arg)
+  deriving (Show, Ord, Eq)
 
 instance Pretty Call where
-  pretty (Call name' []) = name'
-  pretty (Call name' args) = name'++"("++prettyList args++")"
+  pretty (Call name' args)
+    = if S.null args
+         then name'
+         else name'++"("++prettySet args++")"
 
 data Expr
   = CallExpr Call
   | Dict Scope
-  deriving Show
+  deriving (Show, Ord, Eq)
 
 instance Pretty Expr where
   pretty (CallExpr call') = pretty call'
   pretty (Dict scope') = pretty scope'
 
 data Step
-  = Step { pre :: [Expr], op :: Expr, post :: [Expr] }
-  deriving Show
+  = Step { pre :: Set Expr, op :: Expr, post :: Set Expr }
+  deriving (Show, Ord, Eq)
 
 instance Pretty Step where
   pretty st = pre'++pretty (op st)++post'
     where
       pre'
         | null $ pre st = ""
-        | otherwise = "-{"++prettyList (pre st)++"}"
+        | otherwise = "-{"++prettySet (pre st)++"}"
       post'
         | null $ post st = ""
-        | otherwise = "+{"++prettyList (post st)++"}"
+        | otherwise = "+{"++prettySet (post st)++"}"
 
-data Def = Def Id [Arg] Step
-  deriving Show
+data Def = Def Id (Set Arg) Step
+  deriving (Show, Ord, Eq)
 
 instance Pretty Def where
   pretty (Def name args to) = pretty (Call name args) ++"="++pretty to
 
-newtype Scope = Scope [Def]
-  deriving Show
+newtype Scope = Scope (Set Def)
+  deriving (Show, Ord, Eq)
 
 instance Pretty Scope where
-  pretty (Scope defs') = "{"++prettyList defs'++"}"
+  pretty (Scope defs') = "{"++prettySet defs'++"}"
 
 type Parser = ParsecT [Token] () Identity
 
@@ -103,9 +107,17 @@ ident = token pretty posFromTok testTok
 def :: Parser Def
 def = Def <$> ident <*> argList <* tok DefinitionOperator <*> step
 
-argList :: Parser [Arg]
-argList = (tok OpenParen *> args' <* tok CloseParen) <|> return []
-  where args' = (arg `sepBy` tok Comma) <?> "a list of arguments"
+argList :: Parser (Set Arg)
+argList = (tok OpenParen *> args' <* tok CloseParen) <|> return S.empty
+  where args' = numberArgs <$> (arg `sepBy` tok Comma) <?> "a list of arguments"
+
+numberArgs :: [Arg] -> Set Arg
+numberArgs = S.fromList . na' 0
+  where
+    na' _ [] = []
+    na' n ((A (-1) x):xs) = (A n x):(na' (n+1) xs)
+    na' _ ((A k x):xs) = error $ "Expected Arg to be unnumbered but had number "++show k++", "++show ((A k x):xs)
+    na' n ((Kw def'):xs) = (Kw def'):(na' n xs)
 
 call :: Parser Call
 call = Call <$> ident <*> argList
@@ -113,7 +125,7 @@ call = Call <$> ident <*> argList
 arg :: Parser Arg
 arg =
   (try (Kw <$> def) <?> "a keyword argument")
-    <|> ((A <$> step) <?> "an argument")
+    <|> (((A (-1)) <$> step) <?> "an argument")
 
 expr :: Parser Expr
 expr = (Dict <$> scope) <|> (CallExpr <$> call)
@@ -121,14 +133,14 @@ expr = (Dict <$> scope) <|> (CallExpr <$> call)
 step :: Parser Step
 step = Step <$> preds' Minus <*> expr <*> preds' Plus
  where
-  preds' :: TokenType -> Parser [Expr]
-  preds' t = (tok t *> ((tok OpenBrace *> predTail') <?> fl')) <|> pure []
+  preds' :: TokenType -> Parser (Set Expr)
+  preds' t = (tok t *> ((tok OpenBrace *> predTail') <?> fl')) <|> pure S.empty
   fl'       = "a '{' (at the start of a set of assertions)"
   predTail' = (reqs' <* tok CloseBrace) <?> "a list of predicates"
-  reqs'     = expr `sepBy` tok Comma
+  reqs'     = S.fromList <$> expr `sepBy` tok Comma
 
-defs :: Parser [Def]
-defs = def `sepBy` (tok Comma <|> pure Comma)
+defs :: Parser (Set Def)
+defs = S.fromList <$> def `sepBy` (tok Comma <|> pure Comma)
 
 scope :: Parser Scope
 scope = Scope <$> (tok OpenBrace *> ((defs <* tok CloseBrace) <?> fl'))

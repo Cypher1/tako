@@ -23,4 +23,4 @@ parsesExamples =
 parsesExample :: String -> TestTree
 parsesExample file = testCase ("Can parse example file(" ++ file ++ ")") $ do
   parsed <- parseFile file
-  assertBool (show parsed) (and $ zipWith (==) "Scope [" (show parsed))
+  assertBool (show parsed) (and $ zipWith (==) "Scope " (show parsed))
