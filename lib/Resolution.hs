@@ -89,7 +89,7 @@ instance Monad System where
 type Resolution = System (Assignment Val)
 
 instance Semigroup Resolution where
-  xs <> ys = xs >>= M.foldrWithKey restrictOne ys
+  xs <> ys = xs >>= M.foldrWithKey resolveTo ys
 
 instance Monoid Resolution where
   mempty = pure M.empty
@@ -134,42 +134,41 @@ partialResolution known pred' ass = do
   poss <- S.toList known
   return $ ass <> assignmentFromPred pred' poss
 
-restrictOne :: Atom Var -> Atom Val -> Resolution -> Resolution
-restrictOne k v (Partial xs) = case M.lookup k xs of
+resolveTo :: Atom Var -> Atom Val -> Resolution -> Resolution
+resolveTo k v (Partial xs) = case M.lookup k xs of
   Nothing -> return $ M.insert k v xs
   Just v' -> if v == v'
     then return xs
     else Error
       $ VariableAssignmentContradiction {variable = k, value = v, in_ = xs}
-restrictOne _ _ err = err
+resolveTo _ _ err = err
 
-restrictAtoms :: Atom Var -> Atom Val -> Resolution -> Resolution
-restrictAtoms _            _            err@(Error _) = err
-restrictAtoms k@(Value k') v@(Value v') ass           = if k' == v'
+mgu :: Atom Var -> Atom Val -> Resolution -> Resolution
+mgu _            _            err@(Error _) = err
+mgu k@(Value k') v@(Value v') ass           = if k' == v'
   then ass
   else
     (\ass' -> Error $ ConcreteMismatch {variable = k, value = v, in_ = ass'})
       =<< ass
-restrictAtoms (Predicate vs) (Predicate xs) ass =
-  assignmentFromPred vs xs <> ass
-restrictAtoms k@(Variable _) v ass = restrictOne k v ass
-restrictAtoms v@(Value _) (Predicate p) ass =
+mgu (  Predicate vs) (Predicate xs) ass = assignmentFromPred vs xs <> ass
+mgu k@(Variable  _ ) v              ass = (k `resolveTo` v) ass
+mgu v@(Value _) (Predicate p) ass =
   (\ass' -> Error
       $ VariableVsPredicateMismatch {predicate = p, variable = v, in_ = ass'}
     )
     =<< ass
-restrictAtoms (Predicate p) v@(Value _) ass =
+mgu (Predicate p) v@(Value _) ass =
   (\ass' -> Error
       $ ValueVsPredicateMismatch {predicate_match = p, value = v, in_ = ass'}
     )
     =<< ass
-restrictAtoms (Rule _h1 _t1) (Rule _h2 _t2) _ass = undefined
-restrictAtoms r@(Rule _ _) o ass =
+mgu (Rule _h1 _t1) (Rule _h2 _t2) _ass = undefined
+mgu r@(Rule _ _) o ass =
   (\ass' ->
       Error $ VariableRuleMismatch {var_rule = r, val_other = o, in_ = ass'}
     )
     =<< ass
-restrictAtoms o r@(Rule _ _) ass =
+mgu o r@(Rule _ _) ass =
   (\ass' -> Error $ ValueRuleMismatch {val_rule = r, var_other = o, in_ = ass'})
     =<< ass
 
@@ -186,5 +185,5 @@ assignmentFromPred a@(Pred pred') b@(Pred poss)
   | otherwise
   = ass''
  where
-  ass'' = foldr (uncurry restrictAtoms) mempty ass'
+  ass'' = foldr (uncurry mgu) mempty ass'
   ass'  = M.intersectionWithKey (\_ pr po -> (pr, po)) pred' poss
