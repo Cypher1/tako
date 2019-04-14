@@ -20,8 +20,8 @@ import           Lexer                          ( lexer
 import           Util                           ( Pretty(pretty)
                                                 , prettySet
                                                 )
-import qualified Data.Set as S
-import Data.Set (Set)
+import qualified Data.Set                      as S
+import           Data.Set                       ( Set )
 
 type Id = String
 
@@ -109,15 +109,21 @@ def = Def <$> ident <*> argList <* tok DefinitionOperator <*> step
 
 argList :: Parser (Set Arg)
 argList = (tok OpenParen *> args' <* tok CloseParen) <|> return S.empty
-  where args' = numberArgs <$> (arg `sepBy` tok Comma) <?> "a list of arguments"
+ where
+  args' = numberArgs <$> (arg `sepBy` tok Comma) <?> "a list of arguments"
 
 numberArgs :: [Arg] -> Set Arg
 numberArgs = S.fromList . na' 0
-  where
-    na' _ [] = []
-    na' n ((A (-1) x):xs) = (A n x):(na' (n+1) xs)
-    na' _ ((A k x):xs) = error $ "Expected Arg to be unnumbered but had number "++show k++", "++show ((A k x):xs)
-    na' n ((Kw def'):xs) = (Kw def'):(na' n xs)
+ where
+  na' _ []              = []
+  na' n (A (-1) x : xs) = A n x : na' (n + 1) xs
+  na' _ (A k x : xs) =
+    error
+      $  "Expected Arg to be unnumbered but had number "
+      ++ show k
+      ++ ", "
+      ++ show (A k x : xs)
+  na' n (Kw def' : xs) = Kw def' : na' n xs
 
 call :: Parser Call
 call = Call <$> ident <*> argList
@@ -125,7 +131,7 @@ call = Call <$> ident <*> argList
 arg :: Parser Arg
 arg =
   (try (Kw <$> def) <?> "a keyword argument")
-    <|> (((A (-1)) <$> step) <?> "an argument")
+    <|> ((A (-1) <$> step) <?> "an argument")
 
 expr :: Parser Expr
 expr = (Dict <$> scope) <|> (CallExpr <$> call)
