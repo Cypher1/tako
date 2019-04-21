@@ -8,22 +8,22 @@ import           Data.Set                       ( Set )
 import qualified Data.Map                      as M
 import           Data.Maybe                     ( isNothing )
 
-import           Pred                           ( Pred(Pred)
+import           Pred                           ( Pred
+                                                , Assignment
                                                 , Val
                                                 , Var
                                                 , Atom
                                                   ( Value
                                                   , Variable
                                                   , Predicate
-                                                  , Rule
                                                   )
-                                                , Assignment
                                                 , getVarsFrom
                                                 )
 
 
 type State = Set (Pred Val)
 type Requirements = Set (Pred Var)
+type Resolution = System (Assignment Val)
 
 data ResolutionFailure
   = VariableNotResolved
@@ -55,16 +55,6 @@ data ResolutionFailure
     , possible_solution :: Pred Val
     , in_ :: Assignment Val
     }
-  | ValueRuleMismatch
-    { val_rule :: Atom Val
-    , var_other :: Atom Var
-    , in_ :: Assignment Val
-    }
-  | VariableRuleMismatch
-    { var_rule :: Atom Var
-    , val_other :: Atom Val
-    , in_ :: Assignment Val
-    }
     deriving (Eq, Ord, Show)
 
 data System a
@@ -86,10 +76,8 @@ instance Monad System where
   (Partial xs) >>= f = f xs
   (Error xs) >>= _ = Error xs
 
-type Resolution = System (Assignment Val)
-
 instance Semigroup Resolution where
-  xs <> ys = xs >>= M.foldrWithKey resolveTo ys
+  xs <> ys = xs >>= M.foldrWithKey (\k v -> (=<<) (k `mgu` v)) ys
 
 instance Monoid Resolution where
   mempty = pure M.empty
@@ -108,13 +96,10 @@ ignoreErrors = foldr next' []
   next' (Error   _  ) xs' = xs'
 
 requireDefined :: Atom Var -> Resolution -> Resolution
-requireDefined _var (Error err) = Error err
 requireDefined var' (Partial par)
   | isNothing (M.lookup var' par) = Error $ VariableNotResolved var' par
   | otherwise                     = Partial par
-
-emptyState :: State
-emptyState = S.empty
+requireDefined _ err = err
 
 solutions :: State -> Requirements -> [Assignment Val]
 solutions known preds = ignoreErrors $ solutionsAndErrors known preds
@@ -127,63 +112,29 @@ solutionsAndErrors known preds =
 
 -- Finds assignments (that are specialisations of the input assignment) for which the Preds are resolvable.
 resolution :: State -> [Pred Var] -> Resolution -> [Resolution]
-resolution known ps ass = foldr (concatMap . partialResolution known) [ass] ps
-
-partialResolution :: State -> Pred Var -> Resolution -> [Resolution]
-partialResolution known pred' ass = do
-  poss <- S.toList known
-  return $ ass <> assignmentFromPred pred' poss
-
-resolveTo :: Atom Var -> Atom Val -> Resolution -> Resolution
-resolveTo k v (Partial xs) = case M.lookup k xs of
-  Nothing -> return $ M.insert k v xs
-  Just v' -> if v == v'
-    then return xs
-    else Error
-      $ VariableAssignmentContradiction {variable = k, value = v, in_ = xs}
-resolveTo _ _ err = err
-
-mgu :: Atom Var -> Atom Val -> Resolution -> Resolution
-mgu _            _            err@(Error _) = err
-mgu k@(Value k') v@(Value v') ass           = if k' == v'
-  then ass
-  else
-    (\ass' -> Error $ ConcreteMismatch {variable = k, value = v, in_ = ass'})
-      =<< ass
-mgu (  Predicate vs) (Predicate xs) ass = assignmentFromPred vs xs <> ass
-mgu k@(Variable  _ ) v              ass = (k `resolveTo` v) ass
-mgu v@(Value _) (Predicate p) ass =
-  (\ass' -> Error
-      $ VariableVsPredicateMismatch {predicate = p, variable = v, in_ = ass'}
-    )
-    =<< ass
-mgu (Predicate p) v@(Value _) ass =
-  (\ass' -> Error
-      $ ValueVsPredicateMismatch {predicate_match = p, value = v, in_ = ass'}
-    )
-    =<< ass
-mgu (Rule _h1 _t1) (Rule _h2 _t2) _ass = undefined
-mgu r@(Rule _ _) o ass =
-  (\ass' ->
-      Error $ VariableRuleMismatch {var_rule = r, val_other = o, in_ = ass'}
-    )
-    =<< ass
-mgu o r@(Rule _ _) ass =
-  (\ass' -> Error $ ValueRuleMismatch {val_rule = r, var_other = o, in_ = ass'})
-    =<< ass
-
-assignmentFromPred :: Pred Var -> Pred Val -> Resolution
-assignmentFromPred a@(Pred pred') b@(Pred poss)
-  | M.keysSet pred' /= M.keysSet poss
-  = (\ass''' -> Error $ PredicatesOfDifferentShapes
-      { requirement       = a
-      , possible_solution = b
-      , in_               = ass'''
-      }
-    )
-    =<< ass''
-  | otherwise
-  = ass''
+resolution state ps res = foldr (fanout $ S.toList state) [res] ps
  where
-  ass'' = foldr (uncurry mgu) mempty ass'
-  ass'  = M.intersectionWithKey (\_ pr po -> (pr, po)) pred' poss
+  fanout :: [Pred Val] -> Pred Var -> [Resolution] -> [Resolution]
+  fanout state' pred' res'
+    = concatMap (\poss -> (predToAssignment pred' poss =<<) <$> res') state'
+
+mgu :: Atom Var -> Atom Val -> Assignment Val -> Resolution
+mgu k@(Value k') v@(Value v') =
+  if k' == v' then return else Error <$> ConcreteMismatch k v
+mgu (  Predicate vs) (  Predicate xs) = predToAssignment vs xs
+mgu v@(Value _) (Predicate p) = Error <$> VariableVsPredicateMismatch v p
+mgu (  Predicate p ) v@(Value     _ ) = Error <$> ValueVsPredicateMismatch p v
+mgu k@(Variable  _ ) v                = resolve
+ where
+  resolve ass = case M.lookup k ass of
+    Nothing -> return $ M.insert k v ass
+    Just v' -> if v == v'
+      then return ass
+      else Error $ VariableAssignmentContradiction k v ass
+
+predToAssignment :: Pred Var -> Pred Val -> Assignment Val -> Resolution
+predToAssignment pred' poss ass
+  | M.keysSet pred' == M.keysSet poss
+  = foldr (=<<) (Partial ass) $ M.intersectionWith mgu pred' poss
+  | otherwise
+  = Error $ PredicatesOfDifferentShapes pred' poss ass
