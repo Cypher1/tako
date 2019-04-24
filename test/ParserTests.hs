@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 module ParserTests where
 
 import           Test.Tasty
@@ -22,5 +23,5 @@ parsesExamples =
 
 parsesExample :: String -> TestTree
 parsesExample file = testCase ("Can parse example file(" ++ file ++ ")") $ do
-  parsed <- parseFile file
+  !parsed <- parseFile file
   assertBool (show parsed) (and $ zipWith (==) "Scope " (show parsed))
