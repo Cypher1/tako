@@ -3,10 +3,10 @@ module TestUtil where
 
 import qualified Data.Map                      as M
 
-import           Pred                           ( Assignment
-                                                , Var
+import           Pred                           ( Var
                                                 , Val
-                                                , Pred(Pred)
+                                                , Pred
+                                                , Assignment
                                                 , Atom(Variable)
                                                 )
 import           Test.Tasty                     ( )
@@ -20,7 +20,7 @@ showList xs = drop (length joiner) $ concatMap (\x -> joiner ++ show x) xs
   where joiner = ", "
 
 toPred :: [(String, Atom a)] -> Pred a
-toPred xs = Pred $ M.fromList $ map (\(x, y) -> (Variable x, y)) xs
+toPred xs = M.fromList $ map (\(x, y) -> (Variable x, y)) xs
 
 pred3 :: Atom a -> Atom a -> Atom a -> Pred a
 pred3 r x y = toPred [("#0", x), ("rel", r), ("#1", y)]
