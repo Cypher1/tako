@@ -3,7 +3,7 @@ module ParserTests where
 import           Test.Tasty
 import           Test.Tasty.HUnit
 
-import           HtripleParser                  ( parseFile )
+import           Parser                  ( parseFile )
 
 files :: [String]
 files =

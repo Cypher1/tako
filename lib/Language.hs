@@ -9,8 +9,8 @@ import           Text.Parsec.Token              ( GenLanguageDef(..) )
 import qualified Text.ParserCombinators.Parsec.Token
                                                as Token
 
-htriple :: Token.TokenParser st
-htriple = Token.makeTokenParser htripleDef
+takoLang :: Token.TokenParser st
+takoLang = Token.makeTokenParser takoLangDef
 
 postConditionKeyword :: String
 postConditionKeyword = "post"
@@ -30,8 +30,8 @@ plusOperator = "+"
 minusOperator :: String
 minusOperator = "-"
 
-htripleDef :: (Stream s m Char) => GenLanguageDef s u m
-htripleDef = LanguageDef
+takoLangDef :: (Stream s m Char) => GenLanguageDef s u m
+takoLangDef = LanguageDef
   { commentStart    = "/*"
   , commentEnd      = "*/"
   , commentLine     = "//"
@@ -46,28 +46,28 @@ htripleDef = LanguageDef
   }
 
 identifier :: ParsecT String u Identity String
-identifier = Token.identifier htriple -- parses an identifier
+identifier = Token.identifier takoLang -- parses an identifier
 reserved :: String -> ParsecT String u Identity ()
-reserved = Token.reserved htriple -- parses a reserved name
+reserved = Token.reserved takoLang -- parses a reserved name
 reservedOp :: String -> ParsecT String u Identity ()
-reservedOp = Token.reservedOp htriple -- parses an operator
+reservedOp = Token.reservedOp takoLang -- parses an operator
 parens :: ParsecT String u Identity a -> ParsecT String u Identity a
-parens = Token.parens htriple -- parses surrounding parenthesis:
+parens = Token.parens takoLang -- parses surrounding parenthesis:
                                       --   parens p
                                       -- takes care of the parenthesis and
                                       -- uses p to parse what's inside them
 integer :: ParsecT String u Identity Integer
-integer = Token.integer htriple -- parses an integer
+integer = Token.integer takoLang -- parses an integer
 semi :: ParsecT String u Identity String
-semi = Token.semi htriple -- parses a semicolon
+semi = Token.semi takoLang -- parses a semicolon
 whiteSpace :: ParsecT String u Identity ()
-whiteSpace = Token.whiteSpace htriple -- parses whitespace
+whiteSpace = Token.whiteSpace takoLang -- parses whitespace
 
 keywords :: [String]
 keywords = [preConditionKeyword, postConditionKeyword, invarConditionKeyword]
 
 lexeme :: ParsecT String u Identity a -> ParsecT String u Identity a
-lexeme = Token.lexeme htriple
+lexeme = Token.lexeme takoLang
 
 openParen :: ParsecT String u Identity ()
 openParen = void $ char '('
@@ -82,13 +82,13 @@ closeBrace :: ParsecT String u Identity ()
 closeBrace = void $ char '}'
 
 assignmentOp :: ParsecT String u Identity ()
-assignmentOp = void $ Token.symbol htriple assignmentOperator
+assignmentOp = void $ Token.symbol takoLang assignmentOperator
 
 plusOp :: ParsecT String u Identity ()
-plusOp = void $ Token.symbol htriple plusOperator
+plusOp = void $ Token.symbol takoLang plusOperator
 
 minusOp :: ParsecT String u Identity ()
-minusOp = void $ Token.symbol htriple minusOperator
+minusOp = void $ Token.symbol takoLang minusOperator
 
 consOperator :: ParsecT String u Identity ()
-consOperator = void $ Token.comma htriple
+consOperator = void $ Token.comma takoLang
