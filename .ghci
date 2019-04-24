@@ -1,4 +1,4 @@
 :set -fwarn-unused-binds -fwarn-unused-imports
 :set -iapp -ilib -itest
-:load HtripleParser
+:load Parser
 :load Util

@@ -16,7 +16,7 @@ jobs:
       # Dependency installation (with caching)
       - restore_cache:
           keys:
-            - cabal_packages-{{ .Branch }}-{{ checksum "Htriple.cabal" }}
+            - cabal_packages-{{ .Branch }}-{{ checksum "Tako.cabal" }}
             - cabal_packages-{{ .Branch }}-
             - cabal_packages-
             # Install dependencies fresh if we change the dependencies or compilation options to ensure
@@ -26,7 +26,7 @@ jobs:
       # Run any builds and tests
       - run: cabal new-test
       - save_cache:
-          key: cabal_packages-{{ .Branch }}-{{ checksum "Htriple.cabal" }}
+          key: cabal_packages-{{ .Branch }}-{{ checksum "Tako.cabal" }}
           paths:
             - "~/.cabal/"
             - "dist/"

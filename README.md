@@ -1,6 +1,6 @@
-# HTriple
+# Tako
 
-[![CircleCI](https://img.shields.io/circleci/project/github/Cypher1/HTriple.svg)](https://circleci.com/gh/Cypher1/HTriple/tree/master) [![GitHub issues](https://img.shields.io/github/issues/Cypher1/HTriple.svg)](https://github.com/Cypher1/HTriple/issues) [![GitHub stars](https://img.shields.io/github/stars/Cypher1/HTriple.svg?style=social)](https://github.com/Cypher1/HTriple)
+[![CircleCI](https://img.shields.io/circleci/project/github/Cypher1/Tako.svg)](https://circleci.com/gh/Cypher1/Tako/tree/master) [![GitHub issues](https://img.shields.io/github/issues/Cypher1/Tako.svg)](https://github.com/Cypher1/Tako/issues) [![GitHub stars](https://img.shields.io/github/stars/Cypher1/Tako.svg?style=social)](https://github.com/Cypher1/Tako)
 
 An programming language for ergonomic software verification using [Hoare Logics](https://en.wikipedia.org/wiki/Hoare_logic).
 
@@ -10,7 +10,7 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Prerequisites
 
-HTriple currently uses cabal for dependency management and running builds and tests.
+Tako currently uses cabal for dependency management and running builds and tests.
 Feel free to use stack, but it is not currently supported.
 
 Installation steps for Debian flavoured Linux:
@@ -37,13 +37,13 @@ cabal new-build
 This allows us to run our prototype IR interpreter.
 
 ```
-cabal run Htriple
+cabal run Tako
 ```
 
 We can even give it some preprepared IR and have it evaluate it, showing working.
 
 ```
-echo "L 32 b\nL 12 a\nAdd a b c\nFree a\nFree b" | cabal run Htriple
+echo "L 32 b\nL 12 a\nAdd a b c\nFree a\nFree b" | cabal run Tako
 ```
 
 ## Running the tests
@@ -56,7 +56,7 @@ cabal test
 
 ## Installation
 
-Htriple can be installed using `cabal install Htriple` but I do not recommend doing so at this time.
+Tako can be installed using `cabal install Tako` but I do not recommend doing so at this time.
 
 ## Contributing
 
@@ -64,7 +64,7 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduc
 
 ## Versioning
 
-We will use [SemVer](http://semver.org/) for versioning. There are no versions currently available, but see the [tags on this repository](https://github.com/Cypher1/Htriple/tags).
+We will use [SemVer](http://semver.org/) for versioning. There are no versions currently available, but see the [tags on this repository](https://github.com/Cypher1/Tako/tags).
 
 ## Authors
 

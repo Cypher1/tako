@@ -1,5 +1,5 @@
 {-# LANGUAGE InstanceSigs #-}
-module HtripleParser where
+module Parser where
 
 import           Data.Functor.Identity          ( Identity )
 import           Control.Applicative            ( Alternative(..) )
