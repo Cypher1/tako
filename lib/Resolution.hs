@@ -115,8 +115,8 @@ resolution :: State -> [Pred Var] -> Resolution -> [Resolution]
 resolution state ps res = foldr (fanout $ S.toList state) [res] ps
  where
   fanout :: [Pred Val] -> Pred Var -> [Resolution] -> [Resolution]
-  fanout state' pred' res'
-    = concatMap (\poss -> (predToAssignment pred' poss =<<) <$> res') state'
+  fanout state' pred' res' =
+    concatMap (\poss -> (predToAssignment pred' poss =<<) <$> res') state'
 
 mgu :: Atom Var -> Atom Val -> Assignment Val -> Resolution
 mgu k@(Value k') v@(Value v') =
