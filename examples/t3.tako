@@ -1,23 +1,14 @@
-divide(n=a, d=a)={
-  return = div(
-    n=n,
-    d=d
-  )
-}
+m1 = a
 
-/*
-This is a test main program.
-*/
-main()={
-  pre=all(
-    hasConsoleOutput(
-      this_thread
-    ),
-    hasConsoleInput(this_thread)
-  )
-  do=sequence(
-    a1=print(divide(n13, n2)),
-    a2=print(divide(f13, f2))
-  )
-  post=isEmpty(memory)
-}
+m3 = { -| a = b, c = e |- }
+
+m4 = { e -| a = b, c = e |- }
+
+m6 = { a = b, c = e |- f }
+
+m5 = { e -| a = b, c = e |- f }
+
+m2 = { a, b -| c |- d, e }
+
+
+m7 = a b // TODO: Should disallow this...

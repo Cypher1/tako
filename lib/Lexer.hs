@@ -16,20 +16,23 @@ data Token = Token TokenType Info
   deriving (Show, Eq)
 
 instance Pretty Token where
-  pretty (Token ty inf) = "'"++pretty ty ++ "' at " ++ pretty inf
+  pretty (Token ty inf) = pretty ty -- ++ " at " ++ pretty inf
 
 data TokenType
   = Ident String
-  | DefinitionOperator
+  | DefOp
   | Comma
   | OpenParen | CloseParen
   | OpenBrace | CloseBrace
   | Plus | Minus
+  | RequireOp | ProvideOp
   deriving (Show, Eq)
 
 instance Pretty TokenType where
-  pretty (Ident st) = show st
-  pretty DefinitionOperator = assignmentOperator
+  pretty (Ident st) = st
+  pretty DefOp = defOperator
+  pretty RequireOp = "-|"
+  pretty ProvideOp = "|-"
   pretty Comma = ","
   pretty OpenParen = "("
   pretty CloseParen = ")"
@@ -38,10 +41,12 @@ instance Pretty TokenType where
   pretty Plus = plusOperator
   pretty Minus = minusOperator
 
-exprs :: [ParsecT String u Identity TokenType]
-exprs =
+lexes :: [ParsecT String u Identity TokenType]
+lexes =
   [ Ident <$> identifier
-  , const DefinitionOperator <$> assignmentOp
+  , const DefOp <$> defOp
+  , const RequireOp <$> requireOp
+  , const ProvideOp <$> provideOp
   , const Comma <$> consOperator
   , const OpenParen <$> openParen
   , const CloseParen <$> closeParen
@@ -58,12 +63,15 @@ makeToken :: SourcePos -> TokenType -> SourcePos -> Token
 makeToken st ty end = Token ty $ infoFrom st end
 
 lex' :: ParsecT String u Identity Token
-lex' = makeToken <$> getInfo <*> choice (map (try . lexeme) exprs) <*> getInfo
+lex' = makeToken <$> getInfo <*> choice (map (try . lexeme) lexes) <*> getInfo
 
 data Info = Info
   { at :: SourcePos
   , next_token :: SourcePos
-  } deriving (Show, Eq)
+  } deriving (Eq)
+
+instance Show Info where
+  show _ = ""
 
 instance Pretty Info where
   pretty inf = "Line: " ++ show (sourceLine (at inf)) ++ ", Column: " ++ show (sourceColumn (at inf))

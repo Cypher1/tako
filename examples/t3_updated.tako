@@ -1,17 +1,12 @@
-divide(n=a, d=a)={
-  return = div(
-    n=n,
-    d=d
-  )
-}
+divide(n=a, d=a) = div(n=n, d=d)
 
 /*
 This is a test main program.
 */
-main()=-{ hasConsoleOutput(this_thread)
-          hasConsoleInput(this_thread) } {
-  do=sequence(
-    a1=print(divide(n13, n2)),
-    a2=print(divide(f13, f2))
-  )
-}+{isEmpty(memory)}
+main() = { hasConsoleOutput(this_thread)
+         hasConsoleInput(this_thread)
+  -| sequence(
+      a1=print(divide(n13, n2))
+      a2=print(divide(f13, f2))
+    )
+  |- isEmpty(memory) }
