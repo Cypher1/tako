@@ -84,12 +84,13 @@ sepBy1 :: Parser a -> Parser b -> Parser [a]
 sepBy1 p sep = (:) <$> p <*> many (sep *> p)
 
 pTrace :: Show a => String -> Parser a -> Parser a
-pTrace _ p | 1 > 0 = p
-pTrace lbl p       = do
+pTrace _ p = p
+{- pTrace lbl p       = do
   pos <- getPosition
   seeNext ("\n" ++ lbl ++ ": " ++ show pos ++ " \n  ") 3 *> p <|> trace
     (lbl ++ " fail")
     (fail lbl)
+-}
 
 seeNext :: String -> Int -> Parser ()
 seeNext msg n = do
@@ -106,10 +107,10 @@ tokenizeFile :: String -> IO [Token]
 tokenizeFile file = do
   contents' <- readFile file
   case parse lexer file contents' of
-    Right toks' -> return $ toks'
+    Right toks' -> return toks'
     Left  err'  -> error $ show err'
 
-fromTokens :: String -> [Token] -> (Set Expr)
+fromTokens :: String -> [Token] -> Set Expr
 fromTokens file toks' = case parse (exprs <* eof) file toks' of
   Right mod' -> mod'
   Left  err  -> error $ show err
@@ -138,9 +139,8 @@ ident = token pretty posFromTok testTok
     _           -> Nothing
 
 expr :: Parser Expr
-expr =
-  try (pTrace "ass" (Kw <$> call <*> (tok DefOp *> step)))
-    <|> (pTrace "step" (A (-1) <$> step <?> "an argument"))
+expr = try (pTrace "ass" (Kw <$> call <*> (tok DefOp *> step)))
+  <|> pTrace "step" (A (-1) <$> step <?> "an argument")
 
 step :: Parser Step
 step = try (pTrace "step" step') <|> call'
@@ -151,12 +151,12 @@ step = try (pTrace "step" step') <|> call'
       <*> exprs
       <*> (post' <* tok CloseBrace)
       <?> "an expression with guards"
-  pre'  = (try (exprs <* tok RequireOp)) <|> pure S.empty
-  post' = (try (tok ProvideOp *> exprs)) <|> pure S.empty
+  pre'  = try (exprs <* tok RequireOp) <|> pure S.empty
+  post' = try (tok ProvideOp *> exprs) <|> pure S.empty
   call' = pTrace "stepCall" (CallStep <$> call)
 
 call :: Parser Call
-call = Call <$> (pTrace "call" ident) <*> argList
+call = Call <$> pTrace "call" ident <*> argList
  where
   argList =
     pTrace "argList"
@@ -165,7 +165,7 @@ call = Call <$> (pTrace "call" ident) <*> argList
 
 
 wrappedExprs :: TokenType -> TokenType -> Parser (Set Expr)
-wrappedExprs h t = (tok h *> exprs <* tok t)
+wrappedExprs h t = tok h *> exprs <* tok t
 
 exprs :: Parser (Set Expr)
 exprs = numberExprs <$> (expr `sepBy` (tok Comma <|> pure Comma))
