@@ -64,7 +64,8 @@ whiteSpace :: ParsecT String u Identity ()
 whiteSpace = Token.whiteSpace takoLang -- parses whitespace
 
 keywords :: [String]
-keywords = [preConditionKeyword, postConditionKeyword, unsafeIntroductionKeyword]
+keywords =
+  [preConditionKeyword, postConditionKeyword, unsafeIntroductionKeyword]
 
 lexeme :: ParsecT String u Identity a -> ParsecT String u Identity a
 lexeme = Token.lexeme takoLang

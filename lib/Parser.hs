@@ -28,7 +28,7 @@ import           Data.Set                       ( Set )
 -- import Text.Parsec
 -- import Text.Parsec.Prim
 
-import Debug.Trace (trace)
+import           Debug.Trace                    ( trace )
 
 type Id = String
 
@@ -83,17 +83,19 @@ sepBy p sep = (p `sepBy1` sep) <|> pure []
 sepBy1 :: Parser a -> Parser b -> Parser [a]
 sepBy1 p sep = (:) <$> p <*> many (sep *> p)
 
-pTrace:: Show a => String -> Parser a -> Parser a
-pTrace _   p | 1>0 = p
-pTrace lbl p = do
+pTrace :: Show a => String -> Parser a -> Parser a
+pTrace _ p | 1 > 0 = p
+pTrace lbl p       = do
   pos <- getPosition
-  seeNext ("\n"++lbl++": "++show pos++" \n  ") 3 *> p <|> trace (lbl++" fail") (fail lbl)
+  seeNext ("\n" ++ lbl ++ ": " ++ show pos ++ " \n  ") 3 *> p <|> trace
+    (lbl ++ " fail")
+    (fail lbl)
 
 seeNext :: String -> Int -> Parser ()
 seeNext msg n = do
   s <- getParserState
   let out = take n (stateInput s)
-  trace (msg++show out) $ return ()
+  trace (msg ++ show out) $ return ()
 
 -- Parser usage
 
@@ -115,9 +117,16 @@ fromTokens file toks' = case parse (exprs <* eof) file toks' of
 numberExprs :: [Expr] -> Set Expr
 numberExprs = S.fromList . snd . foldl na' (0, [])
  where
-  na' (n, xs) (A (-1) x) = (n+1, A n x: xs)
-  na' (_, xs) a@(A k _) = error $  "Expected Expr to be unnumbered but had number " ++ show k ++ ", " ++ show a ++ " in "++ show xs
-  na' (n, xs) k = (n, k:xs)
+  na' (n, xs) (A (-1) x) = (n + 1, A n x : xs)
+  na' (_, xs) a@(A k _) =
+    error
+      $  "Expected Expr to be unnumbered but had number "
+      ++ show k
+      ++ ", "
+      ++ show a
+      ++ " in "
+      ++ show xs
+  na' (n, xs) k = (n, k : xs)
 
 -- Actual parsers
 
@@ -129,20 +138,30 @@ ident = token pretty posFromTok testTok
     _           -> Nothing
 
 expr :: Parser Expr
-expr = try (pTrace "ass" ( Kw <$> call <*> (tok DefOp *> step))) <|> (pTrace "step" (A (-1) <$> step <?> "an argument"))
+expr =
+  try (pTrace "ass" (Kw <$> call <*> (tok DefOp *> step)))
+    <|> (pTrace "step" (A (-1) <$> step <?> "an argument"))
 
 step :: Parser Step
 step = try (pTrace "step" step') <|> call'
-    where
-      step' = Step <$> (tok OpenBrace *> pre') <*> exprs <*> (post' <* tok CloseBrace) <?> "an expression with guards"
-      pre' = (try (exprs <* tok RequireOp)) <|> pure S.empty
-      post' = (try (tok ProvideOp *> exprs)) <|> pure S.empty
-      call' = pTrace "stepCall" (CallStep <$> call)
+ where
+  step' =
+    Step
+      <$> (tok OpenBrace *> pre')
+      <*> exprs
+      <*> (post' <* tok CloseBrace)
+      <?> "an expression with guards"
+  pre'  = (try (exprs <* tok RequireOp)) <|> pure S.empty
+  post' = (try (tok ProvideOp *> exprs)) <|> pure S.empty
+  call' = pTrace "stepCall" (CallStep <$> call)
 
 call :: Parser Call
 call = Call <$> (pTrace "call" ident) <*> argList
-  where
-    argList = pTrace "argList" $ (wrappedExprs OpenParen CloseParen <?> "a list of arguments") <|> return S.empty
+ where
+  argList =
+    pTrace "argList"
+      $   (wrappedExprs OpenParen CloseParen <?> "a list of arguments")
+      <|> return S.empty
 
 
 wrappedExprs :: TokenType -> TokenType -> Parser (Set Expr)
