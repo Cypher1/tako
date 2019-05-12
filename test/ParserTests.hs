@@ -1,13 +1,18 @@
+{-# LANGUAGE BangPatterns #-}
 module ParserTests where
 
 import           Test.Tasty
 import           Test.Tasty.HUnit
 
-import           Parser                  ( parseFile )
+import           Parser                         ( parseFile )
 
 files :: [String]
 files =
-  ["examples/t1.htr", "examples/t2.htr", "examples/t3.htr", "examples/t4.htr"]
+  [ "examples/t1.tako"
+  , "examples/t2.tako"
+  , "examples/t3.tako"
+  , "examples/t4.tako"
+  ]
 
 parserTests :: TestTree
 parserTests =
@@ -22,5 +27,5 @@ parsesExamples =
 
 parsesExample :: String -> TestTree
 parsesExample file = testCase ("Can parse example file(" ++ file ++ ")") $ do
-  parsed <- parseFile file
-  assertBool (show parsed) (and $ zipWith (==) "Scope " (show parsed))
+  !parsed <- parseFile file
+  assertBool (show parsed) (and $ zipWith (==) "fromList [" (show parsed))

@@ -13,16 +13,16 @@ takoLang :: Token.TokenParser st
 takoLang = Token.makeTokenParser takoLangDef
 
 postConditionKeyword :: String
-postConditionKeyword = "post"
+postConditionKeyword = "give"
 
-invarConditionKeyword :: String
-invarConditionKeyword = "invar"
+unsafeIntroductionKeyword :: String
+unsafeIntroductionKeyword = "assume"
 
 preConditionKeyword :: String
-preConditionKeyword = "pre"
+preConditionKeyword = "take"
 
-assignmentOperator :: String
-assignmentOperator = "="
+defOperator :: String
+defOperator = "="
 
 plusOperator :: String
 plusOperator = "+"
@@ -40,8 +40,8 @@ takoLangDef = LanguageDef
   , identLetter     = alphaNum <|> oneOf "_'"
   , opStart         = oneOf ":!#$%&*+./<=>?@\\^|-~"
   , opLetter        = oneOf ":!#$%&*+./<=>?@\\^|-~"
-  , reservedNames   = []
-  , reservedOpNames = []
+  , reservedNames   = keywords
+  , reservedOpNames = [defOperator, "|-", "-|"]
   , caseSensitive   = True
   }
 
@@ -64,7 +64,8 @@ whiteSpace :: ParsecT String u Identity ()
 whiteSpace = Token.whiteSpace takoLang -- parses whitespace
 
 keywords :: [String]
-keywords = [preConditionKeyword, postConditionKeyword, invarConditionKeyword]
+keywords =
+  [preConditionKeyword, postConditionKeyword, unsafeIntroductionKeyword]
 
 lexeme :: ParsecT String u Identity a -> ParsecT String u Identity a
 lexeme = Token.lexeme takoLang
@@ -81,8 +82,14 @@ openBrace = void $ char '{'
 closeBrace :: ParsecT String u Identity ()
 closeBrace = void $ char '}'
 
-assignmentOp :: ParsecT String u Identity ()
-assignmentOp = void $ Token.symbol takoLang assignmentOperator
+requireOp :: ParsecT String u Identity ()
+requireOp = void $ string "-|"
+
+provideOp :: ParsecT String u Identity ()
+provideOp = void $ string "|-"
+
+defOp :: ParsecT String u Identity ()
+defOp = void $ Token.symbol takoLang defOperator
 
 plusOp :: ParsecT String u Identity ()
 plusOp = void $ Token.symbol takoLang plusOperator

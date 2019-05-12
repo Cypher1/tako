@@ -1,0 +1,14 @@
+m1 = a
+
+m3 = { -| a = b, c = e |- }
+
+m4 = { e -| a = b, c = e |- }
+
+m6 = { a = b, c = e |- f }
+
+m5 = { e -| a = b, c = e |- f }
+
+m2 = { a, b -| c |- d, e }
+
+
+m7 = a b // TODO: Should disallow this...

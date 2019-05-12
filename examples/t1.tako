@@ -1,0 +1,3 @@
+c(x,y,z) = { hasIO -|
+  a=b(m = n(), {hasIO -| o |- didIO})
+|- didIO }

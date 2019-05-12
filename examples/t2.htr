@@ -1,3 +1,0 @@
-divide(n, d)={
-  return = -{ne(d,zero)}div(n=n,d=d)
-}

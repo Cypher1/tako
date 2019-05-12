@@ -1,0 +1,1 @@
+divide(n, d) = { ne(d,zero) -| div(n=n,d=d) }
