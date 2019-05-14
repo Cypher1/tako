@@ -16,7 +16,7 @@ data Token = Token TokenType Info
   deriving (Show, Eq)
 
 instance Pretty Token where
-  pretty (Token ty inf) = pretty ty -- ++ " at " ++ pretty inf
+  pretty (Token ty inf) = pretty ty ++ " at " ++ pretty inf
 
 data TokenType
   = Ident String
