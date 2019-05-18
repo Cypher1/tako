@@ -6,8 +6,15 @@ import           Data.Functor.Identity          ( Identity )
 
 import           Text.Parsec
 import           Text.Parsec.Token              ( GenLanguageDef(..) )
+import           Text.ParserCombinators.Parsec  ( SourcePos
+                                                , sourceLine
+                                                , sourceColumn
+                                                )
 import qualified Text.ParserCombinators.Parsec.Token
                                                as Token
+
+import           Util                           ( Pretty(..) )
+
 
 takoLang :: Token.TokenParser st
 takoLang = Token.makeTokenParser takoLangDef
@@ -21,15 +28,6 @@ unsafeIntroductionKeyword = "assume"
 preConditionKeyword :: String
 preConditionKeyword = "take"
 
-defOperator :: String
-defOperator = "="
-
-plusOperator :: String
-plusOperator = "+"
-
-minusOperator :: String
-minusOperator = "-"
-
 takoLangDef :: (Stream s m Char) => GenLanguageDef s u m
 takoLangDef = LanguageDef
   { commentStart    = "/*"
@@ -41,9 +39,55 @@ takoLangDef = LanguageDef
   , opStart         = oneOf ":!#$%&*+./<=>?@\\^|-~"
   , opLetter        = oneOf ":!#$%&*+./<=>?@\\^|-~"
   , reservedNames   = keywords
-  , reservedOpNames = [defOperator, "|-", "-|"]
+  , reservedOpNames = pretty <$> [DefOp, RequireOp, ProvideOp]
   , caseSensitive   = True
   }
+
+data TokenType
+  = Ident String
+  | DefOp
+  | Comma
+  | OpenParen | CloseParen
+  | OpenBrace | CloseBrace
+  | Plus | Minus
+  | RequireOp | ProvideOp
+  deriving (Show, Eq)
+
+instance Pretty TokenType where
+  pretty (Ident st) = st
+  pretty DefOp = "="
+  pretty RequireOp = "-|"
+  pretty ProvideOp = "|-"
+  pretty Comma = ","
+  pretty OpenParen = "("
+  pretty CloseParen = ")"
+  pretty OpenBrace = "{"
+  pretty CloseBrace = "}"
+  pretty Plus = "+"
+  pretty Minus = "-"
+
+lexes :: [ParsecT String u Identity TokenType]
+lexes =
+  [Ident <$> identifier]
+    ++ (   tok2Parser
+       <$> [ DefOp
+           , RequireOp
+           , ProvideOp
+           , Comma
+           , OpenParen
+           , CloseParen
+           , OpenBrace
+           , CloseBrace
+           , Plus
+           , Minus
+           ]
+       )
+
+data Token = Token TokenType Info
+  deriving (Show, Eq)
+
+instance Pretty Token where
+  pretty (Token ty inf) = pretty ty ++ " at " ++ pretty inf
 
 identifier :: ParsecT String u Identity String
 identifier = Token.identifier takoLang -- parses an identifier
@@ -70,32 +114,37 @@ keywords =
 lexeme :: ParsecT String u Identity a -> ParsecT String u Identity a
 lexeme = Token.lexeme takoLang
 
-openParen :: ParsecT String u Identity ()
-openParen = void $ char '('
-
-closeParen :: ParsecT String u Identity ()
-closeParen = void $ char ')'
-
-openBrace :: ParsecT String u Identity ()
-openBrace = void $ char '{'
-
-closeBrace :: ParsecT String u Identity ()
-closeBrace = void $ char '}'
-
-requireOp :: ParsecT String u Identity ()
-requireOp = void $ string "-|"
-
-provideOp :: ParsecT String u Identity ()
-provideOp = void $ string "|-"
-
-defOp :: ParsecT String u Identity ()
-defOp = void $ Token.symbol takoLang defOperator
-
-plusOp :: ParsecT String u Identity ()
-plusOp = void $ Token.symbol takoLang plusOperator
-
-minusOp :: ParsecT String u Identity ()
-minusOp = void $ Token.symbol takoLang minusOperator
+ptok :: TokenType -> ParsecT String u Identity ()
+ptok tok' = void $ Token.symbol takoLang $ pretty tok'
 
 consOperator :: ParsecT String u Identity ()
 consOperator = void $ Token.comma takoLang
+
+lexer :: ParsecT String u Identity [Token]
+lexer = many lex' <* whiteSpace <* eof
+
+tok2Parser :: TokenType -> ParsecT String u Identity TokenType
+tok2Parser tok' = tok' <$ (void $ Token.symbol takoLang $ pretty tok')
+
+makeToken :: SourcePos -> TokenType -> SourcePos -> Token
+makeToken st ty end = Token ty $ infoFrom st end
+
+lex' :: ParsecT String u Identity Token
+lex' = makeToken <$> getInfo <*> choice (map (try . lexeme) lexes) <*> getInfo
+
+data Info = Info
+  { at :: SourcePos
+  , next_token :: SourcePos
+  } deriving (Eq)
+
+instance Show Info where
+  show _ = ""
+
+instance Pretty Info where
+  pretty inf = "Line: " ++ show (sourceLine (at inf)) ++ ", Column: " ++ show (sourceColumn (at inf))
+
+infoFrom :: SourcePos -> SourcePos -> Info
+infoFrom start end = Info {at = start, next_token = end}
+
+getInfo :: ParsecT String u Identity SourcePos
+getInfo = getPosition

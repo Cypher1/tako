@@ -24,7 +24,6 @@ library Tako-lib
   GHC-Options:    -Wall -O2
   exposed-modules:
       Language
-      Lexer
       Triple
       Pred
       Parser
