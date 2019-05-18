@@ -7,17 +7,17 @@ import           Text.Parsec                    ( ParsecT
                                                 , parse
                                                 , eof
                                                 , token
-                                                , getPosition
+                                                -- , getPosition
                                                 , (<?>)
                                                 , getParserState
                                                 , stateInput
                                                 , SourcePos
                                                 , try
                                                 )
-import           Lexer                          ( lexer
+import           Language                       ( TokenType(..)
+                                                , lexer
                                                 , at
                                                 , Token(..)
-                                                , TokenType(..)
                                                 )
 
 import           Util                           ( Pretty(pretty)

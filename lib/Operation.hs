@@ -18,19 +18,14 @@ data Instruction
 instance Pretty Instruction where
   pretty = show
 
-only :: a -> [(a, String)]
-only a = [(a, "")]
-
 -- TODO(jopra): Ensure array access safety.
--- TODO(jopra): Rename this, read and show are reserved.
-instance Read Instruction where
-  readsPrec _p s
-    | null w = []
-    | n == 3 && c == "L" = only $ L (read opa) opb
-    | n == 2 && c`elem`map show unops = only $ U (read c) opa
-    | n == 3 && c`elem`map show biops = only $ B (read c) opa opb
-    | n == 4 && c`elem`map show triops = only $ T (read c) opa opb opr
-    | otherwise = []
+convert :: String -> Either String Instruction
+convert s
+    | c`elem`unops = if n==2 then Right $ U (read c) opa else Left $ "Expected(1) "++c++" <reg>"
+    | c == "L" = if n==3 then Right $ L (read opa) opb else Left $ "Expected(2) "++c++" <val> <reg>"
+    | c`elem`biops = if n==3 then Right $ B (read c) opa opb else Left $ "Expected(3) "++c++" <reg> <reg>"
+    | c`elem`triops = if n==4 then Right $ T (read c) opa opb opr else Left $ "Expected(4) "++c++" <reg> <reg> <reg>"
+    | otherwise = Left $ "Unknown Op: '"++c++"'."
     where
       n = length w
       c = head w
@@ -45,14 +40,14 @@ data TriOp = And | Or | Add | Sub | Div | Mul deriving (Show, Read, Eq, Ord, Enu
 data BiOp = Not | New deriving (Show, Read, Eq, Ord, Enum, Bounded)
 data UnOp = Free deriving (Show, Read, Eq, Ord, Enum, Bounded)
 
-unops :: [UnOp]
-unops = boundedAll
+unops :: [String]
+unops = show<$>(boundedAll::[UnOp])
 
-biops :: [BiOp]
-biops = boundedAll
+biops :: [String]
+biops = show<$>(boundedAll::[BiOp])
 
-triops :: [TriOp]
-triops = boundedAll
+triops :: [String]
+triops = show<$>(boundedAll::[TriOp])
 
 type Op = [Instruction]
 
@@ -65,7 +60,6 @@ getV k h = case v of
   v' ->
     error $ show k ++ " multiply defined in " ++ show h ++ " as " ++ show v'
   where v = map snd $ filter ((== k) . fst) h
-
 
 removeV :: Sym -> Mem -> Mem
 removeV k = filter ((/= k) . fst)
