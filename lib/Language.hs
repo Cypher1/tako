@@ -68,20 +68,20 @@ instance Pretty TokenType where
 
 lexes :: [ParsecT String u Identity TokenType]
 lexes =
-  [Ident <$> identifier]
-    ++ (   tok2Parser
-       <$> [ DefOp
-           , RequireOp
-           , ProvideOp
-           , Comma
-           , OpenParen
-           , CloseParen
-           , OpenBrace
-           , CloseBrace
-           , Plus
-           , Minus
-           ]
-       )
+  (Ident <$> identifier)
+    : (   tok2Parser
+      <$> [ DefOp
+          , RequireOp
+          , ProvideOp
+          , Comma
+          , OpenParen
+          , CloseParen
+          , OpenBrace
+          , CloseBrace
+          , Plus
+          , Minus
+          ]
+      )
 
 data Token = Token TokenType Info
   deriving (Show, Eq)
@@ -124,7 +124,7 @@ lexer :: ParsecT String u Identity [Token]
 lexer = many lex' <* whiteSpace <* eof
 
 tok2Parser :: TokenType -> ParsecT String u Identity TokenType
-tok2Parser tok' = tok' <$ (void $ Token.symbol takoLang $ pretty tok')
+tok2Parser tok' = tok' <$ void (Token.symbol takoLang $ pretty tok')
 
 makeToken :: SourcePos -> TokenType -> SourcePos -> Token
 makeToken st ty end = Token ty $ infoFrom st end

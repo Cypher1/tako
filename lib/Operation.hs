@@ -21,18 +21,26 @@ instance Pretty Instruction where
 -- TODO(jopra): Ensure array access safety.
 convert :: String -> Either String Instruction
 convert s
-    | c`elem`unops = if n==2 then Right $ U (read c) opa else Left $ "Expected(1) "++c++" <reg>"
-    | c == "L" = if n==3 then Right $ L (read opa) opb else Left $ "Expected(2) "++c++" <val> <reg>"
-    | c`elem`biops = if n==3 then Right $ B (read c) opa opb else Left $ "Expected(3) "++c++" <reg> <reg>"
-    | c`elem`triops = if n==4 then Right $ T (read c) opa opb opr else Left $ "Expected(4) "++c++" <reg> <reg> <reg>"
-    | otherwise = Left $ "Unknown Op: '"++c++"'."
-    where
-      n = length w
-      c = head w
-      opa = w!!1
-      opb = w!!2
-      opr = w!!3
-      w = words s
+  | c `elem` unops = if n == 2
+    then Right $ U (read c) opa
+    else Left $ "Expected(1) " ++ c ++ " <reg>"
+  | c == "L" = if n == 3
+    then Right $ L (read opa) opb
+    else Left $ "Expected(2) " ++ c ++ " <val> <reg>"
+  | c `elem` biops = if n == 3
+    then Right $ B (read c) opa opb
+    else Left $ "Expected(3) " ++ c ++ " <reg> <reg>"
+  | c `elem` triops = if n == 4
+    then Right $ T (read c) opa opb opr
+    else Left $ "Expected(4) " ++ c ++ " <reg> <reg> <reg>"
+  | otherwise = Left $ "Unknown Op: '" ++ c ++ "'."
+ where
+  n   = length w
+  c   = head w
+  opa = w !! 1
+  opb = w !! 2
+  opr = w !! 3
+  w   = words s
 
 type Val = Int
 
@@ -41,13 +49,13 @@ data BiOp = Not | New deriving (Show, Read, Eq, Ord, Enum, Bounded)
 data UnOp = Free deriving (Show, Read, Eq, Ord, Enum, Bounded)
 
 unops :: [String]
-unops = show<$>(boundedAll::[UnOp])
+unops = show <$> (boundedAll :: [UnOp])
 
 biops :: [String]
-biops = show<$>(boundedAll::[BiOp])
+biops = show <$> (boundedAll :: [BiOp])
 
 triops :: [String]
-triops = show<$>(boundedAll::[TriOp])
+triops = show <$> (boundedAll :: [TriOp])
 
 type Op = [Instruction]
 
