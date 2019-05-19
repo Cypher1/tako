@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 module Language where
 
-import           Control.Monad
+import           Control.Monad                  ( void )
 import           Data.Functor.Identity          ( Identity )
 
 import           Text.Parsec
@@ -14,19 +14,11 @@ import qualified Text.ParserCombinators.Parsec.Token
                                                as Token
 
 import           Util                           ( Pretty(..) )
-
+import           Data.List                      ( elemIndex )
+import           Data.Maybe                     ( fromMaybe )
 
 takoLang :: Token.TokenParser st
 takoLang = Token.makeTokenParser takoLangDef
-
-postConditionKeyword :: String
-postConditionKeyword = "give"
-
-unsafeIntroductionKeyword :: String
-unsafeIntroductionKeyword = "assume"
-
-preConditionKeyword :: String
-preConditionKeyword = "take"
 
 takoLangDef :: (Stream s m Char) => GenLanguageDef s u m
 takoLangDef = LanguageDef
@@ -38,26 +30,30 @@ takoLangDef = LanguageDef
   , identLetter     = alphaNum <|> oneOf "_'"
   , opStart         = oneOf ":!#$%&*+./<=>?@\\^|-~"
   , opLetter        = oneOf ":!#$%&*+./<=>?@\\^|-~"
-  , reservedNames   = keywords
+  , reservedNames   = []
   , reservedOpNames = pretty <$> [DefOp, RequireOp, ProvideOp]
   , caseSensitive   = True
   }
 
-data TokenType
-  = Ident String
+data TokType
+  -- Dual character tokens
+  = RequireOp
+  | ProvideOp
+  -- Single character tokens
   | DefOp
   | Comma
-  | OpenParen | CloseParen
-  | OpenBrace | CloseBrace
-  | Plus | Minus
-  | RequireOp | ProvideOp
-  deriving (Show, Eq)
+  | OpenParen
+  | CloseParen
+  | OpenBrace
+  | CloseBrace
+  | Plus
+  | Minus
+  deriving (Show, Eq, Enum, Bounded)
 
-instance Pretty TokenType where
-  pretty (Ident st) = st
-  pretty DefOp = "="
+instance Pretty TokType where
   pretty RequireOp = "-|"
   pretty ProvideOp = "|-"
+  pretty DefOp = "="
   pretty Comma = ","
   pretty OpenParen = "("
   pretty CloseParen = ")"
@@ -66,71 +62,113 @@ instance Pretty TokenType where
   pretty Plus = "+"
   pretty Minus = "-"
 
+data PrimTriOpType
+  = PrimAnd
+  | PrimOr
+  | PrimAdd
+  | PrimSub
+  | PrimDiv
+  | PrimMul
+  deriving (Show, Read, Eq, Ord, Enum, Bounded)
+instance Pretty PrimTriOpType where
+  pretty PrimAnd = "And"
+  pretty PrimOr = "Or"
+  pretty PrimAdd = "Add"
+  pretty PrimSub = "Sub"
+  pretty PrimDiv = "Div"
+  pretty PrimMul = "Mul"
+
+data PrimBiOpType
+  = PrimNot
+  | PrimNew
+  deriving (Show, Read, Eq, Ord, Enum, Bounded)
+instance Pretty PrimBiOpType where
+  pretty PrimNot = "Not"
+  pretty PrimNew = "New"
+
+data PrimUnOpType
+  = PrimFree
+  deriving (Show, Read, Eq, Ord, Enum, Bounded)
+instance Pretty PrimUnOpType where
+  pretty PrimFree = "Free"
+
+data PrimOpType
+  = PrimUn PrimUnOpType
+  | PrimBi PrimBiOpType
+  | PrimTri PrimTriOpType
+  deriving (Show, Eq)
+
+allPrimOps :: [PrimOpType]
+allPrimOps =
+  (PrimUn <$> [(minBound :: PrimUnOpType) .. maxBound])
+    ++ (PrimBi <$> [(minBound :: PrimBiOpType) .. maxBound])
+    ++ (PrimTri <$> [(minBound :: PrimTriOpType) .. maxBound])
+
+instance Enum PrimOpType where
+  fromEnum val
+    = error ("Unexpected PrimOp "++show val++" in Enum conversion.")`fromMaybe`elemIndex val allPrimOps
+  toEnum n = allPrimOps !! n
+
+instance Bounded PrimOpType where
+  minBound = head allPrimOps
+  maxBound = last allPrimOps
+
+instance Pretty PrimOpType where
+  pretty (PrimTri ty) = pretty ty
+  pretty (PrimBi ty) = pretty ty
+  pretty (PrimUn ty) = pretty ty
+
+data TokenType
+  = Tok TokType
+  | Op PrimOpType
+  | LitInt Integer
+  | Ident String
+  deriving (Show, Eq)
+
+instance Pretty TokenType where
+  pretty (Tok ty) = pretty ty
+  pretty (Op op) = pretty op
+  pretty (LitInt n) = show n
+  pretty (Ident st) = st
+
 lexes :: [ParsecT String u Identity TokenType]
-lexes =
-  [Ident <$> identifier]
-    ++ (   tok2Parser
-       <$> [ DefOp
-           , RequireOp
-           , ProvideOp
-           , Comma
-           , OpenParen
-           , CloseParen
-           , OpenBrace
-           , CloseBrace
-           , Plus
-           , Minus
-           ]
-       )
+lexes = options2Parser <$> options'
+ where
+  options2Parser = try . Token.lexeme takoLang
+  options' =
+    (tok2Parser <$> toks')
+      ++ (tok2Parser <$> prims')
+      ++ [LitInt <$> integer, Ident <$> identifier]
+  toks'  = Tok <$> [minBound .. maxBound]
+  prims' = Op <$> [minBound .. maxBound]
 
 data Token = Token TokenType Info
   deriving (Show, Eq)
 
 instance Pretty Token where
-  pretty (Token ty inf) = pretty ty ++ " at " ++ pretty inf
+  pretty (Token ty inf') = pretty ty ++ " at " ++ pretty inf'
 
-identifier :: ParsecT String u Identity String
-identifier = Token.identifier takoLang -- parses an identifier
 reserved :: String -> ParsecT String u Identity ()
 reserved = Token.reserved takoLang -- parses a reserved name
 reservedOp :: String -> ParsecT String u Identity ()
 reservedOp = Token.reservedOp takoLang -- parses an operator
-parens :: ParsecT String u Identity a -> ParsecT String u Identity a
-parens = Token.parens takoLang -- parses surrounding parenthesis:
-                                      --   parens p
-                                      -- takes care of the parenthesis and
-                                      -- uses p to parse what's inside them
 integer :: ParsecT String u Identity Integer
 integer = Token.integer takoLang -- parses an integer
-semi :: ParsecT String u Identity String
-semi = Token.semi takoLang -- parses a semicolon
-whiteSpace :: ParsecT String u Identity ()
-whiteSpace = Token.whiteSpace takoLang -- parses whitespace
-
-keywords :: [String]
-keywords =
-  [preConditionKeyword, postConditionKeyword, unsafeIntroductionKeyword]
-
-lexeme :: ParsecT String u Identity a -> ParsecT String u Identity a
-lexeme = Token.lexeme takoLang
+identifier :: ParsecT String u Identity String
+identifier = Token.identifier takoLang -- parses an identifier
 
 ptok :: TokenType -> ParsecT String u Identity ()
 ptok tok' = void $ Token.symbol takoLang $ pretty tok'
 
-consOperator :: ParsecT String u Identity ()
-consOperator = void $ Token.comma takoLang
-
 lexer :: ParsecT String u Identity [Token]
-lexer = many lex' <* whiteSpace <* eof
+lexer = many lex' <* Token.whiteSpace takoLang <* eof
 
-tok2Parser :: TokenType -> ParsecT String u Identity TokenType
-tok2Parser tok' = tok' <$ (void $ Token.symbol takoLang $ pretty tok')
-
-makeToken :: SourcePos -> TokenType -> SourcePos -> Token
-makeToken st ty end = Token ty $ infoFrom st end
+tok2Parser :: Pretty a => a -> ParsecT String u Identity a
+tok2Parser tok' = tok' <$ void (Token.symbol takoLang $ pretty tok')
 
 lex' :: ParsecT String u Identity Token
-lex' = makeToken <$> getInfo <*> choice (map (try . lexeme) lexes) <*> getInfo
+lex' =
+  (\e t' s -> Token t' $ infoFrom e s) <$> getInfo <*> choice lexes <*> getInfo
 
 data Info = Info
   { at :: SourcePos

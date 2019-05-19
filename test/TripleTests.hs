@@ -16,9 +16,12 @@ import           Pred                           ( val
                                                 , Atom
                                                 )
 import           Triple
-import           Operation                      ( Instruction(T)
-                                                , TriOp(Div, Sub)
+import           Language                       ( PrimTriOpType
+                                                  ( PrimDiv
+                                                  , PrimSub
+                                                  )
                                                 )
+import           Operation                      ( PrimOp(T) )
 import qualified Data.Set                      as S
 
 -- Constants
@@ -43,7 +46,7 @@ bNeZero :: Pred a
 bNeZero = pred3 ne b zero
 
 fdiv :: HTriple
-fdiv = func [T Div "a" "b" "ret"]
+fdiv = func [T PrimDiv "a" "b" "ret"]
             (S.fromList [exists a, exists b])
             (S.fromList [exists ret])
 
@@ -51,7 +54,7 @@ frac :: HTriple
 frac = addPre bNeZero fdiv
 
 minus :: HTriple
-minus = func [T Sub "a" "b" "ret"] (S.fromList [exists a, exists b])
+minus = func [T PrimSub "a" "b" "ret"] (S.fromList [exists a, exists b])
   $ S.fromList [exists ret]
 
 needsRet :: HTriple
@@ -67,7 +70,7 @@ expressionConstructionTests = testGroup
   [ testCase "Constants Exist" $ null (showList [zero, ret, a, b, ne]) @?= False
   , testCase "Operation for a-b contains a single instruction"
   $   op minus
-  @?= [T Sub "a" "b" "ret"]
+  @?= [T PrimSub "a" "b" "ret"]
   , testCase "Printing unsafe a/b" $ show fdiv == "" @?= False
   , testCase "Printing safe a/b" $ show frac == "" @?= False
   , testCase "require ret" $ show needsRet == "" @?= False

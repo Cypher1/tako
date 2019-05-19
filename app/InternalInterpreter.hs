@@ -23,6 +23,6 @@ mainLoop mem = do
 handleCommand :: String -> Mem -> InputT IO Mem
 handleCommand cmd mem = case convert cmd of
   Right ins -> return $ exec ins mem
-  Left err -> do
-    outputStrLn $ "Sorry '" ++ cmd ++ "' couldn't be parsed.\n\t"++err
+  Left  err -> do
+    outputStrLn $ "Sorry '" ++ cmd ++ "' couldn't be parsed.\n\t" ++ err
     return mem
