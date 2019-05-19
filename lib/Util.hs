@@ -42,6 +42,13 @@ boundedAll = [minBound .. maxBound]
 class Pretty a where
   pretty :: a -> String
 
+pretty' :: Pretty a => a -> String
+pretty' = f . pretty
+ where
+  f "" = ""
+  f x@(c : _) | c `elem` "AEIOUaeiou" = "an " ++ x
+              | otherwise             = "a " ++ x
+
 pprint :: Pretty a => a -> IO ()
 pprint = putStrLn . pretty
 

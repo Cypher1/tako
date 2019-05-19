@@ -6,20 +6,30 @@ import           Util                           ( boundedAll
 
 import           Data.Bits
 
+import           Language                       ( PrimUnOpType(..)
+                                                , PrimBiOpType(..)
+                                                , PrimTriOpType(..)
+                                                )
+
 type Sym = String
 
-data Instruction
-  = T TriOp Sym Sym Sym
-  | B BiOp Sym Sym
-  | U UnOp Sym
-  | L Val Sym
+type Val = Int
+
+data PrimOp
+  = L Val Sym
+  | U PrimUnOpType Sym
+  | B PrimBiOpType Sym Sym
+  | T PrimTriOpType Sym Sym Sym
   deriving (Show, Eq, Ord)
 
-instance Pretty Instruction where
-  pretty = show
+instance Pretty PrimOp where
+  pretty (L v x) = "L "++show v++" "++x
+  pretty (U op x) = pretty op++" "++x
+  pretty (B op x y) = pretty op++" "++x++" "++y
+  pretty (T op x y z) = pretty op++" "++x++" "++y++" "++z
 
 -- TODO(jopra): Ensure array access safety.
-convert :: String -> Either String Instruction
+convert :: String -> Either String PrimOp
 convert s
   | c `elem` unops = if n == 2
     then Right $ U (read c) opa
@@ -35,29 +45,21 @@ convert s
     else Left $ "Expected(4) " ++ c ++ " <reg> <reg> <reg>"
   | otherwise = Left $ "Unknown Op: '" ++ c ++ "'."
  where
-  n   = length w
-  c   = head w
-  opa = w !! 1
-  opb = w !! 2
-  opr = w !! 3
-  w   = words s
+  n                         = length w
+  (c : opa : opb : opr : _) = w ++ [ "" | _ <- [0 :: Int ..] ]
+  w                         = words s
 
-type Val = Int
-
-data TriOp = And | Or | Add | Sub | Div | Mul deriving (Show, Read, Eq, Ord, Enum, Bounded)
-data BiOp = Not | New deriving (Show, Read, Eq, Ord, Enum, Bounded)
-data UnOp = Free deriving (Show, Read, Eq, Ord, Enum, Bounded)
 
 unops :: [String]
-unops = show <$> (boundedAll :: [UnOp])
+unops = show <$> (boundedAll :: [PrimUnOpType])
 
 biops :: [String]
-biops = show <$> (boundedAll :: [BiOp])
+biops = show <$> (boundedAll :: [PrimBiOpType])
 
 triops :: [String]
-triops = show <$> (boundedAll :: [TriOp])
+triops = show <$> (boundedAll :: [PrimTriOpType])
 
-type Op = [Instruction]
+type Op = [PrimOp]
 
 type Mem = [(Sym, Val)]
 
@@ -78,29 +80,29 @@ setV k v m = (k, v) : removeV k m
 interpreter :: Op -> Mem -> Mem
 interpreter is m = foldr exec m is
 
-exec :: Instruction -> Mem -> Mem
+exec :: PrimOp -> Mem -> Mem
 exec (L r' r) m = setV r r' m
 
 exec (U o  a) m = m'
  where
   m' = case o of
-    Free -> removeV a m
+    PrimFree -> removeV a m
 
 exec (B o a r) m = setV r r' m
  where
   a' = getV a m
   r' = case o of
-    Not -> complement a'
-    New -> a'
+    PrimNot -> complement a'
+    PrimNew -> a'
 
 exec (T o a b r) m = setV r r' m
  where
   a' = getV a m
   b' = getV b m
   r' = case o of
-    And -> a' .&. b'
-    Or  -> a' .|. b'
-    Add -> a' + b'
-    Sub -> a' - b'
-    Div -> a' `div` b'
-    Mul -> a' * b'
+    PrimAnd -> a' .&. b'
+    PrimOr  -> a' .|. b'
+    PrimAdd -> a' + b'
+    PrimSub -> a' - b'
+    PrimDiv -> a' `div` b'
+    PrimMul -> a' * b'

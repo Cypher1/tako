@@ -6,10 +6,11 @@ import           Test.Tasty.HUnit
 import           Pred                           ( val
                                                 , Atom
                                                 )
-import           Operation                      ( Instruction(T, B, U, L)
-                                                , UnOp(Free)
-                                                , BiOp(New, Not)
-                                                , TriOp(Or, And, Add, Sub)
+import Language ( PrimUnOpType(..)
+  , PrimBiOpType(..)
+  , PrimTriOpType(..)
+                )
+import           Operation                      ( PrimOp (..)
                                                 , exec
                                                 )
 
@@ -40,9 +41,9 @@ declarationTests = testGroup
 freeTests :: TestTree
 freeTests = testGroup
   "Free tests"
-  [ testCase "Free empties memory" $ exec (U Free "a") [("a", 3)] @?= []
+  [ testCase "Free empties memory" $ exec (U PrimFree "a") [("a", 3)] @?= []
   , testCase "Free doesn't remove un-freed vars"
-  $   exec (U Free "a") [("a", 3), ("b", 4)]
+  $   exec (U PrimFree "a") [("a", 3), ("b", 4)]
   @?= [("b", 4)]
   ]
 
@@ -51,11 +52,11 @@ complementTests = testGroup
   "Complement tests"
   [ testCase "Complement 10 = -11"
   $      ("ret", -11)
-  `elem` exec (B Not "a" "ret") [("a", 10)]
+  `elem` exec (B PrimNot "a" "ret") [("a", 10)]
   @?=    True
   , testCase "Complement -11 = 10"
   $      ("ret", 10)
-  `elem` exec (B Not "a" "ret") [("a", -11)]
+  `elem` exec (B PrimNot "a" "ret") [("a", -11)]
   @?=    True
   ]
 
@@ -64,7 +65,7 @@ copyAssignmentTests = testGroup
   "Copy Assignment tests"
   [ testCase "New a b copies a into b"
     $      ("b", 2)
-    `elem` exec (B New "a" "b") [("a", 2)]
+    `elem` exec (B PrimNew "a" "b") [("a", 2)]
     @?=    True
   ]
 
@@ -73,7 +74,7 @@ andTests = testGroup
   "And tests"
   [ testCase "And 10&3 ="
     $      ("ret", 2)
-    `elem` exec (T And "a" "b" "ret") [("a", 10), ("b", 6)]
+    `elem` exec (T PrimAnd "a" "b" "ret") [("a", 10), ("b", 6)]
     @?=    True
   ]
 
@@ -82,7 +83,7 @@ orTests = testGroup
   "Or tests"
   [ testCase "Or 10|3 ="
     $      ("ret", 14)
-    `elem` exec (T Or "a" "b" "ret") [("a", 10), ("b", 6)]
+    `elem` exec (T PrimOr "a" "b" "ret") [("a", 10), ("b", 6)]
     @?=    True
   ]
 
@@ -91,10 +92,10 @@ addTests = testGroup
   "Addition tests"
   [ testCase "Add 10+3 ="
   $      ("ret", 13)
-  `elem` exec (T Add "a" "b" "ret") [("a", 10), ("b", 3)]
+  `elem` exec (T PrimAdd "a" "b" "ret") [("a", 10), ("b", 3)]
   @?=    True
   , testCase "Sub 10-3 ="
   $      ("ret", 7)
-  `elem` exec (T Sub "a" "b" "ret") [("a", 10), ("b", 3)]
+  `elem` exec (T PrimSub "a" "b" "ret") [("a", 10), ("b", 3)]
   @?=    True
   ]
