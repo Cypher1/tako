@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 module Language where
 
-import           Control.Monad (void)
+import           Control.Monad                  ( void )
 import           Data.Functor.Identity          ( Identity )
 
 import           Text.Parsec

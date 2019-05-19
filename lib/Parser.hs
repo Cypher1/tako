@@ -3,7 +3,7 @@ module Parser where
 
 import           Data.Functor.Identity          ( Identity )
 import           Control.Applicative            ( Alternative((<|>)) )
-import           Control.Monad (void)
+import           Control.Monad                  ( void )
 import           Text.Parsec                    ( ParsecT
                                                 , ParseError
                                                 , parse

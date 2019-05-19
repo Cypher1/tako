@@ -6,11 +6,11 @@ import           Test.Tasty.HUnit
 import           Pred                           ( val
                                                 , Atom
                                                 )
-import Language ( PrimUnOpType(..)
-  , PrimBiOpType(..)
-  , PrimTriOpType(..)
-                )
-import           Operation                      ( PrimOp (..)
+import           Language                       ( PrimUnOpType(..)
+                                                , PrimBiOpType(..)
+                                                , PrimTriOpType(..)
+                                                )
+import           Operation                      ( PrimOp(..)
                                                 , exec
                                                 )
 

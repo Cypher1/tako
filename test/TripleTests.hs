@@ -16,8 +16,12 @@ import           Pred                           ( val
                                                 , Atom
                                                 )
 import           Triple
-import           Language ( PrimTriOpType (PrimDiv, PrimSub))
-import Operation (PrimOp(T))
+import           Language                       ( PrimTriOpType
+                                                  ( PrimDiv
+                                                  , PrimSub
+                                                  )
+                                                )
+import           Operation                      ( PrimOp(T) )
 import qualified Data.Set                      as S
 
 -- Constants
