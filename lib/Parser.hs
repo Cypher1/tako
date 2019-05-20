@@ -14,7 +14,6 @@ import           Text.Parsec                    ( ParsecT
                                                 -- , stateInput
                                                 , choice
                                                 , (<?>)
-                                                , SourcePos
                                                 , try
                                                 , many
                                                 , many1
@@ -82,54 +81,38 @@ instance Pretty Step where
 
 type Parser = ParsecT [Token] () Identity
 
-posFromTok :: Token -> SourcePos
-posFromTok (Token _t inf) = at inf
-
-primTok :: TokenType -> Parser TokenType
-primTok exp' = token pretty posFromTok testTok <?> pretty' exp'
+primL :: Parser PrimValOpType
+primL = tryTok test <?> "a value-load"
  where
-  testTok (Token t _inf) | exp' == t = Just t
-                         | otherwise = Nothing
+  test (Token (Op (PrimVal op')) _) = Just op'
+  test _                            = Nothing
 
-primL :: PrimValOpType -> Parser PrimValOpType
-primL op = do
-  op' <- primTok (Op (PrimVal op))
-  case op' of
-    Op (PrimVal op'') -> return op''
-    e ->
-      error $ "Internal error. Found token: " ++ show e ++ ", expected PrimOp."
+primU :: Parser PrimUnOpType
+primU = tryTok test <?> "a unary-operation"
+ where
+  test (Token (Op (PrimUn op')) _) = Just op'
+  test _                           = Nothing
 
-primU :: PrimUnOpType -> Parser PrimUnOpType
-primU op = do
-  op' <- primTok (Op (PrimUn op))
-  case op' of
-    Op (PrimUn op'') -> return op''
-    e ->
-      error $ "Internal error. Found token: " ++ show e ++ ", expected PrimOp."
+primB :: Parser PrimBiOpType
+primB = tryTok test <?> "a binary-operation"
+ where
+  test (Token (Op (PrimBi op')) _) = Just op'
+  test _                           = Nothing
 
-primB :: PrimBiOpType -> Parser PrimBiOpType
-primB op = do
-  op' <- primTok (Op (PrimBi op))
-  case op' of
-    Op (PrimBi op'') -> return op''
-    e ->
-      error $ "Internal error. Found token: " ++ show e ++ ", expected PrimOp."
-
-primT :: PrimTriOpType -> Parser PrimTriOpType
-primT op = do
-  op' <- primTok (Op (PrimTri op))
-  case op' of
-    Op (PrimTri op'') -> return op''
-    e ->
-      error $ "Internal error. Found token: " ++ show e ++ ", expected PrimOp."
+primT :: Parser PrimTriOpType
+primT = tryTok test <?> "a ternary-operation"
+ where
+  test (Token (Op (PrimTri op')) _) = Just op'
+  test _                            = Nothing
 
 tok :: TokType -> Parser TokType
-tok tok' = do
-  tok'' <- primTok (Tok tok')
-  case tok'' of
-    Tok op -> return op
-    e -> error $ "Internal error. Found token: " ++ show e ++ ", expected Tok."
+tok tok' = tryTok test <?> pretty' tok'
+ where
+  test (Token (Tok t) _inf) | tok' == t = Just tok'
+  test _ = Nothing
 
+tryTok :: (Token -> Maybe a) -> Parser a
+tryTok = token pretty (\(Token _ inf) -> at inf)
 
 sepBy :: Parser a -> Parser b -> Parser [a]
 sepBy p sep = (p `sepBy1` sep) <|> pure []
@@ -201,31 +184,24 @@ primOp :: Parser PrimOp
 primOp = choice $ try <$> pops
  where
   pops =
-    [ L <$> primL PrimLoad <*> litInt <*> ident
-    , U <$> primU PrimFree <*> ident
-    , B <$> primB PrimNot <*> ident <*> ident
-    , B <$> primB PrimNew <*> ident <*> ident
-    , T <$> primT PrimAnd <*> ident <*> ident <*> ident
-    , T <$> primT PrimOr <*> ident <*> ident <*> ident
-    , T <$> primT PrimAdd <*> ident <*> ident <*> ident
-    , T <$> primT PrimSub <*> ident <*> ident <*> ident
-    , T <$> primT PrimDiv <*> ident <*> ident <*> ident
-    , T <$> primT PrimMul <*> ident <*> ident <*> ident
+    [ L <$> primL <*> litInt <*> ident
+    , U <$> primU <*> ident
+    , B <$> primB <*> ident <*> ident
+    , T <$> primT <*> ident <*> ident <*> ident
     ]
 
 -- Actual parsers
 
 ident :: Parser Id
-ident = token pretty posFromTok testTok
+ident = tryTok test <?> "an identifier"
  where
-  testTok (Token t _) = case t of
-    Ident name' -> Just name'
-    _           -> Nothing
+  test (Token (Ident name') _) = Just name'
+  test _                       = Nothing
 
 litInt :: Parser Integer
-litInt = token pretty posFromTok testTok
+litInt = tryTok test <?> "an integer"
  where
-  testTok (Token t _) = case t of
+  test (Token t _) = case t of
     LitInt name' -> Just name'
     _            -> Nothing
 
