@@ -6,13 +6,13 @@ import           Test.Tasty.HUnit
 import           Pred                           ( val
                                                 , Atom
                                                 )
-import           Language                       ( PrimUnOpType(..)
+import           Language                       ( PrimValOpType(..)
+                                                , PrimUnOpType(..)
                                                 , PrimBiOpType(..)
                                                 , PrimTriOpType(..)
                                                 )
-import           Operation                      ( PrimOp(..)
-                                                , exec
-                                                )
+import           Ops                      ( PrimOp(..))
+import           Operation                     ( exec)
 
 -- Constants
 a :: Atom a
@@ -31,10 +31,10 @@ declarationTests :: TestTree
 declarationTests = testGroup
   "Declaration tests"
   [ testCase "Introducing a literal gives the same value"
-  $   exec (L 3 "a") []
+  $   exec (L PrimLoad 3 "a") []
   @?= [("a", 3)]
   , testCase "Introducing a literal overwrites the old value"
-  $   exec (L 3 "a") [("a", 100)]
+  $   exec (L PrimLoad 3 "a") [("a", 100)]
   @?= [("a", 3)]
   ]
 

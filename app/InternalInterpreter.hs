@@ -1,9 +1,8 @@
 module InternalInterpreter where
 import           System.Console.Haskeline
-import           Operation                      ( Mem
-                                                , exec
-                                                , convert
-                                                )
+import           Parser ( convert)
+import           Ops ( Mem)
+import           Operation                      ( exec)
 
 runIR :: IO ()
 runIR = runInputT defaultSettings (mainLoop [])
@@ -24,5 +23,5 @@ handleCommand :: String -> Mem -> InputT IO Mem
 handleCommand cmd mem = case convert cmd of
   Right ins -> return $ exec ins mem
   Left  err -> do
-    outputStrLn $ "Sorry '" ++ cmd ++ "' couldn't be parsed.\n\t" ++ err
+    outputStrLn $ "Sorry '" ++ cmd ++ "' couldn't be parsed.\n\t" ++ show err
     return mem

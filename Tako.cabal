@@ -29,6 +29,7 @@ library Tako-lib
       Parser
       Resolution
       Operation
+      Ops
       Util
 
 executable Tako

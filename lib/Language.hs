@@ -86,6 +86,13 @@ instance Pretty PrimBiOpType where
   pretty PrimNot = "Not"
   pretty PrimNew = "New"
 
+data PrimValOpType
+  = PrimLoad
+  deriving (Show, Read, Eq, Ord, Enum, Bounded)
+
+instance Pretty PrimValOpType where
+  pretty PrimLoad = "Load"
+
 data PrimUnOpType
   = PrimFree
   deriving (Show, Read, Eq, Ord, Enum, Bounded)
@@ -93,14 +100,16 @@ instance Pretty PrimUnOpType where
   pretty PrimFree = "Free"
 
 data PrimOpType
-  = PrimUn PrimUnOpType
+  = PrimVal PrimValOpType
+  | PrimUn PrimUnOpType
   | PrimBi PrimBiOpType
   | PrimTri PrimTriOpType
   deriving (Show, Eq)
 
 allPrimOps :: [PrimOpType]
 allPrimOps =
-  (PrimUn <$> [(minBound :: PrimUnOpType) .. maxBound])
+  (PrimVal <$> [(minBound :: PrimValOpType) .. maxBound])
+    ++ (PrimUn <$> [(minBound :: PrimUnOpType) .. maxBound])
     ++ (PrimBi <$> [(minBound :: PrimBiOpType) .. maxBound])
     ++ (PrimTri <$> [(minBound :: PrimTriOpType) .. maxBound])
 
@@ -114,9 +123,10 @@ instance Bounded PrimOpType where
   maxBound = last allPrimOps
 
 instance Pretty PrimOpType where
-  pretty (PrimTri ty) = pretty ty
-  pretty (PrimBi ty) = pretty ty
+  pretty (PrimVal ty) = pretty ty
   pretty (PrimUn ty) = pretty ty
+  pretty (PrimBi ty) = pretty ty
+  pretty (PrimTri ty) = pretty ty
 
 data TokenType
   = Tok TokType
