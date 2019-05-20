@@ -30,7 +30,7 @@ import           Language                       ( TokenType(..)
                                                 , Token(..)
                                                 , TokType(..)
                                                 )
-import           Ops                      ( PrimOp(..) )
+import           Ops                            ( PrimOp(..) )
 
 import           Util                           ( Pretty(pretty)
                                                 , prettySet
@@ -159,17 +159,17 @@ parseFile :: String -> IO (Set Expr)
 parseFile file = fromTokens file <$> tokenizeFile file
 
 tokenizeFile :: String -> IO [Token]
-tokenizeFile file = (tokenizeString file) <$> readFile file
+tokenizeFile file = tokenizeString file <$> readFile file
 
 tokenizeString :: String -> String -> [Token]
 tokenizeString file contents' = case parse lexer file contents' of
-                             Right toks' -> toks'
-                             Left  err'  -> error $ show err'
+  Right toks' -> toks'
+  Left  err'  -> error $ show err'
 
 fromTokens :: String -> [Token] -> Set Expr
 fromTokens file toks' = case parse (exprs <* eof) file toks' of
-                          Right mod' -> mod'
-                          Left  err  -> error $ show err
+  Right mod' -> mod'
+  Left  err  -> error $ show err
 
 parsePrimOpsFile :: String -> Either ParseError [PrimOp]
 parsePrimOpsFile cnts = primFromTokens <$> parse lexer "?" cnts
@@ -179,9 +179,7 @@ parsePrimOpsFile cnts = primFromTokens <$> parse lexer "?" cnts
     Left  err  -> error $ show err
 
 convert :: String -> Either ParseError PrimOp
-convert s = do
-  op <- parse (primOp <* eof) "stdin" (tokenizeString "stdin" s)
-  return op
+convert s = parse (primOp <* eof) "stdin" (tokenizeString "stdin" s)
 
 numberExprs :: [Expr] -> Set Expr
 numberExprs = S.fromList . snd . foldl na' (0, [])
@@ -229,7 +227,7 @@ litInt = token pretty posFromTok testTok
  where
   testTok (Token t _) = case t of
     LitInt name' -> Just name'
-    _           -> Nothing
+    _            -> Nothing
 
 expr :: Parser Expr
 expr = try (pTrace "ass" (Kw <$> call <*> (tok DefOp *> step)))

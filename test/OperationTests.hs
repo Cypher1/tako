@@ -11,8 +11,8 @@ import           Language                       ( PrimValOpType(..)
                                                 , PrimBiOpType(..)
                                                 , PrimTriOpType(..)
                                                 )
-import           Ops                      ( PrimOp(..))
-import           Operation                     ( exec)
+import           Ops                            ( PrimOp(..) )
+import           Operation                      ( exec )
 
 -- Constants
 a :: Atom a
