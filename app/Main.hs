@@ -1,6 +1,15 @@
 module Main where
 import           InternalInterpreter            ( runIR )
 import           System.Console.ParseArgs
+import           Control.Monad                  ( when
+                                                , unless
+                                                )
+import           Paths_Tako                     ( version )
+import           Data.Version                   ( showVersion )
+
+takoInfo :: String
+takoInfo =
+  "The Tako compiler and proof assistant, version " ++ showVersion version
 
 argsDef :: [Arg String]
 argsDef =
@@ -17,6 +26,13 @@ argsDef =
     , argName  = Just "help"
     , argData  = Nothing
     , argDesc  = "Print this usage information"
+    }
+  , Arg
+    { argIndex = "version"
+    , argAbbr  = Just 'V'
+    , argName  = Just "version"
+    , argData  = Nothing
+    , argDesc  = "Print version = " ++ showVersion version ++ ")"
     }
   , Arg
     { argIndex = "interactive"
@@ -51,8 +67,11 @@ printL l v = putStrLn $ l ++ ": " ++ show v
 main :: IO ()
 main = do
   args <- parseArgsIO ArgsComplete argsDef
+  let version' = gotArg args "version"
+  when version' $ putStrLn takoInfo
   let help = gotArg args "help"
-  if help then putStrLn $ argsUsage args else main' args
+  when help $ putStrLn $ argsUsage args
+  unless (help || version') $ main' args
 
 main' :: Args String -> IO ()
 main' args = do
