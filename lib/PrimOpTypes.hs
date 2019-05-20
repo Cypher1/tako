@@ -1,4 +1,4 @@
-module Ops where
+module PrimOpTypes where
 
 import           Util                           ( boundedAll
                                                 , Pretty(..)

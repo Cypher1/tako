@@ -29,7 +29,7 @@ import           Language                       ( TokenType(..)
                                                 , Token(..)
                                                 , TokType(..)
                                                 )
-import           Ops                            ( PrimOp(..) )
+import           PrimOpTypes                    ( PrimOp(..) )
 
 import           Util                           ( Pretty(pretty)
                                                 , prettySet

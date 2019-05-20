@@ -29,7 +29,7 @@ library tako-lib
       Parser
       Resolution
       Operation
-      Ops
+      PrimOpTypes
       Util
 
 executable tako
