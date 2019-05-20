@@ -1,5 +1,5 @@
 name:                Tako
-version:             0.1.0.0
+version:             0.0.0.1
 synopsis:            A Haskell implementation of Triple based Hoare Logic
 description:         A Hoare Logic processor designed to form a proof system for pure, proof based languages
 homepage:            https://github.com/Cypher1/Tako#readme
@@ -44,6 +44,7 @@ executable Tako
   GHC-Options:    -Wall -O2
   other-modules:
       InternalInterpreter
+      Paths_Tako
 
 test-suite Tako-tests
   type:           exitcode-stdio-1.0
