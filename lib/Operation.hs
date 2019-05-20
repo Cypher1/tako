@@ -1,67 +1,13 @@
 module Operation where
 
-import           Util                           ( boundedAll
-                                                , Pretty(..)
-                                                )
-
 import           Data.Bits
 
-import           Language                       ( PrimUnOpType(..)
+import           Language                       ( PrimValOpType(..)
+                                                , PrimUnOpType(..)
                                                 , PrimBiOpType(..)
                                                 , PrimTriOpType(..)
                                                 )
-
-type Sym = String
-
-type Val = Int
-
-data PrimOp
-  = L Val Sym
-  | U PrimUnOpType Sym
-  | B PrimBiOpType Sym Sym
-  | T PrimTriOpType Sym Sym Sym
-  deriving (Show, Eq, Ord)
-
-instance Pretty PrimOp where
-  pretty (L v x) = "L "++show v++" "++x
-  pretty (U op x) = pretty op++" "++x
-  pretty (B op x y) = pretty op++" "++x++" "++y
-  pretty (T op x y z) = pretty op++" "++x++" "++y++" "++z
-
--- TODO(jopra): Ensure array access safety.
-convert :: String -> Either String PrimOp
-convert s
-  | c `elem` unops = if n == 2
-    then Right $ U (read c) opa
-    else Left $ "Expected(1) " ++ c ++ " <reg>"
-  | c == "L" = if n == 3
-    then Right $ L (read opa) opb
-    else Left $ "Expected(2) " ++ c ++ " <val> <reg>"
-  | c `elem` biops = if n == 3
-    then Right $ B (read c) opa opb
-    else Left $ "Expected(3) " ++ c ++ " <reg> <reg>"
-  | c `elem` triops = if n == 4
-    then Right $ T (read c) opa opb opr
-    else Left $ "Expected(4) " ++ c ++ " <reg> <reg> <reg>"
-  | otherwise = Left $ "Unknown Op: '" ++ c ++ "'."
- where
-  n                         = length w
-  (c : opa : opb : opr : _) = w ++ [ "" | _ <- [0 :: Int ..] ]
-  w                         = words s
-
-
-unops :: [String]
-unops = show <$> (boundedAll :: [PrimUnOpType])
-
-biops :: [String]
-biops = show <$> (boundedAll :: [PrimBiOpType])
-
-triops :: [String]
-triops = show <$> (boundedAll :: [PrimTriOpType])
-
-type Op = [PrimOp]
-
-type Mem = [(Sym, Val)]
+import Ops (Sym, Mem, Val, PrimOp(..), Op)
 
 getV :: Sym -> Mem -> Val
 getV k h = case v of
@@ -81,12 +27,13 @@ interpreter :: Op -> Mem -> Mem
 interpreter is m = foldr exec m is
 
 exec :: PrimOp -> Mem -> Mem
-exec (L r' r) m = setV r r' m
+exec (L o r' r) m
+  = case o of
+      PrimLoad -> setV r r' m
 
-exec (U o  a) m = m'
- where
-  m' = case o of
-    PrimFree -> removeV a m
+exec (U o  a) m
+  = case o of
+      PrimFree -> removeV a m
 
 exec (B o a r) m = setV r r' m
  where

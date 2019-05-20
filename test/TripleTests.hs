@@ -21,7 +21,7 @@ import           Language                       ( PrimTriOpType
                                                   , PrimSub
                                                   )
                                                 )
-import           Operation                      ( PrimOp(T) )
+import           Ops ( PrimOp(T) )
 import qualified Data.Set                      as S
 
 -- Constants

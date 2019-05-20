@@ -21,6 +21,7 @@ import           Text.Parsec                    ( ParsecT
                                                 )
 import           Language                       ( TokenType(..)
                                                 , PrimOpType(..)
+                                                , PrimValOpType(..)
                                                 , PrimUnOpType(..)
                                                 , PrimBiOpType(..)
                                                 , PrimTriOpType(..)
@@ -29,7 +30,7 @@ import           Language                       ( TokenType(..)
                                                 , Token(..)
                                                 , TokType(..)
                                                 )
-import           Operation                      ( PrimOp(..) )
+import           Ops                      ( PrimOp(..) )
 
 import           Util                           ( Pretty(pretty)
                                                 , prettySet
@@ -89,6 +90,14 @@ primTok exp' = token pretty posFromTok testTok <?> pretty' exp'
  where
   testTok (Token t _inf) | exp' == t = Just t
                          | otherwise = Nothing
+
+primL :: PrimValOpType -> Parser PrimValOpType
+primL op = do
+  op' <- primTok (Op (PrimVal op))
+  case op' of
+    Op (PrimVal op'') -> return op''
+    e ->
+      error $ "Internal error. Found token: " ++ show e ++ ", expected PrimOp."
 
 primU :: PrimUnOpType -> Parser PrimUnOpType
 primU op = do
@@ -150,16 +159,17 @@ parseFile :: String -> IO (Set Expr)
 parseFile file = fromTokens file <$> tokenizeFile file
 
 tokenizeFile :: String -> IO [Token]
-tokenizeFile file = do
-  contents' <- readFile file
-  case parse lexer file contents' of
-    Right toks' -> return toks'
-    Left  err'  -> error $ show err'
+tokenizeFile file = (tokenizeString file) <$> readFile file
+
+tokenizeString :: String -> String -> [Token]
+tokenizeString file contents' = case parse lexer file contents' of
+                             Right toks' -> toks'
+                             Left  err'  -> error $ show err'
 
 fromTokens :: String -> [Token] -> Set Expr
 fromTokens file toks' = case parse (exprs <* eof) file toks' of
-  Right mod' -> mod'
-  Left  err  -> error $ show err
+                          Right mod' -> mod'
+                          Left  err  -> error $ show err
 
 parsePrimOpsFile :: String -> Either ParseError [PrimOp]
 parsePrimOpsFile cnts = primFromTokens <$> parse lexer "?" cnts
@@ -167,6 +177,11 @@ parsePrimOpsFile cnts = primFromTokens <$> parse lexer "?" cnts
   primFromTokens toks' = case parse (many primOp <* eof) "?" toks' of
     Right mod' -> mod'
     Left  err  -> error $ show err
+
+convert :: String -> Either ParseError PrimOp
+convert s = do
+  op <- parse (primOp <* eof) "stdin" (tokenizeString "stdin" s)
+  return op
 
 numberExprs :: [Expr] -> Set Expr
 numberExprs = S.fromList . snd . foldl na' (0, [])
@@ -188,7 +203,8 @@ primOp :: Parser PrimOp
 primOp = choice $ try <$> pops
  where
   pops =
-    [ U <$> primU PrimFree <*> ident
+    [ L <$> primL PrimLoad <*> litInt <*> ident
+    , U <$> primU PrimFree <*> ident
     , B <$> primB PrimNot <*> ident <*> ident
     , B <$> primB PrimNew <*> ident <*> ident
     , T <$> primT PrimAnd <*> ident <*> ident <*> ident
@@ -206,6 +222,13 @@ ident = token pretty posFromTok testTok
  where
   testTok (Token t _) = case t of
     Ident name' -> Just name'
+    _           -> Nothing
+
+litInt :: Parser Integer
+litInt = token pretty posFromTok testTok
+ where
+  testTok (Token t _) = case t of
+    LitInt name' -> Just name'
     _           -> Nothing
 
 expr :: Parser Expr

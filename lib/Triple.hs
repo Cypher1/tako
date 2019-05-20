@@ -16,7 +16,7 @@ import           Resolution                     ( State
                                                 , ignoreErrors
                                                 , ResolutionFailure
                                                 )
-import           Operation                      ( Op )
+import           Ops ( Op )
 import qualified Data.Set                      as S
 
 data HTriple = Tri {
