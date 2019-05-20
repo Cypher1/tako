@@ -1,8 +1,8 @@
 module InternalInterpreter where
 import           System.Console.Haskeline
-import           Parser ( convert)
-import           Ops ( Mem)
-import           Operation                      ( exec)
+import           Parser                         ( convert )
+import           Ops                            ( Mem )
+import           Operation                      ( exec )
 
 runIR :: IO ()
 runIR = runInputT defaultSettings (mainLoop [])

@@ -7,7 +7,12 @@ import           Language                       ( PrimValOpType(..)
                                                 , PrimBiOpType(..)
                                                 , PrimTriOpType(..)
                                                 )
-import Ops (Sym, Mem, Val, PrimOp(..), Op)
+import           Ops                            ( Sym
+                                                , Mem
+                                                , Val
+                                                , PrimOp(..)
+                                                , Op
+                                                )
 
 getV :: Sym -> Mem -> Val
 getV k h = case v of
@@ -27,13 +32,11 @@ interpreter :: Op -> Mem -> Mem
 interpreter is m = foldr exec m is
 
 exec :: PrimOp -> Mem -> Mem
-exec (L o r' r) m
-  = case o of
-      PrimLoad -> setV r r' m
+exec (L o r' r) m = case o of
+  PrimLoad -> setV r r' m
 
-exec (U o  a) m
-  = case o of
-      PrimFree -> removeV a m
+exec (U o a) m = case o of
+  PrimFree -> removeV a m
 
 exec (B o a r) m = setV r r' m
  where
