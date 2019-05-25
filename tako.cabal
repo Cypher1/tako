@@ -29,7 +29,8 @@ library tako-lib
       Parser
       Resolution
       Operation
-      PrimOpTypes
+      PrimOpType
+      PrimType
       Util
 
 executable tako
@@ -57,11 +58,13 @@ test-suite tako-tests
       containers,
       parsec >= 3.1 && < 3.2,
       tasty >= 1.2.2 && < 1.2.3,
-      tasty-hunit >= 0.10 && < 0.11
-  GHC-Options:    -Wall -O2
+      tasty-hunit >= 0.10 && < 0.11,
+      tasty-quickcheck >= 0.10 && < 0.11
+  GHC-Options:    -Wall -O2 -Wno-orphans
   other-modules:
       TestUtil
       ParserTests
       OperationTests
       TripleTests
       ResolutionTests
+      PrimTypeTests

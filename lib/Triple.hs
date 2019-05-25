@@ -16,7 +16,7 @@ import           Resolution                     ( State
                                                 , ignoreErrors
                                                 , ResolutionFailure
                                                 )
-import           PrimOpTypes                    ( Op )
+import           PrimOpType                     ( Op )
 import qualified Data.Set                      as S
 
 data HTriple = Tri {

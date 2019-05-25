@@ -7,8 +7,8 @@ import           Language                       ( PrimValOpType(..)
                                                 , PrimBiOpType(..)
                                                 , PrimTriOpType(..)
                                                 )
-import           PrimOpTypes                    ( Sym
-                                                , Mem
+import           PrimType                       ( Sym )
+import           PrimOpType                     ( Mem
                                                 , Val
                                                 , PrimOp(..)
                                                 , Op

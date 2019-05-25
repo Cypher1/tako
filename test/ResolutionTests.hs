@@ -81,7 +81,7 @@ emptyHeapletTests = testGroup
 
 singlePredicateResolution :: TestTree
 singlePredicateResolution = testGroup
-  "Single Predicate Resolution"
+  "Single Predicate Resolution tests"
   [ testCase "Value resolution passes if the state contains the value"
   $ hasEmptySolution
   $ solutions (S.fromList [exists a])

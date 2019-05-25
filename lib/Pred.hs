@@ -9,7 +9,7 @@ import           Util                           ( prettyMap
 import qualified Data.Map                      as M
 import           Data.Map                       ( Map )
 
-import           PrimOpTypes                    ( Sym )
+import           PrimType                       ( Sym )
 
 data Var
 data Val

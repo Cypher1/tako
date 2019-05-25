@@ -11,7 +11,7 @@ import           Language                       ( PrimValOpType(..)
                                                 , PrimBiOpType(..)
                                                 , PrimTriOpType(..)
                                                 )
-import           PrimOpTypes                    ( PrimOp(..) )
+import           PrimOpType                     ( PrimOp(..) )
 import           Operation                      ( exec )
 
 -- Constants
