@@ -4,12 +4,12 @@ import           System.Console.ParseArgs
 import           Control.Monad                  ( when
                                                 , unless
                                                 )
-import           Paths_Tako                     ( version )
+import           Paths_tako                     ( version )
 import           Data.Version                   ( showVersion )
 
 takoInfo :: String
 takoInfo =
-  "The Tako compiler and proof assistant, version " ++ showVersion version
+  "The tako compiler and proof assistant, version " ++ showVersion version
 
 argsDef :: [Arg String]
 argsDef =
