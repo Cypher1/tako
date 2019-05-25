@@ -1,4 +1,6 @@
-module Ops where
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+module PrimOpType where
 
 import           Util                           ( boundedAll
                                                 , Pretty(..)
@@ -10,7 +12,7 @@ import           Language                       ( PrimValOpType(..)
                                                 , PrimTriOpType(..)
                                                 )
 
-type Sym = String
+import           PrimType                       ( Sym )
 
 type Val = Integer
 

@@ -1,7 +1,7 @@
 module InternalInterpreter where
 import           System.Console.Haskeline
 import           Parser                         ( convert )
-import           Ops                            ( Mem )
+import           PrimOpType                     ( Mem )
 import           Operation                      ( exec )
 
 runIR :: IO ()
