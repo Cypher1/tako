@@ -1,20 +1,26 @@
 module PrimTypeTests where
 
+import           Debug.Trace                    ( trace )
+import           Data.List                      ( sort )
+
 import           Test.Tasty
 -- import           Test.Tasty.HUnit
 import qualified Test.Tasty.QuickCheck         as QC
 import           PrimType
 
 instance QC.Arbitrary Ty where
-  arbitrary = QC.frequency [ (6, return Unit)
-    , (1, Sum <$> QC.arbitrary <*> QC.arbitrary)
-    , (10, Var <$> QC.vectorOf 1 (QC.elements "abcdefghijklmnopqrstuvwxyz"))
-    , (1, Product <$> QC.arbitrary <*> QC.arbitrary)
-                    ]
-  shrink Unit = []
+  arbitrary = QC.frequency [ (1, Sum <$> arbitraryList)
+    , (100, Var <$> QC.vectorOf 1 (QC.elements "abcdefghijklmnopqrstuvwxyz"))
+    , (1, Product <$> arbitraryList)
+    ]
   shrink (Var _) = []
-  shrink (Sum f s) = [f, s]
-  shrink (Product f s) = [f, s]
+  shrink (Sum ts) = snd <$> ts -- TODO sublists should also be checked.
+  shrink (Product ts) = snd <$> ts
+
+arbitraryList :: QC.Arbitrary a => QC.Gen [a]
+arbitraryList = QC.sized $ \n -> do
+  k <- QC.choose (0, min 10 n)
+  QC.vectorOf k QC.arbitrary
 
 primTypeTests :: TestTree
 primTypeTests = testGroup "Primitive Type tests" [unificationTests]
@@ -38,8 +44,18 @@ propSelfUnify :: TestTree
 propSelfUnify = QC.testProperty "type unifies with itself" p
  where
   p :: Ty -> Bool
+  p ty = case runWithVars (mgu' ty ty) of
+    Success map' -> null map'
+    _            -> False
+
+propAlphaRenameUnify :: TestTree
+propAlphaRenameUnify = QC.testProperty
+  "type unifies with an alpha rename of itself"
+  p
+ where
+  p :: Ty -> Bool
   p ty = case runWithVars m of
-    Success map' -> all (\(v, Var v2) -> rename v == v2) map'
+    Success map' -> null map' || trace (show map') False
     _            -> False
    where
     rename s = s ++ "2"
@@ -52,5 +68,7 @@ propSimpleUnification = QC.testProperty
  where
   p :: String -> Ty -> Bool
   p v t = case runWithVars $ mgu (return t) (return $ Var v) of
-    Success map' -> map' == [(v, t)]
-    _            -> False
+    Success map' -> case t of
+      Var t' -> sort map' == sort [(v, t), (t', Var v)]
+      _      -> map' == [(v, t)]
+    err -> trace (show err) False

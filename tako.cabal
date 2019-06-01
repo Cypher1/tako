@@ -18,10 +18,10 @@ library tako-lib
   default-language:    Haskell2010
   build-depends:
       base >= 4.9 && < 5,
-      containers,
+      containers >= 0.6.0 && < 0.6.1,
       parsec >= 3.1 && < 3.2,
       transformers >= 0.5 && < 0.6
-  GHC-Options:    -Wall -O2
+  GHC-Options:    -Wall -O2 -g -rtsopts
   exposed-modules:
       Language
       Triple
@@ -42,7 +42,7 @@ executable tako
       base >= 4.9 && < 5,
       haskeline >= 0.7 && < 0.8,
       parseargs >= 0.2 && <0.3
-  GHC-Options:    -Wall -O2
+  GHC-Options:    -Wall -O2 -g -rtsopts
   other-modules:
       InternalInterpreter
       Paths_tako
@@ -60,7 +60,7 @@ test-suite tako-tests
       tasty >= 1.2.2 && < 1.2.3,
       tasty-hunit >= 0.10 && < 0.11,
       tasty-quickcheck >= 0.10 && < 0.11
-  GHC-Options:    -Wall -O2 -Wno-orphans
+  GHC-Options:    -Wall -O2 -Wno-orphans -g -rtsopts
   other-modules:
       TestUtil
       ParserTests
