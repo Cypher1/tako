@@ -1,7 +1,9 @@
 module PrimTypeTests where
 
 import           Debug.Trace                    ( trace )
-import           Data.List                      ( sort )
+import           Data.List                      ( sort
+                                                , nub
+                                                )
 
 import           Test.Tasty
 -- import           Test.Tasty.HUnit
@@ -67,8 +69,11 @@ propSimpleUnification = QC.testProperty
   p
  where
   p :: String -> Ty -> Bool
-  p v t = case runWithVars $ mgu (return t) (return $ Var v) of
-    Success map' -> case t of
-      Var t' -> sort map' == sort [(v, t), (t', Var v)]
-      _      -> map' == [(v, t)]
-    err -> trace (show err) False
+  p v t = check' $ runWithVars $ mgu (return t) (return $ Var v)
+   where
+    check' (Success map') = sort map' == sort (nub exp')
+     where
+      exp' = (v, t) : case t of
+        Var t' -> [(t', Var v)]
+        _      -> []
+    check' err = trace (show err) False
