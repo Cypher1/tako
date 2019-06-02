@@ -20,7 +20,7 @@ type Sym = String
 data Ty = Sum [(Sym, Ty)] | Product [(Sym, Ty)] | Var Sym
   deriving (Show, Eq, Ord)
 
-type UnionTag = Sym
+type UnionTag = Int
 
 -- Note: Ordering is important for zeros and products.
 data Value = Value UnionTag Value | Values [Value]
@@ -38,14 +38,19 @@ cardinality (Product tys) = product [ cardinality $ snd t | t <- tys ]
 cardinality (Var name') = error $ "Var '" ++ name' ++ "' does not have a size"
 
 instance Pretty (Sym, Ty) where
-  pretty (n, t) = n++":"++pretty t
+  pretty (n, Product []) = n
+  pretty (n, t) = n++""++pretty t
 
 instance Pretty Value where
-  pretty (Value s v) = s++":("++pretty v++")"
-  pretty (Values []) = "()"
-  pretty (Values (v:vs)) = "("++pretty v++concat[" "++pretty x|x<-vs]++")"
+  pretty (Values []) = "."
+  pretty v' = pretty' v'
+    where
+      pretty' (Values []) = ""
+      pretty' (Values (v:vs)) = "("++pretty' v++concat[pretty' x|x<-vs]++")"
+      pretty' (Value s v) = show s++pretty' v
 
 instance Pretty Ty where
+  pretty (Sum [("0", Product []), ("1", Product[])]) = "B"
   pretty (Sum []) = "0"
   pretty (Sum ((n, t):tys)) = "("++pretty (n, t)++concat["+"++pretty t'|t'<-tys]++")"
   pretty (Product []) = "1"
@@ -53,12 +58,10 @@ instance Pretty Ty where
   pretty (Var name') = name'++"?"
 
 nbits :: Integer -> Ty
-nbits n = case n `divMod` 2 of
-  (0, 0) -> Product []
-  (0, 1) -> Sum [("0", Product []), ("1", Product [])]
-  (d, 0) -> Product [("high", mb), ("low", mb)] where mb = nbits d
-  (_, 1) -> Product [("high", nbits (n - 1)), ("low", nbits 1)]
-  (d, r) -> error $ "Divided " ++ show n ++ " by 2 and got " ++ show (d, r)
+nbits n = Product [ (show i, bit) | i <- [0 .. n - 1] ]
+
+bit :: Ty
+bit = Sum [("0", Product []), ("1", Product [])]
 
 data Failure
   = RanOutOfVariableNames
@@ -163,7 +166,7 @@ instance Monad WithVars where
         Failed f' -> Failed f'
 
 getType :: Value -> WithVars Ty
-getType (Value n v) = (\t -> Sum [(n, t)]) <$> getType v
+getType (Value n v) = (\t -> Sum [("?" ++ show n, t)]) <$> getType v
 getType (Values vs) = Product <$> mapM gt' vs
  where
   gt' :: Value -> WithVars (String, Ty)
@@ -174,18 +177,21 @@ getType (Values vs) = Product <$> mapM gt' vs
 
 getZero :: Ty -> Value
 getZero (Sum     []   ) = error "Tried to get Sum of []"
-getZero (Sum     tys  ) = (\(s, t) -> Value s (getZero t)) $ head tys
+getZero (Sum     tys  ) = Value 0 . getZero $ snd $ head tys
 getZero (Product tys  ) = Values [ getZero t | (_, t) <- tys ]
 getZero (Var     name') = error $ "Var '" ++ name' ++ "' does not have a zero"
 
 
 -- data Value = Value Sym Value | Values [(Sym, Value)]
 unpackFrom :: Sym -> (Ty, Value) -> Try (Ty, Value)
-unpackFrom s (t@(Sum ops), v@(Value tag val)) =
-  case [ (ty, val) | (name, ty) <- ops, s == name, name == tag ] of
-    []   -> Failed $ PatternMismatch s t v
-    [tv] -> return tv
-    _    -> Failed $ InvalidValueForType t v
+unpackFrom s (t@(Sum ops), v@(Value tag val))
+  | tag < 0
+  = Failed $ InvalidValueForType t v
+  | tag >= length ops
+  = Failed $ InvalidValueForType t v
+  | otherwise
+  = let (s', t') = ops !! tag
+    in  if s == s' then return (t', val) else Failed $ PatternMismatch s t v
 unpackFrom s (t@(Product vals), v@(Values vs)) =
   case [ (ty, val) | ((name, ty), val) <- zip vals vs, s == name ] of
     []   -> Failed $ PatternMismatch s t v
@@ -196,6 +202,17 @@ unpackFrom s (t, v) = Failed $ PatternMismatch s t v
 
 extractFrom :: [Sym] -> (Ty, Value) -> Try (Ty, Value)
 extractFrom path tv = foldM (flip unpackFrom) tv path
+
+flatten :: Ty -> Ty
+flatten (Sum     xs) = Sum [ (s, flatten t) | (s, t) <- xs ]
+flatten (Var     v ) = Var v
+flatten (Product xs) = Product $ foldr flatMerge' [] xs'
+ where
+  xs' = [ (s, flatten t) | (s, t) <- xs ]
+  flatMerge' :: (Sym, Ty) -> [(Sym, Ty)] -> [(Sym, Ty)]
+  flatMerge' (s, Product ts) ys =
+    [ (s ++ "." ++ s', t') | (s', t') <- ts ] ++ ys
+  flatMerge' (s, t) ys = (s, t) : ys
 
 type Assignment = [(Sym, Ty)]
 
