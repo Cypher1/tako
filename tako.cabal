@@ -3,8 +3,8 @@ version:             0.0.0.1
 synopsis:            A Haskell implementation of triple based Hoare Logic
 description:         A Hoare Logic processor designed to form a proof system for pure, proof based languages
 homepage:            https://github.com/Cypher1/Tako#readme
-license:             BSD3
-license-file:        LICENSE
+license:             MIT
+license-file:        LICENSE.md
 author:              Joshua Pratt
 maintainer:          jp10010101010000@gmail.com
 copyright:           BSD3
