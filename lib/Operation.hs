@@ -1,6 +1,6 @@
 module Operation where
 
-import           Data.Bits
+-- import           Data.Bits
 
 import           Language                       ( PrimValOpType(..)
                                                 , PrimUnOpType(..)
@@ -42,17 +42,17 @@ exec (B o a r) m = setV r r' m
  where
   a' = getV a m
   r' = case o of
-    PrimNot -> complement a'
+    PrimNot -> error "complement a'"
     PrimNew -> a'
 
 exec (T o a b r) m = setV r r' m
  where
-  a' = getV a m
-  b' = getV b m
+  _a' = getV a m
+  _b' = getV b m
   r' = case o of
-    PrimAnd -> a' .&. b'
-    PrimOr  -> a' .|. b'
-    PrimAdd -> a' + b'
-    PrimSub -> a' - b'
-    PrimDiv -> a' `div` b'
-    PrimMul -> a' * b'
+    PrimAnd -> error "a' .&. b'"
+    PrimOr  -> error "a' .|. b'"
+    PrimAdd -> error "a' + b'"
+    PrimSub -> error "a' - b'"
+    PrimDiv -> error "a' `div` b'"
+    PrimMul -> error "a' * b'"

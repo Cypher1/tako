@@ -12,6 +12,7 @@ files =
   , "examples/t2.tako"
   , "examples/t3.tako"
   , "examples/t4.tako"
+  , "examples/t5.tako"
   ]
 
 parserTests :: TestTree

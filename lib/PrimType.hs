@@ -43,11 +43,8 @@ instance Pretty (Sym, Ty) where
 
 instance Pretty Value where
   pretty (Values []) = "."
-  pretty v' = pretty' v'
-    where
-      pretty' (Values []) = ""
-      pretty' (Values (v:vs)) = "("++pretty' v++concat[pretty' x|x<-vs]++")"
-      pretty' (Value s v) = show s++pretty' v
+  pretty (Values (v:vs)) = "("++pretty v++concat[pretty x|x<-vs]++")"
+  pretty (Value s v) = show s++pretty v
 
 instance Pretty Ty where
   pretty (Sum [("0", Product []), ("1", Product[])]) = "B"
@@ -56,12 +53,6 @@ instance Pretty Ty where
   pretty (Product []) = "1"
   pretty (Product (t:tys)) = "("++pretty t++concat["*"++pretty t'|t'<-tys]++")"
   pretty (Var name') = name'++"?"
-
-nbits :: Integer -> Ty
-nbits n = Product [ (show i, bit) | i <- [0 .. n - 1] ]
-
-bit :: Ty
-bit = Sum [("0", Product []), ("1", Product [])]
 
 data Failure
   = RanOutOfVariableNames
@@ -165,6 +156,7 @@ instance Monad WithVars where
         Success (s', vars') -> unWithVars (f s') vars'
         Failed f' -> Failed f'
 
+--TODO(cypher1): Get type gives un mergable results.
 getType :: Value -> WithVars Ty
 getType (Value n v) = (\t -> Sum [("?" ++ show n, t)]) <$> getType v
 getType (Values vs) = Product <$> mapM gt' vs
@@ -182,7 +174,6 @@ getZero (Product tys  ) = Values [ getZero t | (_, t) <- tys ]
 getZero (Var     name') = error $ "Var '" ++ name' ++ "' does not have a zero"
 
 
--- data Value = Value Sym Value | Values [(Sym, Value)]
 unpackFrom :: Sym -> (Ty, Value) -> Try (Ty, Value)
 unpackFrom s (t@(Sum ops), v@(Value tag val))
   | tag < 0
@@ -313,8 +304,26 @@ unit = Product []
 void :: Ty
 void = Sum []
 
-boolean :: Ty
-boolean = Sum [("0", unit), ("1", unit)]
+nbits :: Integer -> Ty
+nbits n = Product [ (show i, bit) | i <- [0 .. n - 1] ]
+
+sumT :: [Sym] -> Ty
+sumT xs = Sum [(x, Product []) | x <- xs]
+
+bit :: Ty
+bit = sumT ["0", "1"]
+
+bool :: Ty
+bool = sumT ["true", "false"]
+
+digit :: Ty
+digit = sumT ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
 uint32 :: Ty
 uint32 = nbits 32
+
+iToV :: Int -> Value
+iToV n = Values [Value x' (Values []) | x' <- xs']
+  where
+    (xs', _) = foldr f' ([], n) $ replicate 32 ()
+    f' _ (xs, n') = let (d, r) = n'`divMod`2 in (r:xs, d)
