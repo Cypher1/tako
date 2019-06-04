@@ -42,7 +42,9 @@ declarationTests = testGroup
 freeTests :: TestTree
 freeTests = testGroup
   "Free tests"
-  [ testCase "Free empties memory" $ exec (U PrimFree "a") [("a", iToV 3)] @?= []
+  [ testCase "Free empties memory"
+  $   exec (U PrimFree "a") [("a", iToV 3)]
+  @?= []
   , testCase "Free doesn't remove un-freed vars"
   $   exec (U PrimFree "a") [("a", iToV 3), ("b", iToV 4)]
   @?= [("b", iToV 4)]

@@ -42,7 +42,7 @@ instance Pretty (Sym, Ty) where
   pretty (n, t) = n++""++pretty t
 
 instance Pretty Value where
-  pretty (Values []) = "."
+  pretty (Values []) = ","
   pretty (Values (v:vs)) = "("++pretty v++concat[pretty x|x<-vs]++")"
   pretty (Value s v) = show s++pretty v
 
@@ -308,7 +308,7 @@ nbits :: Integer -> Ty
 nbits n = Product [ (show i, bit) | i <- [0 .. n - 1] ]
 
 sumT :: [Sym] -> Ty
-sumT xs = Sum [(x, Product []) | x <- xs]
+sumT xs = Sum [ (x, Product []) | x <- xs ]
 
 bit :: Ty
 bit = sumT ["0", "1"]
@@ -323,7 +323,7 @@ uint32 :: Ty
 uint32 = nbits 32
 
 iToV :: Int -> Value
-iToV n = Values [Value x' (Values []) | x' <- xs']
-  where
-    (xs', _) = foldr f' ([], n) $ replicate 32 ()
-    f' _ (xs, n') = let (d, r) = n'`divMod`2 in (r:xs, d)
+iToV n = Values [ Value x' (Values []) | x' <- xs' ]
+ where
+  (xs', _) = foldr f' ([], n) $ replicate 32 ()
+  f' _ (xs, n') = let (d, r) = n' `divMod` 2 in (r : xs, d)

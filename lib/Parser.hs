@@ -29,7 +29,7 @@ import           Language                       ( TokenType(..)
                                                 , TokType(..)
                                                 )
 import           PrimOpType                     ( PrimOp(..) )
-import           PrimType                       ( Value (..) )
+import           PrimType                       ( Value(..) )
 import           Util                           ( Pretty(pretty)
                                                 , prettySet
                                                 , prettyList
@@ -192,10 +192,14 @@ primOp = choice $ try <$> pops
 -- Actual parsers
 
 litValue :: Parser Value
-litValue = (pTrace "Values" $ vals) <|> (pTrace "Value" val)
-  where
-    vals = Values <$> ((tok OpenParen *> many litValue <* tok CloseParen) <|> (const [] <$> tok Dot))
-    val = Value <$> (fromInteger <$> litInt) <*> litValue
+litValue = pTrace "Values" $ vals <|> pTrace "Value" val
+ where
+  vals =
+    Values
+      <$> (   (tok OpenParen *> many litValue <* tok CloseParen)
+          <|> ([] <$ tok Comma)
+          )
+  val = Value <$> (fromInteger <$> litInt) <*> litValue
 
 ident :: Parser Id
 ident = tryTok test <?> "an identifier"
@@ -226,7 +230,7 @@ step = try (pTrace "step" step') <|> call' <|> prims'
   pre'   = try (exprs <* tok RequireOp) <|> pure S.empty
   post'  = try (tok ProvideOp *> exprs) <|> pure S.empty
   call'  = pTrace "stepCall" (CallStep <$> call)
-  prims' = pTrace "primOps" (Ops <$> primOp`sepBy1`tok Semi)
+  prims' = pTrace "primOps" (Ops <$> primOp `sepBy1` tok Semi)
 
 call :: Parser Call
 call = Call <$> pTrace "call" ident <*> argList
