@@ -43,7 +43,7 @@ cabal new-run tako
 We can even give it some preprepared IR and have it evaluate it, showing working.
 
 ```
-echo "L 32 b\nL 12 a\nAdd a b c\nFree a\nFree b" | cabal new-run tako
+echo "Load (0,0,1,1,) b\nLoad (0,1,0,1,) a\nAnd a b c\nFree a\nFree b\nNot c c" | cabal new-run tako
 ```
 
 ## Running the tests

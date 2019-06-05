@@ -3,13 +3,14 @@ import           System.Console.Haskeline
 import           Parser                         ( convert )
 import           PrimOpType                     ( Mem )
 import           Operation                      ( exec )
+import           Util                           ( pretty )
 
 runIR :: IO ()
 runIR = runInputT defaultSettings (mainLoop [])
 
 mainLoop :: Mem -> InputT IO ()
 mainLoop mem = do
-  outputStrLn $ show mem
+  outputStrLn $ concat [ s ++ "=" ++ pretty v ++ " " | (s, v) <- mem ]
   minput <- getInputLine "% "
   case minput of
     Nothing     -> return ()
