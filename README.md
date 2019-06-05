@@ -37,13 +37,13 @@ cabal new-build
 This allows us to run our prototype IR interpreter.
 
 ```
-cabal run Tako
+cabal new-run tako
 ```
 
 We can even give it some preprepared IR and have it evaluate it, showing working.
 
 ```
-echo "L 32 b\nL 12 a\nAdd a b c\nFree a\nFree b" | cabal run Tako
+echo "Load (0,0,1,1,) b\nLoad (0,1,0,1,) a\nAnd a b c\nFree a\nFree b\nNot c c" | cabal new-run tako
 ```
 
 ## Running the tests
@@ -51,12 +51,12 @@ echo "L 32 b\nL 12 a\nAdd a b c\nFree a\nFree b" | cabal run Tako
 Running the tests should also be fairly simple.
 
 ```
-cabal test
+cabal new-test
 ```
 
 ## Installation
 
-Tako can be installed using `cabal install Tako` but I do not recommend doing so at this time.
+Tako can be installed using `cabal new-install tako` but I do not recommend doing so at this time.
 
 ## Contributing
 
