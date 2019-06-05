@@ -48,6 +48,8 @@ data TokType
   | CloseBrace
   | Plus
   | Minus
+  | Semi
+  | Dot
   deriving (Show, Eq, Enum, Bounded)
 
 instance Pretty TokType where
@@ -61,6 +63,8 @@ instance Pretty TokType where
   pretty CloseBrace = "}"
   pretty Plus = "+"
   pretty Minus = "-"
+  pretty Semi = ";"
+  pretty Dot = "."
 
 data PrimTriOpType
   = PrimAnd

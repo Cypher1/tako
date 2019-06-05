@@ -12,9 +12,11 @@ import           Language                       ( PrimValOpType(..)
                                                 , PrimTriOpType(..)
                                                 )
 
-import           PrimType                       ( Sym )
+import           PrimType                       ( Sym
+                                                , Value
+                                                )
 
-type Val = Integer
+type Val = Value
 
 data PrimOp
   = L PrimValOpType Val Sym
@@ -24,7 +26,7 @@ data PrimOp
   deriving (Show, Eq, Ord)
 
 instance Pretty PrimOp where
-  pretty (L op v x) = pretty op++show v++" "++x
+  pretty (L op v x) = pretty op++pretty v++" "++x
   pretty (U op x) = pretty op++" "++x
   pretty (B op x y) = pretty op++" "++x++" "++y
   pretty (T op x y z) = pretty op++" "++x++" "++y++" "++z

@@ -1,1 +1,6 @@
-m = { a=b -| Add a b c |- }
+m = {
+  Load (0,0,0,0,0,1,0,1,) a;
+  Load (0,0,0,0,0,0,1,1,) b;
+  Add a b c;
+  Add b c d
+|- c, d }
