@@ -18,7 +18,7 @@ argsDef =
     , argAbbr  = Just 'v'
     , argName  = Just "verbosity"
     , argData  = argDataDefaulted "level" ArgtypeInt 0
-    , argDesc  = "Level of detailed used in output (default 0)"
+    , argDesc  = "Level of detail used in output (default 0)"
     }
   , Arg
     { argIndex = "help"
