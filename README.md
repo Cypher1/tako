@@ -1,6 +1,6 @@
 # Tako
 
-[![CircleCI](https://img.shields.io/circleci/project/github/Cypher1/Tako.svg)](https://circleci.com/gh/Cypher1/Tako/tree/master) [![GitHub issues](https://img.shields.io/github/issues/Cypher1/Tako.svg)](https://github.com/Cypher1/Tako/issues) [![GitHub stars](https://img.shields.io/github/stars/Cypher1/Tako.svg?style=social)](https://github.com/Cypher1/Tako)
+[![CircleCI](https://img.shields.io/circleci/project/github/Cypher1/tako.svg)](https://circleci.com/gh/Cypher1/tako/tree/master) [![GitHub issues](https://img.shields.io/github/issues/Cypher1/tako.svg)](https://github.com/Cypher1/tako/issues) [![GitHub stars](https://img.shields.io/github/stars/Cypher1/tako.svg?style=social)](https://github.com/Cypher1/tako)
 
 An programming language for ergonomic software verification using [Hoare Logics](https://en.wikipedia.org/wiki/Hoare_logic).
 
