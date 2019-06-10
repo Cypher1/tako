@@ -2,6 +2,7 @@ module OperationTests where
 
 import           Test.Tasty
 import           Test.Tasty.HUnit
+import qualified Test.Tasty.QuickCheck         as QC
 
 import           Pred                           ( val
                                                 , Atom
@@ -12,7 +13,9 @@ import           Language                       ( PrimValOpType(..)
                                                 , PrimTriOpType(..)
                                                 )
 import           PrimOpType                     ( PrimOp(..) )
-import           PrimType                       ( iToV )
+import           PrimType                       ( vToI
+                                                , iToV
+                                                )
 import           Operation                      ( exec )
 
 -- Constants
@@ -26,8 +29,20 @@ c = val "c"
 operationTests :: TestTree
 operationTests = testGroup
   "Operation tests"
-  [declarationTests, freeTests, complementTests, copyAssignmentTests]
+  [ roundTripTests
+  , declarationTests
+  , freeTests
+  , complementTests
+  , copyAssignmentTests
+  , numTests
+  ]
 
+roundTripTests :: TestTree
+roundTripTests = testGroup
+  "Round trip tests"
+  [ QC.testProperty "Converting an int to a value and back round trips"
+                    (\n -> n == vToI (iToV n))
+  ]
 declarationTests :: TestTree
 declarationTests = testGroup
   "Declaration tests"
@@ -90,16 +105,20 @@ orTests = testGroup
     @?=    True
   ]
 
-addTests :: TestTree
-addTests = testGroup
-  "Addition tests"
-  [ testCase "Add 10+3 ="
-  $      ("ret", iToV 13)
-  `elem` exec (T PrimAdd "a" "b" "ret") [("a", iToV 10), ("b", iToV 3)]
-  @?=    True
-  , testCase "Sub 10-3 ="
-  $      ("ret", iToV 7)
-  `elem` exec (T PrimSub "a" "b" "ret") [("a", iToV 10), ("b", iToV 3)]
-  @?=    True
+numTests :: TestTree
+numTests = testGroup
+  "Numeric operation tests"
+  [ QC.testProperty
+      (name' ++ ": iToV x" ++ op' ++ "iToV y = iToV (x" ++ op' ++ "y)")
+      (\x y -> ("ret", iToV (func x y))
+        `elem` exec (T op "x" "y" "ret") [("x", iToV x), ("y", iToV y)]
+      )
+  | (name', op', op, func) <- ops
   ]
--- TODO(cypher1): Write value ops!
+ where
+  ops =
+    [ ("Add", "+"    , PrimAdd, (+))
+    , ("Sub", "-"    , PrimSub, (-))
+    , ("Div", "`div`", PrimDiv, \x y -> if y == 0 then 0 else x `div` y)
+    , ("Mul", "*"    , PrimMul, (*))
+    ]

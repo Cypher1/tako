@@ -23,7 +23,7 @@ data Ty = Sum [(Sym, Ty)] | Product [(Sym, Ty)] | Var Sym
 type UnionTag = Int
 
 -- Note: Ordering is important for zeros and products.
-data Value = Value UnionTag Value | Values [Value]
+data Value = Union UnionTag Value | Struct [Value]
   deriving (Show, Eq, Ord)
 
 minsize :: Ty -> Integer
@@ -42,9 +42,9 @@ instance Pretty (Sym, Ty) where
   pretty (n, t) = n++""++pretty t
 
 instance Pretty Value where
-  pretty (Values []) = ","
-  pretty (Values (v:vs)) = "("++pretty v++concat[pretty x|x<-vs]++")"
-  pretty (Value s v) = show s++pretty v
+  pretty (Struct []) = ","
+  pretty (Struct (v:vs)) = "("++pretty v++concat[pretty x|x<-vs]++")"
+  pretty (Union s v) = show s++pretty v
 
 instance Pretty Ty where
   pretty (Sum [("0", Product []), ("1", Product[])]) = "B"
@@ -158,8 +158,8 @@ instance Monad WithVars where
 
 --TODO(cypher1): Get type gives un mergable results.
 getType :: Value -> WithVars Ty
-getType (Value n v) = (\t -> Sum [("?" ++ show n, t)]) <$> getType v
-getType (Values vs) = Product <$> mapM gt' vs
+getType (Union n v) = (\t -> Sum [("?" ++ show n, t)]) <$> getType v
+getType (Struct vs) = Product <$> mapM gt' vs
  where
   gt' :: Value -> WithVars (String, Ty)
   gt' v = do
@@ -169,13 +169,13 @@ getType (Values vs) = Product <$> mapM gt' vs
 
 getZero :: Ty -> Value
 getZero (Sum     []   ) = error "Tried to get Sum of []"
-getZero (Sum     tys  ) = Value 0 . getZero $ snd $ head tys
-getZero (Product tys  ) = Values [ getZero t | (_, t) <- tys ]
+getZero (Sum     tys  ) = Union 0 . getZero $ snd $ head tys
+getZero (Product tys  ) = Struct [ getZero t | (_, t) <- tys ]
 getZero (Var     name') = error $ "Var '" ++ name' ++ "' does not have a zero"
 
 
 unpackFrom :: Sym -> (Ty, Value) -> Try (Ty, Value)
-unpackFrom s (t@(Sum ops), v@(Value tag val))
+unpackFrom s (t@(Sum ops), v@(Union tag val))
   | tag < 0
   = Failed $ InvalidValueForType t v
   | tag >= length ops
@@ -183,7 +183,7 @@ unpackFrom s (t@(Sum ops), v@(Value tag val))
   | otherwise
   = let (s', t') = ops !! tag
     in  if s == s' then return (t', val) else Failed $ PatternMismatch s t v
-unpackFrom s (t@(Product vals), v@(Values vs)) =
+unpackFrom s (t@(Product vals), v@(Struct vs)) =
   case [ (ty, val) | ((name, ty), val) <- zip vals vs, s == name ] of
     []   -> Failed $ PatternMismatch s t v
     [tv] -> return tv
@@ -323,7 +323,12 @@ uint32 :: Ty
 uint32 = nbits 32
 
 iToV :: Int -> Value
-iToV n = Values [ Value x' (Values []) | x' <- xs' ]
+iToV n = Struct [ Union x' (Struct []) | x' <- xs' ]
  where
   (xs', _) = foldr f' ([], n) $ replicate 32 ()
   f' _ (xs, n') = let (d, r) = n' `divMod` 2 in (r : xs, d)
+
+vToI :: Value -> Int
+vToI (Struct xs) = sum [ p * vToI v | (v, p) <- zip (reverse xs) ps ]
+  where ps = [ 2 ^ i | i <- [0 .. length xs - 2] ] ++ [-2 ^ (length xs - 1)]
+vToI (Union n _) = n

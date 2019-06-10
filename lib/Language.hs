@@ -69,6 +69,9 @@ instance Pretty TokType where
 data PrimTriOpType
   = PrimAnd
   | PrimOr
+-- TODO(cypher1): Replace with signed and unsigned versions
+-- TODO(cypher1): Write extract, construct, apply function over prims
+-- rather than numeric prims.
   | PrimAdd
   | PrimSub
   | PrimDiv
