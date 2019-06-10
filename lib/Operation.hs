@@ -9,6 +9,8 @@ import           Language                       ( PrimValOpType(..)
                                                 )
 import           PrimType                       ( Sym
                                                 , Value(..)
+                                                , iToV
+                                                , vToI
                                                 )
 import           PrimOpType                     ( Mem
                                                 , Val
@@ -55,30 +57,72 @@ exec (T o a b r) m = setV r r' m
   r' = case o of
     PrimAnd -> and' a' b'
     PrimOr  -> or' a' b'
-    PrimAdd -> error "a' + b'"       -- Assumes an unsigned integer
-    PrimSub -> error "a' - b'"       -- Assumes an unsigned integer
-    PrimDiv -> error "a' `div` b'"   -- Assumes an unsigned integer
-    PrimMul -> error "a' * b'"       -- Assumes an unsigned integer
+    PrimAdd -> add' a' b'
+    PrimSub -> sub' a' b'
+    PrimDiv -> div' a' b'
+    PrimMul -> mul' a' b'
+
+tag :: Int -> Value
+tag t = Union t $ Struct []
+
+-- Ops -- Needs review, should probably be actual functions, with
+-- optimisations.
+
+add' :: Value -> Value -> Value
+add' (Struct as) (Struct bs) | length as == length bs =
+  Struct $ snd $ foldr carry' (0, []) $ zip as bs
+ where
+  carry' :: (Value, Value) -> (Int, [Value]) -> (Int, [Value])
+  carry' (Union a (Struct []), Union b (Struct [])) (c, xs) = (c', tag r : xs)
+   where
+    (c', r) = case (c, a, b) of
+      (0, 0, 0) -> (0, 0)
+      (0, 0, 1) -> (0, 1)
+      (0, 1, 0) -> (0, 1)
+      (1, 0, 0) -> (0, 1)
+      (0, 1, 1) -> (1, 0)
+      (1, 0, 1) -> (1, 0)
+      (1, 1, 0) -> (1, 0)
+      (1, 1, 1) -> (1, 1)
+      _         -> error $ "carry' " ++ show (c, a, b)
+  carry' a b = error $ "carry' " ++ show a ++ " : " ++ show b
+add' a b = error $ "add' " ++ show a ++ " : " ++ show b
 
 complement' :: Value -> Value
-complement' (Values as          ) = Values $ complement' <$> as
-complement' (Value 0 (Values [])) = Value 1 (Values [])
-complement' (Value 1 (Values [])) = Value 0 (Values [])
+complement' (Struct as          ) = Struct $ complement' <$> as
+complement' (Union 0 (Struct [])) = tag 1
+complement' (Union 1 (Struct [])) = tag 0
 complement' s                     = error $ "Cannot complement' " ++ pretty s
 
 and' :: Value -> Value -> Value
-and' (Values as) (Values bs) | length as == length bs =
-  Values $ zipWith and' as bs
-and' (Value s (Values [])) (Value t (Values []))
-  | s == 0 || t == 0 = Value 0 (Values [])
-  | otherwise        = Value t (Values [])
+and' (Struct as) (Struct bs) | length as == length bs =
+  Struct $ zipWith and' as bs
+and' (Union s (Struct [])) (Union t (Struct [])) | s == 0 || t == 0 = tag 0
+                                                 | otherwise        = tag t
 and' s t = error $ "Cannot and' " ++ pretty s ++ " with " ++ pretty t
 
+sub' :: Value -> Value -> Value
+sub' a b = add' a (neg' b)
+
+neg' :: Value -> Value
+neg' x = add' (complement' x) (iToV 1)
+
+mul' :: Value -> Value -> Value
+mul' a b = iToV $ a' * b'
+ where
+  a' = vToI a
+  b' = vToI b
+
+div' :: Value -> Value -> Value
+div' a b = iToV $ if b' == 0 then 0 else a' `div` b'
+ where
+  a' = vToI a
+  b' = vToI b
+
 or' :: Value -> Value -> Value
-or' (Values as) (Values bs) | length as == length bs =
-  Values $ zipWith or' as bs
-or' (Value s (Values [])) (Value t (Values []))
-  | s /= 0    = Value s (Values [])
-  | t /= 0    = Value t (Values [])
-  | otherwise = Value 0 (Values [])
+or' (Struct as) (Struct bs) | length as == length bs =
+  Struct $ zipWith or' as bs
+or' (Union s (Struct [])) (Union t (Struct [])) | s /= 0    = tag s
+                                                | t /= 0    = tag t
+                                                | otherwise = tag 0
 or' s t = error $ "Cannot or' " ++ pretty s ++ " with " ++ pretty t

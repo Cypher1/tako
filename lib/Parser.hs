@@ -192,14 +192,14 @@ primOp = choice $ try <$> pops
 -- Actual parsers
 
 litValue :: Parser Value
-litValue = pTrace "Values" $ vals <|> pTrace "Value" val
+litValue = pTrace "Struct" $ vals <|> pTrace "Value" val
  where
   vals =
-    Values
+    Struct
       <$> (   (tok OpenParen *> many litValue <* tok CloseParen)
           <|> ([] <$ tok Comma)
           )
-  val = Value <$> (fromInteger <$> litInt) <*> litValue
+  val = Union <$> (fromInteger <$> litInt) <*> litValue
 
 ident :: Parser Id
 ident = tryTok test <?> "an identifier"
