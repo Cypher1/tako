@@ -17,9 +17,14 @@ BETTER_ENUM(
     PreCond,
     PostCond,
     Definition,
-    Quote,
-    Symbol
-);
+    Dot,
+    SingleQuote,
+    DoubleQuote,
+    BackQuote,
+    Operator,
+    Symbol,
+    Error
+    );
 
 using Position = unsigned int;
 using Offset = unsigned int;
@@ -38,13 +43,13 @@ struct Token {
 using Tokens = std::vector<Token>;
 
 BETTER_ENUM(
-  MessageType,
-  char,
-  Info,
-  Warning,
-  Error,
-  Failure
-);
+    MessageType,
+    char,
+    Info,
+    Warning,
+    Error,
+    Failure
+    );
 
 struct Message {
   MessageType type;

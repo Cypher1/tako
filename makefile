@@ -13,7 +13,10 @@ $(ODIR)/%.o: %.cc $(DEPS)
 tako: $(OBJ)
 	$(CC) -o $@ $^ $(CFLAGS)
 
-.PHONY: clean
+.PHONY: clean test
 
 clean:
 	rm -f $(ODIR)/*.o tako
+
+test: tako
+	./tako test.tako
