@@ -4,6 +4,7 @@
 #include "ast.h"
 
 const std::string whiteSpace = " \t\n\r";
+const std::string numberChar = "0123456789.";
 const std::string operatorChar = "-+&#@<>[]^~∆%•|=÷×°$\\/*:?!,.;";
 const std::string symbolChar = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789";
 
@@ -40,6 +41,9 @@ std::pair<TokenType, Offset> chooseTok(std::string content, Messages& msgs) {
       return {sym.second, tokS.size()};
     }
   }
+  if(Offset length = matchesFrom(numberChar, content)) {
+    return {TokenType::NumberLiteral, length};
+  }
   if(Offset length = matchesFrom(symbolChar, content)) {
     return {TokenType::Symbol, length};
   }
@@ -62,9 +66,18 @@ void consumeWhiteSpace(Position& loc, const std::string content) {
     if(whiteSpace.find(cur) != std::string::npos) {
       continue;
     }
+    if(cur == '/' && loc+1 < content.size() && content[loc+1] == '*') {
+      loc++;
+      for(loc++; loc < content.size(); loc++) {
+        if(content[loc] == '/' && content[loc-1] == '*') break;
+      }
+      loc--;
+    }
     if(cur == '/' && loc+1 < content.size() && content[loc+1] == '/') {
       loc++;
-      for(loc++; loc < content.size() && content[loc] != '\n'; loc++);
+      for(loc++; loc < content.size(); loc++) {
+        if(content[loc] == '\n') break;
+      }
       loc--;
     }
     break;

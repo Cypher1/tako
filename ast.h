@@ -21,6 +21,7 @@ BETTER_ENUM(
     SingleQuote,
     DoubleQuote,
     BackQuote,
+    NumberLiteral,
     Operator,
     Symbol,
     Error
