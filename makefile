@@ -2,12 +2,12 @@ CC=g++
 CFLAGS=-Wall -Werror
 ODIR = .obj
 
-DEPS = ast.h lib/enums.h
+DEPS = src/ast.h lib/enums.h
 _OBJ = main.o ast.o 
 
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
-$(ODIR)/%.o: %.cc $(DEPS)
+$(ODIR)/%.o: src/%.cc $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 tako: $(OBJ)
