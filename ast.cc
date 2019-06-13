@@ -14,7 +14,7 @@ Result<Tokens> lex(std::string filename, std::string content) {
   toks.push_back(example);
 
   Message er;
-  er.level = MessageLevel::Info;
+  er.type = MessageType::Info;
   er.msg = "Test info";
   er.loc = example.loc;
   errs.push_back(er);

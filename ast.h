@@ -29,7 +29,7 @@ struct Token {
 
 using Tokens = std::vector<Token>;
 
-enum class MessageLevel {
+enum class MessageType {
   Info,
   Warning,
   Error,
@@ -37,7 +37,7 @@ enum class MessageLevel {
 };
 
 struct Message {
-  MessageLevel level;
+  MessageType type;
   std::string msg;
   Location loc;
 };
