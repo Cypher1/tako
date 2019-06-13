@@ -95,9 +95,28 @@ Result<Tokens> lex(std::string content, std::string filename) {
     TokenType type = next.first;
     Offset length = next.second;
     Token tok = {type, {loc, length, filename}};
-    toks.push_back(tok);
+    toks.insert(toks.begin(), tok);
     loc += length;
     consumeWhiteSpace(loc, content);
   }
   return {toks, msgs};
+}
+
+std::vector<Tree<Token>> toAst(Tokens& toks, Messages& msgs) {
+  std::vector<Tree<Token>> children;
+  while(toks.size()) {
+    // Matching brackets?
+    Token curr = toks.back();
+    toks.pop_back();
+    Tree<Token> child = {curr, {}};
+    children.push_back(child);
+  }
+  return children;
+}
+
+Result<Tree<Token>> ast(Result<Tokens> toks, const std::string filename) {
+  auto msgs = toks.msgs;
+  Tree<Token> root = {{TokenType::Symbol, {0, 0, filename}}, toAst(toks.value, msgs)};
+
+  return {root, msgs};
 }

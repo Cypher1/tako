@@ -21,7 +21,7 @@ void runParser(std::string filename) {
     std::cout << contents.substr(tok.loc.start, tok.loc.length) << "\n";
   }
   std::cout << "Errors:\n";
-  for(const auto err : toks.errors) {
+  for(const auto err : toks.msgs) {
     std::cout << err.type << "@" << err.loc.start << ":+" << err.loc.length << "\n";
     std::cout << err.msg << "\n";
   }

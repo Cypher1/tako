@@ -63,16 +63,16 @@ using Messages = std::vector<Message>;
 template<typename T>
 struct Result {
   T value;
-  Messages errors;
+  Messages msgs;
 };
 
 template<typename T>
-struct Node {
+struct Tree {
   T value;
-  Node* parent;
-  std::vector<Node> children;
+  std::vector<Tree<T>> children;
 };
 
 Result<Tokens> lex(std::string filename, std::string content);
+Result<Tree<Token>> ast(Result<Tokens> toks);
 
 #endif // #ifndef AST_H
