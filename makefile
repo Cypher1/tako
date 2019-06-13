@@ -1,9 +1,13 @@
-CC=g++ -lc++_shared
+CC=g++
 CFLAGS=-Wall -Werror
-DEPS = ast.h enums.h
-OBJ = main.o ast.o 
+ODIR = .obj
 
-%.o: %.c $(DEPS)
+DEPS = ast.h lib/enums.h
+_OBJ = main.o ast.o 
+
+OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
+
+$(ODIR)/%.o: %.cc $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 tako: $(OBJ)
@@ -12,4 +16,4 @@ tako: $(OBJ)
 .PHONY: clean
 
 clean:
-	rm -f *.o tako a.out
+	rm -f $(ODIR)/*.o tako
