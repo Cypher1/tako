@@ -1,3 +1,7 @@
+#pragma once
+#ifndef AST_H
+#define AST_H
+
 #include <vector>
 #include <string>
 
@@ -59,3 +63,4 @@ struct Node {
 
 Result<Tokens> lex(std::string filename, std::string content);
 
+#endif // #ifndef AST_H
