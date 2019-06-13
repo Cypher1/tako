@@ -5,17 +5,21 @@
 #include <vector>
 #include <string>
 
-enum class TokenType {
-  OpenParen,
-  CloseParen,
-  OpenBrace,
-  CloseBrace,
-  PreCond,
-  PostCond,
-  Definition,
-  Quote,
-  Symbol
-};
+#include "enums.h"
+
+BETTER_ENUM(
+    TokenType,
+    char,
+    OpenParen,
+    CloseParen,
+    OpenBrace,
+    CloseBrace,
+    PreCond,
+    PostCond,
+    Definition,
+    Quote,
+    Symbol
+);
 
 using Position = unsigned int;
 using Offset = unsigned int;
@@ -33,12 +37,14 @@ struct Token {
 
 using Tokens = std::vector<Token>;
 
-enum class MessageType {
+BETTER_ENUM(
+  MessageType,
+  char,
   Info,
   Warning,
   Error,
   Failure
-};
+);
 
 struct Message {
   MessageType type;

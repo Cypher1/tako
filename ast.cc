@@ -6,17 +6,17 @@ Result<Tokens> lex(std::string filename, std::string content) {
   Tokens toks;
   std::vector<Message> errs;
 
-  Token example;
-  example.type = TokenType::Symbol;
-  example.loc.start = 5;
-  example.loc.length = 4;
-  example.loc.file = filename;
+  Token example = {
+    TokenType::Symbol,
+    {5, 4, filename}
+  };
   toks.push_back(example);
 
-  Message er;
-  er.type = MessageType::Info;
-  er.msg = "Test info";
-  er.loc = example.loc;
+  Message er = {
+    MessageType::Info,
+    "Test info",
+    example.loc
+  };
   errs.push_back(er);
 
   return {toks, errs};

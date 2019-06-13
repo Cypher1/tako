@@ -17,11 +17,11 @@ void runParser(std::string filename) {
   std::cout << "Got " << toks.value.size() << "\n";
 
   for(const auto tok : toks.value) {
-    std::cout << (int)tok.type << "@" << tok.loc.start << ":+" << tok.loc.length << "\n";
+    std::cout << tok.type << "@" << tok.loc.start << ":+" << tok.loc.length << "\n";
   }
   std::cout << "Errors:\n";
   for(const auto err : toks.errors) {
-    std::cout << (int)err.type << "@" << err.loc.start << ":+" << err.loc.length << "\n";
+    std::cout << err.type << "@" << err.loc.start << ":+" << err.loc.length << "\n";
     std::cout << err.msg << "\n";
   }
 }

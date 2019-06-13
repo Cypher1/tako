@@ -1,6 +1,6 @@
 CC=g++ -lc++_shared
 CFLAGS=-Wall -Werror
-DEPS = ast.h
+DEPS = ast.h enums.h
 OBJ = main.o ast.o 
 
 %.o: %.c $(DEPS)
