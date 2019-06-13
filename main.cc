@@ -12,12 +12,13 @@ void runParser(std::string filename) {
   strStream << inFile.rdbuf();
   std::string contents = strStream.str(); // Todo use the file+stream natively using memmap.
 
-  Result<Tokens> toks = lex(filename, contents);
+  Result<Tokens> toks = lex(contents, filename);
 
   std::cout << "Got " << toks.value.size() << "\n";
 
   for(const auto tok : toks.value) {
     std::cout << tok.type << "@" << tok.loc.start << ":+" << tok.loc.length << "\n";
+    std::cout << contents.substr(tok.loc.start, tok.loc.length) << "\n";
   }
   std::cout << "Errors:\n";
   for(const auto err : toks.errors) {
