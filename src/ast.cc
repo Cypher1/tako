@@ -4,10 +4,14 @@
 #include <string>
 #include "ast.h"
 
+const std::string lower = "abcdefghijklmnopqrstuvwxyz";
+const std::string upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const std::string nums = "0123456789";
+
 const std::string whiteSpace = " \t\n\r";
-const std::string numberChar = "0123456789.";
+const std::string numberChar = "."+nums;
 const std::string operatorChar = "-+&#@<>^~∆%•|=÷×°$\\/*:?!.;";
-const std::string symbolChar = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789";
+const std::string symbolChar = lower+upper+nums+"_";
 
 const std::vector<std::pair<std::string, TokenType>> matchToken = {
   {"(", TokenType::OpenParen},
