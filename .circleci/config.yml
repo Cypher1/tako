@@ -7,10 +7,6 @@ jobs:
     parallelism: 1
     steps:
       - run: export TERM='Readline'
-      # Ensure that we have git & ssh
-      - run: apt-get update
-      - run: apt-get install -y curl git ssh
-
       # Git checkout
       - checkout
       - run: make -j 4
