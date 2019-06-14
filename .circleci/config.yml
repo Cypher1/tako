@@ -2,6 +2,8 @@
 version: 2
 jobs:
   build_project:
+    docker:
+      - image: circleci/rust:latest
     parallelism: 1
     steps:
       - run: export TERM='Readline'
