@@ -74,7 +74,6 @@ Offset consumeWhiteSpace(const std::string content) {
       for(loc++; loc < content.size(); loc++) {
         if(content[loc] == '\n') break;
       }
-      loc--;
     }
     break;
   }
