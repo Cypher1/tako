@@ -20,6 +20,7 @@ BETTER_ENUM(
     PostCond,
     Definition,
     Dot,
+    Comma,
     SingleQuote,
     DoubleQuote,
     BackQuote,

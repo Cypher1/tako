@@ -6,7 +6,7 @@
 
 const std::string whiteSpace = " \t\n\r";
 const std::string numberChar = "0123456789.";
-const std::string operatorChar = "-+&#@<>^~∆%•|=÷×°$\\/*:?!,.;";
+const std::string operatorChar = "-+&#@<>^~∆%•|=÷×°$\\/*:?!.;";
 const std::string symbolChar = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789";
 
 const std::vector<std::pair<std::string, TokenType>> matchToken = {
@@ -22,6 +22,7 @@ const std::vector<std::pair<std::string, TokenType>> matchToken = {
   {"-|", TokenType::PreCond},
   {"|-", TokenType::PostCond},
   {".", TokenType::Dot},
+  {",", TokenType::Comma},
   {"=", TokenType::Definition}
 };
 
@@ -126,17 +127,22 @@ std::vector<Tree<Token>> toAst(Tokens& toks, Messages& msgs, const TokenType clo
   std::vector<Tree<Token>> children;
   while(toks.size()) {
     Token curr = toks.back();
+    const TokenType& type = curr.type;
     toks.pop_back();
 
     // Check that this isn't the close.
-    if(curr.type == close) {
+    if(type == close) {
       break;
+    }
+    const TokenType comma = TokenType::Comma;
+    if(type == comma) {
+      continue;
     }
 
     Tree<Token> child = {curr, {}};
 
     // Matching brackets?
-    const auto match = brackets.find(curr.type);
+    const auto match = brackets.find(type);
     if(match != brackets.end()) {
       child.children = toAst(toks, msgs, match->second);
     }
