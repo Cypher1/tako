@@ -47,45 +47,8 @@ const std::map<TokenType, TokenType> close_brackets = [](){
   return map;
 }();
 
-int matchesFrom(const std::string chars, const std::string content) {
-  Offset length = 0;
-  while(length < content.size()) {
-    if(chars.find(content[length]) == std::string::npos) {
-      break;
-    }
-    length++;
-  }
-  return length;
-}
-
-std::pair<TokenType, Offset> chooseTok(std::string content, Messages& msgs) {
-  // TODO: use string views.
-  for(const auto sym : matchToken) {
-    const auto& tokS = sym.first;
-    if(content.substr(0, tokS.size()) == tokS) {
-      return {sym.second, tokS.size()};
-    }
-  }
-  if(Offset length = matchesFrom(numberChar, content)) {
-    return {TokenType::NumberLiteral, length};
-  }
-  if(Offset length = matchesFrom(symbolChar, content)) {
-    return {TokenType::Symbol, length};
-  }
-  if(Offset length = matchesFrom(operatorChar, content)) {
-    return {TokenType::Operator, length};
-  }
-  Message msg = {
-    MessageType::Error,
-    "Unexpected character '" + content.substr(0,1) + "'",
-    {0, 0, "ha"}
-  };
-  msgs.push_back(msg);
-
-  return {TokenType::Error, 1};
-}
-
-void consumeWhiteSpace(Position& loc, const std::string content) {
+Offset consumeWhiteSpace(const std::string content) {
+  Offset loc = 0;
   for(;loc < content.size(); loc++) {
     char cur = content[loc];
     if(whiteSpace.find(cur) != std::string::npos) {
@@ -107,6 +70,48 @@ void consumeWhiteSpace(Position& loc, const std::string content) {
     }
     break;
   }
+  return loc;
+}
+
+int matchesFrom(const std::string chars, const std::string content) {
+  Offset length = 0;
+  while(length < content.size()) {
+    if(chars.find(content[length]) == std::string::npos) {
+      break;
+    }
+    length++;
+  }
+  return length;
+}
+
+std::pair<TokenType, Offset> chooseTok(std::string content, Messages& msgs) {
+  // TODO: use string views.
+  for(const auto sym : matchToken) {
+    const auto& tokS = sym.first;
+    if(content.substr(0, tokS.size()) == tokS) {
+      return {sym.second, tokS.size()};
+    }
+  }
+  if(Offset length = consumeWhiteSpace(content)) {
+    return {TokenType::WhiteSpace, length};
+  }
+  if(Offset length = matchesFrom(numberChar, content)) {
+    return {TokenType::NumberLiteral, length};
+  }
+  if(Offset length = matchesFrom(symbolChar, content)) {
+    return {TokenType::Symbol, length};
+  }
+  if(Offset length = matchesFrom(operatorChar, content)) {
+    return {TokenType::Operator, length};
+  }
+  Message msg = {
+    MessageType::Error,
+    "Unexpected character '" + content.substr(0,1) + "'",
+    {0, 0, "ha"}
+  };
+  msgs.push_back(msg);
+
+  return {TokenType::Error, 1};
 }
 
 Result<Tokens> lex(std::string content, std::string filename) {
@@ -114,7 +119,6 @@ Result<Tokens> lex(std::string content, std::string filename) {
   Messages msgs;
 
   Position loc = 0;
-  consumeWhiteSpace(loc, content);
   while(loc < content.size()) {
     std::pair<TokenType, Offset> next = chooseTok(content.substr(loc), msgs);
     TokenType type = next.first;
@@ -122,7 +126,6 @@ Result<Tokens> lex(std::string content, std::string filename) {
     Token tok = {type, {loc, length, filename}};
     toks.insert(toks.begin(), tok);
     loc += length;
-    consumeWhiteSpace(loc, content);
   }
   return {toks, msgs};
 }
@@ -139,7 +142,9 @@ std::vector<Tree<Token>> toAst(Tokens& toks, Messages& msgs, const TokenType clo
       break;
     }
     const TokenType comma = TokenType::Comma;
-    if(type == comma) {
+    const TokenType white = TokenType::WhiteSpace;
+
+    if(type == comma || type == white) {
       continue;
     }
 

@@ -27,6 +27,7 @@ BETTER_ENUM(
     NumberLiteral,
     Operator,
     Symbol,
+    WhiteSpace,
     Error
     );
 
