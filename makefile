@@ -8,6 +8,7 @@ _OBJ = main.o ast.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 $(ODIR)/%.o: src/%.cc $(DEPS)
+	mkdir -p $(ODIR)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 tako: $(OBJ)
@@ -16,7 +17,7 @@ tako: $(OBJ)
 .PHONY: clean test
 
 clean:
-	rm -f $(ODIR)/*.o tako
+	rm -rf $(ODIR) tako
 
 test: tako
 	./tako test.tako
