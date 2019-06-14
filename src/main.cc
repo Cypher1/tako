@@ -4,6 +4,30 @@
 
 #include "ast.h"
 
+std::string toString(Token tok, const std::string contents) {
+  std::stringstream o;
+  o << tok.type << "@" << tok.loc.start << "->" << tok.loc.length << ": " << contents.substr(tok.loc.start, tok.loc.length);
+  return o.str();
+}
+
+std::string toString(Message msg) {
+  std::stringstream o;
+  o << msg.type << "@" << msg.loc.start << "->" << msg.loc.length << ": " << msg.msg;
+  return o.str();
+}
+
+std::string toString(Tree<Token> tree, std::string contents, int depth=0) {
+  std::stringstream o;
+  for(int i=0; i<depth; i++) {
+    o << "  ";
+  }
+  o << toString(tree.value, contents) << "\n";
+  for(const auto& child : tree.children) {
+    o << toString(child, contents, depth+1);
+  }
+  return o.str();
+}
+
 void runParser(std::string filename) {
   std::ifstream inFile;
   inFile.open(filename);
@@ -13,17 +37,14 @@ void runParser(std::string filename) {
   std::string contents = strStream.str(); // Todo use the file+stream natively using memmap.
 
   Result<Tokens> toks = lex(contents, filename);
+  Result<Tree<Token>> tree = ast(toks, contents, filename);
 
   std::cout << "Got " << toks.value.size() << "\n";
 
-  for(const auto tok : toks.value) {
-    std::cout << tok.type << "@" << tok.loc.start << ":+" << tok.loc.length << ": ";
-    std::cout << contents.substr(tok.loc.start, tok.loc.length) << "\n";
-  }
+  std::cout << toString(tree.value, contents) << "\n";
   std::cout << "Errors:\n";
-  for(const auto err : toks.msgs) {
-    std::cout << err.type << "@" << err.loc.start << ":+" << err.loc.length << "\n";
-    std::cout << err.msg << "\n";
+  for(const auto msg : toks.msgs) {
+    std::cout << toString(msg) << "\n";
   }
 }
 

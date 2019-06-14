@@ -14,6 +14,8 @@ BETTER_ENUM(
     CloseParen,
     OpenBrace,
     CloseBrace,
+    OpenBracket,
+    CloseBracket,
     PreCond,
     PostCond,
     Definition,
@@ -73,6 +75,6 @@ struct Tree {
 };
 
 Result<Tokens> lex(std::string filename, std::string content);
-Result<Tree<Token>> ast(Result<Tokens> toks);
+Result<Tree<Token>> ast(Result<Tokens> toks, const std::string content, const std::string filename);
 
 #endif // #ifndef AST_H

@@ -1,9 +1,9 @@
 m = {
-  Load 5 a;
-  Load (0,0,0,0,0,1,0,1,) a;
-  Load (0,0,0,0,0,0,1,1,) b;
-  Add a b c;    // Testing here!!!
-  Add b c d
+  Load(5, a);
+  Load([0,0,0,0,0,1,0,1,], a)
+  Load([0,0,0,0,0,0,1,1,], b)
+  Add(a, b, c)    // Testing here!!!
+  Add(b, c, d)
 |- c, d }
 
 /* testing...
