@@ -76,7 +76,7 @@ struct Tree {
   std::vector<Tree<T>> children;
 };
 
-Result<Tokens> lex(std::string filename, std::string content);
-Result<Tree<Token>> ast(Result<Tokens> toks, const std::string content, const std::string filename);
+Result<Tokens> lex(const std::string& filename, const std::string& content);
+Result<Tree<Token>> ast(Result<Tokens>& toks, const std::string& content, const std::string& filename);
 
 #endif // #ifndef AST_H

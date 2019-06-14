@@ -4,10 +4,14 @@ m = {
   Load([0,0,0,0,0,0,1,1,], b)
   Add(a, b, c)    // Testing here!!!
   Add(b, c, d)
+  Echo("Test 123")
+  Echo('Test /* hi */123')
+  Echo(`Test {a/* hi */}`)
+  Echo(`Test [a/* hi */]`)
 |- c, d }
 
 /* testing...
 
 multiline
 */
-n=m()
+n=m()]

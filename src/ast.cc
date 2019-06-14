@@ -12,6 +12,12 @@ const std::string whiteSpace = " \t\n\r";
 const std::string numberChar = "."+nums;
 const std::string operatorChar = "-+&#@<>^~∆%•|=÷×°$\\/*:?!.;";
 const std::string symbolChar = lower+upper+nums+"_";
+const TokenType comma = TokenType::Comma;
+const TokenType white = TokenType::WhiteSpace;
+const TokenType quote = TokenType::SingleQuote;
+const TokenType doublequote = TokenType::DoubleQuote;
+const TokenType backquote = TokenType::BackQuote;
+const TokenType openbrace = TokenType::OpenBrace;
 
 const std::vector<std::pair<std::string, TokenType>> matchToken = {
   {"(", TokenType::OpenParen},
@@ -42,7 +48,9 @@ const std::map<TokenType, TokenType> brackets = {
 const std::map<TokenType, TokenType> close_brackets = [](){
   std::map<TokenType, TokenType>map;
   for(auto kv : brackets) {
-    map.emplace(kv.second, kv.first);
+    if(brackets.find(kv.second) == brackets.end()) {
+      map.emplace(kv.second, kv.first);
+    }
   }
   return map;
 }();
@@ -59,7 +67,7 @@ Offset consumeWhiteSpace(const std::string content) {
       for(loc++; loc < content.size(); loc++) {
         if(content[loc] == '/' && content[loc-1] == '*') break;
       }
-      loc--;
+      loc++;
     }
     if(cur == '/' && loc+1 < content.size() && content[loc+1] == '/') {
       loc++;
@@ -114,7 +122,7 @@ std::pair<TokenType, Offset> chooseTok(std::string content, Messages& msgs) {
   return {TokenType::Error, 1};
 }
 
-Result<Tokens> lex(std::string content, std::string filename) {
+Result<Tokens> lex(const std::string& content, const std::string& filename) {
   Tokens toks;
   Messages msgs;
 
@@ -135,35 +143,45 @@ std::vector<Tree<Token>> toAst(Tokens& toks, Messages& msgs, const TokenType clo
   while(toks.size()) {
     Token curr = toks.back();
     const TokenType& type = curr.type;
+    const bool inString = close == quote || close == doublequote || close == backquote;
     toks.pop_back();
 
     // Check that this isn't the close.
     if(type == close) {
       break;
     }
-    const TokenType comma = TokenType::Comma;
-    const TokenType white = TokenType::WhiteSpace;
-
-    if(type == comma || type == white) {
-      continue;
+    if(!inString && close_brackets.find(type) != close_brackets.end()) {
+      // Unbalanced bracket
+      Message msg = {
+        MessageType::Error,
+        "Unbalanced bracket",
+        curr.loc
+      };
+      msgs.push_back(msg);
+      curr.type = TokenType::Error;
     }
 
-    Tree<Token> child = {curr, {}};
+    if(!inString) {
+      if(type == comma || type == white) {
+        continue;
+      }
+    }
 
+    std::vector<Tree<Token>> recurse;
     // Matching brackets?
     const auto match = brackets.find(type);
     if(match != brackets.end()) {
-      child.children = toAst(toks, msgs, match->second);
+      if(!inString || type == openbrace) {
+        recurse = toAst(toks, msgs, match->second);
+      }
     }
-
-    children.push_back(child);
+    children.push_back({curr, recurse});
   }
   return children;
 }
 
-Result<Tree<Token>> ast(Result<Tokens> toks, const std::string contents, const std::string filename) {
-  auto msgs = toks.msgs;
-  Tree<Token> root = {{TokenType::Symbol, {0, 0, filename}}, toAst(toks.value, msgs, TokenType::Error)};
+Result<Tree<Token>> ast(Result<Tokens>& toks, const std::string& content, const std::string& filename) {
+  Tree<Token> root = {{TokenType::Symbol, {0, 0, filename}}, toAst(toks.value, toks.msgs, TokenType::Error)};
 
-  return {root, msgs};
+  return {root, toks.msgs};
 }
