@@ -12,12 +12,6 @@ const std::string whiteSpace = " \t\n\r";
 const std::string numberChar = "."+nums;
 const std::string operatorChar = "-+&#@<>^~∆%•|=÷×°$\\/*:?!.;";
 const std::string symbolChar = lower+upper+nums+"_";
-const TokenType comma = TokenType::Comma;
-const TokenType white = TokenType::WhiteSpace;
-const TokenType quote = TokenType::SingleQuote;
-const TokenType doublequote = TokenType::DoubleQuote;
-const TokenType backquote = TokenType::BackQuote;
-const TokenType openbrace = TokenType::OpenBrace;
 
 const std::vector<std::pair<std::string, TokenType>> matchToken = {
   {"(", TokenType::OpenParen},
@@ -55,6 +49,10 @@ const std::map<TokenType, TokenType> close_brackets = [](){
   return map;
 }();
 
+bool isQuote(const TokenType& type) {
+  return type == +TokenType::SingleQuote || type == +TokenType::DoubleQuote || type == +TokenType::BackQuote;
+}
+
 Offset consumeWhiteSpace(const std::string content) {
   Offset loc = 0;
   for(;loc < content.size(); loc++) {
@@ -91,7 +89,7 @@ int matchesFrom(const std::string chars, const std::string content) {
   return length;
 }
 
-std::pair<TokenType, Offset> chooseTok(std::string content, Messages& msgs) {
+std::pair<TokenType, Offset> chooseTok(std::string content) {
   // TODO: use string views.
   for(const auto sym : matchToken) {
     const auto& tokS = sym.first;
@@ -111,13 +109,6 @@ std::pair<TokenType, Offset> chooseTok(std::string content, Messages& msgs) {
   if(Offset length = matchesFrom(operatorChar, content)) {
     return {TokenType::Operator, length};
   }
-  Message msg = {
-    MessageType::Error,
-    "Unexpected character '" + content.substr(0,1) + "'",
-    {0, 0, "ha"}
-  };
-  msgs.push_back(msg);
-
   return {TokenType::Error, 1};
 }
 
@@ -127,9 +118,16 @@ Result<Tokens> lex(const std::string& content, const std::string& filename) {
 
   Position loc = 0;
   while(loc < content.size()) {
-    std::pair<TokenType, Offset> next = chooseTok(content.substr(loc), msgs);
+    std::pair<TokenType, Offset> next = chooseTok(content.substr(loc));
     TokenType type = next.first;
     Offset length = next.second;
+    if(type == +TokenType::Error) {
+      msgs.push_back({
+        MessageType::Error,
+        "Unexpected character",
+        {loc, length, filename}
+      });
+    }
     Token tok = {type, {loc, length, filename}};
     toks.insert(toks.begin(), tok);
     loc += length;
@@ -142,7 +140,7 @@ std::vector<Tree<Token>> toAst(Tokens& toks, Messages& msgs, const TokenType clo
   while(toks.size()) {
     Token curr = toks.back();
     const TokenType& type = curr.type;
-    const bool inString = close == quote || close == doublequote || close == backquote;
+    const bool inString = isQuote(close);
     toks.pop_back();
 
     // Check that this isn't the close.
@@ -151,17 +149,16 @@ std::vector<Tree<Token>> toAst(Tokens& toks, Messages& msgs, const TokenType clo
     }
     if(!inString && close_brackets.find(type) != close_brackets.end()) {
       // Unbalanced bracket
-      Message msg = {
+      msgs.push_back({
         MessageType::Error,
         "Unbalanced bracket",
         curr.loc
-      };
-      msgs.push_back(msg);
+      });
       curr.type = TokenType::Error;
     }
 
     if(!inString) {
-      if(type == comma || type == white) {
+      if(type == +TokenType::Comma || type == +TokenType::WhiteSpace) {
         continue;
       }
     }
@@ -170,7 +167,7 @@ std::vector<Tree<Token>> toAst(Tokens& toks, Messages& msgs, const TokenType clo
     // Matching brackets?
     const auto match = brackets.find(type);
     if(match != brackets.end()) {
-      if(!inString || type == openbrace) {
+      if(!inString || type == +TokenType::OpenBrace) {
         recurse = toAst(toks, msgs, match->second);
       }
     }
