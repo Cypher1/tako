@@ -19,9 +19,9 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - build_artifacts-v2-{{ .Branch }}-{{ checksum "src/CMakeLists.txt" }}
-            - build_artifacts-v2-{{ .Branch }}-
-            - build_artifacts-v2-
+            - build_artifacts-v3-{{ .Branch }}-{{ checksum "src/CMakeLists.txt" }}
+            - build_artifacts-v3-{{ .Branch }}-
+            - build_artifacts-v3-
       - run: git submodule init 
       - run: git submodule update
       - run:
@@ -31,11 +31,9 @@ jobs:
           name: Building tests
           command: make build/takoTest
       - save_cache:
-          key: build_artifacts-v2-{{ .Branch }}-{{ checksum "src/CMakeLists.txt" }}
+          key: build_artifacts-v3-{{ .Branch }}-{{ checksum "src/CMakeLists.txt" }}
           paths:
             - "build/"
-            - "src/lib/"
-            - "src/lib/*/.git"
       - run:
           name: Running tests
           command: make test
