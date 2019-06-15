@@ -8,6 +8,9 @@ jobs:
     steps:
       - run: export TERM='Readline'
       - run:
+          name: Updating APT
+          command: 'apt-get update'
+      - run:
           name: Installing SUDO
           command: 'apt-get install -y sudo'
       - run:
