@@ -72,4 +72,4 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 ## Acknowledgments
 
 * **Billie Thompson** - *Readme Templates* - [PurpleBooth](https://github.com/PurpleBooth)
-* **Chris Hall** - Design advice and instruction in programming language theory - [Chrisosaurus](https://github.com/chrisosaurus)
+* **Chris Hall** - *Design advice and instruction in programming language theory* - [Chrisosaurus](https://github.com/chrisosaurus)
