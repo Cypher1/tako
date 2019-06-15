@@ -1,5 +1,7 @@
 build/Makefile: src/**/CMakeLists.txt
-	cmake -S src -B build
+	mkdir -p build
+	cd build
+	cmake src
 
 build/tako: build/Makefile src/**/*.*
 	make -C build tako
