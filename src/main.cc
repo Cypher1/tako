@@ -50,8 +50,8 @@ int main(int argc, char* argv[]) {
   parseArgs(args, 1, argc, argv, targets, values);
 
   if (argc < 2 || values.find("help") != values.end() || values.find("version") != values.end()){
-    std::cerr << "tako - version " << tako_VERSION_MAJOR << "." << tako_VERSION_MINOR << "\n";
-    std::cerr << "An ergonomic software verification language\n";
+    std::cerr << "tako - version " << tako_VERSION_MAJOR << "." << tako_VERSION_MINOR << "." << tako_VERSION_PATCH << "\n";
+    std::cerr << "A compiler for ergonomic software verification\n";
 
     if (argc >= 2 && values.find("help") == values.end()) {
       return 1;
