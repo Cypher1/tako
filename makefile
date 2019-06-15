@@ -1,23 +1,22 @@
-CC=g++
-CFLAGS=-Wall -Werror
-ODIR = .obj
+build/Makefile: src/**/CMakeLists.txt
+	cmake -S src -B build
 
-DEPS = src/ast.h lib/enums.h
-_OBJ = main.o ast.o 
+build/tako: build/Makefile src/**/*.*
+	make -C build tako
 
-OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
+tako: build/tako
+	cp build/tako tako
 
-$(ODIR)/%.o: src/%.cc $(DEPS)
-	mkdir -p $(ODIR)
-	$(CC) -c -o $@ $< $(CFLAGS)
+build/test: build/Makefile src/**/*.*
+	make -C build test
 
-tako: $(OBJ)
-	$(CC) -o $@ $^ $(CFLAGS)
+test: build/test
+	./build/test
 
 .PHONY: clean test
 
 clean:
-	rm -rf $(ODIR) tako
+	rm -rf build tako
 
-test: tako
+parsetest: tako
 	./tako test.tako

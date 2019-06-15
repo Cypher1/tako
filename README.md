@@ -10,20 +10,11 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Prerequisites
 
-Tako currently uses cabal for dependency management and running builds and tests.
-Feel free to use stack, but it is not currently supported.
+Tako currently uses cmake for builds and running tests and git submodules for dependency management.
 
 Installation steps for Debian flavoured Linux:
 ```
-sudo apt install cabal
-```
-
-Cabal will also need to be set up and have the required packages installed.
-Use the following to do so.
-```
-cabal update
-cabal install
-cabal configure --enable-tests
+sudo apt install make cmake git
 ```
 
 ### Building
@@ -31,19 +22,19 @@ cabal configure --enable-tests
 Building is a fairly simple single step.
 
 ```
-cabal new-build
+make tako
 ```
 
-This allows us to run our prototype IR interpreter.
+This allows us to run our prototype parser.
 
 ```
-cabal new-run tako
+./tako <file>
 ```
 
-We can even give it some preprepared IR and have it evaluate it, showing working.
+Soon we'll be able to give it some preprepared IR and have it evaluate it, showing working.
 
 ```
-echo "Load (0,0,1,1,) b\nLoad (0,1,0,1,) a\nAnd a b c\nFree a\nFree b\nNot c c" | cabal new-run tako
+echo "Load (0,0,1,1,) b\nLoad (0,1,0,1,) a\nAnd a b c\nFree a\nFree b\nNot c c" | ./tako
 ```
 
 ## Running the tests
@@ -51,12 +42,12 @@ echo "Load (0,0,1,1,) b\nLoad (0,1,0,1,) a\nAnd a b c\nFree a\nFree b\nNot c c" 
 Running the tests should also be fairly simple.
 
 ```
-cabal new-test
+make test
 ```
 
 ## Installation
 
-Tako can be installed using `cabal new-install tako` but I do not recommend doing so at this time.
+Tako is a standalone single file. It can be installed simply by building and copy/moving ./tako into your /usr/bin directory.
 
 ## Contributing
 
