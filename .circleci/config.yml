@@ -22,6 +22,11 @@ jobs:
       - run:
           name: Install CMAKE
           command: 'sudo apt-get install -y cmake'
+      - restore_cache:
+          keys:
+            - build_artifacts-{{ .Branch }}-{{ checksum "src/CMakeLists.txt" }}
+            - build_artifacts-{{ .Branch }}-
+            - build_artifacts-
       - checkout
       - run: git submodule init 
       - run: git submodule update
@@ -31,6 +36,10 @@ jobs:
       - run:
           name: Building tests
           command: make build/takoTest
+      - save_cache:
+          key: build_artifacts-{{ .Branch }}-{{ checksum "src/CMakeLists.txt" }}
+          paths:
+            - "build/"
       - run:
           name: Running tests
           command: make test
