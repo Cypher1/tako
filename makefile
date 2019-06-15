@@ -1,13 +1,13 @@
 build/Makefile: src/**/CMakeLists.txt
 	cmake -Hsrc -Bbuild
 
-build/tako: build/Makefile src/**/*.*
+build/tako: build/Makefile src/*.* src/**/*.*
 	make -C build tako
 
 tako: build/tako
 	cp build/tako tako
 
-build/takoTest: build/Makefile src/**/*.*
+build/takoTest: build/Makefile src/*.* src/**/*.*
 	make -C build takoTest
 
 test: build/takoTest
