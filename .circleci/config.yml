@@ -1,10 +1,10 @@
 # ~/.circleci/config.yml
 version: 2
-docker:
-  - image: "debian:stretch"
-parallelism: 1
 jobs:
-  build:
+  build_test:
+    docker:
+      - image: "debian:stretch"
+    parallelism: 1
     steps:
       - checkout
       - run: export TERM='Readline'
@@ -23,16 +23,12 @@ jobs:
       - run:
         name: Building tests
         command: make build/test
-
-  test:
-    steps:
       - run:
         name: Running tests
         command: make test
 
 workflows:
   version: 2
-  build_and_test:
+  build_test:
     jobs:
-      - build
-      - test
+      - build_test
