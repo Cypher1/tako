@@ -10,7 +10,7 @@ tako: build/tako
 	cp build/tako tako
 
 build/test: build/Makefile src/**/*.*
-	make -C build test
+	make -C build tacoTest
 
 test: build/test
 	./build/test

@@ -27,6 +27,6 @@ add_executable(tako main.cc)
 target_link_libraries (tako parser)
 
 # add the executable
-add_executable(test test.cc)
-target_link_libraries(test rapidcheck)
-target_link_libraries (test parser)
+add_executable(takoTest test.cc)
+target_link_libraries(takoTest rapidcheck)
+target_link_libraries (takoTest parser)
