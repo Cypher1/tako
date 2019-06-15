@@ -1,20 +1,38 @@
 # ~/.circleci/config.yml
 version: 2
+docker:
+  - image: "debian:stretch"
+parallelism: 1
 jobs:
-  build_project:
-    docker:
-      - image: circleci/rust:latest
-    parallelism: 1
+  build:
     steps:
-      - run: export TERM='Readline'
-      # Git checkout
       - checkout
-      - run: make -j 4
-      # Run any builds and tests
-      - run: make test
+      - run: export TERM='Readline'
+      - run:
+        name: Installing SUDO
+        command: 'apt-get update && apt-get install -y sudo && rm -rf /var/lib/apt/lists/*'
+      - run:
+        name: Installing GCC
+        command: 'apt-get update && apt-get install -y gcc g++'
+      - run:
+        name: Install CMAKE
+        command: 'apt-get update && sudo apt-get install -y cmake'
+      - run:
+        name: Building tako
+        command: make build/tako
+      - run:
+        name: Building tests
+        command: make build/test
+
+  test:
+    steps:
+      - run:
+        name: Running tests
+        command: make test
 
 workflows:
   version: 2
   build_and_test:
     jobs:
-      - build_project
+      - build
+      - test
