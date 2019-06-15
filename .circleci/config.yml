@@ -6,7 +6,6 @@ jobs:
       - image: "debian:stretch"
     parallelism: 1
     steps:
-      - checkout
       - run: export TERM='Readline'
       - run:
           name: Apt update
@@ -20,6 +19,9 @@ jobs:
       - run:
           name: Install CMAKE
           command: 'sudo apt-get install -y cmake'
+      - checkout
+      - run: git submodule init 
+      - run: git submodule update
       - run:
           name: Building tako
           command: make build/tako
