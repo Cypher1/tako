@@ -30,7 +30,7 @@ jobs:
           command: make build/tako
       - run:
           name: Building tests
-          command: make build/test
+          command: make build/takoTest
       - run:
           name: Running tests
           command: make test

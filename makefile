@@ -1,7 +1,5 @@
 build/Makefile: src/**/CMakeLists.txt
-	mkdir -p build
-	cd build
-	cmake src
+	cmake -Hsrc -Bbuild
 
 build/tako: build/Makefile src/**/*.*
 	make -C build tako
@@ -9,11 +7,11 @@ build/tako: build/Makefile src/**/*.*
 tako: build/tako
 	cp build/tako tako
 
-build/test: build/Makefile src/**/*.*
-	make -C build tacoTest
+build/takoTest: build/Makefile src/**/*.*
+	make -C build takoTest
 
-test: build/test
-	./build/test
+test: build/takoTest
+	./build/takoTest
 
 .PHONY: clean test
 
