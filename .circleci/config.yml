@@ -35,6 +35,7 @@ jobs:
           paths:
             - "build/"
             - "src/lib/"
+            - "src/lib/*/.git"
       - run:
           name: Running tests
           command: make test
