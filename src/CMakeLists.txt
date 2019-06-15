@@ -21,6 +21,8 @@ add_subdirectory("lib/rapidcheck")
 # include our libraries
 include_directories ("${PROJECT_SOURCE_DIR}/util")
 add_subdirectory (util)
+include_directories ("${PROJECT_SOURCE_DIR}/arg_parser")
+add_subdirectory (arg_parser)
 include_directories ("${PROJECT_SOURCE_DIR}/parser")
 add_subdirectory (parser)
 
@@ -28,6 +30,7 @@ add_subdirectory (parser)
 add_executable(tako main.cc)
 target_link_libraries (tako util)
 target_link_libraries (tako parser)
+target_link_libraries (tako arg_parser)
 
 # add the executable
 add_executable(takoTest test.cc)
