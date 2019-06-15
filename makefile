@@ -1,19 +1,21 @@
+DEPS = src/*.* src/**/*.*
+
 build/Makefile: src/**/CMakeLists.txt
 	cmake -Hsrc -Bbuild
 
-build/tako: build/Makefile src/*.* src/**/*.*
+build/tako: build/Makefile $(DEPS)
 	make -C build tako
 
-tako: build/tako
-	cp build/tako tako
-
-build/takoTest: build/Makefile src/*.* src/**/*.*
+build/takoTest: build/Makefile $(DEPS)
 	make -C build takoTest
 
-test: build/takoTest
+tako: build/tako $(DEPS)
+	cp build/tako tako
+
+test: build/takoTest $(DEPS)
 	./build/takoTest
 
-.PHONY: clean test
+.PHONY: clean test tako
 
 clean:
 	rm -rf build tako
