@@ -39,9 +39,11 @@ echo "Load (0,0,1,1,) b\nLoad (0,1,0,1,) a\nAnd a b c\nFree a\nFree b\nNot c c" 
 
 ## Running the tests
 
-Running the tests should also be fairly simple.
+Running the tests should also be fairly simple, but relies on some dependencies which we will fetch using git.
 
 ```
+git submodule init
+git submodule update
 make test
 ```
 
