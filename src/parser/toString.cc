@@ -45,7 +45,6 @@ std::string toString(const Message& msg, const std::string& contents, const std:
 
 std::string toString(const Tree<Token>& tree, const std::string& contents, const std::string& filename, int depth) {
   std::stringstream o;
-  indent(o, depth);
   o << toString(tree.value, contents, filename, depth) << "\n";
   o << toString(tree.children, contents, filename, depth+1);
   return o.str();
