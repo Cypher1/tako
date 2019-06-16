@@ -1,3 +1,4 @@
 // the configuration options from cmakelists
 #define tako_VERSION_MAJOR @tako_VERSION_MAJOR@
 #define tako_VERSION_MINOR @tako_VERSION_MINOR@
+#define tako_VERSION_PATCH @tako_VERSION_PATCH@

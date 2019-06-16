@@ -1,7 +1,7 @@
 DEPS = src/*.* src/**/*.*
 
 build/Makefile: src/**/CMakeLists.txt
-	cmake -Hsrc -Bbuild
+	cmake -Hsrc -Bbuild -DCMAKE_EXPORT_COMPILE_COMMANDS=1
 
 build/tako: build/Makefile $(DEPS)
 	make -C build tako

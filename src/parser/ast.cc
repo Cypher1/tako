@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <set>
 #include <string>
 #include "ast.h"
 
@@ -10,7 +11,7 @@ const std::string nums = "0123456789";
 
 const std::string whiteSpace = " \t\n\r";
 const std::string numberChar = "."+nums;
-const std::string operatorChar = "-+&#@<>^~∆%•|=÷×°$\\/*:?!.;";
+const std::string operatorChar = "-+&#@<>^~∆%•|=÷×°$\\/*:?!.";
 const std::string symbolChar = lower+upper+nums+"_";
 
 const std::vector<std::pair<std::string, TokenType>> matchToken = {
@@ -20,14 +21,15 @@ const std::vector<std::pair<std::string, TokenType>> matchToken = {
   {"}", TokenType::CloseBrace},
   {"[", TokenType::OpenBracket},
   {"]", TokenType::CloseBracket},
+  {"=", TokenType::Declaration},
+  {";", TokenType::SemiColon},
   {"'", TokenType::SingleQuote},
   {"\"", TokenType::DoubleQuote},
   {"`", TokenType::BackQuote},
   {"-|", TokenType::PreCond},
   {"|-", TokenType::PostCond},
   {".", TokenType::Dot},
-  {",", TokenType::Comma},
-  {"=", TokenType::Definition}
+  {",", TokenType::Comma}
 };
 
 const std::map<TokenType, TokenType> brackets = {
@@ -37,6 +39,7 @@ const std::map<TokenType, TokenType> brackets = {
   {TokenType::SingleQuote, TokenType::SingleQuote},
   {TokenType::DoubleQuote, TokenType::DoubleQuote},
   {TokenType::BackQuote, TokenType::BackQuote},
+  {TokenType::Declaration, TokenType::SemiColon},
 };
 
 const std::map<TokenType, TokenType> close_brackets = [](){
@@ -135,7 +138,56 @@ Result<Tokens> lex(const std::string& content, const std::string& filename) {
   return {toks, msgs};
 }
 
-std::vector<Tree<Token>> toAst(Tokens& toks, Messages& msgs, const TokenType close) {
+
+const std::vector<std::set<std::string>> precedence = {
+  {"+", "-"},
+  {"*", "/"}
+};
+
+std::vector<Tree<Token>> toExpression(std::vector<Tree<Token>> nodes, Messages& msgs, const std::string& content) {
+  if(nodes.empty()) {
+    return nodes;
+  }
+  for(int level = 0; level < precedence.size(); ++level) {
+    auto it = nodes.begin();
+      while(it != nodes.end()) {
+        if(it->value.type == +TokenType::Operator) {
+          // If we're at the right precedence level, this is out next splitter.
+          std::string s = content.substr(it->value.loc.start, it->value.loc.length);
+          if(precedence[level].find(s) != precedence[level].end()) {
+            break;
+          }
+        }
+        ++it;
+      }
+
+    if(it == nodes.end()) {
+      continue;
+    }
+
+    // Get the left and right and make them into nodes of this op.
+    Tree<Token> curr = *it;
+    std::vector<Tree<Token>> left = toExpression({nodes.begin(), it}, msgs, content);
+    if(left.size() > 1) {
+      curr.children.push_back({{TokenType::OpenParen, curr.value.loc}, left});
+    } else if (!left.empty()) {
+      curr.children.push_back(left[0]);
+    }
+
+    std::vector<Tree<Token>> right = toExpression({it+1, nodes.end()}, msgs, content);
+    if(right.size() > 1) {
+      curr.children.push_back({{TokenType::OpenParen, curr.value.loc}, right});
+    } else if (!right.empty()) {
+      curr.children.push_back(right[0]);
+    }
+
+    return {curr};
+  }
+
+  return nodes;
+}
+
+std::vector<Tree<Token>> toAst(Tokens& toks, Messages& msgs, const TokenType close, const std::string& content) {
   std::vector<Tree<Token>> children;
   while(toks.size()) {
     Token curr = toks.back();
@@ -168,16 +220,16 @@ std::vector<Tree<Token>> toAst(Tokens& toks, Messages& msgs, const TokenType clo
     const auto match = brackets.find(type);
     if(match != brackets.end()) {
       if(!inString || type == +TokenType::OpenBrace) {
-        recurse = toAst(toks, msgs, match->second);
+        recurse = toAst(toks, msgs, match->second, content);
       }
     }
-    children.push_back({curr, recurse});
+    children.push_back({curr, toExpression(recurse, msgs, content)});
   }
   return children;
 }
 
 Result<Tree<Token>> ast(Result<Tokens>& toks, const std::string& content, const std::string& filename) {
-  Tree<Token> root = {{TokenType::Symbol, {0, 0, filename}}, toAst(toks.value, toks.msgs, TokenType::Error)};
+  Tree<Token> root = {{TokenType::Symbol, {0, 0, filename}}, toAst(toks.value, toks.msgs, TokenType::Error, content)};
 
   return {root, toks.msgs};
 }
