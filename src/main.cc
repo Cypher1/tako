@@ -66,9 +66,10 @@ void runParser(std::string filename) {
   Result<Tree<Token>> tree = ast(toks, contents, filename);
   Result<Module> module = parse(tree, contents, filename);
 
-  std::cerr << "Got " << module.value.names.size() << " top level names.\n";
-  for(const auto& name : module.value.names) {
-    std::cerr << "> " << name << "\n";
+  std::cerr << "Got " << module.value.values.size() << " top level values.\n";
+  for(const auto& val : module.value.values) {
+    std::cerr << "> " << val.name << "\n";
+    std::cerr << toString(val.def, contents, filename, 1) << "\n";
   }
 
   // std::cerr << toString(tree.value, contents, filename) << "\n";
