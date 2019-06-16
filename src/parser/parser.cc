@@ -8,8 +8,7 @@
 #include "parser.h"
 #include "toString.h"
 
-std::optional<Value> parseValue(
-std::vector<Tree<Token>>::iterator& it, Messages& msgs, const std::string& content, const std::string& filename) {
+std::optional<Value> parseValue( std::vector<Tree<Token>>::iterator& it, const std::vector<Tree<Token>>::iterator& end, Messages& msgs, const std::string& content, const std::string& filename) {
   const auto& node = *it;
   if(node.value.type == +TokenType::Symbol) {
     const auto& loc = node.value.loc;
@@ -18,6 +17,17 @@ std::vector<Tree<Token>>::iterator& it, Messages& msgs, const std::string& conte
       {},
       node
     };
+    ++it;
+    if(it != end && it->value.type == +TokenType::OpenParen) {
+      val.args = it->children;
+      ++it;
+    }
+    if(it == end) {
+      //TODO: needed definition
+      return std::nullopt;
+    }
+    val.def = *it;
+    ++it;
     return val;
   }
   //TODO: Unparseable.
@@ -32,8 +42,9 @@ std::vector<Tree<Token>>::iterator& it, Messages& msgs, const std::string& conte
 Result<Module> parse(Result<Tree<Token>>& tree, const std::string& content, const std::string& filename) {
   Messages& msgs = tree.msgs;
   std::vector<Value> values;
-  for(auto it = tree.value.children.begin(); it != tree.value.children.end(); ++it) {
-    std::optional<Value> val = parseValue(it, msgs, content, filename);
+  auto children = tree.value.children;
+  for(auto it = children.begin(); it != children.end(); ++it) {
+    std::optional<Value> val = parseValue(it, children.end(), msgs, content, filename);
     if(val) {
       values.push_back(*val);
     }

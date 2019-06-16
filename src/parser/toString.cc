@@ -6,6 +6,7 @@
 #include "../util/util.h"
 
 #include "ast.h"
+#include "toString.h"
 
 void indent(std::stringstream& o, int depth) {
   for(int i=0; i<depth; i++) {
@@ -13,7 +14,7 @@ void indent(std::stringstream& o, int depth) {
   }
 }
 
-std::string toString(const Location& loc, const std::string contents, const std::string& filename, int depth) {
+std::string toString(const Location& loc, const std::string& contents, const std::string& filename, int depth) {
   size_t line = 1+std::count(contents.begin(), contents.begin()+loc.start, '\n');
   size_t col = loc.start - contents.rfind("\n", loc.start);
   std::stringstream o;
@@ -29,7 +30,7 @@ std::string toString(const Token& tok, const std::string& contents, const std::s
   std::stringstream o;
   indent(o, depth);
   o << tok.type << ": ";
-  o << toString(tok.loc, contents, filename, depth);
+  o << toString(tok.loc, contents, filename, 0);
   return o.str();
 }
 
@@ -38,7 +39,7 @@ std::string toString(const Message& msg, const std::string& contents, const std:
   indent(o, depth);
   o << msg.type << ": ";
   o << msg.msg << " ";
-  o << toString(msg.loc, contents, filename, depth);
+  o << toString(msg.loc, contents, filename, 0) << "\n";
   return o.str();
 }
 
@@ -46,8 +47,6 @@ std::string toString(const Tree<Token>& tree, const std::string& contents, const
   std::stringstream o;
   indent(o, depth);
   o << toString(tree.value, contents, filename, depth) << "\n";
-  for(const auto& child : tree.children) {
-    o << toString(child, contents, filename, depth+1);
-  }
+  o << toString(tree.children, contents, filename, depth+1);
   return o.str();
 }
