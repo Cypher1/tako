@@ -7,7 +7,10 @@
 
 #include "../lib/enums.h"
 
+#include "ast.h"
+
 struct Module {
+  std::string file;
   std::vector<std::string> names;
 };
 

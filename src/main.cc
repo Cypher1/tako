@@ -61,10 +61,11 @@ void runParser(std::string filename) {
   std::string contents = strStream.str();
 
   Result<Tokens> toks = lex(contents, filename);
+  std::cerr << "Got " << toks.value.size() << " tokens.\n";
+
   Result<Tree<Token>> tree = ast(toks, contents, filename);
   Result<Module> module = parse(tree, contents, filename);
 
-  std::cerr << "Got " << toks.value.size() << " tokens.\n";
   std::cerr << "Got " << module.value.names.size() << " top level names.\n";
   for(const auto& name : module.value.names) {
     std::cerr << "> " << name << "\n";

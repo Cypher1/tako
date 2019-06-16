@@ -12,6 +12,13 @@ configure_file (
   "${PROJECT_BINARY_DIR}/takoConfig.h"
   )
 
+# configure flags for GXX
+SET(GXX_COVERAGE_COMPILE_FLAGS "-g -rdynamic")
+SET(GXX_COVERAGE_LINK_FLAGS    "-g -rdynamic")
+
+SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${GXX_COVERAGE_COMPILE_FLAGS}")
+SET(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} ${GXX_COVERAGE_LINK_FLAGS}")
+
 # add the binary tree to the search path for include files
 # so that we will find TutorialConfig.h
 include_directories("${PROJECT_BINARY_DIR}")

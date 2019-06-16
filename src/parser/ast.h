@@ -17,18 +17,19 @@ BETTER_ENUM(
     CloseBrace,
     OpenBracket,
     CloseBracket,
+    Declaration,
+    SemiColon,
     PreCond,
     PostCond,
-    Definition,
-    Dot,
-    Comma,
     SingleQuote,
     DoubleQuote,
     BackQuote,
+    Dot,
+    Comma,
+    WhiteSpace,
     NumberLiteral,
     Operator,
     Symbol,
-    WhiteSpace,
     Error
     );
 
