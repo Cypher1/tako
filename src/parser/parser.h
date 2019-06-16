@@ -12,7 +12,7 @@
 struct Value {
   std::string name;
   std::vector<Tree<Token>> args;
-  Tree<Token> def;
+  std::vector<Tree<Token>> scope;
 };
 
 struct Module {

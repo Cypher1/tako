@@ -13,7 +13,7 @@ Value parseValue( std::vector<Tree<Token>>::iterator& it, const std::vector<Tree
   Value val = {
     content.substr(loc.start, loc.length),
     {},
-    node
+    {}
   };
   if(node.value.type == +TokenType::Symbol) {
     ++it;
@@ -21,7 +21,7 @@ Value parseValue( std::vector<Tree<Token>>::iterator& it, const std::vector<Tree
       val.args = it->children;
       ++it;
     }
-    if(it == end) {
+    if(it == end || it->value.type != +TokenType::Declaration) {
       msgs.push_back({
           MessageType::Error,
           "Needed definition ?",
@@ -29,8 +29,7 @@ Value parseValue( std::vector<Tree<Token>>::iterator& it, const std::vector<Tree
       });
       return val;
     }
-    val.def = *it;
-    ++it;
+    val.scope = it->children;
     return val;
   }
   msgs.push_back({
