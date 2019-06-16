@@ -13,7 +13,7 @@ configure_file (
   )
 
 # configure flags for GXX
-SET(GXX_COVERAGE_COMPILE_FLAGS "-g -rdynamic")
+SET(GXX_COVERAGE_COMPILE_FLAGS "-g")
 SET(GXX_COVERAGE_LINK_FLAGS    "-g -rdynamic")
 
 SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${GXX_COVERAGE_COMPILE_FLAGS}")

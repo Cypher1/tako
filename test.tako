@@ -1,6 +1,6 @@
-a(b,c,d) = 2*(d+b*c+d);
+alpha(b,c,d) = 2*(d+b*c+d);
 
-m = {
+mapper = {
   Load(5, a)
   Load([0,0,0,0,0,1,0,1,], a)
   Load([0,0,0,0,0,0,1,1,], b)
@@ -16,4 +16,4 @@ m = {
 
 multiline
 */
-n=m();]
+runMapper=m();]
