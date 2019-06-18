@@ -9,10 +9,17 @@
 
 #include "ast.h"
 
+struct FuncArg {
+  std::string name;
+  int ord;
+  std::vector<Tree<Token>> def;
+  // TODO: consider pattern matching? maybe not in func args?
+};
+
 struct Value {
   std::string name;
-  std::vector<Tree<Token>> args;
-  Tree<Token> def;
+  std::vector<FuncArg> args;
+  std::vector<Tree<Token>> scope;
 };
 
 struct Module {

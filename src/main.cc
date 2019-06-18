@@ -64,16 +64,16 @@ void runParser(std::string filename) {
   std::cerr << "Got " << toks.value.size() << " tokens.\n";
 
   Result<Tree<Token>> tree = ast(toks, contents, filename);
+  std::cerr << "AST  " << toString(tree.value, contents, filename) << " .\n";
   Result<Module> module = parse(tree, contents, filename);
 
   std::cerr << "Got " << module.value.values.size() << " top level values.\n";
   for(const auto& val : module.value.values) {
     std::cerr << "> " << val.name << "\n";
     std::cerr << toString(val.args, contents, filename, 1) << "\n";
-    std::cerr << toString(val.def, contents, filename, 1) << "\n";
+    std::cerr << toString(val.scope, contents, filename, 1) << "\n";
   }
 
-  // std::cerr << toString(tree.value, contents, filename) << "\n";
   std::cerr << "Errors:\n";
   for(const auto msg : toks.msgs) {
     std::cerr << toString(msg, contents, filename, 1) << "\n";
