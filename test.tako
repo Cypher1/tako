@@ -1,4 +1,4 @@
-alpha(b,c,d) = 2*(d+b*c+d);
+alpha(b=f(32, c);,c,d) = 2*(d+b*c+d);
 
 twoThings(f, a, b)= { all(x. f(x) > x) -|fa =f(a); fb=f(b); fa + fb };
 

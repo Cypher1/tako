@@ -26,6 +26,16 @@ std::string toString(const Location& loc, const std::string& contents, const std
   return o.str();
 }
 
+std::string toString(const FuncArg& arg, const std::string& contents, const std::string& filename, int depth) {
+  std::stringstream o;
+  indent(o, depth);
+  o << arg.name << "[" << arg.ord << "]";
+  if (arg.def.size()) {
+    o << "= " << toString(arg.def, contents, filename, 0);
+  }
+  return o.str();
+}
+
 std::string toString(const Token& tok, const std::string& contents, const std::string& filename, int depth) {
   std::stringstream o;
   indent(o, depth);

@@ -74,7 +74,6 @@ void runParser(std::string filename) {
     std::cerr << toString(val.scope, contents, filename, 1) << "\n";
   }
 
-  // std::cerr << toString(tree.value, contents, filename) << "\n";
   std::cerr << "Errors:\n";
   for(const auto msg : toks.msgs) {
     std::cerr << toString(msg, contents, filename, 1) << "\n";
