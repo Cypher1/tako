@@ -64,7 +64,8 @@ void runParser(std::string filename) {
   std::cerr << "Got " << toks.value.size() << " tokens.\n";
 
   Result<Tree<Token>> tree = ast(toks, contents, filename);
-  std::cerr << "AST  " << toString(tree.value, contents, filename) << " .\n";
+  std::cerr << "AST\n";
+  std::cerr << toString(tree.value.children, contents, filename) << " .\n";
   Result<Module> module = parse(tree, contents, filename);
 
   std::cerr << "Got " << module.value.values.size() << " top level values.\n";

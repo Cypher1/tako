@@ -20,6 +20,7 @@ std::string toString(const std::vector<T>& vec, const std::string& contents, con
 }
 
 std::string toString(const Location& loc, const std::string& contents, const std::string& filename, int depth=0);
+std::string toString(const Value& val, const std::string& contents, const std::string& filename, int depth=0);
 std::string toString(const FuncArg& arg, const std::string& contents, const std::string& filename, int depth=0);
 std::string toString(const Token& tok, const std::string& contents, const std::string& filename, int depth=0);
 std::string toString(const Message& msg, const std::string& contents, const std::string& filename, int depth=0);

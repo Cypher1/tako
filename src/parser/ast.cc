@@ -4,6 +4,7 @@
 #include <set>
 #include <string>
 #include "ast.h"
+#include "toString.h"
 
 const std::string lower = "abcdefghijklmnopqrstuvwxyz";
 const std::string upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -52,7 +53,12 @@ const std::map<TokenType, TokenType> close_brackets = [](){
   return map;
 }();
 
-bool isQuote(const TokenType& type) {
+constexpr bool isOperator(const TokenType& type) {
+  return type == +TokenType::Operator
+        || type == +TokenType::Comma;
+}
+
+constexpr bool isQuote(const TokenType& type) {
   return type == +TokenType::SingleQuote || type == +TokenType::DoubleQuote || type == +TokenType::BackQuote;
 }
 
@@ -140,9 +146,27 @@ Result<Tokens> lex(const std::string& content, const std::string& filename) {
 
 
 const std::vector<std::set<std::string>> precedence = {
+  {","},
   {"+", "-"},
-  {"*", "/"}
+  {"*", "/"},
 };
+
+std::vector<Tree<Token>> toArgList(Tree<Token> argTree) {
+  std::vector<Tree<Token>> args;
+
+  if(argTree.value.type == +TokenType::Comma) {
+    // Add the list of args
+    for(auto child : argTree.children) {
+      auto childrenExpanded = toArgList(child);
+      args.insert(args.end(), childrenExpanded.begin(), childrenExpanded.end());
+    }
+  } else {
+    // Just a node.
+    args.push_back(argTree);
+  }
+
+  return args;
+}
 
 std::vector<Tree<Token>> toExpression(std::vector<Tree<Token>> nodes, Messages& msgs, const std::string& content) {
   if(nodes.empty()) {
@@ -151,7 +175,7 @@ std::vector<Tree<Token>> toExpression(std::vector<Tree<Token>> nodes, Messages& 
   for(int level = 0; level < precedence.size(); ++level) {
     auto it = nodes.begin();
       while(it != nodes.end()) {
-        if(it->value.type == +TokenType::Operator) {
+        if(isOperator(it->value.type)) {
           // If we're at the right precedence level, this is out next splitter.
           std::string s = content.substr(it->value.loc.start, it->value.loc.length);
           if(precedence[level].find(s) != precedence[level].end()) {
@@ -167,23 +191,24 @@ std::vector<Tree<Token>> toExpression(std::vector<Tree<Token>> nodes, Messages& 
 
     // Get the left and right and make them into nodes of this op.
     Tree<Token> curr = *it;
-    std::vector<Tree<Token>> left = toExpression({nodes.begin(), it}, msgs, content);
-    if(left.size() > 1) {
-      curr.children.push_back({{TokenType::OpenParen, curr.value.loc}, left});
-    } else if (!left.empty()) {
-      curr.children.push_back(left[0]);
+    std::vector<Tree<Token>> lArgs = toExpression({nodes.begin(), it}, msgs, content);
+    for(auto lArg : lArgs) {
+      const auto ls = toArgList(lArg);
+      curr.children.insert(curr.children.end(), ls.begin(), ls.end());
     }
 
-    std::vector<Tree<Token>> right = toExpression({it+1, nodes.end()}, msgs, content);
-    if(right.size() > 1) {
-      curr.children.push_back({{TokenType::OpenParen, curr.value.loc}, right});
-    } else if (!right.empty()) {
-      curr.children.push_back(right[0]);
+    std::vector<Tree<Token>> rArgs = toExpression({it+1, nodes.end()}, msgs, content);
+    for(auto rArg : rArgs) {
+      const auto rs = toArgList(rArg);
+      curr.children.insert(curr.children.end(), rs.begin(), rs.end());
     }
-
-    return {curr};
+    nodes = {curr};
   }
 
+  if( nodes.size() == 1 && nodes[0].value.type == +TokenType::OpenParen) {
+    // std::cerr << "Single Expr------\n" << toString(recurse, content, "") << "------\n";
+    nodes = nodes[0].children;
+  }
   return nodes;
 }
 
@@ -223,7 +248,8 @@ std::vector<Tree<Token>> toAst(Tokens& toks, Messages& msgs, const TokenType clo
         recurse = toAst(toks, msgs, match->second, content);
       }
     }
-    children.push_back({curr, toExpression(recurse, msgs, content)});
+    auto expr = toExpression(recurse, msgs, content);
+    children.push_back({curr, expr});
   }
   return children;
 }
