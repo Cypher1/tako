@@ -69,7 +69,7 @@ std::string toString(const Message& msg, const std::string& contents, const std:
   indent(o, depth);
   o << msg.type << ": ";
   o << msg.msg << " ";
-  o << toString(msg.loc, contents, filename, 0) << "\n";
+  o << toString(msg.loc, contents, filename, 0);
   return o.str();
 }
 

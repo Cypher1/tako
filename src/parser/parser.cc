@@ -52,7 +52,6 @@ Value parseDefinition( std::vector<Tree<Token>>::const_iterator& it, const std::
       val.args.push_back(parseArg(arg, n++, msgs, content, filename));
     }
     if(val.args.empty()) {
-      std::cerr << "HERE!!!!!!!!!!!!!!!!!!!!!\n";
       msgs.push_back({
           MessageType::Info,
           "No need for the parentheses '()' here.",
