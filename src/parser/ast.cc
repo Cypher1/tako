@@ -121,9 +121,8 @@ std::pair<TokenType, Offset> chooseTok(std::string content) {
   return {TokenType::Error, 1};
 }
 
-Result<Tokens> lex(const std::string& content, const std::string& filename) {
+Tokens lex(Messages& msgs, const std::string& content, const std::string& filename) {
   Tokens toks;
-  Messages msgs;
 
   Position loc = 0;
   while(loc < content.size()) {
@@ -141,7 +140,7 @@ Result<Tokens> lex(const std::string& content, const std::string& filename) {
     toks.insert(toks.begin(), tok);
     loc += length;
   }
-  return {toks, msgs};
+  return toks;
 }
 
 
@@ -173,31 +172,31 @@ std::vector<Tree<Token>> toExpression(std::vector<Tree<Token>> nodes, Messages& 
     return nodes;
   }
   for(int level = 0; level < precedence.size(); ++level) {
-    auto it = nodes.begin();
-      while(it != nodes.end()) {
-        if(isOperator(it->value.type)) {
-          // If we're at the right precedence level, this is out next splitter.
-          std::string s = content.substr(it->value.loc.start, it->value.loc.length);
-          if(precedence[level].find(s) != precedence[level].end()) {
-            break;
-          }
+    auto it = nodes.cbegin();
+    while(it != nodes.cend()) {
+      if(isOperator(it->value.type)) {
+        // If we're at the right precedence level, this is out next splitter.
+        std::string s = content.substr(it->value.loc.start, it->value.loc.length);
+        if(precedence[level].find(s) != precedence[level].end()) {
+          break;
         }
-        ++it;
       }
+      ++it;
+    }
 
-    if(it == nodes.end()) {
+    if(it == nodes.cend()) {
       continue;
     }
 
     // Get the left and right and make them into nodes of this op.
     Tree<Token> curr = *it;
-    std::vector<Tree<Token>> lArgs = toExpression({nodes.begin(), it}, msgs, content);
+    std::vector<Tree<Token>> lArgs = toExpression({nodes.cbegin(), it}, msgs, content);
     for(auto lArg : lArgs) {
       const auto ls = toArgList(lArg);
       curr.children.insert(curr.children.end(), ls.begin(), ls.end());
     }
 
-    std::vector<Tree<Token>> rArgs = toExpression({it+1, nodes.end()}, msgs, content);
+    std::vector<Tree<Token>> rArgs = toExpression({it+1, nodes.cend()}, msgs, content);
     for(auto rArg : rArgs) {
       const auto rs = toArgList(rArg);
       curr.children.insert(curr.children.end(), rs.begin(), rs.end());
@@ -221,17 +220,17 @@ std::vector<Tree<Token>> toAst(Tokens& toks, Messages& msgs, const TokenType clo
     toks.pop_back();
 
     // Check that this isn't the close.
-    if(type == close) {
+    if(type == close || (!inString && close_brackets.find(type) != close_brackets.end())) {
+      if(type != close) {
+        // Unbalanced bracket
+        msgs.push_back({
+          MessageType::Error,
+          "Unbalanced bracket",
+          curr.loc
+        });
+        curr.type = TokenType::Error;
+      }
       break;
-    }
-    if(!inString && close_brackets.find(type) != close_brackets.end()) {
-      // Unbalanced bracket
-      msgs.push_back({
-        MessageType::Error,
-        "Unbalanced bracket",
-        curr.loc
-      });
-      curr.type = TokenType::Error;
     }
 
     if(!inString) {
@@ -251,11 +250,11 @@ std::vector<Tree<Token>> toAst(Tokens& toks, Messages& msgs, const TokenType clo
     auto expr = toExpression(recurse, msgs, content);
     children.push_back({curr, expr});
   }
+
   return children;
 }
 
-Result<Tree<Token>> ast(Result<Tokens>& toks, const std::string& content, const std::string& filename) {
-  Tree<Token> root = {{TokenType::Symbol, {0, 0, filename}}, toAst(toks.value, toks.msgs, TokenType::Error, content)};
-
-  return {root, toks.msgs};
+Tree<Token> ast(Tokens& toks, Messages& msgs, const std::string& content, const std::string& filename) {
+  Tree<Token> root = {{TokenType::Symbol, {0, 0, filename}}, toAst(toks, msgs, TokenType::Error, content)};
+  return root;
 }

@@ -34,12 +34,6 @@ struct Message {
 using Messages = std::vector<Message>;
 
 template<typename T>
-struct Result {
-  T value;
-  Messages msgs;
-};
-
-template<typename T>
 struct Tree {
   T value;
   std::vector<Tree<T>> children;

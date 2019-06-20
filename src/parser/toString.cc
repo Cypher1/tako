@@ -8,6 +8,9 @@
 #include "ast.h"
 #include "toString.h"
 
+int width = 80;
+int height = 80;
+
 void indent(std::stringstream& o, int depth) {
   for(int i=0; i<depth; i++) {
     o << " ";
@@ -25,7 +28,6 @@ std::string toString(const Location& loc, const std::string& contents, const std
   size_t col = loc.start - contents.rfind("\n", loc.start);
   std::stringstream o;
   indent(o, depth);
-  // o << " in " << filename;
   o << " line " << line;
   o << " column " << col;
   return o.str();
@@ -57,7 +59,7 @@ std::string toString(const Token& tok, const std::string& contents, const std::s
   o << getString(tok.loc, contents) << " : " << tok.type;
   std::stringstream s;
   s << toString(tok.loc, contents, filename, 0);
-  indent(o, 80-s.str().length()-o.str().length());
+  indent(o, width-s.str().length()-o.str().length());
   o << s.str();
   return o.str();
 }

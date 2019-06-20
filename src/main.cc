@@ -3,6 +3,9 @@
 #include <sstream> //std::stringstream
 #include <vector>
 #include <unordered_map>
+#include <sys/ioctl.h>
+#include <cstdio>
+#include <unistd.h>
 
 #include "takoConfig.h"
 #include "parser/ast.h"
@@ -26,6 +29,11 @@ int main(int argc, char* argv[]) {
 
   const std::string prog = argv[0];
   parseArgs(args, 1, argc, argv, targets, values);
+
+  struct winsize w;
+  ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+  height = w.ws_row;
+  width = w.ws_col;
 
   if (argc < 2 || values.find("help") != values.end() || values.find("version") != values.end()){
     std::cerr << "tako - version " << tako_VERSION_MAJOR << "." << tako_VERSION_MINOR << "." << tako_VERSION_PATCH << "\n";
@@ -60,23 +68,24 @@ void runParser(std::string filename) {
   strStream << inFile.rdbuf();
   std::string contents = strStream.str();
 
-  Result<Tokens> toks = lex(contents, filename);
-  std::cerr << "Got " << toks.value.size() << " tokens.\n";
+  Messages msgs;
+  Tokens toks = lex(msgs, contents, filename);
+  std::cerr << "Got " << toks.size() << " tokens.\n";
 
-  Result<Tree<Token>> tree = ast(toks, contents, filename);
+  Tree<Token> tree = ast(toks, msgs, contents, filename);
   std::cerr << "AST\n";
-  std::cerr << toString(tree.value.children, contents, filename) << " .\n";
-  Result<Module> module = parse(tree, contents, filename);
+  std::cerr << toString(tree.children, contents, filename) << "\n";
+  Module module = parse(tree, msgs, contents, filename);
 
-  std::cerr << "Got " << module.value.values.size() << " top level values.\n";
-  for(const auto& val : module.value.values) {
+  std::cerr << "Got " << module.values.size() << " top level values.\n";
+  for(const auto& val : module.values) {
     std::cerr << "> " << val.name << "\n";
     std::cerr << toString(val.args, contents, filename, 1) << "\n";
     std::cerr << toString(val.scope, contents, filename, 1) << "\n";
   }
 
   std::cerr << "Errors:\n";
-  for(const auto msg : toks.msgs) {
+  for(const auto msg : msgs) {
     std::cerr << toString(msg, contents, filename, 1) << "\n";
   }
 }

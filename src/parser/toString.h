@@ -8,6 +8,9 @@
 #include "ast.h"
 #include "parser.h"
 
+extern int width;
+extern int height;
+
 void indent(std::stringstream& o, int depth);
 
 template<typename T>
