@@ -7,76 +7,96 @@
 #include "parser.h"
 #include "toString.h"
 
-Value parseDefinition( std::vector<Tree<Token>>::iterator& it, const std::vector<Tree<Token>>::iterator& end, Messages& msgs, const std::string& content, const std::string& filename);
+Value parseDefinition( std::vector<Tree<Token>>::const_iterator& it, const std::vector<Tree<Token>>::const_iterator& end, Messages& msgs, const std::string& content, const std::string& filename);
+std::vector<Value> parseDefinitions(std::vector<Tree<Token>>::const_iterator& it, const std::vector<Tree<Token>>::const_iterator& end, Messages& msgs, const std::string& content, const std::string& filename);
 
 FuncArg parseArg(Tree<Token> arg, const int ord, Messages& msgs, const std::string& content, const std::string& filename) {
-
-  std::vector<Tree<Token>> def;
+  std::vector<Value> def;
   std::string name;
-  auto it = arg.children.begin();
+  auto it = arg.children.cbegin();
   if (arg.value.type == +TokenType::Declaration && it != arg.children.end()) {
     Value val = parseDefinition(it, arg.children.end(), msgs, content, filename);
     name = val.name; //Args?
     def = val.scope;
-    std::cout << "ArgNameWithDefault " << name << "\n";
   } else if (arg.value.type == +TokenType::Symbol) {
     name = content.substr(arg.value.loc.start, arg.value.loc.length);
-    std::cout << "ArgName " << name << "\n";
   } else {
-    //TODO error?
-    std::cout << "err arg " << arg.value.type << "\n";
+    // Just a value
+    std::vector<Tree<Token>> argV = {arg};
+    auto it_it = argV.cbegin();
+    def = parseDefinitions(it_it, argV.cend(), msgs, content, filename);
   }
   return {name, ord, def};
 }
 
-Value parseDefinition( std::vector<Tree<Token>>::iterator& it, const std::vector<Tree<Token>>::iterator& end, Messages& msgs, const std::string& content, const std::string& filename) {
-  Value val = {
-    "error", // TODO msg
-    {},
-    {}
-  };
+Value parseDefinition( std::vector<Tree<Token>>::const_iterator& it, const std::vector<Tree<Token>>::const_iterator& end, Messages& msgs, const std::string& content, const std::string& filename) {
+  Value val = { "#error", {}, {}, {0, 0, "??l"} };
   if(it == end) {
     return val;
   }
-  const auto node = *it;
-  const auto& loc = node.value.loc;
-  if(node.value.type == +TokenType::Symbol) {
+  auto loc = it->value.loc;
+  if (it->value.type == +TokenType::Symbol) {
     val.name = content.substr(loc.start, loc.length);
-    ++it;
-    if(it != end && it->value.type == +TokenType::OpenParen) {
-      int n = 0;
-      for(const auto& arg : it->children) {
-        val.args.push_back(parseArg(arg, n++, msgs, content, filename));
-      }
-      ++it;
-    }
-    if(it == end || it->value.type != +TokenType::Declaration) {
-      msgs.push_back({
-          MessageType::Error,
-          "Needed definition ?",
-          it->value.type
-      });
-      return val;
-    }
-    val.scope = it->children;
+  } else {
+    msgs.push_back({
+        MessageType::Error,
+        "Unexpected ?",
+        loc
+    });
     return val;
   }
-  msgs.push_back({
-      MessageType::Error,
-      "Unexpected ?",
-      it->value.type
-  });
+  ++it;
+  if(it != end && it->value.type == +TokenType::OpenParen) {
+    int n = 0;
+    for(const auto& arg : it->children) {
+      val.args.push_back(parseArg(arg, n++, msgs, content, filename));
+    }
+    if(val.args.empty()) {
+      msgs.push_back({
+          MessageType::Info,
+          "No need for the parentheses '()' here.",
+          val.loc
+      });
+    }
+    ++it;
+  }
+  if(it == end) {
+    msgs.push_back({
+        MessageType::Error,
+        "Reached end of scope, expected a definition for '?'",
+        val.loc
+    });
+    return val;
+  }
+  if(it->value.type == +TokenType::Declaration) {
+    msgs.push_back({
+        MessageType::Error,
+        "Reached end of scope, expected a definition for '?'",
+        val.loc
+    });
+    return val;
+  }
+
+  const auto childers = it->children;
+  auto it_it = childers.cbegin();
+  val.scope = parseDefinitions(it_it, childers.cend(), msgs, content, filename);
+
   return val;
 }
 
-Result<Module> parse(Result<Tree<Token>>& tree, const std::string& content, const std::string& filename) {
-  Messages& msgs = tree.msgs;
+std::vector<Value> parseDefinitions(std::vector<Tree<Token>>::const_iterator& it, const std::vector<Tree<Token>>::const_iterator& end, Messages& msgs, const std::string& content, const std::string& filename) {
   std::vector<Value> values;
-  auto children = tree.value.children;
-  for(auto it = children.begin(); it != children.end(); ++it) {
-    values.push_back(
-      parseDefinition(it, children.end(), msgs, content, filename)
-    );
+  while(it != end) {
+      values.push_back(parseDefinition(it, end, msgs, content, filename));
+    if(it == end) break;
+    ++it;
   }
-  return {{filename, values}, msgs};
+  return values;
+}
+
+Module parse(Tree<Token>& tree, Messages& msgs, const std::string& content, const std::string& filename) {
+  auto children = tree.children;
+  auto it = children.cbegin();
+  std::vector<Value> values = parseDefinitions(it, children.cend(), msgs, content, filename);
+  return {filename, values};
 }

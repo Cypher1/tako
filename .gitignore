@@ -4,3 +4,4 @@ tako
 build
 **/compile_commands.json
 .clangd
+vgcore.*

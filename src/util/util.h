@@ -11,9 +11,9 @@ using Position = unsigned int;
 using Offset = unsigned int;
 
 struct Location {
-  Position start;
-  Offset length;
-  std::string file;
+  Position start=0;
+  Offset length=0;
+  std::string file="";
 };
 
 BETTER_ENUM(
@@ -32,12 +32,6 @@ struct Message {
 };
 
 using Messages = std::vector<Message>;
-
-template<typename T>
-struct Result {
-  T value;
-  Messages msgs;
-};
 
 template<typename T>
 struct Tree {
