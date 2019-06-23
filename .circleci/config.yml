@@ -26,7 +26,7 @@ references:
       name: Build with g++.
       command: |
         mkdir build && cd build
-        cmake -DCMAKE_BUILD_TYPE=Debug ../src
+        cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=gcc ../src
         make tako
         make takoTest
       no_output_timeout: 20m
