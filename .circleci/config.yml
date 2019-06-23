@@ -1,45 +1,103 @@
 # ~/.circleci/config.yml
 version: 2
+
+references:
+  ubuntu_deps: &ubuntu_deps
+    run:
+      name: Install dependencies on Ubuntu
+      command: |
+        apt-get update -qy
+        apt-get install -qy git cmake clang
+
+  arch_deps: &arch_deps
+    run:
+      name: Install dependencies on Arch Linux
+      command: |
+        pacman -Syu --noconfirm base-devel git cmake clang
+
+  update_submodules: &update_submodules
+    run:
+      name: Update git submodules
+      command: |
+        git submodule update --init --recursive
+
+  build_with_gcc: &build_with_gcc
+    run:
+      name: Build with g++.
+      command: |
+        mkdir build && cd build
+        cmake -DCMAKE_BUILD_TYPE=Debug ../src
+        make tako
+        make takoTest
+      no_output_timeout: 20m
+
+  build_with_clang: &build_with_clang
+      run:
+        name: Build with clang++.
+        command: |
+          mkdir build && cd build
+          cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++ ../src
+          make tako
+          make takoTest
+        no_output_timeout: 20m
+
+  test: &test
+    run:
+      name: Run unit tests
+      command: |
+        ./build/takoTest
+    run:
+      name: Run parser on example code
+      command: |
+        ./build/tako test.tako
+
 jobs:
-  build_test:
+  test_arch_gcc:
     docker:
-      - image: "debian:stretch"
-    parallelism: 1
+      - image: archlinux/base
     steps:
-      - run: export TERM='Readline'
-      - run:
-          name: Updating APT
-          command: 'apt-get update'
-      - run:
-          name: Installing SUDO
-          command: 'apt-get install -y sudo'
-      - run:
-          name: Installing deps
-          command: 'sudo apt-get install -y gcc g++ git cmake'
+      - *arch_deps
       - checkout
-      - restore_cache:
-          keys:
-            - build_artifacts-v3-{{ .Branch }}-{{ checksum "src/CMakeLists.txt" }}
-            - build_artifacts-v3-{{ .Branch }}-
-            - build_artifacts-v3-
-      - run: git submodule init 
-      - run: git submodule update
-      - run:
-          name: Building tako
-          command: make build/tako
-      - run:
-          name: Building tests
-          command: make build/takoTest
-      - save_cache:
-          key: build_artifacts-v3-{{ .Branch }}-{{ checksum "src/CMakeLists.txt" }}
-          paths:
-            - "build/"
-      - run:
-          name: Running tests
-          command: make test
+      - *update_submodules
+      - *build_with_gcc
+      - *test
+
+  test_arch_clang:
+    docker:
+      - image: archlinux/base
+    steps:
+      - *arch_deps
+      - checkout
+      - *update_submodules
+      - *build_with_clang
+      - *test
+
+  test_ubuntu_gcc:
+    docker:
+      - image: ubuntu:latest
+    steps:
+      - *ubuntu_deps
+      - checkout
+      - *update_submodules
+      - *build_with_gcc
+      - *test
+
+  test_ubuntu_clang:
+    docker:
+      - image: ubuntu:latest
+    steps:
+      - *ubuntu_deps
+      - checkout
+      - *update_submodules
+      - *build_with_clang
+      - *test
 
 workflows:
   version: 2
-  build_test:
+
+  test_matrix: &test_matrix
     jobs:
-      - build_test
+      - test_archlinux_gcc
+      - test_archlinux_clang
+      - test_ubuntu_gcc
+      - test_ubuntu_clang
