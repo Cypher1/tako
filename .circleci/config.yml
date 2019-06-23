@@ -41,11 +41,13 @@ references:
           make takoTest
         no_output_timeout: 20m
 
-  test: &test
+  unit_test: &unit_test
     run:
       name: Run unit tests
       command: |
         ./build/takoTest
+
+  example_test: &example_test
     run:
       name: Run parser on example code
       command: |
@@ -60,7 +62,8 @@ jobs:
       - checkout
       - *update_submodules
       - *build_with_gcc
-      - *test
+      - *unit_test
+      - *example_test
 
   test_arch_clang:
     docker:
@@ -70,7 +73,8 @@ jobs:
       - checkout
       - *update_submodules
       - *build_with_clang
-      - *test
+      - *unit_test
+      - *example_test
 
   test_ubuntu_gcc:
     docker:
@@ -80,7 +84,8 @@ jobs:
       - checkout
       - *update_submodules
       - *build_with_gcc
-      - *test
+      - *unit_test
+      - *example_test
 
   test_ubuntu_clang:
     docker:
@@ -90,7 +95,8 @@ jobs:
       - checkout
       - *update_submodules
       - *build_with_clang
-      - *test
+      - *unit_test
+      - *example_test
 
 workflows:
   version: 2
