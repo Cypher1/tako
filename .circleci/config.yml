@@ -103,7 +103,7 @@ workflows:
 
   test_matrix: &test_matrix
     jobs:
-      # - test_arch_gcc # Currently disabled due to a breakage in rapidcheck:
+      - test_arch_gcc # Currently not required due to a breakage in rapidcheck:
       # See https://github.com/emil-e/rapidcheck/issues/232
       - test_arch_clang
       - test_ubuntu_gcc

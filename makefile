@@ -1,5 +1,11 @@
 DEPS = src/*.* src/**/*.*
 
+tako: build/tako $(DEPS)
+	cp build/tako tako
+
+test: build/takoTest $(DEPS)
+	./build/takoTest
+
 build/Makefile: src/**/CMakeLists.txt
 	cmake -Hsrc -Bbuild -DCMAKE_EXPORT_COMPILE_COMMANDS=1
 
@@ -8,12 +14,6 @@ build/tako: build/Makefile $(DEPS)
 
 build/takoTest: build/Makefile $(DEPS)
 	make -C build takoTest
-
-tako: build/tako $(DEPS)
-	cp build/tako tako
-
-test: build/takoTest $(DEPS)
-	./build/takoTest
 
 .PHONY: clean test tako
 
