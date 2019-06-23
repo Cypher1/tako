@@ -21,7 +21,7 @@ references:
       command: |
         git submodule update --init --recursive
 
-  build_with_g++: &build_with_g++
+  build_with_gcc: &build_with_gcc
     run:
       name: Build with g++.
       command: |
@@ -54,14 +54,14 @@ references:
         ./build/tako test.tako
 
 jobs:
-  test_arch_g++:
+  test_arch_gcc:
     docker:
       - image: archlinux/base
     steps:
       - *arch_deps
       - checkout
       - *update_submodules
-      - *build_with_g++
+      - *build_with_gcc
       - *unit_test
       - *example_test
 
@@ -76,14 +76,14 @@ jobs:
       - *unit_test
       - *example_test
 
-  test_ubuntu_g++:
+  test_ubuntu_gcc:
     docker:
       - image: ubuntu:latest
     steps:
       - *ubuntu_deps
       - checkout
       - *update_submodules
-      - *build_with_g++
+      - *build_with_gcc
       - *unit_test
       - *example_test
 
@@ -103,7 +103,7 @@ workflows:
 
   test_matrix: &test_matrix
     jobs:
-      - test_arch_g++
+      - test_arch_gcc
       - test_arch_clang
-      - test_ubuntu_g++
+      - test_ubuntu_gcc
       - test_ubuntu_clang
