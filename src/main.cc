@@ -19,10 +19,15 @@ const std::vector<Arg> args = {
   {'V', "version", "Prints the version number.", ""},
   {'O', "", "Number of optimisation passes.", "level"},
   {'o', "out", "File to write results to.", "file"},
-  {'i', "interative", "Run interpreter.", ""},
+  {'i', "interactive", "Run interpreter.", ""},
 };
 
-void runParser(std::string filename);
+void runParser(const std::string& contents, const std::string& filename);
+
+void info() {
+  std::cerr << "tako - version " << tako_VERSION_MAJOR << "." << tako_VERSION_MINOR << "." << tako_VERSION_PATCH << "\n";
+  std::cerr << "A compiler for ergonomic software verification\n";
+}
 
 int main(int argc, char* argv[]) {
   std::vector<std::string> targets;
@@ -37,13 +42,12 @@ int main(int argc, char* argv[]) {
   width = w.ws_col;
 
   if (argc < 2 || values.find("help") != values.end() || values.find("version") != values.end()){
-    std::cerr << "tako - version " << tako_VERSION_MAJOR << "." << tako_VERSION_MINOR << "." << tako_VERSION_PATCH << "\n";
-    std::cerr << "A compiler for ergonomic software verification\n";
+    info();
 
     if (argc >= 2 && values.find("help") == values.end()) {
       return 1;
     }
-    std::string usage = makeUsage(prog, args);
+    std::cerr << makeUsage(prog, args);
     return 1;
   }
   std::string out = "%.o";
@@ -51,24 +55,39 @@ int main(int argc, char* argv[]) {
   if(out_it != values.end()) {
     out = out_it->second;
   }
-  for(const auto file : targets) {
+  for(const auto filename : targets) {
     std::string this_out = out;
-    this_out.replace(this_out.find('%'), 1, file);
-    std::cerr << "> " << file << " -> " << this_out << "\n";
-    runParser(file);
+    this_out.replace(this_out.find('%'), 1, filename);
+
+    std::ifstream inFile;
+    inFile.open(filename);
+
+    // TODO: use the file+stream natively using memmap.
+    std::stringstream strStream;
+    strStream << inFile.rdbuf();
+    const std::string contents = strStream.str();
+
+    std::cerr << "> " << filename << " -> " << this_out << "\n";
+    runParser(contents, filename);
   }
+
+  if(values.find("interactive") != values.end()) {
+    info();
+    std::string line;
+    while(true) {
+      std::cerr << "> ";
+      getline(std::cin, line);
+      if(line == ":q") {
+        break;
+      }
+      std::cerr << "Not sure what to do about '" << line << "'\n";
+    }
+  }
+
   return 0;
 }
 
-void runParser(std::string filename) {
-  std::ifstream inFile;
-  inFile.open(filename);
-
-  // TODO: use the file+stream natively using memmap.
-  std::stringstream strStream;
-  strStream << inFile.rdbuf();
-  const std::string contents = strStream.str();
-
+void runParser(const std::string& contents, const std::string& filename) {
   Messages msgs;
   Tokens toks = lex(msgs, contents, filename);
   std::cerr << "Got " << toks.size() << " tokens.\n";
