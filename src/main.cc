@@ -76,8 +76,7 @@ int main(int argc, char* argv[]) {
     std::string line;
     while(true) {
       std::cerr << "> ";
-      getline(std::cin, line);
-      if(line == ":q") {
+      if(!getline(std::cin, line) || line == ":q") {
         break;
       }
       std::cerr << "Not sure what to do about '" << line << "'\n";
