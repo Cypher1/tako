@@ -80,6 +80,7 @@ int main(int argc, char* argv[]) {
         break;
       }
       std::cerr << "Not sure what to do about '" << line << "'\n";
+      runParser(line, "stdin");
     }
   }
 
@@ -92,7 +93,6 @@ void runParser(const std::string& contents, const std::string& filename) {
   std::cerr << "Got " << toks.size() << " tokens.\n";
 
   Tree<Token> tree = ast(toks, msgs, contents, filename);
-  std::cerr << "AST\n";
   std::cerr << toString(tree.children, contents, filename, 0, "\n") << "\n";
   Module module = parse(tree, msgs, contents, filename);
 
