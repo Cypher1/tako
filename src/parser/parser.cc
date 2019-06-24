@@ -8,21 +8,14 @@
 #include "parser.h"
 #include "toString.h"
 
-Value parseValue( std::vector<Tree<Token>>::const_iterator& it, const std::vector<Tree<Token>>::const_iterator& end, Messages& msgs, const std::string& content, const std::string& filename) {
-  if(it != end) {
-    std::string name = getString(it->value.loc, content);
-    auto loc = it->value.loc;
-
-    std::vector<Value> exprs;
-    const auto childers = it->children;
-    auto expr_it = childers.cbegin();
-    while(expr_it != childers.cend()) {
-      exprs.push_back(parseValue(expr_it, childers.cend(), msgs, content, filename));
-    }
-    ++it;
-    return Value(name, loc, exprs);
+Value parseValue(const Tree<Token>& node, Messages& msgs, const std::string& content, const std::string& filename) {
+  std::vector<Value> exprs;
+  for(const auto& child: node.children) {
+    exprs.push_back(parseValue(child, msgs, content, filename));
   }
-  return Value("#error", {0, 0, "#error"}, {});
+  auto loc = node.value.loc;
+  std::string name = getString(loc, content);
+  return Value(name, loc, exprs);
 }
 
 FuncArg parseArg(std::vector<Tree<Token>>::const_iterator& it, const std::vector<Tree<Token>>::const_iterator& end, int ord, Messages& msgs, const std::string& content, const std::string& filename) {
@@ -35,7 +28,7 @@ FuncArg parseArg(std::vector<Tree<Token>>::const_iterator& it, const std::vector
         PassStep::Parse,
         MessageType::Info,
         "Expected symbol name",
-        {0, 0, "#???"}
+        it->value.loc
     });
   } else {
     msgs.push_back({
@@ -46,16 +39,25 @@ FuncArg parseArg(std::vector<Tree<Token>>::const_iterator& it, const std::vector
     });
   }
   if (it != end && it->value.type == +TokenType::Declaration) {
-    const auto childers = it->children;
-    auto val_it = childers.cbegin();
-    Value def = parseValue(val_it, childers.cend(), msgs, content, filename);
-    if(val_it != childers.cend()) {
-      // TODO
+    const auto children = it->children;
+    it++;
+    auto ch_it = children.cbegin();
+    if(ch_it != children.cend()) {
+      Value def = parseValue(*ch_it, msgs, content, filename);
+      ++ch_it;
+      if(ch_it != children.cend()) {
+        msgs.push_back({
+            PassStep::Parse,
+            MessageType::Info,
+            std::string("Unexpected ")+(ch_it->value.type)._to_string()+" '"+getString(ch_it->value.loc, content)+"' after declaration",
+            ch_it->value.loc
+        });
+      }
+      return {name, ord, def};
     }
-    ++it;
-    return {name, ord, def};
+    // TODO
   }
-  return FuncArg(name, ord);
+  return {name, ord};
 }
 
 Definition parseDefinition( std::vector<Tree<Token>>::const_iterator& it, const std::vector<Tree<Token>>::const_iterator& end, Messages& msgs, const std::string& content, const std::string& filename) {
@@ -73,19 +75,24 @@ Definition parseDefinition( std::vector<Tree<Token>>::const_iterator& it, const 
         "Unexpected '"+val.name+"'",
         val.loc
     });
+    ++it;
+    return val;
   }
   int n = 0;
-  const auto childers = it->children;
-  auto arg_it = childers.cbegin();
-  while(arg_it != childers.cend()) {
-    val.args.push_back(parseArg(arg_it, childers.cend(), n++, msgs, content, filename));
+  const auto children = it->children;
+  auto arg_it = children.cbegin();
+  while(arg_it != children.cend()) {
+    val.args.push_back(parseArg(arg_it, children.cend(), n++, msgs, content, filename));
   }
   ++it;
   if(it != end && it->value.type == +TokenType::Declaration) {
-    const auto childers = it->children;
-    auto val_it = childers.cbegin();
-    val.value = parseValue(val_it, childers.cend(), msgs, content, filename);
-    if(val_it != childers.cend()) {
+    const auto children = it->children;
+    auto val_it = children.cbegin();
+    if(val_it != children.cend()) {
+      val.value = parseValue(*val_it, msgs, content, filename);
+      ++val_it;
+    }
+    if(val_it != children.cend()) {
       msgs.push_back({
           PassStep::Parse,
           MessageType::Error,
@@ -98,14 +105,14 @@ Definition parseDefinition( std::vector<Tree<Token>>::const_iterator& it, const 
     msgs.push_back({
         PassStep::Parse,
         MessageType::Error,
-        "Reached end of scope, expected a definition for '"+val.name+"', got '"+toString(it->value, content, filename)+"' instead.",
+        "Reached end of scope, expected end of definition for '"+val.name+"', got '"+toString(it->value, content, filename)+"' instead.",
         val.loc
     });
   } else {
     msgs.push_back({
         PassStep::Parse,
         MessageType::Error,
-        "Reached end of scope, expected a definition for '"+val.name+"'",
+        "Reached end of scope, expected end of definition for '"+val.name+"'",
         val.loc
     });
   }
