@@ -66,8 +66,7 @@ Definition parseDefinition( std::vector<Tree<Token>>::const_iterator& it, const 
   val.loc = it->value.loc;;
   val.name = getString(val.loc, content);
   const auto type = it->value.type;
-  if (type != +TokenType::Symbol
-  && type != +TokenType::Operator) {
+  if (type != +TokenType::Symbol && type != +TokenType::Operator) {
     msgs.push_back({
         PassStep::Parse,
         MessageType::Error,
@@ -83,7 +82,7 @@ Definition parseDefinition( std::vector<Tree<Token>>::const_iterator& it, const 
   }
   ++it;
   if(it != end && it->value.type == +TokenType::Declaration) {
-const auto childers = it->children;
+    const auto childers = it->children;
     auto val_it = childers.cbegin();
     val.value = parseValue(val_it, childers.cend(), msgs, content, filename);
     if(val_it != childers.cend()) {
@@ -93,7 +92,6 @@ const auto childers = it->children;
           "Expected end of declaration for '"+val.name+"', got " + (val_it->value.type)._to_string() + " '" + getString(val_it->value.loc, content) + "' instead.",
           val_it->value.loc
       });
-      return val;
     }
     ++it;
   } else if(it != end) {
