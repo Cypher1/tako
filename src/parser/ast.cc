@@ -131,6 +131,7 @@ Tokens lex(Messages& msgs, const std::string& content, const std::string& filena
     Offset length = next.second;
     if(type == +TokenType::Error) {
       msgs.push_back({
+        PassStep::Lex,
         MessageType::Error,
         "Unexpected character",
         {loc, length, filename}
@@ -176,7 +177,7 @@ std::vector<Tree<Token>> toExpression(std::vector<Tree<Token>> nodes, Messages& 
     while(it != nodes.cend()) {
       if(isOperator(it->value.type)) {
         // If we're at the right precedence level, this is out next splitter.
-        std::string s = content.substr(it->value.loc.start, it->value.loc.length);
+        std::string s = getString(it->value.loc, content);
         if(precedence[level].find(s) != precedence[level].end()) {
           break;
         }
@@ -205,7 +206,6 @@ std::vector<Tree<Token>> toExpression(std::vector<Tree<Token>> nodes, Messages& 
   }
 
   if( nodes.size() == 1 && nodes[0].value.type == +TokenType::OpenParen) {
-    // std::cerr << "Single Expr------\n" << toString(recurse, content, "") << "------\n";
     nodes = nodes[0].children;
   }
   return nodes;
@@ -224,6 +224,7 @@ std::vector<Tree<Token>> toAst(Tokens& toks, Messages& msgs, const TokenType clo
       if(type != close) {
         // Unbalanced bracket
         msgs.push_back({
+          PassStep::Ast,
           MessageType::Error,
           "Unbalanced bracket",
           curr.loc
@@ -247,8 +248,24 @@ std::vector<Tree<Token>> toAst(Tokens& toks, Messages& msgs, const TokenType clo
         recurse = toAst(toks, msgs, match->second, content);
       }
     }
+
     auto expr = toExpression(recurse, msgs, content);
-    children.push_back({curr, expr});
+    if(!inString && type == +TokenType::OpenParen && children.back().value.type == +TokenType::Symbol) {
+      if(expr.empty()) {
+        msgs.push_back({
+            PassStep::Ast,
+            MessageType::Info,
+            "No need for the parentheses '()' here.",
+            curr.loc
+        });
+      } else {
+        // The previous symbol is a function call, these are the arguments
+        auto end = children.back().children.end();
+        children.back().children.insert(end, expr.begin(), expr.end());
+      }
+    } else {
+      children.push_back({curr, expr});
+    }
   }
 
   return children;

@@ -36,9 +36,22 @@ std::string toString(const Location& loc, const std::string& contents, const std
 std::string toString(const Value& val, const std::string& contents, const std::string& filename, int depth) {
   std::stringstream o;
   indent(o, depth);
-  o << val.name << "(" << toString(val.args, contents, filename) << ")";
-  if (val.scope.size()) {
-    o << "= " << toString(val.scope, contents, filename, 0);
+  o << val.name;
+  if (!val.args.empty()) {
+    o<< "(" << toString(val.args, contents, filename, 0, ", ") << ")";
+  }
+  return o.str();
+}
+
+std::string toString(const Definition& val, const std::string& contents, const std::string& filename, int depth) {
+  std::stringstream o;
+  indent(o, depth);
+  o << val.name;
+  if (!val.args.empty()) {
+    o<< "(" << toString(val.args, contents, filename, 0) << ")";
+  }
+  if (val.value) {
+    o << " = " << toString(*val.value, contents, filename, 0);
   }
   return o.str();
 }
@@ -47,8 +60,8 @@ std::string toString(const FuncArg& arg, const std::string& contents, const std:
   std::stringstream o;
   indent(o, depth);
   o << arg.name << "[" << arg.ord << "]";
-  if (arg.def.size()) {
-    o << "= " << toString(arg.def, contents, filename, 0);
+  if (arg.def) {
+    o << " = " << toString(*arg.def, contents, filename, 0);
   }
   return o.str();
 }
@@ -67,6 +80,7 @@ std::string toString(const Token& tok, const std::string& contents, const std::s
 std::string toString(const Message& msg, const std::string& contents, const std::string& filename, int depth) {
   std::stringstream o;
   indent(o, depth);
+  o << msg.pass << " ";
   o << msg.type << ": ";
   o << msg.msg << " ";
   o << toString(msg.loc, contents, filename, 0);
@@ -75,7 +89,19 @@ std::string toString(const Message& msg, const std::string& contents, const std:
 
 std::string toString(const Tree<Token>& tree, const std::string& contents, const std::string& filename, int depth) {
   std::stringstream o;
-  o << toString(tree.value, contents, filename, depth) << "\n";
-  o << toString(tree.children, contents, filename, depth+2);
+  o << toString(tree.value, contents, filename, depth);
+  o << toString(tree.children, contents, filename, depth+2, "\n");
+  return o.str();
+}
+
+std::string toString(const Module& module, const std::string& contents, const std::string& filename, int depth) {
+  std::stringstream o;
+  indent(o, depth);
+  o << "module " << module.name << " (" << module.definitions.size() << " top level definitions) {\n";
+  for(const auto& val : module.definitions) {
+    o << toString(val, contents, filename, depth+2) << "\n";
+  }
+  indent(o, depth);
+  o << "}";
   return o.str();
 }

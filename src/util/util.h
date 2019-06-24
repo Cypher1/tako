@@ -17,6 +17,17 @@ struct Location {
 };
 
 BETTER_ENUM(
+    PassStep,
+    char,
+    Lex,
+    Ast,
+    Parse,
+    Check,
+    Optimize,
+    CodeGen
+    );
+
+BETTER_ENUM(
     MessageType,
     char,
     Info,
@@ -26,6 +37,7 @@ BETTER_ENUM(
     );
 
 struct Message {
+  PassStep pass;
   MessageType type;
   std::string msg;
   Location loc;
