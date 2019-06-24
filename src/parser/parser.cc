@@ -67,8 +67,7 @@ Definition parseDefinition( std::vector<Tree<Token>>::const_iterator& it, const 
   val.name = getString(val.loc, content);
   const auto type = it->value.type;
   if (type != +TokenType::Symbol
-  && type != +TokenType::Operator
-  && type != +TokenType::NumberLiteral) {
+  && type != +TokenType::Operator) {
     msgs.push_back({
         PassStep::Parse,
         MessageType::Error,
