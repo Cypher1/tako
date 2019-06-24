@@ -79,7 +79,6 @@ int main(int argc, char* argv[]) {
       if(!getline(std::cin, line) || line == ":q") {
         break;
       }
-      std::cerr << "Not sure what to do about '" << line << "'\n";
       runParser(line, "stdin");
     }
   }

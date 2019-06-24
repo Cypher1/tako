@@ -93,6 +93,7 @@ const auto childers = it->children;
           "Expected end of declaration for '"+val.name+"', got " + (val_it->value.type)._to_string() + " '" + getString(val_it->value.loc, content) + "' instead.",
           val_it->value.loc
       });
+      return val;
     }
     ++it;
   } else if(it != end) {
@@ -124,6 +125,8 @@ std::vector<Definition> parseDefinitions(std::vector<Tree<Token>>::const_iterato
 Module parse(Tree<Token>& tree, Messages& msgs, const std::string& content, const std::string& filename) {
   auto children = tree.children;
   auto it = children.cbegin();
-  std::vector<Definition> definitions = parseDefinitions(it, children.cend(), msgs, content, filename);
-  return {filename, definitions};
+  return {
+    filename,
+    parseDefinitions(it, children.cend(), msgs, content, filename)
+  };
 }
