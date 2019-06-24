@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream> //std::stringstream
+#include <algorithm>
 #include <vector>
 #include <unordered_map>
 #include <sys/ioctl.h>
@@ -66,7 +67,7 @@ void runParser(std::string filename) {
   // TODO: use the file+stream natively using memmap.
   std::stringstream strStream;
   strStream << inFile.rdbuf();
-  std::string contents = strStream.str();
+  const std::string contents = strStream.str();
 
   Messages msgs;
   Tokens toks = lex(msgs, contents, filename);
@@ -74,17 +75,11 @@ void runParser(std::string filename) {
 
   Tree<Token> tree = ast(toks, msgs, contents, filename);
   std::cerr << "AST\n";
-  std::cerr << toString(tree.children, contents, filename) << "\n";
+  std::cerr << toString(tree.children, contents, filename, 0, "\n") << "\n";
   Module module = parse(tree, msgs, contents, filename);
 
-  std::cerr << "Got " << module.values.size() << " top level values.\n";
-  for(const auto& val : module.values) {
-    std::cerr << "> " << val.name << "\n";
-    std::cerr << toString(val.args, contents, filename, 1) << "\n";
-    std::cerr << toString(val.scope, contents, filename, 1) << "\n";
-  }
-
-  std::cerr << "Errors:\n";
+  std::cout << toString(module, contents, filename, 0) << "\n";
+  std::sort(msgs.begin(), msgs.end(), [](auto ma, auto mb) { return ma.loc.start < mb.loc.start;});
   for(const auto msg : msgs) {
     std::cerr << toString(msg, contents, filename, 1) << "\n";
   }
