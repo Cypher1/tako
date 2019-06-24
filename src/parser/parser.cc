@@ -66,9 +66,7 @@ Definition parseDefinition( std::vector<Tree<Token>>::const_iterator& it, const 
   val.loc = it->value.loc;;
   val.name = getString(val.loc, content);
   const auto type = it->value.type;
-  if (type != +TokenType::Symbol
-  && type != +TokenType::Operator
-  && type != +TokenType::NumberLiteral) {
+  if (type != +TokenType::Symbol && type != +TokenType::Operator) {
     msgs.push_back({
         PassStep::Parse,
         MessageType::Error,
@@ -84,7 +82,7 @@ Definition parseDefinition( std::vector<Tree<Token>>::const_iterator& it, const 
   }
   ++it;
   if(it != end && it->value.type == +TokenType::Declaration) {
-const auto childers = it->children;
+    const auto childers = it->children;
     auto val_it = childers.cbegin();
     val.value = parseValue(val_it, childers.cend(), msgs, content, filename);
     if(val_it != childers.cend()) {
@@ -125,6 +123,8 @@ std::vector<Definition> parseDefinitions(std::vector<Tree<Token>>::const_iterato
 Module parse(Tree<Token>& tree, Messages& msgs, const std::string& content, const std::string& filename) {
   auto children = tree.children;
   auto it = children.cbegin();
-  std::vector<Definition> definitions = parseDefinitions(it, children.cend(), msgs, content, filename);
-  return {filename, definitions};
+  return {
+    filename,
+    parseDefinitions(it, children.cend(), msgs, content, filename)
+  };
 }

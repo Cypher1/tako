@@ -54,8 +54,7 @@ const std::map<TokenType, TokenType> close_brackets = [](){
 }();
 
 constexpr bool isOperator(const TokenType& type) {
-  return type == +TokenType::Operator
-        || type == +TokenType::Comma;
+  return type == +TokenType::Operator;
 }
 
 constexpr bool isQuote(const TokenType& type) {
@@ -145,10 +144,13 @@ Tokens lex(Messages& msgs, const std::string& content, const std::string& filena
 }
 
 
-const std::vector<std::set<std::string>> precedence = {
-  {","},
-  {"+", "-"},
-  {"*", "/"},
+const std::map<std::string, int> precedence = {
+  {"^", 1},
+  {"*", 2},
+  {"/", 2},
+  {"+", 3},
+  {"-", 3},
+  {",", 4},
 };
 
 std::vector<Tree<Token>> toArgList(Tree<Token> argTree) {
@@ -172,35 +174,40 @@ std::vector<Tree<Token>> toExpression(std::vector<Tree<Token>> nodes, Messages& 
   if(nodes.empty()) {
     return nodes;
   }
-  for(int level = 0; level < precedence.size(); ++level) {
-    auto it = nodes.cbegin();
-    while(it != nodes.cend()) {
-      if(isOperator(it->value.type)) {
-        // If we're at the right precedence level, this is out next splitter.
-        std::string s = getString(it->value.loc, content);
-        if(precedence[level].find(s) != precedence[level].end()) {
-          break;
-        }
+  auto max_op = nodes.end();
+  int highest_level = -1; // of weakest precedence
+  for(auto it = nodes.begin(); it != nodes.end(); ++it) {
+    if(isOperator(it->value.type)) {
+      int level = 0;
+      const std::string s = getString(it->value.loc, content);
+      const auto prec_it = precedence.find(s);
+      if(prec_it != precedence.end()) {
+        level = prec_it->second;
       }
-      ++it;
+      if(level > highest_level) {
+        max_op = it;
+        highest_level = level;
+      }
     }
+  }
 
-    if(it == nodes.cend()) {
-      continue;
-    }
-
+  if(max_op != nodes.end()) {
     // Get the left and right and make them into nodes of this op.
-    Tree<Token> curr = *it;
-    std::vector<Tree<Token>> lArgs = toExpression({nodes.cbegin(), it}, msgs, content);
-    for(auto lArg : lArgs) {
-      const auto ls = toArgList(lArg);
-      curr.children.insert(curr.children.end(), ls.begin(), ls.end());
+    Tree<Token> curr = *max_op;
+    if(nodes.begin() != max_op) {
+      std::vector<Tree<Token>> lArgs = toExpression({nodes.begin(), max_op}, msgs, content);
+      for(auto lArg : lArgs) {
+        const auto ls = toArgList(lArg);
+        curr.children.insert(curr.children.end(), ls.begin(), ls.end());
+      }
     }
 
-    std::vector<Tree<Token>> rArgs = toExpression({it+1, nodes.cend()}, msgs, content);
-    for(auto rArg : rArgs) {
-      const auto rs = toArgList(rArg);
-      curr.children.insert(curr.children.end(), rs.begin(), rs.end());
+    if(max_op != nodes.end() && max_op+1 != nodes.end()) {
+      std::vector<Tree<Token>> rArgs = toExpression({max_op+1, nodes.end()}, msgs, content);
+      for(auto rArg : rArgs) {
+        const auto rs = toArgList(rArg);
+        curr.children.insert(curr.children.end(), rs.begin(), rs.end());
+      }
     }
     nodes = {curr};
   }
@@ -240,17 +247,15 @@ std::vector<Tree<Token>> toAst(Tokens& toks, Messages& msgs, const TokenType clo
       }
     }
 
-    std::vector<Tree<Token>> recurse;
+    std::vector<Tree<Token>> expr;
     // Matching brackets?
     const auto match = brackets.find(type);
-    if(match != brackets.end()) {
-      if(!inString || type == +TokenType::OpenBrace) {
-        recurse = toAst(toks, msgs, match->second, content);
-      }
+    if(match != brackets.end() && (!inString || type == +TokenType::OpenBrace)) {
+      expr = toAst(toks, msgs, match->second, content);
+      expr = toExpression(expr, msgs, content);
     }
 
-    auto expr = toExpression(recurse, msgs, content);
-    if(!inString && type == +TokenType::OpenParen && children.back().value.type == +TokenType::Symbol) {
+    if(!inString && type == +TokenType::OpenParen && !children.empty() && children.back().value.type == +TokenType::Symbol) {
       if(expr.empty()) {
         msgs.push_back({
             PassStep::Ast,
@@ -263,15 +268,19 @@ std::vector<Tree<Token>> toAst(Tokens& toks, Messages& msgs, const TokenType clo
         auto end = children.back().children.end();
         children.back().children.insert(end, expr.begin(), expr.end());
       }
-    } else {
-      children.push_back({curr, expr});
+      continue;
     }
+    children.push_back({curr, expr});
   }
 
   return children;
 }
 
 Tree<Token> ast(Tokens& toks, Messages& msgs, const std::string& content, const std::string& filename) {
-  Tree<Token> root = {{TokenType::Symbol, {0, 0, filename}}, toAst(toks, msgs, TokenType::Error, content)};
-  return root;
+  std::vector<Tree<Token>> all_nodes;
+  while(!toks.empty()) {
+    auto nodes = toAst(toks, msgs, TokenType::Error, content);
+    all_nodes.insert(all_nodes.end(), nodes.begin(), nodes.end());
+  }
+  return {{TokenType::Symbol, {0, 0, filename}}, all_nodes};
 }
