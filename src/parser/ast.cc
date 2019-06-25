@@ -224,11 +224,16 @@ std::vector<Tree<Token>> toAst(Tokens& toks, Messages& msgs, const TokenType clo
     Token curr = toks.back();
     const TokenType& type = curr.type;
     const bool inString = isQuote(close);
+    if(type == +TokenType::Declaration && !children.empty() && children.back().value.type == +TokenType::Declaration) {
+      // This is the end of a set of arguments, we've lost the close bracket.
+      break;
+    }
+
     toks.pop_back();
 
     // Check that this isn't the close.
     if(type == close || (!inString && close_brackets.find(type) != close_brackets.end())) {
-      if(type != close) {
+      if(type != close && close != +TokenType::SemiColon) {
         // Unbalanced bracket
         msgs.push_back({
           PassStep::Ast,
