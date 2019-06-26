@@ -13,7 +13,7 @@ references:
     run:
       name: Install dependencies on Arch
       command: |
-        pacman -Syu --noconfirm base-devel git cmake clang gcc
+        pacman -Syu --noconfirm base-devel git openssh cmake clang gcc
 
   update_submodules: &update_submodules
     run:
