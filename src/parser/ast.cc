@@ -14,7 +14,6 @@ const std::map<TokenType, TokenType> brackets = {
   {TokenType::SingleQuote, TokenType::SingleQuote},
   {TokenType::DoubleQuote, TokenType::DoubleQuote},
   {TokenType::BackQuote, TokenType::BackQuote},
-  {TokenType::Declaration, TokenType::SemiColon},
 };
 
 const std::map<TokenType, TokenType> close_brackets = [](){
@@ -27,156 +26,111 @@ const std::map<TokenType, TokenType> close_brackets = [](){
   return map;
 }();
 
-const std::map<std::string, int> precedence = {
-  {"^", 1},
-  {"*", 2},
-  {"/", 2},
-  {"+", 3},
-  {"-", 3},
-  {",", 4},
+const std::map<std::string, unsigned int> precedence = {
+  {"(", 10},
+  {"^", 20},
+  {"*", 40},
+  {"/", 40},
+  {"+", 50},
+  {"-", 50},
+  {"=", 60},
+  {",", 70},
 };
 
 constexpr bool isOperator(const TokenType& type) {
-  return type == +TokenType::Operator;
+  return type == +TokenType::Operator
+  || type == +TokenType::Comma
+  || type == +TokenType::Declaration
+  || type == +TokenType::OpenParen;
 }
 
 constexpr bool isQuote(const TokenType& type) {
   return type == +TokenType::SingleQuote || type == +TokenType::DoubleQuote || type == +TokenType::BackQuote;
 }
 
-std::vector<Tree<Token>> toArgList(Tree<Token> argTree) {
-  std::vector<Tree<Token>> args;
+struct ParserContext {
+  std::vector<Token>::const_iterator toks;
+  std::vector<Token>::const_iterator end;
+  Messages msgs;
+  const std::string& content;
+  const std::string& filename;
 
-  if(argTree.value.type == +TokenType::Comma) {
-    // Add the list of args
-    for(auto child : argTree.children) {
-      auto childrenExpanded = toArgList(child);
-      args.insert(args.end(), childrenExpanded.begin(), childrenExpanded.end());
+  PassStep step = PassStep::Init;
+
+  bool next() {
+    if(this->curr()) {
+      this->toks++;
+      if(this->toks != this->end) {
+        return true;
+      }
     }
-  } else {
-    // Just a node.
-    args.push_back(argTree);
+    return false;
   }
 
-  return args;
+  bool curr() {
+    return (this->toks != this->end);
+  }
+
+  TokenType currType() {
+    if(this->toks != this->end) {
+      return this->toks->type;
+    } else {
+      throw "Unexpected end of content";
+    }
+  }
+
+  void changeStep(PassStep step) {
+    this->step = step;
+  };
+
+  void msg(MessageType level, std::string msg) {
+    // TODO make this read EOF
+    Location loc = {0, 0, this->filename};
+    if(this->curr()) {
+      loc = this->toks->loc;
+    }
+    this->msgs.push_back({
+      this->step,
+      level,
+      msg,
+      loc
+    });
+  }
+};
+
+int leftBindingPower(TokenType type) {
+  return 0;
 }
 
-std::vector<Tree<Token>> toExpression(std::vector<Tree<Token>> nodes, Messages& msgs, const std::string& content) {
-  if(nodes.empty()) {
-    return nodes;
-  }
-  auto max_op = nodes.end();
-  int highest_level = -1; // of weakest precedence
-  for(auto it = nodes.begin(); it != nodes.end(); ++it) {
-    if(isOperator(it->value.type)) {
-      int level = 0;
-      const std::string s = getString(it->value.loc, content);
-      const auto prec_it = precedence.find(s);
-      if(prec_it != precedence.end()) {
-        level = prec_it->second;
-      }
-      if(level > highest_level) {
-        max_op = it;
-        highest_level = level;
-      }
-    }
-  }
-
-  if(max_op != nodes.end()) {
-    // Get the left and right and make them into nodes of this op.
-    Tree<Token> curr = *max_op;
-    if(nodes.begin() != max_op) {
-      std::vector<Tree<Token>> lArgs = toExpression({nodes.begin(), max_op}, msgs, content);
-      for(auto lArg : lArgs) {
-        const auto ls = toArgList(lArg);
-        curr.children.insert(curr.children.end(), ls.begin(), ls.end());
-      }
-    }
-
-    if(max_op != nodes.end() && max_op+1 != nodes.end()) {
-      std::vector<Tree<Token>> rArgs = toExpression({max_op+1, nodes.end()}, msgs, content);
-      for(auto rArg : rArgs) {
-        const auto rs = toArgList(rArg);
-        curr.children.insert(curr.children.end(), rs.begin(), rs.end());
-      }
-    }
-    nodes = {curr};
-  }
-
-  if( nodes.size() == 1 && nodes[0].value.type == +TokenType::OpenParen) {
-    nodes = nodes[0].children;
-  }
-  return nodes;
+Forest<Token> parseStartWith(TokenType type, ParserContext& ctx) {
+  return {}; //TODO
 }
 
-std::vector<Tree<Token>> toAst(Tokens& toks, Messages& msgs, const TokenType close, const std::string& content) {
-  std::vector<Tree<Token>> children;
-  while(toks.size()) {
-    Token curr = toks.back();
-    const TokenType& type = curr.type;
-    const bool inString = isQuote(close);
-    if(type == +TokenType::Declaration && !children.empty() && children.back().value.type == +TokenType::Declaration) {
-      // This is the end of a set of arguments, we've lost the close bracket.
-      break;
-    }
+template<typename T>
+Forest<Token> parseWithLeftAnd(Forest<Token> left, T curr, ParserContext& ctx) {
+  return {}; //TODO
+}
 
-    toks.pop_back();
 
-    // Check that this isn't the close.
-    if(type == close || (!inString && close_brackets.find(type) != close_brackets.end())) {
-      if(type != close && close != +TokenType::SemiColon) {
-        // Unbalanced bracket
-        msgs.push_back({
-          PassStep::Ast,
-          MessageType::Error,
-          "Unbalanced bracket",
-          curr.loc
-        });
-        curr.type = TokenType::Error;
-      }
-      break;
-    }
-
-    if(!inString) {
-      if(type == +TokenType::Comma || type == +TokenType::WhiteSpace) {
-        continue;
-      }
-    }
-
-    std::vector<Tree<Token>> expr;
-    // Matching brackets?
-    const auto match = brackets.find(type);
-    if(match != brackets.end() && (!inString || type == +TokenType::OpenBrace)) {
-      expr = toAst(toks, msgs, match->second, content);
-      expr = toExpression(expr, msgs, content);
-    }
-
-    if(!inString && type == +TokenType::OpenParen && !children.empty() && children.back().value.type == +TokenType::Symbol) {
-      if(expr.empty()) {
-        msgs.push_back({
-            PassStep::Ast,
-            MessageType::Info,
-            "No need for the parentheses '()' here.",
-            curr.loc
-        });
-      } else {
-        // The previous symbol is a function call, these are the arguments
-        auto end = children.back().children.end();
-        children.back().children.insert(end, expr.begin(), expr.end());
-      }
-      continue;
-    }
-    children.push_back({curr, expr});
+Forest<Token> parseExpr(ParserContext& ctx, int rbp=0) {
+  auto type = ctx.currType();
+  Forest<Token> left = parseStartWith(type, ctx);
+  while(rbp < leftBindingPower(type) && ctx.next()) {
+    left = parseWithLeftAnd(left, t, ctx);
   }
-
-  return children;
+  return left;
 }
 
 Tree<Token> ast(Tokens& toks, Messages& msgs, const std::string& content, const std::string& filename) {
-  std::vector<Tree<Token>> all_nodes;
-  while(!toks.empty()) {
-    auto nodes = toAst(toks, msgs, TokenType::Error, content);
-    all_nodes.insert(all_nodes.end(), nodes.begin(), nodes.end());
-  }
-  return {{TokenType::Symbol, {0, 0, filename}}, all_nodes};
+  ParserContext ctx = {
+    toks.cbegin(),
+    toks.cend(),
+    msgs,
+    content,
+    filename
+  };
+  Forest<Token> module = parseExpr(ctx);
+  msgs = ctx.msgs;
+  Token fileToken = {TokenType::Symbol, {0, 0, filename}};
+  return Tree<Token>(fileToken, module);
 }

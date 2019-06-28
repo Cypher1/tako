@@ -93,10 +93,12 @@ void runParser(const std::string& contents, const std::string& filename) {
 
   Tree<Token> tree = ast(toks, msgs, contents, filename);
   std::cerr << toString(tree.children, contents, filename, 0, "\n") << "\n";
-  Module module = parse(tree, msgs, contents, filename);
+  /*
+   * Module module = parse(tree, msgs, contents, filename);
 
   std::cout << toString(module, contents, filename, 0) << "\n";
   std::sort(msgs.begin(), msgs.end(), [](auto ma, auto mb) { return ma.loc.start < mb.loc.start;});
+  */
   for(const auto msg : msgs) {
     std::cerr << toString(msg, contents, filename, 1) << "\n";
   }

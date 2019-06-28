@@ -18,7 +18,7 @@ Value parseValue(const Tree<Token>& node, Messages& msgs, const std::string& con
   return Value(name, loc, exprs);
 }
 
-FuncArg parseArg(std::vector<Tree<Token>>::const_iterator& it, const std::vector<Tree<Token>>::const_iterator& end, int ord, Messages& msgs, const std::string& content, const std::string& filename) {
+FuncArg parseArg(Forest<Token>::const_iterator& it, const Forest<Token>::const_iterator& end, int ord, Messages& msgs, const std::string& content, const std::string& filename) {
   std::string name = "#error";
   if (it != end && it->value.type == +TokenType::Symbol) {
     name = getString(it->value.loc, content);
@@ -60,7 +60,7 @@ FuncArg parseArg(std::vector<Tree<Token>>::const_iterator& it, const std::vector
   return {name, ord};
 }
 
-Definition parseDefinition( std::vector<Tree<Token>>::const_iterator& it, const std::vector<Tree<Token>>::const_iterator& end, Messages& msgs, const std::string& content, const std::string& filename) {
+Definition parseDefinition( Forest<Token>::const_iterator& it, const Forest<Token>::const_iterator& end, Messages& msgs, const std::string& content, const std::string& filename) {
   Definition val = { "#error", {}, {0, 0, "??l"}, {"#unparsed def", {0, 0, "#??l"}, {}} };
   if(it == end) {
     return val;
@@ -119,7 +119,7 @@ Definition parseDefinition( std::vector<Tree<Token>>::const_iterator& it, const 
   return val;
 }
 
-std::vector<Definition> parseDefinitions(std::vector<Tree<Token>>::const_iterator& it, const std::vector<Tree<Token>>::const_iterator& end, Messages& msgs, const std::string& content, const std::string& filename) {
+std::vector<Definition> parseDefinitions(Forest<Token>::const_iterator& it, const Forest<Token>::const_iterator& end, Messages& msgs, const std::string& content, const std::string& filename) {
   std::vector<Definition> definitions;
   while(it != end) {
     definitions.push_back(parseDefinition(it, end, msgs, content, filename));
