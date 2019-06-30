@@ -8,6 +8,7 @@ test: build/takoTest $(DEPS)
 
 build/Makefile: src/**/CMakeLists.txt
 	cmake -Hsrc -Bbuild -DCMAKE_EXPORT_COMPILE_COMMANDS=1
+	cp build/compile_commands.json .
 
 build/tako: build/Makefile $(DEPS)
 	make -C build tako

@@ -50,8 +50,8 @@ const leftBindingPowerType symbolBind = [](const Token &tok,
 const std::map<std::string, unsigned int> infix_binding = {
     {"-|", 20}, {"|-", 30},  {"=", 40},   {"<", 60},  {"<=", 60}, {">", 60},
     {">=", 60}, {"<>", 60},  {"!=", 60},  {"==", 60}, {"|", 70},  {"^", 80},
-    {"&", 90},  {"<<", 100}, {">>", 100}, {"+", 110}, {"-", 110},
-    {"*", 120}, {"/", 120},  {"//", 120}, {"%", 120}, {".", 140}, {"[", 150},
+    {"&", 90},  {"<<", 100}, {">>", 100}, {"+", 110}, {"-", 110}, {"*", 120},
+    {"/", 120}, {"//", 120}, {"%", 120},  {":", 130}, {".", 140}, {"[", 150},
     {"(", 150}, {"{", 150}};
 
 const std::map<std::string, unsigned int> prefix_binding = {
@@ -72,8 +72,8 @@ Tree<Token> prefixOp(const Token &tok, ParserContext &ctx) {
   auto p_it = prefix_binding.find(ctx.getStringAt(tok));
   if (p_it == prefix_binding.end()) {
     throw std::runtime_error(std::string() +
-                              "Expected a prefix operator but found '" +
-                              ctx.getStringAt(tok) + "'");
+                             "Expected a prefix operator but found '" +
+                             ctx.getStringAt(tok) + "'");
   }
   auto right = expression(ctx, p_it->second);
   root.children.push_back(right);
@@ -96,15 +96,19 @@ Tree<Token> symbol(const Token &tok, ParserContext &ctx) { // Led
   return Tree<Token>(tok);
 };
 
-Tree<Token> ignoreInit(const Token &, ParserContext &) { return {errorToken, {}}; };
-Tree<Token> ignore(const Tree<Token> left, const Token &, ParserContext &) { return left; };
+Tree<Token> ignoreInit(const Token &, ParserContext &) {
+  return {errorToken, {}};
+};
+Tree<Token> ignore(const Tree<Token> left, const Token &, ParserContext &) {
+  return left;
+};
 
 Tree<Token> bracket(const Token &tok, ParserContext &ctx) { // Nud
   std::vector<Tree<Token>> inner;
   const auto close_it = brackets.find(tok.type);
   if (close_it == brackets.end()) {
     throw std::runtime_error(std::string() + "Unknown bracket type " +
-                              tok.type._to_string());
+                             tok.type._to_string());
   }
   const auto closeTT = close_it->second;
   while (ctx.hasToken && (ctx.getCurr().type != closeTT)) {
@@ -116,12 +120,13 @@ Tree<Token> bracket(const Token &tok, ParserContext &ctx) { // Nud
   return {tok, inner};
 };
 
-Tree<Token> funcArgs(Tree<Token> left, const Token &tok, ParserContext &ctx) { // Led
+Tree<Token> funcArgs(Tree<Token> left, const Token &tok,
+                     ParserContext &ctx) { // Led
   std::vector<Tree<Token>> inner;
   const auto close_it = brackets.find(tok.type);
   if (close_it == brackets.end()) {
     throw std::runtime_error(std::string() + "Unknown bracket type " +
-                              tok.type._to_string());
+                             tok.type._to_string());
   }
   const auto closeTT = close_it->second;
   while (ctx.hasToken && (ctx.getCurr().type != closeTT)) {
@@ -142,14 +147,20 @@ std::map<TokenType, SymbolTableEntry> symbolTable = {
     {TokenType::SemiColon, {symbolBind, ignore}},
     {TokenType::Symbol, {symbolBind, symbol}},
     {TokenType::OpenParen, {operatorBind, bracket, funcArgs}},
-    {TokenType::CloseParen, {symbolBind, ignoreInit, ignore}}, // TODO: Warning / error on unmatched.
+    {TokenType::CloseParen,
+     {symbolBind, ignoreInit, ignore}}, // TODO: Warning / error on unmatched.
     {TokenType::OpenBrace, {operatorBind, bracket}},
-    {TokenType::CloseBrace, {symbolBind, ignoreInit, ignore}}, // TODO: Warning / error on unmatched.
+    {TokenType::CloseBrace,
+     {symbolBind, ignoreInit, ignore}}, // TODO: Warning / error on unmatched.
     {TokenType::OpenBracket, {operatorBind, bracket}},
-    {TokenType::CloseBracket, {symbolBind, ignoreInit, ignore}}, // TODO: Warning / error on unmatched.
-    {TokenType::DoubleQuote, {operatorBind, bracket}}, // TODO: Warning / error on unmatched.
-    {TokenType::SingleQuote, {operatorBind, bracket}}, // TODO: Warning / error on unmatched.
-    {TokenType::BackQuote, {operatorBind, bracket}}, // TODO: Warning / error on unmatched.
+    {TokenType::CloseBracket,
+     {symbolBind, ignoreInit, ignore}}, // TODO: Warning / error on unmatched.
+    {TokenType::DoubleQuote,
+     {operatorBind, bracket}}, // TODO: Warning / error on unmatched.
+    {TokenType::SingleQuote,
+     {operatorBind, bracket}}, // TODO: Warning / error on unmatched.
+    {TokenType::BackQuote,
+     {operatorBind, bracket}}, // TODO: Warning / error on unmatched.
     {TokenType::NumberLiteral, {symbolBind, symbol}},
     {TokenType::Dot, {symbolBind, symbol}},
     {TokenType::Error, {symbolBind, symbol}},

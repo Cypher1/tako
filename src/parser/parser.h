@@ -25,15 +25,7 @@ struct Value {
   Value(std::string name, Location loc, std::vector<Value> args): name{name}, loc{loc}, args{args} {}
 };
 
-struct FuncArg {
-  std::string name;
-  int ord;
-  std::optional<Value> def; // Default value for the arg.
-  // TODO: consider pattern matching? maybe not in func args?
-  FuncArg() = delete;
-  FuncArg(std::string name, int ord): name{name}, ord{ord}, def{std::nullopt} {}
-  FuncArg(std::string name, int ord, Value def): name{name}, ord{ord}, def{def} {}
-};
+struct FuncArg;
 
 struct Definition {
   std::string name;
@@ -42,6 +34,14 @@ struct Definition {
   std::optional<Value> value;
   Definition() = delete;
   Definition(std::string name, std::vector<FuncArg>args, Location loc, std::optional<Value> value): name{name}, args{args}, loc{loc}, value{value} {}
+};
+
+struct FuncArg : Definition {
+  int ord;
+  // TODO: consider pattern matching? maybe not in func args?
+  FuncArg() = delete;
+  FuncArg(int ord, Definition def): ord{ord}, Definition(def.name, def.args, def.loc, def.value) {
+  }
 };
 
 struct Module {

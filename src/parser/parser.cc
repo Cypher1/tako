@@ -32,45 +32,67 @@ struct FuncArg {
 
 */
 
-Definition parseDefinition(const Tree<Token>& node, Messages& msgs, const std::string& content, const std::string& filename) {
+std::optional<Definition> parseDefinition(const Tree<Token>& node, Messages& msgs, const std::string& content, const std::string& filename) {
   // Todo check that root is =
   std::string op = getString(node.value.loc, content);
-  if (node.value.type == +TokenType::Operator && op == "=") {
-    // 
-    std::cout << "Got def\n";
-  } else {
-    std::cout << "Expected def got expr\n";
+  if (node.value.type != +TokenType::Operator || op != "=") {
+    std::cout << "Expected def got expr\n"; // TODO msg
+    return {};
   }
-  // Todo check that root.child[0] is = symbol
-  // Get symbol name
   std::string name = "#error";
   std::vector<FuncArg> args = {};
   Location loc = {0, 0, "#errorfile"};
-  // Todo check that root.child[1] is = expr
+  // Get symbol name
   std::optional<Value> value = {};
-  if (!node.children.empty() && node.children[0].value.type == +TokenType::Operator) {
-    name = getString(node.children[0].value.loc, content);
-    // Todo check that root.child[0].child* is = definition
-    args = {};
-    loc = {0, 0, "#errorfile"};
-    // Todo check that root.child[1] is = expr
-    value = {};
-    /*
-    msgs.push_back({
-        PassStep::Parse,
-        MessageType::Error,
-        "Reached end of scope, expected end of definition for '"+val.name+"', got '"+toString(node.value, content, filename)+"' instead.",
-        val.loc
-    });
-    */
+
+  if (!node.children.empty()) {
+    const auto& fst = node.children[0];
+    if(fst.value.type == +TokenType::Symbol) {
+      name = getString(fst.value.loc, content);
+      // Todo check that root.child[0].child* is = definition
+      int ord = 0;
+      for(const auto& argTree : fst.children) {
+        std::cout << name << ", arg=" << toString(argTree, content, filename) << "\n";
+
+        std::string argStr = getString(node.value.loc, content);
+        std::optional<Definition> argDef;
+        if (argTree.value.type != +TokenType::Operator || argStr != "=") {
+            // TODO handle name + values args (not just kw args)
+          argDef = parseDefinition(argTree, msgs, content, filename);
+        } else {
+          argDef = parseDefinition(argTree, msgs, content, filename);
+        }
+        if(argDef) {
+          FuncArg arg(ord++, *argDef);
+          args.push_back(arg);
+        } else {
+          // TODO msg
+        }
+      }
+      loc = {0, 0, "#errorfile"};
+      // Todo check that root.child[1] is = expr
+      value = {};
+      /*
+      msgs.push_back({
+          PassStep::Parse,
+          MessageType::Error,
+          "Reached end of scope, expected end of definition for '"+val.name+"', got '"+toString(node.value, content, filename)+"' instead.",
+          val.loc
+      });
+      */
+    }
   }
+  // Todo check that root.child[1] is = expr
   return Definition(name, args, loc, value);
 }
 
 Module parse(const Tree<Token>& module, Messages& msgs, const std::string& content, const std::string& filename) {
   std::vector<Definition> definitions;
-  for(const auto& def : module.children) {
-    definitions.push_back(parseDefinition(def, msgs, content, filename));
+  for(const auto& defTree : module.children) {
+    auto def = parseDefinition(defTree, msgs, content, filename);
+    if(def) {
+      definitions.push_back(*def);
+    }
   }
   return { filename, definitions };
 }
