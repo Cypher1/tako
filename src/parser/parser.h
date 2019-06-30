@@ -41,7 +41,7 @@ struct Definition {
   Location loc;
   std::optional<Value> value;
   Definition() = delete;
-  Definition(std::string name, std::vector<FuncArg>args, Location loc, Value value): name{name}, args{args}, loc{loc}, value{value} {}
+  Definition(std::string name, std::vector<FuncArg>args, Location loc, std::optional<Value> value): name{name}, args{args}, loc{loc}, value{value} {}
 };
 
 struct Module {
@@ -51,6 +51,6 @@ struct Module {
   Module(std::string name, std::vector<Definition>definitions): name{name}, definitions{definitions} {}
 };
 
-Module parse(Tree<Token>& tree, Messages& msgs, const std::string& content, const std::string& filename);
+Module parse(const Tree<Token>& tree, Messages& msgs, const std::string& content, const std::string& filename);
 
 #endif // #ifndef PARSER_H
