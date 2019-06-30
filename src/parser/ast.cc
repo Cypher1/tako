@@ -1,182 +1,251 @@
-#include <iostream>
-#include <vector>
-#include <map>
-#include <set>
-#include <string>
 #include "ast.h"
+#include "ast_internal.h"
 #include "lex.h"
 #include "toString.h"
+#include <functional>
+#include <iostream>
+#include <map>
+#include <set>
+#include <stdexcept> // TODO: Remove use of exceptions, instead use messages and fallback.
+#include <string>
+#include <vector>
 
 const std::map<TokenType, TokenType> brackets = {
-  {TokenType::OpenParen, TokenType::CloseParen},
-  {TokenType::OpenBrace, TokenType::CloseBrace},
-  {TokenType::OpenBracket, TokenType::CloseBracket},
-  {TokenType::SingleQuote, TokenType::SingleQuote},
-  {TokenType::DoubleQuote, TokenType::DoubleQuote},
-  {TokenType::BackQuote, TokenType::BackQuote},
-  {TokenType::Declaration, TokenType::SemiColon},
+    {TokenType::OpenParen, TokenType::CloseParen},
+    {TokenType::OpenBrace, TokenType::CloseBrace},
+    {TokenType::OpenBracket, TokenType::CloseBracket},
+    {TokenType::SingleQuote, TokenType::SingleQuote},
+    {TokenType::DoubleQuote, TokenType::DoubleQuote},
+    {TokenType::BackQuote, TokenType::BackQuote},
 };
 
-const std::map<TokenType, TokenType> close_brackets = [](){
-  std::map<TokenType, TokenType>map;
-  for(auto kv : brackets) {
-    if(brackets.find(kv.second) == brackets.end()) {
+const std::map<TokenType, TokenType> close_brackets = []() {
+  std::map<TokenType, TokenType> map;
+  for (auto kv : brackets) {
+    if (brackets.find(kv.second) == brackets.end()) {
       map.emplace(kv.second, kv.first);
     }
   }
   return map;
 }();
 
-const std::map<std::string, int> precedence = {
-  {"^", 1},
-  {"*", 2},
-  {"/", 2},
-  {"+", 3},
-  {"-", 3},
-  {",", 4},
+constexpr bool isQuote(const TokenType &type) {
+  return type == +TokenType::SingleQuote || type == +TokenType::DoubleQuote ||
+         type == +TokenType::BackQuote;
+}
+
+const Token eofToken = {TokenType::Error, {0, 0, "<file>?"}};
+const Token errorToken = {TokenType::Error, {0, 0, "<file>?"}};
+
+const std::map<std::string, unsigned int> symbol_binding = {};
+const leftBindingPowerType symbolBind = [](const Token &tok,
+                                           const ParserContext &ctx) {
+  auto p_it = symbol_binding.find(ctx.getStringAt(tok));
+  if (p_it == symbol_binding.end()) {
+    return 0u;
+  }
+  return p_it->second;
 };
 
-constexpr bool isOperator(const TokenType& type) {
-  return type == +TokenType::Operator;
-}
+const std::map<std::string, unsigned int> infix_binding = {
+    {"-|", 20}, {"|-", 30},  {"=", 40},   {"<", 60},  {"<=", 60}, {">", 60},
+    {">=", 60}, {"<>", 60},  {"!=", 60},  {"==", 60}, {"|", 70},  {"^", 80},
+    {"&", 90},  {"<<", 100}, {">>", 100}, {"+", 110}, {"-", 110},
+    {"*", 120}, {"/", 120},  {"//", 120}, {"%", 120}, {".", 140}, {"[", 150},
+    {"(", 150}, {"{", 150}};
 
-constexpr bool isQuote(const TokenType& type) {
-  return type == +TokenType::SingleQuote || type == +TokenType::DoubleQuote || type == +TokenType::BackQuote;
-}
+const std::map<std::string, unsigned int> prefix_binding = {
+    {"-", 130}, {"+", 130}, {"~", 130}, {"!", 130}};
 
-std::vector<Tree<Token>> toArgList(Tree<Token> argTree) {
-  std::vector<Tree<Token>> args;
+const auto operatorBind = [](const Token &tok, ParserContext &ctx) { // Lbp
+  auto p_it = infix_binding.find(ctx.getStringAt(tok));
+  if (p_it == infix_binding.end()) {
+    throw std::runtime_error(std::string() +
+                             "Expected an infix operator but found '" +
+                             ctx.getStringAt(tok) + "'");
+  }
+  return p_it->second;
+};
 
-  if(argTree.value.type == +TokenType::Comma) {
-    // Add the list of args
-    for(auto child : argTree.children) {
-      auto childrenExpanded = toArgList(child);
-      args.insert(args.end(), childrenExpanded.begin(), childrenExpanded.end());
+Tree<Token> prefixOp(const Token &tok, ParserContext &ctx) {
+  auto root = Tree<Token>(tok);
+  auto p_it = prefix_binding.find(ctx.getStringAt(tok));
+  if (p_it == prefix_binding.end()) {
+    throw std::runtime_error(std::string() +
+                              "Expected a prefix operator but found '" +
+                              ctx.getStringAt(tok) + "'");
+  }
+  auto right = expression(ctx, p_it->second);
+  root.children.push_back(right);
+  return root;
+};
+
+Tree<Token> infixOp(Tree<Token> left, const Token &tok, ParserContext &ctx) {
+  auto root = Tree<Token>(tok, {left});
+  // Led
+  auto p_it = infix_binding.find(ctx.getStringAt(tok));
+  if (p_it == infix_binding.end()) {
+    // TODO Defaulting is bad...
+  };
+  auto right = expression(ctx, p_it->second);
+  root.children.push_back(right);
+  return root;
+};
+
+Tree<Token> symbol(const Token &tok, ParserContext &ctx) { // Led
+  return Tree<Token>(tok);
+};
+
+Tree<Token> ignoreInit(const Token &, ParserContext &) { return {errorToken, {}}; };
+Tree<Token> ignore(const Tree<Token> left, const Token &, ParserContext &) { return left; };
+
+Tree<Token> bracket(const Token &tok, ParserContext &ctx) { // Nud
+  std::vector<Tree<Token>> inner;
+  const auto close_it = brackets.find(tok.type);
+  if (close_it == brackets.end()) {
+    throw std::runtime_error(std::string() + "Unknown bracket type " +
+                              tok.type._to_string());
+  }
+  const auto closeTT = close_it->second;
+  while (ctx.hasToken && (ctx.getCurr().type != closeTT)) {
+    auto exp = expression(ctx);
+    inner.push_back(exp);
+  }
+  ctx.expect(closeTT);
+
+  return {tok, inner};
+};
+
+Tree<Token> funcArgs(Tree<Token> left, const Token &tok, ParserContext &ctx) { // Led
+  std::vector<Tree<Token>> inner;
+  const auto close_it = brackets.find(tok.type);
+  if (close_it == brackets.end()) {
+    throw std::runtime_error(std::string() + "Unknown bracket type " +
+                              tok.type._to_string());
+  }
+  const auto closeTT = close_it->second;
+  while (ctx.hasToken && (ctx.getCurr().type != closeTT)) {
+    auto exp = expression(ctx);
+    inner.push_back(exp);
+  }
+  ctx.expect(closeTT);
+
+  left.children = inner;
+  return left; // This is a function call
+};
+
+std::map<TokenType, SymbolTableEntry> symbolTable = {
+    {TokenType::Comma, {operatorBind, infixOp}},
+    {TokenType::Operator, {operatorBind, prefixOp, infixOp}},
+    {TokenType::PreCond, {operatorBind, infixOp}},
+    {TokenType::PostCond, {operatorBind, infixOp}},
+    {TokenType::SemiColon, {symbolBind, ignore}},
+    {TokenType::Symbol, {symbolBind, symbol}},
+    {TokenType::OpenParen, {operatorBind, bracket, funcArgs}},
+    {TokenType::CloseParen, {symbolBind, ignoreInit, ignore}}, // TODO: Warning / error on unmatched.
+    {TokenType::OpenBrace, {operatorBind, bracket}},
+    {TokenType::CloseBrace, {symbolBind, ignoreInit, ignore}}, // TODO: Warning / error on unmatched.
+    {TokenType::OpenBracket, {operatorBind, bracket}},
+    {TokenType::CloseBracket, {symbolBind, ignoreInit, ignore}}, // TODO: Warning / error on unmatched.
+    {TokenType::DoubleQuote, {operatorBind, bracket}}, // TODO: Warning / error on unmatched.
+    {TokenType::SingleQuote, {operatorBind, bracket}}, // TODO: Warning / error on unmatched.
+    {TokenType::BackQuote, {operatorBind, bracket}}, // TODO: Warning / error on unmatched.
+    {TokenType::NumberLiteral, {symbolBind, symbol}},
+    {TokenType::Dot, {symbolBind, symbol}},
+    {TokenType::Error, {symbolBind, symbol}},
+};
+
+bool ParserContext::next() {
+  if (hasToken) {
+    // std::cout << "> " << getStringAt(getCurr()) << "\n"; // For debugging.
+    toks++;
+    if (toks != end) {
+      if (toks->type == +TokenType::WhiteSpace ||
+          toks->type == +TokenType::Comma ||
+          toks->type == +TokenType::SemiColon) {
+        return next(); // TODO instring...
+      }
+      return true;
     }
+  }
+  hasToken = false;
+  return false;
+}
+
+bool ParserContext::expect(const TokenType &expected) {
+  if (getCurr().type != expected) {
+    msg(MessageType::Error,
+        std::string() + "Expected a " + expected._to_string() + " but found " +
+            getCurr().type._to_string() + " '" + getStringAt(getCurr()) + "'");
+  }
+  return next();
+}
+
+const Token &ParserContext::getCurr() {
+  if (toks != end) {
+    return *(toks);
   } else {
-    // Just a node.
-    args.push_back(argTree);
+    return eofToken;
+    throw std::runtime_error("Unexpected end of content");
   }
-
-  return args;
 }
 
-std::vector<Tree<Token>> toExpression(std::vector<Tree<Token>> nodes, Messages& msgs, const std::string& content) {
-  if(nodes.empty()) {
-    return nodes;
+const SymbolTableEntry ParserContext::entry() {
+  auto t = getCurr();
+  const auto symbol_it = symbolTable.find(t.type);
+  if (symbol_it == symbolTable.end()) {
+    throw std::runtime_error(std::string() + t.type._to_string() + +" '" +
+                             getStringAt(t) + "' not found in symbol table");
   }
-  auto max_op = nodes.end();
-  int highest_level = -1; // of weakest precedence
-  for(auto it = nodes.begin(); it != nodes.end(); ++it) {
-    if(isOperator(it->value.type)) {
-      int level = 0;
-      const std::string s = getString(it->value.loc, content);
-      const auto prec_it = precedence.find(s);
-      if(prec_it != precedence.end()) {
-        level = prec_it->second;
-      }
-      if(level > highest_level) {
-        max_op = it;
-        highest_level = level;
-      }
-    }
-  }
-
-  if(max_op != nodes.end()) {
-    // Get the left and right and make them into nodes of this op.
-    Tree<Token> curr = *max_op;
-    if(nodes.begin() != max_op) {
-      std::vector<Tree<Token>> lArgs = toExpression({nodes.begin(), max_op}, msgs, content);
-      for(auto lArg : lArgs) {
-        const auto ls = toArgList(lArg);
-        curr.children.insert(curr.children.end(), ls.begin(), ls.end());
-      }
-    }
-
-    if(max_op != nodes.end() && max_op+1 != nodes.end()) {
-      std::vector<Tree<Token>> rArgs = toExpression({max_op+1, nodes.end()}, msgs, content);
-      for(auto rArg : rArgs) {
-        const auto rs = toArgList(rArg);
-        curr.children.insert(curr.children.end(), rs.begin(), rs.end());
-      }
-    }
-    nodes = {curr};
-  }
-
-  if( nodes.size() == 1 && nodes[0].value.type == +TokenType::OpenParen) {
-    nodes = nodes[0].children;
-  }
-  return nodes;
+  return symbol_it->second;
 }
 
-std::vector<Tree<Token>> toAst(Tokens& toks, Messages& msgs, const TokenType close, const std::string& content) {
-  std::vector<Tree<Token>> children;
-  while(toks.size()) {
-    Token curr = toks.back();
-    const TokenType& type = curr.type;
-    const bool inString = isQuote(close);
-    if(type == +TokenType::Declaration && !children.empty() && children.back().value.type == +TokenType::Declaration) {
-      // This is the end of a set of arguments, we've lost the close bracket.
-      break;
-    }
-
-    toks.pop_back();
-
-    // Check that this isn't the close.
-    if(type == close || (!inString && close_brackets.find(type) != close_brackets.end())) {
-      if(type != close && close != +TokenType::SemiColon) {
-        // Unbalanced bracket
-        msgs.push_back({
-          PassStep::Ast,
-          MessageType::Error,
-          "Unbalanced bracket",
-          curr.loc
-        });
-        curr.type = TokenType::Error;
-      }
-      break;
-    }
-
-    if(!inString) {
-      if(type == +TokenType::Comma || type == +TokenType::WhiteSpace) {
-        continue;
-      }
-    }
-
-    std::vector<Tree<Token>> expr;
-    // Matching brackets?
-    const auto match = brackets.find(type);
-    if(match != brackets.end() && (!inString || type == +TokenType::OpenBrace)) {
-      expr = toAst(toks, msgs, match->second, content);
-      expr = toExpression(expr, msgs, content);
-    }
-
-    if(!inString && type == +TokenType::OpenParen && !children.empty() && children.back().value.type == +TokenType::Symbol) {
-      if(expr.empty()) {
-        msgs.push_back({
-            PassStep::Ast,
-            MessageType::Info,
-            "No need for the parentheses '()' here.",
-            curr.loc
-        });
-      } else {
-        // The previous symbol is a function call, these are the arguments
-        auto end = children.back().children.end();
-        children.back().children.insert(end, expr.begin(), expr.end());
-      }
-      continue;
-    }
-    children.push_back({curr, expr});
-  }
-
-  return children;
+std::string ParserContext::getStringAt(const Token &tok) const {
+  return getString(tok.loc, content);
 }
 
-Tree<Token> ast(Tokens& toks, Messages& msgs, const std::string& content, const std::string& filename) {
-  std::vector<Tree<Token>> all_nodes;
-  while(!toks.empty()) {
-    auto nodes = toAst(toks, msgs, TokenType::Error, content);
-    all_nodes.insert(all_nodes.end(), nodes.begin(), nodes.end());
+// TODO: Break the parser context type into a context type and a parser
+// (containing a context) So that this can be used outside the ast generation.
+void ParserContext::startStep(PassStep step) { step = step; };
+
+void ParserContext::msg(MessageType level, std::string msg) {
+  // TODO make this print as EOF
+  Location loc = eofToken.loc;
+  if (hasToken) {
+    loc = toks->loc;
   }
-  return {{TokenType::Symbol, {0, 0, filename}}, all_nodes};
+  msgs.push_back({step, level, msg, loc});
+}
+
+Tree<Token> expression(ParserContext &ctx, unsigned int rbp) {
+  unsigned int binding = 0;
+  Token t = ctx.getCurr();
+  const auto t_entry = ctx.entry();
+  ctx.next();
+  Tree<Token> left = t_entry.nud(t, ctx);
+  binding = ctx.entry().binding(ctx.getCurr(), ctx);
+  while (rbp < binding && ctx.hasToken) {
+    t = ctx.getCurr();
+    const auto t_entry = ctx.entry();
+    ctx.next();
+    left = t_entry.led(left, t, ctx);
+    binding = ctx.entry().binding(ctx.getCurr(), ctx);
+  }
+  return left;
+}
+
+Tree<Token> ast(Tokens &toks, Messages &msgs, const std::string &content,
+                const std::string &filename) {
+  // Add a disposable char to make whitespace dropping easy.
+  toks.insert(toks.begin(), errorToken);
+  ParserContext ctx = {toks.cbegin(), toks.cend(), msgs, content, filename};
+  ctx.startStep(PassStep::Ast);
+  ctx.next();
+  Forest<Token> module;
+  while (ctx.hasToken) {
+    module.push_back(expression(ctx));
+  }
+  msgs = ctx.msgs;
+  Token fileToken = {TokenType::Symbol, {0, 0, filename}};
+  return Tree<Token>(fileToken, module);
 }

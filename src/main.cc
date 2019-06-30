@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream> //std::stringstream
+#include <stdexcept> // TODO: Remove use of exceptions, instead use messages and fallback.
 #include <algorithm>
 #include <vector>
 #include <unordered_map>
@@ -87,17 +88,23 @@ int main(int argc, char* argv[]) {
 }
 
 void runParser(const std::string& contents, const std::string& filename) {
-  Messages msgs;
-  Tokens toks = lex(msgs, contents, filename);
-  std::cerr << "Got " << toks.size() << " tokens.\n";
+  try {
+    Messages msgs;
+    Tokens toks = lex(msgs, contents, filename);
+    std::cerr << "Got " << toks.size() << " tokens.\n";
 
-  Tree<Token> tree = ast(toks, msgs, contents, filename);
-  std::cerr << toString(tree.children, contents, filename, 0, "\n") << "\n";
-  Module module = parse(tree, msgs, contents, filename);
+    Tree<Token> tree = ast(toks, msgs, contents, filename);
+    std::cerr << toString(tree.children, contents, filename, 0, "\n") << "\n";
+    /*
+    * Module module = parse(tree, msgs, contents, filename);
 
-  std::cout << toString(module, contents, filename, 0) << "\n";
-  std::sort(msgs.begin(), msgs.end(), [](auto ma, auto mb) { return ma.loc.start < mb.loc.start;});
-  for(const auto msg : msgs) {
-    std::cerr << toString(msg, contents, filename, 1) << "\n";
+    std::cout << toString(module, contents, filename, 0) << "\n";
+    std::sort(msgs.begin(), msgs.end(), [](auto ma, auto mb) { return ma.loc.start < mb.loc.start;});
+    */
+    for(const auto msg : msgs) {
+      std::cerr << toString(msg, contents, filename, 1) << "\n";
+    }
+  } catch (std::runtime_error er) {
+    std::cout << "Parser crashed with: " << er.what() << "\n";
   }
 }

@@ -22,14 +22,12 @@ const std::vector<std::pair<std::string, TokenType>> matchToken = {
   {"}", TokenType::CloseBrace},
   {"[", TokenType::OpenBracket},
   {"]", TokenType::CloseBracket},
-  {"=", TokenType::Declaration},
   {";", TokenType::SemiColon},
   {"'", TokenType::SingleQuote},
   {"\"", TokenType::DoubleQuote},
   {"`", TokenType::BackQuote},
   {"-|", TokenType::PreCond},
   {"|-", TokenType::PostCond},
-  {".", TokenType::Dot},
   {",", TokenType::Comma}
 };
 
@@ -80,14 +78,14 @@ std::pair<TokenType, Offset> chooseTok(std::string content) {
   if(Offset length = consumeWhiteSpace(content)) {
     return {TokenType::WhiteSpace, length};
   }
+  if(Offset length = matchesFrom(operatorChar, content)) {
+    return {TokenType::Operator, length};
+  }
   if(Offset length = matchesFrom(numberChar, content)) {
     return {TokenType::NumberLiteral, length};
   }
   if(Offset length = matchesFrom(symbolChar, content)) {
     return {TokenType::Symbol, length};
-  }
-  if(Offset length = matchesFrom(operatorChar, content)) {
-    return {TokenType::Operator, length};
   }
   return {TokenType::Error, 1};
 }
@@ -108,8 +106,7 @@ Tokens lex(Messages& msgs, const std::string& content, const std::string& filena
         {loc, length, filename}
       });
     }
-    Token tok = {type, {loc, length, filename}};
-    toks.insert(toks.begin(), tok);
+    toks.push_back({type, {loc, length, filename}});
     loc += length;
   }
   return toks;

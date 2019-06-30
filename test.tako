@@ -1,25 +1,7 @@
-alpha(b=f(32, c);,c,d) = 2*(d+b*c+d);
+alpha(b=f(bar.baz(32), c),c,d) = 2*(d+b*c+d)
 
-twoThings(f, a, b)= { all(x. f(x) > x) -|fa =f(a); fb=f(b); fa + fb };
+runMapper()=m()]
 
-mapper = {
-  Load(5, a)
-  Load([0,1,0,1,], a)
-  Load([0,0,1,1,], b)
-  Add(a, b, c)    // Testing here!!!
-  Add(b, c, d)
-  Echo("Test 123")
-  Echo('Test /* hi */123')
-  Echo(`Test {a/* hi */}`)
-  Echo(`Test [a/* hi */]`)
-|- c, d };
+f=(2+3*2)*(- -3*2+2)
 
-/* testing...
-
-multiline
-*/
-runMapper()=m();]
-
-f=(2+3*2)*(3*2+2);
-
-a(f = 32; d = log2(f)) = f%2^3*d
+a(f = 32 d = log2(f)) = f%2^3*d

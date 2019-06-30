@@ -69,7 +69,14 @@ std::string toString(const FuncArg& arg, const std::string& contents, const std:
 std::string toString(const Token& tok, const std::string& contents, const std::string& filename, int depth) {
   std::stringstream o;
   indent(o, depth);
-  o << getString(tok.loc, contents) << " : " << tok.type;
+  if (tok.type == +TokenType::WhiteSpace) {
+    o << "'";
+  }
+  o << getString(tok.loc, contents);
+  if (tok.type == +TokenType::WhiteSpace) {
+    o << "'";
+  }
+  o << " : " << tok.type;
   std::stringstream s;
   s << toString(tok.loc, contents, filename, 0);
   indent(o, width-s.str().length()-o.str().length());
