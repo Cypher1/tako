@@ -2,6 +2,6 @@ alpha(b=f(bar.baz(32), c),c,d) = 2*(d+b*c+d)
 
 runMapper()=m()]
 
-f=(2+3*2)*(3*2+2)
+f=(2+3*2)*(- -3*2+2)
 
 a(f = 32 d = log2(f)) = f%2^3*d

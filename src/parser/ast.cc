@@ -46,38 +46,31 @@ const leftBindingPowerType symbolBind = [](const Token &tok,
   return p_it->second;
 };
 
-const std::map<std::string, unsigned int>
-    infix_binding = {{"-|", 20}, {"|-", 30},
-      {"=", 40},   {"<", 60},  {"<=", 60},  {">", 60},
-                     {">=", 60},  {"<>", 60}, {"!=", 60},  {"==", 60},
-                     {"|", 70},   {"^", 80},  {"&", 90},   {"<<", 100},
-                     {">>", 100}, {"+", 110}, {"-", 110},
+const std::map<std::string, unsigned int> infix_binding = {
+    {"-|", 20}, {"|-", 30},  {"=", 40},   {"<", 60},  {"<=", 60}, {">", 60},
+    {">=", 60}, {"<>", 60},  {"!=", 60},  {"==", 60}, {"|", 70},  {"^", 80},
+    {"&", 90},  {"<<", 100}, {">>", 100}, {"+", 110}, {"-", 110},
+    {"*", 120}, {"/", 120},  {"//", 120}, {"%", 120}, {".", 140}, {"[", 150},
+    {"(", 150}, {"{", 150}};
 
-                     {"*", 120},  {"/", 120}, {"//", 120}, {"%", 120},
-                     {".", 140},  {"[", 150}, {"(", 150},  {"{", 150}};
-
+const std::map<std::string, unsigned int> prefix_binding = {
+    {"-", 130}, {"+", 130}, {"~", 130}, {"!", 130}};
 
 const auto operatorBind = [](const Token &tok, ParserContext &ctx) { // Lbp
-      auto p_it = infix_binding.find(ctx.getStringAt(tok));
-      if (p_it == infix_binding.end()) {
-        throw std::runtime_error(std::string() +
-                                 "Expected an infix operator but found '" +
-                                 ctx.getStringAt(tok) + "'");
-      }
-      return p_it->second;
-    };
+  auto p_it = infix_binding.find(ctx.getStringAt(tok));
+  if (p_it == infix_binding.end()) {
+    throw std::runtime_error(std::string() +
+                             "Expected an infix operator but found '" +
+                             ctx.getStringAt(tok) + "'");
+  }
+  return p_it->second;
+};
 
 const auto infixEntry = SymbolTableEntry(
-    operatorBind,
-    [](Forest<Token> left, const Token &tok, ParserContext &ctx) {
-      std::cout << ">>> " << (ctx.getStringAt(tok)) << "(" << left.size()
-                << ")\n";
+    operatorBind, [](Forest<Token> left, const Token &tok, ParserContext &ctx) {
       auto root = Tree<Token>(tok, left);
       if (left.empty()) {
         // Nud
-        const std::map<std::string, unsigned int> prefix_binding = {
-            // {"-", 130}, {"+", 130}, {"~", 130}, {"!", 130}, {"|-", 130},
-        };
         auto p_it = prefix_binding.find(ctx.getStringAt(tok));
         if (p_it == prefix_binding.end()) {
           throw std::runtime_error(std::string() +
@@ -86,6 +79,7 @@ const auto infixEntry = SymbolTableEntry(
         }
         auto right = expression(ctx, p_it->second);
         root.children.insert(root.children.end(), right.begin(), right.end());
+        return std::vector<Tree<Token>>({root});
       }
       // Led
       auto p_it = infix_binding.find(ctx.getStringAt(tok));
@@ -109,13 +103,12 @@ const auto ignoreEntry =
 
 const auto bracketEntry =
     SymbolTableEntry(operatorBind, [](Forest<Token> left, const Token &tok,
-                                    ParserContext &ctx) { // Led
+                                      ParserContext &ctx) { // Led
       std::vector<Tree<Token>> inner;
       const auto close_it = brackets.find(tok.type);
       if (close_it == brackets.end()) {
         throw std::runtime_error(std::string() + "Unknown bracket type " +
                                  tok.type._to_string());
-        std::cout << "Closing\n";
       }
       const auto closeTT = close_it->second;
       while (ctx.hasToken && (ctx.getCurr().type != closeTT)) {
@@ -124,7 +117,7 @@ const auto bracketEntry =
       }
       ctx.expect(closeTT);
 
-      if(left.empty()) {
+      if (left.empty()) {
         return inner; // This is a group of parens
       }
       left.back().children = inner;
@@ -143,9 +136,12 @@ std::map<TokenType, SymbolTableEntry> symbolTable = {
     {TokenType::OpenBrace, bracketEntry},
     {TokenType::CloseBrace, ignoreEntry}, // TODO: Warning / error on unmatched.
     {TokenType::OpenBracket, bracketEntry},
-    {TokenType::CloseBracket, ignoreEntry}, // TODO: Warning / error on unmatched.
-    {TokenType::DoubleQuote, bracketEntry}, // TODO: Warning / error on unmatched.
-    {TokenType::SingleQuote, bracketEntry}, // TODO: Warning / error on unmatched.
+    {TokenType::CloseBracket,
+     ignoreEntry}, // TODO: Warning / error on unmatched.
+    {TokenType::DoubleQuote,
+     bracketEntry}, // TODO: Warning / error on unmatched.
+    {TokenType::SingleQuote,
+     bracketEntry},                       // TODO: Warning / error on unmatched.
     {TokenType::BackQuote, bracketEntry}, // TODO: Warning / error on unmatched.
     {TokenType::NumberLiteral, symbolEntry},
     {TokenType::Dot, symbolEntry},
@@ -154,7 +150,7 @@ std::map<TokenType, SymbolTableEntry> symbolTable = {
 
 bool ParserContext::next() {
   if (hasToken) {
-    // std::cout << "> " << getStringAt(getCurr()) << "\n";
+    // std::cout << "> " << getStringAt(getCurr()) << "\n"; // For debugging.
     toks++;
     if (toks != end) {
       if (toks->type == +TokenType::WhiteSpace ||
@@ -201,6 +197,8 @@ std::string ParserContext::getStringAt(const Token &tok) const {
   return getString(tok.loc, content);
 }
 
+// TODO: Break the parser context type into a context type and a parser
+// (containing a context) So that this can be used outside the ast generation.
 void ParserContext::startStep(PassStep step) { step = step; };
 
 void ParserContext::msg(MessageType level, std::string msg) {
@@ -222,7 +220,6 @@ Forest<Token> expression(ParserContext &ctx, unsigned int rbp) {
     left = t_entry.parse(left, t, ctx);
     binding = ctx.entry().binding(ctx.getCurr(), ctx);
   } while (rbp < binding && ctx.hasToken);
-  std::cout << "HERE " << binding << " :: " << rbp << "\n";
   return left;
 }
 
@@ -235,14 +232,12 @@ Tree<Token> ast(Tokens &toks, Messages &msgs, const std::string &content,
   ctx.startStep(PassStep::Ast);
   ctx.next();
   Forest<Token> module;
-  while(ctx.hasToken) {
+  while (ctx.hasToken) {
+    // TODO: Expressions should be an AST not a AS(Forest / List of trees).
     Forest<Token> definition = expression(ctx);
-    std::cout << "------------------------------------------\n";
-    std::cout << toString(definition, ctx.content, ctx.filename) << "\n";
-    std::cout << "------------------------------------------\n";
     module.insert(module.end(), definition.begin(), definition.end());
   }
   msgs = ctx.msgs;
-  std::cout << "-- Done: " << !ctx.hasToken << " --\n";
+  // std::cout << "-- Done: " << !ctx.hasToken << " --\n";
   return Tree<Token>(fileToken, module);
 }
