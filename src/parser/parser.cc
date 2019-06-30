@@ -33,18 +33,37 @@ struct FuncArg {
 */
 
 Definition parseDefinition(const Tree<Token>& node, Messages& msgs, const std::string& content, const std::string& filename) {
+  // Todo check that root is =
+  std::string op = getString(node.value.loc, content);
+  if (node.value.type == +TokenType::Operator && op == "=") {
+    // 
+    std::cout << "Got def\n";
+  } else {
+    std::cout << "Expected def got expr\n";
+  }
+  // Todo check that root.child[0] is = symbol
+  // Get symbol name
   std::string name = "#error";
   std::vector<FuncArg> args = {};
   Location loc = {0, 0, "#errorfile"};
+  // Todo check that root.child[1] is = expr
   std::optional<Value> value = {};
-  /*
-  msgs.push_back({
-      PassStep::Parse,
-      MessageType::Error,
-      "Reached end of scope, expected end of definition for '"+val.name+"', got '"+toString(node.value, content, filename)+"' instead.",
-      val.loc
-  });
-  */
+  if (!node.children.empty() && node.children[0].value.type == +TokenType::Operator) {
+    name = getString(node.children[0].value.loc, content);
+    // Todo check that root.child[0].child* is = definition
+    args = {};
+    loc = {0, 0, "#errorfile"};
+    // Todo check that root.child[1] is = expr
+    value = {};
+    /*
+    msgs.push_back({
+        PassStep::Parse,
+        MessageType::Error,
+        "Reached end of scope, expected end of definition for '"+val.name+"', got '"+toString(node.value, content, filename)+"' instead.",
+        val.loc
+    });
+    */
+  }
   return Definition(name, args, loc, value);
 }
 
