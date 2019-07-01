@@ -5,42 +5,37 @@
 #include <string>
 
 #include "ast.h"
+#include "lex.h"
 #include "parser.h"
 #include "toString.h"
 
-/*
-struct Value {
-  // TODO: support non symbol/operator values.
-  // e.g. numbers, strings, arrays, sets.
-  std::string name;
-  Location loc;
-  std::vector<Value> args;
+std::optional<Definition> parseDefinition(const Tree<Token>& node, Messages& msgs, const std::string& content, const std::string& filename);
 
-  Value() = delete;
-  Value(std::string name, Location loc, std::vector<Value> args): name{name}, loc{loc}, args{args} {}
-};
-
-struct FuncArg {
-  std::string name;
-  int ord;
-  std::optional<Value> def; // Default value for the arg.
-  // TODO: consider pattern matching? maybe not in func args?
-  FuncArg() = delete;
-  FuncArg(std::string name, int ord): name{name}, ord{ord}, def{std::nullopt} {}
-  FuncArg(std::string name, int ord, Value def): name{name}, ord{ord}, def{def} {}
-};
-
-*/
+std::optional<Value> parseValue(const Tree<Token>& node, Messages& msgs, const std::string& content, const std::string& filename) {
+  std::vector<Definition> args;
+  int ord = 0;
+  for(const auto& child : node.children) {
+    const auto arg = parseDefinition(child, msgs, content, filename);
+    if(arg) {
+      args.push_back(*arg);
+    } else {
+      // TODO Msg?
+      const auto arg_value = parseValue(child, msgs, content, filename);
+      const std::string name = "#"+std::to_string(ord++); // Name the anonymous arg something impossible
+      args.push_back(Definition(name, child.value.loc, {}, arg_value));
+    }
+  }
+  return Value(getString(node.value.loc, content), node.value.loc, args);
+}
 
 std::optional<Definition> parseDefinition(const Tree<Token>& node, Messages& msgs, const std::string& content, const std::string& filename) {
   // Todo check that root is =
   std::string op = getString(node.value.loc, content);
   if (node.value.type != +TokenType::Operator || op != "=") {
-    std::cout << "Expected def got expr\n"; // TODO msg
     return {};
   }
   std::string name = "#error";
-  std::vector<FuncArg> args = {};
+  std::vector<Definition> args = {};
   Location loc = {0, 0, "#errorfile"};
   // Get symbol name
   std::optional<Value> value = {};
@@ -50,20 +45,17 @@ std::optional<Definition> parseDefinition(const Tree<Token>& node, Messages& msg
     if(fst.value.type == +TokenType::Symbol) {
       name = getString(fst.value.loc, content);
       // Todo check that root.child[0].child* is = definition
-      int ord = 0;
       for(const auto& argTree : fst.children) {
-        std::cout << name << ", arg=" << toString(argTree, content, filename) << "\n";
-
-        std::string argStr = getString(node.value.loc, content);
+        const std::string argStr = getString(argTree.value.loc, content);
         std::optional<Definition> argDef;
-        if (argTree.value.type != +TokenType::Operator || argStr != "=") {
-            // TODO handle name + values args (not just kw args)
+        if (argTree.value.type == +TokenType::Operator && argStr == "=") {
           argDef = parseDefinition(argTree, msgs, content, filename);
-        } else {
-          argDef = parseDefinition(argTree, msgs, content, filename);
+        } else if(argTree.value.type == +TokenType::Symbol) {
+          argDef = Definition(argStr, argTree.value.loc, {}, std::nullopt);
         }
+
         if(argDef) {
-          FuncArg arg(ord++, *argDef);
+          Definition arg(*argDef);
           args.push_back(arg);
         } else {
           // TODO msg
@@ -81,9 +73,12 @@ std::optional<Definition> parseDefinition(const Tree<Token>& node, Messages& msg
       });
       */
     }
+    if(node.children.size() > 1) {
+      value = parseValue(node.children[1], msgs, content, filename);
+    }
   }
   // Todo check that root.child[1] is = expr
-  return Definition(name, args, loc, value);
+  return Definition(name, loc, args, value);
 }
 
 Module parse(const Tree<Token>& module, Messages& msgs, const std::string& content, const std::string& filename) {

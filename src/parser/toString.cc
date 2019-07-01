@@ -36,7 +36,10 @@ std::string toString(const Value& val, const std::string& contents, const std::s
   indent(o, depth);
   o << val.name;
   if (!val.args.empty()) {
-    o<< "(" << toString(val.args, contents, filename, 0, ", ") << ")";
+    o << "(\n";
+    o << toString(val.args, contents, filename, depth+2, "\n") << "\n";
+    indent(o, depth);
+    o << ")";
   }
   return o.str();
 }
@@ -44,20 +47,16 @@ std::string toString(const Value& val, const std::string& contents, const std::s
 std::string toString(const Definition& val, const std::string& contents, const std::string& filename, int depth) {
   std::stringstream o;
   indent(o, depth);
-  o << val.name;
-  if (!val.args.empty()) {
-    o<< "(" << toString(val.args, contents, filename, 0) << ")";
-  }
+  o << toString(Value(val), contents, filename, 0);
   if (val.value) {
-    o << " = " << toString(*val.value, contents, filename, 0);
+    o << " = '" << val.value->name << "'";
+    if (!val.value->args.empty()) {
+      o << "(\n";
+      o << toString(val.value->args, contents, filename, depth+2, "\n") << "\n";
+      indent(o, depth);
+      o << "),";
+    }
   }
-  return o.str();
-}
-
-std::string toString(const FuncArg& arg, const std::string& contents, const std::string& filename, int depth) {
-  std::stringstream o;
-  indent(o, depth);
-  o << "[" << arg.ord << "]" << toString(Definition(arg), contents, filename, 0);
   return o.str();
 }
 
