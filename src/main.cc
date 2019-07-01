@@ -14,6 +14,7 @@
 #include "parser/parser.h"
 #include "parser/toString.h"
 #include "arg_parser/arg_parser.h"
+#include "util.h"
 
 const std::vector<Arg> args = {
   {'h', "help", "Prints this help message.", ""},
@@ -21,9 +22,9 @@ const std::vector<Arg> args = {
   {'O', "", "Number of optimisation passes.", "level"},
   {'o', "out", "File to write results to.", "file"},
   {'i', "interactive", "Run interpreter.", ""},
+  {'s', "step", "Stop after this step.", "last"},
 };
-
-void runParser(const std::string& contents, const std::string& filename);
+void runCompiler(const std::string& contents, const std::string& filename, PassStep final);
 
 void info() {
   std::cerr << "tako - version " << tako_VERSION_MAJOR << "." << tako_VERSION_MINOR << "." << tako_VERSION_PATCH << "\n";
@@ -56,6 +57,18 @@ int main(int argc, char* argv[]) {
   if(out_it != values.end()) {
     out = out_it->second;
   }
+  const auto last_step_it = values.find("step");
+  PassStep last_step = PassStep::Final;
+  if(last_step_it != values.end()) {
+    const auto opt = PassStep::_from_string_nocase_nothrow(last_step_it->second.c_str());
+    if(opt) {
+      last_step = *opt;
+      std::cout << "Up to " << last_step << "\n";
+    } else {
+      std::cerr << "No known pass step named " << last_step_it->second << ".\n";
+      return 1;
+    }
+  }
   for(const auto filename : targets) {
     std::string this_out = out;
     this_out.replace(this_out.find('%'), 1, filename);
@@ -69,7 +82,7 @@ int main(int argc, char* argv[]) {
     const std::string contents = strStream.str();
 
     std::cerr << "> " << filename << " -> " << this_out << "\n";
-    runParser(contents, filename);
+    runCompiler(contents, filename, last_step);
   }
 
   if(values.find("interactive") != values.end()) {
@@ -80,14 +93,14 @@ int main(int argc, char* argv[]) {
       if(!getline(std::cin, line) || line == ":q") {
         break;
       }
-      runParser(line, "stdin");
+      runCompiler(line, "stdin", last_step);
     }
   }
 
   return 0;
 }
 
-void runParser(const std::string& contents, const std::string& filename) {
+void runCompiler(const std::string& contents, const std::string& filename, PassStep final) {
   try {
     Messages msgs;
     Tokens toks = lex(msgs, contents, filename);

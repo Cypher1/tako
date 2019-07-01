@@ -25,7 +25,8 @@ BETTER_ENUM(
     Parse,
     Check,
     Optimize,
-    CodeGen
+    CodeGen,
+    Final
     );
 
 BETTER_ENUM(
