@@ -19,29 +19,16 @@ struct Value {
   // e.g. numbers, strings, arrays, sets.
   std::string name;
   Location loc;
-  std::vector<Value> args;
+  std::vector<Definition> args;
 
   Value() = delete;
-  Value(std::string name, Location loc, std::vector<Value> args): name{name}, loc{loc}, args{args} {}
+  Value(std::string name, Location loc, std::vector<Definition> args): name{name}, loc{loc}, args{args} {}
 };
 
-struct FuncArg {
-  std::string name;
-  int ord;
-  std::optional<Value> def; // Default value for the arg.
-  // TODO: consider pattern matching? maybe not in func args?
-  FuncArg() = delete;
-  FuncArg(std::string name, int ord): name{name}, ord{ord}, def{std::nullopt} {}
-  FuncArg(std::string name, int ord, Value def): name{name}, ord{ord}, def{def} {}
-};
-
-struct Definition {
-  std::string name;
-  std::vector<FuncArg> args;
-  Location loc;
+struct Definition : Value {
   std::optional<Value> value;
   Definition() = delete;
-  Definition(std::string name, std::vector<FuncArg>args, Location loc, Value value): name{name}, args{args}, loc{loc}, value{value} {}
+  Definition(const std::string name, Location loc, std::vector<Definition>args, std::optional<Value> value): value{value}, Value(name, loc, args) {}
 };
 
 struct Module {
@@ -51,6 +38,6 @@ struct Module {
   Module(std::string name, std::vector<Definition>definitions): name{name}, definitions{definitions} {}
 };
 
-Module parse(Tree<Token>& tree, Messages& msgs, const std::string& content, const std::string& filename);
+Module parse(const Tree<Token>& tree, Messages& msgs, const std::string& content, const std::string& filename);
 
 #endif // #ifndef PARSER_H

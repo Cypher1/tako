@@ -1,7 +1,9 @@
 alpha(b=f(bar.baz(32), c),c,d) = 2*(d+b*c+d)
 
-runMapper()=m()]
+runMapper()=m()
 
 f=(2+3*2)*(- -3*2+2)
 
-a(f = 32 d = log2(f)) = f%2^3*d
+a(c, f = 32 d = log2(f)) = f%2^3*d
+
+times(x, y) = { x:Int, x>0 -| times(x-1, y)+y } <> { x:Int, x==0 -| 0 }

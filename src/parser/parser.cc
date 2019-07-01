@@ -5,133 +5,89 @@
 #include <string>
 
 #include "ast.h"
+#include "lex.h"
 #include "parser.h"
 #include "toString.h"
 
-Value parseValue(const Tree<Token>& node, Messages& msgs, const std::string& content, const std::string& filename) {
-  std::vector<Value> exprs;
-  for(const auto& child: node.children) {
-    exprs.push_back(parseValue(child, msgs, content, filename));
+std::optional<Definition> parseDefinition(const Tree<Token>& node, Messages& msgs, const std::string& content, const std::string& filename);
+
+std::optional<Value> parseValue(const Tree<Token>& node, Messages& msgs, const std::string& content, const std::string& filename) {
+  std::vector<Definition> args;
+  int ord = 0;
+  for(const auto& child : node.children) {
+    const auto arg = parseDefinition(child, msgs, content, filename);
+    if(arg) {
+      args.push_back(*arg);
+    } else {
+      // TODO Msg?
+      const auto arg_value = parseValue(child, msgs, content, filename);
+      const std::string name = "#"+std::to_string(ord++); // Name the anonymous arg something impossible
+      args.push_back(Definition(name, child.value.loc, {}, arg_value));
+    }
   }
-  auto loc = node.value.loc;
-  std::string name = getString(loc, content);
-  return Value(name, loc, exprs);
+  return Value(getString(node.value.loc, content), node.value.loc, args);
 }
 
-FuncArg parseArg(Forest<Token>::const_iterator& it, const Forest<Token>::const_iterator& end, int ord, Messages& msgs, const std::string& content, const std::string& filename) {
+std::optional<Definition> parseDefinition(const Tree<Token>& node, Messages& msgs, const std::string& content, const std::string& filename) {
+  // Todo check that root is =
+  std::string op = getString(node.value.loc, content);
+  if (node.value.type != +TokenType::Operator || op != "=") {
+    return {};
+  }
   std::string name = "#error";
-  if (it != end && it->value.type == +TokenType::Symbol) {
-    name = getString(it->value.loc, content);
-    ++it;
-  } else if (it != end) {
-    msgs.push_back({
-        PassStep::Parse,
-        MessageType::Info,
-        "Expected symbol name",
-        it->value.loc
-    });
-  } else {
-    msgs.push_back({
-        PassStep::Parse,
-        MessageType::Info,
-        "Unexpected end of input",
-        {0, 0, "#???"}
-    });
-  }
-  if (it != end && it->value.type == +TokenType::Declaration) {
-    const auto children = it->children;
-    it++;
-    auto ch_it = children.cbegin();
-    if(ch_it != children.cend()) {
-      Value def = parseValue(*ch_it, msgs, content, filename);
-      ++ch_it;
-      if(ch_it != children.cend()) {
-        msgs.push_back({
-            PassStep::Parse,
-            MessageType::Info,
-            std::string("Unexpected ")+(ch_it->value.type)._to_string()+" '"+getString(ch_it->value.loc, content)+"' after declaration",
-            ch_it->value.loc
-        });
-      }
-      return {name, ord, def};
-    }
-    // TODO
-  }
-  return {name, ord};
-}
+  std::vector<Definition> args = {};
+  Location loc = {0, 0, "#errorfile"};
+  // Get symbol name
+  std::optional<Value> value = {};
 
-Definition parseDefinition( Forest<Token>::const_iterator& it, const Forest<Token>::const_iterator& end, Messages& msgs, const std::string& content, const std::string& filename) {
-  Definition val = { "#error", {}, {0, 0, "??l"}, {"#unparsed def", {0, 0, "#??l"}, {}} };
-  if(it == end) {
-    return val;
-  }
-  val.loc = it->value.loc;;
-  val.name = getString(val.loc, content);
-  const auto type = it->value.type;
-  if (type != +TokenType::Symbol && type != +TokenType::Operator) {
-    msgs.push_back({
-        PassStep::Parse,
-        MessageType::Error,
-        "Unexpected '"+val.name+"'",
-        val.loc
-    });
-    ++it;
-    return val;
-  }
-  int n = 0;
-  const auto children = it->children;
-  auto arg_it = children.cbegin();
-  while(arg_it != children.cend()) {
-    val.args.push_back(parseArg(arg_it, children.cend(), n++, msgs, content, filename));
-  }
-  ++it;
-  if(it != end && it->value.type == +TokenType::Declaration) {
-    const auto children = it->children;
-    auto val_it = children.cbegin();
-    if(val_it != children.cend()) {
-      val.value = parseValue(*val_it, msgs, content, filename);
-      ++val_it;
-    }
-    if(val_it != children.cend()) {
+  if (!node.children.empty()) {
+    const auto& fst = node.children[0];
+    if(fst.value.type == +TokenType::Symbol) {
+      name = getString(fst.value.loc, content);
+      // Todo check that root.child[0].child* is = definition
+      for(const auto& argTree : fst.children) {
+        const std::string argStr = getString(argTree.value.loc, content);
+        std::optional<Definition> argDef;
+        if (argTree.value.type == +TokenType::Operator && argStr == "=") {
+          argDef = parseDefinition(argTree, msgs, content, filename);
+        } else if(argTree.value.type == +TokenType::Symbol) {
+          argDef = Definition(argStr, argTree.value.loc, {}, std::nullopt);
+        }
+
+        if(argDef) {
+          Definition arg(*argDef);
+          args.push_back(arg);
+        } else {
+          // TODO msg
+        }
+      }
+      loc = {0, 0, "#errorfile"};
+      // Todo check that root.child[1] is = expr
+      value = {};
+      /*
       msgs.push_back({
           PassStep::Parse,
           MessageType::Error,
-          "Expected end of declaration for '"+val.name+"', got " + (val_it->value.type)._to_string() + " '" + getString(val_it->value.loc, content) + "' instead.",
-          val_it->value.loc
+          "Reached end of scope, expected end of definition for '"+val.name+"', got '"+toString(node.value, content, filename)+"' instead.",
+          val.loc
       });
+      */
     }
-    ++it;
-  } else if(it != end) {
-    msgs.push_back({
-        PassStep::Parse,
-        MessageType::Error,
-        "Reached end of scope, expected end of definition for '"+val.name+"', got '"+toString(it->value, content, filename)+"' instead.",
-        val.loc
-    });
-  } else {
-    msgs.push_back({
-        PassStep::Parse,
-        MessageType::Error,
-        "Reached end of scope, expected end of definition for '"+val.name+"'",
-        val.loc
-    });
+    if(node.children.size() > 1) {
+      value = parseValue(node.children[1], msgs, content, filename);
+    }
   }
-  return val;
+  // Todo check that root.child[1] is = expr
+  return Definition(name, loc, args, value);
 }
 
-std::vector<Definition> parseDefinitions(Forest<Token>::const_iterator& it, const Forest<Token>::const_iterator& end, Messages& msgs, const std::string& content, const std::string& filename) {
+Module parse(const Tree<Token>& module, Messages& msgs, const std::string& content, const std::string& filename) {
   std::vector<Definition> definitions;
-  while(it != end) {
-    definitions.push_back(parseDefinition(it, end, msgs, content, filename));
+  for(const auto& defTree : module.children) {
+    auto def = parseDefinition(defTree, msgs, content, filename);
+    if(def) {
+      definitions.push_back(*def);
+    }
   }
-  return definitions;
-}
-
-Module parse(Tree<Token>& tree, Messages& msgs, const std::string& content, const std::string& filename) {
-  auto children = tree.children;
-  auto it = children.cbegin();
-  return {
-    filename,
-    parseDefinitions(it, children.cend(), msgs, content, filename)
-  };
+  return { filename, definitions };
 }
