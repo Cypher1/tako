@@ -37,6 +37,8 @@ std::optional<Definition> parseDefinition(const Tree<Token>& node, Context &ctx)
   if (node.value.type != +TokenType::Operator || op != "=") {
     return {};
   }
+
+  // Get symbol name
   std::string name = "#error";
   std::vector<Definition> args = {};
   Location loc = {0, 0, "#errorfile"};
@@ -78,6 +80,7 @@ std::optional<Definition> parseDefinition(const Tree<Token>& node, Context &ctx)
     }
     if(node.children.size() > 1) {
       value = parseValue(node.children[1], ctx);
+      // TODO: Other children?
     }
   }
   // Todo check that root.child[1] is = expr
@@ -85,6 +88,7 @@ std::optional<Definition> parseDefinition(const Tree<Token>& node, Context &ctx)
 }
 
 Module parse(const Tree<Token>& module, Context &ctx) {
+  ctx.startStep(PassStep::Parse);
   std::vector<Definition> definitions;
   for(const auto& defTree : module.children) {
     auto def = parseDefinition(defTree, ctx);
