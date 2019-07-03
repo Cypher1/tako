@@ -1,7 +1,3 @@
-#include "ast.h"
-#include "ast_internal.h"
-#include "lex.h"
-#include "toString.h"
 #include <functional>
 #include <iostream>
 #include <map>
@@ -9,6 +5,13 @@
 #include <stdexcept> // TODO: Remove use of exceptions, instead use messages and fallback.
 #include <string>
 #include <vector>
+
+#include "../util/context.h"
+
+#include "ast.h"
+#include "ast_internal.h"
+#include "lex.h"
+#include "toString.h"
 
 const std::map<TokenType, TokenType> brackets = {
     {TokenType::OpenParen, TokenType::CloseParen},
@@ -34,13 +37,10 @@ constexpr bool isQuote(const TokenType &type) {
          type == +TokenType::BackQuote;
 }
 
-const Token eofToken = {TokenType::Error, {0, 0, "<file>?"}};
-const Token errorToken = {TokenType::Error, {0, 0, "<file>?"}};
-
 const std::map<std::string, unsigned int> symbol_binding = {};
 const leftBindingPowerType symbolBind = [](const Token &tok,
                                            const ParserContext &ctx) {
-  auto p_it = symbol_binding.find(ctx.getStringAt(tok));
+  auto p_it = symbol_binding.find(ctx.getStringAt(tok.loc));
   if (p_it == symbol_binding.end()) {
     return 0u;
   }
@@ -58,22 +58,22 @@ const std::map<std::string, unsigned int> prefix_binding = {
     {"-", 130}, {"+", 130}, {"~", 130}, {"!", 130}};
 
 const auto operatorBind = [](const Token &tok, ParserContext &ctx) { // Lbp
-  auto p_it = infix_binding.find(ctx.getStringAt(tok));
+  auto p_it = infix_binding.find(ctx.getStringAt(tok.loc));
   if (p_it == infix_binding.end()) {
     throw std::runtime_error(std::string() +
                              "Expected an infix operator but found '" +
-                             ctx.getStringAt(tok) + "'");
+                             ctx.getStringAt(tok.loc) + "'");
   }
   return p_it->second;
 };
 
 Tree<Token> prefixOp(const Token &tok, ParserContext &ctx) {
   auto root = Tree<Token>(tok);
-  auto p_it = prefix_binding.find(ctx.getStringAt(tok));
+  auto p_it = prefix_binding.find(ctx.getStringAt(tok.loc));
   if (p_it == prefix_binding.end()) {
     throw std::runtime_error(std::string() +
                              "Expected a prefix operator but found '" +
-                             ctx.getStringAt(tok) + "'");
+                             ctx.getStringAt(tok.loc) + "'");
   }
   auto right = expression(ctx, p_it->second);
   root.children.push_back(right);
@@ -83,7 +83,7 @@ Tree<Token> prefixOp(const Token &tok, ParserContext &ctx) {
 Tree<Token> infixOp(Tree<Token> left, const Token &tok, ParserContext &ctx) {
   auto root = Tree<Token>(tok, {left});
   // Led
-  auto p_it = infix_binding.find(ctx.getStringAt(tok));
+  auto p_it = infix_binding.find(ctx.getStringAt(tok.loc));
   if (p_it == infix_binding.end()) {
     // TODO Defaulting is bad...
   };
@@ -168,7 +168,7 @@ std::map<TokenType, SymbolTableEntry> symbolTable = {
 
 bool ParserContext::next() {
   if (hasToken) {
-    // std::cout << "> " << getStringAt(getCurr()) << "\n"; // For debugging.
+    // std::cout << "> " << getStringAt(getCurr().loc) << "\n"; // For debugging.
     toks++;
     if (toks != end) {
       if (toks->type == +TokenType::WhiteSpace ||
@@ -187,9 +187,18 @@ bool ParserContext::expect(const TokenType &expected) {
   if (getCurr().type != expected) {
     msg(MessageType::Error,
         std::string() + "Expected a " + expected._to_string() + " but found " +
-            getCurr().type._to_string() + " '" + getStringAt(getCurr()) + "'");
+            getCurr().type._to_string() + " '" + getStringAt(getCurr().loc) + "'");
   }
   return next();
+}
+
+void ParserContext::msg(MessageType level, std::string msg_txt) {
+  // TODO make this print as EOF
+  Location loc = eofToken.loc;
+  if (hasToken) {
+    loc = toks->loc;
+  }
+  Context::msg(loc, level, msg_txt);
 }
 
 const Token &ParserContext::getCurr() {
@@ -206,26 +215,9 @@ const SymbolTableEntry ParserContext::entry() {
   const auto symbol_it = symbolTable.find(t.type);
   if (symbol_it == symbolTable.end()) {
     throw std::runtime_error(std::string() + t.type._to_string() + +" '" +
-                             getStringAt(t) + "' not found in symbol table");
+                             getStringAt(t.loc) + "' not found in symbol table");
   }
   return symbol_it->second;
-}
-
-std::string ParserContext::getStringAt(const Token &tok) const {
-  return getString(tok.loc, content);
-}
-
-// TODO: Break the parser context type into a context type and a parser
-// (containing a context) So that this can be used outside the ast generation.
-void ParserContext::startStep(PassStep step) { step = step; };
-
-void ParserContext::msg(MessageType level, std::string msg) {
-  // TODO make this print as EOF
-  Location loc = eofToken.loc;
-  if (hasToken) {
-    loc = toks->loc;
-  }
-  msgs.push_back({step, level, msg, loc});
 }
 
 Tree<Token> expression(ParserContext &ctx, unsigned int rbp) {
@@ -245,18 +237,16 @@ Tree<Token> expression(ParserContext &ctx, unsigned int rbp) {
   return left;
 }
 
-Tree<Token> ast(Tokens &toks, Messages &msgs, const std::string &content,
-                const std::string &filename) {
+Tree<Token> ast(Tokens& toks, Context &_ctx) {
+  _ctx.startStep(PassStep::Ast);
   // Add a disposable char to make whitespace dropping easy.
   toks.insert(toks.begin(), errorToken);
-  ParserContext ctx = {toks.cbegin(), toks.cend(), msgs, content, filename};
-  ctx.startStep(PassStep::Ast);
+  ParserContext ctx(_ctx, toks.cbegin(), toks.cend());
   ctx.next();
   Forest<Token> module;
   while (ctx.hasToken) {
     module.push_back(expression(ctx));
   }
-  msgs = ctx.msgs;
-  Token fileToken = {TokenType::Symbol, {0, 0, filename}};
+  Token fileToken = {TokenType::Symbol, {0, 0, ctx.filename}};
   return Tree<Token>(fileToken, module);
 }

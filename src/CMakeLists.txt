@@ -21,7 +21,7 @@ set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${GXX_COVERAGE_COMPILE_FLAGS}")
 set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} ${GXX_COVERAGE_LINK_FLAGS}")
 
 # add the binary tree to the search path for include files
-# so that we will find TutorialConfig.h
+# so that we will find takoConfig.h
 include_directories("${PROJECT_BINARY_DIR}")
 
 # include our deps

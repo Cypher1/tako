@@ -4,33 +4,36 @@
 #include <map>
 #include <string>
 
+#include "../util/context.h"
+
 #include "ast.h"
 #include "lex.h"
 #include "parser.h"
 #include "toString.h"
 
-std::optional<Definition> parseDefinition(const Tree<Token>& node, Messages& msgs, const std::string& content, const std::string& filename);
+std::optional<Definition> parseDefinition(const Tree<Token>& node, Context ctx);
 
-std::optional<Value> parseValue(const Tree<Token>& node, Messages& msgs, const std::string& content, const std::string& filename) {
+std::optional<Value> parseValue(const Tree<Token>& node, Context ctx) {
   std::vector<Definition> args;
   int ord = 0;
   for(const auto& child : node.children) {
-    const auto arg = parseDefinition(child, msgs, content, filename);
+    const auto arg = parseDefinition(child, ctx);
     if(arg) {
       args.push_back(*arg);
     } else {
       // TODO Msg?
-      const auto arg_value = parseValue(child, msgs, content, filename);
+      const auto arg_value = parseValue(child, ctx);
       const std::string name = "#"+std::to_string(ord++); // Name the anonymous arg something impossible
       args.push_back(Definition(name, child.value.loc, {}, arg_value));
     }
   }
-  return Value(getString(node.value.loc, content), node.value.loc, args);
+  return Value(ctx.getStringAt(node.value.loc), node.value.loc, args);
 }
 
-std::optional<Definition> parseDefinition(const Tree<Token>& node, Messages& msgs, const std::string& content, const std::string& filename) {
+std::optional<Definition> parseDefinition(const Tree<Token>& node, Context ctx) {
+  ctx.startStep(PassStep::Parse);
   // Todo check that root is =
-  std::string op = getString(node.value.loc, content);
+  std::string op = ctx.getStringAt(node.value.loc);
   if (node.value.type != +TokenType::Operator || op != "=") {
     return {};
   }
@@ -43,13 +46,13 @@ std::optional<Definition> parseDefinition(const Tree<Token>& node, Messages& msg
   if (!node.children.empty()) {
     const auto& fst = node.children[0];
     if(fst.value.type == +TokenType::Symbol) {
-      name = getString(fst.value.loc, content);
+      name = ctx.getStringAt(fst.value.loc);
       // Todo check that root.child[0].child* is = definition
       for(const auto& argTree : fst.children) {
-        const std::string argStr = getString(argTree.value.loc, content);
+        const std::string argStr = ctx.getStringAt(argTree.value.loc);
         std::optional<Definition> argDef;
         if (argTree.value.type == +TokenType::Operator && argStr == "=") {
-          argDef = parseDefinition(argTree, msgs, content, filename);
+          argDef = parseDefinition(argTree, ctx);
         } else if(argTree.value.type == +TokenType::Symbol) {
           argDef = Definition(argStr, argTree.value.loc, {}, std::nullopt);
         }
@@ -74,20 +77,20 @@ std::optional<Definition> parseDefinition(const Tree<Token>& node, Messages& msg
       */
     }
     if(node.children.size() > 1) {
-      value = parseValue(node.children[1], msgs, content, filename);
+      value = parseValue(node.children[1], ctx);
     }
   }
   // Todo check that root.child[1] is = expr
   return Definition(name, loc, args, value);
 }
 
-Module parse(const Tree<Token>& module, Messages& msgs, const std::string& content, const std::string& filename) {
+Module parse(const Tree<Token>& module, Context ctx) {
   std::vector<Definition> definitions;
   for(const auto& defTree : module.children) {
-    auto def = parseDefinition(defTree, msgs, content, filename);
+    auto def = parseDefinition(defTree, ctx);
     if(def) {
       definitions.push_back(*def);
     }
   }
-  return { filename, definitions };
+  return { ctx.filename, definitions };
 }
