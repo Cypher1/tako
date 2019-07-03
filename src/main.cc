@@ -24,7 +24,7 @@ const std::vector<Arg> args = {
   {'i', "interactive", "Run interpreter.", ""},
   {'s', "step", "Stop after this step.", "last"},
 };
-void runCompiler(Context ctx);
+void runCompiler(Context &ctx);
 
 void info() {
   std::cerr << "tako - version " << tako_VERSION_MAJOR << "." << tako_VERSION_MINOR << "." << tako_VERSION_PATCH << "\n";
@@ -36,7 +36,13 @@ int main(int argc, char* argv[]) {
   std::unordered_map<std::string, std::string> values;
 
   const std::string prog = argv[0];
-  parseArgs(args, 1, argc, argv, targets, values);
+
+  try {
+    parseArgs(args, 1, argc, argv, targets, values);
+  } catch (std::runtime_error er) {
+    std::cerr << "Invalid command line argument: " << er.what() << "\n";
+    return 1;
+  }
 
   struct winsize w;
   ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
@@ -104,7 +110,7 @@ int main(int argc, char* argv[]) {
   return 0;
 }
 
-void runCompiler(Context ctx) {
+void runCompiler(Context &ctx) {
   try {
     if(ctx.done()) {
       return;
@@ -112,7 +118,8 @@ void runCompiler(Context ctx) {
 
     Tokens toks = lex(ctx);
     if(ctx.done()) {
-      std::cerr << "Got " << toks.size() << " tokens.\n";
+      std::cerr << "Lexed " << toks.size() << " tokens.\n";
+      std::cerr << toString(toks, ctx) << "\n";
       return;
     }
 

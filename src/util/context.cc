@@ -10,6 +10,10 @@ void Context::startStep(PassStep start_step) {
   step = start_step;
 }
 
+PassStep Context::getStep() {
+  return step;
+}
+
 void Context::msg(Location loc, MessageType level, std::string msg_text) {
   msgs.push_back({step, level, msg_text, loc});
 }

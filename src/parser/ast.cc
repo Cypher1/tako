@@ -40,7 +40,7 @@ constexpr bool isQuote(const TokenType &type) {
 const std::map<std::string, unsigned int> symbol_binding = {};
 const leftBindingPowerType symbolBind = [](const Token &tok,
                                            const ParserContext &ctx) {
-  auto p_it = symbol_binding.find(ctx.getStringAt(tok.loc));
+  auto p_it = symbol_binding.find(ctx.context.getStringAt(tok.loc));
   if (p_it == symbol_binding.end()) {
     return 0u;
   }
@@ -58,22 +58,22 @@ const std::map<std::string, unsigned int> prefix_binding = {
     {"-", 130}, {"+", 130}, {"~", 130}, {"!", 130}};
 
 const auto operatorBind = [](const Token &tok, ParserContext &ctx) { // Lbp
-  auto p_it = infix_binding.find(ctx.getStringAt(tok.loc));
+  auto p_it = infix_binding.find(ctx.context.getStringAt(tok.loc));
   if (p_it == infix_binding.end()) {
     throw std::runtime_error(std::string() +
                              "Expected an infix operator but found '" +
-                             ctx.getStringAt(tok.loc) + "'");
+                             ctx.context.getStringAt(tok.loc) + "'");
   }
   return p_it->second;
 };
 
 Tree<Token> prefixOp(const Token &tok, ParserContext &ctx) {
   auto root = Tree<Token>(tok);
-  auto p_it = prefix_binding.find(ctx.getStringAt(tok.loc));
+  auto p_it = prefix_binding.find(ctx.context.getStringAt(tok.loc));
   if (p_it == prefix_binding.end()) {
     throw std::runtime_error(std::string() +
                              "Expected a prefix operator but found '" +
-                             ctx.getStringAt(tok.loc) + "'");
+                             ctx.context.getStringAt(tok.loc) + "'");
   }
   auto right = expression(ctx, p_it->second);
   root.children.push_back(right);
@@ -83,7 +83,7 @@ Tree<Token> prefixOp(const Token &tok, ParserContext &ctx) {
 Tree<Token> infixOp(Tree<Token> left, const Token &tok, ParserContext &ctx) {
   auto root = Tree<Token>(tok, {left});
   // Led
-  auto p_it = infix_binding.find(ctx.getStringAt(tok.loc));
+  auto p_it = infix_binding.find(ctx.context.getStringAt(tok.loc));
   if (p_it == infix_binding.end()) {
     // TODO Defaulting is bad...
   };
@@ -168,7 +168,7 @@ std::map<TokenType, SymbolTableEntry> symbolTable = {
 
 bool ParserContext::next() {
   if (hasToken) {
-    // std::cout << "> " << getStringAt(getCurr().loc) << "\n"; // For debugging.
+    // std::cout << "> " << context.getStringAt(getCurr().loc) << "\n"; // For debugging.
     toks++;
     if (toks != end) {
       if (toks->type == +TokenType::WhiteSpace ||
@@ -187,7 +187,7 @@ bool ParserContext::expect(const TokenType &expected) {
   if (getCurr().type != expected) {
     msg(MessageType::Error,
         std::string() + "Expected a " + expected._to_string() + " but found " +
-            getCurr().type._to_string() + " '" + getStringAt(getCurr().loc) + "'");
+            getCurr().type._to_string() + " '" + getCurrString() + "'");
   }
   return next();
 }
@@ -198,10 +198,10 @@ void ParserContext::msg(MessageType level, std::string msg_txt) {
   if (hasToken) {
     loc = toks->loc;
   }
-  Context::msg(loc, level, msg_txt);
+  context.msg(loc, level, msg_txt);
 }
 
-const Token &ParserContext::getCurr() {
+const Token &ParserContext::getCurr() const {
   if (toks != end) {
     return *(toks);
   } else {
@@ -210,12 +210,16 @@ const Token &ParserContext::getCurr() {
   }
 }
 
+std::string ParserContext::getCurrString() const {
+  return context.getStringAt(getCurr().loc);
+}
+
 const SymbolTableEntry ParserContext::entry() {
   auto t = getCurr();
   const auto symbol_it = symbolTable.find(t.type);
   if (symbol_it == symbolTable.end()) {
     throw std::runtime_error(std::string() + t.type._to_string() + +" '" +
-                             getStringAt(t.loc) + "' not found in symbol table");
+                             getCurrString() + "' not found in symbol table");
   }
   return symbol_it->second;
 }
@@ -237,16 +241,16 @@ Tree<Token> expression(ParserContext &ctx, unsigned int rbp) {
   return left;
 }
 
-Tree<Token> ast(Tokens& toks, Context &_ctx) {
-  _ctx.startStep(PassStep::Ast);
+Tree<Token> ast(Tokens& toks, Context &context) {
+  context.startStep(PassStep::Ast);
   // Add a disposable char to make whitespace dropping easy.
   toks.insert(toks.begin(), errorToken);
-  ParserContext ctx(_ctx, toks.cbegin(), toks.cend());
+  ParserContext ctx(context, toks.cbegin(), toks.cend());
   ctx.next();
   Forest<Token> module;
   while (ctx.hasToken) {
     module.push_back(expression(ctx));
   }
-  Token fileToken = {TokenType::Symbol, {0, 0, ctx.filename}};
+  Token fileToken = {TokenType::Symbol, {0, 0, ctx.context.filename}};
   return Tree<Token>(fileToken, module);
 }

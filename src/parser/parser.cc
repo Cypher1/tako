@@ -11,9 +11,9 @@
 #include "parser.h"
 #include "toString.h"
 
-std::optional<Definition> parseDefinition(const Tree<Token>& node, Context ctx);
+std::optional<Definition> parseDefinition(const Tree<Token>& node, Context &ctx);
 
-std::optional<Value> parseValue(const Tree<Token>& node, Context ctx) {
+std::optional<Value> parseValue(const Tree<Token>& node, Context &ctx) {
   std::vector<Definition> args;
   int ord = 0;
   for(const auto& child : node.children) {
@@ -30,13 +30,15 @@ std::optional<Value> parseValue(const Tree<Token>& node, Context ctx) {
   return Value(ctx.getStringAt(node.value.loc), node.value.loc, args);
 }
 
-std::optional<Definition> parseDefinition(const Tree<Token>& node, Context ctx) {
+std::optional<Definition> parseDefinition(const Tree<Token>& node, Context &ctx) {
   ctx.startStep(PassStep::Parse);
   // Todo check that root is =
   std::string op = ctx.getStringAt(node.value.loc);
   if (node.value.type != +TokenType::Operator || op != "=") {
     return {};
   }
+
+  // Get symbol name
   std::string name = "#error";
   std::vector<Definition> args = {};
   Location loc = {0, 0, "#errorfile"};
@@ -78,13 +80,15 @@ std::optional<Definition> parseDefinition(const Tree<Token>& node, Context ctx) 
     }
     if(node.children.size() > 1) {
       value = parseValue(node.children[1], ctx);
+      // TODO: Other children?
     }
   }
   // Todo check that root.child[1] is = expr
   return Definition(name, loc, args, value);
 }
 
-Module parse(const Tree<Token>& module, Context ctx) {
+Module parse(const Tree<Token>& module, Context &ctx) {
+  ctx.startStep(PassStep::Parse);
   std::vector<Definition> definitions;
   for(const auto& defTree : module.children) {
     auto def = parseDefinition(defTree, ctx);

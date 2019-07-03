@@ -18,22 +18,24 @@ const Token errorToken = {TokenType::Error, {0, 0, "<file>?"}};
 
 struct SymbolTableEntry;
 
-class ParserContext : public Context {
+class ParserContext {
 public:
+  Context &context;
   std::vector<Token>::const_iterator toks;
   std::vector<Token>::const_iterator end;
 
-  ParserContext(Context ctx, std::vector<Token>::const_iterator toks,
+  ParserContext(Context &ctx, std::vector<Token>::const_iterator toks,
                 std::vector<Token>::const_iterator end)
-      : Context(ctx), toks{toks}, end{end} {}
+      : context{ctx}, toks{toks}, end{end} {}
   // Other state
   bool inString = false; // TODO
   bool hasToken = true;
 
   bool next();
   bool expect(const TokenType &expected);
-  const Token &getCurr();
+  const Token &getCurr() const;
   const SymbolTableEntry entry();
+  std::string getCurrString() const;
 
   void msg(MessageType level, std::string msg_txt);
 };
@@ -46,14 +48,13 @@ using parseLeftType = std::function<Tree<Token>(
     Tree<Token> left, const Token &tok, ParserContext &ctx)>;
 
 Tree<Token> parseLogicErrorInit(const Token &tok, ParserContext &ctx) {
-  throw std::runtime_error("Parser logic error on token " +
-                           toString(tok, ctx));
+  throw std::runtime_error("Parser logic error on token " + toString(tok, ctx.context));
 };
 
 Tree<Token> parseLogicErrorLeft(Tree<Token>, const Token &tok,
                                 ParserContext &ctx) {
   throw std::runtime_error("Parser logic error on token left " +
-                           toString(tok, ctx));
+                           toString(tok, ctx.context));
 };
 
 class SymbolTableEntry {
