@@ -130,10 +130,10 @@ void runCompiler(Context &ctx) {
     }
 
     Module module = parse(tree, ctx);
-    if(ctx.done()) {
+    if(true || ctx.done()) {
       std::cerr << toString(module, ctx, 0) << "\n";
       for(const auto msg : ctx.getMsgs()) {
-        std::cerr << toString(msg, ctx, 1) << "\n";
+        std::cerr << toString(msg, ctx, 2) << "\n";
       }
       return;
     }
