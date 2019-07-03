@@ -33,7 +33,9 @@ std::string toString(const Value& val, const Context &ctx, int depth) {
   o << val.name;
   if (!val.args.empty()) {
     o << "(\n";
-    o << toString(val.args, ctx, depth+2, "\n") << "\n";
+    for(const auto& arg : val.args) {
+      o << toString(arg, ctx, depth+2) << "\n";
+    }
     indent(o, depth);
     o << ")";
   }
@@ -42,17 +44,23 @@ std::string toString(const Value& val, const Context &ctx, int depth) {
 
 std::string toString(const Definition& val, const Context &ctx, int depth) {
   std::stringstream o;
-  indent(o, depth);
-  o << toString(Value(val), ctx, 0);
+  o << toString(Value(val), ctx, depth);
   if (val.value) {
-    o << " = '" << val.value->name << "'";
-    if (!val.value->args.empty()) {
-      o << "(\n";
-      o << toString(val.value->args, ctx, depth+2, "\n") << "\n";
-      indent(o, depth);
-      o << "),";
-    }
+    o << " =\n";
+    o << toString(*val.value, ctx, depth+2);
   }
+  return o.str();
+}
+
+std::string toString(const Module& module, const Context &ctx, int depth) {
+  std::stringstream o;
+  indent(o, depth);
+  o << "module " << module.name << " (" << module.definitions.size() << " top level definitions) {\n";
+  for(const auto& val : module.definitions) {
+    o << toString(val, ctx, depth+2) << "\n";
+  }
+  indent(o, depth);
+  o << "}";
   return o.str();
 }
 
@@ -90,17 +98,5 @@ std::string toString(const Tree<Token>& tree, const Context &ctx, int depth) {
   std::stringstream o;
   o << toString(tree.value, ctx, depth);
   o << toString(tree.children, ctx, depth+2, "\n");
-  return o.str();
-}
-
-std::string toString(const Module& module, const Context &ctx, int depth) {
-  std::stringstream o;
-  indent(o, depth);
-  o << "module " << module.name << " (" << module.definitions.size() << " top level definitions) {\n";
-  for(const auto& val : module.definitions) {
-    o << toString(val, ctx, depth+2) << "\n";
-  }
-  indent(o, depth);
-  o << "}";
   return o.str();
 }
