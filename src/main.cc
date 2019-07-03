@@ -13,6 +13,7 @@
 #include "parser/ast.h"
 #include "parser/parser.h"
 #include "parser/toString.h"
+#include "checker/checker.h"
 #include "arg_parser/arg_parser.h"
 #include "util.h"
 
@@ -130,11 +131,16 @@ void runCompiler(Context &ctx) {
     }
 
     Module module = parse(tree, ctx);
-    if(true || ctx.done()) {
+    if(ctx.done()) {
       std::cerr << toString(module, ctx, 0) << "\n";
       for(const auto msg : ctx.getMsgs()) {
         std::cerr << toString(msg, ctx, 2) << "\n";
       }
+      return;
+    }
+
+    CheckedModule checked = check(module, ctx);
+    if(ctx.done()) {
       return;
     }
   } catch (std::runtime_error er) {
