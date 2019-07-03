@@ -90,7 +90,7 @@ std::pair<TokenType, Offset> chooseTok(std::string content) {
   return {TokenType::Error, 1};
 }
 
-Tokens lex(Context ctx) {
+Tokens lex(Context &ctx) {
   ctx.startStep(PassStep::Lex);
   Tokens toks;
 

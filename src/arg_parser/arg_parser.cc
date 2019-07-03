@@ -19,21 +19,23 @@ void parseArgs(
         if(arg.name != name && std::string("")+arg.flag != name) {
           continue;
         }
-        if (arg.value.size()) {
-          ref++;
-          if (ref >= argc) {
-            std::cerr << "Option " << arg.name << " needs an argument\n.";
-            values["help"] = "";
-            return;
-          }
-          values[arg.name] = argv[ref];
-        } else {
+        if (!arg.value.size()) {
           values[arg.name] = "";
+          return;
         }
+        ref++;
+        if (ref >= argc) {
+          std::cerr << "Option " << arg.name << " needs an argument\n.";
+          values["help"] = "";
+          return;
+        }
+        if(!values[arg.name].empty()) {
+          throw std::runtime_error("Value for " + arg.name + " overridden.");
+        }
+        values[arg.name] = argv[ref];
         return;
       }
-      std::cerr << "Unexpected argument: '" << name << "'\n.";
-      values["help"] = "";
+      throw std::runtime_error("Unexpected argument '" + name + "'.");
   };
 
   for(unsigned int i = start; i < argc; ++i) {

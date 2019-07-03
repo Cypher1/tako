@@ -41,6 +41,6 @@ struct Token {
 
 using Tokens = std::vector<Token>;
 
-Tokens lex(Context ctx);
+Tokens lex(Context &ctx);
 
 #endif // #ifndef LEX_H

@@ -11,9 +11,9 @@
 #include "parser.h"
 #include "toString.h"
 
-std::optional<Definition> parseDefinition(const Tree<Token>& node, Context ctx);
+std::optional<Definition> parseDefinition(const Tree<Token>& node, Context &ctx);
 
-std::optional<Value> parseValue(const Tree<Token>& node, Context ctx) {
+std::optional<Value> parseValue(const Tree<Token>& node, Context &ctx) {
   std::vector<Definition> args;
   int ord = 0;
   for(const auto& child : node.children) {
@@ -30,7 +30,7 @@ std::optional<Value> parseValue(const Tree<Token>& node, Context ctx) {
   return Value(ctx.getStringAt(node.value.loc), node.value.loc, args);
 }
 
-std::optional<Definition> parseDefinition(const Tree<Token>& node, Context ctx) {
+std::optional<Definition> parseDefinition(const Tree<Token>& node, Context &ctx) {
   ctx.startStep(PassStep::Parse);
   // Todo check that root is =
   std::string op = ctx.getStringAt(node.value.loc);
@@ -84,7 +84,7 @@ std::optional<Definition> parseDefinition(const Tree<Token>& node, Context ctx) 
   return Definition(name, loc, args, value);
 }
 
-Module parse(const Tree<Token>& module, Context ctx) {
+Module parse(const Tree<Token>& module, Context &ctx) {
   std::vector<Definition> definitions;
   for(const auto& defTree : module.children) {
     auto def = parseDefinition(defTree, ctx);
