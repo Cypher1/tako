@@ -90,23 +90,23 @@ std::pair<TokenType, Offset> chooseTok(std::string content) {
   return {TokenType::Error, 1};
 }
 
-Tokens lex(Messages& msgs, const std::string& content, const std::string& filename) {
+Tokens lex(Context ctx) {
+  ctx.startStep(PassStep::Lex);
   Tokens toks;
 
   Position loc = 0;
-  while(loc < content.size()) {
-    std::pair<TokenType, Offset> next = chooseTok(content.substr(loc));
+  while(loc < ctx.content.size()) {
+    std::pair<TokenType, Offset> next = chooseTok(ctx.content.substr(loc));
     TokenType type = next.first;
     Offset length = next.second;
     if(type == +TokenType::Error) {
-      msgs.push_back({
-        PassStep::Lex,
+      ctx.msg(
+        {loc, length, ctx.filename},
         MessageType::Error,
-        "Unexpected character",
-        {loc, length, filename}
-      });
+        "Unexpected character"
+      );
     }
-    toks.push_back({type, {loc, length, filename}});
+    toks.push_back({type, {loc, length, ctx.filename}});
     loc += length;
   }
   return toks;

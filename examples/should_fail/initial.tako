@@ -1,0 +1,6 @@
+/* here's a multi
+line
+comment*/
+and(a,b)={ a&b -| c=a&b |- c } // If we know a and b are true, c is true.
+
+f(a,b,c)={a&b-|(2*f(3,b(1+32*3+1,a=3))+2) |- c }

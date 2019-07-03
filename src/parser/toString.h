@@ -5,7 +5,9 @@
 #include <string>
 #include <sstream>
 
-#include "ast.h"
+#include "../util/context.h"
+
+#include "lex.h"
 #include "parser.h"
 
 extern int width;
@@ -13,10 +15,8 @@ extern int height;
 
 void indent(std::stringstream& o, int depth);
 
-std::string getString(const Location& loc, const std::string& contents);
-
 template<typename T>
-std::string toString(const std::vector<T>& vec, const std::string& contents, const std::string& filename, int depth=0, std::string sep=", ") {
+std::string toString(const std::vector<T>& vec, const Context &ctx, int depth=0, std::string sep=", ") {
   std::stringstream o;
   bool first = true;
   for(const auto& val : vec) {
@@ -25,17 +25,17 @@ std::string toString(const std::vector<T>& vec, const std::string& contents, con
     } else {
       o << sep;
     }
-    o << toString(val, contents, filename, depth);
+    o << toString(val, ctx, depth);
   }
   return o.str();
 }
 
-std::string toString(const Location& loc, const std::string& contents, const std::string& filename, int depth=0);
-std::string toString(const Value& val, const std::string& contents, const std::string& filename, int depth=0);
-std::string toString(const Definition& val, const std::string& contents, const std::string& filename, int depth=0);
-std::string toString(const Token& tok, const std::string& contents, const std::string& filename, int depth=0);
-std::string toString(const Message& msg, const std::string& contents, const std::string& filename, int depth=0);
-std::string toString(const Tree<Token>& tree, const std::string& contents, const std::string& filename, int depth=0);
-std::string toString(const Module& module, const std::string& contents, const std::string& filename, int depth=0);
+std::string toString(const Location& loc, const Context &ctx, int depth=0);
+std::string toString(const Value& val, const Context &ctx, int depth=0);
+std::string toString(const Definition& val, const Context &ctx, int depth=0);
+std::string toString(const Token& tok, const Context &ctx, int depth=0);
+std::string toString(const Message& msg, const Context &ctx, int depth=0);
+std::string toString(const Tree<Token>& tree, const Context &ctx, int depth=0);
+std::string toString(const Module& module, const Context &ctx, int depth=0);
 
 #endif // #ifndef TOSTRING_H

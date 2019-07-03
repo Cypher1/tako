@@ -24,7 +24,7 @@ const std::vector<Arg> args = {
   {'i', "interactive", "Run interpreter.", ""},
   {'s', "step", "Stop after this step.", "last"},
 };
-void runCompiler(const std::string& contents, const std::string& filename, PassStep final);
+void runCompiler(Context ctx);
 
 void info() {
   std::cerr << "tako - version " << tako_VERSION_MAJOR << "." << tako_VERSION_MINOR << "." << tako_VERSION_PATCH << "\n";
@@ -63,12 +63,13 @@ int main(int argc, char* argv[]) {
     const auto opt = PassStep::_from_string_nocase_nothrow(last_step_it->second.c_str());
     if(opt) {
       last_step = *opt;
-      std::cout << "Up to " << last_step << "\n";
+      std::cerr << "Up to " << last_step << "\n";
     } else {
       std::cerr << "No known pass step named " << last_step_it->second << ".\n";
       return 1;
     }
   }
+  Messages msgs;
   for(const auto filename : targets) {
     std::string this_out = out;
     this_out.replace(this_out.find('%'), 1, filename);
@@ -82,7 +83,9 @@ int main(int argc, char* argv[]) {
     const std::string contents = strStream.str();
 
     std::cerr << "> " << filename << " -> " << this_out << "\n";
-    runCompiler(contents, filename, last_step);
+    Context ctx(msgs, contents, filename, PassStep::Init, last_step);
+
+    runCompiler(ctx);
   }
 
   if(values.find("interactive") != values.end()) {
@@ -93,31 +96,41 @@ int main(int argc, char* argv[]) {
       if(!getline(std::cin, line) || line == ":q") {
         break;
       }
-      runCompiler(line, "stdin", last_step);
+      Context ctx(msgs, line, "stdin", PassStep::Init, last_step);
+      runCompiler(ctx);
     }
   }
 
   return 0;
 }
 
-void runCompiler(const std::string& contents, const std::string& filename, PassStep final) {
+void runCompiler(Context ctx) {
   try {
-    Messages msgs;
-    Tokens toks = lex(msgs, contents, filename);
-    std::cerr << "Got " << toks.size() << " tokens.\n";
+    if(ctx.done()) {
+      return;
+    }
 
-    Tree<Token> tree = ast(toks, msgs, contents, filename);
-    // std::cerr << toString(tree.children, contents, filename, 0, "\n") << "\n";
-    Module module = parse(tree, msgs, contents, filename);
+    Tokens toks = lex(ctx);
+    if(ctx.done()) {
+      std::cerr << "Got " << toks.size() << " tokens.\n";
+      return;
+    }
 
-    std::cout << toString(module, contents, filename, 0) << "\n";
-    /*
-    std::sort(msgs.begin(), msgs.end(), [](auto ma, auto mb) { return ma.loc.start < mb.loc.start;});
-    */
-    for(const auto msg : msgs) {
-      std::cerr << toString(msg, contents, filename, 1) << "\n";
+    Tree<Token> tree = ast(toks, ctx);
+    if(ctx.done()) {
+      std::cerr << toString(tree.children, ctx, 0, "\n") << "\n";
+      return;
+    }
+
+    Module module = parse(tree, ctx);
+    if(ctx.done()) {
+      std::cerr << toString(module, ctx, 0) << "\n";
+      for(const auto msg : ctx.getMsgs()) {
+        std::cerr << toString(msg, ctx, 1) << "\n";
+      }
+      return;
     }
   } catch (std::runtime_error er) {
-    std::cout << "Parser crashed with: " << er.what() << "\n";
+    std::cerr << "Parser crashed with: " << er.what() << "\n";
   }
 }

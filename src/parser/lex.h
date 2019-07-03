@@ -7,6 +7,7 @@
 
 #include "../lib/enums.h"
 #include "../util/util.h"
+#include "../util/context.h"
 
 BETTER_ENUM(
     TokenType,
@@ -40,7 +41,6 @@ struct Token {
 
 using Tokens = std::vector<Token>;
 
-Tokens lex(Messages& msgs, const std::string& content, const std::string& filename);
-Tree<Token> ast(Tokens& toks, Messages& msgs, const std::string& content, const std::string& filename);
+Tokens lex(Context ctx);
 
 #endif // #ifndef LEX_H

@@ -38,6 +38,6 @@ struct Module {
   Module(std::string name, std::vector<Definition>definitions): name{name}, definitions{definitions} {}
 };
 
-Module parse(const Tree<Token>& tree, Messages& msgs, const std::string& content, const std::string& filename);
+Module parse(const Tree<Token>& tree, Context ctx);
 
 #endif // #ifndef PARSER_H
