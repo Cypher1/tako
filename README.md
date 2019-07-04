@@ -1,8 +1,11 @@
 # Tako
 
-[![CircleCI](https://img.shields.io/circleci/project/github/Cypher1/tako.svg)](https://circleci.com/gh/Cypher1/tako/tree/master) [![GitHub issues](https://img.shields.io/github/issues/Cypher1/tako.svg)](https://github.com/Cypher1/tako/issues) [![GitHub stars](https://img.shields.io/github/stars/Cypher1/tako.svg?style=social)](https://github.com/Cypher1/tako)
+[![Cherry](docs/assets/tako.png)](https://takolang.dev)
+[![CircleCI](https://img.shields.io/circleci/project/github/Cypher1/tako.svg)](https://circleci.com/gh/Cypher1/tako/tree/master)
+[![GitHub issues](https://img.shields.io/github/issues/Cypher1/tako.svg)](https://github.com/Cypher1/tako/issues)
 
-An programming language for ergonomic software verification using [Hoare Logics](https://en.wikipedia.org/wiki/Hoare_logic).
+An experimental programming language for ergonomic software verification using [Hoare Logic](https://en.wikipedia.org/wiki/Hoare_logic).
+
 
 ## Getting Started
 
