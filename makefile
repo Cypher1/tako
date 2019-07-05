@@ -22,4 +22,4 @@ clean:
 	rm -rf build tako
 
 parsetest: tako
-	./tako test.tako
+	./tako test.tako -s Check
