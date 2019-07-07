@@ -13,6 +13,12 @@
 
 std::optional<Definition> parseDefinition(const Tree<Token>& node, Context &ctx);
 
+
+bool Value::operator ==(const Value& other) const {
+  // TODO
+  return false;
+}
+
 std::optional<Value> parseValue(const Tree<Token>& node, Context &ctx) {
   std::vector<Definition> args;
   int ord = 0;

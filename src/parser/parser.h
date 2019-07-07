@@ -23,6 +23,8 @@ struct Value {
 
   Value() = delete;
   Value(std::string name, Location loc, std::vector<Definition> args): name{name}, loc{loc}, args{args} {}
+
+  bool operator ==(const Value& other) const;
 };
 
 struct Definition : Value {

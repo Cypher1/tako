@@ -12,25 +12,27 @@
 
 // Use only for values that the compiler creates
 // (rather than values from the source program).
-struct Variable {
-  std::string name;
-};
+using Variable = std::string;
 
 struct Contradiction {
-
+  // Holds two conditions that are deemed to be
+  // in contradiction...
+  Variable name;
+  Value a;
+  Value b;
 };
 
 class Assignment {
   private:
-  std::map<std::string, std::variant<Value, Variable>> assignment;
-  std::optional<Contradiction> setValueToInternal(std::string name, Value value);
+  std::map<Variable, std::variant<Value, Variable>> assignment;
+  std::optional<Contradiction> setValueToInternal(Variable name, Value value);
 
   public:
   Assignment() {
   }
 
-  void setValueTo(std::string name, Value value);
-  std::variant<Value, Variable> getValueTo(std::string name);
+  void setValueTo(Variable name, Value value);
+  std::variant<Value, Variable> getValueTo(Variable name);
 };
 
 struct CheckedModule {
