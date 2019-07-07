@@ -1,4 +1,3 @@
-#include "util.h"
 #pragma once
 #ifndef PARSER_H
 #define PARSER_H
@@ -9,6 +8,7 @@
 #include <string>
 
 #include "../lib/enums.h"
+#include "../util/util.h"
 
 #include "ast.h"
 
@@ -23,6 +23,8 @@ struct Value {
 
   Value() = delete;
   Value(std::string name, Location loc, std::vector<Definition> args): name{name}, loc{loc}, args{args} {}
+
+  bool operator ==(const Value& other) const;
 };
 
 struct Definition : Value {

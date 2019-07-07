@@ -24,25 +24,28 @@ set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} ${GXX_COVERAGE_LINK_FLAGS
 # so that we will find takoConfig.h
 include_directories("${PROJECT_BINARY_DIR}")
 
-# include our deps
-add_subdirectory("lib/rapidcheck")
-
 # include our libraries
-include_directories ("${PROJECT_SOURCE_DIR}/util")
-add_subdirectory (util)
 include_directories ("${PROJECT_SOURCE_DIR}/arg_parser")
 add_subdirectory (arg_parser)
+include_directories ("${PROJECT_SOURCE_DIR}/util")
+add_subdirectory (util)
 include_directories ("${PROJECT_SOURCE_DIR}/parser")
 add_subdirectory (parser)
+include_directories ("${PROJECT_SOURCE_DIR}/checker")
+add_subdirectory (checker)
+include_directories ("${PROJECT_SOURCE_DIR}/tests")
+add_subdirectory (tests)
 
 # add the executable
 add_executable(tako main.cc)
+target_link_libraries (tako arg_parser)
 target_link_libraries (tako util)
 target_link_libraries (tako parser)
-target_link_libraries (tako arg_parser)
+target_link_libraries (tako checker)
 
 # add the executable
 add_executable(takoTest test.cc)
-target_link_libraries(takoTest rapidcheck)
 target_link_libraries (takoTest util)
 target_link_libraries (takoTest parser)
+target_link_libraries (takoTest checker)
+target_link_libraries (takoTest tests)
