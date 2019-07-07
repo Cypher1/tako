@@ -1,1 +1,6 @@
+title: tako
+description: An experimental programming language for ergonomic software verification
+repository: Cypher1/tako
 theme: jekyll-theme-minimal
+logo: assets/tako.png
+favicon: assets/tako.png
