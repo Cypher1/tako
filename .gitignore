@@ -6,3 +6,4 @@ build
 .clangd
 vgcore.*
 docs/assets/*
+docs/_site
