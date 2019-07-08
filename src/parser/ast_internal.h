@@ -2,10 +2,6 @@
 #ifndef AST_INTERNAL_H
 #define AST_INTERNAL_H
 
-#include "../util/context.h"
-#include "ast.h"
-#include "lex.h"
-#include "toString.h"
 #include <functional>
 #include <map>
 #include <set>
@@ -13,8 +9,14 @@
 #include <string>
 #include <vector>
 
-const Token eofToken = {TokenType::Error, {0, 0, "<file>?"}};
-const Token errorToken = {TokenType::Error, {0, 0, "<file>?"}};
+#include "../util/util.h"
+#include "../util/context.h"
+#include "ast.h"
+#include "lex.h"
+#include "toString.h"
+
+const Token eofToken = {TokenType::Error, errorLocation};
+const Token errorToken = {TokenType::Error, errorLocation};
 
 struct SymbolTableEntry;
 
@@ -47,11 +49,11 @@ using parseInitType =
 using parseLeftType = std::function<Tree<Token>(
     Tree<Token> left, const Token &tok, ParserContext &ctx)>;
 
-Tree<Token> parseLogicErrorInit(const Token &tok, ParserContext &ctx) {
+Tree<Token> parserLogicErrorInit(const Token &tok, ParserContext &ctx) {
   throw std::runtime_error("Parser logic error on token " + toString(tok, ctx.context));
 };
 
-Tree<Token> parseLogicErrorLeft(Tree<Token>, const Token &tok,
+Tree<Token> parserLogicErrorLeft(Tree<Token>, const Token &tok,
                                 ParserContext &ctx) {
   throw std::runtime_error("Parser logic error on token left " +
                            toString(tok, ctx.context));
@@ -64,9 +66,9 @@ public:
   const parseInitType nud;
 
   SymbolTableEntry(const leftBindingPowerType binding, const parseLeftType led)
-      : SymbolTableEntry(binding, parseLogicErrorInit, led) {}
+      : SymbolTableEntry(binding, parserLogicErrorInit, led) {}
   SymbolTableEntry(const leftBindingPowerType binding, const parseInitType nud)
-      : SymbolTableEntry(binding, nud, parseLogicErrorLeft) {}
+      : SymbolTableEntry(binding, nud, parserLogicErrorLeft) {}
   SymbolTableEntry(const leftBindingPowerType binding, const parseInitType nud,
                    const parseLeftType led)
       : binding{binding}, nud{nud}, led{led} {}
