@@ -25,14 +25,13 @@ struct Contradiction {
 class Assignment {
   private:
   std::map<Variable, std::variant<Value, Variable>> assignment;
-  std::optional<Contradiction> setValueToInternal(Variable name, Value value);
 
   public:
   Assignment() {
   }
 
-  void setValueTo(Variable name, Value value);
-  std::variant<Value, Variable> getValueTo(Variable name);
+  std::optional<Contradiction> setValueTo(const Variable &name, const Value &value);
+  std::variant<Value, Variable> getValueTo(const Variable &name);
 };
 
 struct CheckedModule {

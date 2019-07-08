@@ -16,6 +16,8 @@ struct Location {
   std::string file="";
 };
 
+const Location errorLocation = {0, 0, "<file>?"};
+
 BETTER_ENUM(
     PassStep,
     char,
