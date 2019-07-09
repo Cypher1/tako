@@ -14,6 +14,7 @@ tako_sources = [
   'ast.cc',
   'checker.cc',
   'context.cc',
+  'eval.cc',
   'lex.cc',
   'parser.cc',
   'toString.cc']
