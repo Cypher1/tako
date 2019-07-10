@@ -14,7 +14,7 @@ void parseArgs(
   std::vector<std::string>& targets,
   std::unordered_map<std::string, std::string>& values
 ) {
-  const auto setValue = [&values, &args, &argc, &argv](const std::string& name, unsigned int& ref) {
+  const auto setValue = [&values, &args, &argc, &argv](const std::string& name, int& ref) {
       for(const auto& arg : args) {
         if(arg.name != name && std::string("")+arg.flag != name) {
           continue;
@@ -38,7 +38,7 @@ void parseArgs(
       throw std::runtime_error("Unexpected argument '" + name + "'.");
   };
 
-  for(unsigned int i = start; i < argc; ++i) {
+  for(int i = start; i < argc; ++i) {
     std::string val = argv[i];
     if(val.size() < 1 || val[0] != '-') {
       targets.push_back(val);
@@ -48,7 +48,7 @@ void parseArgs(
       setValue(val.substr(2), i);
       continue;
     }
-    for(unsigned int n=1; n < val.size(); n++) {
+    for(size_t n=1; n < val.size(); n++) {
       setValue(val.substr(n, 1), i);
     }
   }
@@ -71,7 +71,7 @@ std::string makeUsage(
       s << " <" << arg.value << ">";
     }
     o << s.str();
-    for(unsigned int k = s.str().size(); k < width; k++) {
+    for(int k = s.str().size(); k < width; k++) {
       o << " ";
     }
     o << arg.description << "\n";

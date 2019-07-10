@@ -5,9 +5,9 @@
 #include <vector>
 #include <string>
 
-#include "../lib/enums.h"
-#include "../util/util.h"
-#include "../util/context.h"
+#include "enums.h"
+#include "util.h"
+#include "context.h"
 
 BETTER_ENUM(
     TokenType,

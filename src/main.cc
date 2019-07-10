@@ -10,11 +10,11 @@
 #include <unistd.h>
 
 #include "takoConfig.h"
-#include "parser/ast.h"
-#include "parser/parser.h"
-#include "parser/toString.h"
-#include "checker/checker.h"
-#include "arg_parser/arg_parser.h"
+#include "ast.h"
+#include "parser.h"
+#include "toString.h"
+#include "checker.h"
+#include "arg_parser.h"
 #include "util.h"
 
 const std::vector<Arg> args = {
@@ -28,7 +28,7 @@ const std::vector<Arg> args = {
 void runCompiler(Context &ctx);
 
 void info() {
-  std::cerr << "tako - version " << tako_VERSION_MAJOR << "." << tako_VERSION_MINOR << "." << tako_VERSION_PATCH << "\n";
+  std::cerr << "tako - version " << VERSION_STR << "\n";
   std::cerr << "A compiler for ergonomic software verification\n";
 }
 
@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
 
   try {
     parseArgs(args, 1, argc, argv, targets, values);
-  } catch (std::runtime_error er) {
+  } catch (const std::runtime_error& er) {
     std::cerr << "Invalid command line argument: " << er.what() << "\n";
     return 1;
   }
@@ -139,11 +139,12 @@ void runCompiler(Context &ctx) {
       return;
     }
 
-    CheckedModule checked = check(module, ctx);
+    // CheckedModule checked;
+    check(module, ctx);
     if(ctx.done()) {
       return;
     }
-  } catch (std::runtime_error er) {
+  } catch (const std::runtime_error& er) {
     std::cerr << "Parser crashed with: " << er.what() << "\n";
   }
 }

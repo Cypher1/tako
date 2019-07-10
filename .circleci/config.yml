@@ -7,13 +7,13 @@ references:
       name: Install dependencies on Ubuntu
       command: |
         apt-get update -qy
-        apt-get install -qy git cmake clang g++
+        apt-get install -qy git clang g++ meson
 
   arch_deps: &arch_deps
     run:
       name: Install dependencies on Arch
       command: |
-        pacman -Syu --noconfirm base-devel git openssh cmake clang gcc
+        pacman -Syu --noconfirm base-devel git openssh clang gcc meson
 
   update_submodules: &update_submodules
     run:
@@ -25,32 +25,29 @@ references:
     run:
       name: Build with g++.
       command: |
-        mkdir build && cd build
-        cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=g++ ../src
-        make tako
-        make takoTest
+        meson build
+        ninja -C build
       no_output_timeout: 20m
 
   build_with_clang: &build_with_clang
       run:
         name: Build with clang++.
         command: |
-          mkdir build && cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++ ../src
-          make tako
-          make takoTest
+          meson build
+          ninja -C build
         no_output_timeout: 20m
 
   unit_test: &unit_test
     run:
       name: Run unit tests
       command: |
-        ./build/takoTest
+        ninja -C build test
 
   example_test: &example_test
     run:
       name: Run parser on example code
       command: |
+        ninja -C build tako
         ./build/tako test.tako
 
 jobs:
