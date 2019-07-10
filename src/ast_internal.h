@@ -17,7 +17,7 @@
 const Token eofToken = {TokenType::Error, errorLocation};
 const Token errorToken = {TokenType::Error, errorLocation};
 
-struct SymbolTableEntry;
+class SymbolTableEntry;
 
 class ParserContext {
 public:
