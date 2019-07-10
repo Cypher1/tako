@@ -8,6 +8,7 @@ configure_file(input : 'takoConfig.h.in',
 
 configuration_inc = include_directories('.')
 
+src_inc = include_directories('.')
 tako_sources = [
   'arg_parser.cc',
   'ast.cc',
@@ -21,13 +22,4 @@ tako_sources = [
 tako_lib = static_library(
   'tako_lib',
   tako_sources,
-  include_directories : [src_inc, configuration_inc])
-
-takoc_sources = [ 'main.cc' ]
-
-executable(
-  'tako',
-  takoc_sources,
-  install : true,
-  link_with : tako_lib,
   include_directories : [src_inc, configuration_inc])

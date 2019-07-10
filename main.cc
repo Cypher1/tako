@@ -9,12 +9,12 @@
 #include <cstdio>
 #include <unistd.h>
 
-#include "takoConfig.h"
-#include "ast.h"
-#include "parser.h"
-#include "toString.h"
-#include "checker.h"
-#include "arg_parser.h"
+#include "src/takoConfig.h"
+#include "src/ast.h"
+#include "src/parser.h"
+#include "src/toString.h"
+#include "src/checker.h"
+#include "src/arg_parser.h"
 #include "util.h"
 
 const std::vector<Arg> args = {
