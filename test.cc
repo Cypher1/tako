@@ -1,7 +1,11 @@
+#include "src/util.h"
+
 #include "test/checker_tests.h"
 
 int main() {
-  checker_tests();
+  Config config;
+  int errors = 0;
+  errors += checker_tests(config);
 
-  return 0;
+  return errors;
 }

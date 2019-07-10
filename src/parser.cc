@@ -97,5 +97,5 @@ Module parse(const Tree<Token>& module, Context &ctx) {
       definitions.push_back(*def);
     }
   }
-  return { ctx.filename, definitions };
+  return { ctx.filename, module.value.loc, definitions };
 }

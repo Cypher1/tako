@@ -1,4 +1,3 @@
-#pragma once
 #ifndef AST_INTERNAL_H
 #define AST_INTERNAL_H
 
