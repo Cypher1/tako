@@ -5,7 +5,7 @@
 #include <vector>
 #include <string>
 
-#include "../lib/enums.h"
+#include "enums.h"
 
 using Position = unsigned int;
 using Offset = unsigned int;

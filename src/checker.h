@@ -6,9 +6,9 @@
 #include <map>
 #include <variant>
 
-#include "../util/util.h"
-#include "../util/context.h"
-#include "../parser/parser.h"
+#include "util.h"
+#include "context.h"
+#include "parser.h"
 
 // Use only for values that the compiler creates
 // (rather than values from the source program).

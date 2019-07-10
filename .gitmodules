@@ -1,3 +1,0 @@
-[submodule "lib/rapidcheck"]
-	path = src/tests/lib/rapidcheck
-	url = https://github.com/cypher1/rapidcheck.git

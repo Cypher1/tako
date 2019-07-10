@@ -9,8 +9,7 @@
 #include <string>
 #include <vector>
 
-#include "../util/util.h"
-#include "../util/context.h"
+#include "context.h"
 #include "ast.h"
 #include "lex.h"
 #include "toString.h"
@@ -18,7 +17,7 @@
 const Token eofToken = {TokenType::Error, errorLocation};
 const Token errorToken = {TokenType::Error, errorLocation};
 
-struct SymbolTableEntry;
+class SymbolTableEntry;
 
 class ParserContext {
 public:
@@ -62,8 +61,8 @@ Tree<Token> parserLogicErrorLeft(Tree<Token>, const Token &tok,
 class SymbolTableEntry {
 public:
   leftBindingPowerType binding; // lbp
-  const parseLeftType led;
   const parseInitType nud;
+  const parseLeftType led;
 
   SymbolTableEntry(const leftBindingPowerType binding, const parseLeftType led)
       : SymbolTableEntry(binding, parserLogicErrorInit, led) {}

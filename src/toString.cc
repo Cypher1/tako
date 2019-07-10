@@ -3,7 +3,7 @@
 #include <sstream>
 #include <algorithm>
 
-#include "../util/util.h"
+#include "util.h"
 
 #include "lex.h"
 #include "toString.h"

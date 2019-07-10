@@ -5,7 +5,7 @@
 #include <string>
 #include <sstream>
 
-#include "../util/context.h"
+#include "context.h"
 
 #include "lex.h"
 #include "parser.h"

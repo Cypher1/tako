@@ -4,7 +4,7 @@
 #include <map>
 #include <string>
 
-#include "../util/context.h"
+#include "context.h"
 
 #include "ast.h"
 #include "lex.h"

@@ -2,6 +2,8 @@ a.out
 *.o
 tako
 build
+build-gcc
+build-clang
 **/compile_commands.json
 .clangd
 vgcore.*

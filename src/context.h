@@ -8,9 +8,9 @@
 #include "util.h"
 
 class Context {
+  Messages &msgs;
   PassStep step;
   PassStep final;
-  Messages &msgs;
 
 public:
   const std::string &content;
@@ -21,7 +21,7 @@ public:
 
   Context(Messages &msgs, const std::string &content,
           const std::string &filename, PassStep step, PassStep final)
-      : msgs{msgs}, content{content}, filename{filename}, step{step}, final{final} {}
+      : msgs{msgs}, step{step}, final{final}, content{content}, filename{filename} {}
 
   void startStep(PassStep start_step);
   PassStep getStep();

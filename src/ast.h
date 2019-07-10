@@ -7,9 +7,9 @@
 #include <vector>
 #include <string>
 
-#include "../lib/enums.h"
-#include "../util/util.h"
-#include "../util/context.h"
+#include "enums.h"
+#include "util.h"
+#include "context.h"
 #include "lex.h"
 
 struct Definition;
@@ -30,7 +30,7 @@ struct Value {
 struct Definition : Value {
   std::optional<Value> value;
   Definition() = delete;
-  Definition(const std::string name, Location loc, std::vector<Definition>args, std::optional<Value> value): value{value}, Value(name, loc, args) {}
+  Definition(const std::string name, Location loc, std::vector<Definition>args, std::optional<Value> value): Value(name, loc, args), value{value} {}
 };
 
 struct Module {
