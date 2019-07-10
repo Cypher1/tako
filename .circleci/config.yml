@@ -33,7 +33,7 @@ references:
       run:
         name: Build with clang++.
         command: |
-          meson build
+          CC=clang CXX=clang++ meson build
           ninja -C build
         no_output_timeout: 20m
 
@@ -41,13 +41,12 @@ references:
     run:
       name: Run unit tests
       command: |
-        ninja -C build test
+        ./build/tests
 
   example_test: &example_test
     run:
       name: Run parser on example code
       command: |
-        ninja -C build tako
         ./build/tako test.tako
 
 jobs:
