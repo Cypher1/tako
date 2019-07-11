@@ -47,8 +47,10 @@ int main(int argc, char* argv[]) {
 
   struct winsize w;
   ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
-  height = w.ws_row;
-  width = w.ws_col;
+
+  Config config;
+  config.height = w.ws_row;
+  config.width = w.ws_col;
 
   if (argc < 2 || values.find("help") != values.end() || values.find("version") != values.end()){
     info();
@@ -90,7 +92,7 @@ int main(int argc, char* argv[]) {
     const std::string contents = strStream.str();
 
     std::cerr << "> " << filename << " -> " << this_out << "\n";
-    Context ctx(msgs, contents, filename, PassStep::Init, last_step);
+    Context ctx(msgs, contents, filename, PassStep::Init, last_step, config);
 
     runCompiler(ctx);
   }
@@ -103,7 +105,7 @@ int main(int argc, char* argv[]) {
       if(!getline(std::cin, line) || line == ":q") {
         break;
       }
-      Context ctx(msgs, line, "stdin", PassStep::Init, last_step);
+      Context ctx(msgs, line, "stdin", PassStep::Init, last_step, config);
       runCompiler(ctx);
     }
   }
@@ -132,7 +134,7 @@ void runCompiler(Context &ctx) {
 
     Module module = parse(tree, ctx);
     if(ctx.done()) {
-      std::cerr << toString(module, ctx, 0) << "\n";
+      std::cerr << toString(module, 0) << "\n";
       for(const auto msg : ctx.getMsgs()) {
         std::cerr << toString(msg, ctx, 2) << "\n";
       }

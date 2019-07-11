@@ -8,15 +8,20 @@
 #include "lex.h"
 #include "toString.h"
 
-int width = 80;
-int height = 80;
-
-void indent(std::stringstream& o, int depth) {
+void indent(std::stringstream& o, int depth, char dent) {
   for(int i=0; i<depth; i++) {
-    o << " ";
+    o << dent;
   }
 }
 
+std::string banner(const std::string &text, const Config &config) {
+  std::stringstream o;
+  const unsigned int w = config.width-text.length();
+  indent(o, w/2-1, '-');
+  o << " " << text << " ";
+  indent(o, w-w/2-1, '-');
+  return o.str();
+}
 std::string toString(const Location& loc, const Context &ctx, int depth) {
   size_t line = 1+std::count(ctx.content.begin(), ctx.content.begin()+loc.start, '\n');
   size_t col = loc.start - ctx.content.rfind("\n", loc.start);
@@ -27,14 +32,14 @@ std::string toString(const Location& loc, const Context &ctx, int depth) {
   return o.str();
 }
 
-std::string toString(const Value& val, const Context &ctx, int depth) {
+std::string toString(const Value& val, int depth) {
   std::stringstream o;
   indent(o, depth);
   o << val.name;
   if (!val.args.empty()) {
     o << "(\n";
     for(const auto& arg : val.args) {
-      o << toString(arg, ctx, depth+2) << "\n";
+      o << toString(arg, depth+2) << "\n";
     }
     indent(o, depth);
     o << ")";
@@ -42,22 +47,22 @@ std::string toString(const Value& val, const Context &ctx, int depth) {
   return o.str();
 }
 
-std::string toString(const Definition& val, const Context &ctx, int depth) {
+std::string toString(const Definition& val, int depth) {
   std::stringstream o;
-  o << toString(Value(val), ctx, depth);
+  o << toString(Value(val), depth);
   if (val.value) {
     o << " =\n";
-    o << toString(*val.value, ctx, depth+2);
+    o << toString(*val.value, depth+2);
   }
   return o.str();
 }
 
-std::string toString(const Module& module, const Context &ctx, int depth) {
+std::string toString(const Module& module, int depth) {
   std::stringstream o;
   indent(o, depth);
   o << "module " << module.name << " (" << module.definitions.size() << " top level definitions) {\n";
   for(const auto& val : module.definitions) {
-    o << toString(val, ctx, depth+2) << "\n";
+    o << toString(val, depth+2) << "\n";
   }
   indent(o, depth);
   o << "}";
@@ -78,7 +83,7 @@ std::string toString(const Token& tok, const Context &ctx, int depth) {
   if(/*show locations*/ false) {
     std::stringstream s;
     s << toString(tok.loc, ctx, 0);
-    indent(o, width-s.str().length()-o.str().length());
+    indent(o, ctx.config.width-s.str().length()-o.str().length());
     o << s.str();
   }
   return o.str();

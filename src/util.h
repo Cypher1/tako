@@ -1,4 +1,3 @@
-#pragma once
 #ifndef UTIL_H
 #define UTIL_H
 
@@ -6,6 +5,11 @@
 #include <string>
 
 #include "enums.h"
+
+struct Config {
+  int width = 80;
+  int height = 80;
+};
 
 using Position = unsigned int;
 using Offset = unsigned int;
@@ -16,7 +20,7 @@ struct Location {
   std::string file="";
 };
 
-const Location errorLocation = {0, 0, "<file>?"};
+const Location errorLocation = { 0, 0, "<eof>"};
 
 BETTER_ENUM(
     PassStep,

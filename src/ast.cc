@@ -13,11 +13,6 @@
 #include "lex.h"
 #include "toString.h"
 
-bool Value::operator ==(const Value& other) const {
-  // TODO
-  return false;
-}
-
 const std::map<TokenType, TokenType> brackets = {
     {TokenType::OpenParen, TokenType::CloseParen},
     {TokenType::OpenBrace, TokenType::CloseBrace},

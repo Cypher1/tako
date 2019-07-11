@@ -1,4 +1,3 @@
-#pragma once
 #ifndef CONTEXT_H
 #define CONTEXT_H
 
@@ -16,12 +15,15 @@ public:
   const std::string &content;
   const std::string &filename;
 
+  // Passing configuration
+  Config config;
+
   Context(Context &&ctx) = delete; // Disable move.
   Context(const Context &ctx) = delete; // Disable copy.
 
   Context(Messages &msgs, const std::string &content,
-          const std::string &filename, PassStep step, PassStep final)
-      : msgs{msgs}, step{step}, final{final}, content{content}, filename{filename} {}
+          const std::string &filename, PassStep step, PassStep final, Config config)
+      : msgs{msgs}, step{step}, final{final}, content{content}, filename{filename}, config{config} {}
 
   void startStep(PassStep start_step);
   PassStep getStep();

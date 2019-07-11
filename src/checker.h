@@ -1,10 +1,10 @@
-#pragma once
 #ifndef CHECKER_H
 #define CHECKER_H
 
 #include <string>
 #include <map>
 #include <variant>
+#include <optional>
 
 #include "util.h"
 #include "context.h"
@@ -22,6 +22,19 @@ struct Contradiction {
   Value b;
 };
 
+class Assignment;
+
+struct Solutions {
+  std::vector<Contradiction> failures;
+  std::vector<Assignment> successes;
+};
+
+struct Proof {
+  // Should have the form
+  // Rule applied with argumnets to Proof / assumption
+
+};
+
 class Assignment {
   private:
   std::map<Variable, std::variant<Value, Variable>> assignment;
@@ -30,13 +43,26 @@ class Assignment {
   Assignment() {
   }
 
-  std::optional<Contradiction> setValueTo(const Variable &name, const Value &value);
-  std::variant<Value, Variable> getValueTo(const Variable &name);
+  std::optional<Contradiction> setValue(const Variable &name, const Value &value);
+  std::variant<Value, Variable> getValue(const Variable &name) const;
+
+  Solutions resolve(const Value &a, const Value &b);
 };
 
-struct CheckedModule {
+using Check = Value; // TODO: Should the proofs have optional proofs?
 
+struct Checks {
+  std::vector<Check> pre;
+  std::vector<Check> post;
+
+  Assignment requirements;
+  // TODO: update a proof / list of steps taken.
+  Proof proof;
 };
+
+using CheckedValue = ValueCore<Checks>;
+using CheckedDefinition = DefinitionCore<Checks>;
+using CheckedModule = ModuleCore<Checks>;
 
 CheckedModule check(Module module, Context &ctx);
 #endif // #ifndef CHECKER_H

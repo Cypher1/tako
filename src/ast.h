@@ -12,33 +12,72 @@
 #include "context.h"
 #include "lex.h"
 
-struct Definition;
+template<class T>
+class DefinitionCore;
 
-struct Value {
-  // TODO: support non symbol/operator values.
-  // e.g. numbers, strings, arrays, sets.
+template<class T>
+class AstNode {
+  public:
   std::string name;
   Location loc;
-  std::vector<Definition> args;
+  T info;
 
-  Value() = delete;
-  Value(std::string name, Location loc, std::vector<Definition> args): name{name}, loc{loc}, args{args} {}
-
-  bool operator ==(const Value& other) const;
+  AstNode(std::string name, Location loc): name{name}, loc{loc} {}
 };
 
-struct Definition : Value {
-  std::optional<Value> value;
-  Definition() = delete;
-  Definition(const std::string name, Location loc, std::vector<Definition>args, std::optional<Value> value): Value(name, loc, args), value{value} {}
+template<class T>
+class ValueCore : public AstNode<T> {
+  public:
+  // TODO: support non symbol/operator values.
+  // e.g. numbers, strings, arrays, sets.
+  std::vector<DefinitionCore<T>> args;
+
+  ValueCore() = delete;
+  ValueCore(std::string name, Location loc, std::vector<DefinitionCore<T>> args):
+    AstNode<T>(name, loc),
+    args{args} {}
+
+  bool operator ==(const ValueCore<T>& other) const {
+    if (this->name != other.name) return false;
+    if (args.size() != other.args.size()) return false;
+    auto it = args.begin();
+    auto o_it = other.args.begin();
+    while (it != args.end()) {
+      if(*it != *o_it) return false;
+      it++;
+      o_it++;
+    }
+    return true;
+  }
+  bool operator !=(const ValueCore<T>& other) const {
+    return !(*this == other);
+  }
+
 };
 
-struct Module {
-  std::string name;
-  std::vector<Definition> definitions;
-  Module() = delete;
-  Module(std::string name, std::vector<Definition>definitions): name{name}, definitions{definitions} {}
+template<class T>
+class DefinitionCore : public ValueCore<T> {
+  public:
+  std::optional<ValueCore<T>> value;
+  DefinitionCore() = delete;
+  DefinitionCore(const std::string name, Location loc, std::vector<DefinitionCore<T>>args, std::optional<ValueCore<T>> value):
+    ValueCore<T>(name, loc, args),
+    value{value} {}
 };
+
+template<class T>
+class ModuleCore : public AstNode<T>{
+  public:
+  std::vector<DefinitionCore<T>> definitions;
+  ModuleCore() = delete;
+  ModuleCore(std::string name, Location loc, std::vector<DefinitionCore<T>>definitions): AstNode<T>(name, loc), definitions{definitions} {}
+};
+
+struct Empty { };
+
+using Value = ValueCore<Empty>;
+using Definition = DefinitionCore<Empty>;
+using Module = ModuleCore<Empty>;
 
 Tree<Token> ast(Tokens& toks, Context &ctx);
 
