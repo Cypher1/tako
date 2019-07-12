@@ -22,7 +22,7 @@ public:
   Context(const Context &ctx) = delete; // Disable copy.
 
   Context(Messages &msgs, const std::string &content,
-          const std::string &filename, PassStep step, PassStep final, Config config)
+          const std::string &filename, PassStep step=PassStep::Init, PassStep final=PassStep::Final, Config config={})
       : msgs{msgs}, step{step}, final{final}, content{content}, filename{filename}, config{config} {}
 
   void startStep(PassStep start_step);

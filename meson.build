@@ -15,8 +15,3 @@ executable(
   include_directories : [src_inc, configuration_inc])
 
 subdir('test')
-test_exe = executable(
-  'tests',
-  [ 'test.cc' ],
-  link_with : [tako_lib, test_lib])
-test('tako_test', test_exe)

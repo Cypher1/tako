@@ -41,7 +41,7 @@ references:
     run:
       name: Run unit tests
       command: |
-        ./build/tests
+        ninja -C build test
 
   example_test: &example_test
     run:
