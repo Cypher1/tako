@@ -9,7 +9,6 @@
 
 TEST_CASE("empty string yields no tokens") {
   Messages msgs;
-  Config config;
   Context ctx = {msgs, "", "<filename>"};
 
   Tokens toks = lex(ctx);
@@ -19,7 +18,6 @@ TEST_CASE("empty string yields no tokens") {
 
 TEST_CASE("non-empty string yields tokens") {
   Messages msgs;
-  Config config;
   Context ctx = {msgs, " ", "<filename>"};
 
   Tokens toks = lex(ctx);
@@ -29,7 +27,6 @@ TEST_CASE("non-empty string yields tokens") {
 
 TEST_CASE("can lex a numeric literal") {
   Messages msgs;
-  Config config;
   Context ctx = {msgs, "12", "<filename>"};
 
   Tokens toks = lex(ctx);
