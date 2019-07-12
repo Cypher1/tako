@@ -1,23 +1,18 @@
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include "doctest.h"
+
 #include <algorithm>
 #include <functional>
+
 #include <iostream>
 #include <optional>
 #include <vector>
-
-#include "checker_tests.h"
 
 #include "../src/ast.h"
 
 #include "../src/checker.h"
 #include "../src/toString.h"
 #include "../src/util.h"
-
-#define ASSERT(x, n)                                                           \
-  if (!x) {                                                                    \
-    failures[current_test].push_back(std::string(n));   \
-  }
-
-#define ASSERT_FALSE(x, n) ASSERT(!x, n)
 
 void showValue(const std::optional<Contradiction> &contradiction,
                std::ostream &os) {
@@ -30,61 +25,31 @@ void showValue(const std::optional<Contradiction> &contradiction,
   os << " and " << toString(contradiction->b) << std::endl;
 }
 
-std::string current_test = "pre-test";
+TEST_CASE("can assign anything to x in an empty assignment") {
+  Assignment emp;
 
-std::map<std::string, std::vector<std::string>> failures;
+  // TODO: Arbitrary Values
+  const Value val = {"v", errorLocation, {}};
 
-void test(std::string name, std::function<void(void)> test) {
-  current_test = name;
-  std::cout << "> " << name << "\n";
-  test();
-  current_test = std::string("finish ") + name;
+  const auto contradiction = emp.setValue("x", val);
+  CHECK_MESSAGE(!contradiction, "no contradiction");
 }
 
-int checker_tests(const Config &config) {
-  std::cout << banner("Variable assignment tests", config) << "\n";
-  test("can assign anything to x in an empty assignment", [] {
-    Assignment emp;
+TEST_CASE("Simple assignment checks for contradictions") {
+  Assignment emp;
 
-    // TODO: Arbitrary Values
-    const Value val = {"v", errorLocation, {}};
+  // TODO: Arbitrary Values
+  const Value val1 = {"v1", errorLocation, {}};
+  const Value val2 = {"v2", errorLocation, {}};
 
-    const auto contradiction = emp.setValue("x", val);
-    ASSERT_FALSE(contradiction, "no contradiction");
-  });
+  emp.setValue("x", val1);
 
-  test("can assign anything to x in a simple non-contradicting assignment", [] {
-    Assignment emp;
-
-    // TODO: Arbitrary Values
-    const Value val = {"v", errorLocation, {}};
-
-    emp.setValue("x", val);
-    const auto contradiction = emp.setValue("x", val);
-    ASSERT_FALSE(contradiction, "no contradiction");
-  });
-
-  test("cannot assign anything to x in a simple contradicting assignment", [] {
-    Assignment emp;
-
-    // TODO: Arbitrary Values
-    const Value val1 = {"v1", errorLocation, {}};
-    const Value val2 = {"v2", errorLocation, {}};
-
-    emp.setValue("x", val1);
-    const auto contradiction = emp.setValue("x", val2);
-    ASSERT(contradiction, "assigning x to both v1 and v2 should fail");
-  });
-
-  std::cout << banner("Done", config) << "\n";
-
-  int errors = 0;
-  for (const auto &test : failures) {
-    std::cout << "Test: " << test.first << "\n";
-    for (const auto fail : test.second) {
-      std::cout << "  Failed: " << fail << "\n";
-      errors++;
-    }
+  SUBCASE("can assign equal value without contradiction") {
+    const auto contradiction = emp.setValue("x", val1);
+    CHECK_MESSAGE(!contradiction, "no contradiction");
   }
-  return errors;
+  SUBCASE("cannot assign non-equal value without contradiction") {
+    const auto contradiction = emp.setValue("x", val2);
+    CHECK_MESSAGE(contradiction, "assigning x to both v1 and v2 should fail");
+  }
 }
