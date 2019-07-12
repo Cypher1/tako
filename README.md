@@ -13,41 +13,54 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Prerequisites
 
-Tako currently uses cmake for builds and running tests and git submodules for dependency management.
+Tako currently uses meson for builds and running tests and git submodules for dependency management.
 
 Installation steps for Debian flavoured Linux:
 ```
-sudo apt install make cmake git
+sudo apt install meson git
+```
+
+### Installing dependencies
+
+We just use git's submodules.
+```
+git submodule init
+git submodule update
 ```
 
 ### Building
 
-Building is a fairly simple single step.
+Building requires a setup step,
+```
+meson build
+```
+
+And after that building is a single step:
 
 ```
-make tako
+ninja -C build
 ```
 
 This allows us to run our prototype parser.
 
 ```
-./tako <file>
+./build/tako <file>
 ```
 
-Soon we'll be able to give it some preprepared IR and have it evaluate it, showing working.
+Soon we'll be able to give it some preprepared code and have it evaluate it, showing working.
+Currently we can see what the parser 'sees', but the interpreter and compiler aren't ready yet.
 
 ```
-echo "Load (0,0,1,1,) b\nLoad (0,1,0,1,) a\nAnd a b c\nFree a\nFree b\nNot c c" | ./tako
+echo -e "nand(a, b) = sequence(And(a, b, c),Free(a),\nFree(b),\nNot(c, c))" | ./build/tako -i -s Parse
 ```
+The `-i` tells tako to run in interactive mode (taking command line input) and `-s Parse` means to stop after parsing.
 
 ## Running the tests
 
 Running the tests should also be fairly simple, but relies on some dependencies which we will fetch using git.
 
 ```
-git submodule init
-git submodule update
-make test
+ninja -C build test
 ```
 
 ## Installation
