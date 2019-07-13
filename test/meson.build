@@ -7,7 +7,7 @@ test_lib = static_library(
   'test_lib',
   test_sources,
   link_with : [tako_lib],
-  include_directories : [src_inc, tests_inc, configuration_inc])
+  include_directories : [src_inc, tests_inc])
 
 checker_tests = executable(
   'checker_tests', [ 'checker_tests.cc' ],
