@@ -58,24 +58,28 @@ const std::map<std::string, unsigned int> prefix_binding = {
     {"-", 130}, {"+", 130}, {"~", 130}, {"!", 130}};
 
 const auto operatorBind = [](const Token &tok, ParserContext &ctx) { // Lbp
-  auto p_it = infix_binding.find(ctx.context.getStringAt(tok.loc));
+  std::string t = ctx.context.getStringAt(tok.loc);
+  auto p_it = infix_binding.find(t);
   if (p_it == infix_binding.end()) {
-    throw std::runtime_error(std::string() +
-                             "Expected an infix operator but found '" +
-                             ctx.context.getStringAt(tok.loc) + "'");
+    std::string start = std::to_string(tok.loc.start);
+    std::string len = std::to_string(tok.loc.length);
+    throw std::runtime_error(
+      std::string() + "Expected an infix operator but found("+start+","+len+") '" + t + "'"
+    );
   }
   return p_it->second;
 };
 
 Tree<Token> prefixOp(const Token &tok, ParserContext &ctx) {
   auto root = Tree<Token>(tok);
-  auto p_it = prefix_binding.find(ctx.context.getStringAt(tok.loc));
+  std::string t = ctx.context.getStringAt(tok.loc);
+  auto p_it = prefix_binding.find(t);
   if (p_it == prefix_binding.end()) {
-    throw std::runtime_error(std::string() +
-                             "Expected a prefix operator but found '" +
-                             ctx.context.getStringAt(tok.loc) + "'");
+    throw std::runtime_error(
+      std::string() + "Expected a prefix operator but found '" + t + "'"
+    );
   }
-  auto right = expression(ctx, p_it->second);
+  auto right = parseValue(ctx, p_it->second);
   root.children.push_back(right);
   return root;
 };
@@ -87,7 +91,7 @@ Tree<Token> infixOp(Tree<Token> left, const Token &tok, ParserContext &ctx) {
   if (p_it == infix_binding.end()) {
     // TODO Defaulting is bad...
   };
-  auto right = expression(ctx, p_it->second);
+  auto right = parseValue(ctx, p_it->second);
   root.children.push_back(right);
   return root;
 };
@@ -112,7 +116,7 @@ Tree<Token> bracket(const Token &tok, ParserContext &ctx) { // Nud
   }
   const auto closeTT = close_it->second;
   while (ctx.hasToken && (ctx.getCurr().type != closeTT)) {
-    auto exp = expression(ctx);
+    auto exp = parseValue(ctx);
     inner.push_back(exp);
   }
   ctx.expect(closeTT);
@@ -130,7 +134,7 @@ Tree<Token> funcArgs(Tree<Token> left, const Token &tok,
   }
   const auto closeTT = close_it->second;
   while (ctx.hasToken && (ctx.getCurr().type != closeTT)) {
-    auto exp = expression(ctx);
+    auto exp = parseValue(ctx);
     inner.push_back(exp);
   }
   ctx.expect(closeTT);
@@ -169,7 +173,9 @@ std::map<TokenType, SymbolTableEntry> symbolTable = {
 bool ParserContext::next() {
   if (hasToken) {
     // std::cout << "> " << context.getStringAt(getCurr().loc) << "\n"; // For debugging.
-    toks++;
+    if (toks != end) {
+      toks++;
+    }
     if (toks != end) {
       if (toks->type == +TokenType::WhiteSpace ||
           toks->type == +TokenType::Comma ||
@@ -202,12 +208,10 @@ void ParserContext::msg(MessageType level, std::string msg_txt) {
 }
 
 const Token &ParserContext::getCurr() const {
-  if (toks != end) {
-    return *(toks);
-  } else {
+  if (toks == end) {
     return eofToken;
-    throw std::runtime_error("Unexpected end of content");
   }
+  return *toks;
 }
 
 std::string ParserContext::getCurrString() const {
@@ -224,7 +228,12 @@ const SymbolTableEntry ParserContext::entry() {
   return symbol_it->second;
 }
 
-Tree<Token> expression(ParserContext &ctx, unsigned int rbp) {
+Tree<Token> parseDefinition(ParserContext &ctx, unsigned int rbp) {
+  // TODO check this is a value (merge with parse pass?)
+  return parseValue(ctx, rbp);
+}
+
+Tree<Token> parseValue(ParserContext &ctx, unsigned int rbp) {
   unsigned int binding = 0;
   Token t = ctx.getCurr();
   const auto t_entry = ctx.entry();
@@ -241,16 +250,25 @@ Tree<Token> expression(ParserContext &ctx, unsigned int rbp) {
   return left;
 }
 
+Tree<Token> parseModule(ParserContext ctx) {
+  Forest<Token> definitions;
+  while (ctx.hasToken) {
+    definitions.push_back(parseDefinition(ctx));
+  }
+  Token fileToken = {TokenType::Symbol, {0, 0, ctx.context.filename}};
+  return Tree<Token>(fileToken, definitions);
+}
+
 Tree<Token> ast(Tokens& toks, Context &context) {
   context.startStep(PassStep::Ast);
   // Add a disposable char to make whitespace dropping easy.
   toks.insert(toks.begin(), errorToken);
   ParserContext ctx(context, toks.cbegin(), toks.cend());
   ctx.next();
-  Forest<Token> module;
-  while (ctx.hasToken) {
-    module.push_back(expression(ctx));
-  }
-  Token fileToken = {TokenType::Symbol, {0, 0, ctx.context.filename}};
-  return Tree<Token>(fileToken, module);
+  return parseModule(ctx);
 }
+
+// TODO convert ast'ifying to a set of functions (with parameterization?)
+// parseModule
+// parseDefinition
+// parseValue

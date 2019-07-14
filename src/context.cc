@@ -19,6 +19,9 @@ void Context::msg(Location loc, MessageType level, std::string msg_text) {
 }
 
 std::string Context::getStringAt(const Location &loc) const {
+  if(loc.start + loc.length >= content.size()) {
+    return "";
+  }
   return content.substr(loc.start, loc.length);
 }
 

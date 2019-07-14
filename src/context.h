@@ -12,8 +12,8 @@ class Context {
   PassStep final;
 
 public:
-  const std::string &content;
-  const std::string &filename;
+  const std::string content;
+  const std::string filename;
 
   // Passing configuration
   Config config;
