@@ -7,7 +7,7 @@ add_global_arguments('-g', language : 'cpp')
 
 conf_data = configuration_data()
 # Set data
-conf_data.set('version', '1.0.0')
+conf_data.set('version', meson.project_version())
 
 subdir('src')
 
