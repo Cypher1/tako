@@ -5,6 +5,10 @@ project('tako', 'cpp',
 add_global_arguments('-std=c++17', language : 'cpp')
 add_global_arguments('-g', language : 'cpp')
 
+conf_data = configuration_data()
+# Set data
+conf_data.set('version', '1.0.0')
+
 subdir('src')
 
 executable(
@@ -12,6 +16,6 @@ executable(
   [ 'main.cc' ],
   install : true,
   link_with : tako_lib,
-  include_directories : [src_inc, configuration_inc])
+  include_directories : [src_inc])
 
 subdir('test')
