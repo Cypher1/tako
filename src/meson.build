@@ -1,6 +1,6 @@
 conf_data = configuration_data()
 # Set data
-conf_data.set('version', '1.0.0')
+conf_data.set('version', meson.project_version())
 
 configure_file(input : 'takoConfig.h.in',
   output : 'takoConfig.h',
