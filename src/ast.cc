@@ -249,7 +249,7 @@ Tree<Token> parseValue(ParserContext &ctx, unsigned int rbp) {
   return left;
 }
 
-Tree<Token> parseModule(ParserContext ctx) {
+Tree<Token> parseModule(ParserContext &ctx, unsigned int rbp) {
   Forest<Token> definitions;
   while (ctx.hasToken) {
     definitions.push_back(parseDefinition(ctx));
@@ -258,13 +258,13 @@ Tree<Token> parseModule(ParserContext ctx) {
   return Tree<Token>(fileToken, definitions);
 }
 
-Tree<Token> ast(Tokens& toks, Context &context) {
+Tree<Token> ast(Tokens& toks, Context &context, std::function<Tree<Token>(ParserContext &, unsigned int)> func) {
   context.startStep(PassStep::Ast);
   // Add a disposable char to make whitespace dropping easy.
   toks.insert(toks.begin(), errorToken);
   ParserContext ctx(context, toks.cbegin(), toks.cend());
   ctx.next();
-  return parseModule(ctx);
+  return func(ctx, 0);
 }
 
 // TODO convert ast'ifying to a set of functions (with parameterization?)

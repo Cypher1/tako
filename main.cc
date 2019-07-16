@@ -126,7 +126,7 @@ void runCompiler(Context &ctx) {
       return;
     }
 
-    Tree<Token> tree = ast(toks, ctx);
+    Tree<Token> tree = ast(toks, ctx, parseModule);
     if(ctx.done()) {
       std::cerr << show(tree.children, ctx, 0, "\n") << "\n";
       return;
