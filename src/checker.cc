@@ -8,8 +8,9 @@
 
 #include "checker.h"
 
-std::optional<Contradiction> Assignment::setValue(const Variable &name,
-                                                            const Value &new_value) {
+std::optional<Contradiction> Assignment::setValue(
+    const Variable &name,
+    const Value &new_value) {
   const auto value_it = assignment.find(name);
   if (value_it == assignment.end()) {
     assignment.emplace(name, new_value);
@@ -23,17 +24,18 @@ std::optional<Contradiction> Assignment::setValue(const Variable &name,
   }
   const auto value = std::get<Value>(value_or_var);
   if (value == new_value) {
-    // If complex, unwrap and evaluate for equality
-    // else
+    // If equal, done
     return {};
   }
+  // else attempt to unify
 
   // TODO ...
   const Contradiction ret = {name, value, new_value};
   return ret;
 }
 
-Solutions Assignment::resolve(const Value &a, const Value &b) {
+Solutions Assignment::unify(const Value &a, const Value &b) {
+  // TODO: unification should build a list of solutions and failures.
   return {
     {},
     {}
@@ -41,7 +43,12 @@ Solutions Assignment::resolve(const Value &a, const Value &b) {
 }
 
 std::variant<Value, Variable> Assignment::getValue(const Variable &name) const {
-  return name; // TODO get values from the mapping.
+  auto it = assignment.find(name);
+  if (it == assignment.end()) {
+    return name; // It's unrestricted.
+  }
+  // It is set. TODO: ensure all its contents unified.
+  return it->second;
 }
 
 CheckedModule check(Module module, Context &ctx) {

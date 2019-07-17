@@ -25,8 +25,8 @@ struct Contradiction {
 class Assignment;
 
 struct Solutions {
-  std::vector<Contradiction> failures;
   std::vector<Assignment> successes;
+  std::vector<Contradiction> failures;
 };
 
 struct Proof {
@@ -46,7 +46,7 @@ class Assignment {
   std::optional<Contradiction> setValue(const Variable &name, const Value &value);
   std::variant<Value, Variable> getValue(const Variable &name) const;
 
-  Solutions resolve(const Value &a, const Value &b);
+  Solutions unify(const Value &a, const Value &b);
 };
 
 using Check = Value; // TODO: Should the proofs have optional proofs?
