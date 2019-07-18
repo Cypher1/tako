@@ -7,7 +7,8 @@
 
 #include "../src/lex.h"
 #include "../src/ast.h"
-
+#include "../src/parser.h"
+#include "../src/show.h"
 
 // TODO rapidcheck that all tokens from a lexed 'file' are inside the file.
 // i.e. their location is 'in bounds' and the getString matches the input.getString.
