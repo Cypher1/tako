@@ -11,7 +11,6 @@
 #include "ast.h"
 #include "ast_internal.h"
 #include "lex.h"
-#include "toString.h"
 
 const std::map<TokenType, TokenType> brackets = {
     {TokenType::OpenParen, TokenType::CloseParen},

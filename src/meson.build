@@ -11,7 +11,7 @@ tako_sources = [
   'eval.cc',
   'lex.cc',
   'parser.cc',
-  'toString.cc']
+  'show.cc']
 
 tako_lib = static_library(
   'tako_lib',

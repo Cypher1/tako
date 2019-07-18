@@ -12,7 +12,7 @@
 #include "src/takoConfig.h"
 #include "src/ast.h"
 #include "src/parser.h"
-#include "src/toString.h"
+#include "src/show.h"
 #include "src/checker.h"
 #include "src/arg_parser.h"
 #include "util.h"
@@ -122,21 +122,21 @@ void runCompiler(Context &ctx) {
     Tokens toks = lex(ctx);
     if(ctx.done()) {
       std::cerr << "Lexed " << toks.size() << " tokens.\n";
-      std::cerr << toString(toks, ctx) << "\n";
+      std::cerr << show(toks, ctx) << "\n";
       return;
     }
 
     Tree<Token> tree = ast(toks, ctx);
     if(ctx.done()) {
-      std::cerr << toString(tree.children, ctx, 0, "\n") << "\n";
+      std::cerr << show(tree.children, ctx, 0, "\n") << "\n";
       return;
     }
 
     Module module = parse(tree, ctx);
     if(ctx.done()) {
-      std::cerr << toString(module, 0) << "\n";
+      std::cerr << show(module, 0) << "\n";
       for(const auto msg : ctx.getMsgs()) {
-        std::cerr << toString(msg, ctx, 2) << "\n";
+        std::cerr << show(msg, ctx, 2) << "\n";
       }
       return;
     }

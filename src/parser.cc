@@ -9,7 +9,7 @@
 #include "ast.h"
 #include "lex.h"
 #include "parser.h"
-#include "toString.h"
+#include "show.h"
 
 std::optional<Definition> parseDefinition(const Tree<Token>& node, Context &ctx);
 
@@ -74,7 +74,7 @@ std::optional<Definition> parseDefinition(const Tree<Token>& node, Context &ctx)
       msgs.push_back({
           PassStep::Parse,
           MessageType::Error,
-          "Reached end of scope, expected end of definition for '"+val.name+"', got '"+toString(node.value, content, filename)+"' instead.",
+          "Reached end of scope, expected end of definition for '"+val.name+"', got '"+show(node.value, content, filename)+"' instead.",
           val.loc
       });
       */
