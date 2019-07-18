@@ -44,8 +44,7 @@ Offset consumeWhiteSpace(const std::string content) {
       }
       loc++;
     }
-    if(cur == '/' && loc+1 < content.size() && content[loc+1] == '/') {
-      loc++;
+    if((cur == '/' && loc+1 < content.size() && content[loc+1] == '/')||(cur == '#')) {
       for(loc++; loc < content.size(); loc++) {
         if(content[loc] == '\n') break;
       }
