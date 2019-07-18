@@ -11,7 +11,7 @@
 #include "context.h"
 #include "ast.h"
 #include "lex.h"
-#include "toString.h"
+#include "show.h"
 
 const Token eofToken = {TokenType::Error, errorLocation};
 const Token errorToken = {TokenType::Error, errorLocation};
@@ -48,13 +48,13 @@ using parseLeftType = std::function<Tree<Token>(
     Tree<Token> left, const Token &tok, ParserContext &ctx)>;
 
 Tree<Token> parserLogicErrorInit(const Token &tok, ParserContext &ctx) {
-  throw std::runtime_error("Parser logic error on token " + toString(tok, ctx.context));
+  throw std::runtime_error("Parser logic error on token " + show(tok, ctx.context));
 };
 
 Tree<Token> parserLogicErrorLeft(Tree<Token>, const Token &tok,
                                 ParserContext &ctx) {
   throw std::runtime_error("Parser logic error on token left " +
-                           toString(tok, ctx.context));
+                           show(tok, ctx.context));
 };
 
 class SymbolTableEntry {

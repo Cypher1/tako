@@ -4,7 +4,6 @@
 #include <set>
 #include <string>
 #include "lex.h"
-#include "toString.h"
 
 const std::string lower = "abcdefghijklmnopqrstuvwxyz";
 const std::string upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";

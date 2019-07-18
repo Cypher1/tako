@@ -6,7 +6,7 @@
 #include "util.h"
 
 #include "lex.h"
-#include "toString.h"
+#include "show.h"
 
 void indent(std::stringstream& o, int depth, char dent) {
   for(int i=0; i<depth; i++) {
@@ -22,7 +22,7 @@ std::string banner(const std::string &text, const Config &config) {
   indent(o, w-w/2-1, '-');
   return o.str();
 }
-std::string toString(const Location& loc, const Context &ctx, int depth) {
+std::string show(const Location& loc, const Context &ctx, int depth) {
   size_t line = 1+std::count(ctx.content.begin(), ctx.content.begin()+loc.start, '\n');
   size_t col = loc.start - ctx.content.rfind("\n", loc.start);
   std::stringstream o;
@@ -32,14 +32,14 @@ std::string toString(const Location& loc, const Context &ctx, int depth) {
   return o.str();
 }
 
-std::string toString(const Value& val, int depth) {
+std::string show(const Value& val, int depth) {
   std::stringstream o;
   indent(o, depth);
   o << val.name;
   if (!val.args.empty()) {
     o << "(\n";
     for(const auto& arg : val.args) {
-      o << toString(arg, depth+2) << "\n";
+      o << show(arg, depth+2) << "\n";
     }
     indent(o, depth);
     o << ")";
@@ -47,29 +47,29 @@ std::string toString(const Value& val, int depth) {
   return o.str();
 }
 
-std::string toString(const Definition& val, int depth) {
+std::string show(const Definition& val, int depth) {
   std::stringstream o;
-  o << toString(Value(val), depth);
+  o << show(Value(val), depth);
   if (val.value) {
     o << " =\n";
-    o << toString(*val.value, depth+2);
+    o << show(*val.value, depth+2);
   }
   return o.str();
 }
 
-std::string toString(const Module& module, int depth) {
+std::string show(const Module& module, int depth) {
   std::stringstream o;
   indent(o, depth);
   o << "module " << module.name << " (" << module.definitions.size() << " top level definitions) {\n";
   for(const auto& val : module.definitions) {
-    o << toString(val, depth+2) << "\n";
+    o << show(val, depth+2) << "\n";
   }
   indent(o, depth);
   o << "}";
   return o.str();
 }
 
-std::string toString(const Token& tok, const Context &ctx, int depth) {
+std::string show(const Token& tok, const Context &ctx, int depth) {
   std::stringstream o;
   indent(o, depth);
   if (tok.type == +TokenType::WhiteSpace) {
@@ -82,26 +82,26 @@ std::string toString(const Token& tok, const Context &ctx, int depth) {
   o << " : " << tok.type;
   if(/*show locations*/ false) {
     std::stringstream s;
-    s << toString(tok.loc, ctx, 0);
+    s << show(tok.loc, ctx, 0);
     indent(o, ctx.config.width-s.str().length()-o.str().length());
     o << s.str();
   }
   return o.str();
 }
 
-std::string toString(const Message& msg, const Context &ctx, int depth) {
+std::string show(const Message& msg, const Context &ctx, int depth) {
   std::stringstream o;
   indent(o, depth);
   o << msg.pass << " ";
   o << msg.type << ": ";
   o << msg.msg << " ";
-  o << toString(msg.loc, ctx, 0);
+  o << show(msg.loc, ctx, 0);
   return o.str();
 }
 
-std::string toString(const Tree<Token>& tree, const Context &ctx, int depth) {
+std::string show(const Tree<Token>& tree, const Context &ctx, int depth) {
   std::stringstream o;
-  o << toString(tree.value, ctx, depth);
-  o << toString(tree.children, ctx, depth+2, "\n");
+  o << show(tree.value, ctx, depth);
+  o << show(tree.children, ctx, depth+2, "\n");
   return o.str();
 }
