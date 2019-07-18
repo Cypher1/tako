@@ -81,11 +81,16 @@ using Definition = DefinitionCore<Empty>;
 using Module = ModuleCore<Empty>;
 
 class ParserContext;
+
+namespace ast {
+
 using Parser = std::function<Tree<Token>(ParserContext&, unsigned int)>;
 Tree<Token> parseDefinition(ParserContext &ctx, unsigned int rbp=0);
 Tree<Token> parseValue(ParserContext &ctx, unsigned int rbp=0);
 Tree<Token> parseModule(ParserContext &ctx, unsigned int rbp=0);
 
 Tree<Token> ast(Tokens& toks, Context &ctx, std::function<Tree<Token>(ParserContext &, unsigned int)> func);
+
+}
 
 #endif // #ifndef AST_H

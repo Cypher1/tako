@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
+#include <optional>
 
 #include "../src/lex.h"
 #include "../src/ast.h"
@@ -22,9 +23,14 @@ TEST_CASE("empty string") {
     CHECK_MESSAGE(toks.empty(), toks[0].type);
     CHECK(msgs.empty());
     SUBCASE("ast should be an empty tree") {
-      Tree<Token> tree = ast(toks, ctx, parseValue);
+      Tree<Token> tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK_MESSAGE(tree.children.empty(), tree.children[0].value.type);
       CHECK(msgs.empty());
+      SUBCASE("parse value") {
+        std::optional<Value> val = parser::parseValue(tree, ctx);
+        CHECK_MESSAGE(!val, "Parse value unexpectedly succeeded");
+        CHECK(msgs.empty());
+      }
     }
   }
 }
@@ -38,7 +44,7 @@ TEST_CASE("non-empty string") {
     CHECK_FALSE(toks.empty());
     CHECK(msgs.empty());
     SUBCASE("ast") {
-      Tree<Token> tree = ast(toks, ctx, parseValue);
+      Tree<Token> tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK_MESSAGE(tree.children.empty(), tree.children[0].value.type);
       CHECK(msgs.empty());
     }
@@ -55,7 +61,7 @@ TEST_CASE("can lex a numeric literal") {
     CHECK(toks[0].type == +TokenType::NumberLiteral);
     CHECK(msgs.empty());
     SUBCASE("ast") {
-      Tree<Token> tree = ast(toks, ctx, parseValue);
+      Tree<Token> tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK(tree.value.type == +TokenType::NumberLiteral);
       CHECK(tree.children.size() == 0);
       CHECK(msgs.empty());
@@ -73,7 +79,7 @@ TEST_CASE("variable name") {
     CHECK(toks[0].type == +TokenType::Symbol);
     CHECK(msgs.empty());
     SUBCASE("ast") {
-      Tree<Token> tree = ast(toks, ctx, parseValue);
+      Tree<Token> tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK(tree.value.type == +TokenType::Symbol);
       CHECK(tree.children.size() == 0);
       CHECK(msgs.empty());
@@ -95,7 +101,7 @@ TEST_CASE("simple expressions") {
     CHECK(toks[4].type == +TokenType::NumberLiteral);
     CHECK(msgs.empty());
     SUBCASE("ast") {
-      Tree<Token> tree = ast(toks, ctx, parseValue);
+      Tree<Token> tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK(tree.value.type == +TokenType::Operator);
       CHECK(tree.children.size() == 2);
       CHECK(tree.children[0].value.type == +TokenType::Symbol);
@@ -121,7 +127,7 @@ TEST_CASE("simple expressions") {
     CHECK(toks[4].type == +TokenType::Symbol);
     CHECK(msgs.empty());
     SUBCASE("ast") {
-      Tree<Token> tree = ast(toks, ctx, parseValue);
+      Tree<Token> tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK(tree.value.type == +TokenType::Operator);
       CHECK(tree.children.size() == 2);
       CHECK(tree.children[0].value.type == +TokenType::NumberLiteral);
@@ -150,7 +156,7 @@ TEST_CASE("simple expressions with calls") {
     CHECK(msgs.empty());
 
     SUBCASE("ast") {
-      Tree<Token> tree = ast(toks, ctx, parseValue);
+      Tree<Token> tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK(tree.value.type == +TokenType::Operator);
       CHECK(tree.children.size() == 2);
       CHECK(tree.children[0].value.type == +TokenType::NumberLiteral);
@@ -183,7 +189,7 @@ TEST_CASE("simple expressions with calls with arguments") {
     CHECK(msgs.empty());
 
     SUBCASE("ast") {
-      Tree<Token> tree = ast(toks, ctx, parseValue);
+      Tree<Token> tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK(tree.value.type == +TokenType::Operator);
       CHECK(tree.children.size() == 2);
       const auto& l32 = tree.children[0];
@@ -217,7 +223,7 @@ TEST_CASE("simple expressions with parenthesis") {
     CHECK(msgs.empty());
 
     SUBCASE("ast") {
-      Tree<Token> tree = ast(toks, ctx, parseValue);
+      Tree<Token> tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK(tree.value.type == +TokenType::OpenParen);
       CHECK(tree.children.size() == 1);
       const auto &expr_root = tree.children[0];
