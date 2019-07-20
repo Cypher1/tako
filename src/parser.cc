@@ -3,6 +3,7 @@
 #include <optional>
 #include <map>
 #include <string>
+#include <functional>
 
 #include "context.h"
 
@@ -11,10 +12,14 @@
 #include "parser.h"
 #include "show.h"
 
+namespace parser {
 std::optional<Definition> parseDefinition(const Tree<Token>& node, Context &ctx);
 
-
 std::optional<Value> parseValue(const Tree<Token>& node, Context &ctx) {
+  std::string name = ctx.getStringAt(node.value.loc);
+  if(name.empty()) {
+    return std::nullopt;
+  }
   std::vector<Definition> args;
   int ord = 0;
   for(const auto& child : node.children) {
@@ -28,7 +33,7 @@ std::optional<Value> parseValue(const Tree<Token>& node, Context &ctx) {
       args.push_back(Definition(name, child.value.loc, {}, arg_value));
     }
   }
-  return Value(ctx.getStringAt(node.value.loc), node.value.loc, args);
+  return Value(name, node.value.loc, args);
 }
 
 std::optional<Definition> parseDefinition(const Tree<Token>& node, Context &ctx) {
@@ -88,14 +93,15 @@ std::optional<Definition> parseDefinition(const Tree<Token>& node, Context &ctx)
   return Definition(name, loc, args, value);
 }
 
-Module parse(const Tree<Token>& module, Context &ctx) {
-  ctx.startStep(PassStep::Parse);
+Module parseModule(const Tree<Token>& node, Context &ctx) {
   std::vector<Definition> definitions;
-  for(const auto& defTree : module.children) {
+  for(const auto& defTree : node.children) {
     auto def = parseDefinition(defTree, ctx);
     if(def) {
       definitions.push_back(*def);
     }
   }
-  return { ctx.filename, module.value.loc, definitions };
+  return { ctx.filename, node.value.loc, definitions };
+}
+
 }

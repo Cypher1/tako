@@ -72,6 +72,4 @@ public:
       : binding{binding}, nud{nud}, led{led} {}
 };
 
-Tree<Token> parseValue(ParserContext &ctx, unsigned int rbp = 0);
-Tree<Token> parseDefinition(ParserContext &ctx, unsigned int rbp = 0);
 #endif // #ifndef AST_INTERNAL_H

@@ -126,13 +126,13 @@ void runCompiler(Context &ctx) {
       return;
     }
 
-    Tree<Token> tree = ast(toks, ctx);
+    Tree<Token> tree = ast::ast(toks, ctx, ast::parseModule);
     if(ctx.done()) {
       std::cerr << show(tree.children, ctx, 0, "\n") << "\n";
       return;
     }
 
-    Module module = parse(tree, ctx);
+    Module module = parser::parse<Module>(tree, ctx, parser::parseModule);
     if(ctx.done()) {
       std::cerr << show(module, 0) << "\n";
       for(const auto msg : ctx.getMsgs()) {

@@ -78,7 +78,7 @@ Tree<Token> prefixOp(const Token &tok, ParserContext &ctx) {
       std::string() + "Expected a prefix operator but found '" + t + "'"
     );
   }
-  auto right = parseValue(ctx, p_it->second);
+  auto right = ast::parseValue(ctx, p_it->second);
   root.children.push_back(right);
   return root;
 };
@@ -90,7 +90,7 @@ Tree<Token> infixOp(Tree<Token> left, const Token &tok, ParserContext &ctx) {
   if (p_it == infix_binding.end()) {
     // TODO Defaulting is bad...
   };
-  auto right = parseValue(ctx, p_it->second);
+  auto right = ast::parseValue(ctx, p_it->second);
   root.children.push_back(right);
   return root;
 };
@@ -115,7 +115,7 @@ Tree<Token> bracket(const Token &tok, ParserContext &ctx) { // Nud
   }
   const auto closeTT = close_it->second;
   while (ctx.hasToken && (ctx.getCurr().type != closeTT)) {
-    auto exp = parseValue(ctx);
+    auto exp = ast::parseValue(ctx);
     inner.push_back(exp);
   }
   ctx.expect(closeTT);
@@ -133,7 +133,7 @@ Tree<Token> funcArgs(Tree<Token> left, const Token &tok,
   }
   const auto closeTT = close_it->second;
   while (ctx.hasToken && (ctx.getCurr().type != closeTT)) {
-    auto exp = parseValue(ctx);
+    auto exp = ast::parseValue(ctx);
     inner.push_back(exp);
   }
   ctx.expect(closeTT);
@@ -227,12 +227,12 @@ const SymbolTableEntry ParserContext::entry() {
   return symbol_it->second;
 }
 
-Tree<Token> parseDefinition(ParserContext &ctx, unsigned int rbp) {
+Tree<Token> ast::parseDefinition(ParserContext &ctx, unsigned int rbp) {
   // TODO check this is a value (merge with parse pass?)
-  return parseValue(ctx, rbp);
+  return ast::parseValue(ctx, rbp);
 }
 
-Tree<Token> parseValue(ParserContext &ctx, unsigned int rbp) {
+Tree<Token> ast::parseValue(ParserContext &ctx, unsigned int rbp) {
   unsigned int binding = 0;
   Token t = ctx.getCurr();
   const auto t_entry = ctx.entry();
@@ -249,7 +249,7 @@ Tree<Token> parseValue(ParserContext &ctx, unsigned int rbp) {
   return left;
 }
 
-Tree<Token> parseModule(ParserContext ctx) {
+Tree<Token> ast::parseModule(ParserContext &ctx, unsigned int rbp) {
   Forest<Token> definitions;
   while (ctx.hasToken) {
     definitions.push_back(parseDefinition(ctx));
@@ -258,16 +258,16 @@ Tree<Token> parseModule(ParserContext ctx) {
   return Tree<Token>(fileToken, definitions);
 }
 
-Tree<Token> ast(Tokens& toks, Context &context) {
+Tree<Token> ast::ast(Tokens& toks, Context &context, std::function<Tree<Token>(ParserContext &, unsigned int)> func) {
   context.startStep(PassStep::Ast);
   // Add a disposable char to make whitespace dropping easy.
   toks.insert(toks.begin(), errorToken);
   ParserContext ctx(context, toks.cbegin(), toks.cend());
   ctx.next();
-  return parseModule(ctx);
+  return func(ctx, 0);
 }
 
 // TODO convert ast'ifying to a set of functions (with parameterization?)
-// parseModule
-// parseDefinition
-// parseValue
+// ast::parseModule
+// ast::parseDefinition
+// ast::parseValue
