@@ -106,6 +106,7 @@ int main(int argc, char* argv[]) {
         break;
       }
       Context ctx(msgs, line, "stdin", PassStep::Init, last_step, config);
+      // TODO: Run for a definition?
       runCompiler(ctx);
     }
   }
