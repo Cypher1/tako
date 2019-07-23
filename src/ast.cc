@@ -47,7 +47,7 @@ const leftBindingPowerType symbolBind = [](const Token &tok,
 };
 
 const std::map<std::string, unsigned int> infix_binding = {
-    {"-|", 20}, {"|-", 30},  {"=", 40},   {"<", 60},  {"<=", 60}, {">", 60},
+    {"-|", 20}, {"|-", 30},  {",", 40}, {"=", 50},   {"<", 60},  {"<=", 60}, {">", 60},
     {">=", 60}, {"<>", 60},  {"!=", 60},  {"==", 60}, {"|", 70},  {"^", 80},
     {"&", 90},  {"<<", 100}, {">>", 100}, {"+", 110}, {"-", 110}, {"*", 120},
     {"/", 120}, {"//", 120}, {"%", 120},  {":", 130}, {".", 140}, {"[", 150},
@@ -122,6 +122,26 @@ Tree<Token> bracket(const Token &tok, ParserContext &ctx) { // Nud
 
   return {tok, inner};
 };
+Forest<Token> simplifyCommasAndParens(Forest<Token> nodes) {
+  Forest<Token> children;
+  for (auto& node : nodes) {
+    // Add the children
+    node.children = simplifyCommasAndParens(node.children);
+
+    const bool isComma = node.value.type == +TokenType::Comma;
+    const bool isParen = node.value.type == +TokenType::OpenParen;
+    const bool isParenthesizedExpr = isParen && node.children.size() == 1;
+    if(isComma || isParenthesizedExpr) {
+      // Add the children
+      children.insert(children.end(), node.children.begin(), node.children.end());
+    } else {
+      // Tuple, unit or other expr
+      // Add the node
+      children.push_back(node);
+    }
+  }
+  return children;
+}
 
 Tree<Token> funcArgs(Tree<Token> left, const Token &tok,
                      ParserContext &ctx) { // Led
@@ -137,8 +157,7 @@ Tree<Token> funcArgs(Tree<Token> left, const Token &tok,
     inner.push_back(exp);
   }
   ctx.expect(closeTT);
-
-  left.children = inner;
+  left.children = simplifyCommasAndParens(inner);
   return left; // This is a function call
 };
 
@@ -177,7 +196,6 @@ bool ParserContext::next() {
     }
     if (toks != end) {
       if (toks->type == +TokenType::WhiteSpace ||
-          toks->type == +TokenType::Comma ||
           toks->type == +TokenType::SemiColon) {
         return next(); // TODO instring...
       }
@@ -246,6 +264,9 @@ Tree<Token> ast::parseValue(ParserContext &ctx, unsigned int rbp) {
     left = t_entry.led(left, t, ctx);
     binding = ctx.entry().binding(ctx.getCurr(), ctx);
   }
+
+  //TODO: Collapse comma separated values into a list of arguments.
+  left.children = simplifyCommasAndParens(left.children);
   return left;
 }
 

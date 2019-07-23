@@ -79,7 +79,7 @@ std::string show(const Token& tok, const Context &ctx, int depth) {
   if (tok.type == +TokenType::WhiteSpace) {
     o << "'";
   }
-  o << " : " << tok.type;
+  o << "(" << tok.type << ")";
   if(/*show locations*/ false) {
     std::stringstream s;
     s << show(tok.loc, ctx, 0);
@@ -102,6 +102,9 @@ std::string show(const Message& msg, const Context &ctx, int depth) {
 std::string show(const Tree<Token>& tree, const Context &ctx, int depth) {
   std::stringstream o;
   o << show(tree.value, ctx, depth);
-  o << show(tree.children, ctx, depth+2, "\n");
+  if(!tree.children.empty()) {
+    o << "\n";
+    o << show(tree.children, ctx, depth+2, "\n");
+  }
   return o.str();
 }
