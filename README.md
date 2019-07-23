@@ -51,7 +51,7 @@ Soon we'll be able to give it some preprepared code and have it evaluate it, sho
 Currently we can see what the parser 'sees', but the interpreter and compiler aren't ready yet.
 
 ```
-echo -e "nand(a, b) = sequence(And(a, b, c),Free(a),\nFree(b),\nNot(c, c))" | ./build/tako -i -s Parse
+echo "nand(a, b) = sequence(And(a, b, c),Free(a), Free(b), Not(c, c))" | ./build/tako -i -s Parse
 ```
 The `-i` tells tako to run in interactive mode (taking command line input) and `-s Parse` means to stop after parsing.
 
