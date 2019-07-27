@@ -92,7 +92,76 @@ TEST_CASE("a string literal") {
     Tokens toks = lex(ctx);
     CHECK_SHOW(msgs.empty(), msgs, ctx);
     REQUIRE(toks.size() >= 1);
+    CHECK_SHOW(toks.size() == 1, toks, ctx);
+    CHECK_SHOW(toks[0].type == +TokenType::StringLiteral, toks, ctx);
+    SUBCASE("ast") {
+      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      CHECK_SHOW(msgs.empty(), msgs, ctx);
+      REQUIRE(tree);
+      CHECK(tree->value.type == +TokenType::StringLiteral);
+      CHECK(tree->children.size() == 0);
+      SUBCASE("parse") {
+        std::optional<Value> o_val = parser::parseValue(*tree, ctx);
+        // TODO: Check that we got the actual value
+        CHECK_SHOW(msgs.empty(), msgs, ctx);
+        REQUIRE(o_val);
+      }
+    }
+  }
+}
+
+TEST_CASE("unterminated string literal with newlines") {
+  Messages msgs;
+  Context ctx = {msgs, "'123\n", "<filename>"};
+
+  SUBCASE("tokenize") {
+    Tokens toks = lex(ctx);
+    REQUIRE(toks.size() >= 1);
     CHECK(toks.size() == 1);
+    REQUIRE_SHOW(msgs.size() == 1, msgs, ctx);
+    CHECK(msgs[0].msg == "Unterminated string literal (or maybe you wanted a \"multiline string\"?)");
+    CHECK_SHOW(toks[0].type == +TokenType::StringLiteral, toks, ctx);
+    SUBCASE("ast") {
+      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      CHECK_SHOW(msgs.size() == 1, msgs, ctx);
+      REQUIRE(tree);
+      CHECK(tree->value.type == +TokenType::StringLiteral);
+      CHECK(tree->children.size() == 0);
+      SUBCASE("parse") {
+        std::optional<Value> o_val = parser::parseValue(*tree, ctx);
+        // TODO: Check that we got the actual value
+        CHECK_SHOW(msgs.size() == 1, msgs, ctx);
+        REQUIRE(o_val);
+      }
+    }
+  }
+}
+
+TEST_CASE("a string literal with newlines") {
+  Messages msgs;
+  Context ctx = {msgs, "'123\n'foo", "<filename>"};
+
+  SUBCASE("tokenize") {
+    Tokens toks = lex(ctx);
+    REQUIRE(toks.size() >= 2);
+    CHECK(toks.size() == 2);
+    CHECK_SHOW(toks[0].type == +TokenType::StringLiteral, toks, ctx);
+    CHECK_SHOW(toks[1].type == +TokenType::StringLiteral, toks, ctx);
+    REQUIRE_SHOW(msgs.size() == 2, msgs, ctx);
+    CHECK(msgs[0].msg == "Unterminated string literal (or maybe you wanted a \"multiline string\"?)");
+    CHECK(msgs[1].msg == "Unterminated string literal, found end of file.");
+  }
+}
+
+TEST_CASE("a multiline string literal with newlines") {
+  Messages msgs;
+  Context ctx = {msgs, "\"123\nabc!\"", "<filename>"};
+
+  SUBCASE("tokenize") {
+    Tokens toks = lex(ctx);
+    REQUIRE(toks.size() >= 1);
+    CHECK(toks.size() == 1);
+    CHECK_SHOW(msgs.empty(), msgs, ctx);
     CHECK_SHOW(toks[0].type == +TokenType::StringLiteral, toks, ctx);
     SUBCASE("ast") {
       std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
@@ -411,31 +480,6 @@ TEST_CASE("small function definition with a parenthesized argument") {
         CHECK(value.args[1].name == "#1");
         REQUIRE(value.args[1].value);
         CHECK(value.args[1].value->name == "d");
-      }
-    }
-  }
-}
-
-TEST_CASE("format string literal") {
-  Messages msgs;
-  Context ctx = {msgs, "'12abc!'", "<filename>"};
-
-  SUBCASE("tokenize") {
-    Tokens toks = lex(ctx);
-    CHECK_SHOW(msgs.empty(), msgs, ctx);
-    REQUIRE(toks.size() == 1);
-    CHECK(toks[0].type == +TokenType::StringLiteral);
-    SUBCASE("ast") {
-      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
-      CHECK_SHOW(msgs.empty(), msgs, ctx);
-      REQUIRE(tree);
-      CHECK(tree->value.type == +TokenType::StringLiteral);
-      CHECK(tree->children.size() == 0);
-      SUBCASE("parse") {
-        std::optional<Value> o_val = parser::parseValue(*tree, ctx);
-        // TODO: Check that we got the actual value
-        CHECK_SHOW(msgs.empty(), msgs, ctx);
-        REQUIRE(o_val);
       }
     }
   }

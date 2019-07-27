@@ -24,7 +24,7 @@ std::string banner(const std::string &text, const Config &config) {
 }
 std::string show(const Location& loc, Context &ctx, int depth) {
   size_t line = 1+std::count(ctx.content.begin(), ctx.content.begin()+loc.start, '\n');
-  size_t col = loc.start - ctx.content.rfind("\n", loc.start);
+  size_t col = loc.start - ctx.content.rfind("\n", loc.start-1);
   std::stringstream o;
   indent(o, depth);
   o << " line " << line;
