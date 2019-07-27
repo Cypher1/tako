@@ -1,70 +1,111 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
 
-#include <iostream>
-#include <vector>
 #include <algorithm>
+#include <iostream>
 #include <optional>
+#include <vector>
 
-#include "../src/lex.h"
 #include "../src/ast.h"
+#include "../src/lex.h"
 #include "../src/parser.h"
 #include "../src/show.h"
 
-// TODO rapidcheck that all tokens from a lexed 'file' are inside the file.
-// i.e. their location is 'in bounds' and the getString matches the input.getString.
+#define CHECK_SHOW(a, b, c) { const auto show_str = show((b), (c)); CHECK_MESSAGE((a), show_str); }
+#define REQUIRE_SHOW(a, b, c) { const auto show_str = show((b), (c)); REQUIRE_MESSAGE((a), show_str); }
+#define CHECK_SHOW_VALUE(a, b) { const auto show_str = show((b)); CHECK_MESSAGE((a), show_str); }
+#define REQUIRE_SHOW_VALUE(a, b) { const auto show_str = show((b)); REQUIRE_MESSAGE((a), show_str); }
 
-TEST_CASE("empty string") {
+
+// TODO rapidcheck that all tokens from a lexed 'file' are inside the file.
+// i.e. their location is 'in bounds' and the getString matches the
+// input.getString.
+
+TEST_CASE("empty file") {
   Messages msgs;
   Context ctx = {msgs, "", "<filename>"};
 
   SUBCASE("tokenize yields no tokens") {
     Tokens toks = lex(ctx);
-    CHECK(msgs.empty());
+    CHECK_SHOW(msgs.empty(), msgs, ctx);
     CHECK_MESSAGE(toks.empty(), toks[0].type);
     SUBCASE("ast should be an empty tree") {
-      Tree<Token> tree = ast::ast(toks, ctx, ast::parseValue);
-      CHECK(msgs.empty());
-      CHECK_MESSAGE(tree.children.empty(), tree.children[0].value.type);
-      SUBCASE("parse value") {
-        std::optional<Value> val = parser::parseValue(tree, ctx);
-        CHECK(msgs.empty());
-        CHECK_MESSAGE(!val, "Parse value unexpectedly succeeded");
-      }
+      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      CHECK_SHOW(msgs.empty(), msgs, ctx);
+      REQUIRE(!tree);
     }
   }
 }
 
-TEST_CASE("non-empty string") {
+TEST_CASE("non-empty file") {
   Messages msgs;
   Context ctx = {msgs, " ", "<filename>"};
 
   SUBCASE("tokenize") {
     Tokens toks = lex(ctx);
-    CHECK(msgs.empty());
+    CHECK_SHOW(msgs.empty(), msgs, ctx);
     CHECK_FALSE(toks.empty());
     SUBCASE("ast") {
-      Tree<Token> tree = ast::ast(toks, ctx, ast::parseValue);
-      CHECK(msgs.empty());
-      CHECK_MESSAGE(tree.children.empty(), tree.children[0].value.type);
+      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      CHECK_SHOW(msgs.empty(), msgs, ctx);
+      REQUIRE(!tree);
     }
   }
 }
 
-TEST_CASE("can lex a numeric literal") {
+TEST_CASE("a numeric literal") {
   Messages msgs;
   Context ctx = {msgs, "12", "<filename>"};
 
   SUBCASE("tokenize") {
     Tokens toks = lex(ctx);
-    CHECK(msgs.empty());
-    REQUIRE(toks.size() == 1);
-    CHECK(toks[0].type == +TokenType::NumberLiteral);
+    CHECK_SHOW(msgs.empty(), msgs, ctx);
+    REQUIRE(toks.size() >= 1);
+    CHECK(toks.size() == 1);
+    CHECK_SHOW(toks[0].type == +TokenType::NumberLiteral, toks, ctx);
     SUBCASE("ast") {
-      Tree<Token> tree = ast::ast(toks, ctx, ast::parseValue);
-      CHECK(msgs.empty());
-      CHECK(tree.value.type == +TokenType::NumberLiteral);
-      CHECK(tree.children.size() == 0);
+      const std::string toksS = show(toks, ctx);
+      // INFO(toksS);
+      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      CHECK_SHOW(msgs.empty(), msgs, ctx);
+      REQUIRE(tree);
+      CHECK(tree->value.type == +TokenType::NumberLiteral);
+      CHECK(tree->value.loc.file == "<filename>");
+      CHECK(tree->value.loc.start == 0);
+      CHECK(tree->value.loc.length == 2);
+      CHECK(tree->children.size() == 0);
+      SUBCASE("parse") {
+        std::optional<Value> o_val = parser::parseValue(*tree, ctx);
+        // TODO: Check that we got the actual value
+        CHECK_SHOW(msgs.empty(), msgs, ctx);
+        REQUIRE(o_val);
+      }
+    }
+  }
+}
+
+TEST_CASE("a string literal") {
+  Messages msgs;
+  Context ctx = {msgs, "'123abc!'", "<filename>"};
+
+  SUBCASE("tokenize") {
+    Tokens toks = lex(ctx);
+    CHECK_SHOW(msgs.empty(), msgs, ctx);
+    REQUIRE(toks.size() >= 1);
+    CHECK(toks.size() == 1);
+    CHECK_SHOW(toks[0].type == +TokenType::StringLiteral, toks, ctx);
+    SUBCASE("ast") {
+      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      CHECK_SHOW(msgs.empty(), msgs, ctx);
+      REQUIRE(tree);
+      CHECK(tree->value.type == +TokenType::StringLiteral);
+      CHECK(tree->children.size() == 0);
+      SUBCASE("parse") {
+        std::optional<Value> o_val = parser::parseValue(*tree, ctx);
+        // TODO: Check that we got the actual value
+        CHECK_SHOW(msgs.empty(), msgs, ctx);
+        REQUIRE(o_val);
+      }
     }
   }
 }
@@ -75,14 +116,15 @@ TEST_CASE("variable name") {
 
   SUBCASE("tokenize") {
     Tokens toks = lex(ctx);
-    CHECK(msgs.empty());
+    CHECK_SHOW(msgs.empty(), msgs, ctx);
     REQUIRE(toks.size() == 1);
     CHECK(toks[0].type == +TokenType::Symbol);
     SUBCASE("ast") {
-      Tree<Token> tree = ast::ast(toks, ctx, ast::parseValue);
-      CHECK(msgs.empty());
-      CHECK(tree.value.type == +TokenType::Symbol);
-      CHECK(tree.children.size() == 0);
+      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      CHECK_SHOW(msgs.empty(), msgs, ctx);
+      REQUIRE(tree);
+      CHECK(tree->value.type == +TokenType::Symbol);
+      CHECK(tree->children.size() == 0);
     }
   }
 }
@@ -93,7 +135,7 @@ TEST_CASE("simple expressions") {
 
   SUBCASE("tokenize") {
     Tokens toks = lex(ctx);
-    CHECK(msgs.empty());
+    CHECK_SHOW(msgs.empty(), msgs, ctx);
     REQUIRE(toks.size() == 5);
     CHECK(toks[0].type == +TokenType::Symbol);
     CHECK(toks[1].type == +TokenType::WhiteSpace);
@@ -101,14 +143,15 @@ TEST_CASE("simple expressions") {
     CHECK(toks[3].type == +TokenType::WhiteSpace);
     CHECK(toks[4].type == +TokenType::NumberLiteral);
     SUBCASE("ast") {
-      Tree<Token> tree = ast::ast(toks, ctx, ast::parseValue);
-      CHECK(msgs.empty());
-      CHECK(tree.value.type == +TokenType::Operator);
-      REQUIRE(tree.children.size() == 2);
-      CHECK(tree.children[0].value.type == +TokenType::Symbol);
-      CHECK(tree.children[0].children.size() == 0);
-      CHECK(tree.children[1].value.type == +TokenType::NumberLiteral);
-      CHECK(tree.children[1].children.size() == 0);
+      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      CHECK_SHOW(msgs.empty(), msgs, ctx);
+      REQUIRE(tree);
+      CHECK(tree->value.type == +TokenType::Operator);
+      REQUIRE(tree->children.size() == 2);
+      CHECK(tree->children[0].value.type == +TokenType::Symbol);
+      CHECK(tree->children[0].children.size() == 0);
+      CHECK(tree->children[1].value.type == +TokenType::NumberLiteral);
+      CHECK(tree->children[1].children.size() == 0);
     }
   }
 }
@@ -119,7 +162,7 @@ TEST_CASE("simple expressions") {
 
   SUBCASE("tokenize") {
     Tokens toks = lex(ctx);
-    CHECK(msgs.empty());
+    CHECK_SHOW(msgs.empty(), msgs, ctx);
     REQUIRE(toks.size() == 5);
     CHECK(toks[0].type == +TokenType::NumberLiteral);
     CHECK(toks[1].type == +TokenType::WhiteSpace);
@@ -127,14 +170,15 @@ TEST_CASE("simple expressions") {
     CHECK(toks[3].type == +TokenType::WhiteSpace);
     CHECK(toks[4].type == +TokenType::Symbol);
     SUBCASE("ast") {
-      Tree<Token> tree = ast::ast(toks, ctx, ast::parseValue);
-      CHECK(msgs.empty());
-      CHECK(tree.value.type == +TokenType::Operator);
-      REQUIRE(tree.children.size() == 2);
-      CHECK(tree.children[0].value.type == +TokenType::NumberLiteral);
-      CHECK(tree.children[0].children.size() == 0);
-      CHECK(tree.children[1].value.type == +TokenType::Symbol);
-      CHECK(tree.children[1].children.size() == 0);
+      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      CHECK_SHOW(msgs.empty(), msgs, ctx);
+      REQUIRE(tree);
+      CHECK(tree->value.type == +TokenType::Operator);
+      REQUIRE(tree->children.size() == 2);
+      CHECK(tree->children[0].value.type == +TokenType::NumberLiteral);
+      CHECK(tree->children[0].children.size() == 0);
+      CHECK(tree->children[1].value.type == +TokenType::Symbol);
+      CHECK(tree->children[1].children.size() == 0);
     }
   }
 }
@@ -145,7 +189,7 @@ TEST_CASE("simple expressions with calls") {
 
   SUBCASE("tokenize") {
     Tokens toks = lex(ctx);
-    CHECK(msgs.empty());
+    CHECK_SHOW(msgs.empty(), msgs, ctx);
     REQUIRE(toks.size() == 7);
     CHECK(toks[0].type == +TokenType::NumberLiteral);
     CHECK(toks[1].type == +TokenType::WhiteSpace);
@@ -156,14 +200,15 @@ TEST_CASE("simple expressions with calls") {
     CHECK(toks[6].type == +TokenType::CloseParen);
 
     SUBCASE("ast") {
-      Tree<Token> tree = ast::ast(toks, ctx, ast::parseValue);
-      CHECK(msgs.empty());
-      CHECK(tree.value.type == +TokenType::Operator);
-      REQUIRE(tree.children.size() == 2);
-      CHECK(tree.children[0].value.type == +TokenType::NumberLiteral);
-      REQUIRE(tree.children[0].children.size() == 0);
-      CHECK(tree.children[1].value.type == +TokenType::Symbol);
-      REQUIRE(tree.children[1].children.size() == 0);
+      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      CHECK_SHOW(msgs.empty(), msgs, ctx);
+      REQUIRE(tree);
+      CHECK(tree->value.type == +TokenType::Operator);
+      REQUIRE(tree->children.size() == 2);
+      CHECK(tree->children[0].value.type == +TokenType::NumberLiteral);
+      REQUIRE(tree->children[0].children.size() == 0);
+      CHECK(tree->children[1].value.type == +TokenType::Symbol);
+      REQUIRE(tree->children[1].children.size() == 0);
     }
   }
 }
@@ -186,20 +231,21 @@ TEST_CASE("simple expressions with calls with arguments") {
     CHECK(toks[8].type == +TokenType::WhiteSpace);
     CHECK(toks[9].type == +TokenType::NumberLiteral);
     CHECK(toks[10].type == +TokenType::CloseParen);
-    CHECK(msgs.empty());
+    CHECK_SHOW(msgs.empty(), msgs, ctx);
 
     SUBCASE("ast") {
-      Tree<Token> tree = ast::ast(toks, ctx, ast::parseValue);
-      CHECK(msgs.empty());
-      CHECK(tree.value.type == +TokenType::Operator);
-      REQUIRE(tree.children.size() == 2);
-      const auto& l32 = tree.children[0];
+      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      CHECK_SHOW(msgs.empty(), msgs, ctx);
+      REQUIRE(tree);
+      CHECK(tree->value.type == +TokenType::Operator);
+      REQUIRE(tree->children.size() == 2);
+      const auto &l32 = tree->children[0];
       CHECK(l32.value.type == +TokenType::NumberLiteral);
       REQUIRE(l32.children.size() == 0);
-      const auto& call = tree.children[1];
+      const auto &call = tree->children[1];
       CHECK(call.value.type == +TokenType::Symbol);
       REQUIRE(call.children.size() == 2);
-      const auto& args = call.children;
+      const auto &args = call.children;
       REQUIRE(args.size() == 2);
       CHECK(args[0].value.type == +TokenType::Symbol);
       CHECK(args[1].value.type == +TokenType::NumberLiteral);
@@ -221,14 +267,15 @@ TEST_CASE("simple expressions with parenthesis") {
     CHECK(toks[4].type == +TokenType::WhiteSpace);
     CHECK(toks[5].type == +TokenType::Symbol);
     CHECK(toks[6].type == +TokenType::CloseParen);
-    CHECK(msgs.empty());
+    CHECK_SHOW(msgs.empty(), msgs, ctx);
 
     SUBCASE("ast") {
-      Tree<Token> tree = ast::ast(toks, ctx, ast::parseValue);
-      CHECK(msgs.empty());
-      CHECK(tree.value.type == +TokenType::OpenParen);
-      REQUIRE(tree.children.size() == 1);
-      const auto &expr_root = tree.children[0];
+      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      CHECK_SHOW(msgs.empty(), msgs, ctx);
+      REQUIRE(tree);
+      CHECK(tree->value.type == +TokenType::OpenParen);
+      REQUIRE(tree->children.size() == 1);
+      const auto &expr_root = tree->children[0];
       CHECK(expr_root.value.type == +TokenType::Operator);
       REQUIRE(expr_root.children.size() == 2);
       const auto &operands = expr_root.children;
@@ -241,23 +288,22 @@ TEST_CASE("simple expressions with parenthesis") {
 TEST_CASE("small function containing calls") {
   Messages msgs;
   Context ctx = {
-    msgs,
-    "nand(a, b) = sequence(And(a, b, c),Free(a),\nFree(b),\nNot(c, c))",
-    "<filename>"
-  };
+      msgs, "nand(a, b) = sequence(And(a, b, c),Free(a),\nFree(b),\nNot(c, c))",
+      "<filename>"};
 
   SUBCASE("tokenize") {
     Tokens toks = lex(ctx);
-    CHECK(msgs.empty());
+    CHECK_SHOW(msgs.empty(), msgs, ctx);
 
     SUBCASE("ast") {
-      Tree<Token> tree = ast::ast(toks, ctx, ast::parseValue);
-      CHECK(msgs.empty());
-      std::string treeS = show(tree, ctx);
+      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseDefinition);
+      CHECK_SHOW(msgs.empty(), msgs, ctx);
+      REQUIRE(tree);
+      std::string treeS = show(*tree, ctx);
       INFO(treeS);
       SUBCASE("parse") {
-        std::optional<Definition> o_def = parser::parseDefinition(tree, ctx);
-        CHECK(msgs.empty());
+        std::optional<Definition> o_def = parser::parseDefinition(*tree, ctx);
+        CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(o_def);
         const auto def = *o_def;
         std::string defs = show(def);
@@ -271,25 +317,24 @@ TEST_CASE("small function containing calls") {
   }
 }
 
-
 TEST_CASE("small function containing a parenthesized expression") {
   Messages msgs;
   Context ctx = {
-    msgs,
-    "nand5(b) = sequence(And((1,0,1), b, c),Free(a),\nFree(b),\nNot(c, c))",
-    "<filename>"
-  };
+      msgs,
+      "nand5(b) = sequence(And((1,0,1), b, c),Free(a),\nFree(b),\nNot(c, c))",
+      "<filename>"};
 
   SUBCASE("tokenize") {
     Tokens toks = lex(ctx);
-    CHECK(msgs.empty());
+    CHECK_SHOW(msgs.empty(), msgs, ctx);
 
     SUBCASE("ast") {
-      Tree<Token> tree = ast::ast(toks, ctx, ast::parseValue);
-      CHECK(msgs.empty());
+      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      CHECK_SHOW(msgs.empty(), msgs, ctx);
+      REQUIRE(tree);
       SUBCASE("parse") {
-        std::optional<Definition> def = parser::parseDefinition(tree, ctx);
-        CHECK(msgs.empty());
+        std::optional<Definition> def = parser::parseDefinition(*tree, ctx);
+        CHECK_SHOW(msgs.empty(), msgs, ctx);
         CHECK(def);
         CHECK(def->name == "nand5");
         REQUIRE(def->args.size() == 1);
@@ -301,22 +346,19 @@ TEST_CASE("small function containing a parenthesized expression") {
 
 TEST_CASE("small function definition without a parenthesized argument") {
   Messages msgs;
-  Context ctx = {
-    msgs,
-    "a=b(c,d)",
-    "<filename>"
-  };
+  Context ctx = {msgs, "a=b(c,d)", "<filename>"};
 
   SUBCASE("tokenize") {
     Tokens toks = lex(ctx);
-    CHECK(msgs.empty());
+    CHECK_SHOW(msgs.empty(), msgs, ctx);
 
     SUBCASE("ast") {
-      Tree<Token> tree = ast::ast(toks, ctx, ast::parseValue);
-      CHECK(msgs.empty());
+      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      CHECK_SHOW(msgs.empty(), msgs, ctx);
+      REQUIRE(tree);
       SUBCASE("parse") {
-        std::optional<Definition> opdef = parser::parseDefinition(tree, ctx);
-        CHECK(msgs.empty());
+        std::optional<Definition> opdef = parser::parseDefinition(*tree, ctx);
+        CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(opdef);
         Definition def = *opdef;
         std::string defs = show(def);
@@ -340,22 +382,19 @@ TEST_CASE("small function definition without a parenthesized argument") {
 
 TEST_CASE("small function definition with a parenthesized argument") {
   Messages msgs;
-  Context ctx = {
-    msgs,
-    "a=b(c,(d))",
-    "<filename>"
-  };
+  Context ctx = {msgs, "a=b(c,(d))", "<filename>"};
 
   SUBCASE("tokenize") {
     Tokens toks = lex(ctx);
-    CHECK(msgs.empty());
+    CHECK_SHOW(msgs.empty(), msgs, ctx);
 
     SUBCASE("ast") {
-      Tree<Token> tree = ast::ast(toks, ctx, ast::parseValue);
-      CHECK(msgs.empty());
+      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      CHECK_SHOW(msgs.empty(), msgs, ctx);
+      REQUIRE(tree);
       SUBCASE("parse") {
-        std::optional<Definition> opdef = parser::parseDefinition(tree, ctx);
-        CHECK(msgs.empty());
+        std::optional<Definition> opdef = parser::parseDefinition(*tree, ctx);
+        CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(opdef);
         Definition def = *opdef;
         std::string defs = show(def);
@@ -377,24 +416,45 @@ TEST_CASE("small function definition with a parenthesized argument") {
   }
 }
 
-TEST_CASE("tuples") {
+TEST_CASE("format string literal") {
   Messages msgs;
-  Context ctx = {
-    msgs,
-    "(a, b)",
-    "<filename>"
-  };
+  Context ctx = {msgs, "'12abc!'", "<filename>"};
 
   SUBCASE("tokenize") {
     Tokens toks = lex(ctx);
-    CHECK(msgs.empty());
+    CHECK_SHOW(msgs.empty(), msgs, ctx);
+    REQUIRE(toks.size() == 1);
+    CHECK(toks[0].type == +TokenType::StringLiteral);
+    SUBCASE("ast") {
+      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      CHECK_SHOW(msgs.empty(), msgs, ctx);
+      REQUIRE(tree);
+      CHECK(tree->value.type == +TokenType::StringLiteral);
+      CHECK(tree->children.size() == 0);
+      SUBCASE("parse") {
+        std::optional<Value> o_val = parser::parseValue(*tree, ctx);
+        // TODO: Check that we got the actual value
+        CHECK_SHOW(msgs.empty(), msgs, ctx);
+        REQUIRE(o_val);
+      }
+    }
+  }
+}
+
+TEST_CASE("tuples") {
+  Messages msgs;
+  Context ctx = {msgs, "(a, b)", "<filename>"};
+
+  SUBCASE("tokenize") {
+    Tokens toks = lex(ctx);
+    CHECK_SHOW(msgs.empty(), msgs, ctx);
 
     SUBCASE("ast") {
-      Tree<Token> tree = ast::ast(toks, ctx, ast::parseValue);
-      CHECK(msgs.empty());
+      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      CHECK_SHOW(msgs.empty(), msgs, ctx);
       SUBCASE("parse") {
-        std::optional<Value> val = parser::parseValue(tree, ctx);
-        CHECK(msgs.empty());
+        std::optional<Value> val = parser::parseValue(*tree, ctx);
+        CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(val);
         Value value = *val;
         std::string valueS = show(value);
@@ -412,24 +472,21 @@ TEST_CASE("tuples") {
     }
   }
 }
+
 TEST_CASE("nested tuples") {
   Messages msgs;
-  Context ctx = {
-    msgs,
-    "((a, b, c), (d, (e, f)))",
-    "<filename>"
-  };
+  Context ctx = {msgs, "((a, b, c), (d, (e, f)))", "<filename>"};
 
   SUBCASE("tokenize") {
     Tokens toks = lex(ctx);
-    CHECK(msgs.empty());
+    CHECK_SHOW(msgs.empty(), msgs, ctx);
 
     SUBCASE("ast") {
-      Tree<Token> tree = ast::ast(toks, ctx, ast::parseValue);
-      CHECK(msgs.empty());
+      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      CHECK_SHOW(msgs.empty(), msgs, ctx);
       SUBCASE("parse") {
-        std::optional<Value> val = parser::parseValue(tree, ctx);
-        CHECK(msgs.empty());
+        std::optional<Value> val = parser::parseValue(*tree, ctx);
+        CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(val);
         Value value = *val;
         std::string valueS = show(value);

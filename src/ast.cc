@@ -16,9 +16,9 @@ const std::map<TokenType, TokenType> brackets = {
     {TokenType::OpenParen, TokenType::CloseParen},
     {TokenType::OpenBrace, TokenType::CloseBrace},
     {TokenType::OpenBracket, TokenType::CloseBracket},
-    {TokenType::SingleQuote, TokenType::SingleQuote},
-    {TokenType::DoubleQuote, TokenType::DoubleQuote},
-    {TokenType::BackQuote, TokenType::BackQuote},
+    // {TokenType::SingleQuote, TokenType::SingleQuote},
+    // {TokenType::DoubleQuote, TokenType::DoubleQuote},
+    // {TokenType::BackQuote, TokenType::BackQuote},
 };
 
 const std::map<TokenType, TokenType> close_brackets = []() {
@@ -31,10 +31,12 @@ const std::map<TokenType, TokenType> close_brackets = []() {
   return map;
 }();
 
+/*
 constexpr bool isQuote(const TokenType &type) {
   return type == +TokenType::SingleQuote || type == +TokenType::DoubleQuote ||
          type == +TokenType::BackQuote;
 }
+*/
 
 const std::map<std::string, unsigned int> symbol_binding = {};
 const leftBindingPowerType symbolBind = [](const Token &tok,
@@ -63,7 +65,7 @@ const auto operatorBind = [](const Token &tok, ParserContext &ctx) { // Lbp
     std::string start = std::to_string(tok.loc.start);
     std::string len = std::to_string(tok.loc.length);
     throw std::runtime_error(
-      std::string() + "Expected an infix operator but found("+start+","+len+") '" + t + "'"
+      std::string() + "Expected an infix operator but found a "+tok.type._to_string()+"("+start+","+len+") '" + t + "'"
     );
   }
   return p_it->second;
@@ -177,12 +179,13 @@ std::map<TokenType, SymbolTableEntry> symbolTable = {
     {TokenType::OpenBracket, {operatorBind, bracket}},
     {TokenType::CloseBracket,
      {symbolBind, ignoreInit, ignore}}, // TODO: Warning / error on unmatched.
-    {TokenType::DoubleQuote,
-     {operatorBind, bracket}}, // TODO: Warning / error on unmatched.
-    {TokenType::SingleQuote,
-     {operatorBind, bracket}}, // TODO: Warning / error on unmatched.
-    {TokenType::BackQuote,
-     {operatorBind, bracket}}, // TODO: Warning / error on unmatched.
+    // {TokenType::DoubleQuote,
+     // {operatorBind, bracket}}, // TODO: Warning / error on unmatched.
+    // {TokenType::SingleQuote,
+     // {operatorBind, bracket}}, // TODO: Warning / error on unmatched.
+    // {TokenType::BackQuote,
+     // {operatorBind, bracket}}, // TODO: Warning / error on unmatched.
+    {TokenType::StringLiteral, {symbolBind, symbol}},
     {TokenType::NumberLiteral, {symbolBind, symbol}},
     {TokenType::Dot, {symbolBind, symbol}},
     {TokenType::Error, {symbolBind, symbol}},
@@ -225,10 +228,10 @@ void ParserContext::msg(MessageType level, std::string msg_txt) {
 }
 
 const Token &ParserContext::getCurr() const {
-  if (toks == end) {
-    return eofToken;
+  if (hasToken) {
+    return *toks;
   }
-  return *toks;
+  return eofToken;
 }
 
 std::string ParserContext::getCurrString() const {
@@ -251,16 +254,19 @@ Tree<Token> ast::parseDefinition(ParserContext &ctx, unsigned int rbp) {
 }
 
 Tree<Token> ast::parseValue(ParserContext &ctx, unsigned int rbp) {
+  if (!ctx.hasToken) {
+    return {eofToken, {}};
+  }
   unsigned int binding = 0;
   Token t = ctx.getCurr();
   const auto t_entry = ctx.entry();
-  ctx.next();
+  ctx.next(); // TODO: Check result
   Tree<Token> left = t_entry.nud(t, ctx);
   binding = ctx.entry().binding(ctx.getCurr(), ctx);
   while (rbp < binding && ctx.hasToken) {
     t = ctx.getCurr();
     const auto t_entry = ctx.entry();
-    ctx.next();
+    ctx.next(); // TODO: Check result
     left = t_entry.led(left, t, ctx);
     binding = ctx.entry().binding(ctx.getCurr(), ctx);
   }
@@ -279,16 +285,13 @@ Tree<Token> ast::parseModule(ParserContext &ctx, unsigned int rbp) {
   return Tree<Token>(fileToken, definitions);
 }
 
-Tree<Token> ast::ast(Tokens& toks, Context &context, std::function<Tree<Token>(ParserContext &, unsigned int)> func) {
+std::optional<Tree<Token>> ast::ast(Tokens& toks, Context &context, std::function<Tree<Token>(ParserContext &, unsigned int)> func) {
   context.startStep(PassStep::Ast);
-  // Add a disposable char to make whitespace dropping easy.
-  toks.insert(toks.begin(), errorToken);
   ParserContext ctx(context, toks.cbegin(), toks.cend());
-  ctx.next();
+  if(!ctx.hasToken) return std::nullopt;
+  // Allows next to consume whitespace without prepending to the tokens.
+  ctx.toks--;
+  ctx.next(); // TODO: Check result
+  if(!ctx.hasToken) return std::nullopt;
   return func(ctx, 0);
 }
-
-// TODO convert ast'ifying to a set of functions (with parameterization?)
-// ast::parseModule
-// ast::parseDefinition
-// ast::parseValue
