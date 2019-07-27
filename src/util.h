@@ -38,10 +38,14 @@ BETTER_ENUM(
 BETTER_ENUM(
     MessageType,
     char,
+    // Used for potential issues with user code.
     Info,
     Warning,
     Error,
-    Failure
+    Failure,
+    // Used for (recoverable) errors in the compiler itself.
+    // Unrecoverable errors should throw.
+    InternalError
     );
 
 struct Message {

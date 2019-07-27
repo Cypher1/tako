@@ -33,7 +33,7 @@ public:
 
   Messages getMsgs() const;
 
-  std::string getStringAt(const Location &loc) const;
+  std::string getStringAt(const Location &loc);
 };
 
 #endif // #ifndef CONTEXT_H

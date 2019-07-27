@@ -22,7 +22,7 @@ std::string banner(const std::string &text, const Config &config) {
   indent(o, w-w/2-1, '-');
   return o.str();
 }
-std::string show(const Location& loc, const Context &ctx, int depth) {
+std::string show(const Location& loc, Context &ctx, int depth) {
   size_t line = 1+std::count(ctx.content.begin(), ctx.content.begin()+loc.start, '\n');
   size_t col = loc.start - ctx.content.rfind("\n", loc.start);
   std::stringstream o;
@@ -69,7 +69,7 @@ std::string show(const Module& module, int depth) {
   return o.str();
 }
 
-std::string show(const Token& tok, const Context &ctx, int depth) {
+std::string show(const Token& tok, Context &ctx, int depth) {
   std::stringstream o;
   indent(o, depth);
   if (tok.type == +TokenType::WhiteSpace) {
@@ -89,7 +89,7 @@ std::string show(const Token& tok, const Context &ctx, int depth) {
   return o.str();
 }
 
-std::string show(const Message& msg, const Context &ctx, int depth) {
+std::string show(const Message& msg, Context &ctx, int depth) {
   std::stringstream o;
   indent(o, depth);
   o << msg.pass << " ";
@@ -99,7 +99,7 @@ std::string show(const Message& msg, const Context &ctx, int depth) {
   return o.str();
 }
 
-std::string show(const Tree<Token>& tree, const Context &ctx, int depth) {
+std::string show(const Tree<Token>& tree, Context &ctx, int depth) {
   std::stringstream o;
   o << show(tree.value, ctx, depth);
   if(!tree.children.empty()) {

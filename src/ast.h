@@ -89,7 +89,7 @@ Tree<Token> parseDefinition(ParserContext &ctx, unsigned int rbp=0);
 Tree<Token> parseValue(ParserContext &ctx, unsigned int rbp=0);
 Tree<Token> parseModule(ParserContext &ctx, unsigned int rbp=0);
 
-Tree<Token> ast(Tokens& toks, Context &ctx, std::function<Tree<Token>(ParserContext &, unsigned int)> func);
+std::optional<Tree<Token>> ast(Tokens& toks, Context &ctx, std::function<Tree<Token>(ParserContext &, unsigned int)> func);
 
 }
 

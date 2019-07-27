@@ -13,6 +13,7 @@ const std::string whiteSpace = " \t\n\r";
 const std::string numberChar = "."+nums;
 const std::string operatorChar = "-+&#@<>^~∆%•|=÷×°$\\/*:?!.";
 const std::string symbolChar = lower+upper+nums+"_";
+const std::string quotes = "'\"`";
 
 const std::vector<std::pair<std::string, TokenType>> matchToken = {
   {"(", TokenType::OpenParen},
@@ -22,13 +23,30 @@ const std::vector<std::pair<std::string, TokenType>> matchToken = {
   {"[", TokenType::OpenBracket},
   {"]", TokenType::CloseBracket},
   {";", TokenType::SemiColon},
-  {"'", TokenType::SingleQuote},
-  {"\"", TokenType::DoubleQuote},
-  {"`", TokenType::BackQuote},
+  // {"'", TokenType::SingleQuote},
+  // {"\"", TokenType::DoubleQuote},
+  // {"`", TokenType::BackQuote},
   {"-|", TokenType::PreCond},
   {"|-", TokenType::PostCond},
   {",", TokenType::Comma}
 };
+
+Offset consumeStringLiteral(const std::string content) {
+  Offset len = 0;
+  char start = content[len];
+  if(quotes.find(start) != std::string::npos) {
+    len++;
+    while(len < content.size() && content[len] != start) {
+      len++;
+    }
+    if (len < content.size()) {
+      len++; // consume the 'end'
+    } else {
+      // TODO: Warn that the literal was unterminated.
+    }
+  }
+  return len;
+}
 
 Offset consumeWhiteSpace(const std::string content) {
   Offset loc = 0;
@@ -73,6 +91,9 @@ std::pair<TokenType, Offset> chooseTok(std::string content) {
       return {sym.second, tokS.size()};
     }
   }
+  if(Offset length = consumeStringLiteral(content)) {
+    return {TokenType::StringLiteral, length};
+  }
   if(Offset length = consumeWhiteSpace(content)) {
     return {TokenType::WhiteSpace, length};
   }
@@ -92,20 +113,28 @@ Tokens lex(Context &ctx) {
   ctx.startStep(PassStep::Lex);
   Tokens toks;
 
-  Position loc = 0;
-  while(loc < ctx.content.size()) {
-    std::pair<TokenType, Offset> next = chooseTok(ctx.content.substr(loc));
+  Position pos = 0;
+  while(pos < ctx.content.size()) {
+    std::pair<TokenType, Offset> next = chooseTok(ctx.content.substr(pos));
     TokenType type = next.first;
     Offset length = next.second;
-    if(type == +TokenType::Error) {
+    Location loc = {pos, length, ctx.filename};
+    if(length == 0) {
       ctx.msg(
-        {loc, length, ctx.filename},
+        loc,
+        MessageType::InternalError,
+        "Illegal empty token"
+      );
+    } else if(type == +TokenType::Error) {
+      ctx.msg(
+        loc,
         MessageType::Error,
         "Unexpected character"
       );
+    } else {
+      toks.push_back({type, loc});
     }
-    toks.push_back({type, {loc, length, ctx.filename}});
-    loc += length;
+    pos += length;
   }
   return toks;
 }
