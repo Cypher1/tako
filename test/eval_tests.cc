@@ -1,4 +1,3 @@
-#include <c++/9.1.0/variant>
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "doctest.h"
 
@@ -6,6 +5,7 @@
 #include <iostream>
 #include <optional>
 #include <vector>
+#include <variant>
 
 #include "../src/ast.h"
 #include "../src/lex.h"
