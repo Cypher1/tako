@@ -4,6 +4,7 @@
 #include <stdexcept> // TODO: Remove use of exceptions, instead use messages and fallback.
 #include <algorithm>
 #include <vector>
+#include <variant>
 #include <unordered_map>
 #include <sys/ioctl.h>
 #include <cstdio>
@@ -12,6 +13,7 @@
 #include "src/takoConfig.h"
 #include "src/ast.h"
 #include "src/parser.h"
+#include "src/eval.h"
 #include "src/show.h"
 #include "src/checker.h"
 #include "src/arg_parser.h"
@@ -26,6 +28,7 @@ const std::vector<Arg> args = {
   {'s', "step", "Stop after this step.", "last"},
 };
 void runCompiler(Context &ctx);
+void runCompilerInteractive(Context &ctx);
 
 void info() {
   std::cerr << "tako - version " << VERSION_STR << "\n";
@@ -107,11 +110,61 @@ int main(int argc, char* argv[]) {
       }
       Context ctx(msgs, line, "stdin", PassStep::Init, last_step, config);
       // TODO: Run for a definition?
-      runCompiler(ctx);
+      runCompilerInteractive(ctx);
     }
   }
 
   return 0;
+}
+
+void runCompilerInteractive(Context &ctx) {
+  try {
+    if(ctx.done()) {
+      return;
+    }
+
+    Tokens toks = lex(ctx);
+    if(ctx.done()) {
+      std::cerr << "Lexed " << toks.size() << " tokens.\n";
+      std::cerr << show(toks, ctx) << "\n";
+      return;
+    }
+
+    std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+    if(!tree) {
+      return;
+    }
+    if(ctx.done()) {
+      std::cerr << show(tree->children, ctx, 0, "\n") << "\n";
+      return;
+    }
+
+    std::optional<Value> val = parser::parse<std::optional<Value>>(*tree, ctx, parser::parseValue);
+    if(!val) {
+      std::cerr << "Parse Failed\n";
+      return;
+    }
+    if(ctx.done()) {
+        std::cerr << show(*val) << "\n";
+      for(const auto msg : ctx.getMsgs()) {
+        std::cerr << show(msg, ctx, 2) << "\n";
+      }
+      return;
+    }
+
+    const auto res = eval(*val);
+    if(std::holds_alternative<int>(res)) {
+      std::cout << std::get<int>(res) << "\n";
+    } else {
+      std::cout << std::get<std::string>(res) << "\n";
+    }
+
+    if(ctx.done()) {
+      return;
+    }
+  } catch (const std::runtime_error& er) {
+    std::cerr << "Parser crashed with: " << er.what() << "\n";
+  }
 }
 
 void runCompiler(Context &ctx) {

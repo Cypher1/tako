@@ -13,6 +13,12 @@
 #include "context.h"
 #include "lex.h"
 
+enum class AstNodeType {
+  Symbol,
+  Numeric,
+  Text
+};
+
 template<class T>
 class DefinitionCore;
 
@@ -32,11 +38,13 @@ class ValueCore : public AstNode<T> {
   // TODO: support non symbol/operator values.
   // e.g. numbers, strings, arrays, sets.
   std::vector<DefinitionCore<T>> args;
+  AstNodeType node_type;
 
   ValueCore() = delete;
-  ValueCore(std::string name, Location loc, std::vector<DefinitionCore<T>> args):
+  ValueCore(std::string name, Location loc, std::vector<DefinitionCore<T>> args, AstNodeType node_type):
     AstNode<T>(name, loc),
-    args{args} {}
+    args{args},
+    node_type{node_type} {}
 
   bool operator ==(const ValueCore<T>& other) const {
     if (this->name != other.name) return false;
@@ -62,7 +70,7 @@ class DefinitionCore : public ValueCore<T> {
   std::optional<ValueCore<T>> value;
   DefinitionCore() = delete;
   DefinitionCore(const std::string name, Location loc, std::vector<DefinitionCore<T>>args, std::optional<ValueCore<T>> value):
-    ValueCore<T>(name, loc, args),
+    ValueCore<T>(name, loc, args, AstNodeType::Symbol),
     value{value} {}
 };
 
