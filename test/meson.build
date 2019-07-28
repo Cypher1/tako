@@ -18,3 +18,8 @@ parser_tests = executable(
   'parser_tests', [ 'parser_tests.cc' ],
   link_with : [tako_lib])
 test('parser_tests', parser_tests)
+
+eval_tests = executable(
+  'eval_tests', [ 'eval_tests.cc' ],
+  link_with : [tako_lib])
+test('eval_tests', eval_tests)

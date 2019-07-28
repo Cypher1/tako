@@ -40,10 +40,10 @@ TEST_CASE("can assign anything to x in an empty assignment") {
   Assignment emp;
 
   // TODO: Arbitrary Values
-  const Value val = {"v", errorLocation, {}};
+  const Value val = {"v", errorLocation, {}, AstNodeType::Symbol};
 
   const auto contradiction = emp.setValue("x", val);
-  CHECK_MESSAGE(!contradiction, "expected no contradiction");
+  CHECK_FALSE_MESSAGE(contradiction, "expected no contradiction");
   SUBCASE("check value was stored") {
     eqvar(emp.getValue("x"), val);
   }
@@ -53,14 +53,14 @@ TEST_CASE("Simple assignment checks for contradictions") {
   Assignment emp;
 
   // TODO: Arbitrary Values
-  const Value val1 = {"v1", errorLocation, {}};
-  const Value val2 = {"v2", errorLocation, {}};
+  const Value val1 = {"v1", errorLocation, {}, AstNodeType::Symbol};
+  const Value val2 = {"v2", errorLocation, {}, AstNodeType::Symbol};
 
   emp.setValue("x", val1);
 
   SUBCASE("can assign equal value without contradiction") {
     const auto contradiction = emp.setValue("x", val1);
-    CHECK_MESSAGE(!contradiction, "no contradiction");
+    CHECK_FALSE_MESSAGE(contradiction, "no contradiction");
   }
   SUBCASE("cannot assign non-equal value without contradiction") {
     const auto contradiction = emp.setValue("x", val2);
@@ -72,9 +72,9 @@ TEST_CASE("Simple assignment checks for contradictions when assigning another va
   Assignment emp;
 
   // TODO: Arbitrary Values
-  const Value val1 = {"v1", errorLocation, {}};
-  const Value val2 = {"v2", errorLocation, {}};
-  const Value val3 = {"v3", errorLocation, {}};
+  const Value val1 = {"v1", errorLocation, {}, AstNodeType::Symbol};
+  const Value val2 = {"v2", errorLocation, {}, AstNodeType::Symbol};
+  const Value val3 = {"v3", errorLocation, {}, AstNodeType::Symbol};
 
   emp.setValue("x", val1);
 
@@ -82,7 +82,7 @@ TEST_CASE("Simple assignment checks for contradictions when assigning another va
     emp.setValue("y", val1);
     SUBCASE("can assign equal value without contradiction") {
       const auto contradiction = emp.setValue("x", val1);
-      CHECK_MESSAGE(!contradiction, "no contradiction");
+      CHECK_FALSE_MESSAGE(contradiction, "no contradiction");
       SUBCASE("check values were stored") {
         eqvar(emp.getValue("x"), val1);
         eqvar(emp.getValue("y"), val1);
@@ -97,7 +97,7 @@ TEST_CASE("Simple assignment checks for contradictions when assigning another va
     emp.setValue("y", val3);
     SUBCASE("can assign equal value without contradiction") {
       const auto contradiction = emp.setValue("x", val1);
-      CHECK_MESSAGE(!contradiction, "no contradiction");
+      CHECK_FALSE_MESSAGE(contradiction, "no contradiction");
       SUBCASE("check values were stored") {
         eqvar(emp.getValue("x"), val1);
         eqvar(emp.getValue("y"), val3);
