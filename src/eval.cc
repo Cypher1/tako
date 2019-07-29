@@ -8,6 +8,14 @@
 
 using Prim = std::variant<int, std::string>;
 
+std::string repeat(int n, std::string rep) {
+  std::string o = rep;
+  while(o.length() < rep.length()*n) {
+    o += o;
+  }
+  return o.substr(0, rep.length()*n);
+}
+
 Prim eval(Value val) {
   std::cerr << "Eval (" << show(val) << ")\n";
   // TODO: Eval
@@ -43,6 +51,12 @@ Prim eval(Value val) {
       // Require two args for now?
       if(std::holds_alternative<int>(values[0]) && std::holds_alternative<int>(values[1])) {
         return std::get<int>(values[0])*std::get<int>(values[1]);
+      }
+      if(std::holds_alternative<int>(values[1]) && std::holds_alternative<std::string>(values[0])) {
+        return repeat(std::get<int>(values[1]), std::get<std::string>(values[0]));
+      }
+      if(std::holds_alternative<int>(values[0]) && std::holds_alternative<std::string>(values[1])) {
+        return repeat(std::get<int>(values[0]), std::get<std::string>(values[1]));
       }
       return "Unexpected types at (*) !!! "+val.name;
     } else {

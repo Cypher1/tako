@@ -126,3 +126,29 @@ TEST_CASE("an expression with string literals") {
     REQUIRE(std::get<std::string>(val) == "abcdef");
   }
 }
+
+TEST_CASE("an expression with string literals") {
+  Messages msgs;
+  Context ctx = {msgs, "'abc' * (2+1)", "<filename>"};
+
+  Value num = getValue(msgs, ctx);
+
+  SUBCASE("eval") {
+    auto val = eval(num);
+    REQUIRE(std::holds_alternative<std::string>(val));
+    REQUIRE(std::get<std::string>(val) == "abcabcabc");
+  }
+}
+
+TEST_CASE("an expression with string literals") {
+  Messages msgs;
+  Context ctx = {msgs, "'abc' + ('def'*(2+1))", "<filename>"};
+
+  Value num = getValue(msgs, ctx);
+
+  SUBCASE("eval") {
+    auto val = eval(num);
+    REQUIRE(std::holds_alternative<std::string>(val));
+    REQUIRE(std::get<std::string>(val) == "abcdefdefdef");
+  }
+}
