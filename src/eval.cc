@@ -9,18 +9,11 @@
 using Prim = std::variant<int, std::string>;
 
 std::string repeat(int n, std::string rep) {
-  if (n<1) {
-    return "";
+  std::string o = rep;
+  while(o.length() < rep.length()*n) {
+    o += o;
   }
-  std::string o = "";
-  if (n%2 == 1) {
-    o += rep;
-  }
-  if (n > 1) {
-    const auto s = repeat(n/2, rep);
-    o += s+s;
-  }
-  return o;
+  return o.substr(0, rep.length()*n);
 }
 
 Prim eval(Value val) {
