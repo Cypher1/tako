@@ -22,6 +22,26 @@ std::string banner(const std::string &text, const Config &config) {
   indent(o, w-w/2-1, '-');
   return o.str();
 }
+
+std::string show(Empty, int depth) {
+  return "";
+}
+
+std::string show(Checks chk, int depth) {
+  std::stringstream o;
+  if(!chk.pre.empty()) {
+    indent(o, depth);
+    o << "Pre:\n";
+    o << show(chk.pre, depth+1);
+  }
+  if(!chk.post.empty()) {
+    indent(o, depth);
+    o << "Post:\n";
+    o << show(chk.post, depth+1);
+  }
+  return "";
+}
+
 std::string show(const Location& loc, Context &ctx, int depth) {
   size_t line = 1+std::count(ctx.content.begin(), ctx.content.begin()+loc.start, '\n');
   size_t col = loc.start - ctx.content.rfind("\n", loc.start-1);
@@ -29,43 +49,6 @@ std::string show(const Location& loc, Context &ctx, int depth) {
   indent(o, depth);
   o << " line " << line;
   o << " column " << col;
-  return o.str();
-}
-
-std::string show(const Value& val, int depth) {
-  std::stringstream o;
-  indent(o, depth);
-  o << val.name;
-  if (!val.args.empty()) {
-    o << "(\n";
-    for(const auto& arg : val.args) {
-      o << show(arg, depth+2) << "\n";
-    }
-    indent(o, depth);
-    o << ")";
-  }
-  return o.str();
-}
-
-std::string show(const Definition& val, int depth) {
-  std::stringstream o;
-  o << show(Value(val), depth);
-  if (val.value) {
-    o << " =\n";
-    o << show(*val.value, depth+2);
-  }
-  return o.str();
-}
-
-std::string show(const Module& module, int depth) {
-  std::stringstream o;
-  indent(o, depth);
-  o << "module " << module.name << " (" << module.definitions.size() << " top level definitions) {\n";
-  for(const auto& val : module.definitions) {
-    o << show(val, depth+2) << "\n";
-  }
-  indent(o, depth);
-  o << "}";
   return o.str();
 }
 

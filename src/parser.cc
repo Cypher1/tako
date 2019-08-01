@@ -92,14 +92,21 @@ std::optional<Definition> parseDefinition(const Tree<Token> &node,
       Definition arg(*argDef);
       args.push_back(arg);
     } else {
-      // TODO msg
+      ctx.msg(argTree.value.loc, MessageType::Error, "Expected a definition");
     }
   }
 
   std::optional<Value> value = {};
   if (node.children.size() > 1) {
     value = parseValue(node.children[1], ctx);
-    // TODO: error if there are other children?
+    if (node.children.size() > 2) {
+      // TODO: error if there are other children?
+      ctx.msg(node.value.loc, MessageType::Error, "Expected a single value for definition");
+    }
+  }
+
+  if(!value) {
+    ctx.msg(node.value.loc, MessageType::Error, "Expected a value for definition");
   }
 
   // Todo check that root.child[1] is = expr
