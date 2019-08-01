@@ -98,6 +98,10 @@ int main(int argc, char* argv[]) {
     Context ctx(msgs, contents, filename, PassStep::Init, last_step, config);
 
     runCompiler(ctx);
+    for(const auto msg : ctx.getMsgs()) {
+      std::cerr << show(msg, ctx, 2) << "\n";
+    }
+    msgs = {}; // Clear out the message log.
   }
 
   if(values.find("interactive") != values.end()) {
@@ -111,6 +115,10 @@ int main(int argc, char* argv[]) {
       Context ctx(msgs, line, "stdin", PassStep::Init, last_step, config);
       // TODO: Run for a definition?
       runCompilerInteractive(ctx);
+      for(const auto msg : ctx.getMsgs()) {
+        std::cerr << show(msg, ctx, 2) << "\n";
+      }
+      msgs = {}; // Clear out the message log.
     }
   }
 
@@ -192,9 +200,6 @@ void runCompiler(Context &ctx) {
     Module module = parser::parse<Module>(*tree, ctx, parser::parseModule);
     if(ctx.done()) {
       std::cerr << show(module, 0) << "\n";
-      for(const auto msg : ctx.getMsgs()) {
-        std::cerr << show(msg, ctx, 2) << "\n";
-      }
       return;
     }
 
@@ -203,6 +208,8 @@ void runCompiler(Context &ctx) {
     if(ctx.done()) {
       return;
     }
+
+    // TODO: Code gen (no biggy)
   } catch (const std::runtime_error& er) {
     std::cerr << "Parser crashed with: " << er.what() << "\n";
   }

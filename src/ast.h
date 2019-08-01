@@ -17,7 +17,7 @@ enum class AstNodeType {
   Symbol,
   Numeric,
   Text
-};
+}; // TODO: arrays, sets, dictionaries etc.
 
 template<class T>
 class DefinitionCore;
@@ -35,8 +35,7 @@ class AstNode {
 template<class T>
 class ValueCore : public AstNode<T> {
   public:
-  // TODO: support non symbol/operator values.
-  // e.g. numbers, strings, arrays, sets.
+  // Should this be an ast node property instead?
   std::vector<DefinitionCore<T>> args;
   AstNodeType node_type;
 
