@@ -147,20 +147,21 @@ void runCompilerInteractive(Context &ctx) {
       return;
     }
 
-    std::optional<Value> val = parser::parse<std::optional<Value>>(*tree, ctx, parser::parseValue);
-    if(!val) {
+    std::optional<Value> o_val = parser::parse<std::optional<Value>>(*tree, ctx, parser::parseValue);
+    if(!o_val) {
       std::cerr << "Parse Failed\n";
       return;
     }
     if(ctx.done()) {
-        std::cerr << show(*val) << "\n";
+        std::cerr << show(*o_val) << "\n";
       for(const auto msg : ctx.getMsgs()) {
         std::cerr << show(msg, ctx, 2) << "\n";
       }
       return;
     }
+    auto val = *o_val;
 
-    const auto res = eval(*val);
+    const auto res = eval(val);
     if(std::holds_alternative<int>(res)) {
       std::cout << std::get<int>(res) << "\n";
     } else {

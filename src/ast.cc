@@ -48,11 +48,11 @@ const leftBindingPowerType symbolBind = [](const Token &tok,
   return p_it->second;
 };
 
-const std::map<std::string, unsigned int> infix_binding = {
-    {"-|", 20}, {"|-", 30},  {",", 40}, {"=", 50},   {"<", 60},  {"<=", 60}, {">", 60},
+const std::map<std::string, unsigned int> infix_binding = { // TODO switch ? and =
+    {"-|", 20}, {"|-", 30}, {"?", 40}, {"=", 50}, {",", 55},   {"<", 60},  {"<=", 60}, {">", 60},
     {">=", 60}, {"<>", 60},  {"!=", 60},  {"==", 60}, {"|", 70},  {"^", 80},
     {"&", 90},  {"<<", 100}, {">>", 100}, {"+", 110}, {"-", 110}, {"*", 120},
-    {"/", 120}, {"//", 120}, {"%", 120},  {":", 130}, {".", 140}, {"[", 150},
+    {"/", 120}, {"%", 120},  {":", 130}, {".", 140}, {"[", 150},
     {"(", 150}, {"{", 150}};
 
 const std::map<std::string, unsigned int> prefix_binding = {
@@ -76,9 +76,7 @@ Tree<Token> prefixOp(const Token &tok, ParserContext &ctx) {
   std::string t = ctx.context.getStringAt(tok.loc);
   auto p_it = prefix_binding.find(t);
   if (p_it == prefix_binding.end()) {
-    throw std::runtime_error(
-      std::string() + "Expected a prefix operator but found '" + t + "'"
-    );
+    ctx.msg(MessageType::Error, "Unknown prefix operator");
   }
   auto right = ast::parseValue(ctx, p_it->second);
   root.children.push_back(right);
@@ -90,7 +88,7 @@ Tree<Token> infixOp(Tree<Token> left, const Token &tok, ParserContext &ctx) {
   // Led
   auto p_it = infix_binding.find(ctx.context.getStringAt(tok.loc));
   if (p_it == infix_binding.end()) {
-    // TODO Defaulting is bad...
+    ctx.msg(MessageType::Error, "Unknown infix operator");
   };
   auto right = ast::parseValue(ctx, p_it->second);
   root.children.push_back(right);
