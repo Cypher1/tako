@@ -25,8 +25,9 @@ std::optional<Value> parseValue(const Tree<Token> &node, Context &ctx) {
   std::vector<Definition> args;
   int ord = 0;
   for (const auto &child : node.children) {
-    const auto arg = parseDefinition(child, ctx);
-    if (arg) {
+    if (child.value.type == +TokenType::Declaration) {
+      const auto arg = parseDefinition(child, ctx);
+      // TODO require arg
       args.push_back(*arg);
     } else {
       // TODO Msg?
@@ -62,15 +63,18 @@ std::optional<Definition> parseDefinition(const Tree<Token> &node,
   std::string op = ctx.getStringAt(node.value.loc);
   if (node.value.type != +TokenType::Operator || op != "=") {
     // TODO msg conditionally
+    ctx.msg(node.value.loc, MessageType::Error, "Expected definition");
     return std::nullopt;
   }
   if (node.children.empty()) {
     // TODO msg conditionally
+    ctx.msg(node.value.loc, MessageType::Error, "Expected definition");
     return std::nullopt;
   }
   const auto &fst = node.children[0];
   if (fst.value.type != +TokenType::Symbol) {
     // TODO msg conditionally
+    ctx.msg(node.value.loc, MessageType::Error, "Cannot assign to non-symbol");
     return std::nullopt;
   }
 
