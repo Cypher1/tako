@@ -112,6 +112,7 @@ int main(int argc, char* argv[]) {
       if(!getline(std::cin, line) || line == ":q") {
         break;
       }
+      std::cout << "\n";
       Context ctx(msgs, line, "stdin", PassStep::Init, last_step, config);
       // TODO: Run for a definition?
       runCompilerInteractive(ctx);
@@ -143,7 +144,7 @@ void runCompilerInteractive(Context &ctx) {
       return;
     }
     if(ctx.done()) {
-      std::cerr << show(tree->children, ctx, 0, "\n") << "\n";
+      std::cerr << show(*tree, ctx) << "\n";
       return;
     }
 
@@ -194,7 +195,7 @@ void runCompiler(Context &ctx) {
       return;
     }
     if(ctx.done()) {
-      std::cerr << show(tree->children, ctx, 0, "\n") << "\n";
+      std::cerr << show(*tree, ctx) << "\n";
       return;
     }
 
