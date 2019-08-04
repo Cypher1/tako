@@ -62,8 +62,8 @@ const fixity nameSpaceF = prefix + 10;
 const fixity bracketF = nameSpaceF + 10;
 
 const std::map<std::string, fixity> infix_binding = {
-    {"-|", 20},          {"|-", 30},          {"=", definitionF},
-    {",", definitionF},  {"?", pipeF},        {"<|", pipeF},
+    {",", 10},           {"-|", 20},          {"|-", 30},
+    {"=", definitionF},  {"?", pipeF},        {"<|", pipeF},
     {"|>", pipeF},       {"<", comparisonF},  {"<=", comparisonF},
     {">", comparisonF},  {">=", comparisonF}, {"<>", comparisonF},
     {"!=", comparisonF}, {"==", comparisonF}, {"|", shiftF},

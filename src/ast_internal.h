@@ -28,7 +28,6 @@ public:
                 std::vector<Token>::const_iterator end)
       : context{ctx}, toks{toks}, end{end} {}
   // Other state
-  bool inString = false; // TODO
   bool hasToken = true;
 
   bool next();
