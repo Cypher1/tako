@@ -48,15 +48,32 @@ const leftBindingPowerType symbolBind = [](const Token &tok,
   return p_it->second;
 };
 
-const std::map<std::string, unsigned int> infix_binding = { // TODO switch ? and =
-    {"-|", 20}, {"|-", 30}, {"?", 40}, {"=", 50}, {",", 55},   {"<", 60},  {"<=", 60}, {">", 60},
-    {">=", 60}, {"<>", 60},  {"!=", 60},  {"==", 60}, {"|", 70},  {"^", 80},
-    {"&", 90},  {"<<", 100}, {">>", 100}, {"+", 110}, {"-", 110}, {"*", 120},
-    {"/", 120}, {"%", 120},  {":", 130}, {".", 140}, {"[", 150},
-    {"(", 150}, {"{", 150}};
+// Fixity classes
+using fixity = unsigned int;
+const fixity definitionF = 40;
+const fixity pipeF = definitionF + 10;
+const fixity comparisonF = pipeF + 10;
+const fixity shiftF = comparisonF + 10;
+const fixity plusMinF = shiftF + 10;
+const fixity timeDivF = plusMinF + 10;
+const fixity prefix = timeDivF + 10;
+const fixity nameSpaceF = prefix + 10;
+const fixity bracketF = nameSpaceF + 10;
+
+const std::map<std::string, fixity> infix_binding = {
+    {"-|", 20},          {"|-", 30},          {"=", definitionF},
+    {",", definitionF},  {"?", pipeF},        {"<|", pipeF},
+    {"|>", pipeF},       {"<", comparisonF},  {"<=", comparisonF},
+    {">", comparisonF},  {">=", comparisonF}, {"<>", comparisonF},
+    {"!=", comparisonF}, {"==", comparisonF}, {"|", shiftF},
+    {"^", shiftF},       {"&", shiftF},       {"<<", shiftF},
+    {">>", shiftF},      {"+", plusMinF},     {"-", plusMinF},
+    {"*", timeDivF},     {"/", timeDivF},     {"%", timeDivF},
+    {":", nameSpaceF},   {".", nameSpaceF},   {"[", bracketF},
+    {"(", bracketF},     {"{", bracketF}};
 
 const std::map<std::string, unsigned int> prefix_binding = {
-    {"-", 130}, {"+", 130}, {"~", 130}, {"!", 130}};
+    {"-", prefix}, {"+", prefix}, {"!", prefix}};
 
 const auto operatorBind = [](const Token &tok, ParserContext &ctx) { // Lbp
   std::string t = ctx.context.getStringAt(tok.loc);
@@ -65,8 +82,8 @@ const auto operatorBind = [](const Token &tok, ParserContext &ctx) { // Lbp
     std::string start = std::to_string(tok.loc.start);
     std::string len = std::to_string(tok.loc.length);
     throw std::runtime_error(
-      std::string() + "Expected an infix operator but found a "+tok.type._to_string()+"("+start+","+len+") '" + t + "'"
-    );
+        std::string() + "Expected an infix operator but found a " +
+        tok.type._to_string() + "(" + start + "," + len + ") '" + t + "'");
   }
   return p_it->second;
 };
@@ -124,16 +141,17 @@ Tree<Token> bracket(const Token &tok, ParserContext &ctx) { // Nud
 };
 Forest<Token> simplifyCommasAndParens(Forest<Token> nodes) {
   Forest<Token> children;
-  for (auto& node : nodes) {
+  for (auto &node : nodes) {
     // Add the children
     node.children = simplifyCommasAndParens(node.children);
 
     const bool isComma = node.value.type == +TokenType::Comma;
     const bool isParen = node.value.type == +TokenType::OpenParen;
     const bool isParenthesizedExpr = isParen && node.children.size() == 1;
-    if(isComma || isParenthesizedExpr) {
+    if (isComma || isParenthesizedExpr) {
       // Add the children
-      children.insert(children.end(), node.children.begin(), node.children.end());
+      children.insert(children.end(), node.children.begin(),
+                      node.children.end());
     } else {
       // Tuple, unit or other expr
       // Add the node
@@ -178,11 +196,11 @@ std::map<TokenType, SymbolTableEntry> symbolTable = {
     {TokenType::CloseBracket,
      {symbolBind, ignoreInit, ignore}}, // TODO: Warning / error on unmatched.
     // {TokenType::DoubleQuote,
-     // {operatorBind, bracket}}, // TODO: Warning / error on unmatched.
+    // {operatorBind, bracket}}, // TODO: Warning / error on unmatched.
     // {TokenType::SingleQuote,
-     // {operatorBind, bracket}}, // TODO: Warning / error on unmatched.
+    // {operatorBind, bracket}}, // TODO: Warning / error on unmatched.
     // {TokenType::BackQuote,
-     // {operatorBind, bracket}}, // TODO: Warning / error on unmatched.
+    // {operatorBind, bracket}}, // TODO: Warning / error on unmatched.
     {TokenType::StringLiteral, {symbolBind, symbol}},
     {TokenType::NumberLiteral, {symbolBind, symbol}},
     {TokenType::Dot, {symbolBind, symbol}},
@@ -191,7 +209,8 @@ std::map<TokenType, SymbolTableEntry> symbolTable = {
 
 bool ParserContext::next() {
   if (hasToken) {
-    // std::cout << "> " << context.getStringAt(getCurr().loc) << "\n"; // For debugging.
+    // std::cout << "> " << context.getStringAt(getCurr().loc) << "\n"; // For
+    // debugging.
     if (toks != end) {
       toks++;
     }
@@ -268,8 +287,6 @@ Tree<Token> ast::parseValue(ParserContext &ctx, unsigned int rbp) {
     left = t_entry.led(left, t, ctx);
     binding = ctx.entry().binding(ctx.getCurr(), ctx);
   }
-
-  //TODO: Collapse comma separated values into a list of arguments.
   left.children = simplifyCommasAndParens(left.children);
   return left;
 }
@@ -283,13 +300,17 @@ Tree<Token> ast::parseModule(ParserContext &ctx, unsigned int rbp) {
   return Tree<Token>(fileToken, definitions);
 }
 
-std::optional<Tree<Token>> ast::ast(Tokens& toks, Context &context, std::function<Tree<Token>(ParserContext &, unsigned int)> func) {
+std::optional<Tree<Token>>
+ast::ast(Tokens &toks, Context &context,
+         std::function<Tree<Token>(ParserContext &, unsigned int)> func) {
   context.startStep(PassStep::Ast);
   ParserContext ctx(context, toks.cbegin(), toks.cend());
-  if(!ctx.hasToken) return std::nullopt;
+  if (!ctx.hasToken)
+    return std::nullopt;
   // Allows next to consume whitespace without prepending to the tokens.
   ctx.toks--;
   ctx.next(); // TODO: Check result
-  if(!ctx.hasToken) return std::nullopt;
+  if (!ctx.hasToken)
+    return std::nullopt;
   return func(ctx, 0);
 }
