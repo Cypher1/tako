@@ -12,6 +12,7 @@
 #include "lex.h"
 #include "parser.h"
 #include "show.h"
+#include "util.h"
 
 namespace parser {
 std::optional<Definition> parseDefinition(const Tree<Token> &node,
@@ -30,7 +31,6 @@ std::optional<Value> parseValue(const Tree<Token> &node, Context &ctx) {
       // TODO require arg
       args.push_back(*arg);
     } else {
-      // TODO Msg?
       const auto arg_value = parseValue(child, ctx);
       const std::string name =
           "#" +
