@@ -48,15 +48,32 @@ const leftBindingPowerType symbolBind = [](const Token &tok,
   return p_it->second;
 };
 
-const std::map<std::string, unsigned int> infix_binding = { // TODO switch ? and =
-    {"-|", 20}, {"|-", 30}, {"?", 40}, {"=", 50}, {",", 55},   {"<", 60},  {"<=", 60}, {">", 60},
-    {">=", 60}, {"<>", 60},  {"!=", 60},  {"==", 60}, {"|", 70},  {"^", 80},
-    {"&", 90},  {"<<", 100}, {">>", 100}, {"+", 110}, {"-", 110}, {"*", 120},
-    {"/", 120}, {"%", 120},  {":", 130}, {".", 140}, {"[", 150},
-    {"(", 150}, {"{", 150}};
+// Fixity classes
+using fixity = unsigned int;
+const fixity definitionF = 40;
+const fixity pipeF = definitionF + 10;
+const fixity comparisonF = pipeF + 10;
+const fixity shiftF = comparisonF + 10;
+const fixity plusMinF = shiftF + 10;
+const fixity timeDivF = plusMinF + 10;
+const fixity prefix = timeDivF + 10;
+const fixity nameSpaceF = prefix + 10;
+const fixity bracketF = nameSpaceF + 10;
+
+const std::map<std::string, fixity> infix_binding = {
+    {"-|", 20},          {"|-", 30},          {"=", definitionF},
+    {",", definitionF},  {"?", pipeF},        {"<|", pipeF},
+    {"|>", pipeF},       {"<", comparisonF},  {"<=", comparisonF},
+    {">", comparisonF},  {">=", comparisonF}, {"<>", comparisonF},
+    {"!=", comparisonF}, {"==", comparisonF}, {"|", shiftF},
+    {"^", shiftF},       {"&", shiftF},       {"<<", shiftF},
+    {">>", shiftF},      {"+", plusMinF},     {"-", plusMinF},
+    {"*", timeDivF},     {"/", timeDivF},     {"%", timeDivF},
+    {":", nameSpaceF},   {".", nameSpaceF},   {"[", bracketF},
+    {"(", bracketF},     {"{", bracketF}};
 
 const std::map<std::string, unsigned int> prefix_binding = {
-    {"-", 130}, {"+", 130}, {"~", 130}, {"!", 130}};
+    {"-", prefix}, {"+", prefix}, {"!", prefix}};
 
 const auto operatorBind = [](const Token &tok, ParserContext &ctx) { // Lbp
   std::string t = ctx.context.getStringAt(tok.loc);
