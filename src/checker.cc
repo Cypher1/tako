@@ -41,6 +41,8 @@ Solutions Assignment::unify(const Value &a, const Value &b) {
   };
 }
 
+CheckedDefinition checkDefinition(Definition module, CheckerContext &ctx);
+
 std::variant<Value, Variable> Assignment::getValue(const Variable &name) const {
   auto it = assignment.find(name);
   if (it == assignment.end()) {
@@ -50,14 +52,48 @@ std::variant<Value, Variable> Assignment::getValue(const Variable &name) const {
   return it->second;
 }
 
-CheckedModule check(Module module, Context &ctx) {
-  ctx.startStep(PassStep::Check);
+// Call graph / tree builders
+CheckedValue checkValue(Value val, CheckerContext &ctx) {
+  std::vector<CheckedDefinition> args = {};
+  for(const auto& arg : val.args) {
+    args.push_back(checkDefinition(arg, ctx));
+  }
+  return CheckedValue(val.name, val.loc, args, val.node_type);
+}
 
+CheckedDefinition checkDefinition(Definition def, CheckerContext &ctx) {
+  std::vector<CheckedDefinition> args = {};
+  for(const auto& arg : def.args) {
+    args.push_back(checkDefinition(arg, ctx));
+  }
+  std::optional<CheckedValue> val;
+  if(def.value) {
+  val = checkValue(*def.value, ctx);
+  }
+  return CheckedDefinition(def.name, def.loc, args, val);
+}
+
+CheckedModule checkModule(Module module, CheckerContext &ctx) {
   std::vector<CheckedDefinition>defs = {};
-
-  //for(const auto& _def : module.definitions) {
-    // TODO
-  //}
-  // TODO...
+  for(const auto& def : module.definitions) {
+    // TODO: Branching?
+    defs.push_back(checkDefinition(def, ctx));
+  }
   return CheckedModule(module.name, module.loc, defs);
+}
+
+// Wrappers that do some setup work
+ValueCore<Checks> check(const ValueCore<Empty> &code, CheckerContext &ctx) {
+  ctx.startStep(PassStep::Check);
+  return checkValue(code, ctx);
+}
+
+DefinitionCore<Checks> check(const DefinitionCore<Empty> &code, CheckerContext &ctx) {
+  ctx.startStep(PassStep::Check);
+  return checkDefinition(code, ctx);
+}
+
+ModuleCore<Checks> check(const ModuleCore<Empty> &code, CheckerContext &ctx) {
+  ctx.startStep(PassStep::Check);
+  return checkModule(code, ctx);
 }

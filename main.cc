@@ -162,6 +162,13 @@ void runCompilerInteractive(Context &ctx) {
     }
     auto val = *o_val;
 
+    CheckedValue checked = check(val, ctx);
+    if(ctx.done()) {
+      std::cerr << show(checked) << "\n";
+      return;
+    }
+
+    // TODO
     const auto res = eval(val);
     if(std::holds_alternative<int>(res)) {
       std::cout << std::get<int>(res) << "\n";
@@ -205,9 +212,9 @@ void runCompiler(Context &ctx) {
       return;
     }
 
-    // CheckedModule checked;
-    check(module, ctx);
+    CheckedModule checked = check(module, ctx);
     if(ctx.done()) {
+      std::cerr << show(checked) << "\n";
       return;
     }
 

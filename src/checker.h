@@ -6,6 +6,7 @@
 #include <variant>
 #include <optional>
 
+#include "ast.h"
 #include "util.h"
 #include "context.h"
 #include "parser.h"
@@ -64,5 +65,10 @@ using CheckedValue = ValueCore<Checks>;
 using CheckedDefinition = DefinitionCore<Checks>;
 using CheckedModule = ModuleCore<Checks>;
 
-CheckedModule check(Module module, Context &ctx);
+using CheckerContext = Context; // TODO: Needs to track proofs...
+
+ValueCore<Checks> check(const ValueCore<Empty> &code, CheckerContext &ctx);
+DefinitionCore<Checks> check(const DefinitionCore<Empty> &code, CheckerContext &ctx);
+ModuleCore<Checks> check(const ModuleCore<Empty> &code, CheckerContext &ctx);
+
 #endif // #ifndef CHECKER_H
