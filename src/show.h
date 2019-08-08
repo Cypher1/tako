@@ -5,10 +5,7 @@
 #include <sstream>
 
 #include "context.h"
-
-#include "lex.h"
 #include "parser.h"
-#include "checker.h"
 
 void indent(std::stringstream& o, int depth, char dent=' ');
 
@@ -44,8 +41,10 @@ std::string show(const std::vector<T>& vec, Context &ctx, int depth=0, std::stri
   return o.str();
 }
 
-std::string show(Empty, int);
-std::string show(Checks, int);
+class Empty;
+std::string show(const Empty&, int depth=0);
+class Checks;
+std::string show(const Checks&, int depth=0);
 
 template<typename T>
 std::string show(const DefinitionCore<T>& val, int depth=0);

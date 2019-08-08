@@ -7,6 +7,7 @@
 
 #include "lex.h"
 #include "show.h"
+#include "checker.h"
 
 void indent(std::stringstream& o, int depth, char dent) {
   for(int i=0; i<depth; i++) {
@@ -23,11 +24,11 @@ std::string banner(const std::string &text, const Config &config) {
   return o.str();
 }
 
-std::string show(Empty, int depth) {
+std::string show(const Empty&, int depth) {
   return "";
 }
 
-std::string show(Checks chk, int depth) {
+std::string show(const Checks &chk, int depth) {
   std::stringstream o;
   if(!chk.pre.empty()) {
     indent(o, depth);
