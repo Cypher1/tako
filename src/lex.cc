@@ -1,11 +1,13 @@
-#include "context.h"
-#include "lex.h"
-#include "util.h"
 #include <iostream>
 #include <map>
 #include <set>
 #include <string>
 #include <vector>
+#include <functional>
+
+#include "context.h"
+#include "lex.h"
+#include "util.h"
 
 const std::string lower = "abcdefghijklmnopqrstuvwxyz";
 const std::string upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -87,25 +89,32 @@ Offset consumeWhiteSpace(const std::string content, const Position pos,
   return loc;
 }
 
-int matchesFrom(
-    const std::string chars,
-    const std::string content,
-    const Position pos,
-    Context &ctx) {
-  Offset length = 0;
-  while (length < content.size()) {
-    if (chars.find(content[length]) == std::string::npos) {
-      break;
+using Matcher = std::function<Offset(const std::string content,
+      const Position pos,
+      Context &ctx)>;
+
+Matcher matchesFrom(const std::string chars) {
+  return [chars](
+      const std::string content,
+      const Position pos,
+      Context &ctx) {
+    Offset length = 0;
+    while (length < content.size()) {
+      if (chars.find(content[length]) == std::string::npos) {
+        break;
+      }
+      length++;
     }
-    length++;
-  }
-  return length;
+    return length;
+  };
 }
 
-const std::vector<std::pair<TokenType, std::string>> matchers = {
-  {TokenType::Operator, operatorChar},
-  {TokenType::NumberLiteral, numberChar},
-  {TokenType::Symbol, symbolChar},
+const std::vector<std::pair<TokenType, Matcher>> matchers = {
+  {TokenType::StringLiteral, consumeStringLiteral},
+  {TokenType::WhiteSpace, consumeWhiteSpace},
+  {TokenType::Operator, matchesFrom(operatorChar)},
+  {TokenType::NumberLiteral, matchesFrom(numberChar)},
+  {TokenType::Symbol, matchesFrom(symbolChar)},
 };
 
 std::pair<TokenType, Offset> chooseTok(std::string content, const Position pos,
@@ -117,14 +126,8 @@ std::pair<TokenType, Offset> chooseTok(std::string content, const Position pos,
       return {sym.second, tokS.size()};
     }
   }
-  if (Offset length = consumeStringLiteral(content, pos, ctx)) {
-    return {TokenType::StringLiteral, length};
-  }
-  if (Offset length = consumeWhiteSpace(content, pos, ctx)) {
-    return {TokenType::WhiteSpace, length};
-  }
   for(const auto& match : matchers) {
-    if (Offset length = matchesFrom(match.second, content, pos, ctx)) {
+    if (Offset length = match.second(content, pos, ctx)) {
       return {match.first, length};
     }
   }
