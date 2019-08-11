@@ -87,8 +87,11 @@ Offset consumeWhiteSpace(const std::string content, const Position pos,
   return loc;
 }
 
-int matchesFrom(const std::string chars, const Position pos,
-                const std::string content) {
+int matchesFrom(
+    const std::string chars,
+    const std::string content,
+    const Position pos,
+    Context &ctx) {
   Offset length = 0;
   while (length < content.size()) {
     if (chars.find(content[length]) == std::string::npos) {
@@ -98,6 +101,12 @@ int matchesFrom(const std::string chars, const Position pos,
   }
   return length;
 }
+
+const std::vector<std::pair<TokenType, std::string>> matchers = {
+  {TokenType::Operator, operatorChar},
+  {TokenType::NumberLiteral, numberChar},
+  {TokenType::Symbol, symbolChar},
+};
 
 std::pair<TokenType, Offset> chooseTok(std::string content, const Position pos,
                                        Context &ctx) {
@@ -114,14 +123,10 @@ std::pair<TokenType, Offset> chooseTok(std::string content, const Position pos,
   if (Offset length = consumeWhiteSpace(content, pos, ctx)) {
     return {TokenType::WhiteSpace, length};
   }
-  if (Offset length = matchesFrom(operatorChar, pos, content)) {
-    return {TokenType::Operator, length};
-  }
-  if (Offset length = matchesFrom(numberChar, pos, content)) {
-    return {TokenType::NumberLiteral, length};
-  }
-  if (Offset length = matchesFrom(symbolChar, pos, content)) {
-    return {TokenType::Symbol, length};
+  for(const auto& match : matchers) {
+    if (Offset length = matchesFrom(match.second, content, pos, ctx)) {
+      return {match.first, length};
+    }
   }
   return {TokenType::Error, 1};
 }
