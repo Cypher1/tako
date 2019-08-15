@@ -18,13 +18,13 @@ const Token errorToken = {TokenType::Error, errorLocation};
 
 class SymbolTableEntry;
 
-class ParserContext {
+class AstContext {
 public:
   Context &context;
   std::vector<Token>::const_iterator toks;
   std::vector<Token>::const_iterator end;
 
-  ParserContext(Context &ctx, std::vector<Token>::const_iterator toks,
+  AstContext(Context &ctx, std::vector<Token>::const_iterator toks,
                 std::vector<Token>::const_iterator end)
       : context{ctx}, toks{toks}, end{end} {}
   // Other state
@@ -40,18 +40,18 @@ public:
 };
 
 using leftBindingPowerType =
-    std::function<unsigned int(const Token &tok, ParserContext &ctx)>;
+    std::function<unsigned int(const Token &tok, AstContext &ctx)>;
 using parseInitType =
-    std::function<Tree<Token>(const Token &tok, ParserContext &ctx)>;
+    std::function<Tree<Token>(const Token &tok, AstContext &ctx)>;
 using parseLeftType = std::function<Tree<Token>(
-    Tree<Token> left, const Token &tok, ParserContext &ctx)>;
+    Tree<Token> left, const Token &tok, AstContext &ctx)>;
 
-Tree<Token> parserLogicErrorInit(const Token &tok, ParserContext &ctx) {
+Tree<Token> parserLogicErrorInit(const Token &tok, AstContext &ctx) {
   throw std::runtime_error("Parser logic error on token " + show(tok, ctx.context));
 };
 
 Tree<Token> parserLogicErrorLeft(Tree<Token>, const Token &tok,
-                                ParserContext &ctx) {
+                                AstContext &ctx) {
   throw std::runtime_error("Parser logic error on token left " +
                            show(tok, ctx.context));
 };
