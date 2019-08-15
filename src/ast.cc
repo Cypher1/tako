@@ -180,7 +180,7 @@ Tree<Token> funcArgs(Tree<Token> left, const Token &tok,
   return left; // This is a function call
 };
 
-std::map<TokenType, SymbolTableEntry> symbolTable = {
+std::map<TokenType, TokenTokenEntry> symbolTable = {
     {TokenType::Comma, {operatorBind, infixOp}},
     {TokenType::Operator, {operatorBind, prefixOp, infixOp}},
     {TokenType::PreCond, {operatorBind, infixOp}},
@@ -256,7 +256,7 @@ std::string AstContext::getCurrString() const {
   return context.getStringAt(getCurr().loc);
 }
 
-const SymbolTableEntry AstContext::entry() {
+const TokenTokenEntry AstContext::entry() {
   auto t = getCurr();
   const auto symbol_it = symbolTable.find(t.type);
   if (symbol_it == symbolTable.end()) {
