@@ -20,6 +20,8 @@ struct Location {
   std::string file="";
 };
 
+bool operator<( const Location &a, const Location &b);
+
 const Location errorLocation = { 0, 0, "<eof>"};
 
 BETTER_ENUM(
