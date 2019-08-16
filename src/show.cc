@@ -24,6 +24,13 @@ std::string banner(const std::string &text, const Config &config) {
   return o.str();
 }
 
+std::string show(const std::string& s, int depth) {
+  std::stringstream o;
+  indent(o, depth);
+  o << s;
+  return o.str();
+}
+
 std::string show(const Empty&, int depth) {
   return "";
 }
