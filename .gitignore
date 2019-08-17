@@ -9,3 +9,4 @@ build-clang
 vgcore.*
 docs/assets/*
 docs/_site
+docs/notes

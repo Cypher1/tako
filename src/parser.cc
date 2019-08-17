@@ -15,10 +15,71 @@
 #include "util.h"
 
 namespace parser {
-std::optional<Definition> parseDefinition(const Tree<Token> &node,
-                                          Context &ctx);
 
-std::optional<Value> parseValue(const Tree<Token> &node, Context &ctx) {
+void SymbolTable::addSymbol(std::vector<Symbol> path, const Value &val) {
+  symbol_tree.emplace(path, val);
+}
+
+Path SymbolTable::lookup(Path pth, Value &val) {
+  // assert(!pth.empty());
+  std::cerr << "Lookup " << show(pth) << "\n";
+  Path best;
+  size_t best_dep_eq = 0;
+  for (const auto &p : symbol_tree) {
+    // assert(!p.first.empty());
+    size_t dep_eq = 0;
+    if (p.first.back() == val.name) { // same name
+      // Found a match... is it in our scope?
+      while (dep_eq < p.first.size() && dep_eq < pth.size()) {
+        if (p.first[dep_eq] != pth[dep_eq]) {
+          break;
+        }
+        dep_eq++;
+      }
+      std::cerr << "Matching " << show(p.first) << " matches " << dep_eq
+                << " deep\n";
+      // foo/bar/symbol
+      // foo/bar/baz/function uses symbol
+      //
+      // foo/bar is the match, symbol == symbol
+      if (dep_eq >= p.first.size() - 1) {
+        std::cerr << "Matches!\n";
+        if (dep_eq > best_dep_eq) {
+          std::cerr << "Shadows previous\n";
+          best_dep_eq = dep_eq;
+          best = p.first; // Copy the path
+        } else {
+          std::cerr << "Is shadowed by previous\n";
+        }
+      } else {
+        std::cerr << "Does not match! Cannot access " << show(p.first)
+                  << " from " << show(pth) << "\n";
+      }
+    } else {
+    }
+  }
+
+  if (best.empty()) {
+    std::cerr << "No match found for " << val.name << "\n";
+  } else {
+    std::cerr << "Found match\n";
+  }
+
+  return {};
+}
+
+void ParserContext::msg(const Token &tok, MessageType level, std::string msg_txt) {
+  context.msg(tok.loc, level, msg_txt);
+}
+
+std::string ParserContext::getStringAt(const Location &loc) {
+  return context.getStringAt(loc);
+}
+
+std::optional<Definition> parseDefinition(const Tree<Token> &node,
+                                          ParserContext &ctx);
+
+std::optional<Value> parseValue(const Tree<Token> &node, ParserContext &ctx) {
   std::string name = ctx.getStringAt(node.value.loc);
   if (name.empty()) { // End of file?
     return std::nullopt;
@@ -58,23 +119,23 @@ std::optional<Value> parseValue(const Tree<Token> &node, Context &ctx) {
 }
 
 std::optional<Definition> parseDefinition(const Tree<Token> &node,
-                                          Context &ctx) {
+                                          ParserContext &ctx) {
   // Todo check that root is =
   std::string op = ctx.getStringAt(node.value.loc);
   if (node.value.type != +TokenType::Operator || op != "=") {
     // TODO msg conditionally
-    ctx.msg(node.value.loc, MessageType::Error, "Expected definition");
+    ctx.msg(node.value, MessageType::Error, "Expected definition");
     return std::nullopt;
   }
   if (node.children.empty()) {
     // TODO msg conditionally
-    ctx.msg(node.value.loc, MessageType::Error, "Expected definition");
+    ctx.msg(node.value, MessageType::Error, "Expected definition");
     return std::nullopt;
   }
   const auto &fst = node.children[0];
   if (fst.value.type != +TokenType::Symbol) {
     // TODO msg conditionally
-    ctx.msg(node.value.loc, MessageType::Error, "Cannot assign to non-symbol");
+    ctx.msg(node.value, MessageType::Error, "Cannot assign to non-symbol");
     return std::nullopt;
   }
 
@@ -96,7 +157,7 @@ std::optional<Definition> parseDefinition(const Tree<Token> &node,
       Definition arg(*argDef);
       args.push_back(arg);
     } else {
-      ctx.msg(argTree.value.loc, MessageType::Error, "Expected a definition");
+      ctx.msg(argTree.value, MessageType::Error, "Expected a definition");
     }
   }
 
@@ -105,19 +166,21 @@ std::optional<Definition> parseDefinition(const Tree<Token> &node,
     value = parseValue(node.children[1], ctx);
     if (node.children.size() > 2) {
       // TODO: error if there are other children?
-      ctx.msg(node.value.loc, MessageType::Error, "Expected a single value for definition");
+      ctx.msg(node.value, MessageType::Error,
+              "Expected a single value for definition");
     }
   }
 
-  if(!value) {
-    ctx.msg(node.value.loc, MessageType::Error, "Expected a value for definition");
+  if (!value) {
+    ctx.msg(node.value, MessageType::Error,
+            "Expected a value for definition");
   }
 
   // Todo check that root.child[1] is = expr
   return Definition(name, loc, args, value);
 }
 
-Module parseModule(const Tree<Token> &node, Context &ctx) {
+Module parseModule(const Tree<Token> &node, ParserContext &ctx) {
   std::vector<Definition> definitions;
   for (const auto &defTree : node.children) {
     auto def = parseDefinition(defTree, ctx);
@@ -125,7 +188,7 @@ Module parseModule(const Tree<Token> &node, Context &ctx) {
       definitions.push_back(*def);
     }
   }
-  return {ctx.filename, node.value.loc, definitions};
+  return {ctx.context.filename, node.value.loc, definitions};
 }
 
 } // namespace parser

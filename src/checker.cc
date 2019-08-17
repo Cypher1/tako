@@ -7,6 +7,11 @@
 
 #include "checker.h"
 
+void CheckerContext::msg(Value &val, MessageType level, std::string msg_txt) {
+  // TODO: Add contextual information.
+  context.msg(val.loc, level, msg_txt);
+}
+
 std::optional<Contradiction> Assignment::setValue(
     const Variable &name,
     const Value &new_value) {
@@ -41,8 +46,6 @@ Solutions Assignment::unify(const Value &a, const Value &b) {
   };
 }
 
-CheckedDefinition checkDefinition(Definition module, CheckerContext &ctx);
-
 std::variant<Value, Variable> Assignment::getValue(const Variable &name) const {
   auto it = assignment.find(name);
   if (it == assignment.end()) {
@@ -52,48 +55,45 @@ std::variant<Value, Variable> Assignment::getValue(const Variable &name) const {
   return it->second;
 }
 
-// Call graph / tree builders
-CheckedValue checkValue(Value val, CheckerContext &ctx) {
+DefinitionCore<Checks> check(std::vector<Symbol> def_path, const DefinitionCore<Empty> &def, CheckerContext &ctx) {
+  def_path.push_back(def.name);
+  std::vector<CheckedDefinition> args = {};
+  for(const auto& arg : def.args) {
+    args.push_back(check(def_path, arg, ctx));
+  }
+  std::optional<CheckedValue> val;
+  if(def.value) {
+    val = check(def_path, *def.value, ctx);
+    // Add edges?
+    Checks check;
+    if(def.value) {
+      auto v = *def.value;
+      if(v.node_type == AstNodeType::Symbol) {
+        // TODO: ctx.addSymbol(def_path, v);
+        // Get the 'symbol' that the value corresponds to.
+        // auto val_path = ctx.lookup(def_path, v);
+        // ctx.addEdge(def_path, val_path, check);
+      }
+    } // TODO: If there is no value....!?
+}
+  return CheckedDefinition(def.name, def.loc, args, val);
+}
+
+ValueCore<Checks> check(std::vector<Symbol> path, const ValueCore<Empty> &val, CheckerContext &ctx) {
+  path.push_back(val.name);
   std::vector<CheckedDefinition> args = {};
   for(const auto& arg : val.args) {
-    args.push_back(checkDefinition(arg, ctx));
+    args.push_back(check(path, arg, ctx));
   }
   return CheckedValue(val.name, val.loc, args, val.node_type);
 }
 
-CheckedDefinition checkDefinition(Definition def, CheckerContext &ctx) {
-  std::vector<CheckedDefinition> args = {};
-  for(const auto& arg : def.args) {
-    args.push_back(checkDefinition(arg, ctx));
-  }
-  std::optional<CheckedValue> val;
-  if(def.value) {
-  val = checkValue(*def.value, ctx);
-  }
-  return CheckedDefinition(def.name, def.loc, args, val);
-}
-
-CheckedModule checkModule(Module module, CheckerContext &ctx) {
+ModuleCore<Checks>check(std::vector<Symbol> path, const ModuleCore<Empty> &module, CheckerContext &ctx) {
   std::vector<CheckedDefinition>defs = {};
+  path.push_back(module.name);
   for(const auto& def : module.definitions) {
     // TODO: Branching?
-    defs.push_back(checkDefinition(def, ctx));
+    defs.push_back(check(path, def, ctx));
   }
   return CheckedModule(module.name, module.loc, defs);
-}
-
-// Wrappers that do some setup work
-ValueCore<Checks> check(const ValueCore<Empty> &code, CheckerContext &ctx) {
-  ctx.startStep(PassStep::Check);
-  return checkValue(code, ctx);
-}
-
-DefinitionCore<Checks> check(const DefinitionCore<Empty> &code, CheckerContext &ctx) {
-  ctx.startStep(PassStep::Check);
-  return checkDefinition(code, ctx);
-}
-
-ModuleCore<Checks> check(const ModuleCore<Empty> &code, CheckerContext &ctx) {
-  ctx.startStep(PassStep::Check);
-  return checkModule(code, ctx);
 }
