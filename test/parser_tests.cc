@@ -30,7 +30,7 @@ TEST_CASE("empty file") {
     CHECK_SHOW(msgs.empty(), msgs, ctx);
     CHECK_MESSAGE(toks.empty(), toks[0].type);
     SUBCASE("ast should be an empty tree") {
-      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      auto tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK_SHOW(msgs.empty(), msgs, ctx);
       REQUIRE(!tree);
     }
@@ -46,7 +46,7 @@ TEST_CASE("non-empty file") {
     CHECK_SHOW(msgs.empty(), msgs, ctx);
     CHECK_FALSE(toks.empty());
     SUBCASE("ast") {
-      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      auto tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK_SHOW(msgs.empty(), msgs, ctx);
       REQUIRE(!tree);
     }
@@ -66,7 +66,7 @@ TEST_CASE("a numeric literal") {
     SUBCASE("ast") {
       const std::string toksS = show(toks, ctx);
       // INFO(toksS);
-      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      auto tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK_SHOW(msgs.empty(), msgs, ctx);
       REQUIRE(tree);
       CHECK(tree->value.type == +TokenType::NumberLiteral);
@@ -75,7 +75,7 @@ TEST_CASE("a numeric literal") {
       CHECK(tree->value.loc.length == 2);
       CHECK(tree->children.size() == 0);
       SUBCASE("parse") {
-        std::optional<Value> o_val = parser::parseValue(*tree, ctx);
+        auto o_val = parser::parse<std::optional<Value>>(*tree, ctx, parser::parseValue);
         // TODO: Check that we got the actual value
         CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(o_val);
@@ -95,13 +95,13 @@ TEST_CASE("a string literal") {
     CHECK_SHOW(toks.size() == 1, toks, ctx);
     CHECK_SHOW(toks[0].type == +TokenType::StringLiteral, toks, ctx);
     SUBCASE("ast") {
-      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      auto tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK_SHOW(msgs.empty(), msgs, ctx);
       REQUIRE(tree);
       CHECK(tree->value.type == +TokenType::StringLiteral);
       CHECK(tree->children.size() == 0);
       SUBCASE("parse") {
-        std::optional<Value> o_val = parser::parseValue(*tree, ctx);
+        auto o_val = parser::parse<std::optional<Value>>(*tree, ctx, parser::parseValue);
         // TODO: Check that we got the actual value
         CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(o_val);
@@ -122,13 +122,13 @@ TEST_CASE("unterminated string literal with newlines") {
     CHECK(msgs[0].msg == "Unterminated string literal (or maybe you wanted a \"multiline string\"?)");
     CHECK_SHOW(toks[0].type == +TokenType::StringLiteral, toks, ctx);
     SUBCASE("ast") {
-      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      auto tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK_SHOW(msgs.size() == 1, msgs, ctx);
       REQUIRE(tree);
       CHECK(tree->value.type == +TokenType::StringLiteral);
       CHECK(tree->children.size() == 0);
       SUBCASE("parse") {
-        std::optional<Value> o_val = parser::parseValue(*tree, ctx);
+        auto o_val = parser::parse<std::optional<Value>>(*tree, ctx, parser::parseValue);
         // TODO: Check that we got the actual value
         CHECK_SHOW(msgs.size() == 1, msgs, ctx);
         REQUIRE(o_val);
@@ -164,13 +164,13 @@ TEST_CASE("a multiline string literal with newlines") {
     CHECK_SHOW(msgs.empty(), msgs, ctx);
     CHECK_SHOW(toks[0].type == +TokenType::StringLiteral, toks, ctx);
     SUBCASE("ast") {
-      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      auto tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK_SHOW(msgs.empty(), msgs, ctx);
       REQUIRE(tree);
       CHECK(tree->value.type == +TokenType::StringLiteral);
       CHECK(tree->children.size() == 0);
       SUBCASE("parse") {
-        std::optional<Value> o_val = parser::parseValue(*tree, ctx);
+        auto o_val = parser::parse<std::optional<Value>>(*tree, ctx, parser::parseValue);
         // TODO: Check that we got the actual value
         CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(o_val);
@@ -189,7 +189,7 @@ TEST_CASE("variable name") {
     REQUIRE(toks.size() == 1);
     CHECK(toks[0].type == +TokenType::Symbol);
     SUBCASE("ast") {
-      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      auto tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK_SHOW(msgs.empty(), msgs, ctx);
       REQUIRE(tree);
       CHECK(tree->value.type == +TokenType::Symbol);
@@ -212,7 +212,7 @@ TEST_CASE("simple expressions") {
     CHECK(toks[3].type == +TokenType::WhiteSpace);
     CHECK(toks[4].type == +TokenType::NumberLiteral);
     SUBCASE("ast") {
-      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      auto tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK_SHOW(msgs.empty(), msgs, ctx);
       REQUIRE(tree);
       CHECK(tree->value.type == +TokenType::Operator);
@@ -239,7 +239,7 @@ TEST_CASE("simple expressions") {
     CHECK(toks[3].type == +TokenType::WhiteSpace);
     CHECK(toks[4].type == +TokenType::Symbol);
     SUBCASE("ast") {
-      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      auto tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK_SHOW(msgs.empty(), msgs, ctx);
       REQUIRE(tree);
       CHECK(tree->value.type == +TokenType::Operator);
@@ -269,7 +269,7 @@ TEST_CASE("simple expressions with calls") {
     CHECK(toks[6].type == +TokenType::CloseParen);
 
     SUBCASE("ast") {
-      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      auto tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK_SHOW(msgs.empty(), msgs, ctx);
       REQUIRE(tree);
       CHECK(tree->value.type == +TokenType::Operator);
@@ -303,7 +303,7 @@ TEST_CASE("simple expressions with calls with arguments") {
     CHECK_SHOW(msgs.empty(), msgs, ctx);
 
     SUBCASE("ast") {
-      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      auto tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK_SHOW(msgs.empty(), msgs, ctx);
       REQUIRE(tree);
       CHECK(tree->value.type == +TokenType::Operator);
@@ -339,7 +339,7 @@ TEST_CASE("simple expressions with parenthesis") {
     CHECK_SHOW(msgs.empty(), msgs, ctx);
 
     SUBCASE("ast") {
-      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      auto tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK_SHOW(msgs.empty(), msgs, ctx);
       REQUIRE(tree);
       CHECK(tree->value.type == +TokenType::OpenParen);
@@ -365,13 +365,13 @@ TEST_CASE("small function containing calls") {
     CHECK_SHOW(msgs.empty(), msgs, ctx);
 
     SUBCASE("ast") {
-      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseDefinition);
+      auto tree = ast::ast(toks, ctx, ast::parseDefinition);
       CHECK_SHOW(msgs.empty(), msgs, ctx);
       REQUIRE(tree);
       std::string treeS = show(*tree, ctx);
       INFO(treeS);
       SUBCASE("parse") {
-        std::optional<Definition> o_def = parser::parseDefinition(*tree, ctx);
+        auto o_def = parser::parse<std::optional<Definition>>(*tree, ctx, parser::parseDefinition);
         CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(o_def);
         const auto def = *o_def;
@@ -398,11 +398,11 @@ TEST_CASE("small function containing a parenthesized expression") {
     CHECK_SHOW(msgs.empty(), msgs, ctx);
 
     SUBCASE("ast") {
-      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      auto tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK_SHOW(msgs.empty(), msgs, ctx);
       REQUIRE(tree);
       SUBCASE("parse") {
-        std::optional<Definition> def = parser::parseDefinition(*tree, ctx);
+        std::optional<Definition> def = parser::parse<std::optional<Definition>>(*tree, ctx, parser::parseDefinition);
         CHECK_SHOW(msgs.empty(), msgs, ctx);
         CHECK(def);
         CHECK(def->name == "nand5");
@@ -422,11 +422,11 @@ TEST_CASE("small function definition without a parenthesized argument") {
     CHECK_SHOW(msgs.empty(), msgs, ctx);
 
     SUBCASE("ast") {
-      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      auto tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK_SHOW(msgs.empty(), msgs, ctx);
       REQUIRE(tree);
       SUBCASE("parse") {
-        std::optional<Definition> opdef = parser::parseDefinition(*tree, ctx);
+        auto opdef = parser::parse<std::optional<Definition>>(*tree, ctx, parser::parseDefinition);
         CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(opdef);
         Definition def = *opdef;
@@ -458,11 +458,11 @@ TEST_CASE("small function definition with a parenthesized argument") {
     CHECK_SHOW(msgs.empty(), msgs, ctx);
 
     SUBCASE("ast") {
-      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      auto tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK_SHOW(msgs.empty(), msgs, ctx);
       REQUIRE(tree);
       SUBCASE("parse") {
-        std::optional<Definition> opdef = parser::parseDefinition(*tree, ctx);
+        auto opdef = parser::parse<std::optional<Definition>>(*tree, ctx, parser::parseDefinition);
         CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(opdef);
         Definition def = *opdef;
@@ -494,17 +494,17 @@ TEST_CASE("tuples") {
     CHECK_SHOW(msgs.empty(), msgs, ctx);
 
     SUBCASE("ast") {
-      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      auto tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK_SHOW(msgs.empty(), msgs, ctx);
       SUBCASE("parse") {
-        std::optional<Value> val = parser::parseValue(*tree, ctx);
+       auto o_val = parser::parse<std::optional<Value>>(*tree, ctx, parser::parseValue);
         CHECK_SHOW(msgs.empty(), msgs, ctx);
-        REQUIRE(val);
-        Value value = *val;
-        std::string valueS = show(value);
+        REQUIRE(o_val);
+        Value val = *o_val;
+        std::string valueS = show(val);
         INFO(valueS);
-        CHECK(value.name == "(");
-        const auto args = value.args;
+        CHECK(val.name == "(");
+        const auto args = val.args;
         CHECK(args.size() == 2);
         CHECK(args[0].name == "#0");
         CHECK(args[1].name == "#1");
@@ -526,17 +526,17 @@ TEST_CASE("nested tuples") {
     CHECK_SHOW(msgs.empty(), msgs, ctx);
 
     SUBCASE("ast") {
-      std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+      auto tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK_SHOW(msgs.empty(), msgs, ctx);
       SUBCASE("parse") {
-        std::optional<Value> val = parser::parseValue(*tree, ctx);
+        auto o_val = parser::parse<std::optional<Value>>(*tree, ctx, parser::parseValue);
         CHECK_SHOW(msgs.empty(), msgs, ctx);
-        REQUIRE(val);
-        Value value = *val;
-        std::string valueS = show(value);
+        REQUIRE(o_val);
+        Value val = *o_val;
+        std::string valueS = show(val);
         INFO(valueS);
-        CHECK(value.name == "(");
-        const auto args = value.args;
+        CHECK(val.name == "(");
+        const auto args = val.args;
         CHECK(args.size() == 2);
         CHECK(args[0].name == "#0");
         // LEFT: (a,b,c)
