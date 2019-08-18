@@ -16,11 +16,11 @@
 
 namespace parser {
 
-void SymbolTable::addSymbol(std::vector<Symbol> path, const Value &val) {
-  symbol_tree.emplace(path, val);
+void SymbolTable::addSymbol(std::vector<Symbol> path, const Definition &def) {
+  symbol_tree.emplace(path, def);
 }
 
-Path SymbolTable::lookup(Path pth, Value &val) {
+Path SymbolTable::lookup(Path pth, Definition &def) {
   // assert(!pth.empty());
   std::cerr << "Lookup " << show(pth) << "\n";
   Path best;
@@ -28,7 +28,7 @@ Path SymbolTable::lookup(Path pth, Value &val) {
   for (const auto &p : symbol_tree) {
     // assert(!p.first.empty());
     size_t dep_eq = 0;
-    if (p.first.back() == val.name) { // same name
+    if (p.first.back() == def.name) { // same name
       // Found a match... is it in our scope?
       while (dep_eq < p.first.size() && dep_eq < pth.size()) {
         if (p.first[dep_eq] != pth[dep_eq]) {
@@ -60,12 +60,20 @@ Path SymbolTable::lookup(Path pth, Value &val) {
   }
 
   if (best.empty()) {
-    std::cerr << "No match found for " << val.name << "\n";
+    std::cerr << "No match found for " << def.name << "\n";
   } else {
     std::cerr << "Found match\n";
   }
 
   return {};
+}
+
+void ParserContext::addSymbol(std::vector<Symbol> path, const Definition &def) {
+  symbols.addSymbol(path, def);
+}
+
+Path ParserContext::lookup(Path pth, Definition &def) {
+  return symbols.lookup(pth, def);
 }
 
 void ParserContext::msg(const Token &tok, MessageType level, std::string msg_txt) {
@@ -76,10 +84,10 @@ std::string ParserContext::getStringAt(const Location &loc) {
   return context.getStringAt(loc);
 }
 
-std::optional<Definition> parseDefinition(const Tree<Token> &node,
+std::optional<Definition> parseDefinition(Path, const Tree<Token> &node,
                                           ParserContext &ctx);
 
-std::optional<Value> parseValue(const Tree<Token> &node, ParserContext &ctx) {
+std::optional<Value> parseValue(Path pth, const Tree<Token> &node, ParserContext &ctx) {
   std::string name = ctx.getStringAt(node.value.loc);
   if (name.empty()) { // End of file?
     return std::nullopt;
@@ -88,11 +96,11 @@ std::optional<Value> parseValue(const Tree<Token> &node, ParserContext &ctx) {
   int ord = 0;
   for (const auto &child : node.children) {
     if (child.value.type == +TokenType::Declaration) {
-      const auto arg = parseDefinition(child, ctx);
+      const auto arg = parseDefinition(pth, child, ctx);
       // TODO require arg
       args.push_back(*arg);
     } else {
-      const auto arg_value = parseValue(child, ctx);
+      const auto arg_value = parseValue(pth, child, ctx);
       const std::string name =
           "#" +
           std::to_string(ord++); // Name the anonymous arg something impossible
@@ -118,7 +126,7 @@ std::optional<Value> parseValue(const Tree<Token> &node, ParserContext &ctx) {
                            node.value.type._to_string());
 }
 
-std::optional<Definition> parseDefinition(const Tree<Token> &node,
+std::optional<Definition> parseDefinition(Path pth, const Tree<Token> &node,
                                           ParserContext &ctx) {
   // Todo check that root is =
   std::string op = ctx.getStringAt(node.value.loc);
@@ -148,7 +156,7 @@ std::optional<Definition> parseDefinition(const Tree<Token> &node,
     const std::string argStr = ctx.getStringAt(argTree.value.loc);
     std::optional<Definition> argDef;
     if (argTree.value.type == +TokenType::Operator && argStr == "=") {
-      argDef = parseDefinition(argTree, ctx);
+      argDef = parseDefinition(pth, argTree, ctx);
     } else if (argTree.value.type == +TokenType::Symbol) {
       argDef = Definition(argStr, argTree.value.loc, {}, std::nullopt);
     }
@@ -163,7 +171,7 @@ std::optional<Definition> parseDefinition(const Tree<Token> &node,
 
   std::optional<Value> value = {};
   if (node.children.size() > 1) {
-    value = parseValue(node.children[1], ctx);
+    value = parseValue(pth, node.children[1], ctx);
     if (node.children.size() > 2) {
       // TODO: error if there are other children?
       ctx.msg(node.value, MessageType::Error,
@@ -177,13 +185,15 @@ std::optional<Definition> parseDefinition(const Tree<Token> &node,
   }
 
   // Todo check that root.child[1] is = expr
-  return Definition(name, loc, args, value);
+  auto def = Definition(name, loc, args, value);
+  ctx.addSymbol(pth, def);
+  return def;
 }
 
-Module parseModule(const Tree<Token> &node, ParserContext &ctx) {
+Module parseModule(Path pth, const Tree<Token> &node, ParserContext &ctx) {
   std::vector<Definition> definitions;
   for (const auto &defTree : node.children) {
-    auto def = parseDefinition(defTree, ctx);
+    auto def = parseDefinition(pth, defTree, ctx);
     if (def) {
       definitions.push_back(*def);
     }

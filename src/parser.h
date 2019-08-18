@@ -2,48 +2,54 @@
 #ifndef PARSER_H
 #define PARSER_H
 
-#include <optional>
 #include <map>
+#include <optional>
 
 #include "ast.h"
 
-using Symbol = std::string; // For now.
+using Symbol = std::string;            // For now.
 using Path = std::vector<std::string>; // For now.
 
 namespace parser {
 
 class SymbolTable {
-  std::map<Path, Value> symbol_tree;
+  std::map<Path, Definition> symbol_tree;
 
+public:
   SymbolTable() = default;
 
-  void addSymbol(std::vector<Symbol> path, const Value &val);
-
-  Path lookup(Path pth, Value &val);
+  void addSymbol(std::vector<Symbol> path, const Definition &val);
+  Path lookup(Path pth, Definition &val);
 };
 
 class ParserContext {
 public:
   Context &context;
+  SymbolTable symbols;
 
-  ParserContext(Context &ctx): context{ctx} {}
+  ParserContext(Context &ctx) : context{ctx} {}
 
   void msg(const Token &tok, MessageType level, std::string msg_txt);
 
   std::string getStringAt(const Location &loc);
+
+  void addSymbol(std::vector<Symbol> path, const Definition &val);
+  Path lookup(Path pth, Definition &val);
 };
 
-std::optional<Value> parseValue(const Tree<Token> &node, ParserContext &ctx);
-std::optional<Definition> parseDefinition(const Tree<Token> &node,
+std::optional<Value> parseValue(Path pth, const Tree<Token> &node,
+                                ParserContext &ctx);
+std::optional<Definition> parseDefinition(Path pth, const Tree<Token> &node,
                                           ParserContext &ctx);
-Module parseModule(const Tree<Token> &node, ParserContext &ctx);
+Module parseModule(Path pth, const Tree<Token> &node, ParserContext &ctx);
 
 template <typename T>
 T parse(const Tree<Token> &node, Context &context,
-        std::function<T(const Tree<Token> &, ParserContext &ctx)> converter) {
+        std::function<T(Path pth, const Tree<Token> &, ParserContext &ctx)> converter) {
   context.startStep(PassStep::Parse);
   ParserContext ctx(context);
-  return converter(node, ctx);
+  Path pth;
+  return converter(pth, node, ctx);
 }
 
 } // namespace parser
