@@ -5,14 +5,29 @@
 #include <sstream>
 
 #include "context.h"
-
-#include "lex.h"
 #include "parser.h"
-#include "checker.h"
 
 void indent(std::stringstream& o, int depth, char dent=' ');
 
 std::string banner(const std::string &text, const Config &config);
+
+std::string show(const std::string& s, int depth=0);
+
+class Empty;
+std::string show(const Empty&, int depth=0);
+class Checks;
+std::string show(const Checks&, int depth=0);
+
+template<typename T>
+std::string show(const DefinitionCore<T>& val, int depth=0);
+template<typename T>
+std::string show(const ModuleCore<T>& module, int depth=0);
+
+std::string show(const Location& loc, Context &ctx, int depth);
+std::string show(const Token& tok, Context &ctx, int depth=0);
+std::string show(const Message& msg, Context &ctx, int depth=0);
+std::string show(const Tree<Token>& tree, Context &ctx, int depth=0);
+
 
 template<typename T>
 std::string show(const std::vector<T>& vec, int depth=0, std::string sep=", ") {
@@ -44,13 +59,6 @@ std::string show(const std::vector<T>& vec, Context &ctx, int depth=0, std::stri
   return o.str();
 }
 
-std::string show(Empty, int);
-std::string show(Checks, int);
-
-template<typename T>
-std::string show(const DefinitionCore<T>& val, int depth=0);
-template<typename T>
-std::string show(const ModuleCore<T>& module, int depth=0);
 
 template<typename T>
 std::string show(const ValueCore<T>& val, int depth=0) {
@@ -92,11 +100,5 @@ std::string show(const ModuleCore<T>& module, int depth) {
   o << "}";
   return o.str();
 }
-
-
-std::string show(const Location& loc, Context &ctx, int depth);
-std::string show(const Token& tok, Context &ctx, int depth=0);
-std::string show(const Message& msg, Context &ctx, int depth=0);
-std::string show(const Tree<Token>& tree, Context &ctx, int depth=0);
 
 #endif // #ifndef TOSTRING_H

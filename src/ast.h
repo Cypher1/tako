@@ -30,6 +30,10 @@ class AstNode {
   T info;
 
   AstNode(std::string name, Location loc): name{name}, loc{loc} {}
+
+  bool operator<(const AstNode &other) const {
+    return loc < other.loc; // Use the loc which is unique.
+  }
 };
 
 template<class T>
@@ -81,22 +85,22 @@ class ModuleCore : public AstNode<T>{
   ModuleCore(std::string name, Location loc, std::vector<DefinitionCore<T>>definitions): AstNode<T>(name, loc), definitions{definitions} {}
 };
 
-struct Empty { };
+class Empty { };
 
 using Value = ValueCore<Empty>;
 using Definition = DefinitionCore<Empty>;
 using Module = ModuleCore<Empty>;
 
-class ParserContext;
+class AstContext;
 
 namespace ast {
 
-using Parser = std::function<Tree<Token>(ParserContext&, unsigned int)>;
-Tree<Token> parseDefinition(ParserContext &ctx, unsigned int rbp=0);
-Tree<Token> parseValue(ParserContext &ctx, unsigned int rbp=0);
-Tree<Token> parseModule(ParserContext &ctx, unsigned int rbp=0);
+using Parser = std::function<Tree<Token>(AstContext&, unsigned int)>;
+Tree<Token> parseDefinition(AstContext &ctx, unsigned int rbp=0);
+Tree<Token> parseValue(AstContext &ctx, unsigned int rbp=0);
+Tree<Token> parseModule(AstContext &ctx, unsigned int rbp=0);
 
-std::optional<Tree<Token>> ast(Tokens& toks, Context &ctx, std::function<Tree<Token>(ParserContext &, unsigned int)> func);
+std::optional<Tree<Token>> ast(Tokens& toks, Context &ctx, std::function<Tree<Token>(AstContext &, unsigned int)> func);
 
 }
 

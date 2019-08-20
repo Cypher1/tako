@@ -27,10 +27,10 @@ Value getValue(Messages &msgs, Context &ctx) {
   Tokens toks = lex(ctx);
   CHECK_SHOW(msgs.empty(), msgs, ctx);
   const std::string toksS = show(toks, ctx);
-  std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+  auto tree = ast::ast(toks, ctx, ast::parseValue);
   CHECK_SHOW(msgs.empty(), msgs, ctx);
   REQUIRE(tree);
-  std::optional<Value> val = parser::parseValue(*tree, ctx);
+  auto val = parser::parse<std::optional<Value>>(*tree, ctx, parser::parseValue);
   CHECK_SHOW(msgs.empty(), msgs, ctx);
   REQUIRE(val);
   return *val;

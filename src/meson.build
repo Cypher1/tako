@@ -4,6 +4,7 @@ configure_file(input : 'takoConfig.h.in',
 
 src_inc = include_directories('.')
 tako_sources = [
+  'util.cc',
   'arg_parser.cc',
   'ast.cc',
   'checker.cc',
