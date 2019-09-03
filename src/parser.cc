@@ -55,7 +55,6 @@ Path SymbolTable::lookup(Path pth, Definition &def) {
         std::cerr << "Does not match! Cannot access " << show(p.first)
                   << " from " << show(pth) << "\n";
       }
-    } else {
     }
   }
 
