@@ -38,28 +38,34 @@ impl<T: fmt::Debug> fmt::Debug for Tree<T> {
     }
 }
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 enum TokenType {
     Op,
     Bracket,
     NumLit,
     Sym,
     Unknown,
+    Whitespace,
     Error
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct Token {
     tok_type: TokenType,
     value: String
 }
 
+const ERR: &str = "#err";
 const OPERATORS: &str = "~!@#$%^&*-+=<>|/?.,";
 const BRACKETS: &str = "([{}])";
 const NUMBERS: &str = "0123456789";
 const SYMBOLS: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_";
+const WHITESPACE: &str = "\n\r\t ";
 
 fn classify_char(ch: char) -> TokenType {
+    if WHITESPACE.contains(ch) {
+        return TokenType::Whitespace
+    }
     if OPERATORS.contains(ch) {
         return TokenType::Op
     }
@@ -83,7 +89,8 @@ fn lex_head(mut contents: VecDeque<char>) -> (Token, VecDeque<char>) {
     loop {
         match contents.front() {
             Some(chr) => {
-                tok_type = match (tok_type, classify_char(chr.clone())) {
+                tok_type = match (tok_type.clone(), classify_char(chr.clone())) {
+                    (_, TokenType::Whitespace) => break,
                     (TokenType::Unknown, new_tok_type) => new_tok_type,
 
                     (TokenType::Op, TokenType::Op) => TokenType::Op,
@@ -127,20 +134,41 @@ fn bind_infix(tok: Token) -> i32 {
     }
 }
 
-/*fn nud(toks: VecDeque<Token>, rbp: i32) -> (Tree<Token>, VecDeque<Token>) {
-
+fn nud(mut toks: VecDeque<Token>, rbp: i32) -> (Tree<Token>, VecDeque<Token>) {
+    match toks.pop_front() {
+        None => (Tree{value: Token{value: ERR.to_string(), tok_type: TokenType::Error}, children: [].to_vec()}, toks),
+        Some(head) => match head.tok_type {
+            TokenType::NumLit => (Tree{value: head, children: [].to_vec()}, toks),
+            TokenType::Op => {
+                let (right_branch, new_toks) = expr(toks, rbp);
+                return (Tree{value: head, children: [right_branch].to_vec()}, new_toks);
+            },
+            _ => unimplemented!()
+        }
+    }
 }
 
-fn left(toks: VecDeque<Token>, left_branch: Tree<Token>, rbp: i32) -> (Tree<Token>, VecDeque<Token>) {
-
-}*/
-
-fn expr(toks: VecDeque<Token>, rbp: i32) -> (Tree<Token>, VecDeque<Token>) {
-    let children: Vec<Token> = Vec::new();
-    let mut root = nud(toks, rbp);
-    while toks {
-        toks = left(toks, root, rbp);
+fn left(mut toks: VecDeque<Token>, left_branch: Tree<Token>, rbp: i32) -> (Tree<Token>, VecDeque<Token>) {
+    match toks.pop_front() {
+        None => (Tree{value: Token{value: ERR.to_string(), tok_type: TokenType::Error}, children: [].to_vec()}, toks),
+        Some(head) => match head.tok_type {
+            TokenType::NumLit => (Tree{value: head, children: [].to_vec()}, toks),
+            TokenType::Op => {
+                let (right_branch, new_toks) = expr(toks, rbp);
+                return (Tree{value: head, children: [left_branch, right_branch].to_vec()}, new_toks);
+            },
+            _ => unimplemented!()
+        }
     }
+}
+
+fn expr(init_toks: VecDeque<Token>, rbp: i32) -> (Tree<Token>, VecDeque<Token>) {
+    // TODO: Name updates fields, this is confusing (0 is tree, 1 is toks)
+    let mut update = nud(init_toks, rbp);
+    while update.1.len() > 0 {
+        update = left(update.1, update.0, rbp);
+    }
+    return update;
 }
 
 fn parse(contents: String) -> Tree<Token> {
@@ -149,6 +177,12 @@ fn parse(contents: String) -> Tree<Token> {
     let mut chars = VecDeque::from_iter(contents.chars());
     loop {
         let (next, new_chars) = lex_head(chars);
+
+        println!("LEXING {:?}", next);
+
+        if next.tok_type == TokenType::Unknown {
+            break // TODO done / skip?
+        }
 
         if next.tok_type == TokenType::Error {
             break // TODO Error
@@ -161,10 +195,7 @@ fn parse(contents: String) -> Tree<Token> {
 
     println!("Toks: {:?}", toks);
 
-    let root = expr(toks, 0);
-
-    // let left = Tree{value: "1".to_string(), children: [].to_vec()};
-    // let right = Tree{value: "2".to_string(), children: [].to_vec()};
-    // let root = Tree{value: "+".to_string(), children: [left, right].to_vec()};
+    let (root, _left_over) = expr(toks, 0);
+    // TODO: require left_over is empty
     return root;
 }
