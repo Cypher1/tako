@@ -2,14 +2,35 @@ extern crate rand;
 
 use std::io;
 use rand::Rng;
+use std::env;
+use std::fs::File;
+use std::io::prelude::*;
 
-fn main() {
+fn main() -> std::io::Result<()> {
+    let all_args: Vec<String> = env::args().collect();
+    let args: Vec<String> = all_args[1..].to_vec();
 
+    let mut filename: String = "in.bt".to_string();
+    for f in args {
+        filename = f;
+        break;
+    }
+    let mut file = File::open(filename)?;
+    let mut contents = String::new();
+    file.read_to_string(&mut contents)?;
+    println!("Content: '\n{}'", contents);
+
+    guess();
+
+    Ok(())
+}
+
+fn guess() {
     let mut rng = rand::thread_rng();
 
     println!("Guess the number!");
     let mut guess = 0;
-    let target = rng.gen();
+    let target = rng.gen_range(1, 1000);
     let mut count = 0;
 
     loop {
