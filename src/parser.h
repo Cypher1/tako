@@ -8,7 +8,7 @@
 #include "ast.h"
 
 using Symbol = std::string;            // For now.
-using Path = std::vector<std::string>; // For now.
+using Path = std::vector<Symbol>; // For now.
 
 namespace parser {
 
@@ -18,8 +18,8 @@ class SymbolTable {
 public:
   SymbolTable() = default;
 
-  void addSymbol(std::vector<Symbol> path, const Definition &val);
-  Path lookup(Path pth, Definition &val);
+  void addSymbol(const Path &path, const Definition &val);
+  std::optional<Definition> lookup(const Path &path, const Path &val);
 };
 
 class ParserContext {
@@ -33,8 +33,10 @@ public:
 
   std::string getStringAt(const Location &loc);
 
-  void addSymbol(std::vector<Symbol> path, const Definition &val);
-  Path lookup(Path pth, Definition &val);
+  void addSymbol(const Path &path, const Definition &val);
+  std::optional<Definition> lookup(const Path &context, const Path &path);
+
+  std::vector<Path> getSymbols();
 };
 
 std::optional<Value> parseValue(Path pth, const Tree<Token> &node,

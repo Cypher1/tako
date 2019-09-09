@@ -354,11 +354,53 @@ TEST_CASE("simple expressions with parenthesis") {
   }
 }
 
+TEST_CASE("definition of two") {
+  Messages msgs;
+  Context ctx = {
+    msgs, "two() = 2",
+    "<filename>"};
+
+  SUBCASE("tokenize") {
+    Tokens toks = lex(ctx);
+    CHECK_SHOW(msgs.empty(), msgs, ctx);
+
+    SUBCASE("ast") {
+      auto tree = ast::ast(toks, ctx, ast::parseDefinition);
+      CHECK_SHOW(msgs.empty(), msgs, ctx);
+      REQUIRE(tree);
+      std::string treeS = show(*tree, ctx);
+      INFO(treeS);
+      SUBCASE("parse") {
+        auto o_def = parser::parse<std::optional<Definition>>(*tree, ctx, parser::parseDefinition);
+        CHECK_SHOW(msgs.empty(), msgs, ctx);
+        REQUIRE(o_def);
+        const auto def = *o_def;
+        std::string defs = show(def);
+        INFO(defs);
+        CHECK(def.name == "two");
+        REQUIRE(def.args.empty());
+
+        SUBCASE("lookup name in same scope") {
+          parser::SymbolTable syms;
+          syms.addSymbol({"foo", "two"}, def);
+
+          auto res1 = syms.lookup({}, {"foo", "two"});
+          CHECK_MESSAGE(res1 == def, "1 lookup should find stored definition");
+          auto res2 = syms.lookup({"foo"}, {"two"});
+          CHECK_MESSAGE(res2 == def, "2 lookup should find stored definition");
+          auto res3 = syms.lookup({"foo", "two"}, {});
+          CHECK_MESSAGE(res3 == def, "3 lookup should find stored definition");
+        }
+      }
+    }
+  }
+}
+
 TEST_CASE("small function containing calls") {
   Messages msgs;
   Context ctx = {
-      msgs, "nand(a, b) = sequence(And(a, b, c),Free(a),\nFree(b),\nNot(c, c))",
-      "<filename>"};
+    msgs, "nand(a, b) = sequence(And(a, b, c),Free(a),\nFree(b),\nNot(c, c))",
+    "<filename>"};
 
   SUBCASE("tokenize") {
     Tokens toks = lex(ctx);
@@ -389,9 +431,9 @@ TEST_CASE("small function containing calls") {
 TEST_CASE("small function containing a parenthesized expression") {
   Messages msgs;
   Context ctx = {
-      msgs,
-      "nand5(b) = sequence(And((1,0,1), b, c),Free(a),\nFree(b),\nNot(c, c))",
-      "<filename>"};
+    msgs,
+    "nand5(b) = sequence(And((1,0,1), b, c),Free(a),\nFree(b),\nNot(c, c))",
+    "<filename>"};
 
   SUBCASE("tokenize") {
     Tokens toks = lex(ctx);
@@ -497,7 +539,7 @@ TEST_CASE("tuples") {
       auto tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK_SHOW(msgs.empty(), msgs, ctx);
       SUBCASE("parse") {
-       auto o_val = parser::parse<std::optional<Value>>(*tree, ctx, parser::parseValue);
+        auto o_val = parser::parse<std::optional<Value>>(*tree, ctx, parser::parseValue);
         CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(o_val);
         Value val = *o_val;
