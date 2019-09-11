@@ -161,7 +161,6 @@ void runCompilerInteractive(Context &ctx) {
       return;
     }
     auto val = *o_val;
-
     CheckedValue checked = check(val, ctx);
     if(ctx.done()) {
       std::cerr << show(checked) << "\n";

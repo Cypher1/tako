@@ -16,64 +16,73 @@
 
 namespace parser {
 
-void SymbolTable::addSymbol(std::vector<Symbol> path, const Definition &def) {
+void SymbolTable::addSymbol(const Path &path, const Definition &def) {
   symbol_tree.emplace(path, def);
 }
 
-Path SymbolTable::lookup(Path pth, Definition &def) {
-  // assert(!pth.empty());
-  std::cerr << "Lookup " << show(pth) << "\n";
-  Path best;
-  size_t best_dep_eq = 0;
-  for (const auto &p : symbol_tree) {
-    // assert(!p.first.empty());
-    size_t dep_eq = 0;
-    if (p.first.back() == def.name) { // same name
-      // Found a match... is it in our scope?
-      while (dep_eq < p.first.size() && dep_eq < pth.size()) {
-        if (p.first[dep_eq] != pth[dep_eq]) {
-          break;
-        }
-        dep_eq++;
-      }
-      std::cerr << "Matching " << show(p.first) << " matches " << dep_eq
-                << " deep\n";
-      // foo/bar/symbol
-      // foo/bar/baz/function uses symbol
-      //
-      // foo/bar is the match, symbol == symbol
-      if (dep_eq >= p.first.size() - 1) {
-        std::cerr << "Matches!\n";
-        if (dep_eq > best_dep_eq) {
-          std::cerr << "Shadows previous\n";
-          best_dep_eq = dep_eq;
-          best = p.first; // Copy the path
-        } else {
-          std::cerr << "Is shadowed by previous\n";
-        }
-      } else {
-        std::cerr << "Does not match! Cannot access " << show(p.first)
-                  << " from " << show(pth) << "\n";
-      }
-    } else {
+int getMatch(const Path& match, const Path& context, const Path& path) {
+  if(match.size() < path.size()) {
+    return -1;
+  }
+  //Check the suffix matches
+  int i = match.size()-path.size();
+  for(int j = 0; j < path.size(); j++) {
+    if(path[j] != match[i+j]) {
+      // Candidate doesn't match
+      return -1;
     }
   }
 
-  if (best.empty()) {
-    std::cerr << "No match found for " << def.name << "\n";
-  } else {
+  //check that the match is in the context
+  i = 0;
+  for(; i < match.size()-path.size(); i++) {
+    if (i >= context.size()) {
+      // Match is hidden inside something in our context
+      return -1;
+    }
+    if (match[i] != context[i]) {
+      // Match is hidden inside a sibling
+      return -1;
+    }
+  }
+  return i;
+}
+
+std::optional<Definition> SymbolTable::lookup(const Path &context, const Path &path) {
+  // assert(!context.empty());
+  std::cerr << "Lookup " << show(context) << "\n";
+  std::optional<Definition> best;
+  int best_locality = -1;
+  for (const auto &p : symbol_tree) {
+    int locality = getMatch(p.first, context, path);
+    if(locality > -1 && locality > best_locality) {
+      best = p.second;
+      locality = best_locality;
+    }
+  }
+
+  if (best) {
     std::cerr << "Found match\n";
+    return best;
+  } else {
+    std::cerr << "No match found for " << show(path) << "\n";
   }
 
   return {};
 }
 
-void ParserContext::addSymbol(std::vector<Symbol> path, const Definition &def) {
+void ParserContext::addSymbol(const Path &path, const Definition &def) {
   symbols.addSymbol(path, def);
 }
 
-Path ParserContext::lookup(Path pth, Definition &def) {
-  return symbols.lookup(pth, def);
+std::optional<Definition> ParserContext::lookup(const Path &context, const Path &path) {
+  return symbols.lookup(context, path);
+}
+
+std::vector<Path> ParserContext::getSymbols() {
+  std::vector<Path> syms;
+
+  return syms;
 }
 
 void ParserContext::msg(const Token &tok, MessageType level, std::string msg_txt) {
