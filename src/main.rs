@@ -135,7 +135,7 @@ fn bind_infix(tok: &Token) -> i32 {
         "-" => 30,
         "*" => 40,
         "/" => 40,
-        "^" => 20,
+        "^" => 50,
         _ => 1000,
       }
     },
@@ -219,12 +219,20 @@ fn evali32(expr: &Tree<Token>) -> i32 {
       return evali32(&expr.children[1]);
     },
     TokenType::Op => {
+      // TODO: require 2 children
       match expr.value.value.as_str() {
         "*" => {
           return expr.children.iter().fold(1, |acc, x| acc * evali32(x))
         },
         "+" => {
           return expr.children.iter().fold(0, |acc, x| acc + evali32(x))
+        }
+        "-" => {
+          return evali32(&expr.children[0]) - evali32(&expr.children[1]);
+        }
+        "^" => {
+          // TODO: require pos pow
+          return i32::pow(evali32(&expr.children[0]), evali32(&expr.children[1]) as u32);
         }
         _x => {
           return -6; // x.to_string()+"?"
