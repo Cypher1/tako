@@ -108,7 +108,7 @@ fn lex_head(mut contents: VecDeque<char>) -> (Token, VecDeque<char>) {
           (TokenType::Sym, TokenType::NumLit) => TokenType::Sym,
           (TokenType::Sym, _) => break,
 
-          (TokenType::Bracket, _) => TokenType::Error,
+          (TokenType::Bracket, _) => break,
           _ => TokenType::Error // Can't mix other tokentypes
         };
         head.push_back(chr.clone()); // Commit to removing the character.
@@ -145,8 +145,14 @@ fn nud(mut toks: VecDeque<Token>) -> (Tree<Token>, VecDeque<Token>) {
       TokenType::NumLit => (Tree{value: head, children: [].to_vec()}, toks),
       TokenType::Op => {
         let lbp = bind_infix(&head);
-        let (right_branch, new_toks) = expr(toks, lbp);
-        return (Tree{value: head, children: [right_branch].to_vec()}, new_toks);
+        let (right, new_toks) = expr(toks, lbp);
+        return (Tree{value: head, children: [right].to_vec()}, new_toks);
+      },
+      TokenType::Bracket => {
+        let (inner, mut new_toks) = expr(toks, 0);
+        // TODO require close bracket.
+        new_toks.pop_front();
+        return (inner, new_toks);
       },
       _ => unimplemented!()
     }
@@ -160,8 +166,8 @@ fn led(mut toks: VecDeque<Token>, left_branch: Tree<Token>) -> (Tree<Token>, Vec
       TokenType::NumLit => (Tree{value: head, children: [].to_vec()}, toks),
       TokenType::Op => {
         let lbp = bind_infix(&head);
-        let (right_branch, new_toks) = expr(toks, lbp);
-        return (Tree{value: head, children: [left_branch, right_branch].to_vec()}, new_toks);
+        let (right, new_toks) = expr(toks, lbp);
+        return (Tree{value: head, children: [left_branch, right].to_vec()}, new_toks);
       },
       _ => unimplemented!()
     }
@@ -203,7 +209,8 @@ fn evali32(expr: &Tree<Token>) -> i32 {
       return -4; // "#err unknown symbol".to_string();
     },
     TokenType::Bracket => {
-      return -5; // "#err".to_string();
+      // TODO: Require a single child.
+      return evali32(&expr.children[1]);
     },
     TokenType::Op => {
       match expr.value.value.as_str() {
