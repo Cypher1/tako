@@ -111,7 +111,11 @@ fn lex_head(mut contents: VecDeque<char>) -> (Token, VecDeque<char>) {
           (TokenType::Bracket, _) => break,
           _ => TokenType::Error // Can't mix other tokentypes
         };
-        head.push_back(chr.clone()); // Commit to removing the character.
+        if tok_type != TokenType::Whitespace {
+          // Add the character.
+          head.push_back(chr.clone());
+        }
+      // Continue past the character.
         contents.pop_front();
       },
       None => break
