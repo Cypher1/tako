@@ -93,25 +93,27 @@ fn lex_head(mut contents: VecDeque<char>) -> (Token, VecDeque<char>) {
   loop {
     match contents.front() {
       Some(chr) => {
-        tok_type = match (tok_type.clone(), classify_char(chr.clone())) {
-          (_, TokenType::Whitespace) => break,
+        let chr_type = classify_char(chr.clone());
+        tok_type = match (tok_type.clone(), chr_type.clone()) {
+          (TokenType::Unknown, TokenType::Whitespace) => TokenType::Unknown, // Ignore
           (TokenType::Unknown, new_tok_type) => new_tok_type,
+          (_, TokenType::Whitespace) => break, // Token finished.
 
           (TokenType::Op, TokenType::Op) => TokenType::Op,
-          (TokenType::Op, _) => break,
+          (TokenType::Op, _) => break, // Token finished.
 
           (TokenType::NumLit, TokenType::NumLit) => TokenType::NumLit,
           (TokenType::NumLit, TokenType::Sym) => TokenType::Sym, // Promotion
-          (TokenType::NumLit, _) => break,
+          (TokenType::NumLit, _) => break, // Token finished.
 
           (TokenType::Sym, TokenType::Sym) => TokenType::Sym,
           (TokenType::Sym, TokenType::NumLit) => TokenType::Sym,
-          (TokenType::Sym, _) => break,
+          (TokenType::Sym, _) => break, // Token finished.
 
-          (TokenType::Bracket, _) => break,
+          (TokenType::Bracket, _) => break, // Token finished.
           _ => TokenType::Error // Can't mix other tokentypes
         };
-        if tok_type != TokenType::Whitespace {
+        if chr_type != TokenType::Whitespace {
           // Add the character.
           head.push_back(chr.clone());
         }
