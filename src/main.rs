@@ -23,6 +23,10 @@ fn main() -> std::io::Result<()> {
 
   println!("R: {:?}", ast);
 
+  let res = evali32(&ast);
+  println!("Result = {}", res);
+  // TODO: require left_over is empty
+
   Ok(())
 }
 
@@ -117,14 +121,14 @@ fn lex_head(mut contents: VecDeque<char>) -> (Token, VecDeque<char>) {
   return (Token{value, tok_type}, contents);
 }
 
-fn bind_infix(tok: Token) -> i32 {
-  match tok.tok_type {
+fn bind_infix(tok: &Token) -> i32 {
+  match &tok.tok_type {
     TokenType::Op => {
       match tok.value.as_str() {
-        "+" => 40,
-        "-" => 40,
-        "*" => 30,
-        "/" => 30,
+        "+" => 30,
+        "-" => 30,
+        "*" => 40,
+        "/" => 40,
         "^" => 20,
         _ => 1000,
       }
@@ -134,13 +138,14 @@ fn bind_infix(tok: Token) -> i32 {
   }
 }
 
-fn nud(mut toks: VecDeque<Token>, rbp: i32) -> (Tree<Token>, VecDeque<Token>) {
+fn nud(mut toks: VecDeque<Token>) -> (Tree<Token>, VecDeque<Token>) {
   match toks.pop_front() {
     None => (Tree{value: Token{value: ERR.to_string(), tok_type: TokenType::Error}, children: [].to_vec()}, toks),
     Some(head) => match head.tok_type {
       TokenType::NumLit => (Tree{value: head, children: [].to_vec()}, toks),
       TokenType::Op => {
-        let (right_branch, new_toks) = expr(toks, rbp);
+        let lbp = bind_infix(&head);
+        let (right_branch, new_toks) = expr(toks, lbp);
         return (Tree{value: head, children: [right_branch].to_vec()}, new_toks);
       },
       _ => unimplemented!()
@@ -148,13 +153,14 @@ fn nud(mut toks: VecDeque<Token>, rbp: i32) -> (Tree<Token>, VecDeque<Token>) {
   }
 }
 
-fn left(mut toks: VecDeque<Token>, left_branch: Tree<Token>, rbp: i32) -> (Tree<Token>, VecDeque<Token>) {
+fn led(mut toks: VecDeque<Token>, left_branch: Tree<Token>) -> (Tree<Token>, VecDeque<Token>) {
   match toks.pop_front() {
     None => (Tree{value: Token{value: ERR.to_string(), tok_type: TokenType::Error}, children: [].to_vec()}, toks),
     Some(head) => match head.tok_type {
       TokenType::NumLit => (Tree{value: head, children: [].to_vec()}, toks),
       TokenType::Op => {
-        let (right_branch, new_toks) = expr(toks, rbp);
+        let lbp = bind_infix(&head);
+        let (right_branch, new_toks) = expr(toks, lbp);
         return (Tree{value: head, children: [left_branch, right_branch].to_vec()}, new_toks);
       },
       _ => unimplemented!()
@@ -162,13 +168,60 @@ fn left(mut toks: VecDeque<Token>, left_branch: Tree<Token>, rbp: i32) -> (Tree<
   }
 }
 
-fn expr(init_toks: VecDeque<Token>, rbp: i32) -> (Tree<Token>, VecDeque<Token>) {
+fn expr(init_toks: VecDeque<Token>, init_lbp: i32) -> (Tree<Token>, VecDeque<Token>) {
   // TODO: Name updates fields, this is confusing (0 is tree, 1 is toks)
-  let mut update = nud(init_toks, rbp);
-  while update.1.len() > 0 {
-    update = left(update.1, update.0, rbp);
+  let init_update = nud(init_toks);
+  let mut left: Tree<Token> = init_update.0;
+  let mut toks: VecDeque<Token> = init_update.1;
+  loop {
+    match toks.front() {
+      None => break,
+      Some(token) => if init_lbp >= bind_infix(token) {
+        break;
+      }
+    }
+    let update = led(toks, left);
+    left = update.0;
+    toks = update.1;
   }
-  return update;
+
+  return (left, toks);
+}
+
+fn evali32(expr: &Tree<Token>) -> i32 {
+  match expr.value.tok_type {
+    TokenType::Error => {
+      return -1; // "#err illegal err".to_string();
+    },
+    TokenType::Whitespace => {
+      return -2; // "#err illegal whitespace".to_string();
+    },
+    TokenType::Unknown => {
+      return -3; // "#err illegal unknown".to_string();
+    },
+    TokenType::Sym => {
+      return -4; // "#err unknown symbol".to_string();
+    },
+    TokenType::Bracket => {
+      return -5; // "#err".to_string();
+    },
+    TokenType::Op => {
+      match expr.value.value.as_str() {
+        "*" => {
+          return expr.children.iter().fold(1, |acc, x| acc * evali32(x))
+        },
+        "+" => {
+          return expr.children.iter().fold(0, |acc, x| acc + evali32(x))
+        }
+        _x => {
+          return -6; // x.to_string()+"?"
+        }
+      }
+    },
+    TokenType::NumLit => {
+      return expr.value.value.parse().unwrap();
+    }
+  }
 }
 
 fn parse(contents: String) -> Tree<Token> {
@@ -178,7 +231,7 @@ fn parse(contents: String) -> Tree<Token> {
   loop {
     let (next, new_chars) = lex_head(chars);
 
-    println!("LEXING {:?}", next);
+    // println!("LEXING {:?}", next);
 
     if next.tok_type == TokenType::Unknown {
       break // TODO done / skip?
@@ -195,7 +248,11 @@ fn parse(contents: String) -> Tree<Token> {
 
   println!("Toks: {:?}", toks);
 
-  let (root, _left_over) = expr(toks, 0);
-  // TODO: require left_over is empty
+  let (root, left_over) = expr(toks, 0);
+
+  if left_over.len() != 0 {
+    println!("Oh no");
+  }
+
   return root;
 }
