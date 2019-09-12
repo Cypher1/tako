@@ -227,6 +227,10 @@ fn evali32(expr: &Tree<Token>) -> i32 {
         "+" => {
           return expr.children.iter().fold(0, |acc, x| acc + evali32(x))
         }
+        "/" => {
+          // TODO: require divisibility
+          return evali32(&expr.children[0]) / evali32(&expr.children[1]);
+        }
         "-" => {
           return evali32(&expr.children[0]) - evali32(&expr.children[1]);
         }
