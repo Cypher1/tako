@@ -117,7 +117,7 @@ fn lex_head(mut contents: VecDeque<char>) -> (Token, VecDeque<char>) {
           // Add the character.
           head.push_back(chr.clone());
         }
-      // Continue past the character.
+        // Continue past the character.
         contents.pop_front();
       },
       None => break
