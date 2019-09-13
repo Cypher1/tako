@@ -9,11 +9,13 @@ fn main() -> std::io::Result<()> {
   let all_args: Vec<String> = env::args().collect();
   let args: Vec<String> = all_args[1..].to_vec();
 
-  let mut filename: String = "in.bt".to_string();
   for f in args {
-    filename = f;
-    break;
+    work(f)?
   }
+  Ok(())
+}
+
+fn work(filename: String) -> std::io::Result<()> {
   let mut file = File::open(filename)?;
   let mut contents = String::new();
   file.read_to_string(&mut contents)?;
@@ -26,7 +28,6 @@ fn main() -> std::io::Result<()> {
   let res = evali32(&ast);
   println!("Result = {}", res);
   // TODO: require left_over is empty
-
   Ok(())
 }
 
