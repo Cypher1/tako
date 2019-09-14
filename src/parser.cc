@@ -25,8 +25,8 @@ int getMatch(const Path& match, const Path& context, const Path& path) {
     return -1;
   }
   //Check the suffix matches
-  int i = match.size()-path.size();
-  for(int j = 0; j < path.size(); j++) {
+  size_t i = match.size()-path.size();
+  for(size_t j = 0; j < path.size(); j++) {
     if(path[j] != match[i+j]) {
       // Candidate doesn't match
       return -1;
@@ -34,8 +34,7 @@ int getMatch(const Path& match, const Path& context, const Path& path) {
   }
 
   //check that the match is in the context
-  i = 0;
-  for(; i < match.size()-path.size(); i++) {
+  for(i = 0; i < match.size()-path.size(); i++) {
     if (i >= context.size()) {
       // Match is hidden inside something in our context
       return -1;
@@ -49,8 +48,6 @@ int getMatch(const Path& match, const Path& context, const Path& path) {
 }
 
 std::optional<Definition> SymbolTable::lookup(const Path &context, const Path &path) {
-  // assert(!context.empty());
-  std::cerr << "Lookup " << show(context) << "\n";
   std::optional<Definition> best;
   int best_locality = -1;
   for (const auto &p : symbol_tree) {
@@ -62,12 +59,8 @@ std::optional<Definition> SymbolTable::lookup(const Path &context, const Path &p
   }
 
   if (best) {
-    std::cerr << "Found match\n";
     return best;
-  } else {
-    std::cerr << "No match found for " << show(path) << "\n";
   }
-
   return {};
 }
 

@@ -380,16 +380,23 @@ TEST_CASE("definition of two") {
         CHECK(def.name == "two");
         REQUIRE(def.args.empty());
 
+        parser::SymbolTable syms;
+        syms.addSymbol({"foo", "two"}, def);
         SUBCASE("lookup name in same scope") {
-          parser::SymbolTable syms;
-          syms.addSymbol({"foo", "two"}, def);
-
           auto res1 = syms.lookup({}, {"foo", "two"});
           CHECK_MESSAGE(res1 == def, "1 lookup should find stored definition");
           auto res2 = syms.lookup({"foo"}, {"two"});
           CHECK_MESSAGE(res2 == def, "2 lookup should find stored definition");
           auto res3 = syms.lookup({"foo", "two"}, {});
           CHECK_MESSAGE(res3 == def, "3 lookup should find stored definition");
+        }
+        SUBCASE("lookup different name in same scope") {
+          auto res1 = syms.lookup({}, {"foo", "three"});
+          CHECK_MESSAGE(!res1, "1 lookup should not find stored definition");
+          auto res2 = syms.lookup({"foo"}, {"three"});
+          CHECK_MESSAGE(!res2, "2 lookup should not find stored definition");
+          auto res3 = syms.lookup({"foo", "three"}, {});
+          CHECK_MESSAGE(!res3, "3 lookup should not find stored definition");
         }
       }
     }
