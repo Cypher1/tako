@@ -19,14 +19,14 @@ fn work(filename: String) -> std::io::Result<()> {
   let mut file = File::open(filename)?;
   let mut contents = String::new();
   file.read_to_string(&mut contents)?;
-  println!("Content: '\n{}'", contents);
+  // println!("Content: '\n{}'", contents);
 
   let ast = parse(contents);
 
   println!("R: {:?}", ast);
 
   let res = evali32(&ast);
-  println!("Result = {}", res);
+  println!("{}", res);
   // TODO: require left_over is empty
   Ok(())
 }
@@ -39,7 +39,7 @@ struct Tree<T> {
 
 impl<T: fmt::Debug> fmt::Debug for Tree<T> {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(f, "({:?}, {:?})", self.value, self.children)
+    write!(f, "{:?} {:?}", self.value, self.children)
   }
 }
 
@@ -54,10 +54,16 @@ enum TokenType {
   Error
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 struct Token {
   tok_type: TokenType,
   value: String
+}
+
+impl fmt::Debug for Token {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{:?} {:?}", self.tok_type, self.value)
+  }
 }
 
 const ERR: &str = "#err";
@@ -272,7 +278,7 @@ fn parse(contents: String) -> Tree<Token> {
     chars = new_chars;
   }
 
-  println!("Toks: {:?}", toks);
+  // println!("Toks: {:?}", toks);
 
   let (root, left_over) = expr(toks, 0);
 
