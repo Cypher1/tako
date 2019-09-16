@@ -39,7 +39,11 @@ struct Tree<T> {
 
 impl<T: fmt::Debug> fmt::Debug for Tree<T> {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(f, "{:?} {:?}", self.value, self.children)
+    if self.children.len() == 0 {
+        write!(f, "{:?}", self.value)
+    } else {
+        write!(f, "{:?} {:?}", self.value, self.children)
+    }
   }
 }
 
