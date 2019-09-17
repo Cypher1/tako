@@ -24,6 +24,7 @@ impl fmt::Debug for Token {
   }
 }
 
+pub const ERR: &str = "#err";
 const OPERATORS: &str = "~!@#$%^&*-+=<>|/?.,";
 const BRACKETS: &str = "([{}])";
 const NUMBERS: &str = "0123456789";
