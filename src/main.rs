@@ -6,8 +6,10 @@ mod tokens;
 mod tree;
 mod parser;
 mod evali32;
+mod compi32;
 
 use evali32::evali32;
+use compi32::compi32;
 
 fn main() -> std::io::Result<()> {
   let all_args: Vec<String> = env::args().collect();
@@ -31,6 +33,8 @@ fn work(filename: String) -> std::io::Result<()> {
 
   let res = evali32(&ast);
   println!("{}", res);
+  let prog = compi32(&ast);
+  println!("{:?}", prog);
   // TODO: require left_over is empty
   Ok(())
 }
