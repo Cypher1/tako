@@ -1,5 +1,5 @@
-#include <functional>
 #include <iostream>
+#include <functional>
 #include <map>
 #include <optional>
 #include <stdexcept>
@@ -17,7 +17,25 @@
 namespace parser {
 
 void SymbolTable::addSymbol(const Path &path, const Definition &def) {
-  symbol_tree.emplace(path, def);
+  // walk and create
+  Tree<SymbolPair> *curr = &symbol_tree;
+  for(const auto &head : path) {
+    bool found_head = false;
+    for(auto child : curr->children) {
+      if (child.value.first == head) {
+        // found
+        curr = &child;
+        found_head = true;
+        break;
+      }
+    }
+    if (!found_head) {
+      SymbolPair key(head, {});
+      curr->children.push_back(Tree(key, {}));
+      curr = &curr->children.back();
+    }
+  }
+  curr->value.second = def;
 }
 
 int getMatch(const Path& match, const Path& context, const Path& path) {
@@ -25,8 +43,8 @@ int getMatch(const Path& match, const Path& context, const Path& path) {
     return -1;
   }
   //Check the suffix matches
-  int i = match.size()-path.size();
-  for(int j = 0; j < path.size(); j++) {
+  size_t i = match.size()-path.size();
+  for(size_t j = 0; j < path.size(); j++) {
     if(path[j] != match[i+j]) {
       // Candidate doesn't match
       return -1;
@@ -34,8 +52,7 @@ int getMatch(const Path& match, const Path& context, const Path& path) {
   }
 
   //check that the match is in the context
-  i = 0;
-  for(; i < match.size()-path.size(); i++) {
+  for(i = 0; i < match.size()-path.size(); i++) {
     if (i >= context.size()) {
       // Match is hidden inside something in our context
       return -1;
@@ -48,27 +65,41 @@ int getMatch(const Path& match, const Path& context, const Path& path) {
   return i;
 }
 
-std::optional<Definition> SymbolTable::lookup(const Path &context, const Path &path) {
-  // assert(!context.empty());
-  std::cerr << "Lookup " << show(context) << "\n";
-  std::optional<Definition> best;
-  int best_locality = -1;
-  for (const auto &p : symbol_tree) {
-    int locality = getMatch(p.first, context, path);
-    if(locality > -1 && locality > best_locality) {
-      best = p.second;
-      locality = best_locality;
+
+std::optional<Definition> lookup_in(const Tree<SymbolPair> tree, const Path &path, const size_t depth) {
+  if (depth >= path.size()) {
+    // Found it.
+    // TODO(jopra): Set up parent nodes that 'contain' all their children.
+    return tree.value.second;
+  }
+  for(auto &child : tree.children) {
+    if (child.value.first == path[depth]) {
+      if (auto res = lookup_in(child, path, depth+1)) {
+        return res;
+      }
     }
   }
-
-  if (best) {
-    std::cerr << "Found match\n";
-    return best;
-  } else {
-    std::cerr << "No match found for " << show(path) << "\n";
-  }
-
   return {};
+}
+
+std::optional<Definition> lookup_in_context(const Tree<SymbolPair> tree, const Path &context, const Path &path, const size_t depth) {
+  if (depth < context.size()) {
+    // Try descending. If we find matching nodes, this is the solution
+    for(auto &child : tree.children) {
+      if (child.value.first == context[depth]) {
+        if (auto res = lookup_in_context(child, context, path, depth+1)) {
+          return res;
+        }
+      }
+    }
+    // Couldn't find the exact match, looking outside.
+  }
+  // Try this node.
+  return lookup_in(tree, path, 0);
+}
+
+std::optional<Definition> SymbolTable::lookup(const Path &context, const Path &path) {
+  return lookup_in_context(symbol_tree, context, path, 0);
 }
 
 void ParserContext::addSymbol(const Path &path, const Definition &def) {
