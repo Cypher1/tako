@@ -406,6 +406,12 @@ TEST_CASE("definition of two") {
           auto res3 = syms.lookup({"foo", "b", "two"}, {});
           CHECK_MESSAGE(!res3, "3 lookup should not find stored definition");
         }
+        SUBCASE("lookup name in outer scope") {
+          auto res1 = syms.lookup({"foo", "b"}, {"two"});
+          CHECK_MESSAGE(res1 == def, "1 lookup should find stored definition");
+          auto res2 = syms.lookup({"foo", "b", "two"}, {"two"});
+          CHECK_MESSAGE(res2 == def, "2 lookup should find stored definition");
+        }
       }
     }
   }

@@ -10,13 +10,16 @@
 using Symbol = std::string;            // For now.
 using Path = std::vector<Symbol>; // For now.
 
+using SymbolPair = std::pair<Symbol, std::optional<Definition>>;
+using SymbolMap = Forest<SymbolPair>;
+
 namespace parser {
 
 class SymbolTable {
-  std::map<Path, Definition> symbol_tree;
+  Tree<SymbolPair> symbol_tree;
 
 public:
-  SymbolTable() = default;
+  SymbolTable(): symbol_tree{{"", {}}, {}} {};
 
   void addSymbol(const Path &path, const Definition &val);
   std::optional<Definition> lookup(const Path &path, const Path &val);
@@ -26,6 +29,7 @@ class ParserContext {
 public:
   Context &context;
   SymbolTable symbols;
+  // Should just be the 'root' / current module.
 
   ParserContext(Context &ctx) : context{ctx} {}
 
