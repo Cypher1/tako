@@ -30,7 +30,8 @@ Value getValue(Messages &msgs, Context &ctx) {
   auto tree = ast::ast(toks, ctx, ast::parseValue);
   CHECK_SHOW(msgs.empty(), msgs, ctx);
   REQUIRE(tree);
-  auto val = parser::parse<std::optional<Value>>(*tree, ctx, parser::parseValue);
+  parser::ParserContext p_ctx(std::move(ctx));
+  auto val = parser::parse<std::optional<Value>>(*tree, p_ctx, parser::parseValue);
   CHECK_SHOW(msgs.empty(), msgs, ctx);
   REQUIRE(val);
   return *val;

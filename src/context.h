@@ -18,7 +18,7 @@ public:
   // Passing configuration
   Config config;
 
-  Context(Context &&ctx) = delete; // Disable move.
+  Context(Context &&ctx) = default; // Enable move.
   Context(const Context &ctx) = delete; // Disable copy.
 
   Context(Messages &msgs, const std::string &content,

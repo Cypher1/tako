@@ -106,22 +106,50 @@ void ParserContext::addSymbol(const Path &path, const Definition &def) {
   symbols.addSymbol(path, def);
 }
 
+std::optional<Tree<SymbolPair>> getSymbolsNode(const Tree<SymbolPair> tree, const Path &root) {
+  auto *curr = &tree;
+  for(const auto &p : root) {
+    for (auto &child : curr->children) {
+      if(child.value.first == p) {
+        curr = &child;
+        break;
+      }
+    }
+    return {}; // Not found
+  }
+
+  return *curr;
+}
+
+std::vector<Path> getAllSymbols(const Tree<SymbolPair> &root) {
+  // Expand all the nodes
+  std::vector<Path> paths;
+  for(const auto& child : root.children) {
+    for(auto p : getAllSymbols(child)) {
+      p.insert(p.begin(), root.value.first); // Prepend the current.
+      paths.push_back(p);
+    }
+  }
+
+  paths.push_back({root.value.first});
+
+  return paths;
+}
+
+std::vector<Path> SymbolTable::getSymbols(const Path &root) {
+  auto node = getSymbolsNode(symbol_tree, root);
+  if(node) {
+    return getAllSymbols(*node);
+  }
+  return {};
+}
+
 std::optional<Definition> ParserContext::lookup(const Path &context, const Path &path) {
   return symbols.lookup(context, path);
 }
 
-std::vector<Path> ParserContext::getSymbols() {
-  std::vector<Path> syms;
-
-  return syms;
-}
-
 void ParserContext::msg(const Token &tok, MessageType level, std::string msg_txt) {
-  context.msg(tok.loc, level, msg_txt);
-}
-
-std::string ParserContext::getStringAt(const Location &loc) {
-  return context.getStringAt(loc);
+  Context::msg(tok.loc, level, msg_txt);
 }
 
 std::optional<Definition> parseDefinition(Path, const Tree<Token> &node,
@@ -238,7 +266,7 @@ Module parseModule(Path pth, const Tree<Token> &node, ParserContext &ctx) {
       definitions.push_back(*def);
     }
   }
-  return {ctx.context.filename, node.value.loc, definitions};
+  return {ctx.filename, node.value.loc, definitions};
 }
 
 } // namespace parser

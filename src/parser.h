@@ -23,24 +23,22 @@ public:
 
   void addSymbol(const Path &path, const Definition &val);
   std::optional<Definition> lookup(const Path &path, const Path &val);
+
+  std::vector<Path> getSymbols(const Path &root);
 };
 
-class ParserContext {
+class ParserContext : public Context {
 public:
-  Context &context;
   SymbolTable symbols;
-  // Should just be the 'root' / current module.
+  // TODO(jopra): Convert to use nested modules that each contain their children nodes.
 
-  ParserContext(Context &ctx) : context{ctx} {}
+  ParserContext(Context &&ctx): Context(std::move(ctx)) {}
+  ParserContext(const Context &ctx) = delete;
 
   void msg(const Token &tok, MessageType level, std::string msg_txt);
 
-  std::string getStringAt(const Location &loc);
-
   void addSymbol(const Path &path, const Definition &val);
   std::optional<Definition> lookup(const Path &context, const Path &path);
-
-  std::vector<Path> getSymbols();
 };
 
 std::optional<Value> parseValue(Path pth, const Tree<Token> &node,
@@ -50,10 +48,9 @@ std::optional<Definition> parseDefinition(Path pth, const Tree<Token> &node,
 Module parseModule(Path pth, const Tree<Token> &node, ParserContext &ctx);
 
 template <typename T>
-T parse(const Tree<Token> &node, Context &context,
+T parse(const Tree<Token> &node, ParserContext &ctx,
         std::function<T(Path pth, const Tree<Token> &, ParserContext &ctx)> converter) {
-  context.startStep(PassStep::Parse);
-  ParserContext ctx(context);
+  ctx.startStep(PassStep::Parse);
   Path pth;
   return converter(pth, node, ctx);
 }
