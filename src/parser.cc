@@ -102,6 +102,18 @@ std::optional<Definition> SymbolTable::lookup(const Path &context, const Path &p
   return lookup_in_context(symbol_tree, context, path, 0);
 }
 
+void forAllNodes(Tree<SymbolPair>& tree, Path context, std::function<void(Tree<SymbolPair>&)> f) {
+  context.push_back(tree.value.first);
+  for(auto &child : tree.children) {
+    forAllNodes(child, context, f);
+  }
+  f(tree);
+}
+
+void SymbolTable::forAll(std::function<void(Tree<SymbolPair>&)> f) {
+  forAllNodes(symbol_tree, {}, f);
+}
+
 void ParserContext::addSymbol(const Path &path, const Definition &def) {
   symbols.addSymbol(path, def);
 }
@@ -142,6 +154,10 @@ std::vector<Path> SymbolTable::getSymbols(const Path &root) {
     return getAllSymbols(*node);
   }
   return {};
+}
+
+SymbolTable ParserContext::getTable() {
+  return symbols;
 }
 
 std::optional<Definition> ParserContext::lookup(const Path &context, const Path &path) {
