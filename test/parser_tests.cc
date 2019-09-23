@@ -75,7 +75,8 @@ TEST_CASE("a numeric literal") {
       CHECK(tree->value.loc.length == 2);
       CHECK(tree->children.size() == 0);
       SUBCASE("parse") {
-        auto o_val = parser::parse<std::optional<Value>>(*tree, ctx, parser::parseValue);
+        parser::ParserContext p_ctx(std::move(ctx));
+        auto o_val = parser::parse<std::optional<Value>>(*tree, p_ctx, parser::parseValue);
         // TODO: Check that we got the actual value
         CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(o_val);
@@ -101,7 +102,8 @@ TEST_CASE("a string literal") {
       CHECK(tree->value.type == +TokenType::StringLiteral);
       CHECK(tree->children.size() == 0);
       SUBCASE("parse") {
-        auto o_val = parser::parse<std::optional<Value>>(*tree, ctx, parser::parseValue);
+        parser::ParserContext p_ctx(std::move(ctx));
+        auto o_val = parser::parse<std::optional<Value>>(*tree, p_ctx, parser::parseValue);
         // TODO: Check that we got the actual value
         CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(o_val);
@@ -128,7 +130,8 @@ TEST_CASE("unterminated string literal with newlines") {
       CHECK(tree->value.type == +TokenType::StringLiteral);
       CHECK(tree->children.size() == 0);
       SUBCASE("parse") {
-        auto o_val = parser::parse<std::optional<Value>>(*tree, ctx, parser::parseValue);
+        parser::ParserContext p_ctx(std::move(ctx));
+        auto o_val = parser::parse<std::optional<Value>>(*tree, p_ctx, parser::parseValue);
         // TODO: Check that we got the actual value
         CHECK_SHOW(msgs.size() == 1, msgs, ctx);
         REQUIRE(o_val);
@@ -170,7 +173,8 @@ TEST_CASE("a multiline string literal with newlines") {
       CHECK(tree->value.type == +TokenType::StringLiteral);
       CHECK(tree->children.size() == 0);
       SUBCASE("parse") {
-        auto o_val = parser::parse<std::optional<Value>>(*tree, ctx, parser::parseValue);
+        parser::ParserContext p_ctx(std::move(ctx));
+        auto o_val = parser::parse<std::optional<Value>>(*tree, p_ctx, parser::parseValue);
         // TODO: Check that we got the actual value
         CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(o_val);
@@ -371,7 +375,8 @@ TEST_CASE("definition of two") {
       std::string treeS = show(*tree, ctx);
       INFO(treeS);
       SUBCASE("parse") {
-        auto o_def = parser::parse<std::optional<Definition>>(*tree, ctx, parser::parseDefinition);
+        parser::ParserContext p_ctx(std::move(ctx));
+        auto o_def = parser::parse<std::optional<Definition>>(*tree, p_ctx, parser::parseDefinition);
         CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(o_def);
         const auto def = *o_def;
@@ -380,37 +385,43 @@ TEST_CASE("definition of two") {
         CHECK(def.name == "two");
         REQUIRE(def.args.empty());
 
-        parser::SymbolTable syms;
-        syms.addSymbol({"foo", "two"}, def);
-        SUBCASE("lookup name in same scope") {
-          auto res1 = syms.lookup({}, {"foo", "two"});
-          CHECK_MESSAGE(res1 == def, "1 lookup should find stored definition");
-          auto res2 = syms.lookup({"foo"}, {"two"});
-          CHECK_MESSAGE(res2 == def, "2 lookup should find stored definition");
-          auto res3 = syms.lookup({"foo", "two"}, {});
-          CHECK_MESSAGE(res3 == def, "3 lookup should find stored definition");
+        SUBCASE("symbol table add symbol and lookup") {
+          parser::SymbolTable syms;
+          syms.addSymbol({"foo", "two"}, def);
+          SUBCASE("lookup name in same scope") {
+            auto res1 = syms.lookup({}, {"foo", "two"});
+            CHECK_MESSAGE(res1 == def, "1 lookup should find stored definition");
+            auto res2 = syms.lookup({"foo"}, {"two"});
+            CHECK_MESSAGE(res2 == def, "2 lookup should find stored definition");
+            auto res3 = syms.lookup({"foo", "two"}, {});
+            CHECK_MESSAGE(res3 == def, "3 lookup should find stored definition");
+          }
+          SUBCASE("lookup different name in same scope") {
+            auto res1 = syms.lookup({}, {"foo", "three"});
+            CHECK_MESSAGE(!res1, "1 lookup should not find stored definition");
+            auto res2 = syms.lookup({"foo"}, {"three"});
+            CHECK_MESSAGE(!res2, "2 lookup should not find stored definition");
+            auto res3 = syms.lookup({"foo", "three"}, {});
+            CHECK_MESSAGE(!res3, "3 lookup should not find stored definition");
+          }
+          SUBCASE("lookup name in different scope") {
+            auto res1 = syms.lookup({}, {"foo", "b", "two"});
+            CHECK_MESSAGE(!res1, "1 lookup should not find stored definition");
+            auto res2 = syms.lookup({"foo"}, {"b", "two"});
+            CHECK_MESSAGE(!res2, "2 lookup should not find stored definition");
+            auto res3 = syms.lookup({"foo", "b", "two"}, {});
+            CHECK_MESSAGE(!res3, "3 lookup should not find stored definition");
+          }
+          SUBCASE("lookup name in outer scope") {
+            auto res1 = syms.lookup({"foo", "b"}, {"two"});
+            CHECK_MESSAGE(res1 == def, "1 lookup should find stored definition");
+            auto res2 = syms.lookup({"foo", "b", "two"}, {"two"});
+            CHECK_MESSAGE(res2 == def, "2 lookup should find stored definition");
+          }
         }
-        SUBCASE("lookup different name in same scope") {
-          auto res1 = syms.lookup({}, {"foo", "three"});
-          CHECK_MESSAGE(!res1, "1 lookup should not find stored definition");
-          auto res2 = syms.lookup({"foo"}, {"three"});
-          CHECK_MESSAGE(!res2, "2 lookup should not find stored definition");
-          auto res3 = syms.lookup({"foo", "three"}, {});
-          CHECK_MESSAGE(!res3, "3 lookup should not find stored definition");
-        }
-        SUBCASE("lookup name in different scope") {
-          auto res1 = syms.lookup({}, {"foo", "b", "two"});
-          CHECK_MESSAGE(!res1, "1 lookup should not find stored definition");
-          auto res2 = syms.lookup({"foo"}, {"b", "two"});
-          CHECK_MESSAGE(!res2, "2 lookup should not find stored definition");
-          auto res3 = syms.lookup({"foo", "b", "two"}, {});
-          CHECK_MESSAGE(!res3, "3 lookup should not find stored definition");
-        }
-        SUBCASE("lookup name in outer scope") {
-          auto res1 = syms.lookup({"foo", "b"}, {"two"});
-          CHECK_MESSAGE(res1 == def, "1 lookup should find stored definition");
-          auto res2 = syms.lookup({"foo", "b", "two"}, {"two"});
-          CHECK_MESSAGE(res2 == def, "2 lookup should find stored definition");
+
+        SUBCASE("symbol table built by parser") {
+          // CHECK(ctx);
         }
       }
     }
@@ -434,7 +445,8 @@ TEST_CASE("small function containing calls") {
       std::string treeS = show(*tree, ctx);
       INFO(treeS);
       SUBCASE("parse") {
-        auto o_def = parser::parse<std::optional<Definition>>(*tree, ctx, parser::parseDefinition);
+        parser::ParserContext p_ctx(std::move(ctx));
+        auto o_def = parser::parse<std::optional<Definition>>(*tree, p_ctx, parser::parseDefinition);
         CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(o_def);
         const auto def = *o_def;
@@ -465,7 +477,8 @@ TEST_CASE("small function containing a parenthesized expression") {
       CHECK_SHOW(msgs.empty(), msgs, ctx);
       REQUIRE(tree);
       SUBCASE("parse") {
-        std::optional<Definition> def = parser::parse<std::optional<Definition>>(*tree, ctx, parser::parseDefinition);
+        parser::ParserContext p_ctx(std::move(ctx));
+        std::optional<Definition> def = parser::parse<std::optional<Definition>>(*tree, p_ctx, parser::parseDefinition);
         CHECK_SHOW(msgs.empty(), msgs, ctx);
         CHECK(def);
         CHECK(def->name == "nand5");
@@ -489,7 +502,8 @@ TEST_CASE("small function definition without a parenthesized argument") {
       CHECK_SHOW(msgs.empty(), msgs, ctx);
       REQUIRE(tree);
       SUBCASE("parse") {
-        auto opdef = parser::parse<std::optional<Definition>>(*tree, ctx, parser::parseDefinition);
+        parser::ParserContext p_ctx(std::move(ctx));
+        auto opdef = parser::parse<std::optional<Definition>>(*tree, p_ctx, parser::parseDefinition);
         CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(opdef);
         Definition def = *opdef;
@@ -525,7 +539,8 @@ TEST_CASE("small function definition with a parenthesized argument") {
       CHECK_SHOW(msgs.empty(), msgs, ctx);
       REQUIRE(tree);
       SUBCASE("parse") {
-        auto opdef = parser::parse<std::optional<Definition>>(*tree, ctx, parser::parseDefinition);
+        parser::ParserContext p_ctx(std::move(ctx));
+        auto opdef = parser::parse<std::optional<Definition>>(*tree, p_ctx, parser::parseDefinition);
         CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(opdef);
         Definition def = *opdef;
@@ -560,7 +575,8 @@ TEST_CASE("tuples") {
       auto tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK_SHOW(msgs.empty(), msgs, ctx);
       SUBCASE("parse") {
-        auto o_val = parser::parse<std::optional<Value>>(*tree, ctx, parser::parseValue);
+        parser::ParserContext p_ctx(std::move(ctx));
+        auto o_val = parser::parse<std::optional<Value>>(*tree, p_ctx, parser::parseValue);
         CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(o_val);
         Value val = *o_val;
@@ -592,7 +608,8 @@ TEST_CASE("nested tuples") {
       auto tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK_SHOW(msgs.empty(), msgs, ctx);
       SUBCASE("parse") {
-        auto o_val = parser::parse<std::optional<Value>>(*tree, ctx, parser::parseValue);
+        parser::ParserContext p_ctx(std::move(ctx));
+        auto o_val = parser::parse<std::optional<Value>>(*tree, p_ctx, parser::parseValue);
         CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(o_val);
         Value val = *o_val;

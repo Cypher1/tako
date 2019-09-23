@@ -148,7 +148,8 @@ void runCompilerInteractive(Context &ctx) {
       return;
     }
 
-    std::optional<Value> o_val = parser::parse<std::optional<Value>>(*tree, ctx, parser::parseValue);
+    parser::ParserContext p_ctx(std::move(ctx));
+    std::optional<Value> o_val = parser::parse<std::optional<Value>>(*tree, p_ctx, parser::parseValue);
     if(!o_val) {
       std::cerr << "Parse Failed\n";
       return;
@@ -205,14 +206,15 @@ void runCompiler(Context &ctx) {
       return;
     }
 
-    Module module = parser::parse<Module>(*tree, ctx, parser::parseModule);
-    if(ctx.done()) {
+    parser::ParserContext p_ctx(std::move(ctx));
+    Module module = parser::parse<Module>(*tree, p_ctx, parser::parseModule);
+    if(p_ctx.done()) {
       std::cerr << show(module, 0) << "\n";
       return;
     }
 
-    CheckedModule checked = check(module, ctx);
-    if(ctx.done()) {
+    CheckedModule checked = check(module, p_ctx);
+    if(p_ctx.done()) {
       std::cerr << show(checked) << "\n";
       return;
     }
