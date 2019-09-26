@@ -27,7 +27,7 @@ public:
 
   std::vector<Path> getSymbols(const Path &root);
 
-  void forAll(std::function<void(Tree<SymbolPair>&)> f);
+  void forAll(std::function<void(Path& context, Definition&)> f);
 };
 
 class ParserContext : public Context {

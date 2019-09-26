@@ -102,15 +102,17 @@ std::optional<Definition> SymbolTable::lookup(const Path &context, const Path &p
   return lookup_in_context(symbol_tree, context, path, 0);
 }
 
-void forAllNodes(Tree<SymbolPair>& tree, Path context, std::function<void(Tree<SymbolPair>&)> f) {
+void forAllNodes(Tree<SymbolPair>& tree, Path context, std::function<void(Path&, Definition&)> f) {
   context.push_back(tree.value.first);
   for(auto &child : tree.children) {
     forAllNodes(child, context, f);
   }
-  f(tree);
+  if(tree.value.second) {
+    f(context, *tree.value.second);
+  }
 }
 
-void SymbolTable::forAll(std::function<void(Tree<SymbolPair>&)> f) {
+void SymbolTable::forAll(std::function<void(Path&, Definition&)> f) {
   forAllNodes(symbol_tree, {}, f);
 }
 
@@ -179,7 +181,8 @@ std::optional<Value> parseValue(Path pth, const Tree<Token> &node, ParserContext
   std::vector<Definition> args;
   int ord = 0;
   for (const auto &child : node.children) {
-    if (child.value.type == +TokenType::Declaration) {
+    const std::string argStr = ctx.getStringAt(child.value.loc);
+    if (child.value.type == +TokenType::Operator && argStr == "=") {
       const auto arg = parseDefinition(pth, child, ctx);
       // TODO require arg
       args.push_back(*arg);
@@ -210,7 +213,7 @@ std::optional<Value> parseValue(Path pth, const Tree<Token> &node, ParserContext
                            node.value.type._to_string());
 }
 
-std::optional<Definition> parseDefinition(Path pth, const Tree<Token> &node,
+std::optional<Definition> parseDefinition(Path parentPth, const Tree<Token> &node,
                                           ParserContext &ctx) {
   // Todo check that root is =
   std::string op = ctx.getStringAt(node.value.loc);
@@ -234,22 +237,24 @@ std::optional<Definition> parseDefinition(Path pth, const Tree<Token> &node,
   // Get symbol name
   Location loc = fst.value.loc;
   std::string name = ctx.getStringAt(loc);
+  auto pth = parentPth;
+  pth.push_back(name);
   std::vector<Definition> args = {};
   // Todo check that root.child[0].child* is = definition
-  for (const auto &argTree : fst.children) {
-    const std::string argStr = ctx.getStringAt(argTree.value.loc);
+  for (const auto &child : fst.children) {
+    const std::string argStr = ctx.getStringAt(child.value.loc);
     std::optional<Definition> argDef;
-    if (argTree.value.type == +TokenType::Operator && argStr == "=") {
-      argDef = parseDefinition(pth, argTree, ctx);
-    } else if (argTree.value.type == +TokenType::Symbol) {
-      argDef = Definition(argStr, argTree.value.loc, {}, std::nullopt);
+    if (child.value.type == +TokenType::Operator && argStr == "=") {
+      argDef = parseDefinition(pth, child, ctx);
+    } else if (child.value.type == +TokenType::Symbol) {
+      argDef = Definition(argStr, child.value.loc, {}, std::nullopt);
     }
 
     if (argDef) {
       Definition arg(*argDef);
       args.push_back(arg);
     } else {
-      ctx.msg(argTree.value, MessageType::Error, "Expected a definition");
+      ctx.msg(child.value, MessageType::Error, "Expected a definition");
     }
   }
 

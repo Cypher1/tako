@@ -17,7 +17,6 @@ BETTER_ENUM(
     CloseBrace,
     OpenBracket,
     CloseBracket,
-    Declaration,
     SemiColon,
     PreCond,
     PostCond,
