@@ -209,7 +209,12 @@ void runCompiler(Context &ctx) {
     parser::ParserContext p_ctx(std::move(ctx));
     Module module = parser::parse<Module>(*tree, p_ctx, parser::parseModule);
     if(p_ctx.done()) {
-      std::cerr << show(module, 0) << "\n";
+      auto &symbs = p_ctx.symbols;
+      symbs.forAll([](Path &context, Definition &def){
+        std::cerr << "path: " << show(context, 0, "/") << "\n";
+        std::cerr << "def: " << show(def) << "\n";
+      });
+      // std::cerr << show(module, 0) << "\n";
       return;
     }
 

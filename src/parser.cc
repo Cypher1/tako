@@ -21,7 +21,7 @@ void SymbolTable::addSymbol(const Path &path, const Definition &def) {
   Tree<SymbolPair> *curr = &symbol_tree;
   for(const auto &head : path) {
     bool found_head = false;
-    for(auto child : curr->children) {
+    for(auto &child : curr->children) {
       if (child.value.first == head) {
         // found
         curr = &child;
@@ -113,6 +113,20 @@ void forAllNodes(Tree<SymbolPair>& tree, Path context, std::function<void(Path&,
 }
 
 void SymbolTable::forAll(std::function<void(Path&, Definition&)> f) {
+  forAllNodes(symbol_tree, {}, f);
+}
+
+void forAllNodes(const Tree<SymbolPair>& tree, Path context, std::function<void(const Path&, const Definition&)> f) {
+  context.push_back(tree.value.first);
+  for(auto &child : tree.children) {
+    forAllNodes(child, context, f);
+  }
+  if(tree.value.second) {
+    f(context, *tree.value.second);
+  }
+}
+
+void SymbolTable::forAll(std::function<void(const Path&, const Definition&)> f) const {
   forAllNodes(symbol_tree, {}, f);
 }
 
@@ -253,6 +267,10 @@ std::optional<Definition> parseDefinition(Path parentPth, const Tree<Token> &nod
     if (argDef) {
       Definition arg(*argDef);
       args.push_back(arg);
+      // Add the arg to the symbol table
+      auto argPth = parentPth;
+      argPth.push_back(arg.name);
+      ctx.addSymbol(argPth, arg);
     } else {
       ctx.msg(child.value, MessageType::Error, "Expected a definition");
     }
