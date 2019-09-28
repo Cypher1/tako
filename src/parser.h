@@ -26,7 +26,6 @@ public:
   std::optional<Definition> lookup(const Path &path, const Path &val);
 
   std::vector<Path> getSymbols(const Path &root);
-
   void forAll(std::function<void(Path& context, Definition&)> f);
   void forAll(std::function<void(const Path& context, const Definition&)> f) const;
 };

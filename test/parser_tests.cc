@@ -419,7 +419,7 @@ TEST_CASE("definition of two") {
             CHECK_MESSAGE(res2 == def, "2 lookup should find stored definition");
           }
         }
-
+        
         SUBCASE("symbol table built by parser") {
           const auto &symbols = p_ctx.symbols;
 
