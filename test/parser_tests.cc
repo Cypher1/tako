@@ -419,9 +419,19 @@ TEST_CASE("definition of two") {
             CHECK_MESSAGE(res2 == def, "2 lookup should find stored definition");
           }
         }
-
+        
         SUBCASE("symbol table built by parser") {
-          // CHECK(ctx);
+          const auto &symbols = p_ctx.symbols;
+
+          std::vector<Path> pths = {};
+          symbols.forAll([&pths](auto &pth, auto &def){
+              pths.push_back(pth);
+          });
+
+          REQUIRE_MESSAGE(pths.size() == 1, "expect only a single definition");
+          REQUIRE_MESSAGE(pths[0].size() == 2, "expect definition of 'two'");
+          CHECK_MESSAGE(pths[0][0] == "", "expect definition of 'two'");
+          CHECK_MESSAGE(pths[0][1] == "two", "expect definition of 'two'");
         }
       }
     }
@@ -656,3 +666,71 @@ TEST_CASE("nested tuples") {
     }
   }
 }
+
+TEST_CASE("function with default arguments") {
+  Messages msgs;
+  Context ctx = {
+    msgs, "interp(a, b, first=0.5) = a*first+b*(1-first)",
+    "<filename>"};
+
+  SUBCASE("tokenize") {
+    Tokens toks = lex(ctx);
+    CHECK_SHOW(msgs.empty(), msgs, ctx);
+
+    SUBCASE("ast") {
+      auto tree = ast::ast(toks, ctx, ast::parseDefinition);
+      CHECK_SHOW(msgs.empty(), msgs, ctx);
+      REQUIRE(tree);
+      std::string treeS = show(*tree, ctx);
+      INFO(treeS);
+      SUBCASE("parse") {
+        parser::ParserContext p_ctx(std::move(ctx));
+        auto o_def = parser::parse<std::optional<Definition>>(*tree, p_ctx, parser::parseDefinition);
+        CHECK_SHOW(msgs.empty(), msgs, ctx);
+        REQUIRE(o_def);
+        const auto def = *o_def;
+        std::string defs = show(def);
+        INFO(defs);
+        CHECK(def.name == "interp");
+        REQUIRE_MESSAGE(def.args.size() == 3, "correct number of args");
+        CHECK(def.args[0].name == "a");
+        CHECK(def.args[1].name == "b");
+        CHECK(def.args[2].name == "first");
+
+        SUBCASE("symbol table built by parser") {
+          const auto &symbols = p_ctx.symbols;
+
+          std::vector<Path> pths = {};
+          symbols.forAll([&pths](auto &pth, auto &def){
+              pths.push_back(pth);
+          });
+
+          const auto pthsStr = show(pths, 0, "\n");
+          INFO(pthsStr);
+          REQUIRE(pths.size() == 4);
+
+          REQUIRE_MESSAGE(pths[0].size() == 3, "expect definition of '/interp/a'");
+          CHECK(pths[0][0] == "");
+          CHECK(pths[0][1] == "interp");
+          CHECK(pths[0][2] == "a");
+
+          REQUIRE_MESSAGE(pths[1].size() == 3, "expect definition of '/interp/b'");
+          CHECK(pths[1][0] == "");
+          CHECK(pths[1][1] == "interp");
+          CHECK(pths[1][2] == "b");
+
+          REQUIRE_MESSAGE(pths[2].size() == 3, "expect definition of '/interp/first'");
+          CHECK(pths[2][0] == "");
+          CHECK(pths[2][1] == "interp");
+          CHECK(pths[2][2] == "first");
+
+          REQUIRE_MESSAGE(pths[3].size() == 2, "expect definition of '/interp'");
+          CHECK(pths[3][0] == "");
+          CHECK(pths[3][1] == "interp");
+        }
+      }
+    }
+  }
+}
+
+
