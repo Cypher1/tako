@@ -262,15 +262,15 @@ std::optional<Definition> parseDefinition(Path parentPth, const Tree<Token> &nod
       argDef = parseDefinition(pth, child, ctx);
     } else if (child.value.type == +TokenType::Symbol) {
       argDef = Definition(argStr, child.value.loc, {}, std::nullopt);
+      // Add the arg to the symbol table
+      auto argPth = pth;
+      argPth.push_back(argDef->name);
+      ctx.addSymbol(argPth, *argDef);
     }
 
     if (argDef) {
       Definition arg(*argDef);
       args.push_back(arg);
-      // Add the arg to the symbol table
-      auto argPth = parentPth;
-      argPth.push_back(arg.name);
-      ctx.addSymbol(argPth, arg);
     } else {
       ctx.msg(child.value, MessageType::Error, "Expected a definition");
     }
