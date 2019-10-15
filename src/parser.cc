@@ -271,15 +271,16 @@ parseDefinition(Path parentPth, const Tree<Token> &node, ParserContext &ctx) {
       argDef = parseDefinition(pth, child, ctx);
     } else if (child.value.type == +TokenType::Symbol) {
       argDef = Definition(argStr, child.value.loc, {}, std::nullopt);
-      // Add the arg to the symbol table
-      auto argPth = pth;
-      argPth.push_back(argDef->name);
-      ctx.addSymbol(argPth, *argDef);
     }
 
     if (argDef) {
+      // Add the arg to the symbol table
       Definition arg(*argDef);
+
+      auto argPth = pth;
+      argPth.push_back(arg.name);
       args.push_back(arg);
+      ctx.addSymbol(argPth, arg);
     } else {
       ctx.msg(child.value, MessageType::Error, "Expected a definition");
     }
