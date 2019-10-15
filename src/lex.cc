@@ -1,9 +1,9 @@
+#include <functional>
 #include <iostream>
 #include <map>
 #include <set>
 #include <string>
 #include <vector>
-#include <functional>
 
 #include "context.h"
 #include "lex.h"
@@ -90,14 +90,10 @@ Offset consumeWhiteSpace(const std::string content, const Position pos,
 }
 
 using Matcher = std::function<Offset(const std::string content,
-      const Position pos,
-      Context &ctx)>;
+                                     const Position pos, Context &ctx)>;
 
 Matcher matchesFrom(const std::string chars) {
-  return [chars](
-      const std::string content,
-      const Position pos,
-      Context &ctx) {
+  return [chars](const std::string content, const Position pos, Context &ctx) {
     Offset length = 0;
     while (length < content.size()) {
       if (chars.find(content[length]) == std::string::npos) {
@@ -110,11 +106,11 @@ Matcher matchesFrom(const std::string chars) {
 }
 
 const std::vector<std::pair<TokenType, Matcher>> matchers = {
-  {TokenType::StringLiteral, consumeStringLiteral},
-  {TokenType::WhiteSpace, consumeWhiteSpace},
-  {TokenType::Operator, matchesFrom(operatorChar)},
-  {TokenType::NumberLiteral, matchesFrom(numberChar)},
-  {TokenType::Symbol, matchesFrom(symbolChar)},
+    {TokenType::StringLiteral, consumeStringLiteral},
+    {TokenType::WhiteSpace, consumeWhiteSpace},
+    {TokenType::Operator, matchesFrom(operatorChar)},
+    {TokenType::NumberLiteral, matchesFrom(numberChar)},
+    {TokenType::Symbol, matchesFrom(symbolChar)},
 };
 
 std::pair<TokenType, Offset> chooseTok(std::string content, const Position pos,
@@ -126,7 +122,7 @@ std::pair<TokenType, Offset> chooseTok(std::string content, const Position pos,
       return {sym.second, tokS.size()};
     }
   }
-  for(const auto& match : matchers) {
+  for (const auto &match : matchers) {
     if (Offset length = match.second(content, pos, ctx)) {
       return {match.first, length};
     }

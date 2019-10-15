@@ -1,15 +1,15 @@
 #ifndef EVAL_H
 #define EVAL_H
 
-#include <variant>
 #include <optional>
-#include <vector>
 #include <string>
+#include <variant>
+#include <vector>
 
+#include "ast.h"
+#include "context.h"
 #include "enums.h"
 #include "util.h"
-#include "context.h"
-#include "ast.h"
 
 std::variant<int, std::string> eval(Value val);
 

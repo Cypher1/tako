@@ -1,17 +1,17 @@
 #ifndef CHECKER_H
 #define CHECKER_H
 
-#include <string>
-#include <map>
-#include <variant>
-#include <optional>
 #include <iostream>
+#include <map>
+#include <optional>
+#include <string>
+#include <variant>
 
 #include "ast.h"
-#include "util.h"
 #include "context.h"
 #include "parser.h"
 #include "show.h"
+#include "util.h"
 
 // Use only for values that the compiler creates
 // (rather than values from the source program).
@@ -35,18 +35,17 @@ struct Solutions {
 struct Proof {
   // Should have the form
   // Rule applied with argumnets to Proof / assumption
-
 };
 
 class Assignment {
-  private:
+private:
   std::map<Variable, std::variant<Value, Variable>> assignment;
 
-  public:
-  Assignment() {
-  }
+public:
+  Assignment() {}
 
-  std::optional<Contradiction> setValue(const Variable &name, const Value &value);
+  std::optional<Contradiction> setValue(const Variable &name,
+                                        const Value &value);
   std::variant<Value, Variable> getValue(const Variable &name) const;
 
   Solutions unify(const Value &a, const Value &b);
@@ -55,7 +54,7 @@ class Assignment {
 using Check = Value; // TODO: Should the proofs have optional proofs?
 
 class Checks {
-  public:
+public:
   std::vector<Check> pre;
   std::vector<Check> post;
 
@@ -76,31 +75,34 @@ public:
   // See docs/notes/checker.md
   std::map<Path, std::vector<std::pair<Path, Checks>>> call_graph;
 
-  CheckerContext(Context &ctx)
-      : context{ctx} {}
+  CheckerContext(Context &ctx) : context{ctx} {}
 
   void msg(Value &val, MessageType level, std::string msg_txt);
 
-  void addEdge(const Path &caller, const Path &callee, const Checks &requirements) {
+  void addEdge(const Path &caller, const Path &callee,
+               const Checks &requirements) {
     const auto it = call_graph.find(caller);
     const std::vector<std::pair<Path, Checks>> pairs = {{callee, requirements}};
-    if(it == call_graph.end()) {
+    if (it == call_graph.end()) {
       call_graph.emplace(caller, pairs);
     } else {
-      auto& lst = it->second;
+      auto &lst = it->second;
       lst.insert(lst.end(), pairs.begin(), pairs.end());
     }
   }
-
 };
 
 // Call graph / tree builders
-ValueCore<Checks> check(std::vector<Symbol> path, const ValueCore<Empty> &def, CheckerContext &ctx);
-DefinitionCore<Checks> check(std::vector<Symbol> path, const DefinitionCore<Empty> &def, CheckerContext &ctx);
-ModuleCore<Checks> check(std::vector<Symbol> path, const ModuleCore<Empty> &def, CheckerContext &ctx);
+ValueCore<Checks> check(std::vector<Symbol> path, const ValueCore<Empty> &def,
+                        CheckerContext &ctx);
+DefinitionCore<Checks> check(std::vector<Symbol> path,
+                             const DefinitionCore<Empty> &def,
+                             CheckerContext &ctx);
+ModuleCore<Checks> check(std::vector<Symbol> path, const ModuleCore<Empty> &def,
+                         CheckerContext &ctx);
 
 // Wrapper that does some setup work
-template<template<typename> typename T>
+template <template <typename> typename T>
 T<Checks> check(const T<Empty> &code, Context &context) {
   context.startStep(PassStep::Check);
   CheckerContext ctx(context);
@@ -126,9 +128,7 @@ T<Checks> check(const T<Empty> &code, Context &context) {
     }
   }
 
-
   // Do some checking
-
 
   // After this, checks can only be used for optimisation & code gen
   // All semantic & potential runtime errors should be compiler bugs.

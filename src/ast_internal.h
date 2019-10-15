@@ -8,8 +8,8 @@
 #include <string>
 #include <vector>
 
-#include "context.h"
 #include "ast.h"
+#include "context.h"
 #include "lex.h"
 #include "show.h"
 
@@ -25,7 +25,7 @@ public:
   std::vector<Token>::const_iterator end;
 
   AstContext(Context &ctx, std::vector<Token>::const_iterator toks,
-                std::vector<Token>::const_iterator end)
+             std::vector<Token>::const_iterator end)
       : context{ctx}, toks{toks}, end{end} {}
   // Other state
   bool hasToken = true;
@@ -47,11 +47,12 @@ using parseLeftType = std::function<Tree<Token>(
     Tree<Token> left, const Token &tok, AstContext &ctx)>;
 
 Tree<Token> parserLogicErrorInit(const Token &tok, AstContext &ctx) {
-  throw std::runtime_error("Parser logic error on token " + show(tok, ctx.context));
+  throw std::runtime_error("Parser logic error on token " +
+                           show(tok, ctx.context));
 };
 
 Tree<Token> parserLogicErrorLeft(Tree<Token>, const Token &tok,
-                                AstContext &ctx) {
+                                 AstContext &ctx) {
   throw std::runtime_error("Parser logic error on token left " +
                            show(tok, ctx.context));
 };
@@ -67,7 +68,7 @@ public:
   TokenTokenEntry(const leftBindingPowerType binding, const parseInitType nud)
       : TokenTokenEntry(binding, nud, parserLogicErrorLeft) {}
   TokenTokenEntry(const leftBindingPowerType binding, const parseInitType nud,
-                   const parseLeftType led)
+                  const parseLeftType led)
       : binding{binding}, nud{nud}, led{led} {}
 };
 

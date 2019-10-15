@@ -1,8 +1,8 @@
 #ifndef ARG_PARSER_H
 #define ARG_PARSER_H
 
-#include <vector>
 #include <string>
+#include <vector>
 
 struct Arg {
   char flag;
@@ -11,15 +11,11 @@ struct Arg {
   std::string value;
 };
 
-void parseArgs(
-  const std::vector<Arg>& args,
-  const int start,
-  const int argc,
-  char* argv[],
-  std::vector<std::string>& targets,
-  std::unordered_map<std::string, std::string>& values
-);
+void parseArgs(const std::vector<Arg> &args, const int start, const int argc,
+               char *argv[], std::vector<std::string> &targets,
+               std::unordered_map<std::string, std::string> &values);
 
-std::string makeUsage(const std::string& prog, const std::vector<Arg>& args, const int width=22);
+std::string makeUsage(const std::string &prog, const std::vector<Arg> &args,
+                      const int width = 22);
 
 #endif // #ifndef ARG_PARSER_H
