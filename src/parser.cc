@@ -35,6 +35,9 @@ void SymbolTable::addSymbol(const Path &path, const Definition &def) {
       curr = &curr->children.back();
     }
   }
+  if (curr->value.second) {
+    // TODO: Use the message system
+  }
   curr->value.second = def;
 }
 
@@ -195,7 +198,7 @@ void ParserContext::msg(const Token &tok, MessageType level,
 std::optional<Definition> parseDefinition(Path, const Tree<Token> &node,
                                           ParserContext &ctx);
 
-std::optional<Value> parseValue(Path pth, const Tree<Token> &node,
+std::optional<Value> parseValue(const Path pth, const Tree<Token> &node,
                                 ParserContext &ctx) {
   std::string name = ctx.getStringAt(node.value.loc);
   if (name.empty()) { // End of file?
@@ -205,19 +208,21 @@ std::optional<Value> parseValue(Path pth, const Tree<Token> &node,
   int ord = 0;
   for (const auto &child : node.children) {
     const std::string argStr = ctx.getStringAt(child.value.loc);
-    const bool isPre = argStr == "-|";
-    const bool isPost = argStr == "|-";
+    const bool isPre = child.value.type == +TokenType::PreCond;
+    const bool isPost = child.value.type == +TokenType::PostCond;
     if (child.value.type == +TokenType::Operator && argStr == "=") {
       const auto arg = parseDefinition(pth, child, ctx);
       // TODO require arg
       args.push_back(*arg);
     } else {
+      auto currPth = pth;
       if (isPre) {
-        pth.push_back("#pre");
+        currPth.push_back("#pre");
       } else if (isPost) {
-        pth.push_back("#post");
+        currPth.push_back("#post");
       }
-      const auto arg_value = parseValue(pth, child, ctx);
+      const auto arg_value = parseValue(currPth, child, ctx);
+      // TODO(jopra): Look into SSA here.
       const std::string name =
           "#" +
           std::to_string(ord++); // Name the anonymous arg something impossible
@@ -313,7 +318,8 @@ parseDefinition(Path parentPth, const Tree<Token> &node, ParserContext &ctx) {
   return def;
 }
 
-Module parseModule(Path pth, const Tree<Token> &node, ParserContext &ctx) {
+Module parseModule(const Path pth, const Tree<Token> &node,
+                   ParserContext &ctx) {
   std::vector<Definition> definitions;
   for (const auto &defTree : node.children) {
     auto def = parseDefinition(pth, defTree, ctx);
