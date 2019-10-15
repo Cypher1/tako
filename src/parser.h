@@ -2,13 +2,13 @@
 #ifndef PARSER_H
 #define PARSER_H
 
+#include <functional>
 #include <map>
 #include <optional>
-#include <functional>
 
 #include "ast.h"
 
-using Symbol = std::string;            // For now.
+using Symbol = std::string;       // For now.
 using Path = std::vector<Symbol>; // For now.
 
 using SymbolPair = std::pair<Symbol, std::optional<Definition>>;
@@ -20,22 +20,24 @@ class SymbolTable {
   Tree<SymbolPair> symbol_tree;
 
 public:
-  SymbolTable(): symbol_tree{{"", {}}, {}} {};
+  SymbolTable() : symbol_tree{{"", {}}, {}} {};
 
   void addSymbol(const Path &path, const Definition &val);
   std::optional<Definition> lookup(const Path &path, const Path &val);
 
   std::vector<Path> getSymbols(const Path &root);
-  void forAll(std::function<void(Path& context, Definition&)> f);
-  void forAll(std::function<void(const Path& context, const Definition&)> f) const;
+  void forAll(std::function<void(Path &context, Definition &)> f);
+  void
+  forAll(std::function<void(const Path &context, const Definition &)> f) const;
 };
 
 class ParserContext : public Context {
 public:
   SymbolTable symbols;
-  // TODO(jopra): Convert to use nested modules that each contain their children nodes.
+  // TODO(jopra): Convert to use nested modules that each contain their children
+  // nodes.
 
-  ParserContext(Context &&ctx): Context(std::move(ctx)) {}
+  ParserContext(Context &&ctx) : Context(std::move(ctx)) {}
   ParserContext(const Context &ctx) = delete;
 
   void msg(const Token &tok, MessageType level, std::string msg_txt);
@@ -54,7 +56,8 @@ Module parseModule(Path pth, const Tree<Token> &node, ParserContext &ctx);
 
 template <typename T>
 T parse(const Tree<Token> &node, ParserContext &ctx,
-        std::function<T(Path pth, const Tree<Token> &, ParserContext &ctx)> converter) {
+        std::function<T(Path pth, const Tree<Token> &, ParserContext &ctx)>
+            converter) {
   ctx.startStep(PassStep::Parse);
   Path pth;
   return converter(pth, node, ctx);

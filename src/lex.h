@@ -1,37 +1,20 @@
 #ifndef LEX_H
 #define LEX_H
 
-#include <vector>
 #include <string>
+#include <vector>
 
+#include "context.h"
 #include "enums.h"
 #include "util.h"
-#include "context.h"
 
-BETTER_ENUM(
-    TokenType,
-    char,
-    OpenParen,
-    CloseParen,
-    OpenBrace,
-    CloseBrace,
-    OpenBracket,
-    CloseBracket,
-    SemiColon,
-    PreCond,
-    PostCond,
-    // SingleQuote,
-    // DoubleQuote,
-    // BackQuote,
-    Dot,
-    Comma,
-    WhiteSpace,
-    NumberLiteral,
-    StringLiteral,
-    Operator,
-    Symbol,
-    Error
-    );
+BETTER_ENUM(TokenType, char, OpenParen, CloseParen, OpenBrace, CloseBrace,
+            OpenBracket, CloseBracket, SemiColon, PreCond, PostCond,
+            // SingleQuote,
+            // DoubleQuote,
+            // BackQuote,
+            Dot, Comma, WhiteSpace, NumberLiteral, StringLiteral, Operator,
+            Symbol, Error);
 
 struct Token {
   TokenType type = TokenType::Error;

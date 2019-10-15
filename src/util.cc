@@ -1,6 +1,6 @@
 #include "util.h"
 
-bool operator<( const Location &a, const Location &b) {
+bool operator<(const Location &a, const Location &b) {
   if (a.file < b.file) {
     return true;
   }

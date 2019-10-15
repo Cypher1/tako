@@ -4,20 +4,35 @@
 #include <algorithm>
 #include <iostream>
 #include <optional>
-#include <vector>
 #include <variant>
+#include <vector>
 
 #include "../src/ast.h"
+#include "../src/eval.h"
 #include "../src/lex.h"
 #include "../src/parser.h"
-#include "../src/eval.h"
 #include "../src/show.h"
 
-#define CHECK_SHOW(a, b, c) { const auto show_str = show((b), (c)); CHECK_MESSAGE((a), show_str); }
-#define REQUIRE_SHOW(a, b, c) { const auto show_str = show((b), (c)); REQUIRE_MESSAGE((a), show_str); }
-#define CHECK_SHOW_VALUE(a, b) { const auto show_str = show((b)); CHECK_MESSAGE((a), show_str); }
-#define REQUIRE_SHOW_VALUE(a, b) { const auto show_str = show((b)); REQUIRE_MESSAGE((a), show_str); }
-
+#define CHECK_SHOW(a, b, c)                                                    \
+  {                                                                            \
+    const auto show_str = show((b), (c));                                      \
+    CHECK_MESSAGE((a), show_str);                                              \
+  }
+#define REQUIRE_SHOW(a, b, c)                                                  \
+  {                                                                            \
+    const auto show_str = show((b), (c));                                      \
+    REQUIRE_MESSAGE((a), show_str);                                            \
+  }
+#define CHECK_SHOW_VALUE(a, b)                                                 \
+  {                                                                            \
+    const auto show_str = show((b));                                           \
+    CHECK_MESSAGE((a), show_str);                                              \
+  }
+#define REQUIRE_SHOW_VALUE(a, b)                                               \
+  {                                                                            \
+    const auto show_str = show((b));                                           \
+    REQUIRE_MESSAGE((a), show_str);                                            \
+  }
 
 // TODO rapidcheck that all tokens from a lexed 'file' are inside the file.
 // i.e. their location is 'in bounds' and the getString matches the
@@ -31,7 +46,8 @@ Value getValue(Messages &msgs, Context &ctx) {
   CHECK_SHOW(msgs.empty(), msgs, ctx);
   REQUIRE(tree);
   parser::ParserContext p_ctx(std::move(ctx));
-  auto val = parser::parse<std::optional<Value>>(*tree, p_ctx, parser::parseValue);
+  auto val =
+      parser::parse<std::optional<Value>>(*tree, p_ctx, parser::parseValue);
   CHECK_SHOW(msgs.empty(), msgs, ctx);
   REQUIRE(val);
   return *val;

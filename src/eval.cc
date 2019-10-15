@@ -2,66 +2,74 @@
 #include <string>
 #include <variant>
 
-#include "eval.h"
 #include "ast.h"
+#include "eval.h"
 #include "show.h"
 
 using Prim = std::variant<int, std::string>;
 
 std::string repeat(int n, std::string rep) {
   std::string o = rep;
-  while(o.length() < rep.length()*n) {
+  while (o.length() < rep.length() * n) {
     o += o;
   }
-  return o.substr(0, rep.length()*n);
+  return o.substr(0, rep.length() * n);
 }
 
 Prim eval(Value val) {
   std::cerr << "Eval (" << show(val) << ")\n";
   // TODO: Eval
-  if(val.node_type == AstNodeType::Text) {
+  if (val.node_type == AstNodeType::Text) {
     // Get the text
-    return val.name.substr(1, val.name.length()-2);
+    return val.name.substr(1, val.name.length() - 2);
   }
-  if(val.node_type == AstNodeType::Numeric) {
+  if (val.node_type == AstNodeType::Numeric) {
     // Get the number
     return std::stoi(val.name, nullptr, 10); // Assume base 10
   }
-  if(val.node_type == AstNodeType::Symbol) {
+  if (val.node_type == AstNodeType::Symbol) {
     // Look up the symbol
     const std::vector<Definition> args = val.args;
     std::vector<Prim> values;
-    for(const auto& arg : args) {
-      if(arg.value) {
+    for (const auto &arg : args) {
+      if (arg.value) {
         values.push_back(eval(*arg.value));
       } else {
-        return "Missing value for arg in !!! "+val.name;
+        return "Missing value for arg in !!! " + val.name;
       }
     }
-    if(val.name == "+") {
+    if (val.name == "+") {
       // Require two args for now?
-      if(std::holds_alternative<int>(values[0]) && std::holds_alternative<int>(values[1])) {
-        return std::get<int>(values[0])+std::get<int>(values[1]);
+      if (std::holds_alternative<int>(values[0]) &&
+          std::holds_alternative<int>(values[1])) {
+        return std::get<int>(values[0]) + std::get<int>(values[1]);
       }
-      if(std::holds_alternative<std::string>(values[0]) && std::holds_alternative<std::string>(values[1])) {
-        return std::get<std::string>(values[0])+std::get<std::string>(values[1]);
+      if (std::holds_alternative<std::string>(values[0]) &&
+          std::holds_alternative<std::string>(values[1])) {
+        return std::get<std::string>(values[0]) +
+               std::get<std::string>(values[1]);
       }
-      return "Unexpected types at (+) !!! "+val.name;
-    } else if(val.name == "*") {
+      return "Unexpected types at (+) !!! " + val.name;
+    } else if (val.name == "*") {
       // Require two args for now?
-      if(std::holds_alternative<int>(values[0]) && std::holds_alternative<int>(values[1])) {
-        return std::get<int>(values[0])*std::get<int>(values[1]);
+      if (std::holds_alternative<int>(values[0]) &&
+          std::holds_alternative<int>(values[1])) {
+        return std::get<int>(values[0]) * std::get<int>(values[1]);
       }
-      if(std::holds_alternative<int>(values[1]) && std::holds_alternative<std::string>(values[0])) {
-        return repeat(std::get<int>(values[1]), std::get<std::string>(values[0]));
+      if (std::holds_alternative<int>(values[1]) &&
+          std::holds_alternative<std::string>(values[0])) {
+        return repeat(std::get<int>(values[1]),
+                      std::get<std::string>(values[0]));
       }
-      if(std::holds_alternative<int>(values[0]) && std::holds_alternative<std::string>(values[1])) {
-        return repeat(std::get<int>(values[0]), std::get<std::string>(values[1]));
+      if (std::holds_alternative<int>(values[0]) &&
+          std::holds_alternative<std::string>(values[1])) {
+        return repeat(std::get<int>(values[0]),
+                      std::get<std::string>(values[1]));
       }
-      return "Unexpected types at (*) !!! "+val.name;
+      return "Unexpected types at (*) !!! " + val.name;
     } else {
-      return "Unknown symbol !!! "+val.name;
+      return "Unknown symbol !!! " + val.name;
     }
   }
-  return "OH NO!!! "+val.name;
+  return "OH NO!!! " + val.name;
 }

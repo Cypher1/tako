@@ -14,11 +14,9 @@
 #include "../src/show.h"
 #include "../src/util.h"
 
-doctest::String toString(const Value& value) {
-  return show(value, 0).c_str();
-}
+doctest::String toString(const Value &value) { return show(value, 0).c_str(); }
 
-template<typename T, typename ...U>
+template <typename T, typename... U>
 void eqvar(std::variant<U...> variant, T value) {
   CHECK_MESSAGE(std::holds_alternative<T>(variant), "type mismatch");
   const T v = std::get<T>(variant);
@@ -26,7 +24,7 @@ void eqvar(std::variant<U...> variant, T value) {
 }
 
 void showValue(const std::optional<Contradiction> &contradiction,
-    std::ostream &os) {
+               std::ostream &os) {
   if (!contradiction) {
     os << "Satifiable.";
     return;
@@ -44,9 +42,7 @@ TEST_CASE("can assign anything to x in an empty assignment") {
 
   const auto contradiction = emp.setValue("x", val);
   CHECK_FALSE_MESSAGE(contradiction, "expected no contradiction");
-  SUBCASE("check value was stored") {
-    eqvar(emp.getValue("x"), val);
-  }
+  SUBCASE("check value was stored") { eqvar(emp.getValue("x"), val); }
 }
 
 TEST_CASE("Simple assignment checks for contradictions") {
@@ -68,7 +64,8 @@ TEST_CASE("Simple assignment checks for contradictions") {
   }
 }
 
-TEST_CASE("Simple assignment checks for contradictions when assigning another variable") {
+TEST_CASE("Simple assignment checks for contradictions when assigning another "
+          "variable") {
   Assignment emp;
 
   // TODO: Arbitrary Values

@@ -11,11 +11,26 @@
 #include "../src/parser.h"
 #include "../src/show.h"
 
-#define CHECK_SHOW(a, b, c) { const auto show_str = show((b), (c)); CHECK_MESSAGE((a), show_str); }
-#define REQUIRE_SHOW(a, b, c) { const auto show_str = show((b), (c)); REQUIRE_MESSAGE((a), show_str); }
-#define CHECK_SHOW_VALUE(a, b) { const auto show_str = show((b)); CHECK_MESSAGE((a), show_str); }
-#define REQUIRE_SHOW_VALUE(a, b) { const auto show_str = show((b)); REQUIRE_MESSAGE((a), show_str); }
-
+#define CHECK_SHOW(a, b, c)                                                    \
+  {                                                                            \
+    const auto show_str = show((b), (c));                                      \
+    CHECK_MESSAGE((a), show_str);                                              \
+  }
+#define REQUIRE_SHOW(a, b, c)                                                  \
+  {                                                                            \
+    const auto show_str = show((b), (c));                                      \
+    REQUIRE_MESSAGE((a), show_str);                                            \
+  }
+#define CHECK_SHOW_VALUE(a, b)                                                 \
+  {                                                                            \
+    const auto show_str = show((b));                                           \
+    CHECK_MESSAGE((a), show_str);                                              \
+  }
+#define REQUIRE_SHOW_VALUE(a, b)                                               \
+  {                                                                            \
+    const auto show_str = show((b));                                           \
+    REQUIRE_MESSAGE((a), show_str);                                            \
+  }
 
 // TODO rapidcheck that all tokens from a lexed 'file' are inside the file.
 // i.e. their location is 'in bounds' and the getString matches the
@@ -76,7 +91,8 @@ TEST_CASE("a numeric literal") {
       CHECK(tree->children.size() == 0);
       SUBCASE("parse") {
         parser::ParserContext p_ctx(std::move(ctx));
-        auto o_val = parser::parse<std::optional<Value>>(*tree, p_ctx, parser::parseValue);
+        auto o_val = parser::parse<std::optional<Value>>(*tree, p_ctx,
+                                                         parser::parseValue);
         // TODO: Check that we got the actual value
         CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(o_val);
@@ -103,7 +119,8 @@ TEST_CASE("a string literal") {
       CHECK(tree->children.size() == 0);
       SUBCASE("parse") {
         parser::ParserContext p_ctx(std::move(ctx));
-        auto o_val = parser::parse<std::optional<Value>>(*tree, p_ctx, parser::parseValue);
+        auto o_val = parser::parse<std::optional<Value>>(*tree, p_ctx,
+                                                         parser::parseValue);
         // TODO: Check that we got the actual value
         CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(o_val);
@@ -121,7 +138,8 @@ TEST_CASE("unterminated string literal with newlines") {
     REQUIRE(toks.size() >= 1);
     CHECK(toks.size() == 1);
     REQUIRE_SHOW(msgs.size() == 1, msgs, ctx);
-    CHECK(msgs[0].msg == "Unterminated string literal (or maybe you wanted a \"multiline string\"?)");
+    CHECK(msgs[0].msg == "Unterminated string literal (or maybe you wanted a "
+                         "\"multiline string\"?)");
     CHECK_SHOW(toks[0].type == +TokenType::StringLiteral, toks, ctx);
     SUBCASE("ast") {
       auto tree = ast::ast(toks, ctx, ast::parseValue);
@@ -131,7 +149,8 @@ TEST_CASE("unterminated string literal with newlines") {
       CHECK(tree->children.size() == 0);
       SUBCASE("parse") {
         parser::ParserContext p_ctx(std::move(ctx));
-        auto o_val = parser::parse<std::optional<Value>>(*tree, p_ctx, parser::parseValue);
+        auto o_val = parser::parse<std::optional<Value>>(*tree, p_ctx,
+                                                         parser::parseValue);
         // TODO: Check that we got the actual value
         CHECK_SHOW(msgs.size() == 1, msgs, ctx);
         REQUIRE(o_val);
@@ -151,7 +170,8 @@ TEST_CASE("a string literal with newlines") {
     CHECK_SHOW(toks[0].type == +TokenType::StringLiteral, toks, ctx);
     CHECK_SHOW(toks[1].type == +TokenType::StringLiteral, toks, ctx);
     REQUIRE_SHOW(msgs.size() == 2, msgs, ctx);
-    CHECK(msgs[0].msg == "Unterminated string literal (or maybe you wanted a \"multiline string\"?)");
+    CHECK(msgs[0].msg == "Unterminated string literal (or maybe you wanted a "
+                         "\"multiline string\"?)");
     CHECK(msgs[1].msg == "Unterminated string literal, found end of file.");
   }
 }
@@ -174,7 +194,8 @@ TEST_CASE("a multiline string literal with newlines") {
       CHECK(tree->children.size() == 0);
       SUBCASE("parse") {
         parser::ParserContext p_ctx(std::move(ctx));
-        auto o_val = parser::parse<std::optional<Value>>(*tree, p_ctx, parser::parseValue);
+        auto o_val = parser::parse<std::optional<Value>>(*tree, p_ctx,
+                                                         parser::parseValue);
         // TODO: Check that we got the actual value
         CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(o_val);
@@ -360,9 +381,7 @@ TEST_CASE("simple expressions with parenthesis") {
 
 TEST_CASE("definition of two") {
   Messages msgs;
-  Context ctx = {
-    msgs, "two() = 2",
-    "<filename>"};
+  Context ctx = {msgs, "two() = 2", "<filename>"};
 
   SUBCASE("tokenize") {
     Tokens toks = lex(ctx);
@@ -376,7 +395,8 @@ TEST_CASE("definition of two") {
       INFO(treeS);
       SUBCASE("parse") {
         parser::ParserContext p_ctx(std::move(ctx));
-        auto o_def = parser::parse<std::optional<Definition>>(*tree, p_ctx, parser::parseDefinition);
+        auto o_def = parser::parse<std::optional<Definition>>(
+            *tree, p_ctx, parser::parseDefinition);
         CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(o_def);
         const auto def = *o_def;
@@ -390,11 +410,14 @@ TEST_CASE("definition of two") {
           syms.addSymbol({"foo", "two"}, def);
           SUBCASE("lookup name in same scope") {
             auto res1 = syms.lookup({}, {"foo", "two"});
-            CHECK_MESSAGE(res1 == def, "1 lookup should find stored definition");
+            CHECK_MESSAGE(res1 == def,
+                          "1 lookup should find stored definition");
             auto res2 = syms.lookup({"foo"}, {"two"});
-            CHECK_MESSAGE(res2 == def, "2 lookup should find stored definition");
+            CHECK_MESSAGE(res2 == def,
+                          "2 lookup should find stored definition");
             auto res3 = syms.lookup({"foo", "two"}, {});
-            CHECK_MESSAGE(res3 == def, "3 lookup should find stored definition");
+            CHECK_MESSAGE(res3 == def,
+                          "3 lookup should find stored definition");
           }
           SUBCASE("lookup different name in same scope") {
             auto res1 = syms.lookup({}, {"foo", "three"});
@@ -414,19 +437,20 @@ TEST_CASE("definition of two") {
           }
           SUBCASE("lookup name in outer scope") {
             auto res1 = syms.lookup({"foo", "b"}, {"two"});
-            CHECK_MESSAGE(res1 == def, "1 lookup should find stored definition");
+            CHECK_MESSAGE(res1 == def,
+                          "1 lookup should find stored definition");
             auto res2 = syms.lookup({"foo", "b", "two"}, {"two"});
-            CHECK_MESSAGE(res2 == def, "2 lookup should find stored definition");
+            CHECK_MESSAGE(res2 == def,
+                          "2 lookup should find stored definition");
           }
         }
-        
+
         SUBCASE("symbol table built by parser") {
           const auto &symbols = p_ctx.symbols;
 
           std::vector<Path> pths = {};
-          symbols.forAll([&pths](auto &pth, auto &def){
-              pths.push_back(pth);
-          });
+          symbols.forAll(
+              [&pths](auto &pth, auto &def) { pths.push_back(pth); });
 
           REQUIRE_MESSAGE(pths.size() == 1, "expect only a single definition");
           REQUIRE_MESSAGE(pths[0].size() == 2, "expect definition of 'two'");
@@ -441,8 +465,8 @@ TEST_CASE("definition of two") {
 TEST_CASE("small function containing calls") {
   Messages msgs;
   Context ctx = {
-    msgs, "nand(a, b) = sequence(And(a, b, c),Free(a),\nFree(b),\nNot(c, c))",
-    "<filename>"};
+      msgs, "nand(a, b) = sequence(And(a, b, c),Free(a),\nFree(b),\nNot(c, c))",
+      "<filename>"};
 
   SUBCASE("tokenize") {
     Tokens toks = lex(ctx);
@@ -456,7 +480,8 @@ TEST_CASE("small function containing calls") {
       INFO(treeS);
       SUBCASE("parse") {
         parser::ParserContext p_ctx(std::move(ctx));
-        auto o_def = parser::parse<std::optional<Definition>>(*tree, p_ctx, parser::parseDefinition);
+        auto o_def = parser::parse<std::optional<Definition>>(
+            *tree, p_ctx, parser::parseDefinition);
         CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(o_def);
         const auto def = *o_def;
@@ -474,9 +499,9 @@ TEST_CASE("small function containing calls") {
 TEST_CASE("small function containing a parenthesized expression") {
   Messages msgs;
   Context ctx = {
-    msgs,
-    "nand5(b) = sequence(And((1,0,1), b, c),Free(a),\nFree(b),\nNot(c, c))",
-    "<filename>"};
+      msgs,
+      "nand5(b) = sequence(And((1,0,1), b, c),Free(a),\nFree(b),\nNot(c, c))",
+      "<filename>"};
 
   SUBCASE("tokenize") {
     Tokens toks = lex(ctx);
@@ -488,7 +513,9 @@ TEST_CASE("small function containing a parenthesized expression") {
       REQUIRE(tree);
       SUBCASE("parse") {
         parser::ParserContext p_ctx(std::move(ctx));
-        std::optional<Definition> def = parser::parse<std::optional<Definition>>(*tree, p_ctx, parser::parseDefinition);
+        std::optional<Definition> def =
+            parser::parse<std::optional<Definition>>(*tree, p_ctx,
+                                                     parser::parseDefinition);
         CHECK_SHOW(msgs.empty(), msgs, ctx);
         CHECK(def);
         CHECK(def->name == "nand5");
@@ -513,7 +540,8 @@ TEST_CASE("small function definition without a parenthesized argument") {
       REQUIRE(tree);
       SUBCASE("parse") {
         parser::ParserContext p_ctx(std::move(ctx));
-        auto opdef = parser::parse<std::optional<Definition>>(*tree, p_ctx, parser::parseDefinition);
+        auto opdef = parser::parse<std::optional<Definition>>(
+            *tree, p_ctx, parser::parseDefinition);
         CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(opdef);
         Definition def = *opdef;
@@ -550,7 +578,8 @@ TEST_CASE("small function definition with a parenthesized argument") {
       REQUIRE(tree);
       SUBCASE("parse") {
         parser::ParserContext p_ctx(std::move(ctx));
-        auto opdef = parser::parse<std::optional<Definition>>(*tree, p_ctx, parser::parseDefinition);
+        auto opdef = parser::parse<std::optional<Definition>>(
+            *tree, p_ctx, parser::parseDefinition);
         CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(opdef);
         Definition def = *opdef;
@@ -586,7 +615,8 @@ TEST_CASE("tuples") {
       CHECK_SHOW(msgs.empty(), msgs, ctx);
       SUBCASE("parse") {
         parser::ParserContext p_ctx(std::move(ctx));
-        auto o_val = parser::parse<std::optional<Value>>(*tree, p_ctx, parser::parseValue);
+        auto o_val = parser::parse<std::optional<Value>>(*tree, p_ctx,
+                                                         parser::parseValue);
         CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(o_val);
         Value val = *o_val;
@@ -619,7 +649,8 @@ TEST_CASE("nested tuples") {
       CHECK_SHOW(msgs.empty(), msgs, ctx);
       SUBCASE("parse") {
         parser::ParserContext p_ctx(std::move(ctx));
-        auto o_val = parser::parse<std::optional<Value>>(*tree, p_ctx, parser::parseValue);
+        auto o_val = parser::parse<std::optional<Value>>(*tree, p_ctx,
+                                                         parser::parseValue);
         CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(o_val);
         Value val = *o_val;
@@ -669,9 +700,8 @@ TEST_CASE("nested tuples") {
 
 TEST_CASE("function with default arguments") {
   Messages msgs;
-  Context ctx = {
-    msgs, "interp(a, b, first=0.5) = a*first+b*(1-first)",
-    "<filename>"};
+  Context ctx = {msgs, "interp(a, b, first=0.5) = a*first+b*(1-first)",
+                 "<filename>"};
 
   SUBCASE("tokenize") {
     Tokens toks = lex(ctx);
@@ -685,7 +715,8 @@ TEST_CASE("function with default arguments") {
       INFO(treeS);
       SUBCASE("parse") {
         parser::ParserContext p_ctx(std::move(ctx));
-        auto o_def = parser::parse<std::optional<Definition>>(*tree, p_ctx, parser::parseDefinition);
+        auto o_def = parser::parse<std::optional<Definition>>(
+            *tree, p_ctx, parser::parseDefinition);
         CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(o_def);
         const auto def = *o_def;
@@ -701,30 +732,33 @@ TEST_CASE("function with default arguments") {
           const auto &symbols = p_ctx.symbols;
 
           std::vector<Path> pths = {};
-          symbols.forAll([&pths](auto &pth, auto &def){
-              pths.push_back(pth);
-          });
+          symbols.forAll(
+              [&pths](auto &pth, auto &def) { pths.push_back(pth); });
 
           const auto pthsStr = show(pths, 0, "\n");
           INFO(pthsStr);
           REQUIRE(pths.size() == 4);
 
-          REQUIRE_MESSAGE(pths[0].size() == 3, "expect definition of '/interp/a'");
+          REQUIRE_MESSAGE(pths[0].size() == 3,
+                          "expect definition of '/interp/a'");
           CHECK(pths[0][0] == "");
           CHECK(pths[0][1] == "interp");
           CHECK(pths[0][2] == "a");
 
-          REQUIRE_MESSAGE(pths[1].size() == 3, "expect definition of '/interp/b'");
+          REQUIRE_MESSAGE(pths[1].size() == 3,
+                          "expect definition of '/interp/b'");
           CHECK(pths[1][0] == "");
           CHECK(pths[1][1] == "interp");
           CHECK(pths[1][2] == "b");
 
-          REQUIRE_MESSAGE(pths[2].size() == 3, "expect definition of '/interp/first'");
+          REQUIRE_MESSAGE(pths[2].size() == 3,
+                          "expect definition of '/interp/first'");
           CHECK(pths[2][0] == "");
           CHECK(pths[2][1] == "interp");
           CHECK(pths[2][2] == "first");
 
-          REQUIRE_MESSAGE(pths[3].size() == 2, "expect definition of '/interp'");
+          REQUIRE_MESSAGE(pths[3].size() == 2,
+                          "expect definition of '/interp'");
           CHECK(pths[3][0] == "");
           CHECK(pths[3][1] == "interp");
         }
@@ -732,5 +766,3 @@ TEST_CASE("function with default arguments") {
     }
   }
 }
-
-
