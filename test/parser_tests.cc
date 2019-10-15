@@ -766,3 +766,73 @@ TEST_CASE("function with default arguments") {
     }
   }
 }
+
+TEST_CASE("function with pre+post definitions") {
+  Messages msgs;
+  Context ctx = {msgs, "increment(x) = {x=y-|x+=1|-x=y+1}",
+                 "<filename>"};
+
+  SUBCASE("tokenize") {
+    Tokens toks = lex(ctx);
+    CHECK_SHOW(msgs.empty(), msgs, ctx);
+
+    SUBCASE("ast") {
+      auto tree = ast::ast(toks, ctx, ast::parseDefinition);
+      CHECK_SHOW(msgs.empty(), msgs, ctx);
+      REQUIRE(tree);
+      std::string treeS = show(*tree, ctx);
+      INFO(treeS);
+      SUBCASE("parse") {
+        parser::ParserContext p_ctx(std::move(ctx));
+        auto o_def = parser::parse<std::optional<Definition>>(
+            *tree, p_ctx, parser::parseDefinition);
+        CHECK_SHOW(msgs.empty(), msgs, ctx);
+        REQUIRE(o_def);
+        const auto def = *o_def;
+        std::string defs = show(def);
+        INFO(defs);
+        CHECK(def.name == "increment");
+        REQUIRE_MESSAGE(def.args.size() == 1, "correct number of args");
+        CHECK(def.args[0].name == "x");
+
+        SUBCASE("symbol table built by parser") {
+          const auto &symbols = p_ctx.symbols;
+
+          std::vector<Path> pths = {};
+          symbols.forAll(
+              [&pths](auto &pth, auto &def) { pths.push_back(pth); });
+
+          const auto pthsStr = show(pths, 0, "\n");
+          INFO(pthsStr);
+          REQUIRE(pths.size() == 4);
+
+          REQUIRE_MESSAGE(pths[0].size() == 3,
+                          "expect definition of '/increment/x'");
+          CHECK(pths[0][0] == "");
+          CHECK(pths[0][1] == "increment");
+          CHECK(pths[0][2] == "x");
+
+          REQUIRE_MESSAGE(pths[1].size() == 4,
+                          "expect definition of '/increment/#pre/x'");
+          CHECK(pths[1][0] == "");
+          CHECK(pths[1][1] == "increment");
+          CHECK(pths[1][2] == "#pre");
+          CHECK(pths[1][3] == "x");
+
+          REQUIRE_MESSAGE(pths[2].size() == 5,
+                          "expect definition of '/increment/#pre/#post/x'");
+          CHECK(pths[2][0] == "");
+          CHECK(pths[2][1] == "increment");
+          CHECK(pths[2][2] == "#pre");
+          CHECK(pths[2][3] == "#post");
+          CHECK(pths[2][4] == "x");
+
+          REQUIRE_MESSAGE(pths[3].size() == 2,
+                          "expect definition of '/increment'");
+          CHECK(pths[3][0] == "");
+          CHECK(pths[3][1] == "increment");
+        }
+      }
+    }
+  }
+}

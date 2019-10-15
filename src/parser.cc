@@ -205,11 +205,18 @@ std::optional<Value> parseValue(Path pth, const Tree<Token> &node,
   int ord = 0;
   for (const auto &child : node.children) {
     const std::string argStr = ctx.getStringAt(child.value.loc);
+    const bool isPre = argStr == "-|";
+    const bool isPost = argStr == "|-";
     if (child.value.type == +TokenType::Operator && argStr == "=") {
       const auto arg = parseDefinition(pth, child, ctx);
       // TODO require arg
       args.push_back(*arg);
     } else {
+      if (isPre) {
+        pth.push_back("#pre");
+      } else if (isPost) {
+        pth.push_back("#post");
+      }
       const auto arg_value = parseValue(pth, child, ctx);
       const std::string name =
           "#" +
