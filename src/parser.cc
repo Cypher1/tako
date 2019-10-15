@@ -205,11 +205,18 @@ std::optional<Value> parseValue(Path pth, const Tree<Token> &node,
   int ord = 0;
   for (const auto &child : node.children) {
     const std::string argStr = ctx.getStringAt(child.value.loc);
+    const bool isPre = argStr == "-|";
+    const bool isPost = argStr == "|-";
     if (child.value.type == +TokenType::Operator && argStr == "=") {
       const auto arg = parseDefinition(pth, child, ctx);
       // TODO require arg
       args.push_back(*arg);
     } else {
+      if (isPre) {
+        pth.push_back("#pre");
+      } else if (isPost) {
+        pth.push_back("#post");
+      }
       const auto arg_value = parseValue(pth, child, ctx);
       const std::string name =
           "#" +
@@ -271,15 +278,16 @@ parseDefinition(Path parentPth, const Tree<Token> &node, ParserContext &ctx) {
       argDef = parseDefinition(pth, child, ctx);
     } else if (child.value.type == +TokenType::Symbol) {
       argDef = Definition(argStr, child.value.loc, {}, std::nullopt);
-      // Add the arg to the symbol table
-      auto argPth = pth;
-      argPth.push_back(argDef->name);
-      ctx.addSymbol(argPth, *argDef);
     }
 
     if (argDef) {
+      // Add the arg to the symbol table
       Definition arg(*argDef);
+
+      auto argPth = pth;
+      argPth.push_back(arg.name);
       args.push_back(arg);
+      ctx.addSymbol(argPth, arg);
     } else {
       ctx.msg(child.value, MessageType::Error, "Expected a definition");
     }
