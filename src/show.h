@@ -23,8 +23,9 @@ std::string show(const DefinitionCore<T> &val, int depth = 0);
 template <typename T>
 std::string show(const ModuleCore<T> &module, int depth = 0);
 
-std::string show(const Location &loc, Context &ctx, int depth);
+std::string show(const Location &loc, Context &ctx, int depth = 0);
 std::string show(const Token &tok, Context &ctx, int depth = 0);
+std::string show(const TokenType &ty, int depth = 0);
 std::string show(const Message &msg, Context &ctx, int depth = 0);
 std::string show(const Tree<Token> &tree, Context &ctx, int depth = 0);
 

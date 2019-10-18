@@ -59,6 +59,13 @@ std::string show(const Location &loc, Context &ctx, int depth) {
   return o.str();
 }
 
+std::string show(const TokenType &ty, int depth) {
+  std::stringstream o;
+  indent(o, depth);
+  o << ty;
+  return o.str();
+}
+
 std::string show(const Token &tok, Context &ctx, int depth) {
   std::stringstream o;
   indent(o, depth);
