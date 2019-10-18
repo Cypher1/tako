@@ -145,7 +145,7 @@ Tokens lex(Context &ctx) {
       ctx.msg(loc, MessageType::InternalError, "Illegal empty token");
     } else if (type == +TokenType::Error) {
       ctx.msg(loc, MessageType::Error, "Unexpected character");
-    } else {
+    } else if (type != +TokenType::WhiteSpace) {
       toks.push_back({type, loc});
     }
     pos += length;
