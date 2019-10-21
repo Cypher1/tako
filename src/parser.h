@@ -48,18 +48,19 @@ public:
   SymbolTable getTable();
 };
 
-std::optional<Value> parseValue(Path pth, const Tree<Token> &node,
+std::optional<Value> parseValue(const Path pth, const Tree<Token> &node,
                                 ParserContext &ctx);
-std::optional<Definition> parseDefinition(Path pth, const Tree<Token> &node,
-                                          ParserContext &ctx);
-Module parseModule(Path pth, const Tree<Token> &node, ParserContext &ctx);
+std::optional<Definition>
+parseDefinition(const Path pth, const Tree<Token> &node, ParserContext &ctx);
+Module parseModule(const Path pth, const Tree<Token> &node, ParserContext &ctx);
 
 template <typename T>
-T parse(const Tree<Token> &node, ParserContext &ctx,
-        std::function<T(Path pth, const Tree<Token> &, ParserContext &ctx)>
-            converter) {
+T parse(
+    const Tree<Token> &node, ParserContext &ctx,
+    std::function<T(const Path pth, const Tree<Token> &, ParserContext &ctx)>
+        converter) {
   ctx.startStep(PassStep::Parse);
-  Path pth;
+  const Path pth;
   return converter(pth, node, ctx);
 }
 
