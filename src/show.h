@@ -29,6 +29,31 @@ std::string show(const TokenType &ty, int depth = 0);
 std::string show(const Message &msg, Context &ctx, int depth = 0);
 std::string show(const Tree<Token> &tree, Context &ctx, int depth = 0);
 
+
+template <typename T>
+std::string show(const std::optional<T> &opt, int depth=0) {
+  std::stringstream o;
+  if (opt) {
+    o << show(*opt, depth);
+  } else {
+    indent(o, depth);
+    o << "std::nullopt";
+  }
+  return o.str();
+}
+
+template <typename T>
+std::string show(const std::optional<T> &opt, Context &ctx, int depth=0) {
+  if (opt) {
+    return show(*opt, ctx, depth);
+  }
+  std::stringstream o;
+  indent(o, depth);
+  o << "std::nullopt";
+  return o.str();
+}
+
+
 template <typename T>
 std::string show(const std::vector<T> &vec, int depth = 0,
                  std::string sep = ", ") {

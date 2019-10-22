@@ -141,6 +141,15 @@ void SymbolTable::forAll(
 }
 
 void ParserContext::addSymbol(const Path &path, const Definition &def) {
+  const auto previous = symbols.lookup({}, path);
+  if (previous) {
+    Context::msg(def.loc, MessageType::Error,
+        "Duplicate definition for "+show(path, 0, "/")+" (found at "+show(previous->loc, *this)+")");
+    Context::msg(def.loc, MessageType::Error,
+        show(def.args, 0, "/"));
+    Context::msg(previous->loc, MessageType::Error,
+        show(previous->args, 0, "/"));
+  }
   symbols.addSymbol(path, def);
 }
 
@@ -198,37 +207,55 @@ void ParserContext::msg(const Token &tok, MessageType level,
 std::optional<Definition> parseDefinition(Path, const Tree<Token> &node,
                                           ParserContext &ctx);
 
-std::optional<Value> parseValue(const Path pth, const Tree<Token> &node,
+std::optional<Value> parseValue(const Path parentPth, const Tree<Token> &node,
                                 ParserContext &ctx) {
   std::string name = ctx.getStringAt(node.value.loc);
   if (name.empty()) { // End of file?
     return std::nullopt;
   }
+  auto pth = parentPth;
+  const bool isPre = node.value.type == +TokenType::PreCond;
+  const bool isPost = node.value.type == +TokenType::PostCond;
+  const bool isQuestionMark = node.value.type == +TokenType::Operator && name=="?";
+  if (isPre) {
+    pth.push_back("#pre");
+  }
+  // Parse the node's arguments.
   std::vector<Definition> args;
   int ord = 0;
-  for (const auto &child : node.children) {
+  for (unsigned int i = 0; i < node.children.size(); i++) {
+    const auto &child = node.children[i];
+    if (isPre) {
+      if (i == node.children.size()-1) {
+        pth.push_back("#0");
+      }
+    } else if (isPost) {
+      if(i != 0) {
+        pth.push_back("#post");
+      }
+    }
+
+    auto currPth = pth;
+    const std::string ord_name = "#" + std::to_string(ord);
+    if (isQuestionMark) {
+      currPth.push_back(ord_name);
+    }
     const std::string argStr = ctx.getStringAt(child.value.loc);
-    const bool isPre = child.value.type == +TokenType::PreCond;
-    const bool isPost = child.value.type == +TokenType::PostCond;
     if (child.value.type == +TokenType::Operator && argStr == "=") {
-      const auto arg = parseDefinition(pth, child, ctx);
+      const auto arg = parseDefinition(currPth, child, ctx);
       // TODO require arg
       args.push_back(*arg);
     } else {
-      auto currPth = pth;
-      if (isPre) {
-        currPth.push_back("#pre");
-      } else if (isPost) {
-        currPth.push_back("#post");
-      }
-      const auto arg_value = parseValue(currPth, child, ctx);
       // TODO(jopra): Look into SSA here.
-      const std::string name =
-          "#" +
-          std::to_string(ord++); // Name the anonymous arg something impossible
-      args.push_back(Definition(name, child.value.loc, {}, arg_value));
+      const auto arg_value = parseValue(currPth, child, ctx);
+      // Name the anonymous arg something impossible
+      args.push_back(Definition(ord_name, child.value.loc, {}, arg_value));
+      // Increment non-kwargs.
+      ord++;
     }
   }
+
+  // Build a call/operation from the arguments
   if (node.value.type == +TokenType::NumberLiteral) {
     return Value(name, node.value.loc, args, AstNodeType::Numeric);
   }
@@ -281,18 +308,17 @@ parseDefinition(Path parentPth, const Tree<Token> &node, ParserContext &ctx) {
     std::optional<Definition> argDef;
     if (child.value.type == +TokenType::Operator && argStr == "=") {
       argDef = parseDefinition(pth, child, ctx);
+      // Note: parseDefinition adds it to the symbol table
     } else if (child.value.type == +TokenType::Symbol) {
+      auto argPth = pth;
+      argPth.push_back(argStr);
       argDef = Definition(argStr, child.value.loc, {}, std::nullopt);
+      ctx.addSymbol(argPth, *argDef);
     }
 
     if (argDef) {
-      // Add the arg to the symbol table
-      Definition arg(*argDef);
-
-      auto argPth = pth;
-      argPth.push_back(arg.name);
-      args.push_back(arg);
-      ctx.addSymbol(argPth, arg);
+      // Add the arg to arguments list
+      args.push_back(*argDef);
     } else {
       ctx.msg(child.value, MessageType::Error, "Expected a definition");
     }

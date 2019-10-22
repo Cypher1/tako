@@ -62,7 +62,7 @@ const fixity nameSpaceF = prefix + 10;
 const fixity bracketF = nameSpaceF + 10;
 
 const std::map<std::string, fixity> infix_binding = {
-    {",", 10},           {"-|", 20},          {"|-", 30},
+    {"-|", 10},          {"|-", 20},          {",", 30},
     {"=", definitionF},  {"+=", definitionF}, {"-=", definitionF},
     {"*=", definitionF}, {"/=", definitionF}, {"&=", definitionF},
     {"|=", definitionF}, {"?", pipeF},        {"<|", pipeF},
@@ -142,31 +142,36 @@ Tree<Token> bracket(const Token &tok, AstContext &ctx) { // Nud
 
   return {tok, inner};
 };
-Forest<Token> simplifyCommasAndParens(Forest<Token> nodes) {
-  Forest<Token> children;
-  for (auto &node : nodes) {
+Tree<Token> simplifyCommasAndParens(const Tree<Token> &raw_root) {
+  Tree<Token> root = Tree<Token>(raw_root.value);
+  for (auto &raw_node : raw_root.children) {
     // Add the children
-    node.children = simplifyCommasAndParens(node.children);
+    auto node = simplifyCommasAndParens(raw_node);
 
     const bool isComma = node.value.type == +TokenType::Comma;
-    const bool isParen = node.value.type == +TokenType::OpenParen;
-    const bool isParenthesizedExpr = isParen && node.children.size() == 1;
-    if (isComma || isParenthesizedExpr) {
+    if (isComma) {
       // Add the children
-      children.insert(children.end(), node.children.begin(),
-                      node.children.end());
+      root.children.insert(root.children.end(), node.children.begin(),
+                           node.children.end());
     } else {
       // Tuple, unit or other expr
       // Add the node
-      children.push_back(node);
+      root.children.push_back(node);
     }
   }
-  return children;
+
+  const bool isParen = root.value.type == +TokenType::OpenParen ||
+                       root.value.type == +TokenType::OpenBrace;
+  const bool isParenthesizedExpr = isParen && root.children.size() == 1;
+  if (isParenthesizedExpr) {
+    return root.children[0]; // simplify parenthesized exprs.
+  }
+
+  return root;
 }
 
 Tree<Token> funcArgs(Tree<Token> left, const Token &tok,
                      AstContext &ctx) { // Led
-  std::vector<Tree<Token>> inner;
   const auto close_it = brackets.find(tok.type);
   if (close_it == brackets.end()) {
     throw std::runtime_error(std::string() + "Unknown bracket type " +
@@ -175,15 +180,15 @@ Tree<Token> funcArgs(Tree<Token> left, const Token &tok,
   const auto closeTT = close_it->second;
   while (ctx.hasToken && (ctx.getCurr().type != closeTT)) {
     auto exp = ast::parseValue(ctx);
-    inner.push_back(exp);
+    left.children.push_back(exp);
   }
   ctx.expect(closeTT);
-  left.children = simplifyCommasAndParens(inner);
-  return left; // This is a function call
+  return simplifyCommasAndParens(left);
 };
 
 std::map<TokenType, TokenTokenEntry> symbolTable = {
     {TokenType::Comma, {operatorBind, infixOp}},
+    {TokenType::QuestionMark, {operatorBind, infixOp}},
     {TokenType::Operator, {operatorBind, prefixOp, infixOp}},
     {TokenType::PreCond, {operatorBind, infixOp}},
     {TokenType::PostCond, {operatorBind, infixOp}},
@@ -290,8 +295,7 @@ Tree<Token> ast::parseValue(AstContext &ctx, unsigned int rbp) {
     left = t_entry.led(left, t, ctx);
     binding = ctx.entry().binding(ctx.getCurr(), ctx);
   }
-  left.children = simplifyCommasAndParens(left.children);
-  return left;
+  return simplifyCommasAndParens(left);
 }
 
 Tree<Token> ast::parseModule(AstContext &ctx, unsigned int rbp) {
