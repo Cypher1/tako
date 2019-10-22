@@ -59,7 +59,7 @@ TEST_CASE("non-empty file") {
   SUBCASE("tokenize") {
     Tokens toks = lex(ctx);
     CHECK_SHOW(msgs.empty(), msgs, ctx);
-    CHECK_FALSE(toks.empty());
+    CHECK(toks.empty());
     SUBCASE("ast") {
       auto tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK_SHOW(msgs.empty(), msgs, ctx);
@@ -230,12 +230,10 @@ TEST_CASE("simple expressions") {
   SUBCASE("tokenize") {
     Tokens toks = lex(ctx);
     CHECK_SHOW(msgs.empty(), msgs, ctx);
-    REQUIRE(toks.size() == 5);
+    REQUIRE(toks.size() == 3);
     CHECK(toks[0].type == +TokenType::Symbol);
-    CHECK(toks[1].type == +TokenType::WhiteSpace);
-    CHECK(toks[2].type == +TokenType::Operator);
-    CHECK(toks[3].type == +TokenType::WhiteSpace);
-    CHECK(toks[4].type == +TokenType::NumberLiteral);
+    CHECK(toks[1].type == +TokenType::Operator);
+    CHECK(toks[2].type == +TokenType::NumberLiteral);
     SUBCASE("ast") {
       auto tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK_SHOW(msgs.empty(), msgs, ctx);
@@ -257,12 +255,10 @@ TEST_CASE("simple expressions") {
   SUBCASE("tokenize") {
     Tokens toks = lex(ctx);
     CHECK_SHOW(msgs.empty(), msgs, ctx);
-    REQUIRE(toks.size() == 5);
+    REQUIRE(toks.size() == 3);
     CHECK(toks[0].type == +TokenType::NumberLiteral);
-    CHECK(toks[1].type == +TokenType::WhiteSpace);
-    CHECK(toks[2].type == +TokenType::Operator);
-    CHECK(toks[3].type == +TokenType::WhiteSpace);
-    CHECK(toks[4].type == +TokenType::Symbol);
+    CHECK(toks[1].type == +TokenType::Operator);
+    CHECK(toks[2].type == +TokenType::Symbol);
     SUBCASE("ast") {
       auto tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK_SHOW(msgs.empty(), msgs, ctx);
@@ -284,14 +280,12 @@ TEST_CASE("simple expressions with calls") {
   SUBCASE("tokenize") {
     Tokens toks = lex(ctx);
     CHECK_SHOW(msgs.empty(), msgs, ctx);
-    REQUIRE(toks.size() == 7);
+    REQUIRE(toks.size() == 5);
     CHECK(toks[0].type == +TokenType::NumberLiteral);
-    CHECK(toks[1].type == +TokenType::WhiteSpace);
-    CHECK(toks[2].type == +TokenType::Operator);
-    CHECK(toks[3].type == +TokenType::WhiteSpace);
-    CHECK(toks[4].type == +TokenType::Symbol);
-    CHECK(toks[5].type == +TokenType::OpenParen);
-    CHECK(toks[6].type == +TokenType::CloseParen);
+    CHECK(toks[1].type == +TokenType::Operator);
+    CHECK(toks[2].type == +TokenType::Symbol);
+    CHECK(toks[3].type == +TokenType::OpenParen);
+    CHECK(toks[4].type == +TokenType::CloseParen);
 
     SUBCASE("ast") {
       auto tree = ast::ast(toks, ctx, ast::parseValue);
@@ -313,18 +307,15 @@ TEST_CASE("simple expressions with calls with arguments") {
 
   SUBCASE("tokenize") {
     Tokens toks = lex(ctx);
-    REQUIRE(toks.size() == 11);
+    REQUIRE(toks.size() == 8);
     CHECK(toks[0].type == +TokenType::NumberLiteral);
-    CHECK(toks[1].type == +TokenType::WhiteSpace);
-    CHECK(toks[2].type == +TokenType::Operator);
-    CHECK(toks[3].type == +TokenType::WhiteSpace);
+    CHECK(toks[1].type == +TokenType::Operator);
+    CHECK(toks[2].type == +TokenType::Symbol);
+    CHECK(toks[3].type == +TokenType::OpenParen);
     CHECK(toks[4].type == +TokenType::Symbol);
-    CHECK(toks[5].type == +TokenType::OpenParen);
-    CHECK(toks[6].type == +TokenType::Symbol);
-    CHECK(toks[7].type == +TokenType::Comma);
-    CHECK(toks[8].type == +TokenType::WhiteSpace);
-    CHECK(toks[9].type == +TokenType::NumberLiteral);
-    CHECK(toks[10].type == +TokenType::CloseParen);
+    CHECK(toks[5].type == +TokenType::Comma);
+    CHECK(toks[6].type == +TokenType::NumberLiteral);
+    CHECK(toks[7].type == +TokenType::CloseParen);
     CHECK_SHOW(msgs.empty(), msgs, ctx);
 
     SUBCASE("ast") {
@@ -353,14 +344,12 @@ TEST_CASE("simple expressions with parenthesis") {
 
   SUBCASE("tokenize") {
     Tokens toks = lex(ctx);
-    REQUIRE(toks.size() == 7);
+    REQUIRE(toks.size() == 5);
     CHECK(toks[0].type == +TokenType::OpenParen);
     CHECK(toks[1].type == +TokenType::NumberLiteral);
-    CHECK(toks[2].type == +TokenType::WhiteSpace);
-    CHECK(toks[3].type == +TokenType::Operator);
-    CHECK(toks[4].type == +TokenType::WhiteSpace);
-    CHECK(toks[5].type == +TokenType::Symbol);
-    CHECK(toks[6].type == +TokenType::CloseParen);
+    CHECK(toks[2].type == +TokenType::Operator);
+    CHECK(toks[3].type == +TokenType::Symbol);
+    CHECK(toks[4].type == +TokenType::CloseParen);
     CHECK_SHOW(msgs.empty(), msgs, ctx);
 
     SUBCASE("ast") {
