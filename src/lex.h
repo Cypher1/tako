@@ -10,6 +10,7 @@
 
 BETTER_ENUM(TokenType, char, OpenParen, CloseParen, OpenBrace, CloseBrace,
             OpenBracket, CloseBracket, SemiColon, PreCond, PostCond,
+            QuestionMark,
             // SingleQuote,
             // DoubleQuote,
             // BackQuote,
