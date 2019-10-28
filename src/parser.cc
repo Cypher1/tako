@@ -216,7 +216,7 @@ std::optional<Value> parseValue(const Path parentPth, const Tree<Token> &node,
   auto pth = parentPth;
   const bool isPre = node.value.type == +TokenType::PreCond;
   const bool isPost = node.value.type == +TokenType::PostCond;
-  const bool isQuestionMark = node.value.type == +TokenType::Operator && name=="?";
+  const bool isQuestionMark = node.value.type == +TokenType::QuestionMark;
   if (isPre) {
     pth.push_back("#pre");
   }
@@ -264,6 +264,7 @@ std::optional<Value> parseValue(const Path parentPth, const Tree<Token> &node,
   }
   if ((node.value.type == +TokenType::Symbol) ||
       (node.value.type == +TokenType::Operator) ||
+      (node.value.type == +TokenType::QuestionMark) ||
       (node.value.type == +TokenType::PreCond) ||
       (node.value.type == +TokenType::PostCond) ||
       (node.value.type == +TokenType::OpenBrace) ||

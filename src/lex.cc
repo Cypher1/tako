@@ -27,6 +27,7 @@ const std::vector<std::pair<std::string, TokenType>> matchToken = {
     {"[", TokenType::OpenBracket},
     {"]", TokenType::CloseBracket},
     {";", TokenType::SemiColon},
+    {"?", TokenType::QuestionMark},
     // {"'", TokenType::SingleQuote},
     // {"\"", TokenType::DoubleQuote},
     // {"`", TokenType::BackQuote},

@@ -103,6 +103,18 @@ Tree<Token> prefixOp(const Token &tok, AstContext &ctx) {
   return root;
 };
 
+Tree<Token> infixROp(Tree<Token> left, const Token &tok, AstContext &ctx) {
+  auto root = Tree<Token>(tok, {left});
+  // Led
+  auto p_it = infix_binding.find(ctx.context.getStringAt(tok.loc));
+  if (p_it == infix_binding.end()) {
+    ctx.msg(MessageType::Error, "Unknown infix operator");
+  };
+  auto right = ast::parseValue(ctx, p_it->second-1);
+  root.children.push_back(right);
+  return root;
+};
+
 Tree<Token> infixOp(Tree<Token> left, const Token &tok, AstContext &ctx) {
   auto root = Tree<Token>(tok, {left});
   // Led
@@ -186,9 +198,9 @@ Tree<Token> funcArgs(Tree<Token> left, const Token &tok,
   return simplifyCommasAndParens(left);
 };
 
-std::map<TokenType, TokenTokenEntry> symbolTable = {
+std::map<TokenType, TokenTableEntry> tokenTable = {
     {TokenType::Comma, {operatorBind, infixOp}},
-    {TokenType::QuestionMark, {operatorBind, infixOp}},
+    {TokenType::QuestionMark, {operatorBind, infixROp}},
     {TokenType::Operator, {operatorBind, prefixOp, infixOp}},
     {TokenType::PreCond, {operatorBind, infixOp}},
     {TokenType::PostCond, {operatorBind, infixOp}},
@@ -263,12 +275,12 @@ std::string AstContext::getCurrString() const {
   return context.getStringAt(getCurr().loc);
 }
 
-const TokenTokenEntry AstContext::entry() {
+const TokenTableEntry AstContext::entry() {
   auto t = getCurr();
-  const auto symbol_it = symbolTable.find(t.type);
-  if (symbol_it == symbolTable.end()) {
+  const auto symbol_it = tokenTable.find(t.type);
+  if (symbol_it == tokenTable.end()) {
     throw std::runtime_error(std::string() + t.type._to_string() + +" '" +
-                             getCurrString() + "' not found in symbol table");
+                             getCurrString() + "' not found in token table");
   }
   return symbol_it->second;
 }

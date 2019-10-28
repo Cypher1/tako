@@ -16,7 +16,7 @@
 const Token eofToken = {TokenType::Error, errorLocation};
 const Token errorToken = {TokenType::Error, errorLocation};
 
-class TokenTokenEntry;
+class TokenTableEntry;
 
 class AstContext {
 public:
@@ -33,7 +33,7 @@ public:
   bool next();
   bool expect(const TokenType &expected);
   const Token &getCurr() const;
-  const TokenTokenEntry entry();
+  const TokenTableEntry entry();
   std::string getCurrString() const;
 
   void msg(MessageType level, std::string msg_txt);
@@ -57,17 +57,17 @@ Tree<Token> parserLogicErrorLeft(Tree<Token>, const Token &tok,
                            show(tok, ctx.context));
 };
 
-class TokenTokenEntry {
+class TokenTableEntry {
 public:
   leftBindingPowerType binding; // lbp
   const parseInitType nud;
   const parseLeftType led;
 
-  TokenTokenEntry(const leftBindingPowerType binding, const parseLeftType led)
-      : TokenTokenEntry(binding, parserLogicErrorInit, led) {}
-  TokenTokenEntry(const leftBindingPowerType binding, const parseInitType nud)
-      : TokenTokenEntry(binding, nud, parserLogicErrorLeft) {}
-  TokenTokenEntry(const leftBindingPowerType binding, const parseInitType nud,
+  TokenTableEntry(const leftBindingPowerType binding, const parseLeftType led)
+      : TokenTableEntry(binding, parserLogicErrorInit, led) {}
+  TokenTableEntry(const leftBindingPowerType binding, const parseInitType nud)
+      : TokenTableEntry(binding, nud, parserLogicErrorLeft) {}
+  TokenTableEntry(const leftBindingPowerType binding, const parseInitType nud,
                   const parseLeftType led)
       : binding{binding}, nud{nud}, led{led} {}
 };
