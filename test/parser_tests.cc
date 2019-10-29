@@ -953,7 +953,7 @@ TEST_CASE("function with post definitions") {
 
 TEST_CASE("function multiple pre sections") {
   Messages msgs;
-  Context ctx = {msgs, "is_even(x) = {x=0-|1}?{x=1-|0}?{x=y+2-|is_even(y)}",
+  Context ctx = {msgs, "is_even(x) = {x=0-|1}?{x=1-|0}?{y=x-2-|is_even(y)}",
                  "<filename>"};
 
   SUBCASE("tokenize") {
@@ -976,8 +976,6 @@ TEST_CASE("function multiple pre sections") {
         REQUIRE_MESSAGE(def.args.size() == 1, "correct number of args");
         CHECK(def.args[0].name == "x");
 
-        std::cerr << show(tree, ctx) << "\n";
-
         SUBCASE("symbol table built by parser") {
           const auto &symbols = p_ctx.symbols;
 
@@ -990,15 +988,18 @@ TEST_CASE("function multiple pre sections") {
           CHECK_ALL_MESSAGE(pths[0], std::vector({"", "is_even", "x"}),
                             "expect definition of '/is_even/x'");
 
-            CHECK_ALL_MESSAGE(pths[1], std::vector<std::string>(
-                                  {"", "is_even", "#0", "#0", "#pre", "x"}),
-                              "expect definition of '/is_even/#0/#0/#pre/x'");
-            CHECK_ALL_MESSAGE(pths[2], std::vector<std::string>(
-                                  {"", "is_even", "#0", "#1", "#pre", "x"}),
-                              "expect definition of '/is_even/#0/#1/#pre/x'");
-            CHECK_ALL_MESSAGE(pths[3], std::vector<std::string>(
-                                  {"", "is_even", "#1", "#pre", "x"}),
-                              "expect definition of '/is_even/#1/#pre/x'");
+          CHECK_ALL_MESSAGE(pths[1], std::vector<std::string>(
+                                {"", "is_even", "#0", "#pre", "x"}),
+                            "expect definition of '/is_even/#0/#pre/x'");
+          CHECK_ALL_MESSAGE(pths[2], std::vector<std::string>(
+                                {"", "is_even", "#1", "#0", "#pre", "x"}),
+                            "expect definition of '/is_even/#1/#0/#pre/x'");
+          CHECK_ALL_MESSAGE(pths[3], std::vector<std::string>(
+                                {"", "is_even", "#1", "#1", "#pre", "y"}),
+                            "expect definition of '/is_even/#1/#1/#pre/y'");
+          CHECK_ALL_MESSAGE(pths[4], std::vector<std::string>(
+                                {"", "is_even"}),
+                            "expect definition of '/is_even'");
         }
       }
     }
