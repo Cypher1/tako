@@ -23,6 +23,13 @@ std::optional<Tree<Token>> getTree(Context &ctx) {
     return tree;
 }
 
+void finish(parser::ParserContext& ctx) {
+  for (const auto msg : ctx.getMsgs()) {
+    std::cerr << show(msg, ctx, 2) << "\n";
+  }
+  ctx.getMsgs() = {}; // Clear out the message log.
+}
+
 void runCompilerInteractive(Context &ctx) {
   try {
     auto tree = getTree(ctx);
@@ -62,14 +69,10 @@ void runCompilerInteractive(Context &ctx) {
     if (p_ctx.done()) {
       return;
     }
+    finish(p_ctx);
   } catch (const std::runtime_error &er) {
     std::cerr << "Parser crashed with: " << er.what() << "\n";
   }
-
-  for (const auto msg : ctx.getMsgs()) {
-    std::cerr << show(msg, ctx, 2) << "\n";
-  }
-  ctx.getMsgs() = {}; // Clear out the message log.
 }
 
 void runCompiler(Context &ctx) {
@@ -98,12 +101,9 @@ void runCompiler(Context &ctx) {
     }
 
     // TODO: Code gen (no biggy)
+    finish(p_ctx);
   } catch (const std::runtime_error &er) {
     std::cerr << "Parser crashed with: " << er.what() << "\n";
   }
 
-  for (const auto msg : ctx.getMsgs()) {
-    std::cerr << show(msg, ctx, 2) << "\n";
-  }
-  ctx.getMsgs() = {}; // Clear out the message log.
 }
