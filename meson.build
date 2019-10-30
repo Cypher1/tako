@@ -3,7 +3,7 @@ project('tako', 'cpp',
   version : '1.0.0',
   license : 'MIT')
 
-add_global_arguments('-g', language : 'cpp')
+add_global_arguments(language : 'cpp')
 
 conf_data = configuration_data()
 conf_data.set('version', meson.project_version())

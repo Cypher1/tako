@@ -11,12 +11,8 @@
 #include <vector>
 
 #include "src/arg_parser.h"
-#include "src/ast.h"
-#include "src/checker.h"
-#include "src/eval.h"
-#include "src/parser.h"
-#include "src/show.h"
-#include "src/takoConfig.h"
+#include "src/compile.h"
+#include "takoConfig.h"
 #include "util.h"
 
 const std::vector<Arg> args = {
@@ -27,12 +23,10 @@ const std::vector<Arg> args = {
     {'i', "interactive", "Run interpreter.", ""},
     {'s', "step", "Stop after this step.", "last"},
 };
-void runCompiler(Context &ctx);
-void runCompilerInteractive(Context &ctx);
 
-void info() {
+void takoInfo() {
   std::cerr << "tako - version " << VERSION_STR << "\n";
-  std::cerr << "A compiler for ergonomic software verification\n";
+  std::cerr << "An experimental compiler for ergonomic software verification\n";
 }
 
 int main(int argc, char *argv[]) {
@@ -57,7 +51,7 @@ int main(int argc, char *argv[]) {
 
   if (argc < 2 || values.find("help") != values.end() ||
       values.find("version") != values.end()) {
-    info();
+    takoInfo();
 
     if (argc >= 2 && values.find("help") == values.end()) {
       return 1;
@@ -100,14 +94,10 @@ int main(int argc, char *argv[]) {
     Context ctx(msgs, contents, filename, PassStep::Init, last_step, config);
 
     runCompiler(ctx);
-    for (const auto msg : ctx.getMsgs()) {
-      std::cerr << show(msg, ctx, 2) << "\n";
-    }
-    msgs = {}; // Clear out the message log.
   }
 
   if (values.find("interactive") != values.end()) {
-    info();
+    takoInfo();
     std::string line;
     while (true) {
       std::cerr << "> ";
@@ -118,117 +108,8 @@ int main(int argc, char *argv[]) {
       Context ctx(msgs, line, "stdin", PassStep::Init, last_step, config);
       // TODO: Run for a definition?
       runCompilerInteractive(ctx);
-      for (const auto msg : ctx.getMsgs()) {
-        std::cerr << show(msg, ctx, 2) << "\n";
-      }
-      msgs = {}; // Clear out the message log.
     }
   }
 
   return 0;
-}
-
-void runCompilerInteractive(Context &ctx) {
-  try {
-    if (ctx.done()) {
-      return;
-    }
-
-    Tokens toks = lex(ctx);
-    if (ctx.done()) {
-      std::cerr << "Lexed " << toks.size() << " tokens.\n";
-      std::cerr << show(toks, ctx) << "\n";
-      return;
-    }
-
-    std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
-    if (!tree) {
-      return;
-    }
-    if (ctx.done()) {
-      std::cerr << show(*tree, ctx) << "\n";
-      return;
-    }
-
-    parser::ParserContext p_ctx(std::move(ctx));
-    std::optional<Value> o_val =
-        parser::parse<std::optional<Value>>(*tree, p_ctx, parser::parseValue);
-    if (!o_val) {
-      std::cerr << "Parse Failed\n";
-      return;
-    }
-    if (ctx.done()) {
-      std::cerr << show(*o_val) << "\n";
-      for (const auto msg : ctx.getMsgs()) {
-        std::cerr << show(msg, ctx, 2) << "\n";
-      }
-      return;
-    }
-    auto val = *o_val;
-    CheckedValue checked = check(val, ctx);
-    if (ctx.done()) {
-      std::cerr << show(checked) << "\n";
-      return;
-    }
-
-    // TODO
-    const auto res = eval(val);
-    if (std::holds_alternative<int>(res)) {
-      std::cout << std::get<int>(res) << "\n";
-    } else {
-      std::cout << std::get<std::string>(res) << "\n";
-    }
-
-    if (ctx.done()) {
-      return;
-    }
-  } catch (const std::runtime_error &er) {
-    std::cerr << "Parser crashed with: " << er.what() << "\n";
-  }
-}
-
-void runCompiler(Context &ctx) {
-  try {
-    if (ctx.done()) {
-      return;
-    }
-
-    Tokens toks = lex(ctx);
-    if (ctx.done()) {
-      std::cerr << "Lexed " << toks.size() << " tokens.\n";
-      std::cerr << show(toks, ctx) << "\n";
-      return;
-    }
-
-    std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseModule);
-    if (!tree) {
-      return;
-    }
-    if (ctx.done()) {
-      std::cerr << show(*tree, ctx) << "\n";
-      return;
-    }
-
-    parser::ParserContext p_ctx(std::move(ctx));
-    Module module = parser::parse<Module>(*tree, p_ctx, parser::parseModule);
-    if (p_ctx.done()) {
-      auto &symbs = p_ctx.symbols;
-      symbs.forAll([](Path &context, Definition &def) {
-        std::cerr << "path: " << show(context, 0, "/") << "\n";
-        std::cerr << "def: " << show(def) << "\n";
-      });
-      // std::cerr << show(module, 0) << "\n";
-      return;
-    }
-
-    CheckedModule checked = check(module, p_ctx);
-    if (p_ctx.done()) {
-      std::cerr << show(checked) << "\n";
-      return;
-    }
-
-    // TODO: Code gen (no biggy)
-  } catch (const std::runtime_error &er) {
-    std::cerr << "Parser crashed with: " << er.what() << "\n";
-  }
 }
