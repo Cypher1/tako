@@ -16,6 +16,31 @@ std::string repeat(int n, std::string rep) {
   return o.substr(0, rep.length() * n);
 }
 
+template<typename T>
+bool require2(const std::vector<T>& val) {
+  return val.size() == 2;
+}
+
+template<typename T, typename U, typename R, typename Holder>
+std::optional<R> simpleOperator(std::vector<Holder> vals, std::function<R(T, U)> f) {
+  // TODO: require 2.
+  auto x = vals[0];
+  auto y = vals[1];
+  if (!std::holds_alternative<T>(x)) {
+    return std::nullopt;
+  }
+  if (!std::holds_alternative<U>(y)) {
+    return std::nullopt;
+  }
+  return f(std::get<T>(x), std::get<U>(y));
+}
+
+template<typename T>
+T add(T x, T y) { return x + y; }
+
+template<typename T>
+T mult(T x, T y) { return x * y; }
+
 Prim eval(Value val) {
   std::cerr << "Eval (" << show(val) << ")\n";
   // TODO: Eval
@@ -38,38 +63,32 @@ Prim eval(Value val) {
         return "Missing value for arg in !!! " + val.name;
       }
     }
+    if (!require2(values)) {
+      return "Expected two arguments at !!! " + val.name;
+    }
     if (val.name == "+") {
       // Require two args for now?
-      if (std::holds_alternative<int>(values[0]) &&
-          std::holds_alternative<int>(values[1])) {
-        return std::get<int>(values[0]) + std::get<int>(values[1]);
+      if (auto v = simpleOperator<int, int, int>(values, add<int>)) {
+        return *v;
       }
-      if (std::holds_alternative<std::string>(values[0]) &&
-          std::holds_alternative<std::string>(values[1])) {
-        return std::get<std::string>(values[0]) +
-               std::get<std::string>(values[1]);
+      if (auto v = simpleOperator<std::string, std::string, std::string>(values, add<std::string>)) {
+        return *v;
       }
       return "Unexpected types at (+) !!! " + val.name;
     } else if (val.name == "*") {
       // Require two args for now?
-      if (std::holds_alternative<int>(values[0]) &&
-          std::holds_alternative<int>(values[1])) {
-        return std::get<int>(values[0]) * std::get<int>(values[1]);
+      if (auto v = simpleOperator<int, int, int>(values, mult<int>)) {
+        return *v;
       }
-      if (std::holds_alternative<int>(values[1]) &&
-          std::holds_alternative<std::string>(values[0])) {
-        return repeat(std::get<int>(values[1]),
-                      std::get<std::string>(values[0]));
+      if (auto v = simpleOperator<int, std::string, std::string>(std::vector({values[1], values[0]}), repeat)) {
+        return *v;
       }
-      if (std::holds_alternative<int>(values[0]) &&
-          std::holds_alternative<std::string>(values[1])) {
-        return repeat(std::get<int>(values[0]),
-                      std::get<std::string>(values[1]));
+      if (auto v = simpleOperator<int, std::string, std::string>(values, repeat)) {
+        return *v;
       }
       return "Unexpected types at (*) !!! " + val.name;
-    } else {
-      return "Unknown symbol !!! " + val.name;
     }
+    return "Unknown symbol !!! " + val.name;
   }
   return "OH NO!!! " + val.name;
 }
