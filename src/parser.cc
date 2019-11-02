@@ -282,12 +282,12 @@ parseDefinition(Path parentPth, const Tree<Token> &node, ParserContext &ctx) {
   std::string op = ctx.getStringAt(node.value.loc);
   if (node.value.type != +TokenType::Operator || op != "=") {
     // TODO msg conditionally
-    ctx.msg(node.value, MessageType::Error, "Expected definition");
+    ctx.msg(node.value, MessageType::Error, "Expected definition but found expression");
     return std::nullopt;
   }
   if (node.children.empty()) {
     // TODO msg conditionally
-    ctx.msg(node.value, MessageType::Error, "Expected definition");
+    ctx.msg(node.value, MessageType::Error, "Expected definition but found = without arguments");
     return std::nullopt;
   }
   const auto &fst = node.children[0];
