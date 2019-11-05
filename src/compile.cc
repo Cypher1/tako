@@ -59,7 +59,7 @@ void runCompilerInteractive(Context &ctx) {
     }
 
     // TODO
-    const auto res = eval(val);
+    const auto res = eval(val, p_ctx);
     if (std::holds_alternative<int>(res)) {
       std::cout << std::get<int>(res) << "\n";
     } else {

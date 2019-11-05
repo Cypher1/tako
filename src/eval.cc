@@ -1,12 +1,19 @@
+#include <functional>
 #include <iostream>
+#include <optional>
+#include <ostream>
 #include <string>
 #include <variant>
 
 #include "ast.h"
 #include "eval.h"
+#include "parser.h"
 #include "show.h"
 
-using Prim = std::variant<int, std::string>;
+std::ostream& operator<<(std::ostream& o, const PrimError e) {
+  o << e.msg << "\n";
+  return o;
+}
 
 std::string repeat(int n, std::string rep) {
   std::string o = rep;
@@ -16,33 +23,56 @@ std::string repeat(int n, std::string rep) {
   return o.substr(0, rep.length() * n);
 }
 
-template<typename T>
-bool require2(const std::vector<T>& val) {
-  return val.size() == 2;
-}
-
-template<typename T, typename U, typename R, typename Holder>
-std::optional<R> simpleOperator(std::vector<Holder> vals, std::function<R(T, U)> f) {
-  // TODO: require 2.
-  auto x = vals[0];
-  auto y = vals[1];
-  if (!std::holds_alternative<T>(x)) {
-    return std::nullopt;
-  }
-  if (!std::holds_alternative<U>(y)) {
-    return std::nullopt;
-  }
-  return f(std::get<T>(x), std::get<U>(y));
+std::string repeatR(std::string rep, int n) {
+  return repeat(n, rep);
 }
 
 template<typename T>
-T add(T x, T y) { return x + y; }
+Prim add(T x, T y) { return x + y; }
 
 template<typename T>
-T mult(T x, T y) { return x * y; }
+Prim mult(T x, T y) { return x * y; }
 
-Prim eval(Value val) {
-  std::cerr << "Eval (" << show(val) << ")\n";
+TryPrim require(const Pred req, const TryPrim cont) {
+  return [=]() -> OptPrim {
+    if (req()) {
+      return cont();
+    }
+    return std::nullopt;
+  };
+}
+
+TryPrim tryEach(const TryPrims fs, const PrimError msg) {
+  return [=]() -> OptPrim {
+    for (const auto& f : fs) {
+      const OptPrim v = f();
+      if (v) {
+        return v;
+      }
+    }
+    return Prim(msg);
+  };
+}
+
+template<typename T, typename U>
+TryPrim operator2(const std::string name, const Prims vals, const std::function<Prim(T, U)> f) {
+    if (vals.size() != 2) {
+      return [name](){ return PrimError("Expected two arguments at !!! " + name);};
+    }
+  return [vals, f]() -> OptPrim {
+    auto x = vals[0];
+    if (!std::holds_alternative<T>(x)) {
+      return std::nullopt;
+    }
+    auto y = vals[1];
+    if (!std::holds_alternative<U>(y)) {
+      return std::nullopt;
+    }
+    return f(std::get<T>(x), std::get<U>(y));
+  };
+}
+
+Prim eval(Value val, parser::ParserContext& p_ctx) {
   // TODO: Eval
   if (val.node_type == AstNodeType::Text) {
     // Get the text
@@ -55,40 +85,39 @@ Prim eval(Value val) {
   if (val.node_type == AstNodeType::Symbol) {
     // Look up the symbol
     const std::vector<Definition> args = val.args;
+
     std::vector<Prim> values;
     for (const auto &arg : args) {
       if (arg.value) {
-        values.push_back(eval(*arg.value));
+        values.push_back(eval(*arg.value, p_ctx));
       } else {
         return "Missing value for arg in !!! " + val.name;
       }
     }
-    if (!require2(values)) {
-      return "Expected two arguments at !!! " + val.name;
+
+    const TryPrim adders =
+      require(
+          [val]{return val.name == "+";},
+          tryEach({
+            operator2<int, int>("+", values, add<int>),
+            operator2<std::string, std::string>("+", values, add<std::string>)
+            }, "Unexpected types at (+) !!! " + val.name)
+          );
+
+    const TryPrim mults =
+      require(
+          [val]{return val.name == "*";},
+          tryEach({
+            operator2<int, int>("*", values, mult<int>),
+            operator2<std::string, int>("*", values, repeatR),
+            operator2<int, std::string>("*", values, repeat)
+            }, "Unexpected types at (*) !!! " + val.name)
+          );
+
+    const OptPrim v = tryEach({adders, mults}, "Unknown symbol !!! " + val.name)();
+    if (v) {
+      return *v;
     }
-    if (val.name == "+") {
-      // Require two args for now?
-      if (auto v = simpleOperator<int, int, int>(values, add<int>)) {
-        return *v;
-      }
-      if (auto v = simpleOperator<std::string, std::string, std::string>(values, add<std::string>)) {
-        return *v;
-      }
-      return "Unexpected types at (+) !!! " + val.name;
-    } else if (val.name == "*") {
-      // Require two args for now?
-      if (auto v = simpleOperator<int, int, int>(values, mult<int>)) {
-        return *v;
-      }
-      if (auto v = simpleOperator<int, std::string, std::string>(std::vector({values[1], values[0]}), repeat)) {
-        return *v;
-      }
-      if (auto v = simpleOperator<int, std::string, std::string>(values, repeat)) {
-        return *v;
-      }
-      return "Unexpected types at (*) !!! " + val.name;
-    }
-    return "Unknown symbol !!! " + val.name;
   }
   return "OH NO!!! " + val.name;
 }

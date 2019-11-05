@@ -60,7 +60,8 @@ TEST_CASE("a numeric literal") {
   Value num = getValue(msgs, ctx);
 
   SUBCASE("eval") {
-    auto val = eval(num);
+    parser::ParserContext p_ctx{std::move(ctx)};
+    auto val = eval(num, p_ctx);
     REQUIRE(std::holds_alternative<int>(val));
     REQUIRE(std::get<int>(val) == 12);
   }
@@ -68,14 +69,29 @@ TEST_CASE("a numeric literal") {
 
 TEST_CASE("a sum of two numeric literal") {
   Messages msgs;
-  Context ctx = {msgs, "1+2", "<filename>"};
+  Context ctx = {msgs, "2+3", "<filename>"};
 
   Value num = getValue(msgs, ctx);
 
   SUBCASE("eval") {
-    auto val = eval(num);
+    parser::ParserContext p_ctx{std::move(ctx)};
+    auto val = eval(num, p_ctx);
     REQUIRE(std::holds_alternative<int>(val));
-    REQUIRE(std::get<int>(val) == 3);
+    REQUIRE(std::get<int>(val) == 5);
+  }
+}
+
+TEST_CASE("a mult of two numeric literal") {
+  Messages msgs;
+  Context ctx = {msgs, "2*3", "<filename>"};
+
+  Value num = getValue(msgs, ctx);
+
+  SUBCASE("eval") {
+    parser::ParserContext p_ctx{std::move(ctx)};
+    auto val = eval(num, p_ctx);
+    REQUIRE(std::holds_alternative<int>(val));
+    REQUIRE(std::get<int>(val) == 6);
   }
 }
 
@@ -86,7 +102,8 @@ TEST_CASE("a sum of three numeric literal") {
   Value num = getValue(msgs, ctx);
 
   SUBCASE("eval") {
-    auto val = eval(num);
+    parser::ParserContext p_ctx{std::move(ctx)};
+    auto val = eval(num, p_ctx);
     REQUIRE(std::holds_alternative<int>(val));
     REQUIRE(std::get<int>(val) == 6);
   }
@@ -99,7 +116,8 @@ TEST_CASE("a expression with three numeric literal") {
   Value num = getValue(msgs, ctx);
 
   SUBCASE("eval") {
-    auto val = eval(num);
+    parser::ParserContext p_ctx{std::move(ctx)};
+    auto val = eval(num, p_ctx);
     REQUIRE(std::holds_alternative<int>(val));
     REQUIRE(std::get<int>(val) == 7);
   }
@@ -112,7 +130,8 @@ TEST_CASE("a expression with three numeric literal") {
   Value num = getValue(msgs, ctx);
 
   SUBCASE("eval") {
-    auto val = eval(num);
+    parser::ParserContext p_ctx{std::move(ctx)};
+    auto val = eval(num, p_ctx);
     REQUIRE(std::holds_alternative<int>(val));
     REQUIRE(std::get<int>(val) == 9);
   }
@@ -125,7 +144,8 @@ TEST_CASE("a string literal") {
   Value num = getValue(msgs, ctx);
 
   SUBCASE("eval") {
-    auto val = eval(num);
+    parser::ParserContext p_ctx{std::move(ctx)};
+    auto val = eval(num, p_ctx);
     REQUIRE(std::holds_alternative<std::string>(val));
     REQUIRE(std::get<std::string>(val) == "abc");
   }
@@ -138,7 +158,8 @@ TEST_CASE("an expression with string literals") {
   Value num = getValue(msgs, ctx);
 
   SUBCASE("eval") {
-    auto val = eval(num);
+    parser::ParserContext p_ctx{std::move(ctx)};
+    auto val = eval(num, p_ctx);
     REQUIRE(std::holds_alternative<std::string>(val));
     REQUIRE(std::get<std::string>(val) == "abcdef");
   }
@@ -151,7 +172,8 @@ TEST_CASE("an expression with string literals") {
   Value num = getValue(msgs, ctx);
 
   SUBCASE("eval") {
-    auto val = eval(num);
+    parser::ParserContext p_ctx{std::move(ctx)};
+    auto val = eval(num, p_ctx);
     REQUIRE(std::holds_alternative<std::string>(val));
     REQUIRE(std::get<std::string>(val) == "abcabcabc");
   }
@@ -164,7 +186,8 @@ TEST_CASE("an expression with string literals") {
   Value num = getValue(msgs, ctx);
 
   SUBCASE("eval") {
-    auto val = eval(num);
+    parser::ParserContext p_ctx{std::move(ctx)};
+    auto val = eval(num, p_ctx);
     REQUIRE(std::holds_alternative<std::string>(val));
     REQUIRE(std::get<std::string>(val) == "abcdefdefdef");
   }
