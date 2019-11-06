@@ -636,7 +636,7 @@ TEST_CASE("definition of two") {
 
           std::vector<Path> pths = {};
           symbols.forAll(
-              [&pths](auto &pth, auto &def) { pths.push_back(pth); });
+              [&pths](auto &pth, auto &) { pths.push_back(pth); });
 
           REQUIRE_MESSAGE(pths.size() == 1, "expect only a single definition");
           CHECK_ALL_MESSAGE(pths[0], std::vector({"", "two"}),
@@ -902,7 +902,7 @@ TEST_CASE("function with default arguments") {
 
           std::vector<Path> pths = {};
           symbols.forAll(
-              [&pths](auto &pth, auto &def) { pths.push_back(pth); });
+              [&pths](auto &pth, auto &) { pths.push_back(pth); });
 
           REQUIRE(pths.size() == 4);
 
@@ -940,7 +940,7 @@ TEST_CASE("function with pre+post definitions") {
 
         std::vector<Path> pths = {};
         symbols.forAll(
-            [&pths](auto &pth, auto &def) { pths.push_back(pth); });
+            [&pths](auto &pth, auto &) { pths.push_back(pth); });
 
         CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(o_def);
@@ -1010,7 +1010,7 @@ TEST_CASE("function with post definitions") {
 
           std::vector<Path> pths = {};
           symbols.forAll(
-              [&pths](auto &pth, auto &def) { pths.push_back(pth); });
+              [&pths](auto &pth, auto &) { pths.push_back(pth); });
 
           REQUIRE(pths.size() == 3);
 
@@ -1057,7 +1057,7 @@ TEST_CASE("function multiple pre sections") {
 
           std::vector<Path> pths = {};
           symbols.forAll(
-              [&pths](auto &pth, auto &def) { pths.push_back(pth); });
+              [&pths](auto &pth, auto &) { pths.push_back(pth); });
 
           REQUIRE(pths.size() == 5);
 

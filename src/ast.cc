@@ -127,7 +127,7 @@ Tree<Token> infixOp(Tree<Token> left, const Token &tok, AstContext &ctx) {
   return root;
 };
 
-Tree<Token> symbol(const Token &tok, AstContext &ctx) { // Led
+Tree<Token> symbol(const Token &tok, AstContext &) { // Led
   return Tree<Token>(tok);
 };
 
@@ -310,7 +310,7 @@ Tree<Token> ast::parseValue(AstContext &ctx, unsigned int rbp) {
   return simplifyCommasAndParens(left);
 }
 
-Tree<Token> ast::parseModule(AstContext &ctx, unsigned int rbp) {
+Tree<Token> ast::parseModule(AstContext &ctx, unsigned int) {
   Forest<Token> definitions;
   while (ctx.hasToken) {
     definitions.push_back(parseDefinition(ctx));

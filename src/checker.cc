@@ -37,7 +37,7 @@ std::optional<Contradiction> Assignment::setValue(const Variable &name,
   return ret;
 }
 
-Solutions Assignment::unify(const Value &a, const Value &b) {
+Solutions Assignment::unify(const Value &, const Value &) {
   // TODO: unification should build a list of solutions and failures.
   return {{}, {}};
 }

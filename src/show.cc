@@ -31,7 +31,7 @@ std::string show(const std::string &s, int depth) {
   return o.str();
 }
 
-std::string show(const Empty &, int depth) { return ""; }
+std::string show(const Empty &, int) { return ""; }
 
 std::string show(const Checks &chk, int depth) {
   std::stringstream o;
