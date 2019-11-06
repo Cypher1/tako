@@ -263,7 +263,7 @@ TEST_CASE("simple expressions") {
   }
 }
 
-TEST_CASE("simple expressions") {
+TEST_CASE("simple expressions reversed") {
   Messages msgs;
   Context ctx = {msgs, "32 * var", "<filename>"};
 
@@ -399,6 +399,82 @@ TEST_CASE("simple expressions with parenthesis") {
       const auto &operands = tree->children;
       CHECK(operands[0].value.type == +TokenType::NumberLiteral);
       CHECK(operands[1].value.type == +TokenType::Symbol);
+    }
+  }
+}
+
+TEST_CASE("simple expressions using associativity") {
+  Messages msgs;
+  Context ctx = {msgs, "a * b * c", "<filename>"};
+
+  SUBCASE("tokenize") {
+    Tokens toks = lex(ctx);
+    std::vector<TokenType> tokTypes = {};
+    for(const auto& tok : toks) {
+      tokTypes.push_back(tok.type);
+    }
+    CHECK_ALL_MESSAGE(tokTypes, std::vector({
+    +TokenType::Symbol,
+    +TokenType::Operator,
+    +TokenType::Symbol,
+    +TokenType::Operator,
+    +TokenType::Symbol,
+    }), "token types match");
+    CHECK_SHOW(msgs.empty(), msgs, ctx);
+
+    SUBCASE("ast") {
+      auto tree = ast::ast(toks, ctx, ast::parseValue);
+      CHECK_SHOW(msgs.empty(), msgs, ctx);
+      const auto t = "\n"+show(tree, ctx);
+      INFO(t);
+      REQUIRE(tree);
+      CHECK(tree->value.type == +TokenType::Operator);
+      const auto &operands = tree->children;
+      REQUIRE(operands.size() == 2);
+      CHECK(operands[0].value.type == +TokenType::Operator);
+      CHECK(operands[1].value.type == +TokenType::Symbol);
+      const auto subs = operands[0].children;
+      REQUIRE(subs.size() == 2);
+      CHECK(subs[0].value.type == +TokenType::Symbol);
+      CHECK(subs[1].value.type == +TokenType::Symbol);
+    }
+  }
+}
+
+TEST_CASE("simple expressions using right associativity") {
+  Messages msgs;
+  Context ctx = {msgs, "a ? b ? c", "<filename>"};
+
+  SUBCASE("tokenize") {
+    Tokens toks = lex(ctx);
+    std::vector<TokenType> tokTypes = {};
+    for(const auto& tok : toks) {
+      tokTypes.push_back(tok.type);
+    }
+    CHECK_ALL_MESSAGE(tokTypes, std::vector({
+    +TokenType::Symbol,
+    +TokenType::QuestionMark,
+    +TokenType::Symbol,
+    +TokenType::QuestionMark,
+    +TokenType::Symbol,
+    }), "token types match");
+    CHECK_SHOW(msgs.empty(), msgs, ctx);
+
+    SUBCASE("ast") {
+      auto tree = ast::ast(toks, ctx, ast::parseValue);
+      CHECK_SHOW(msgs.empty(), msgs, ctx);
+      const auto t = "\n"+show(tree, ctx);
+      INFO(t);
+      REQUIRE(tree);
+      CHECK(tree->value.type == +TokenType::QuestionMark);
+      const auto &operands = tree->children;
+      REQUIRE(operands.size() == 2);
+      CHECK(operands[0].value.type == +TokenType::Symbol);
+      CHECK(operands[1].value.type == +TokenType::QuestionMark);
+      const auto subs = operands[1].children;
+      REQUIRE(subs.size() == 2);
+      CHECK(subs[0].value.type == +TokenType::Symbol);
+      CHECK(subs[1].value.type == +TokenType::Symbol);
     }
   }
 }

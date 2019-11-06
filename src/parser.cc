@@ -282,18 +282,18 @@ parseDefinition(Path parentPth, const Tree<Token> &node, ParserContext &ctx) {
   std::string op = ctx.getStringAt(node.value.loc);
   if (node.value.type != +TokenType::Operator || op != "=") {
     // TODO msg conditionally
-    ctx.msg(node.value, MessageType::Error, "Expected definition but found expression");
+    ctx.msg(node.value, MessageType::Error, "Expected definition (<identifier> =) found expression "+ctx.getStringAt(node.value.loc));
     return std::nullopt;
   }
   if (node.children.empty()) {
     // TODO msg conditionally
-    ctx.msg(node.value, MessageType::Error, "Expected definition but found = without arguments");
+    ctx.msg(node.value, MessageType::Error, "Expected definition (<identifier> = <expression>) but found "+ctx.getStringAt(node.value.loc)+" without arguments");
     return std::nullopt;
   }
   const auto &fst = node.children[0];
   if (fst.value.type != +TokenType::Symbol) {
     // TODO msg conditionally
-    ctx.msg(node.value, MessageType::Error, "Cannot assign to non-symbol");
+    ctx.msg(node.value, MessageType::Error, "Cannot assign to non-symbol: "+ctx.getStringAt(node.value.loc));
     return std::nullopt;
   }
 
