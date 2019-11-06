@@ -7,7 +7,7 @@ references:
       name: Install dependencies on Ubuntu
       command: |
         apt-get update -qy
-        apt-get install -qy git clang g++-6 meson
+        apt-get install -qy git ccache clang g++-6 meson
 
   arch_deps: &arch_deps
     run:
