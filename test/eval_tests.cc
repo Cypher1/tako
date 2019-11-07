@@ -192,3 +192,17 @@ TEST_CASE("an expression with string literals") {
     REQUIRE(std::get<std::string>(val) == "abcdefdefdef");
   }
 }
+
+TEST_CASE("an expression with too few arguments") {
+  Messages msgs;
+  Context ctx = {msgs, "2+", "<filename>"};
+
+  Value num = getValue(msgs, ctx);
+
+  SUBCASE("eval") {
+    parser::ParserContext p_ctx{std::move(ctx)};
+    auto val = eval(num, p_ctx);
+    REQUIRE_MESSAGE(std::holds_alternative<PrimError>(val), "Should fail");
+    REQUIRE(std::get<PrimError>(val).msg == "Expected two arguments at !!! +");
+  }
+}
