@@ -28,6 +28,9 @@ std::string repeatR(std::string rep, int n) {
 }
 
 template<typename T>
+Prim mins(T x, T y) { return x - y; }
+
+template<typename T>
 Prim add(T x, T y) { return x + y; }
 
 template<typename T>
@@ -78,8 +81,10 @@ Prim eval(Value val, parser::ParserContext& p_ctx) {
     // Get the text
     return val.name.substr(1, val.name.length() - 2);
   }
+
   if (val.node_type == AstNodeType::Numeric) {
     // Get the number
+    std::cerr << "v:" << std::stoi(val.name, nullptr, 10) << "\n"; // Assume base 10
     return std::stoi(val.name, nullptr, 10); // Assume base 10
   }
   if (val.node_type == AstNodeType::Symbol) {
@@ -104,6 +109,14 @@ Prim eval(Value val, parser::ParserContext& p_ctx) {
             }, "Unexpected types at (+) !!! " + val.name)
           );
 
+    const TryPrim subs =
+      require(
+          [val]{return val.name == "-";},
+          tryEach({
+            operator2<int, int>("-", values, mins<int>),
+            }, "Unexpected types at (-) !!! " + val.name)
+          );
+
     const TryPrim mults =
       require(
           [val]{return val.name == "*";},
@@ -114,10 +127,24 @@ Prim eval(Value val, parser::ParserContext& p_ctx) {
             }, "Unexpected types at (*) !!! " + val.name)
           );
 
-    const OptPrim v = tryEach({adders, mults}, "Unknown symbol !!! " + val.name)();
+    const OptPrim v = tryEach({adders, subs, mults}, "Unknown symbol !!! " + val.name)();
     if (v) {
       return *v;
     }
   }
   return PrimError("OH NO!!! " + val.name);
+}
+
+Prim eval(Module mod, parser::ParserContext& p_ctx) {
+  auto o_def = p_ctx.getTable().lookup({}, {"main"});
+  if (o_def) {
+    auto def = *o_def;
+    if (def.value) {
+      auto val = *def.value;
+      return eval(val, p_ctx);
+    } else {
+      return PrimError("main has no set value");
+    }
+  }
+  return PrimError("Module has no main");
 }
