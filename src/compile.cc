@@ -16,7 +16,7 @@ std::optional<Tree<Token>> getTree(Context &ctx) {
       return {};
     }
 
-    std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseValue);
+    std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseModule);
     if (ctx.done()) {
       std::cerr << show(*tree, ctx) << "\n";
     }
@@ -38,32 +38,34 @@ void runCompilerInteractive(Context &ctx) {
     }
 
     parser::ParserContext p_ctx(std::move(ctx));
-    std::optional<Value> o_val =
-        parser::parse<std::optional<Value>>(*tree, p_ctx, parser::parseValue);
-    if (!o_val) {
+    std::optional<Module> o_mod =
+        parser::parse<std::optional<Module>>(*tree, p_ctx, parser::parseModule);
+    if (!o_mod) {
       std::cerr << "Parse Failed\n";
       return;
     }
     if (p_ctx.done()) {
-      std::cerr << show(*o_val) << "\n";
+      std::cerr << show(*o_mod) << "\n";
       for (const auto msg : p_ctx.getMsgs()) {
         std::cerr << show(msg, p_ctx, 2) << "\n";
       }
       return;
     }
-    auto val = *o_val;
-    CheckedValue checked = check(val, p_ctx);
+    auto mod = *o_mod;
+    CheckedModule checked = check(mod, p_ctx);
     if (p_ctx.done()) {
       std::cerr << show(checked) << "\n";
       return;
     }
 
     // TODO
-    const auto res = eval(val, p_ctx);
+    const auto res = eval(mod, p_ctx);
     if (std::holds_alternative<int>(res)) {
       std::cout << std::get<int>(res) << "\n";
-    } else {
+    } else if (std::holds_alternative<std::string>(res)) {
       std::cout << std::get<std::string>(res) << "\n";
+    } else {
+      std::cout << std::get<PrimError>(res).msg << "\n";
     }
 
     if (p_ctx.done()) {

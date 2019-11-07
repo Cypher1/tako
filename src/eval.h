@@ -27,6 +27,8 @@ using TryPrims = std::vector<TryPrim>;
 using Pred = std::function<bool()>;
 
 Prim eval(Value val, parser::ParserContext& p_ctx);
+Prim eval(Definition val, parser::ParserContext& p_ctx);
+Prim eval(Module val, parser::ParserContext& p_ctx);
 
 std::ostream& operator<<(std::ostream& o, const PrimError& e);
 std::ostream& operator<<(std::ostream& o, const Prim& e);
