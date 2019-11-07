@@ -91,7 +91,7 @@ Prim eval(Value val, parser::ParserContext& p_ctx) {
       if (arg.value) {
         values.push_back(eval(*arg.value, p_ctx));
       } else {
-        return "Missing value for arg in !!! " + val.name;
+        return PrimError("Missing value for arg in !!! " + val.name);
       }
     }
 
@@ -119,5 +119,5 @@ Prim eval(Value val, parser::ParserContext& p_ctx) {
       return *v;
     }
   }
-  return "OH NO!!! " + val.name;
+  return PrimError("OH NO!!! " + val.name);
 }

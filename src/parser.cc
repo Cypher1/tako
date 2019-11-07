@@ -248,10 +248,12 @@ std::optional<Value> parseValue(const Path parentPth, const Tree<Token> &node,
     } else {
       // TODO(jopra): Look into SSA here.
       const auto arg_value = parseValue(currPth, child, ctx);
-      // Name the anonymous arg something impossible
-      args.push_back(Definition(ord_name, child.value.loc, {}, arg_value));
-      // Increment non-kwargs.
-      ord++;
+      if (arg_value) {
+        // Name the anonymous arg something impossible
+        args.push_back(Definition(ord_name, child.value.loc, {}, arg_value));
+        // Increment non-kwargs.
+        ord++;
+      }
     }
   }
 
