@@ -62,8 +62,8 @@ Offset consumeStringLiteral(const std::string content, const Position pos,
   return len;
 }
 
-Offset consumeWhiteSpace(const std::string content, const Position pos,
-                         Context &ctx) {
+Offset consumeWhiteSpace(const std::string content, const Position,
+                         Context &) {
   Offset loc = 0;
   for (; loc < content.size(); loc++) {
     char cur = content[loc];
@@ -94,7 +94,7 @@ using Matcher = std::function<Offset(const std::string content,
                                      const Position pos, Context &ctx)>;
 
 Matcher matchesFrom(const std::string chars) {
-  return [chars](const std::string content, const Position pos, Context &ctx) {
+  return [chars](const std::string content, const Position, Context &) {
     Offset length = 0;
     while (length < content.size()) {
       if (chars.find(content[length]) == std::string::npos) {
