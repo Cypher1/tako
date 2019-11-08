@@ -75,6 +75,19 @@ TryPrim operator2(const std::string name, const Prims vals, const std::function<
   };
 }
 
+Prim evalSymbol(Path context, Path name, parser::ParserContext& p_ctx) {
+  auto o_def = p_ctx.getTable().lookup(context, name);
+  if (o_def) {
+    auto def = *o_def;
+    if (def.value) {
+      auto val = *def.value;
+      return eval(val, p_ctx);
+    }
+    return PrimError(show(name, 0, "/")+" has no set value");
+  }
+  return PrimError("Module "+show(context, 0, "/")+"has no "+show(name, 0, "/"));
+}
+
 Prim eval(Value val, parser::ParserContext& p_ctx) {
   // TODO: Eval
   if (val.node_type == AstNodeType::Text) {
@@ -93,11 +106,20 @@ Prim eval(Value val, parser::ParserContext& p_ctx) {
 
     std::vector<Prim> values;
     for (const auto &arg : args) {
-      if (arg.value) {
-        values.push_back(eval(*arg.value, p_ctx));
-      } else {
+      if (!arg.value) {
         return PrimError("Missing value for arg in !!! " + val.name);
       }
+      auto val = eval(*arg.value, p_ctx);
+      if (std::holds_alternative<PrimError>(val)) {
+        return val;
+      }
+      values.push_back(val);
+    }
+
+    // TODO: Manage 'path'
+    auto sym_v = evalSymbol({}, {val.name}, p_ctx);
+    if (!std::holds_alternative<PrimError>(sym_v)) {
+      return sym_v;
     }
 
     const TryPrim adders =
@@ -136,15 +158,5 @@ Prim eval(Value val, parser::ParserContext& p_ctx) {
 }
 
 Prim eval(Module mod, parser::ParserContext& p_ctx) {
-  auto o_def = p_ctx.getTable().lookup({}, {"main"});
-  if (o_def) {
-    auto def = *o_def;
-    if (def.value) {
-      auto val = *def.value;
-      return eval(val, p_ctx);
-    } else {
-      return PrimError("main has no set value");
-    }
-  }
-  return PrimError("Module has no main");
+  return evalSymbol({}, {"main"}, p_ctx);
 }
