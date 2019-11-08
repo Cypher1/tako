@@ -76,7 +76,7 @@ TryPrim operator2(const std::string name, const Prims vals, const std::function<
   };
 }
 
-Prim evalSymbol(Path context, Path name, parser::ParserContext& p_ctx) {
+Prim evalSymbol(Stack s, Path context, Path name, parser::ParserContext& p_ctx) {
   auto o_def = p_ctx.getTable().lookup(context, name);
   if (!o_def) {
     return PrimError("Module "+show(context, 0, "/")+"has no "+show(name, 0, "/")+" with the appropriate arguments");
@@ -86,10 +86,10 @@ Prim evalSymbol(Path context, Path name, parser::ParserContext& p_ctx) {
     return PrimError(show(name, 0, "/")+" has no set value");
   }
   auto val = *def.value;
-  return eval(val, p_ctx);
+  return eval(s, context, val, p_ctx);
 }
 
-Prim eval(Value val, parser::ParserContext& p_ctx) {
+Prim eval(Stack s, Path context, Value val, parser::ParserContext& p_ctx) {
   // TODO: Eval
   if (val.node_type == AstNodeType::Text) {
     // Get the text
@@ -110,7 +110,7 @@ Prim eval(Value val, parser::ParserContext& p_ctx) {
       if (!arg.value) {
         return PrimError("Missing value for arg in !!! " + val.name);
       }
-      auto val = eval(*arg.value, p_ctx);
+      auto val = eval(s, context, *arg.value, p_ctx);
       if (std::holds_alternative<PrimError>(val)) {
         return val;
       }
@@ -150,12 +150,12 @@ Prim eval(Value val, parser::ParserContext& p_ctx) {
     }
 
     // TODO: Manage 'path'
-    auto sym_v = evalSymbol({}, {val.name}, p_ctx);
+    auto sym_v = evalSymbol(s, {}, {val.name}, p_ctx);
     return sym_v;
   }
   return PrimError("OH NO!!! " + val.name);
 }
 
-Prim eval(Module mod, parser::ParserContext& p_ctx) {
-  return evalSymbol({}, {"main"}, p_ctx);
+Prim eval(Stack s, Path context, Module mod, parser::ParserContext& p_ctx) {
+  return evalSymbol(s, context, {"main"}, p_ctx);
 }

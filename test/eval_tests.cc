@@ -34,6 +34,11 @@
     REQUIRE_MESSAGE((a), show_str);                                            \
   }
 
+template<typename T>
+Prim eval(T prog, parser::ParserContext& ctx) {
+  return eval({}, {}, prog, ctx);
+}
+
 // TODO rapidcheck that all tokens from a lexed 'file' are inside the file.
 // i.e. their location is 'in bounds' and the getString matches the
 // input.getString.
