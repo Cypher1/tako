@@ -37,19 +37,19 @@ template<typename T>
 Prim mult(T x, T y) { return x * y; }
 
 TryPrim require(const Pred req, const TryPrim cont) {
-  return [=]() -> OptPrim {
+  return [=]() -> Prim {
     if (req()) {
       return cont();
     }
-    return std::nullopt;
+    return PrimError("requirement failure");
   };
 }
 
 TryPrim tryEach(const TryPrims fs, const PrimError msg) {
-  return [=]() -> OptPrim {
+  return [=]() -> Prim {
     for (const auto& f : fs) {
-      const OptPrim v = f();
-      if (v) {
+      const Prim v = f();
+      if (!std::holds_alternative<PrimError>(v)) {
         return v;
       }
     }
@@ -59,17 +59,18 @@ TryPrim tryEach(const TryPrims fs, const PrimError msg) {
 
 template<typename T, typename U>
 TryPrim operator2(const std::string name, const Prims vals, const std::function<Prim(T, U)> f) {
+    const auto typeErr = PrimError("Expected two arguments at !!! " + name);
     if (vals.size() != 2) {
-      return [name](){ return PrimError("Expected two arguments at !!! " + name);};
+      return [name, typeErr](){ return typeErr;};
     }
-  return [vals, f]() -> OptPrim {
+  return [vals, f, typeErr]() -> Prim {
     auto x = vals[0];
     if (!std::holds_alternative<T>(x)) {
-      return std::nullopt;
+      return typeErr;
     }
     auto y = vals[1];
     if (!std::holds_alternative<U>(y)) {
-      return std::nullopt;
+      return typeErr;
     }
     return f(std::get<T>(x), std::get<U>(y));
   };
@@ -77,15 +78,15 @@ TryPrim operator2(const std::string name, const Prims vals, const std::function<
 
 Prim evalSymbol(Path context, Path name, parser::ParserContext& p_ctx) {
   auto o_def = p_ctx.getTable().lookup(context, name);
-  if (o_def) {
-    auto def = *o_def;
-    if (def.value) {
-      auto val = *def.value;
-      return eval(val, p_ctx);
-    }
+  if (!o_def) {
+    return PrimError("Module "+show(context, 0, "/")+"has no "+show(name, 0, "/"));
+  }
+  auto def = *o_def;
+  if (!def.value) {
     return PrimError(show(name, 0, "/")+" has no set value");
   }
-  return PrimError("Module "+show(context, 0, "/")+"has no "+show(name, 0, "/"));
+  auto val = *def.value;
+  return eval(val, p_ctx);
 }
 
 Prim eval(Value val, parser::ParserContext& p_ctx) {
@@ -116,12 +117,6 @@ Prim eval(Value val, parser::ParserContext& p_ctx) {
       values.push_back(val);
     }
 
-    // TODO: Manage 'path'
-    auto sym_v = evalSymbol({}, {val.name}, p_ctx);
-    if (!std::holds_alternative<PrimError>(sym_v)) {
-      return sym_v;
-    }
-
     const TryPrim adders =
       require(
           [val]{return val.name == "+";},
@@ -149,10 +144,14 @@ Prim eval(Value val, parser::ParserContext& p_ctx) {
             }, "Unexpected types at (*) !!! " + val.name)
           );
 
-    const OptPrim v = tryEach({adders, subs, mults}, "Unknown symbol !!! " + val.name)();
-    if (v) {
-      return *v;
+    const Prim v = tryEach({adders, subs, mults}, "Unknown symbol !!! " + val.name)();
+    if (!std::holds_alternative<PrimError>(v)) {
+      return v;
     }
+
+    // TODO: Manage 'path'
+    auto sym_v = evalSymbol({}, {val.name}, p_ctx);
+    return sym_v;
   }
   return PrimError("OH NO!!! " + val.name);
 }

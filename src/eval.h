@@ -22,7 +22,7 @@ struct PrimError {
 using Prim = std::variant<int, std::string, PrimError>;
 using OptPrim = std::optional<Prim>;
 using Prims = std::vector<Prim>;
-using TryPrim = std::function<OptPrim()>;
+using TryPrim = std::function<Prim()>;
 using TryPrims = std::vector<TryPrim>;
 using Pred = std::function<bool()>;
 
