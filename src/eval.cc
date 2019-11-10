@@ -77,9 +77,13 @@ TryPrim operator2(const std::string name, const Prims vals, const std::function<
 }
 
 Prim evalSymbol(Stack s, Path context, Path name, parser::ParserContext& p_ctx) {
+  context.insert(
+      context.end(),
+      name.begin(),
+      name.end());
   auto o_def = p_ctx.getTable().lookup(context, name);
   if (!o_def) {
-    return PrimError("Module "+show(context, 0, "/")+"has no "+show(name, 0, "/")+" with the appropriate arguments");
+    return PrimError("Module has no "+show(context, 0, "/")+" with the appropriate arguments");
   }
   auto def = *o_def;
   if (!def.value) {
