@@ -261,7 +261,7 @@ void AstContext::msg(MessageType level, std::string msg_txt) {
   if (hasToken) {
     loc = toks->loc;
   }
-  context.msg(loc, level, msg_txt);
+  context.msgAt(loc, level, msg_txt);
 }
 
 const Token &AstContext::getCurr() const {

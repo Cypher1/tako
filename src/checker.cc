@@ -7,9 +7,9 @@
 
 #include "checker.h"
 
-void CheckerContext::msg(Value &val, MessageType level, std::string msg_txt) {
+void CheckerContext::msgOn(Value &val, MessageType level, std::string msg_txt) {
   // TODO: Add contextual information.
-  context.msg(val.loc, level, msg_txt);
+  context.msgAt(val.loc, level, msg_txt);
 }
 
 std::optional<Contradiction> Assignment::setValue(const Variable &name,

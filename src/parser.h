@@ -40,7 +40,7 @@ public:
   ParserContext(Context &&ctx) : Context(std::move(ctx)) {}
   ParserContext(const Context &ctx) = delete;
 
-  void msg(const Token &tok, MessageType level, std::string msg_txt);
+  void msgOn(const Token &tok, MessageType level, std::string msg_txt);
 
   void addSymbol(const Path &path, const Definition &val);
   std::optional<Definition> lookup(const Path &context, const Path &path);
