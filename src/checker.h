@@ -77,7 +77,7 @@ public:
 
   CheckerContext(Context &ctx) : context{ctx} {}
 
-  void msg(Value &val, MessageType level, std::string msg_txt);
+  void msgOn(Value &val, MessageType level, std::string msg_txt);
 
   void addEdge(const Path &caller, const Path &callee,
                const Checks &requirements) {

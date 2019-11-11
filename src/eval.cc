@@ -16,11 +16,11 @@ std::ostream& operator<<(std::ostream& o, const PrimError e) {
 }
 
 std::string repeat(int n, std::string rep) {
-  std::string o = rep;
-  while (o.length() < rep.length() * n) {
-    o += o;
+  int l = rep.length() * n;
+  while (rep.length() < l) {
+    rep += rep;
   }
-  return o.substr(0, rep.length() * n);
+  return rep.substr(0, l);
 }
 
 std::string repeatR(std::string rep, int n) {
@@ -77,9 +77,13 @@ TryPrim operator2(const std::string name, const Prims vals, const std::function<
 }
 
 Prim evalSymbol(Stack s, Path context, Path name, parser::ParserContext& p_ctx) {
+  context.insert(
+      context.end(),
+      name.begin(),
+      name.end());
   auto o_def = p_ctx.getTable().lookup(context, name);
   if (!o_def) {
-    return PrimError("Module "+show(context, 0, "/")+"has no "+show(name, 0, "/")+" with the appropriate arguments");
+    return PrimError("Module has no "+show(context, 0, "/")+" with the appropriate arguments");
   }
   auto def = *o_def;
   if (!def.value) {

@@ -48,14 +48,14 @@ Offset consumeStringLiteral(const std::string content, const Position pos,
     if (len < content.size()) {
       if (content[len] != start) {
         // Warn that the literal was unterminated.
-        ctx.msg({pos + len, len, ctx.filename}, MessageType::Error,
+        ctx.msgAt({pos + len, len, ctx.filename}, MessageType::Error,
                 "Unterminated string literal (or maybe you wanted a "
                 "\"multiline string\"?)");
       }
       len++; // consume the 'end'
     } else {
       // This isn't a multiline string, it might be accidentally unmatched
-      ctx.msg({pos + len, len, ctx.filename}, MessageType::Error,
+      ctx.msgAt({pos + len, len, ctx.filename}, MessageType::Error,
               "Unterminated string literal, found end of file.");
     }
   }
@@ -143,9 +143,9 @@ Tokens lex(Context &ctx) {
     Offset length = next.second;
     Location loc = {pos, length, ctx.filename};
     if (length == 0) {
-      ctx.msg(loc, MessageType::InternalError, "Illegal empty token");
+      ctx.msgAt(loc, MessageType::InternalError, "Illegal empty token");
     } else if (type == +TokenType::Error) {
-      ctx.msg(loc, MessageType::Error, "Unexpected character");
+      ctx.msgAt(loc, MessageType::Error, "Unexpected character");
     } else if (type != +TokenType::WhiteSpace) {
       toks.push_back({type, loc});
     }

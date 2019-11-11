@@ -38,6 +38,7 @@ void runCompilerInteractive(Context &ctx) {
     }
 
     parser::ParserContext p_ctx(std::move(ctx));
+    p_ctx.allowOverrides = true;
     std::optional<Module> o_mod =
         parser::parse<std::optional<Module>>(*tree, p_ctx, parser::parseModule);
     if (!o_mod) {
@@ -63,11 +64,12 @@ void runCompilerInteractive(Context &ctx) {
     Path context = {};
     const auto res = eval(s, context, mod, p_ctx);
     if (std::holds_alternative<int>(res)) {
-      std::cout << std::get<int>(res) << "\n";
+      std::cerr << std::get<int>(res) << "\n";
     } else if (std::holds_alternative<std::string>(res)) {
-      std::cout << std::get<std::string>(res) << "\n";
+      std::cerr << std::get<std::string>(res) << "\n";
     } else {
-      std::cout << std::get<PrimError>(res).msg << "\n";
+      std::cerr << std::get<PrimError>(res).msg << "\n";
+      p_ctx.msgAt(mod.loc, MessageType::Warning, std::get<PrimError>(res).msg);
     }
 
     if (p_ctx.done()) {

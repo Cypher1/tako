@@ -29,7 +29,7 @@ public:
 
   void startStep(PassStep start_step);
   PassStep getStep();
-  void msg(Location loc, MessageType level, std::string msg_txt);
+  void msgAt(const Location &loc, MessageType level, std::string msg_txt);
 
   bool done();
 

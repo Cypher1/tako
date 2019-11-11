@@ -142,12 +142,12 @@ void SymbolTable::forAll(
 
 void ParserContext::addSymbol(const Path &path, const Definition &def) {
   const auto previous = symbols.lookup({}, path);
-  if (previous) {
-    Context::msg(def.loc, MessageType::Error,
+  if (previous && !allowOverrides) {
+    Context::msgAt(def.loc, MessageType::Error,
         "Duplicate definition for "+show(path, 0, "/")+" (found at "+show(previous->loc, *this)+")");
-    Context::msg(def.loc, MessageType::Error,
+    Context::msgAt(def.loc, MessageType::Error,
         show(def.args, 0, "/"));
-    Context::msg(previous->loc, MessageType::Error,
+    Context::msgAt(previous->loc, MessageType::Error,
         show(previous->args, 0, "/"));
   }
   symbols.addSymbol(path, def);
@@ -199,9 +199,9 @@ std::optional<Definition> ParserContext::lookup(const Path &context,
   return symbols.lookup(context, path);
 }
 
-void ParserContext::msg(const Token &tok, MessageType level,
+void ParserContext::msgOn(const Token &tok, MessageType level,
                         std::string msg_txt) {
-  Context::msg(tok.loc, level, msg_txt);
+  Context::msgAt(tok.loc, level, msg_txt);
 }
 
 std::optional<Definition> parseDefinition(Path, const Tree<Token> &node,
@@ -284,18 +284,18 @@ parseDefinition(Path parentPth, const Tree<Token> &node, ParserContext &ctx) {
   std::string op = ctx.getStringAt(node.value.loc);
   if (node.value.type != +TokenType::Operator || op != "=") {
     // TODO msg conditionally
-    ctx.msg(node.value, MessageType::Error, "Expected definition (<identifier> =) found expression "+ctx.getStringAt(node.value.loc));
+    ctx.msgOn(node.value, MessageType::Error, "Expected definition (<identifier> =) found expression "+ctx.getStringAt(node.value.loc));
     return std::nullopt;
   }
   if (node.children.empty()) {
     // TODO msg conditionally
-    ctx.msg(node.value, MessageType::Error, "Expected definition (<identifier> = <expression>) but found "+ctx.getStringAt(node.value.loc)+" without arguments");
+    ctx.msgOn(node.value, MessageType::Error, "Expected definition (<identifier> = <expression>) but found "+ctx.getStringAt(node.value.loc)+" without arguments");
     return std::nullopt;
   }
   const auto &fst = node.children[0];
   if (fst.value.type != +TokenType::Symbol) {
     // TODO msg conditionally
-    ctx.msg(node.value, MessageType::Error, "Cannot assign to non-symbol: "+ctx.getStringAt(node.value.loc));
+    ctx.msgOn(node.value, MessageType::Error, "Cannot assign to non-symbol: "+ctx.getStringAt(node.value.loc));
     return std::nullopt;
   }
 
@@ -323,7 +323,7 @@ parseDefinition(Path parentPth, const Tree<Token> &node, ParserContext &ctx) {
       // Add the arg to arguments list
       args.push_back(*argDef);
     } else {
-      ctx.msg(child.value, MessageType::Error, "Expected a definition");
+      ctx.msgOn(child.value, MessageType::Error, "Expected a definition");
     }
   }
 
@@ -332,13 +332,13 @@ parseDefinition(Path parentPth, const Tree<Token> &node, ParserContext &ctx) {
     value = parseValue(pth, node.children[1], ctx);
     if (node.children.size() > 2) {
       // TODO: error if there are other children?
-      ctx.msg(node.value, MessageType::Error,
+      ctx.msgOn(node.value, MessageType::Error,
               "Expected a single value for definition");
     }
   }
 
   if (!value) {
-    ctx.msg(node.value, MessageType::Error, "Expected a value for definition");
+    ctx.msgOn(node.value, MessageType::Error, "Expected a value for definition");
   }
 
   // Todo check that root.child[1] is = expr

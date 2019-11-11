@@ -34,13 +34,14 @@ public:
 class ParserContext : public Context {
 public:
   SymbolTable symbols;
+  bool allowOverrides = false;
   // TODO(jopra): Convert to use nested modules that each contain their children
   // nodes.
 
   ParserContext(Context &&ctx) : Context(std::move(ctx)) {}
   ParserContext(const Context &ctx) = delete;
 
-  void msg(const Token &tok, MessageType level, std::string msg_txt);
+  void msgOn(const Token &tok, MessageType level, std::string msg_txt);
 
   void addSymbol(const Path &path, const Definition &val);
   std::optional<Definition> lookup(const Path &context, const Path &path);
