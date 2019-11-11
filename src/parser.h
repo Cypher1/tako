@@ -34,6 +34,7 @@ public:
 class ParserContext : public Context {
 public:
   SymbolTable symbols;
+  bool allowOverrides = false;
   // TODO(jopra): Convert to use nested modules that each contain their children
   // nodes.
 

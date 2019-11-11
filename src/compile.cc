@@ -38,6 +38,7 @@ void runCompilerInteractive(Context &ctx) {
     }
 
     parser::ParserContext p_ctx(std::move(ctx));
+    p_ctx.allowOverrides = true;
     std::optional<Module> o_mod =
         parser::parse<std::optional<Module>>(*tree, p_ctx, parser::parseModule);
     if (!o_mod) {

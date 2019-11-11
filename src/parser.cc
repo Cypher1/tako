@@ -142,7 +142,7 @@ void SymbolTable::forAll(
 
 void ParserContext::addSymbol(const Path &path, const Definition &def) {
   const auto previous = symbols.lookup({}, path);
-  if (previous) {
+  if (previous && !allowOverrides) {
     Context::msgAt(def.loc, MessageType::Error,
         "Duplicate definition for "+show(path, 0, "/")+" (found at "+show(previous->loc, *this)+")");
     Context::msgAt(def.loc, MessageType::Error,
