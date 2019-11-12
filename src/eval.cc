@@ -89,11 +89,20 @@ Prim evalSymbol(Path context, Path name, parser::ParserContext& p_ctx) {
     return PrimError(show(name, 0, "/")+" has no set value");
   }
   auto val = *def.value;
-  for (const Definition arg : def.args) {
+  for (Definition arg : def.args) {
     // Push default args and args in.
     std::cerr << "pushing arg to env " << arg.name << "\n";
     auto child = context;
     child.push_back(arg.name);
+    Definition pass = arg;
+    auto val = p_ctx.lookup(context, {arg.name});
+    if (val) {
+      std::cerr << "pushing arg from env " << arg.name << "\n";
+      arg.value = val->value;
+    }
+    if (!arg.value) {
+      // Argument missing
+    }
     p_ctx.addSymbol(child, arg);
   }
   return eval(context, val, p_ctx);
@@ -160,6 +169,12 @@ Prim eval(Path context, Value val, parser::ParserContext& p_ctx) {
     }
 
     // TODO: Manage 'path'
+    for (const auto arg : val.args) {
+      if (arg.value) {
+        std::cerr << "pushing arg to stack " << arg.name << "\n";
+        p_ctx.addSymbol({arg.name}, arg);
+      }
+    }
     auto sym_v = evalSymbol({}, {val.name}, p_ctx);
     return sym_v;
   }
