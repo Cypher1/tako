@@ -76,13 +76,12 @@ TryPrim operator2(const std::string name, const Prims vals, const std::function<
   };
 }
 
-Prim evalSymbol(Stack s, Path context, Path name, parser::ParserContext& p_ctx) {
-  context.insert(
-      context.end(),
-      name.begin(),
-      name.end());
+Prim evalSymbol(Path context, Path name, parser::ParserContext& p_ctx) {
+  // TODO(cypher1): Context should only change on imports
+  // TODO(cypher1): Stack should change on calls
   auto o_def = p_ctx.getTable().lookup(context, name);
   if (!o_def) {
+    context.insert(context.end(), name.begin(), name.end());
     return PrimError("Module has no "+show(context, 0, "/")+" with the appropriate arguments");
   }
   auto def = *o_def;
@@ -90,10 +89,17 @@ Prim evalSymbol(Stack s, Path context, Path name, parser::ParserContext& p_ctx) 
     return PrimError(show(name, 0, "/")+" has no set value");
   }
   auto val = *def.value;
-  return eval(s, context, val, p_ctx);
+  for (const Definition arg : def.args) {
+    // Push default args and args in.
+    std::cerr << "pushing arg to env " << arg.name << "\n";
+    auto child = context;
+    child.push_back(arg.name);
+    p_ctx.addSymbol(child, arg);
+  }
+  return eval(context, val, p_ctx);
 }
 
-Prim eval(Stack s, Path context, Value val, parser::ParserContext& p_ctx) {
+Prim eval(Path context, Value val, parser::ParserContext& p_ctx) {
   // TODO: Eval
   if (val.node_type == AstNodeType::Text) {
     // Get the text
@@ -114,7 +120,7 @@ Prim eval(Stack s, Path context, Value val, parser::ParserContext& p_ctx) {
       if (!arg.value) {
         return PrimError("Missing value for arg in !!! " + val.name);
       }
-      auto val = eval(s, context, *arg.value, p_ctx);
+      auto val = eval(context, *arg.value, p_ctx);
       if (std::holds_alternative<PrimError>(val)) {
         return val;
       }
@@ -154,12 +160,12 @@ Prim eval(Stack s, Path context, Value val, parser::ParserContext& p_ctx) {
     }
 
     // TODO: Manage 'path'
-    auto sym_v = evalSymbol(s, {}, {val.name}, p_ctx);
+    auto sym_v = evalSymbol({}, {val.name}, p_ctx);
     return sym_v;
   }
   return PrimError("OH NO!!! " + val.name);
 }
 
-Prim eval(Stack s, Path context, Module mod, parser::ParserContext& p_ctx) {
-  return evalSymbol(s, context, {"main"}, p_ctx);
+Prim eval(Path context, Module mod, parser::ParserContext& p_ctx) {
+  return evalSymbol(context, {"main"}, p_ctx);
 }

@@ -11,7 +11,7 @@
 using Symbol = std::string;       // For now.
 using Path = std::vector<Symbol>; // For now.
 
-using SymbolPair = std::pair<Symbol, std::optional<Definition>>;
+using SymbolPair = std::pair<Symbol, std::vector<Definition>>;
 using SymbolMap = Forest<SymbolPair>;
 
 namespace parser {
