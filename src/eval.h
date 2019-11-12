@@ -12,14 +12,6 @@
 #include "enums.h"
 #include "util.h"
 
-struct PrimError {
-  std::string msg;
-
-  PrimError(std::string msg): msg{msg} {
-  }
-};
-
-using Prim = std::variant<int, std::string, PrimError>;
 using OptPrim = std::optional<Prim>;
 using Prims = std::vector<Prim>;
 using TryPrim = std::function<Prim()>;
