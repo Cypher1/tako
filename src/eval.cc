@@ -81,7 +81,6 @@ Prim evalSymbol(Path context, Path name, parser::ParserContext& p_ctx) {
   // TODO(cypher1): Stack should change on calls
   auto o_def = p_ctx.getTable().lookup(context, name);
   if (!o_def) {
-    context.insert(context.end(), name.begin(), name.end());
     return PrimError("Module has no "+show(context, 0, "/")+" with the appropriate arguments");
   }
   auto def = *o_def;
@@ -91,25 +90,27 @@ Prim evalSymbol(Path context, Path name, parser::ParserContext& p_ctx) {
   auto val = *def.value;
   for (Definition arg : def.args) {
     // Push default args and args in.
-    std::cerr << "pushing arg to env " << arg.name << "\n";
     auto child = context;
     child.push_back(arg.name);
-    Definition pass = arg;
-    auto val = p_ctx.lookup(context, {arg.name});
-    if (val) {
-      std::cerr << "pushing arg from env " << arg.name << "\n";
-      arg.value = val->value;
+    auto arg_val = p_ctx.lookup(context, {arg.name});
+    if (arg_val) {
+      arg.value = arg_val->value;
     }
     if (!arg.value) {
       // Argument missing
+    } else {
+      p_ctx.addSymbol(child, arg);
     }
-    p_ctx.addSymbol(child, arg);
   }
   return eval(context, val, p_ctx);
 }
 
 Prim eval(Path context, Value val, parser::ParserContext& p_ctx) {
   // TODO: Eval
+  if (val.data) {
+    // If we've already 'forced' a value we should use it.
+    return *val.data;
+  }
   if (val.node_type == AstNodeType::Text) {
     // Get the text
     return val.name.substr(1, val.name.length() - 2);
@@ -117,7 +118,6 @@ Prim eval(Path context, Value val, parser::ParserContext& p_ctx) {
 
   if (val.node_type == AstNodeType::Numeric) {
     // Get the number
-    std::cerr << "v:" << std::stoi(val.name, nullptr, 10) << "\n"; // Assume base 10
     return std::stoi(val.name, nullptr, 10); // Assume base 10
   }
   if (val.node_type == AstNodeType::Symbol) {
@@ -168,14 +168,23 @@ Prim eval(Path context, Value val, parser::ParserContext& p_ctx) {
       return v;
     }
 
-    // TODO: Manage 'path'
-    for (const auto arg : val.args) {
+    for (auto arg : val.args) {
       if (arg.value) {
-        std::cerr << "pushing arg to stack " << arg.name << "\n";
-        p_ctx.addSymbol({arg.name}, arg);
+        std::optional<Prim> v = eval(context, *arg.value, p_ctx);
+        if (!v) {
+          // TODO:
+        }
+        arg.value->data = *v;
+        auto child = context;
+        child.push_back(val.name);
+        child.push_back(arg.name);
+        p_ctx.addSymbol(child, arg);
       }
     }
-    auto sym_v = evalSymbol({}, {val.name}, p_ctx);
+    // TODO: Manage 'path'
+    context.push_back(val.name);
+    auto sym_v = evalSymbol(context, {val.name}, p_ctx);
+    // Remove things from the stack?
     return sym_v;
   }
   return PrimError("OH NO!!! " + val.name);

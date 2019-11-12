@@ -13,6 +13,14 @@
 #include "lex.h"
 #include "util.h"
 
+struct PrimError {
+  std::string msg;
+
+  PrimError(std::string msg): msg{msg} {
+  }
+};
+
+using Prim = std::variant<int, std::string, PrimError>;
 enum class AstNodeType {
   Symbol,
   Numeric,
@@ -38,6 +46,7 @@ template <class T> class ValueCore : public AstNode<T> {
 public:
   // Should this be an ast node property instead?
   std::vector<DefinitionCore<T>> args;
+  std::optional<Prim> data;
   AstNodeType node_type;
 
   ValueCore() = delete;
