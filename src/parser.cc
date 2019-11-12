@@ -35,10 +35,10 @@ void SymbolTable::addSymbol(const Path &path, const Definition &def) {
       curr = &curr->children.back();
     }
   }
-  if (curr->value.second) {
+  if (!curr->value.second.empty()) {
     // TODO: Use the message system
   }
-  curr->value.second = def;
+  curr->value.second.push_back(def);
 }
 
 int getMatch(const Path &match, const Path &context, const Path &path) {
@@ -73,7 +73,10 @@ std::optional<Definition> lookup_in(const Tree<SymbolPair> tree,
   if (depth >= path.size()) {
     // Found it.
     // TODO(jopra): Set up parent nodes that 'contain' all their children.
-    return tree.value.second;
+    if (!tree.value.second.empty()) {
+      return tree.value.second.back();
+    }
+    return {};
   }
   for (auto &child : tree.children) {
     if (child.value.first == path[depth]) {
@@ -115,8 +118,8 @@ void forAllNodes(Tree<SymbolPair> &tree, Path context,
   for (auto &child : tree.children) {
     forAllNodes(child, context, f);
   }
-  if (tree.value.second) {
-    f(context, *tree.value.second);
+  if (!tree.value.second.empty()) {
+    f(context, tree.value.second.back());
   }
 }
 
@@ -130,8 +133,8 @@ void forAllNodes(const Tree<SymbolPair> &tree, Path context,
   for (auto &child : tree.children) {
     forAllNodes(child, context, f);
   }
-  if (tree.value.second) {
-    f(context, *tree.value.second);
+  if (!tree.value.second.empty()) {
+    f(context, tree.value.second.back());
   }
 }
 

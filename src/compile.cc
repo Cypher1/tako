@@ -60,9 +60,8 @@ void runCompilerInteractive(Context &ctx) {
     }
 
     // TODO
-    Stack s = {};
     Path context = {};
-    const auto res = eval(s, context, mod, p_ctx);
+    const auto res = eval(context, mod, p_ctx);
     if (std::holds_alternative<int>(res)) {
       std::cerr << std::get<int>(res) << "\n";
     } else if (std::holds_alternative<std::string>(res)) {

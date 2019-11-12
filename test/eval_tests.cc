@@ -36,7 +36,7 @@
 
 template<typename T>
 Prim eval(T prog, parser::ParserContext& ctx) {
-  return eval({}, {}, prog, ctx);
+  return eval({}, prog, ctx);
 }
 
 // TODO rapidcheck that all tokens from a lexed 'file' are inside the file.
