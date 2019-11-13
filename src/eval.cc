@@ -81,7 +81,7 @@ Prim evalSymbol(Path context, Path name, parser::ParserContext& p_ctx) {
   // TODO(cypher1): Stack should change on calls
   auto o_def = p_ctx.getTable().lookup(context, name);
   if (!o_def) {
-    return PrimError("Module has no "+show(context, 0, "/")+" with the appropriate arguments");
+    return PrimError("Module has no "+show(context, 0, "/")+" with appropriate arguments");
   }
   auto def = *o_def;
   if (!def.value) {
@@ -92,7 +92,7 @@ Prim evalSymbol(Path context, Path name, parser::ParserContext& p_ctx) {
     // Push default args and args in.
     auto child = context;
     child.push_back(arg.name);
-    auto arg_val = p_ctx.lookup(context, {arg.name});
+    auto arg_val = p_ctx.getTable().lookup(context, {arg.name});
     if (arg_val) {
       arg.value = arg_val->value;
     }
@@ -122,14 +122,12 @@ Prim eval(Path context, Value val, parser::ParserContext& p_ctx) {
   }
   if (val.node_type == AstNodeType::Symbol) {
     // Look up the symbol
-    const std::vector<Definition> args = val.args;
-
     std::vector<Prim> values;
-    for (const auto &arg : args) {
+    for (const auto &arg : val.args) {
       if (!arg.value) {
         return PrimError("Missing value for arg in !!! " + val.name);
       }
-      auto val = eval(context, *arg.value, p_ctx);
+      const auto& val = eval(context, *arg.value, p_ctx);
       if (std::holds_alternative<PrimError>(val)) {
         return val;
       }
@@ -168,23 +166,57 @@ Prim eval(Path context, Value val, parser::ParserContext& p_ctx) {
       return v;
     }
 
+    // Function call (or variable evaluation)
+    auto def = p_ctx.lookup(context, {val.name});
+    std::cerr << "Looking for def " << val.name << "\n";
+    if (!def) {
+      return PrimError("Module has no " + val.name + " with appropriate arguments");
+    }
+    std::vector<std::string> missing;
+    for (auto arg : def->args) { //TODO: Unsafe
+      bool gotIt = false;
+      for (auto varg : val.args) {
+        if (varg.name == arg.name) {
+          gotIt = true;
+          break;
+        }
+      }
+      if (!gotIt) {
+        missing.push_back(arg.name);
+      }
+    }
+    int argInd = 0;
+    for (auto& arg : val.args) {
+      std::cerr << "arg:" << argInd << " " << arg.name << "\n";
+      if (arg.name[0] == '#') {
+        arg.name = missing[argInd]; // TODO: Unsafe
+        argInd++;
+      }
+      std::cerr << "arg:" << argInd << " " << arg.name << "\n";
+    }
     for (auto arg : val.args) {
       if (arg.value) {
-        std::optional<Prim> v = eval(context, *arg.value, p_ctx);
-        if (!v) {
-          // TODO:
+        const Prim v = eval(context, *arg.value, p_ctx);
+        if (std::holds_alternative<PrimError>(v)) {
+          // TODO: Throw the error
+          return v;
         }
-        arg.value->data = *v;
+        arg.value->data = v;
         auto child = context;
         child.push_back(val.name);
         child.push_back(arg.name);
         p_ctx.addSymbol(child, arg);
+      } else {
+        // Check for a default argument
+        // If theres not one, throw.
       }
     }
-    // TODO: Manage 'path'
+    // Manage 'path'
     context.push_back(val.name);
     auto sym_v = evalSymbol(context, {val.name}, p_ctx);
     // Remove things from the stack?
+    // Undo the 'path'
+    context.pop_back();
     return sym_v;
   }
   return PrimError("OH NO!!! " + val.name);

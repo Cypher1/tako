@@ -208,6 +208,6 @@ TEST_CASE("an expression with too few arguments") {
     parser::ParserContext p_ctx{std::move(ctx)};
     auto val = eval(num, p_ctx);
     REQUIRE_MESSAGE(std::holds_alternative<PrimError>(val), "Should fail");
-    REQUIRE(std::get<PrimError>(val).msg == "Module has no + with the appropriate arguments");
+    REQUIRE(std::get<PrimError>(val).msg == "Module has no + with appropriate arguments");
   }
 }
