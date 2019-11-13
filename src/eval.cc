@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <functional>
 #include <iostream>
 #include <optional>
@@ -16,7 +17,7 @@ std::ostream& operator<<(std::ostream& o, const PrimError e) {
 }
 
 std::string repeat(int n, std::string rep) {
-  int l = rep.length() * n;
+  size_t l = rep.length() * n;
   while (rep.length() < l) {
     rep += rep;
   }
