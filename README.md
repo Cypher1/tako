@@ -20,14 +20,6 @@ Installation steps for Debian flavoured Linux:
 sudo apt install meson git
 ```
 
-### Installing dependencies
-
-We just use git's submodules.
-```
-git submodule init
-git submodule update
-```
-
 ### Building
 
 Building requires a setup step,
