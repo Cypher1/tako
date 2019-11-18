@@ -218,6 +218,7 @@ Prim eval(Path context, Value val, parser::ParserContext& p_ctx) {
     // Remove things from the stack?
     // Undo the 'path'
     context.pop_back();
+    std::cerr << "v: " << show(sym_v) << "\n";
     return sym_v;
   }
   return PrimError("OH NO!!! " + val.name);
