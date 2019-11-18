@@ -45,7 +45,29 @@ std::string show(const Checks &chk, int depth) {
     o << "Post:\n";
     o << show(chk.post, depth + 1);
   }
-  return "";
+  return o.str();
+}
+
+std::string show(const PrimError &p, int depth) {
+  std::stringstream o;
+  indent(o, depth);
+  o << "Error: " << p.msg;
+  return o.str();
+}
+
+std::string show(const Prim &p, int depth) {
+  std::stringstream o;
+  indent(o, depth);
+  if (std::holds_alternative<int>(p)) {
+    o << std::get<int>(p);
+  }
+  if (std::holds_alternative<std::string>(p)) {
+    o << std::get<std::string>(p);
+  }
+  if (std::holds_alternative<PrimError>(p)) {
+    o << show(std::get<PrimError>(p));
+  }
+  return o.str();
 }
 
 std::string show(const Location &loc, Context &ctx, int depth) {

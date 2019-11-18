@@ -18,6 +18,9 @@ std::string show(const Empty &, int depth = 0);
 class Checks;
 std::string show(const Checks &, int depth = 0);
 
+std::string show(const PrimError &, int depth = 0);
+std::string show(const Prim &, int depth = 0);
+
 template <typename T>
 std::string show(const DefinitionCore<T> &val, int depth = 0);
 template <typename T>
