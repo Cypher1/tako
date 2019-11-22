@@ -1,0 +1,23 @@
+name: C++ Meson CI
+
+on: [push]
+
+jobs:
+  build_and_test:
+    name: Test on ${{ matrix.compiler }} and ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        compiler: ['clang++', 'g++']
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+   
+    steps:
+    - uses: actions/checkout@v1
+    - name: meson setup
+      run: meson build
+    - name: ninja build
+      run: ninja -C build
+    - name: ninja test
+      run: ninja -C build test
+    - name: clang-tidy check
+      uses: muxee/clang-tidy-action@0.0.1-rc1
