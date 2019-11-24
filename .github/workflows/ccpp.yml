@@ -12,6 +12,8 @@ jobs:
         os: [ubuntu-latest, windows-latest, macOS-latest]
    
     steps:
+    - name: install meson & ninja
+      run: python3 -m pip install meson ninja
     - uses: actions/checkout@v1
     - name: meson setup
       run: meson build
