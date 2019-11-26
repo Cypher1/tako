@@ -3,4 +3,4 @@
 #include "show.h"
 
 void runCompiler(Context &ctx);
-void runCompilerInteractive(Context &ctx);
+Prim runCompilerInteractive(Context &ctx);
