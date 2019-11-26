@@ -12,6 +12,7 @@
 #include "../src/lex.h"
 #include "../src/parser.h"
 #include "../src/show.h"
+#include "../src/compile.h"
 
 #define CHECK_SHOW(a, b, c)                                                    \
   {                                                                            \
@@ -210,4 +211,81 @@ TEST_CASE("an expression with too few arguments") {
     REQUIRE_MESSAGE(std::holds_alternative<PrimError>(val), "Should fail");
     REQUIRE(std::get<PrimError>(val).msg == "Module has no + with appropriate arguments");
   }
+}
+
+TEST_CASE("a simple definition") {
+  Messages msgs;
+  Context ctx = {msgs, "x=3\nmain=x", "<filename>"};
+
+  const auto res = runCompilerInteractive(ctx);
+
+  CHECK_SHOW(msgs.empty(), msgs, ctx);
+  REQUIRE(std::holds_alternative<int>(res));
+  REQUIRE(std::get<int>(res) == 3);
+}
+
+TEST_CASE("a definition using positional arguments") {
+  Messages msgs;
+  Context ctx = {msgs, "a(x, y)=x*y\nmain=a(3,5)", "<filename>"};
+
+  const auto res = runCompilerInteractive(ctx);
+
+  CHECK_SHOW(msgs.empty(), msgs, ctx);
+  REQUIRE(std::holds_alternative<int>(res));
+  REQUIRE(std::get<int>(res) == 15);
+}
+
+TEST_CASE("a definition using keyword arguments") {
+  Messages msgs;
+  Context ctx = {msgs, "a(x, y)=x*y\nmain=a(x=3,y=5)", "<filename>"};
+
+  const auto res = runCompilerInteractive(ctx);
+
+  CHECK_SHOW(msgs.empty(), msgs, ctx);
+  REQUIRE(std::holds_alternative<int>(res));
+  REQUIRE(std::get<int>(res) == 15);
+}
+
+TEST_CASE("a definition using keyword arguments revesered") {
+  Messages msgs;
+  Context ctx = {msgs, "a(x, y)=x*y\nmain=a(y=3,x=5)", "<filename>"};
+
+  const auto res = runCompilerInteractive(ctx);
+
+  CHECK_SHOW(msgs.empty(), msgs, ctx);
+  REQUIRE(std::holds_alternative<int>(res));
+  REQUIRE(std::get<int>(res) == 15);
+}
+
+TEST_CASE("a scoped definition using a default argument") {
+  Messages msgs;
+  Context ctx = {msgs, "x=3\na(x=2)=x\nmain=a", "<filename>"};
+
+  const auto res = runCompilerInteractive(ctx);
+
+  CHECK_SHOW(msgs.empty(), msgs, ctx);
+  REQUIRE(std::holds_alternative<int>(res));
+  REQUIRE(std::get<int>(res) == 2);
+}
+
+TEST_CASE("a scoped definition using default arguments") {
+  Messages msgs;
+  Context ctx = {msgs, "x=3\na(x=2, y=5)=x*y\nmain=a", "<filename>"};
+
+  const auto res = runCompilerInteractive(ctx);
+
+  CHECK_SHOW(msgs.empty(), msgs, ctx);
+  REQUIRE(std::holds_alternative<int>(res));
+  REQUIRE(std::get<int>(res) == 10);
+}
+
+TEST_CASE("a scoped definition using default arguments with a passed kwarg") {
+  Messages msgs;
+  Context ctx = {msgs, "x=3\na(x=2, y=5)=x*y\nmain=a(y=7)", "<filename>"};
+
+  const auto res = runCompilerInteractive(ctx);
+
+  CHECK_SHOW(msgs.empty(), msgs, ctx);
+  REQUIRE(std::holds_alternative<int>(res));
+  REQUIRE(std::get<int>(res) == 14);
 }

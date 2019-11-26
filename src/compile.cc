@@ -30,11 +30,11 @@ void finish(parser::ParserContext& ctx) {
   ctx.getMsgs() = {}; // Clear out the message log.
 }
 
-void runCompilerInteractive(Context &ctx) {
+Prim runCompilerInteractive(Context &ctx) {
   try {
     auto tree = getTree(ctx);
     if (!tree || ctx.done()) {
-      return;
+      return PrimError("Program not run");
     }
 
     parser::ParserContext p_ctx(std::move(ctx));
@@ -42,21 +42,20 @@ void runCompilerInteractive(Context &ctx) {
     std::optional<Module> o_mod =
         parser::parse<std::optional<Module>>(*tree, p_ctx, parser::parseModule);
     if (!o_mod) {
-      std::cerr << "Parse Failed\n";
-      return;
+      return PrimError("Parse Failed");
     }
     if (p_ctx.done()) {
       std::cerr << show(*o_mod) << "\n";
       for (const auto msg : p_ctx.getMsgs()) {
         std::cerr << show(msg, p_ctx, 2) << "\n";
       }
-      return;
+      return PrimError("Program not run");
     }
     auto mod = *o_mod;
     CheckedModule checked = check(mod, p_ctx);
     if (p_ctx.done()) {
       std::cerr << show(checked) << "\n";
-      return;
+      return PrimError("Program not run");
     }
 
     // TODO
@@ -71,13 +70,14 @@ void runCompilerInteractive(Context &ctx) {
       p_ctx.msgAt(mod.loc, MessageType::Warning, std::get<PrimError>(res).msg);
     }
 
-    if (p_ctx.done()) {
-      return;
+    if (!p_ctx.done()) {
+      finish(p_ctx);
     }
-    finish(p_ctx);
+    return res;
   } catch (const std::runtime_error &er) {
     std::cerr << "Parser crashed with: " << er.what() << "\n";
   }
+  return PrimError("Program crashed");
 }
 
 void runCompiler(Context &ctx) {
