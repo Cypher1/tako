@@ -289,3 +289,36 @@ TEST_CASE("a scoped definition using default arguments with a passed kwarg") {
   REQUIRE(std::holds_alternative<int>(res));
   REQUIRE(std::get<int>(res) == 14);
 }
+
+TEST_CASE("a scoped definition using default arguments using external definition") {
+  Messages msgs;
+  Context ctx = {msgs, "x=3\na(y=5)=x*y\nmain=a(y=7)", "<filename>"};
+
+  const auto res = runCompilerInteractive(ctx);
+
+  CHECK_SHOW(msgs.empty(), msgs, ctx);
+  REQUIRE(std::holds_alternative<int>(res));
+  REQUIRE(std::get<int>(res) == 21);
+}
+
+TEST_CASE("a nested call passing arguments") {
+  Messages msgs;
+  Context ctx = {msgs, "b(x)=x+1\na(y=5)=b(3)*y\nmain=a(y=7)", "<filename>"};
+
+  const auto res = runCompilerInteractive(ctx);
+
+  CHECK_SHOW(msgs.empty(), msgs, ctx);
+  REQUIRE(std::holds_alternative<int>(res));
+  REQUIRE(std::get<int>(res) == 28);
+}
+
+TEST_CASE("a nested call passing scoped arguments") {
+  Messages msgs;
+  Context ctx = {msgs, "b(x)=x+1\na(x)={x=3-|b}*x\nmain=a(x=5)", "<filename>"};
+
+  const auto res = runCompilerInteractive(ctx);
+
+  CHECK_SHOW(msgs.empty(), msgs, ctx);
+  REQUIRE(std::holds_alternative<int>(res));
+  REQUIRE(std::get<int>(res) == 20);
+}

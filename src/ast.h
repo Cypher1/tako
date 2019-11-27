@@ -19,7 +19,7 @@ struct PrimError {
   PrimError(std::string msg) : msg{msg} {}
 };
 
-using Prim = std::variant<int, std::string, PrimError>;
+using Prim = std::variant<bool, int, std::string, PrimError>;
 enum class AstNodeType {
   Symbol,
   Numeric,

@@ -58,14 +58,21 @@ std::string show(const PrimError &p, int depth) {
 std::string show(const Prim &p, int depth) {
   std::stringstream o;
   indent(o, depth);
-  if (std::holds_alternative<int>(p)) {
+
+  if (std::holds_alternative<bool>(p)) {
+    if (std::get<bool>(p)) {
+      o << "true";
+    } else {
+      o << "false";
+    }
+  } else if (std::holds_alternative<int>(p)) {
     o << std::get<int>(p);
-  }
-  if (std::holds_alternative<std::string>(p)) {
+  } else if (std::holds_alternative<std::string>(p)) {
     o << std::get<std::string>(p);
-  }
-  if (std::holds_alternative<PrimError>(p)) {
+  } else if (std::holds_alternative<PrimError>(p)) {
     o << show(std::get<PrimError>(p));
+  } else {
+    o << "#unhandled prim type";
   }
   return o.str();
 }

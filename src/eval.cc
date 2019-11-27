@@ -16,7 +16,8 @@ std::ostream& operator<<(std::ostream& o, const PrimError e) {
   return o;
 }
 
-std::string repeat(int n, std::string rep) {
+std::string repeat(const int n, const std::string repi) {
+  std::string rep = repi;
   size_t l = rep.length() * n;
   while (rep.length() < l) {
     rep += rep;
@@ -24,18 +25,29 @@ std::string repeat(int n, std::string rep) {
   return rep.substr(0, l);
 }
 
-std::string repeatR(std::string rep, int n) {
+std::string repeatB(const bool b, const std::string rep) {
+  return repeat(b ? 1 : 0, rep);
+}
+
+std::string repeatR(const std::string rep, const int n) {
   return repeat(n, rep);
 }
 
 template<typename T>
-Prim mins(T x, T y) { return x - y; }
+Prim mins(const T x, const T y) { return x - y; }
 
 template<typename T>
-Prim add(T x, T y) { return x + y; }
+Prim add(const T x, const T y) { return x + y; }
 
 template<typename T>
-Prim mult(T x, T y) { return x * y; }
+Prim mult(const T x, const T y) { return x * y; }
+
+template<typename U>
+Prim guard(const bool s, const U v) {
+  if (s) return v;
+  // TODO: Line number etc.
+  return PrimError("unmatched");
+}
 
 TryPrim require(const Pred req, const TryPrim cont) {
   return [=]() -> Prim {
@@ -59,7 +71,7 @@ TryPrim tryEach(const TryPrims fs, const PrimError msg) {
 }
 
 template<typename T, typename U>
-TryPrim operator2(const std::string name, const Prims vals, const std::function<Prim(T, U)> f) {
+TryPrim operator2(const std::string name, const Prims vals, const std::function<Prim(const T, const U)> f) {
     const auto typeErr = PrimError("Expected two arguments at !!! " + name);
     if (vals.size() != 2) {
       return [name, typeErr](){ return typeErr;};
@@ -140,6 +152,8 @@ Prim eval(Path context, Value val, parser::ParserContext& p_ctx) {
           [val]{return val.name == "+";},
           tryEach({
             operator2<int, int>("+", values, add<int>),
+            operator2<bool, int>("+", values, add<int>),
+            operator2<int, bool>("+", values, add<int>),
             operator2<std::string, std::string>("+", values, add<std::string>)
             }, "Unexpected types at (+) !!! " + val.name)
           );
@@ -149,6 +163,7 @@ Prim eval(Path context, Value val, parser::ParserContext& p_ctx) {
           [val]{return val.name == "-";},
           tryEach({
             operator2<int, int>("-", values, mins<int>),
+            operator2<int, bool>("-", values, mins<int>),
             }, "Unexpected types at (-) !!! " + val.name)
           );
 
@@ -158,8 +173,20 @@ Prim eval(Path context, Value val, parser::ParserContext& p_ctx) {
           tryEach({
             operator2<int, int>("*", values, mult<int>),
             operator2<std::string, int>("*", values, repeatR),
-            operator2<int, std::string>("*", values, repeat)
+            operator2<int, std::string>("*", values, repeatB),
+            operator2<bool, std::string>("*", values, repeat)
             }, "Unexpected types at (*) !!! " + val.name)
+          );
+
+    const TryPrim conds =
+      require(
+          [val]{return val.name == "-|";},
+          tryEach({
+            operator2<bool, bool>("-|", values, guard<bool>),
+            operator2<bool, int>("-|", values, guard<int>),
+            operator2<bool, std::string>("-|", values, guard<std::string>),
+            operator2<bool, PrimError>("-|", values, guard<PrimError>),
+            }, "Unexpected types at (-|) !!! " + val.name)
           );
 
     const Prim v = tryEach({adders, subs, mults}, "Unknown symbol !!! " + val.name)();
@@ -174,7 +201,7 @@ Prim eval(Path context, Value val, parser::ParserContext& p_ctx) {
       return PrimError("Module has no " + val.name + " with appropriate arguments");
     }
     std::vector<std::string> missing;
-    for (auto arg : def->args) { //TODO: Unsafe
+    for (auto arg : def->args) {
       bool gotIt = false;
       for (auto varg : val.args) {
         if (varg.name == arg.name) {
