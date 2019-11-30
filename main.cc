@@ -106,11 +106,12 @@ int main(int argc, char *argv[]) {
         break;
       }
       std::cout << "\n";
-      Context ctx(msgs, content+"\n"+line, "stdin", PassStep::Init, last_step, config);
+      Context ctx(msgs, content + "\n" + line, "stdin", PassStep::Init,
+                  last_step, config);
       // TODO: Run for a definition?
       runCompilerInteractive(ctx);
       // TODO: Do something 'real' instead.
-      content += "\n"+line;
+      content += "\n" + line;
       msgs = {};
     }
   }

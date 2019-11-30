@@ -109,21 +109,24 @@ T<Checks> check(const T<Empty> &code, Context &context) {
   const auto checkedAst = check({}, code, ctx); // Keep for code gen.
 
   // Simplify the graph, collapse edges and propagate their requirements
-  std::cerr << "Graph:\n";
-  for (const auto &p : ctx.call_graph) {
-    const auto val = p.first;
-    std::cerr << show(val) << ":\n";
-    for (const auto &e : p.second) {
-      const auto call = e.first;
-      const auto checks = e.second;
-      std::cerr << " --> " << show(call) << "\n";
-      std::cerr << "Pre:\n";
-      for (const auto &pre : checks.pre) {
-        std::cerr << show(pre, 1) << "\n";
-      }
-      std::cerr << "Post:\n";
-      for (const auto &post : checks.post) {
-        std::cerr << show(post, 1) << "\n";
+  if (false) {
+    // Hide for now
+    std::cerr << "Graph:\n";
+    for (const auto &p : ctx.call_graph) {
+      const auto val = p.first;
+      std::cerr << show(val) << ":\n";
+      for (const auto &e : p.second) {
+        const auto call = e.first;
+        const auto checks = e.second;
+        std::cerr << " --> " << show(call) << "\n";
+        std::cerr << "Pre:\n";
+        for (const auto &pre : checks.pre) {
+          std::cerr << show(pre, 1) << "\n";
+        }
+        std::cerr << "Post:\n";
+        for (const auto &post : checks.post) {
+          std::cerr << show(post, 1) << "\n";
+        }
       }
     }
   }

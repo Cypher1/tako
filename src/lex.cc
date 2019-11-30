@@ -49,21 +49,20 @@ Offset consumeStringLiteral(const std::string content, const Position pos,
       if (content[len] != start) {
         // Warn that the literal was unterminated.
         ctx.msgAt({pos + len, len, ctx.filename}, MessageType::Error,
-                "Unterminated string literal (or maybe you wanted a "
-                "\"multiline string\"?)");
+                  "Unterminated string literal (or maybe you wanted a "
+                  "\"multiline string\"?)");
       }
       len++; // consume the 'end'
     } else {
       // This isn't a multiline string, it might be accidentally unmatched
       ctx.msgAt({pos + len, len, ctx.filename}, MessageType::Error,
-              "Unterminated string literal, found end of file.");
+                "Unterminated string literal, found end of file.");
     }
   }
   return len;
 }
 
-Offset consumeWhiteSpace(const std::string content, const Position,
-                         Context &) {
+Offset consumeWhiteSpace(const std::string content, const Position, Context &) {
   Offset loc = 0;
   for (; loc < content.size(); loc++) {
     char cur = content[loc];
