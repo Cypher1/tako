@@ -16,8 +16,7 @@
 struct PrimError {
   std::string msg;
 
-  PrimError(std::string msg): msg{msg} {
-  }
+  PrimError(std::string msg) : msg{msg} {}
 };
 
 using Prim = std::variant<int, std::string, PrimError>;

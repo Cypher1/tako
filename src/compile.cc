@@ -1,29 +1,29 @@
-#include <iostream>
-#include "parser.h"
-#include "eval.h"
 #include "checker.h"
+#include "eval.h"
+#include "parser.h"
 #include "show.h"
+#include <iostream>
 
 std::optional<Tree<Token>> getTree(Context &ctx) {
-    if (ctx.done()) {
-      return {};
-    }
+  if (ctx.done()) {
+    return {};
+  }
 
-    Tokens toks = lex(ctx);
-    if (ctx.done()) {
-      std::cerr << "Lexed " << toks.size() << " tokens.\n";
-      std::cerr << show(toks, ctx) << "\n";
-      return {};
-    }
+  Tokens toks = lex(ctx);
+  if (ctx.done()) {
+    std::cerr << "Lexed " << toks.size() << " tokens.\n";
+    std::cerr << show(toks, ctx) << "\n";
+    return {};
+  }
 
-    std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseModule);
-    if (ctx.done()) {
-      std::cerr << show(*tree, ctx) << "\n";
-    }
-    return tree;
+  std::optional<Tree<Token>> tree = ast::ast(toks, ctx, ast::parseModule);
+  if (ctx.done()) {
+    std::cerr << show(*tree, ctx) << "\n";
+  }
+  return tree;
 }
 
-void finish(parser::ParserContext& ctx) {
+void finish(parser::ParserContext &ctx) {
   for (const auto msg : ctx.getMsgs()) {
     std::cerr << show(msg, ctx, 2) << "\n";
   }
@@ -110,5 +110,4 @@ void runCompiler(Context &ctx) {
   } catch (const std::runtime_error &er) {
     std::cerr << "Parser crashed with: " << er.what() << "\n";
   }
-
 }

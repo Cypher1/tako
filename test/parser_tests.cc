@@ -241,14 +241,14 @@ TEST_CASE("simple expressions") {
     Tokens toks = lex(ctx);
     CHECK_SHOW(msgs.empty(), msgs, ctx);
     std::vector<TokenType> tokTypes = {};
-    for(const auto& tok : toks) {
+    for (const auto &tok : toks) {
       tokTypes.push_back(tok.type);
     }
-    CHECK_ALL_MESSAGE(tokTypes, std::vector<TokenType>({
-    +TokenType::Symbol,
-    +TokenType::Operator,
-    +TokenType::NumberLiteral}),
-    "Correct tokens");
+    CHECK_ALL_MESSAGE(
+        tokTypes,
+        std::vector<TokenType>({+TokenType::Symbol, +TokenType::Operator,
+                                +TokenType::NumberLiteral}),
+        "Correct tokens");
     SUBCASE("ast") {
       auto tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK_SHOW(msgs.empty(), msgs, ctx);
@@ -271,14 +271,14 @@ TEST_CASE("simple expressions reversed") {
     Tokens toks = lex(ctx);
     CHECK_SHOW(msgs.empty(), msgs, ctx);
     std::vector<TokenType> tokTypes = {};
-    for(const auto& tok : toks) {
+    for (const auto &tok : toks) {
       tokTypes.push_back(tok.type);
     }
-    CHECK_ALL_MESSAGE(tokTypes, std::vector<TokenType>({
-    +TokenType::NumberLiteral,
-    +TokenType::Operator,
-    +TokenType::Symbol
-    }), "Check tokens");
+    CHECK_ALL_MESSAGE(
+        tokTypes,
+        std::vector<TokenType>({+TokenType::NumberLiteral, +TokenType::Operator,
+                                +TokenType::Symbol}),
+        "Check tokens");
     SUBCASE("ast") {
       auto tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK_SHOW(msgs.empty(), msgs, ctx);
@@ -301,16 +301,15 @@ TEST_CASE("simple expressions with calls") {
     Tokens toks = lex(ctx);
     CHECK_SHOW(msgs.empty(), msgs, ctx);
     std::vector<TokenType> tokTypes = {};
-    for(const auto& tok : toks) {
+    for (const auto &tok : toks) {
       tokTypes.push_back(tok.type);
     }
-    CHECK_ALL_MESSAGE(tokTypes, std::vector<TokenType>({
-    +TokenType::NumberLiteral,
-    +TokenType::Operator,
-    +TokenType::Symbol,
-    +TokenType::OpenParen,
-    +TokenType::CloseParen
-          }), "Check tokens");
+    CHECK_ALL_MESSAGE(
+        tokTypes,
+        std::vector<TokenType>({+TokenType::NumberLiteral, +TokenType::Operator,
+                                +TokenType::Symbol, +TokenType::OpenParen,
+                                +TokenType::CloseParen}),
+        "Check tokens");
 
     SUBCASE("ast") {
       auto tree = ast::ast(toks, ctx, ast::parseValue);
@@ -333,19 +332,16 @@ TEST_CASE("simple expressions with calls with arguments") {
   SUBCASE("tokenize") {
     Tokens toks = lex(ctx);
     std::vector<TokenType> tokTypes = {};
-    for(const auto& tok : toks) {
+    for (const auto &tok : toks) {
       tokTypes.push_back(tok.type);
     }
-    CHECK_ALL_MESSAGE(tokTypes, std::vector<TokenType>({
-      TokenType::NumberLiteral,
-      TokenType::Operator,
-      TokenType::Symbol,
-      TokenType::OpenParen,
-      TokenType::Symbol,
-      TokenType::Comma,
-      TokenType::NumberLiteral,
-      TokenType::CloseParen
-      }), "token types match");
+    CHECK_ALL_MESSAGE(
+        tokTypes,
+        std::vector<TokenType>(
+            {TokenType::NumberLiteral, TokenType::Operator, TokenType::Symbol,
+             TokenType::OpenParen, TokenType::Symbol, TokenType::Comma,
+             TokenType::NumberLiteral, TokenType::CloseParen}),
+        "token types match");
     CHECK_SHOW(msgs.empty(), msgs, ctx);
 
     SUBCASE("ast") {
@@ -376,22 +372,21 @@ TEST_CASE("simple expressions with parenthesis") {
   SUBCASE("tokenize") {
     Tokens toks = lex(ctx);
     std::vector<TokenType> tokTypes = {};
-    for(const auto& tok : toks) {
+    for (const auto &tok : toks) {
       tokTypes.push_back(tok.type);
     }
-    CHECK_ALL_MESSAGE(tokTypes, std::vector({
-    +TokenType::OpenParen,
-    +TokenType::NumberLiteral,
-    +TokenType::Operator,
-    +TokenType::Symbol,
-    +TokenType::CloseParen
-    }), "token types match");
+    CHECK_ALL_MESSAGE(
+        tokTypes,
+        std::vector({+TokenType::OpenParen, +TokenType::NumberLiteral,
+                     +TokenType::Operator, +TokenType::Symbol,
+                     +TokenType::CloseParen}),
+        "token types match");
     CHECK_SHOW(msgs.empty(), msgs, ctx);
 
     SUBCASE("ast") {
       auto tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK_SHOW(msgs.empty(), msgs, ctx);
-      const auto t = "\n"+show(tree, ctx);
+      const auto t = "\n" + show(tree, ctx);
       INFO(t);
       REQUIRE(tree);
       CHECK(tree->value.type == +TokenType::Operator);
@@ -410,22 +405,24 @@ TEST_CASE("simple expressions using associativity") {
   SUBCASE("tokenize") {
     Tokens toks = lex(ctx);
     std::vector<TokenType> tokTypes = {};
-    for(const auto& tok : toks) {
+    for (const auto &tok : toks) {
       tokTypes.push_back(tok.type);
     }
-    CHECK_ALL_MESSAGE(tokTypes, std::vector({
-    +TokenType::Symbol,
-    +TokenType::Operator,
-    +TokenType::Symbol,
-    +TokenType::Operator,
-    +TokenType::Symbol,
-    }), "token types match");
+    CHECK_ALL_MESSAGE(tokTypes,
+                      std::vector({
+                          +TokenType::Symbol,
+                          +TokenType::Operator,
+                          +TokenType::Symbol,
+                          +TokenType::Operator,
+                          +TokenType::Symbol,
+                      }),
+                      "token types match");
     CHECK_SHOW(msgs.empty(), msgs, ctx);
 
     SUBCASE("ast") {
       auto tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK_SHOW(msgs.empty(), msgs, ctx);
-      const auto t = "\n"+show(tree, ctx);
+      const auto t = "\n" + show(tree, ctx);
       INFO(t);
       REQUIRE(tree);
       CHECK(tree->value.type == +TokenType::Operator);
@@ -448,22 +445,24 @@ TEST_CASE("simple expressions using right associativity") {
   SUBCASE("tokenize") {
     Tokens toks = lex(ctx);
     std::vector<TokenType> tokTypes = {};
-    for(const auto& tok : toks) {
+    for (const auto &tok : toks) {
       tokTypes.push_back(tok.type);
     }
-    CHECK_ALL_MESSAGE(tokTypes, std::vector({
-    +TokenType::Symbol,
-    +TokenType::QuestionMark,
-    +TokenType::Symbol,
-    +TokenType::QuestionMark,
-    +TokenType::Symbol,
-    }), "token types match");
+    CHECK_ALL_MESSAGE(tokTypes,
+                      std::vector({
+                          +TokenType::Symbol,
+                          +TokenType::QuestionMark,
+                          +TokenType::Symbol,
+                          +TokenType::QuestionMark,
+                          +TokenType::Symbol,
+                      }),
+                      "token types match");
     CHECK_SHOW(msgs.empty(), msgs, ctx);
 
     SUBCASE("ast") {
       auto tree = ast::ast(toks, ctx, ast::parseValue);
       CHECK_SHOW(msgs.empty(), msgs, ctx);
-      const auto t = "\n"+show(tree, ctx);
+      const auto t = "\n" + show(tree, ctx);
       INFO(t);
       REQUIRE(tree);
       CHECK(tree->value.type == +TokenType::QuestionMark);
@@ -486,16 +485,14 @@ TEST_CASE("simple tuple") {
   SUBCASE("tokenize") {
     Tokens toks = lex(ctx);
     std::vector<TokenType> tokTypes = {};
-    for(const auto& tok : toks) {
+    for (const auto &tok : toks) {
       tokTypes.push_back(tok.type);
     }
-    CHECK_ALL_MESSAGE(tokTypes, std::vector({
-    +TokenType::OpenParen,
-    +TokenType::NumberLiteral,
-    +TokenType::Comma,
-    +TokenType::Symbol,
-    +TokenType::CloseParen
-    }), "token types match");
+    CHECK_ALL_MESSAGE(tokTypes,
+                      std::vector({+TokenType::OpenParen,
+                                   +TokenType::NumberLiteral, +TokenType::Comma,
+                                   +TokenType::Symbol, +TokenType::CloseParen}),
+                      "token types match");
     CHECK_SHOW(msgs.empty(), msgs, ctx);
 
     SUBCASE("ast") {
@@ -518,23 +515,17 @@ TEST_CASE("simple expressions with guards") {
   SUBCASE("tokenize") {
     Tokens toks = lex(ctx);
     std::vector<TokenType> tokTypes = {};
-    for(const auto& tok : toks) {
+    for (const auto &tok : toks) {
       tokTypes.push_back(tok.type);
     }
-    CHECK_ALL_MESSAGE(tokTypes, std::vector({
-    +TokenType::OpenBrace,
-    +TokenType::Symbol,
-    +TokenType::Comma,
-    +TokenType::Symbol,
-    +TokenType::PreCond,
-    +TokenType::Symbol,
-    +TokenType::OpenParen,
-    +TokenType::Symbol,
-    +TokenType::CloseParen,
-    +TokenType::PostCond,
-    +TokenType::Symbol,
-    +TokenType::CloseBrace
-    }), "token types match");
+    CHECK_ALL_MESSAGE(tokTypes,
+                      std::vector({+TokenType::OpenBrace, +TokenType::Symbol,
+                                   +TokenType::Comma, +TokenType::Symbol,
+                                   +TokenType::PreCond, +TokenType::Symbol,
+                                   +TokenType::OpenParen, +TokenType::Symbol,
+                                   +TokenType::CloseParen, +TokenType::PostCond,
+                                   +TokenType::Symbol, +TokenType::CloseBrace}),
+                      "token types match");
     CHECK_SHOW(msgs.empty(), msgs, ctx);
 
     SUBCASE("ast") {
@@ -549,7 +540,7 @@ TEST_CASE("simple expressions with guards") {
       CHECK(pre_expr_2.value.type == +TokenType::Symbol);
 
       const auto &expr_post = tree->children[2];
-      const auto t = "\n"+show(expr_post, ctx);
+      const auto t = "\n" + show(expr_post, ctx);
       INFO(t);
       CHECK(expr_post.value.type == +TokenType::PostCond);
       REQUIRE(expr_post.children.size() == 2);
@@ -635,8 +626,7 @@ TEST_CASE("definition of two") {
           const auto &symbols = p_ctx.symbols;
 
           std::vector<Path> pths = {};
-          symbols.forAll(
-              [&pths](auto &pth, auto &) { pths.push_back(pth); });
+          symbols.forAll([&pths](auto &pth, auto &) { pths.push_back(pth); });
 
           REQUIRE_MESSAGE(pths.size() == 1, "expect only a single definition");
           CHECK_ALL_MESSAGE(pths[0], std::vector({"", "two"}),
@@ -901,8 +891,7 @@ TEST_CASE("function with default arguments") {
           const auto &symbols = p_ctx.symbols;
 
           std::vector<Path> pths = {};
-          symbols.forAll(
-              [&pths](auto &pth, auto &) { pths.push_back(pth); });
+          symbols.forAll([&pths](auto &pth, auto &) { pths.push_back(pth); });
 
           REQUIRE(pths.size() == 4);
 
@@ -939,8 +928,7 @@ TEST_CASE("function with pre+post definitions") {
         const auto &symbols = p_ctx.symbols;
 
         std::vector<Path> pths = {};
-        symbols.forAll(
-            [&pths](auto &pth, auto &) { pths.push_back(pth); });
+        symbols.forAll([&pths](auto &pth, auto &) { pths.push_back(pth); });
 
         CHECK_SHOW(msgs.empty(), msgs, ctx);
         REQUIRE(o_def);
@@ -961,7 +949,8 @@ TEST_CASE("function with pre+post definitions") {
                             "expect definition of '/increment/#pre/x'");
 
           REQUIRE(pths.size() > 2);
-          CHECK_ALL_MESSAGE(pths[2], std::vector({"", "increment", "#pre", "#0", "x"}),
+          CHECK_ALL_MESSAGE(pths[2],
+                            std::vector({"", "increment", "#pre", "#0", "x"}),
                             "expect definition of '/increment/#pre/#0/x'");
 
           REQUIRE(pths.size() > 3);
@@ -1009,15 +998,13 @@ TEST_CASE("function with post definitions") {
           const auto &symbols = p_ctx.symbols;
 
           std::vector<Path> pths = {};
-          symbols.forAll(
-              [&pths](auto &pth, auto &) { pths.push_back(pth); });
+          symbols.forAll([&pths](auto &pth, auto &) { pths.push_back(pth); });
 
           REQUIRE(pths.size() == 3);
 
           CHECK_ALL_MESSAGE(pths[0], std::vector({"", "increment", "x"}),
                             "expected definition of '/increment/x'");
-          CHECK_ALL_MESSAGE(pths[1],
-                            std::vector({"", "increment", "y"}),
+          CHECK_ALL_MESSAGE(pths[1], std::vector({"", "increment", "y"}),
                             "expected definition of '/increment/y'");
           CHECK_ALL_MESSAGE(pths[2], std::vector({"", "increment"}),
                             "expected definition of '/increment'");
@@ -1056,25 +1043,26 @@ TEST_CASE("function multiple pre sections") {
           const auto &symbols = p_ctx.symbols;
 
           std::vector<Path> pths = {};
-          symbols.forAll(
-              [&pths](auto &pth, auto &) { pths.push_back(pth); });
+          symbols.forAll([&pths](auto &pth, auto &) { pths.push_back(pth); });
 
           REQUIRE(pths.size() == 5);
 
           CHECK_ALL_MESSAGE(pths[0], std::vector({"", "is_even", "x"}),
                             "expect definition of '/is_even/x'");
 
-          CHECK_ALL_MESSAGE(pths[1], std::vector<std::string>(
-                                {"", "is_even", "#0", "#pre", "x"}),
-                            "expect definition of '/is_even/#0/#pre/x'");
-          CHECK_ALL_MESSAGE(pths[2], std::vector<std::string>(
+          CHECK_ALL_MESSAGE(
+              pths[1],
+              std::vector<std::string>({"", "is_even", "#0", "#pre", "x"}),
+              "expect definition of '/is_even/#0/#pre/x'");
+          CHECK_ALL_MESSAGE(pths[2],
+                            std::vector<std::string>(
                                 {"", "is_even", "#1", "#0", "#pre", "x"}),
                             "expect definition of '/is_even/#1/#0/#pre/x'");
-          CHECK_ALL_MESSAGE(pths[3], std::vector<std::string>(
+          CHECK_ALL_MESSAGE(pths[3],
+                            std::vector<std::string>(
                                 {"", "is_even", "#1", "#1", "#pre", "y"}),
                             "expect definition of '/is_even/#1/#1/#pre/y'");
-          CHECK_ALL_MESSAGE(pths[4], std::vector<std::string>(
-                                {"", "is_even"}),
+          CHECK_ALL_MESSAGE(pths[4], std::vector<std::string>({"", "is_even"}),
                             "expect definition of '/is_even'");
         }
       }
