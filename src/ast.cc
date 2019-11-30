@@ -54,7 +54,8 @@ using fixity = unsigned int;
 const fixity definitionF = 40;
 const fixity pipeF = definitionF + 10;
 const fixity comparisonF = pipeF + 10;
-const fixity shiftF = comparisonF + 10;
+const fixity booleanF = comparisonF + 10;
+const fixity shiftF = booleanF + 10;
 const fixity plusMinF = shiftF + 10;
 const fixity timeDivF = plusMinF + 10;
 const fixity prefix = timeDivF + 10;
@@ -68,12 +69,13 @@ const std::map<std::string, fixity> infix_binding = {
     {"|=", definitionF}, {"?", pipeF},        {"<|", pipeF},
     {"|>", pipeF},       {"<", comparisonF},  {"<=", comparisonF},
     {">", comparisonF},  {">=", comparisonF}, {"<>", comparisonF},
-    {"!=", comparisonF}, {"==", comparisonF}, {"|", shiftF},
-    {"^", shiftF},       {"&", shiftF},       {"<<", shiftF},
-    {">>", shiftF},      {"+", plusMinF},     {"-", plusMinF},
-    {"*", timeDivF},     {"/", timeDivF},     {"%", timeDivF},
-    {":", nameSpaceF},   {".", nameSpaceF},   {"[", bracketF},
-    {"(", bracketF},     {"{", bracketF}};
+    {"!=", comparisonF}, {"==", comparisonF}, {"&&", booleanF},
+    {"||", booleanF},    {"|", shiftF},       {"^", shiftF},
+    {"&", shiftF},       {"<<", shiftF},      {">>", shiftF},
+    {"+", plusMinF},     {"-", plusMinF},     {"*", timeDivF},
+    {"/", timeDivF},     {"%", timeDivF},     {":", nameSpaceF},
+    {".", nameSpaceF},   {"[", bracketF},     {"(", bracketF},
+    {"{", bracketF}};
 
 const std::map<std::string, unsigned int> prefix_binding = {
     {"-", prefix}, {"+", prefix}, {"!", prefix}};
@@ -110,7 +112,7 @@ Tree<Token> infixROp(Tree<Token> left, const Token &tok, AstContext &ctx) {
   if (p_it == infix_binding.end()) {
     ctx.msg(MessageType::Error, "Unknown infix operator");
   };
-  auto right = ast::parseValue(ctx, p_it->second-1);
+  auto right = ast::parseValue(ctx, p_it->second - 1);
   root.children.push_back(right);
   return root;
 };
