@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         compiler: ['clang++', 'g++']
-        os: [ubuntu-latest, windows-latest, macOS-latest]
+        os: [ubuntu-latest, macOS-latest]
    
     steps:
     - uses: actions/checkout@v1
