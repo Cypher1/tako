@@ -61,14 +61,10 @@ Prim runCompilerInteractive(Context &ctx) {
     // TODO
     Path context = {};
     const auto res = eval(context, mod, p_ctx);
-    if (std::holds_alternative<int>(res)) {
-      std::cerr << std::get<int>(res) << "\n";
-    } else if (std::holds_alternative<std::string>(res)) {
-      std::cerr << std::get<std::string>(res) << "\n";
-    } else {
-      std::cerr << std::get<PrimError>(res).msg << "\n";
+    if (std::holds_alternative<PrimError>(res)) {
       p_ctx.msgAt(mod.loc, MessageType::Warning, std::get<PrimError>(res).msg);
     }
+    std::cerr << show(res) << "\n";
 
     if (!p_ctx.done()) {
       finish(p_ctx);
