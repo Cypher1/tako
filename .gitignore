@@ -1,2 +1,4 @@
 /target
+**/build
+**/gen
 **/*.rs.bk

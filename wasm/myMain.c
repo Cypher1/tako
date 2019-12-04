@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 #include "wabt/wasm2c/wasm-rt.h"
-#include "gen/addTwo.h"
+#include "gen/myAddTwo.h"
 
 int main(int argc, char* argv[]) {
 
@@ -15,6 +15,6 @@ int main(int argc, char* argv[]) {
 
   init();
   int z = Z_addTwoZ_iii(x, y);
-  printf("%d + %d = %d\n", x, y, z);
+  printf("%d + 3*%d = %d\n", x, y, z);
   return 0;
 }
