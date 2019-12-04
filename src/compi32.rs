@@ -25,21 +25,21 @@ pub fn compi32(expr: &Tree<Token>) -> Vec<String> {
             // TODO: require 2 children
             match expr.value.value.as_str() {
                 "*" => {
-                    res.push("mul".to_string());
+                    res.push("i32.mul".to_string());
                 }
                 "+" => {
-                    res.push("add".to_string());
+                    res.push("i32.add".to_string());
                 }
                 "/" => {
                     // TODO: require divisibility
-                    res.push("idiv".to_string());
+                    res.push("i32.div_s".to_string());
                 }
                 "-" => {
-                    res.push("sub".to_string());
+                    res.push("i32.sub".to_string());
                 }
                 "^" => {
                     // TODO: require pos pow
-                    res.push("pow".to_string());
+                    res.push("i32.pow".to_string());
                 }
                 unknown => {
                     res.push("?op ".to_string() + &unknown);
@@ -48,7 +48,7 @@ pub fn compi32(expr: &Tree<Token>) -> Vec<String> {
             return res;
         }
         TokenType::NumLit => {
-            return vec!["push ".to_string() + &expr.value.value];
+            return vec!["i32.const ".to_string() + &expr.value.value];
         }
     }
 }
