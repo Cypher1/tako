@@ -18,7 +18,11 @@ fn main() -> std::io::Result<()> {
     let mut interactive = false;
     for f in args {
         match f.as_str() {
-            "-i" => interactive = true,
+            "-i" => {
+                interactive = true;
+                files.push("/dev/stdin".to_string());
+            },
+            "-r" => interactive = true,
             _ => files.push(f),
         }
     }
