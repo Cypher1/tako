@@ -6,6 +6,7 @@ pub enum TokenType {
     Op,
     Bracket,
     NumLit,
+    // Local,
     Sym,
     Unknown,
     Whitespace,
