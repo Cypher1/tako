@@ -1,0 +1,24 @@
+<html>
+  <script>
+    const importObject = {};
+    fetch('addTwo.wasm').then(response =>
+      response.arrayBuffer()
+    ).then(bytes => WebAssembly.instantiate(bytes, importObject)).then(module => {
+      const { addTwo } = module.instance.exports;
+      const results = {};
+      for (let i = 0; i < 10; i++) {
+        const v = addTwo(i, i);
+        results[i] = v;
+      }
+      const resultHolder = document.getElementById("result");
+      resultHolder.innerText = JSON.stringify(results);
+    }).catch(err => {
+      const resultHolder = document.getElementById("result");
+      resultHolder.innerText = err;
+    });
+  </script>
+  <body>
+    <div id="result">
+    </div>
+  </body>
+</html>
