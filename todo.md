@@ -17,8 +17,8 @@
   - Imports
   - More operators
 - Testing
-  - Find a rust testing framework
-  - Use it
+  - Tests for parser
+  - Tests for interpreter
 
 ## Communication
 - Read me doc
