@@ -51,6 +51,7 @@ fn classify_char(ch: char) -> TokenType {
     return TokenType::Unknown;
 }
 
+// Consumes a single token from a Deque of characters.
 pub fn lex_head(mut contents: VecDeque<char>) -> (Token, VecDeque<char>) {
     let mut head: VecDeque<char> = VecDeque::new();
 
@@ -91,4 +92,51 @@ pub fn lex_head(mut contents: VecDeque<char>) -> (Token, VecDeque<char>) {
     }
     let value = head.into_iter().collect();
     return (Token { value, tok_type }, contents);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::classify_char;
+    use super::lex_head;
+    use super::TokenType;
+    use std::collections::VecDeque;
+    use std::iter::FromIterator;
+
+    #[test]
+    fn classify_whitespace() {
+        assert_eq!(classify_char(' '), TokenType::Whitespace);
+        assert_eq!(classify_char('\n'), TokenType::Whitespace);
+        assert_eq!(classify_char('\r'), TokenType::Whitespace);
+    }
+
+    #[test]
+    fn classify_brackets() {
+        assert_eq!(classify_char('('), TokenType::Bracket);
+        assert_eq!(classify_char(')'), TokenType::Bracket);
+        assert_eq!(classify_char('['), TokenType::Bracket);
+        assert_eq!(classify_char(']'), TokenType::Bracket);
+        assert_eq!(classify_char('{'), TokenType::Bracket);
+        assert_eq!(classify_char('}'), TokenType::Bracket);
+    }
+
+    #[test]
+    fn classify_number() {
+        assert_eq!(classify_char('0'), TokenType::NumLit);
+        assert_eq!(classify_char('1'), TokenType::NumLit);
+        assert_eq!(classify_char('2'), TokenType::NumLit);
+    }
+
+    #[test]
+    fn lex_number() {
+        let chars = VecDeque::from_iter("123".chars());
+        let (tok, _) = lex_head(chars);
+        assert_eq!(tok.tok_type, TokenType::NumLit);
+    }
+
+    #[test]
+    fn lex_symbol() {
+        let chars = VecDeque::from_iter("a123".chars());
+        let (tok, _) = lex_head(chars);
+        assert_eq!(tok.tok_type, TokenType::Sym);
+    }
 }
