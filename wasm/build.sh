@@ -1,8 +1,11 @@
 #!/bin/bash
 
 function realt() {
-  echo "timing '$@'" >/dev/stderr
-  `time ($@) 2>&1 1>/dev/null`
+  >&2 echo "timing '$@'"
+  START=$(date +%s.%N)
+  >&2 $@
+  END=$(date +%s.%N)
+  bc <<< "$END - $START"
 }
 
 function require() {
@@ -66,20 +69,21 @@ mkdir -p gen
 initWabt
 
 # Build Ika if it's not already.
-initIka
+rust_time=$(realt initIka)
 
 # Copy the runtime header file so we don't have to rewrite C include lines.
 require "header from wabt" "gen/wasm-rt.h" || \
   cp wabt/wasm2c/wasm-rt.h gen/wasm-rt.h
 
 # Run ika's core.
-ika_time=realt ika "$1"
+ika_time=$(realt ika "$1")
 # Generate our C files ('compile to C')
-wat2c_time=realt wat2c "addTwo"
+wat2c_time=$(realt wat2c "addTwo")
 
 # Build with the bootstrap main.c
-clang_time=realt cc -o build/addTwo main.c gen/addTwo.c wabt/wasm2c/wasm-rt-impl.c
+clang_time=$(realt cc -o build/addTwo main.c gen/addTwo.c wabt/wasm2c/wasm-rt-impl.c)
 
-echo "Rust time: ${rust_time}."
-echo "Ika time: ${ika_time}."
-echo "Clang time: ${clang_time}."
+echo "Rust time: $rust_time."
+echo "Ika time: $ika_time."
+echo "Wat2c time: $wat2c_time."
+echo "Clang time: $clang_time."
