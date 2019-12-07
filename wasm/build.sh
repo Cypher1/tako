@@ -1,9 +1,9 @@
 #!/bin/bash
 
-function timestamp() {
-  $(date +%s.%N)
+function realt() {
+  echo "timing '$@'" >/dev/stderr
+  `time ($@) 2>&1 1>/dev/null`
 }
-start_total_time=timestamp
 
 function require() {
   PKG="$1"
@@ -54,6 +54,10 @@ function initIka() {
   cargo build
 }
 
+function ika() {
+  $IKA_PATH "$1" > gen/addTwo.wat
+}
+
 # Make sure our output dirs are available.
 mkdir -p build
 mkdir -p gen
@@ -69,20 +73,13 @@ require "header from wabt" "gen/wasm-rt.h" || \
   cp wabt/wasm2c/wasm-rt.h gen/wasm-rt.h
 
 # Run ika's core.
-start_ika_time=timestamp
-$IKA_PATH "$1" > gen/addTwo.wat
-end_ika_time=timestamp
-
-start_wat2c_time=timestamp
+ika_time=realt ika "$1"
 # Generate our C files ('compile to C')
-wat2c "addTwo"
+wat2c_time=realt wat2c "addTwo"
 
 # Build with the bootstrap main.c
-cc -o build/addTwo main.c gen/addTwo.c wabt/wasm2c/wasm-rt-impl.c
+clang_time=realt cc -o build/addTwo main.c gen/addTwo.c wabt/wasm2c/wasm-rt-impl.c
 
-end_total_time=timestamp
-
-ika_runtime=$((end_ika_time-start_ika_time))
-total_runtime=$((end_total_time-start_total_time))
-
-echo "Ika time: ${ika_runtime}. Total time: ${total_runtime}."
+echo "Rust time: ${rust_time}."
+echo "Ika time: ${ika_time}."
+echo "Clang time: ${clang_time}."

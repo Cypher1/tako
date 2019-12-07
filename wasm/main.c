@@ -14,7 +14,7 @@ int main(int argc, char* argv[]) {
   int y = atoi(argv[2]);
 
   init();
-  int z = Z_mainZ_iii(x, y);
+  int z = Z_run_mainZ_iii(x, y);
   printf("%d + 3*%d = %d\n", x, y, z);
   return 0;
 }

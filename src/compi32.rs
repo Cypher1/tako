@@ -12,7 +12,7 @@ use super::tree::Tree;
 
 pub fn comp_tree(expr: &Tree<Token>) -> Tree<String> {
     let name = Tree {
-        value: "\"main\"".to_string(),
+        value: "\"run_main\"".to_string(),
         children: vec![]
     };
     let def = Tree {
