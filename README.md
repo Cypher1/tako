@@ -15,12 +15,14 @@ These instructions will get you a copy of the project up and running on your loc
 Ika currently uses `cargo` for builds and running tests and git submodules for dependency management.
 
 Installation instructions can be found at https://rustup.rs/
-Non-rust dependencies can be installed via `git submodule update --init --recursive`.
+Non-rust dependencies can be installed via
+```
+git submodule update --init --recursive
+```
 
 ### Building
 
 Building requires a single step,
-```
 ```
 cargo build
 ```
