@@ -21,6 +21,6 @@
   - Tests for interpreter
 
 ## Communication
-- Read me doc
-- Contributing doc
+- Improve on Read me
 - Language documentation
+- Mascot?
