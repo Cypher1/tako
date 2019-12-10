@@ -46,13 +46,24 @@ fn work(filename: String, interactive: bool) -> std::io::Result<()> {
         println!("R: {:?}", ast);
 
         let mut interp = Interpreter::default();
-        let res = interp.visit_root(&ast);
-        println!("{:?}", res);
+        match interp.visit_root(&ast) {
+            Ok(res) => {
+                println!("{}", res);
+            },
+            Err(err) => {
+                println!("{:?}", err);
+            }
+        }
         return Ok(());
     }
     let mut comp = Compiler::default();
-    let res = comp.visit_root(&ast);
-    println!("{:?}", res);
-    // TODO: require left_over is empty
-    Ok(())
+    match comp.visit_root(&ast) {
+        Ok(res) => {
+            println!("{}", res);
+        },
+        Err(err) => {
+            println!("{:?}", err);
+        }
+    }
+    return Ok(());
 }
