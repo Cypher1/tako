@@ -6,6 +6,19 @@ pub struct Tree<T> {
     pub children: Vec<Tree<T>>,
 }
 
+pub fn to_tree<T: std::clone::Clone>(t: Vec<T>) -> Vec<Tree<T>> {
+    let mut output = Vec::new();
+    output.extend(t.iter().map(to_root));
+    return output;
+}
+
+pub fn to_root<T: std::clone::Clone>(t: &T) -> Tree<T> {
+    Tree {
+        value: t.clone(),
+        children: vec![],
+    }
+}
+
 impl<T: fmt::Debug> fmt::Debug for Tree<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.children.len() == 0 {

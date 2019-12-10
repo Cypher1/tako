@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 use std::iter::FromIterator;
 
 use super::tree::Tree;
-
+use super::ast::*;
 use super::tokens::*;
 
 fn bind_infix(tok: &Token) -> i32 {
@@ -20,34 +20,25 @@ fn bind_infix(tok: &Token) -> i32 {
     }
 }
 
-fn nud(mut toks: VecDeque<Token>) -> (Tree<Token>, VecDeque<Token>) {
+fn nud(mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
     match toks.pop_front() {
         None => (
-            Tree {
-                value: Token {
-                    value: ERR.to_string(),
-                    tok_type: TokenType::Error,
-                },
-                children: [].to_vec(),
-            },
+            Node::Error(ERR.to_string()),
             toks,
         ),
         Some(head) => match head.tok_type {
             TokenType::NumLit => (
-                Tree {
-                    value: head,
-                    children: [].to_vec(),
-                },
+                Node::Num(head.value.parse().unwrap()),
                 toks,
             ),
             TokenType::Op => {
                 let lbp = bind_infix(&head);
                 let (right, new_toks) = expr(toks, lbp);
                 return (
-                    Tree {
-                        value: head,
-                        children: [right].to_vec(),
-                    },
+                    Node::UnOp(UnOpNode {
+                        name: head.value,
+                        inner: Box::new(right),
+                    }),
                     new_toks,
                 );
             }
@@ -62,34 +53,26 @@ fn nud(mut toks: VecDeque<Token>) -> (Tree<Token>, VecDeque<Token>) {
     }
 }
 
-fn led(mut toks: VecDeque<Token>, left_branch: Tree<Token>) -> (Tree<Token>, VecDeque<Token>) {
+fn led(mut toks: VecDeque<Token>, left_branch: Node) -> (Node, VecDeque<Token>) {
     match toks.pop_front() {
         None => (
-            Tree {
-                value: Token {
-                    value: ERR.to_string(),
-                    tok_type: TokenType::Error,
-                },
-                children: [].to_vec(),
-            },
+            Node::Error (ERR.to_string()),
             toks,
         ),
         Some(head) => match head.tok_type {
             TokenType::NumLit => (
-                Tree {
-                    value: head,
-                    children: [].to_vec(),
-                },
+                Node::Num(head.value.parse().unwrap()),
                 toks,
             ),
             TokenType::Op => {
                 let lbp = bind_infix(&head);
                 let (right, new_toks) = expr(toks, lbp);
                 return (
-                    Tree {
-                        value: head,
-                        children: [left_branch, right].to_vec(),
-                    },
+                    Node::BinOp(BinOpNode {
+                        name: head.value,
+                        left: Box::new(left_branch),
+                        right: Box::new(right),
+                    }),
                     new_toks,
                 );
             }
@@ -98,10 +81,10 @@ fn led(mut toks: VecDeque<Token>, left_branch: Tree<Token>) -> (Tree<Token>, Vec
     }
 }
 
-fn expr(init_toks: VecDeque<Token>, init_lbp: i32) -> (Tree<Token>, VecDeque<Token>) {
+fn expr(init_toks: VecDeque<Token>, init_lbp: i32) -> (Node, VecDeque<Token>) {
     // TODO: Name updates fields, this is confusing (0 is tree, 1 is toks)
     let init_update = nud(init_toks);
-    let mut left: Tree<Token> = init_update.0;
+    let mut left: Node = init_update.0;
     let mut toks: VecDeque<Token> = init_update.1;
     loop {
         match toks.front() {
@@ -120,7 +103,7 @@ fn expr(init_toks: VecDeque<Token>, init_lbp: i32) -> (Tree<Token>, VecDeque<Tok
     return (left, toks);
 }
 
-pub fn parse(contents: String) -> Tree<Token> {
+pub fn parse(contents: String) -> Node {
     let mut toks: VecDeque<Token> = VecDeque::new();
 
     let mut chars = VecDeque::from_iter(contents.chars());
