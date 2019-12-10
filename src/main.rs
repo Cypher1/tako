@@ -2,12 +2,12 @@ use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 
+mod ast;
 mod compi32;
 mod evali32;
 mod parser;
 mod tokens;
 mod tree;
-mod ast;
 
 use ast::Visitor;
 use compi32::Compiler;
@@ -23,7 +23,7 @@ fn main() -> std::io::Result<()> {
             "-i" => {
                 interactive = true;
                 files.push("/dev/stdin".to_string());
-            },
+            }
             "-r" => interactive = true,
             _ => files.push(f),
         }
@@ -47,12 +47,12 @@ fn work(filename: String, interactive: bool) -> std::io::Result<()> {
 
         let mut interp = Interpreter::default();
         let res = interp.visit_root(&ast);
-        println!("{}", res);
+        println!("{:?}", res);
         return Ok(());
     }
     let mut comp = Compiler::default();
     let res = comp.visit_root(&ast);
-    println!("{}", res);
+    println!("{:?}", res);
     // TODO: require left_over is empty
     Ok(())
 }

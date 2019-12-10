@@ -1,4 +1,3 @@
-
 #[derive(Debug)]
 pub struct UnOpNode {
     pub name: String,
@@ -20,15 +19,15 @@ pub enum Node {
     BinOp(BinOpNode),
 }
 
-pub trait Visitor<U, V> {
-    fn visit_root(&mut self, e: &Node) -> V;
+pub trait Visitor<U, V, E> {
+    fn visit_root(&mut self, e: &Node) -> Result<V, E>;
 
-    fn visit_num(&mut self, e: &i32) -> U;
-    fn visit_un_op(&mut self, e: &UnOpNode) -> U;
-    fn visit_bin_op(&mut self, e: &BinOpNode) -> U;
-    fn handle_error(&mut self, e: &String) -> U;
+    fn visit_num(&mut self, e: &i32) -> Result<U, E>;
+    fn visit_un_op(&mut self, e: &UnOpNode) -> Result<U, E>;
+    fn visit_bin_op(&mut self, e: &BinOpNode) -> Result<U, E>;
+    fn handle_error(&mut self, e: &String) -> Result<U, E>;
 
-    fn visit(&mut self, e: &Node) -> U {
+    fn visit(&mut self, e: &Node) -> Result<U, E> {
         match e {
             Node::Error(n) => self.handle_error(n),
             Node::Num(n) => self.visit_num(n),

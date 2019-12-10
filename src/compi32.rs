@@ -15,67 +15,73 @@ use super::tree::*;
 
 use super::ast::*;
 
+#[derive(Debug)]
+pub enum CompilerError {
+    UnknownOperator(String),
+    FailedParse(String),
+}
+
 // Walks the AST compiling it to wasm.
 pub struct Compiler;
 
 impl Default for Compiler {
-    fn default () -> Compiler {
-        Compiler{}
+    fn default() -> Compiler {
+        Compiler {}
     }
 }
 
-impl Visitor<Vec<String>, Tree<String>> for Compiler {
-    fn visit_root(&mut self, expr: &Node) -> Tree<String> {
+impl Visitor<Vec<String>, Tree<String>, CompilerError> for Compiler {
+    fn visit_root(&mut self, expr: &Node) -> Result<Tree<String>, CompilerError> {
         let name = Tree {
             value: "\"run_main\"".to_string(),
-            children: vec![]
+            children: vec![],
         };
         let def = Tree {
             value: "export".to_string(),
-            children: vec![name.clone()]
+            children: vec![name.clone()],
         };
         let node_i32 = Tree {
             value: "i32".to_string(),
-            children: vec![]
+            children: vec![],
         };
         let param = Tree {
             value: "param".to_string(),
-            children: vec![node_i32.clone(), node_i32.clone()]
+            children: vec![node_i32.clone(), node_i32.clone()],
         };
         let result = Tree {
             value: "result".to_string(),
-            children: vec![node_i32.clone()]
+            children: vec![node_i32.clone()],
         };
         let mut children = vec![def, param, result];
-        children.append(&mut to_tree(self.visit(&expr)));
+        children.append(&mut to_tree(self.visit(&expr)?));
         let func = Tree {
             value: "func".to_string(),
             children: children,
         };
-        return Tree {
+        return Ok(Tree {
             value: "module".to_string(),
             children: vec![func],
-        }
+        });
     }
 
-    fn visit_num(&mut self, expr: &i32) -> Vec<String> {
-        vec!["i32.const ".to_string() + &expr.to_string()]
+    fn visit_num(&mut self, expr: &i32) -> Result<Vec<String>, CompilerError> {
+        Ok(vec!["i32.const ".to_string() + &expr.to_string()])
     }
 
-    fn visit_un_op(&mut self, expr: &UnOpNode) -> Vec<String> {
+    fn visit_un_op(&mut self, expr: &UnOpNode) -> Result<Vec<String>, CompilerError> {
         let mut res = Vec::new();
-        res.append(&mut self.visit(&expr.inner));
+        res.append(&mut self.visit(&expr.inner)?);
         match expr.name.as_str() {
-            "+" => {},
+            "+" => {}
             "-" => res.push("i32.sub".to_string()),
-            op => res.push("?op ".to_string() + &op),
+            op => return Err(CompilerError::UnknownOperator(op.to_string())),
         };
-        return res;
+        return Ok(res);
     }
-    fn visit_bin_op(&mut self, expr: &BinOpNode) -> Vec<String> {
+    fn visit_bin_op(&mut self, expr: &BinOpNode) -> Result<Vec<String>, CompilerError> {
         let mut res = Vec::new();
-        res.append(&mut self.visit(&expr.left));
-        res.append(&mut self.visit(&expr.right));
+        res.append(&mut self.visit(&expr.left)?);
+        res.append(&mut self.visit(&expr.right)?);
         // TODO: require 2 children
         let s = match expr.name.as_str() {
             "*" => "i32.mul".to_string(),
@@ -83,13 +89,13 @@ impl Visitor<Vec<String>, Tree<String>> for Compiler {
             "/" => "i32.div_s".to_string(), // TODO: require divisibility
             "-" => "i32.sub".to_string(),
             "^" => "i32.pow".to_string(), // TODO: require pos pow
-            unknown => "?op ".to_string() + &unknown,
+            op => return Err(CompilerError::UnknownOperator(op.to_string())),
         };
         res.push(s);
-        return res;
+        return Ok(res);
     }
 
-    fn handle_error(&mut self, expr: &String) -> Vec<String> {
-        vec![] // TODO use result
+    fn handle_error(&mut self, expr: &String) -> Result<Vec<String>, CompilerError> {
+        Err(CompilerError::FailedParse(expr.to_string()))
     }
 }
