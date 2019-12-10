@@ -6,7 +6,7 @@ pub enum TokenType {
     Op,
     Bracket,
     NumLit,
-    // Local,
+    StringLit,
     Sym,
     Unknown,
     Whitespace,
@@ -25,16 +25,22 @@ impl fmt::Debug for Token {
     }
 }
 
-pub const ERR: &str = "#err";
-const OPERATORS: &str = "~!@#$%^&*-+=<>|/?.,";
+const OPERATORS: &str = "~!@#$%^&*-+=<>|\\/?.,:;";
 const BRACKETS: &str = "([{}])";
 const NUMBERS: &str = "0123456789";
 const SYMBOLS: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_";
 const WHITESPACE: &str = "\n\r\t ";
+const QUOTES: &str = "'\"`";
+const COMMENT: &str = "//";
+const MULTI_COMMENT: &str = "/*";
+const END_MULTI_COMMENT: &str = "*/";
 
 fn classify_char(ch: char) -> TokenType {
     if WHITESPACE.contains(ch) {
         return TokenType::Whitespace;
+    }
+    if SYMBOLS.contains(ch) {
+        return TokenType::Sym;
     }
     if OPERATORS.contains(ch) {
         return TokenType::Op;
@@ -45,8 +51,8 @@ fn classify_char(ch: char) -> TokenType {
     if NUMBERS.contains(ch) {
         return TokenType::NumLit;
     }
-    if SYMBOLS.contains(ch) {
-        return TokenType::Sym;
+    if QUOTES.contains(ch) {
+        return TokenType::StringLit;
     }
     return TokenType::Unknown;
 }
@@ -56,16 +62,20 @@ pub fn lex_head(mut contents: VecDeque<char>) -> (Token, VecDeque<char>) {
     let mut head: VecDeque<char> = VecDeque::new();
 
     let mut tok_type: TokenType = TokenType::Unknown;
+    let mut quote: Option<char> = None;
 
     loop {
         match contents.front() {
             Some(chr) => {
-                let chr_type = classify_char(chr.clone());
+                let chr_type = classify_char(*chr);
                 tok_type = match (tok_type.clone(), chr_type.clone()) {
                     (TokenType::Unknown, TokenType::Whitespace) => TokenType::Unknown, // Ignore
+                    (TokenType::Unknown, TokenType::StringLit) => {
+                        quote = Some(chr.clone());
+                        TokenType::StringLit
+                    },
                     (TokenType::Unknown, new_tok_type) => new_tok_type,
                     (_, TokenType::Whitespace) => break, // Token finished.
-
                     (TokenType::Op, TokenType::Op) => TokenType::Op,
                     (TokenType::Op, _) => break, // Token finished.
 
@@ -78,8 +88,13 @@ pub fn lex_head(mut contents: VecDeque<char>) -> (Token, VecDeque<char>) {
                     (TokenType::Sym, _) => break, // Token finished.
 
                     (TokenType::Bracket, _) => break, // Token finished.
-                    _ => TokenType::Error,            // Can't mix other tokentypes
+                    unexpected => {
+                        unimplemented!() // Can't mix other tokentypes
+                    }
                 };
+                if chr_type == TokenType::StringLit {
+                    break;
+                }
                 if chr_type != TokenType::Whitespace {
                     // Add the character.
                     head.push_back(chr.clone());
@@ -90,9 +105,40 @@ pub fn lex_head(mut contents: VecDeque<char>) -> (Token, VecDeque<char>) {
             None => break,
         }
     }
+    if tok_type == TokenType::StringLit {
+        // We hit a quote.
+        loop {
+            contents.pop_front();
+            // Add the character.
+            match contents.front() {
+                Some(chr) => {
+                    if Some(*chr) == quote { break }
+                    head.push_back(chr.clone());
+                }
+                _ => break
+            }
+        }
+        // Drop the quote
+        contents.pop_front();
+    }
     let value = head.into_iter().collect();
     return (Token { value, tok_type }, contents);
 }
+
+/*
+                        loop {
+                            match contents.front() {
+                                Some(nxt) => {
+                                    if *nxt == *chr { break }
+                                    if *nxt == '\n' { break } //Unfinished str at eol
+                                    head.push_back(nxt.clone());
+                                },
+                                None => break, // Unfinished str at eof
+                            }
+                            contents.pop_front();
+                        }
+                        TokenType::StringLit
+ */
 
 #[cfg(test)]
 mod tests {
@@ -138,5 +184,12 @@ mod tests {
         let chars = VecDeque::from_iter("a123".chars());
         let (tok, _) = lex_head(chars);
         assert_eq!(tok.tok_type, TokenType::Sym);
+    }
+
+    #[test]
+    fn lex_operator() {
+        let chars = VecDeque::from_iter("-a123".chars());
+        let (tok, _) = lex_head(chars);
+        assert_eq!(tok.tok_type, TokenType::Op);
     }
 }

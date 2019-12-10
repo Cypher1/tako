@@ -12,18 +12,20 @@ fn bind_infix(tok: &Token) -> i32 {
             "*" => 40,
             "/" => 40,
             "^" => 50,
+            ";" => 2000,
             _ => 1000,
         },
         TokenType::NumLit => 0,
-        _bracket => 0, // TODO impossible
+        _ => 0, // TODO impossible
     }
 }
 
 fn nud(mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
     match toks.pop_front() {
-        None => (Node::Error(ERR.to_string()), toks),
+        None => (Node::Error("Unexpected eof, expected expr".to_string()), toks),
         Some(head) => match head.tok_type {
             TokenType::NumLit => (Node::Num(head.value.parse().unwrap()), toks),
+            TokenType::StringLit => (Node::Str(head.value), toks),
             TokenType::Op => {
                 let lbp = bind_infix(&head);
                 let (right, new_toks) = expr(toks, lbp);
@@ -41,6 +43,14 @@ fn nud(mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
                 new_toks.pop_front();
                 return (inner, new_toks);
             }
+            TokenType::Sym => {
+                return (
+                    Node::Call(CallNode {
+                        name: head.value,
+                    }),
+                    toks,
+                );
+            }
             _ => unimplemented!(),
         },
     }
@@ -48,9 +58,10 @@ fn nud(mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
 
 fn led(mut toks: VecDeque<Token>, left_branch: Node) -> (Node, VecDeque<Token>) {
     match toks.pop_front() {
-        None => (Node::Error(ERR.to_string()), toks),
+        None => (Node::Error("Unexpected eof, expected expr tail".to_string()), toks),
         Some(head) => match head.tok_type {
             TokenType::NumLit => (Node::Num(head.value.parse().unwrap()), toks),
+            TokenType::StringLit => (Node::Str(head.value), toks),
             TokenType::Op => {
                 let lbp = bind_infix(&head);
                 let (right, new_toks) = expr(toks, lbp);
@@ -103,10 +114,6 @@ pub fn parse(contents: String) -> Node {
             break; // TODO done / skip?
         }
 
-        if next.tok_type == TokenType::Error {
-            break; // TODO Error
-        }
-
         // If valid, take the token and move on.
         toks.push_back(next);
         chars = new_chars;
@@ -121,4 +128,66 @@ pub fn parse(contents: String) -> Node {
     }
 
     return root;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse;
+    use super::super::ast::*;
+
+    fn num_lit(x: i32) -> Box<Node> {
+        Box::new(Node::Num(x))
+    }
+
+    fn str_lit(x: String) -> Box<Node> {
+        Box::new(Node::Str(x))
+    }
+
+    #[test]
+    fn parse_num() {
+        assert_eq!(parse("12".to_string()), Node::Num(12));
+    }
+
+    #[test]
+    fn parse_str() {
+        assert_eq!(parse("\"hello world\"".to_string()),
+            Node::Str("hello world".to_string()));
+    }
+
+    #[test]
+    fn parse_un_op() {
+        assert_eq!(parse("-12".to_string()), Node::UnOp(UnOpNode {name: "-".to_string(),
+       inner: Box::new(Node::Num(12))}));
+    }
+
+    #[test]
+    fn parse_min_op() {
+        assert_eq!(parse("14-12".to_string()),
+        Node::BinOp(BinOpNode {
+            name: "-".to_string(),
+            left: num_lit(14),
+            right: num_lit(12)
+        }));
+    }
+
+    #[test]
+    fn parse_mul_op() {
+        assert_eq!(parse("14*12".to_string()),
+        Node::BinOp(BinOpNode {
+            name: "*".to_string(),
+            left: num_lit(14),
+            right: num_lit(12)
+        }));
+    }
+
+    #[test]
+    fn parse_add_str() {
+        assert_eq!(parse("\"hello\"+\" world\"".to_string()),
+            Node::BinOp(BinOpNode {
+               name: "+".to_string(),
+                left: str_lit("hello".to_string()),
+                right: str_lit(" world".to_string())
+            }));
+    }
+
 }

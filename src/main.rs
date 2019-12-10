@@ -3,15 +3,15 @@ use std::fs::File;
 use std::io::prelude::*;
 
 mod ast;
-mod compi32;
-mod evali32;
+mod wasm;
+mod interpreter;
 mod parser;
 mod tokens;
 mod tree;
 
 use ast::Visitor;
-use compi32::Compiler;
-use evali32::Interpreter;
+use wasm::Compiler;
+use interpreter::Interpreter;
 
 fn main() -> std::io::Result<()> {
     let all_args: Vec<String> = env::args().collect();

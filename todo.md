@@ -1,7 +1,6 @@
 # TODOs
 
 ## Engineering
-- Convert to visitor pattern (to enable nano-pass style approach)
 - Build steps in rust (reduce dependencies where possible)
 - Standardize on cli arguments (copying, where possible from go, rustc, cargo)
   - ika help
