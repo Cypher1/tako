@@ -10,7 +10,6 @@ pub enum TokenType {
     Sym,
     Unknown,
     Whitespace,
-    Error,
 }
 
 #[derive(Clone)]
@@ -88,7 +87,7 @@ pub fn lex_head(mut contents: VecDeque<char>) -> (Token, VecDeque<char>) {
                     (TokenType::Sym, _) => break, // Token finished.
 
                     (TokenType::Bracket, _) => break, // Token finished.
-                    unexpected => {
+                    _unexpected => {
                         unimplemented!() // Can't mix other tokentypes
                     }
                 };
