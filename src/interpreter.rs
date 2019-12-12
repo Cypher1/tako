@@ -85,7 +85,12 @@ impl Visitor<PrimValue, PrimValue, InterpreterError> for Interpreter {
     }
 
     fn visit_call(&mut self, expr: &CallNode) -> Res {
-        panic!("Call not implemented in interpreter");
+        use PrimValue::*;
+        match expr.name.as_str() {
+            "true" => return Ok(Bool(true)),
+            "false" => return Ok(Bool(false)),
+            _ => panic!("Call not implemented in interpreter"),
+        }
     }
 
     fn visit_prim(&mut self, expr: &PrimValue) -> Res {
@@ -113,7 +118,7 @@ impl Visitor<PrimValue, PrimValue, InterpreterError> for Interpreter {
                 I32(n) => Ok(I32(-n)),
                 _ => Err(InterpreterError::TypeMismatch("-".to_string(), i))
             },
-            op => Err(InterpreterError::UnknownInfixOperator(op.to_string())),
+            op => Err(InterpreterError::UnknownPrefixOperator(op.to_string())),
         }
     }
 
@@ -132,6 +137,42 @@ impl Visitor<PrimValue, PrimValue, InterpreterError> for Interpreter {
                 (Str(l), Bool(r)) => Ok(Str(l.to_string() + &r.to_string())),
                 (Str(l), I32(r)) => Ok(Str(l.to_string() + &r.to_string())),
                 (Str(l), Str(r)) => Ok(Str(l.to_string() + &r.to_string())),
+            },
+            "==" => match (&l, &r) {
+                (Bool(l), Bool(r)) => Ok(Bool(*l == *r)),
+                (I32(l), I32(r)) => Ok(Bool(l == r)),
+                (Str(l), Str(r)) => Ok(Bool(l.to_string() == r.to_string())),
+                _ => Err(InterpreterError::TypeMismatch2("==".to_string(), l, r))
+            },
+            "!=" => match (&l, &r) {
+                (Bool(l), Bool(r)) => Ok(Bool(*l != *r)),
+                (I32(l), I32(r)) => Ok(Bool(l != r)),
+                (Str(l), Str(r)) => Ok(Bool(l.to_string() != r.to_string())),
+                _ => Err(InterpreterError::TypeMismatch2("!=".to_string(), l, r))
+            },
+            ">" => match (&l, &r) {
+                (Bool(l), Bool(r)) => Ok(Bool(*l > *r)),
+                (I32(l), I32(r)) => Ok(Bool(l > r)),
+                (Str(l), Str(r)) => Ok(Bool(l.to_string() > r.to_string())),
+                _ => Err(InterpreterError::TypeMismatch2(">".to_string(), l, r))
+            },
+            "<" => match (&l, &r) {
+                (Bool(l), Bool(r)) => Ok(Bool(*l < *r)),
+                (I32(l), I32(r)) => Ok(Bool(l < r)),
+                (Str(l), Str(r)) => Ok(Bool(l.to_string() < r.to_string())),
+                _ => Err(InterpreterError::TypeMismatch2("<".to_string(), l, r))
+            },
+            ">=" => match (&l, &r) {
+                (Bool(l), Bool(r)) => Ok(Bool(*l >= *r)),
+                (I32(l), I32(r)) => Ok(Bool(l >= r)),
+                (Str(l), Str(r)) => Ok(Bool(l.to_string() >= r.to_string())),
+                _ => Err(InterpreterError::TypeMismatch2(">=".to_string(), l, r))
+            },
+            "<=" => match (&l, &r) {
+                (Bool(l), Bool(r)) => Ok(Bool(*l <= *r)),
+                (I32(l), I32(r)) => Ok(Bool(l <= r)),
+                (Str(l), Str(r)) => Ok(Bool(l.to_string() <= r.to_string())),
+                _ => Err(InterpreterError::TypeMismatch2("<=".to_string(), l, r))
             },
             "-" => match (&l, &r) {
                 (I32(l), Bool(r)) => Ok(I32(l - if *r {1} else {0})),
@@ -163,7 +204,7 @@ impl Visitor<PrimValue, PrimValue, InterpreterError> for Interpreter {
                 (I32(l), I32(r)) => Ok(I32(i32::pow(*l, *r as u32))), // TODO: require pos pow
                 _ => Err(InterpreterError::TypeMismatch2("^".to_string(), l, r))
             },
-            op => Err(InterpreterError::UnknownPrefixOperator(op.to_string())),
+            op => Err(InterpreterError::UnknownInfixOperator(op.to_string())),
         }
     }
 
