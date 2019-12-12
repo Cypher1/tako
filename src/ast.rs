@@ -9,6 +9,15 @@ pub struct CallNode {
 #[derive(Debug)]
 #[derive(PartialEq)]
 #[derive(Clone)]
+pub enum PrimValue {
+    Bool(bool),
+    I32(i32),
+    Str(String),
+}
+
+#[derive(Debug)]
+#[derive(PartialEq)]
+#[derive(Clone)]
 pub struct LetNode {
     pub name: String,
     //TODO: Args
@@ -38,8 +47,7 @@ pub struct BinOpNode {
 pub enum Node {
     Error(String),
     Call(CallNode),
-    Num(i32),
-    Str(String),
+    Prim(PrimValue),
     Let(LetNode),
     UnOp(UnOpNode),
     BinOp(BinOpNode),
@@ -48,10 +56,7 @@ pub enum Node {
 pub trait Visitor<U, V, E> {
     fn visit_root(&mut self, e: &Node) -> Result<V, E>;
 
-    fn visit_num(&mut self, e: &i32) -> Result<U, E>;
-    fn visit_str(&mut self, _: &String) -> Result<U, E> {
-        unimplemented!();
-    }
+    fn visit_prim(&mut self, e: &PrimValue) -> Result<U, E>;
     fn visit_call(&mut self, e: &CallNode) -> Result<U, E>;
     fn visit_let(&mut self, e: &LetNode) -> Result<U, E>;
     fn visit_un_op(&mut self, e: &UnOpNode) -> Result<U, E>;
@@ -62,8 +67,7 @@ pub trait Visitor<U, V, E> {
         match e {
             Node::Error(n) => self.handle_error(n),
             Node::Call(n) => self.visit_call(n),
-            Node::Num(n) => self.visit_num(n),
-            Node::Str(n) => self.visit_str(n),
+            Node::Prim(n) => self.visit_prim(n),
             Node::Let(n) => self.visit_let(n),
             Node::UnOp(n) => self.visit_un_op(n),
             Node::BinOp(n) => self.visit_bin_op(n),

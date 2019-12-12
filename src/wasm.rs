@@ -18,7 +18,8 @@ use super::ast::*;
 #[derive(Debug)]
 #[derive(PartialEq)]
 pub enum CompilerError {
-    UnknownOperator(String),
+    UnknownInfixOperator(String),
+    UnknownPrefixOperator(String),
     FailedParse(String),
 }
 
@@ -31,6 +32,7 @@ impl Default for Compiler {
     }
 }
 
+type Res = Result<Vec<String>, CompilerError>;
 impl Visitor<Vec<String>, Tree<String>, CompilerError> for Compiler {
     fn visit_root(&mut self, expr: &Node) -> Result<Tree<String>, CompilerError> {
         let name = Tree {
@@ -65,29 +67,33 @@ impl Visitor<Vec<String>, Tree<String>, CompilerError> for Compiler {
         });
     }
 
-    fn visit_call(&mut self, expr: &CallNode) -> Result<Vec<String>, CompilerError> {
+    fn visit_call(&mut self, expr: &CallNode) -> Res {
         panic!("Call not implemented in wasm");
     }
 
-    fn visit_num(&mut self, expr: &i32) -> Result<Vec<String>, CompilerError> {
-        Ok(vec!["i32.const ".to_string() + &expr.to_string()])
+    fn visit_prim(&mut self, expr: &PrimValue) -> Res {
+        use PrimValue::*;
+        match expr {
+            I32(n) => Ok(vec!["i32.const ".to_string() + &n.to_string()]),
+            _ => unimplemented!(),
+        }
     }
 
-    fn visit_let(&mut self, expr: &LetNode) -> Result<Vec<String>, CompilerError> {
+    fn visit_let(&mut self, expr: &LetNode) -> Res {
         panic!("Let not implemented in wasm");
     }
 
-    fn visit_un_op(&mut self, expr: &UnOpNode) -> Result<Vec<String>, CompilerError> {
+    fn visit_un_op(&mut self, expr: &UnOpNode) -> Res {
         let mut res = Vec::new();
         res.append(&mut self.visit(&expr.inner)?);
         match expr.name.as_str() {
             "+" => {}
             "-" => res.push("i32.sub".to_string()),
-            op => return Err(CompilerError::UnknownOperator(op.to_string())),
+            op => return Err(CompilerError::UnknownPrefixOperator(op.to_string())),
         };
         return Ok(res);
     }
-    fn visit_bin_op(&mut self, expr: &BinOpNode) -> Result<Vec<String>, CompilerError> {
+    fn visit_bin_op(&mut self, expr: &BinOpNode) -> Res {
         let mut res = Vec::new();
         res.append(&mut self.visit(&expr.left)?);
         res.append(&mut self.visit(&expr.right)?);
@@ -98,13 +104,13 @@ impl Visitor<Vec<String>, Tree<String>, CompilerError> for Compiler {
             "/" => "i32.div_s".to_string(), // TODO: require divisibility
             "-" => "i32.sub".to_string(),
             "^" => "i32.pow".to_string(), // TODO: require pos pow
-            op => return Err(CompilerError::UnknownOperator(op.to_string())),
+            op => return Err(CompilerError::UnknownInfixOperator(op.to_string())),
         };
         res.push(s);
         return Ok(res);
     }
 
-    fn handle_error(&mut self, expr: &String) -> Result<Vec<String>, CompilerError> {
+    fn handle_error(&mut self, expr: &String) -> Res {
         Err(CompilerError::FailedParse(expr.to_string()))
     }
 }

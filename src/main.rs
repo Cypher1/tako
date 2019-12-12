@@ -48,7 +48,7 @@ fn work(filename: String, interactive: bool) -> std::io::Result<()> {
         let mut interp = Interpreter::default();
         match interp.visit_root(&ast) {
             Ok(res) => {
-                println!("{}", res);
+                println!("{:?}", res);
             },
             Err(err) => {
                 println!("{:?}", err);

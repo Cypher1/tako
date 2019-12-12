@@ -24,8 +24,8 @@ fn nud(mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
     match toks.pop_front() {
         None => (Node::Error("Unexpected eof, expected expr".to_string()), toks),
         Some(head) => match head.tok_type {
-            TokenType::NumLit => (Node::Num(head.value.parse().unwrap()), toks),
-            TokenType::StringLit => (Node::Str(head.value), toks),
+            TokenType::NumLit => (Node::Prim(PrimValue::I32(head.value.parse().unwrap())), toks),
+            TokenType::StringLit => (Node::Prim(PrimValue::Str(head.value)), toks),
             TokenType::Op => {
                 let lbp = bind_infix(&head);
                 let (right, new_toks) = expr(toks, lbp);
@@ -50,31 +50,34 @@ fn nud(mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
                     }),
                     toks,
                 );
-            }
-            _ => unimplemented!(),
+            },
+            TokenType::Unknown | TokenType::Whitespace => panic!("Lexer should not produce unknown or whitespace"),
         },
     }
 }
 
 fn led(mut toks: VecDeque<Token>, left_branch: Node) -> (Node, VecDeque<Token>) {
+    use Node::*;
     match toks.pop_front() {
-        None => (Node::Error("Unexpected eof, expected expr tail".to_string()), toks),
+        None => (Error("Unexpected eof, expected expr tail".to_string()), toks),
         Some(head) => match head.tok_type {
-            TokenType::NumLit => (Node::Num(head.value.parse().unwrap()), toks),
-            TokenType::StringLit => (Node::Str(head.value), toks),
+            TokenType::NumLit => (Prim(PrimValue::I32(head.value.parse().unwrap())), toks),
+            TokenType::StringLit => (Prim(PrimValue::Str(head.value)), toks),
             TokenType::Op => {
                 let lbp = bind_infix(&head);
                 let (right, new_toks) = expr(toks, lbp);
                 return (
-                    Node::BinOp(BinOpNode {
+                    BinOp(BinOpNode {
                         name: head.value,
                         left: Box::new(left_branch),
                         right: Box::new(right),
                     }),
                     new_toks,
                 );
-            }
-            _ => unimplemented!(),
+            },
+            TokenType::Bracket => (Error("Array style indexing not currently supported".to_string()), toks),
+            TokenType::Sym => (Error("Infix symbols not currently supported".to_string()), toks),
+            TokenType::Unknown | TokenType::Whitespace => panic!("Lexer should not produce unknown or whitespace"),
         },
     }
 }
@@ -134,30 +137,32 @@ pub fn parse(contents: String) -> Node {
 mod tests {
     use super::parse;
     use super::super::ast::*;
+    use Node::*;
+    use PrimValue::*;
 
     fn num_lit(x: i32) -> Box<Node> {
-        Box::new(Node::Num(x))
+        Box::new(Prim(I32(x)))
     }
 
     fn str_lit(x: String) -> Box<Node> {
-        Box::new(Node::Str(x))
+        Box::new(Prim(Str(x)))
     }
 
     #[test]
     fn parse_num() {
-        assert_eq!(parse("12".to_string()), Node::Num(12));
+        assert_eq!(parse("12".to_string()), Prim(I32(12)));
     }
 
     #[test]
     fn parse_str() {
         assert_eq!(parse("\"hello world\"".to_string()),
-            Node::Str("hello world".to_string()));
+            Prim(Str("hello world".to_string())));
     }
 
     #[test]
     fn parse_un_op() {
-        assert_eq!(parse("-12".to_string()), Node::UnOp(UnOpNode {name: "-".to_string(),
-       inner: Box::new(Node::Num(12))}));
+        assert_eq!(parse("-12".to_string()), UnOp(UnOpNode {name: "-".to_string(),
+       inner: Box::new(Prim(I32(12)))}));
     }
 
     #[test]
