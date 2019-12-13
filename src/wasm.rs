@@ -84,11 +84,18 @@ impl Visitor<Vec<String>, Tree<String>, CompilerError> for Compiler {
     }
 
     fn visit_un_op(&mut self, expr: &UnOpNode) -> Res {
+        use PrimValue::*;
         let mut res = Vec::new();
-        res.append(&mut self.visit(&expr.inner)?);
+        let mut inner = self.visit(&expr.inner)?;
         match expr.name.as_str() {
-            "+" => {}
-            "-" => res.push("i32.sub".to_string()),
+            "+" => {
+                res.append(&mut inner);
+            },
+            "-" => {
+                res.append(&mut self.visit_prim(&I32(0))?);
+                res.append(&mut inner);
+                res.push("i32.sub".to_string());
+            },
             op => return Err(CompilerError::UnknownPrefixOperator(op.to_string())),
         };
         return Ok(res);
