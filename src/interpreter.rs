@@ -189,6 +189,14 @@ impl Visitor<PrimValue, PrimValue, InterpreterError> for Interpreter {
                 // (Str(l), I32(r)) => Ok(Str(l * r.to_string())),
                 _ => Err(InterpreterError::TypeMismatch2("*".to_string(), l, r))
             },
+            "/" => match (&l, &r) {
+                (I32(l), I32(r)) => Ok(I32(l / r)),
+                _ => Err(InterpreterError::TypeMismatch2("/".to_string(), l, r))
+            },
+            "%" => match (&l, &r) {
+                (I32(l), I32(r)) => Ok(I32(l % r)),
+                _ => Err(InterpreterError::TypeMismatch2("%".to_string(), l, r))
+            },
             "&&" => match (&l, &r) {
                 (Bool(l), Bool(r)) => Ok(Bool(*l&&*r)),
                 _ => Err(InterpreterError::TypeMismatch2("&&".to_string(), l, r))
@@ -275,6 +283,14 @@ mod tests {
         assert_eq!(eval_str("-1==1".to_string()), Ok(Bool(false)));
         assert_eq!(eval_str("1==123".to_string()), Ok(Bool(false)));
         assert_eq!(eval_str("1302==1302".to_string()), Ok(Bool(true)));
+    }
+
+    #[test]
+    fn parse_and_eval_i32_pow() {
+        assert_eq!(eval_str("2^3".to_string()), Ok(I32(8)));
+        assert_eq!(eval_str("3^2".to_string()), Ok(I32(9)));
+        assert_eq!(eval_str("-4^2".to_string()), Ok(I32(16)));
+        assert_eq!(eval_str("2^3^2".to_string()), Ok(I32(512)));
     }
 
     #[test]

@@ -4,8 +4,8 @@ use std::iter::FromIterator;
 use super::ast::*;
 use super::tokens::*;
 
-fn bind_infix(tok: &Token) -> i32 {
-    match &tok.tok_type {
+fn binding_power(tok: &Token) -> (i32, bool) {
+    let bind = match &tok.tok_type {
         TokenType::Op => match tok.value.as_str() {
             "," => 30,
             "=" => 40,
@@ -22,6 +22,7 @@ fn bind_infix(tok: &Token) -> i32 {
             "-" => 80,
             "*" => 90,
             "/" => 90,
+            "%" => 90,
             "." => 100,
             "[" => 110,
             "(" => 110,
@@ -31,7 +32,15 @@ fn bind_infix(tok: &Token) -> i32 {
         },
         TokenType::NumLit => 0,
         _ => 0, // TODO impossible
-    }
+    };
+    let assoc_right = match &tok.tok_type {
+        TokenType::Op => match tok.value.as_str() {
+            "^" => true,
+            _ => false,
+        },
+        _ => false
+    };
+    return (bind, assoc_right);
 }
 
 fn nud(mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
@@ -41,7 +50,7 @@ fn nud(mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
             TokenType::NumLit => (Node::Prim(PrimValue::I32(head.value.parse().unwrap())), toks),
             TokenType::StringLit => (Node::Prim(PrimValue::Str(head.value)), toks),
             TokenType::Op => {
-                let lbp = bind_infix(&head);
+                let (lbp, _)= binding_power(&head);
                 let (right, new_toks) = expr(toks, lbp);
                 return (
                     Node::UnOp(UnOpNode {
@@ -78,8 +87,8 @@ fn led(mut toks: VecDeque<Token>, left_branch: Node) -> (Node, VecDeque<Token>) 
             TokenType::NumLit => (Prim(PrimValue::I32(head.value.parse().unwrap())), toks),
             TokenType::StringLit => (Prim(PrimValue::Str(head.value)), toks),
             TokenType::Op => {
-                let lbp = bind_infix(&head);
-                let (right, new_toks) = expr(toks, lbp);
+                let (lbp, assoc_right) = binding_power(&head);
+                let (right, new_toks) = expr(toks, lbp - if assoc_right {1} else {0});
                 return (
                     BinOp(BinOpNode {
                         name: head.value,
@@ -105,7 +114,8 @@ fn expr(init_toks: VecDeque<Token>, init_lbp: i32) -> (Node, VecDeque<Token>) {
         match toks.front() {
             None => break,
             Some(token) => {
-                if init_lbp >= bind_infix(token) {
+                let (lbp, _) = binding_power(token);
+                if init_lbp >= lbp {
                     break;
                 }
             }

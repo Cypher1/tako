@@ -35,8 +35,8 @@ fn main() -> std::io::Result<()> {
 }
 
 fn work(filename: String, interactive: bool) -> std::io::Result<()> {
-    let mut file = File::open(filename)?;
     let mut contents = String::new();
+    let mut file = File::open(filename)?;
     file.read_to_string(&mut contents)?;
     // println!("Content: '\n{}'", contents);
 
@@ -66,4 +66,48 @@ fn work(filename: String, interactive: bool) -> std::io::Result<()> {
         }
     }
     return Ok(());
+}
+
+#[cfg(test)]
+    mod tests {
+    use std::io;
+    use std::fs::{self, DirEntry};
+    use std::fs::File;
+    use std::io::prelude::*;
+    use std::path::Path;
+
+    use super::ast::Visitor;
+    use super::interpreter::Interpreter;
+    use super::parser;
+
+    // one possible implementation of walking a directory only visiting files
+    fn visit_dirs(dir: &Path, cb: &dyn Fn(&DirEntry)) -> io::Result<()> {
+        if dir.is_dir() {
+            for entry in fs::read_dir(dir)? {
+                let entry = entry?;
+                let path = entry.path();
+                if path.is_dir() {
+                    visit_dirs(&path, cb)?;
+                } else {
+                    cb(&entry);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn parse_all_examples() {
+        visit_dirs(Path::new("./examples"), &|filename| {
+            println!("\ttesting: {:?}", filename.path());
+
+            let mut contents = String::new();
+            let mut file = File::open(filename.path()).expect("File missing");
+            file.read_to_string(&mut contents).expect("Couldnt read file");
+
+            let ast = parser::parse(contents);
+            let mut interp = Interpreter::default();
+            interp.visit_root(&ast).expect("Failed to evaluate ast");
+        });
+    }
 }
