@@ -7,6 +7,7 @@ use super::tokens::*;
 fn binding_power(tok: &Token) -> (i32, bool) {
     let bind = match &tok.tok_type {
         TokenType::Op => match tok.value.as_str() {
+            ";" => 20,
             "," => 30,
             "=" => 40,
             "<" => 50,
@@ -27,7 +28,6 @@ fn binding_power(tok: &Token) -> (i32, bool) {
             "[" => 110,
             "(" => 110,
             "{" => 110,
-            ";" => 2000,
             _ => panic!("Unknown operator"),
         },
         TokenType::NumLit => 0,
@@ -50,7 +50,7 @@ fn nud(mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
             TokenType::NumLit => (Node::Prim(PrimValue::I32(head.value.parse().unwrap())), toks),
             TokenType::StringLit => (Node::Prim(PrimValue::Str(head.value)), toks),
             TokenType::Op => {
-                let (lbp, _)= binding_power(&head);
+                let (lbp, _) = binding_power(&head);
                 let (right, new_toks) = expr(toks, lbp);
                 return (
                     Node::UnOp(UnOpNode {
@@ -67,9 +67,11 @@ fn nud(mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
                 return (inner, new_toks);
             }
             TokenType::Sym => {
+                // Handle args.
                 return (
                     Node::Call(CallNode {
-                        name: head.value,
+                            name: head.value,
+                            args: vec![],
                     }),
                     toks,
                 );
@@ -79,7 +81,7 @@ fn nud(mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
     }
 }
 
-fn led(mut toks: VecDeque<Token>, left_branch: Node) -> (Node, VecDeque<Token>) {
+fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
     use Node::*;
     match toks.pop_front() {
         None => (Error("Unexpected eof, expected expr tail".to_string()), toks),
@@ -89,10 +91,19 @@ fn led(mut toks: VecDeque<Token>, left_branch: Node) -> (Node, VecDeque<Token>) 
             TokenType::Op => {
                 let (lbp, assoc_right) = binding_power(&head);
                 let (right, new_toks) = expr(toks, lbp - if assoc_right {1} else {0});
+                if head.value == "=".to_string() {
+                     match left {
+                        Call(n) => return (Let(LetNode {
+                            call: n,
+                            value: Some(Box::new(right)),
+                        }), new_toks),
+                        _ => panic!("Expected a definition"),
+                    }
+                }
                 return (
                     BinOp(BinOpNode {
                         name: head.value,
-                        left: Box::new(left_branch),
+                        left: Box::new(left),
                         right: Box::new(right),
                     }),
                     new_toks,
@@ -151,7 +162,8 @@ pub fn parse(contents: String) -> Node {
     let (root, left_over) = expr(toks, 0);
 
     if left_over.len() != 0 {
-        println!("Oh no");
+        println!("Oh no: Left over characters {:?}", left_over);
+        //TODO: Insert a semi by default
     }
 
     return root;

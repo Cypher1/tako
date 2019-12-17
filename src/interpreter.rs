@@ -13,9 +13,7 @@ pub enum InterpreterError {
     TypeMismatch2(String, PrimValue, PrimValue),
 }
 
-pub struct Frame {
-
-}
+type Frame = Vec<LetNode>;
 
 // Walks the AST interpreting it.
 pub struct Interpreter {
@@ -34,12 +32,12 @@ impl Interpreter {
             },
             ([name], rest) => {
                 for child in &mut curr.children {
-                    if child.value.name == *name {
+                    if child.value.call.name == *name {
                         return Interpreter::bind_to(child, rest.to_vec(), binding);
                     }
                 }
                 let mut new = Tree {
-                    value: LetNode{name: name.to_string(), value: None},
+                    value: LetNode{call: CallNode{name: name.to_string(), args: vec![]}, value: None},
                     children: vec![],
                 };
                 Interpreter::bind_to(&mut new, rest.to_vec(), binding)?;
@@ -54,7 +52,7 @@ impl Interpreter {
 
         'name: for name in path {
             for child in &curr.children {
-                if child.value.name == name {
+                if child.value.call.name == name {
                     curr = child;
                     continue 'name;
                 }
@@ -69,10 +67,10 @@ impl Default for Interpreter {
     fn default() -> Interpreter {
         Interpreter {
             scope: Tree {
-                value: LetNode{name: "".to_string(), value: None },
+                value: LetNode{call: CallNode{name: "".to_string(), args: vec![]}, value: None },
                 children: vec![],
             },
-            stack: vec![],
+            stack: vec![vec![]],
         }
     }
 }
@@ -98,7 +96,14 @@ impl Visitor<PrimValue, PrimValue, InterpreterError> for Interpreter {
     }
 
     fn visit_let(&mut self, expr: &LetNode) -> Res {
-        panic!("Let not implemented in interpreter");
+        use PrimValue::*;
+        match self.stack.last_mut() {
+            None => panic!("there is no stack frame"),
+            Some(frame) => {
+                frame.push(expr.clone());
+                return Ok(Unit);
+            }
+        }
     }
 
     fn visit_un_op(&mut self, expr: &UnOpNode) -> Res {
@@ -127,6 +132,9 @@ impl Visitor<PrimValue, PrimValue, InterpreterError> for Interpreter {
         let l = self.visit(&expr.left)?;
         let r = self.visit(&expr.right)?;
         match expr.name.as_str() {
+            ";" => match (&l, &r) {
+                (_, r) => Ok(r.clone()),
+            },
             "+" => match (&l, &r) {
                 (Bool(l), Bool(r)) => Ok(I32(if *l {1} else {0} + if *r {1} else {0})),
                 (Bool(l), I32(r)) => Ok(I32(if *l {1} else {0} + r)),
@@ -137,6 +145,7 @@ impl Visitor<PrimValue, PrimValue, InterpreterError> for Interpreter {
                 (Str(l), Bool(r)) => Ok(Str(l.to_string() + &r.to_string())),
                 (Str(l), I32(r)) => Ok(Str(l.to_string() + &r.to_string())),
                 (Str(l), Str(r)) => Ok(Str(l.to_string() + &r.to_string())),
+                _ => Err(InterpreterError::TypeMismatch2("+".to_string(), l, r))
             },
             "==" => match (&l, &r) {
                 (Bool(l), Bool(r)) => Ok(Bool(*l == *r)),
@@ -243,6 +252,13 @@ mod tests {
         interp.visit_root(&ast)
     }
 
+    fn interp_with_str(s: String) -> Interpreter {
+        let ast = parser::parse(s);
+        let mut interp = Interpreter::default();
+        interp.visit_root(&ast).expect("failed to eval expr");
+        interp
+    }
+
     #[test]
     fn parse_and_eval_bool() {
         assert_eq!(eval_str("true".to_string()), Ok(Bool(true)));
@@ -299,11 +315,29 @@ mod tests {
     }
 
     #[test]
+    fn parse_and_eval_let() {
+        let interp = interp_with_str("x=3".to_string());
+        let x_eq_3 = LetNode {
+            call: sym("x".to_string()),
+            value: Some(Box::new(Prim(I32(3))))
+        };
+
+        assert_eq!(interp.stack, vec![vec![x_eq_3]]);
+    }
+
+    fn sym(name: String) -> CallNode {
+        CallNode {
+            name: name,
+            args: vec![],
+        }
+    }
+
+    #[test]
     fn bind_sym() {
         let mut interp = Interpreter::default();
         let value = Prim(I32(12));
         let let_x = LetNode {
-            name: "x".to_string(),
+            call: sym("x".to_string()),
             value: Some(Box::new(value))
         };
 
@@ -318,11 +352,11 @@ mod tests {
         let mut interp = Interpreter::default();
         let value = Node::Prim(PrimValue::I32(12));
         let let_x = LetNode {
-            name: "x".to_string(),
+            call: sym("x".to_string()),
             value: Some(Box::new(value))
         };
         let let_y = LetNode {
-            name: "y".to_string(),
+            call: sym("y".to_string()),
             value: Some(Box::new(Prim(I32(13))))
         };
 
@@ -339,11 +373,11 @@ mod tests {
         let mut interp = Interpreter::default();
         let value = Node::Prim(PrimValue::I32(12));
         let let_x = LetNode {
-            name: "x".to_string(),
+            call: sym("x".to_string()),
             value: Some(Box::new(value))
         };
         let let_y = LetNode {
-            name: "x".to_string(),
+            call: sym("x".to_string()),
             value: Some(Box::new(Node::Prim(PrimValue::I32(13))))
         };
 

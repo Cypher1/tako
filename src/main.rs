@@ -108,6 +108,6 @@ fn work(filename: String, interactive: bool) -> std::io::Result<()> {
             let ast = parser::parse(contents);
             let mut interp = Interpreter::default();
             interp.visit_root(&ast).expect("Failed to evaluate ast");
-        });
+        }).expect("Failed to parse all examples");
     }
 }
