@@ -18,7 +18,6 @@ type Frame = Vec<LetNode>;
 // Walks the AST interpreting it.
 pub struct Interpreter {
     scope: Tree<LetNode>,
-    stack: Vec<Frame>,
 }
 
 impl Interpreter {
@@ -70,24 +69,40 @@ impl Default for Interpreter {
                 value: LetNode{call: CallNode{name: "".to_string(), args: vec![]}, value: None },
                 children: vec![],
             },
-            stack: vec![vec![]],
         }
     }
 }
 
 type Res = Result<PrimValue, InterpreterError>;
-impl Visitor<PrimValue, PrimValue, InterpreterError> for Interpreter {
+type State = Vec<Frame>;
+impl Visitor<State, PrimValue, PrimValue, InterpreterError> for Interpreter {
 
     fn visit_root(&mut self, expr: &Node) -> Res {
-        self.visit(expr)
+        let mut state = vec![vec![]];
+        self.visit(&mut state, expr)
     }
 
-    fn visit_call(&mut self, expr: &CallNode) -> Res {
+    fn visit_call(&mut self, state: &mut State, expr: &CallNode) -> Res {
         use PrimValue::*;
         match expr.name.as_str() {
             "true" => return Ok(Bool(true)),
             "false" => return Ok(Bool(false)),
-            _ => panic!("Call not implemented in interpreter"),
+            n => {
+                for frame in state.iter().rev() {
+                    for var in frame.iter() {
+                        if n == var.call.name {
+                            match &var.value {
+                                Some(val) => return self.visit(
+                                    state,
+                                    &*val.clone()), // This is the variable
+                                None => {},
+                            }
+                        }
+                    }
+                    // Not in this frame, go back up.
+                }
+                panic!("Not in scope at all");
+            }
         }
     }
 
@@ -95,9 +110,9 @@ impl Visitor<PrimValue, PrimValue, InterpreterError> for Interpreter {
         Ok(expr.clone())
     }
 
-    fn visit_let(&mut self, expr: &LetNode) -> Res {
+    fn visit_let(&mut self, state: &mut State, expr: &LetNode) -> Res {
         use PrimValue::*;
-        match self.stack.last_mut() {
+        match state.last_mut() {
             None => panic!("there is no stack frame"),
             Some(frame) => {
                 frame.push(expr.clone());
@@ -106,9 +121,9 @@ impl Visitor<PrimValue, PrimValue, InterpreterError> for Interpreter {
         }
     }
 
-    fn visit_un_op(&mut self, expr: &UnOpNode) -> Res {
+    fn visit_un_op(&mut self, state: &mut State, expr: &UnOpNode) -> Res {
         use PrimValue::*;
-        let i = self.visit(&expr.inner)?;
+        let i = self.visit(state, &expr.inner)?;
         match expr.name.as_str() {
             "!" => match i {
                 Bool(n) => Ok(Bool(!n)),
@@ -127,10 +142,10 @@ impl Visitor<PrimValue, PrimValue, InterpreterError> for Interpreter {
         }
     }
 
-    fn visit_bin_op(&mut self, expr: &BinOpNode) -> Res {
+    fn visit_bin_op(&mut self, state: &mut State, expr: &BinOpNode) -> Res {
         use PrimValue::*;
-        let l = self.visit(&expr.left)?;
-        let r = self.visit(&expr.right)?;
+        let l = self.visit(state, &expr.left)?;
+        let r = self.visit(state, &expr.right)?;
         match expr.name.as_str() {
             ";" => match (&l, &r) {
                 (_, r) => Ok(r.clone()),
@@ -225,7 +240,7 @@ impl Visitor<PrimValue, PrimValue, InterpreterError> for Interpreter {
         }
     }
 
-    fn handle_error(&mut self, expr: &String) -> Res {
+    fn handle_error(&mut self, state: &mut State, expr: &String) -> Res {
         Err(InterpreterError::FailedParse(expr.to_string()))
     }
 }
@@ -316,13 +331,7 @@ mod tests {
 
     #[test]
     fn parse_and_eval_let() {
-        let interp = interp_with_str("x=3".to_string());
-        let x_eq_3 = LetNode {
-            call: sym("x".to_string()),
-            value: Some(Box::new(Prim(I32(3))))
-        };
-
-        assert_eq!(interp.stack, vec![vec![x_eq_3]]);
+        assert_eq!(eval_str("x=3;x".to_string()), Ok(I32(3)));
     }
 
     fn sym(name: String) -> CallNode {

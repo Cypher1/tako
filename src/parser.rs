@@ -163,7 +163,6 @@ pub fn parse(contents: String) -> Node {
 
     if left_over.len() != 0 {
         println!("Oh no: Left over characters {:?}", left_over);
-        //TODO: Insert a semi by default
     }
 
     return root;
@@ -218,6 +217,54 @@ mod tests {
             name: "*".to_string(),
             left: num_lit(14),
             right: num_lit(12)
+        }));
+    }
+
+    #[test]
+    fn parse_add_mul_precedence() {
+        assert_eq!(parse("3+2*4".to_string()),
+        Node::BinOp(BinOpNode {
+            name: "+".to_string(),
+            left: num_lit(3),
+            right: Box::new(
+                Node::BinOp(BinOpNode {
+                    name: "*".to_string(),
+                    left: num_lit(2),
+                    right: num_lit(4)
+                })
+            )
+        }));
+    }
+
+    #[test]
+    fn parse_mul_add_precedence() {
+        assert_eq!(parse("3*2+4".to_string()),
+        Node::BinOp(BinOpNode {
+            name: "+".to_string(),
+            left: Box::new(
+                Node::BinOp(BinOpNode {
+                    name: "*".to_string(),
+                    left: num_lit(3),
+                    right: num_lit(2)
+                })
+            ),
+            right: num_lit(4),
+        }));
+    }
+
+    #[test]
+    fn parse_mul_add_parens() {
+        assert_eq!(parse("3*(2+4)".to_string()),
+        Node::BinOp(BinOpNode {
+            name: "*".to_string(),
+            left: num_lit(3),
+            right: Box::new(
+                Node::BinOp(BinOpNode {
+                    name: "+".to_string(),
+                    left: num_lit(2),
+                    right: num_lit(4)
+                })
+            )
         }));
     }
 

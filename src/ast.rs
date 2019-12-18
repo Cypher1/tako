@@ -53,24 +53,25 @@ pub enum Node {
     BinOp(BinOpNode),
 }
 
-pub trait Visitor<U, V, E> {
-    fn visit_root(&mut self, e: &Node) -> Result<V, E>;
+pub trait Visitor<State, Res, Final, Err> {
+    fn visit_root(&mut self, e: &Node) -> Result<Final, Err>;
 
-    fn visit_prim(&mut self, e: &PrimValue) -> Result<U, E>;
-    fn visit_call(&mut self, e: &CallNode) -> Result<U, E>;
-    fn visit_let(&mut self, e: &LetNode) -> Result<U, E>;
-    fn visit_un_op(&mut self, e: &UnOpNode) -> Result<U, E>;
-    fn visit_bin_op(&mut self, e: &BinOpNode) -> Result<U, E>;
-    fn handle_error(&mut self, e: &String) -> Result<U, E>;
+    fn visit_prim(&mut self, e: &PrimValue) -> Result<Res, Err>;
+    fn visit_call(&mut self, state: &mut State, e: &CallNode) -> Result<Res, Err>;
+    fn visit_let(&mut self, state: &mut State, e: &LetNode) -> Result<Res, Err>;
+    fn visit_un_op(&mut self, state: &mut State, e: &UnOpNode) -> Result<Res, Err>;
+    fn visit_bin_op(&mut self, state: &mut State, e: &BinOpNode) -> Result<Res, Err>;
+    fn handle_error(&mut self, state: &mut State, e: &String) -> Result<Res, Err>;
 
-    fn visit(&mut self, e: &Node) -> Result<U, E> {
+    fn visit(&mut self, state: &mut State, e: &Node) -> Result<Res, Err> {
+        // println!("{:?}", e);
         match e {
-            Node::Error(n) => self.handle_error(n),
-            Node::Call(n) => self.visit_call(n),
             Node::Prim(n) => self.visit_prim(n),
-            Node::Let(n) => self.visit_let(n),
-            Node::UnOp(n) => self.visit_un_op(n),
-            Node::BinOp(n) => self.visit_bin_op(n),
+            Node::Call(n) => self.visit_call(state, n),
+            Node::Let(n) => self.visit_let(state, n),
+            Node::UnOp(n) => self.visit_un_op(state, n),
+            Node::BinOp(n) => self.visit_bin_op(state, n),
+            Node::Error(n) => self.handle_error(state, n),
         }
     }
 }

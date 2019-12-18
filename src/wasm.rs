@@ -33,8 +33,10 @@ impl Default for Compiler {
 }
 
 type Res = Result<Vec<String>, CompilerError>;
-impl Visitor<Vec<String>, Tree<String>, CompilerError> for Compiler {
+type State = ();
+impl Visitor<State, Vec<String>, Tree<String>, CompilerError> for Compiler {
     fn visit_root(&mut self, expr: &Node) -> Result<Tree<String>, CompilerError> {
+        let mut state = ();
         let name = Tree {
             value: "\"run_main\"".to_string(),
             children: vec![],
@@ -56,7 +58,7 @@ impl Visitor<Vec<String>, Tree<String>, CompilerError> for Compiler {
             children: vec![node_i32.clone()],
         };
         let mut children = vec![def, param, result];
-        children.append(&mut to_tree(self.visit(&expr)?));
+        children.append(&mut to_tree(self.visit(&mut state, &expr)?));
         let func = Tree {
             value: "func".to_string(),
             children: children,
@@ -67,7 +69,7 @@ impl Visitor<Vec<String>, Tree<String>, CompilerError> for Compiler {
         });
     }
 
-    fn visit_call(&mut self, expr: &CallNode) -> Res {
+    fn visit_call(&mut self, state: &mut State, expr: &CallNode) -> Res {
         panic!("Call not implemented in wasm");
     }
 
@@ -79,14 +81,14 @@ impl Visitor<Vec<String>, Tree<String>, CompilerError> for Compiler {
         }
     }
 
-    fn visit_let(&mut self, expr: &LetNode) -> Res {
+    fn visit_let(&mut self, state: &mut State, expr: &LetNode) -> Res {
         panic!("Let not implemented in wasm");
     }
 
-    fn visit_un_op(&mut self, expr: &UnOpNode) -> Res {
+    fn visit_un_op(&mut self, state: &mut State, expr: &UnOpNode) -> Res {
         use PrimValue::*;
         let mut res = Vec::new();
-        let mut inner = self.visit(&expr.inner)?;
+        let mut inner = self.visit(state, &expr.inner)?;
         match expr.name.as_str() {
             "+" => {
                 res.append(&mut inner);
@@ -100,10 +102,10 @@ impl Visitor<Vec<String>, Tree<String>, CompilerError> for Compiler {
         };
         return Ok(res);
     }
-    fn visit_bin_op(&mut self, expr: &BinOpNode) -> Res {
+    fn visit_bin_op(&mut self, state: &mut State, expr: &BinOpNode) -> Res {
         let mut res = Vec::new();
-        res.append(&mut self.visit(&expr.left)?);
-        res.append(&mut self.visit(&expr.right)?);
+        res.append(&mut self.visit(state, &expr.left)?);
+        res.append(&mut self.visit(state, &expr.right)?);
         // TODO: require 2 children
         let s = match expr.name.as_str() {
             "*" => "i32.mul".to_string(),
@@ -117,7 +119,7 @@ impl Visitor<Vec<String>, Tree<String>, CompilerError> for Compiler {
         return Ok(res);
     }
 
-    fn handle_error(&mut self, expr: &String) -> Res {
+    fn handle_error(&mut self, state: &mut State, expr: &String) -> Res {
         Err(CompilerError::FailedParse(expr.to_string()))
     }
 }
