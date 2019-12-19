@@ -36,6 +36,7 @@ fn binding_power(tok: &Token) -> (i32, bool) {
     let assoc_right = match &tok.tok_type {
         TokenType::Op => match tok.value.as_str() {
             "^" => true,
+            "=" => true,
             _ => false,
         },
         _ => false
@@ -97,7 +98,7 @@ fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
                             call: n,
                             value: Some(Box::new(right)),
                         }), new_toks),
-                        _ => panic!("Expected a definition"),
+                        _ => panic!(format!("Expected a definition, found {:?}", left)),
                     }
                 }
                 return (

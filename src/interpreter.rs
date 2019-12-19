@@ -101,7 +101,7 @@ impl Visitor<State, PrimValue, PrimValue, InterpreterError> for Interpreter {
                     }
                     // Not in this frame, go back up.
                 }
-                panic!("Not in scope at all");
+                panic!(format!("{:?} could not be found in scope.", n))
             }
         }
     }
