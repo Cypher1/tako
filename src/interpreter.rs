@@ -92,9 +92,14 @@ impl Visitor<State, PrimValue, PrimValue, InterpreterError> for Interpreter {
                     for var in frame.iter() {
                         if n == var.call.name {
                             match &var.value {
-                                Some(val) => return self.visit(
-                                    state,
-                                    &*val.clone()), // This is the variable
+                                Some(val) => {
+                                    let mut next = state.clone();
+                                    next.push(vec![]);
+                                    let result = self.visit(
+                                    &mut next,
+                                    &*val.clone());
+                                    return result
+                                }, // This is the variable
                                 None => {},
                             }
                         }
