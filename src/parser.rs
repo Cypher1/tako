@@ -163,7 +163,7 @@ pub fn parse(contents: String) -> Node {
     let (root, left_over) = expr(toks, 0);
 
     if left_over.len() != 0 {
-        println!("Oh no: Left over characters {:?}", left_over);
+        panic!("Oh no: Left over tokens {:?}", left_over);
     }
 
     return root;

@@ -32,7 +32,6 @@ const WHITESPACE: &str = "\n\r\t ";
 const QUOTES: &str = "'\"`";
 const COMMENT: &str = "//";
 const MULTI_COMMENT: &str = "/*";
-const END_MULTI_COMMENT: &str = "*/";
 
 fn classify_char(ch: char) -> TokenType {
     if WHITESPACE.contains(ch) {
@@ -121,23 +120,39 @@ pub fn lex_head(mut contents: VecDeque<char>) -> (Token, VecDeque<char>) {
         contents.pop_front();
     }
     let value = head.into_iter().collect();
-    return (Token { value, tok_type }, contents);
+    let comment = value == COMMENT;
+    let multi_comment = value == MULTI_COMMENT;
+    if !comment && !multi_comment {
+        return (Token { value, tok_type }, contents);
+    }
+    // Track depth of mutli line comments
+    let mut depth = 1;
+    let mut last: Option<char> = None;
+    loop {
+        contents.pop_front();
+        // Add the character.
+        match (last, &mut contents.front()) {
+            (Some('/'), Some('*')) => {
+                depth += 1;
+            },
+            (Some('*'), Some('/')) => {
+                depth -= 1;
+                if multi_comment && depth == 0 {
+                    contents.pop_front();
+                    return lex_head(contents);
+                }
+            },
+            (_, Some(chr)) => {
+                if comment && **chr == '\n' {
+                    contents.pop_front();
+                    return lex_head(contents);
+                }
+                last = Some(**chr);
+            },
+            (_, None) => {return lex_head(contents)},
+        }
+    }
 }
-
-/*
-                        loop {
-                            match contents.front() {
-                                Some(nxt) => {
-                                    if *nxt == *chr { break }
-                                    if *nxt == '\n' { break } //Unfinished str at eol
-                                    head.push_back(nxt.clone());
-                                },
-                                None => break, // Unfinished str at eof
-                            }
-                            contents.pop_front();
-                        }
-                        TokenType::StringLit
- */
 
 #[cfg(test)]
 mod tests {

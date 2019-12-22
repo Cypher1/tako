@@ -3,6 +3,6 @@ name = "ika"
 version = "0.1.0"
 authors = ["Joshua Pratt <jp10010101010000@gmail.com>"]
 edition = "2018"
-build = "build.rs"
+build = "src/build.rs"
 
 [dependencies]

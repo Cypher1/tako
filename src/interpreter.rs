@@ -272,13 +272,6 @@ mod tests {
         interp.visit_root(&ast)
     }
 
-    fn interp_with_str(s: String) -> Interpreter {
-        let ast = parser::parse(s);
-        let mut interp = Interpreter::default();
-        interp.visit_root(&ast).expect("failed to eval expr");
-        interp
-    }
-
     #[test]
     fn parse_and_eval_bool() {
         assert_eq!(eval_str("true".to_string()), Ok(Bool(true)));

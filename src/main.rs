@@ -70,11 +70,8 @@ fn work(filename: String, interactive: bool) -> std::io::Result<()> {
 
 #[cfg(test)]
     mod tests {
-    use std::io;
-    use std::fs::{self, DirEntry};
     use std::fs::File;
     use std::io::prelude::*;
-    use std::path::Path;
 
     use super::ast::Visitor;
     use super::interpreter::Interpreter;
