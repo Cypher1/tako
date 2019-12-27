@@ -1,7 +1,5 @@
 use super::ast::*;
-use super::tree::*;
-
-use std::cmp;
+use std::collections::HashMap;
 
 #[derive(Debug)]
 #[derive(PartialEq)]
@@ -13,63 +11,18 @@ pub enum InterpreterError {
     TypeMismatch2(String, PrimValue, PrimValue),
 }
 
-type Frame = Vec<LetNode>;
+type Frame = HashMap<String, Node>;
 
 // Walks the AST interpreting it.
 pub struct Interpreter {
-    scope: Tree<LetNode>,
 }
 
 impl Interpreter {
-    pub fn bind(&mut self, path: Vec<String>, binding: LetNode) -> Result<(), String> {
-        Interpreter::bind_to(&mut self.scope, path, binding)
-    }
-    fn bind_to(curr: &mut Tree<LetNode>, path: Vec<String>, binding: LetNode) -> Result<(), String> {
-        match path.split_at(cmp::min(1, path.len())) {
-            ([], _) => {
-                curr.value = binding;
-            },
-            ([name], rest) => {
-                for child in &mut curr.children {
-                    if child.value.call.name == *name {
-                        return Interpreter::bind_to(child, rest.to_vec(), binding);
-                    }
-                }
-                let mut new = Tree {
-                    value: LetNode{call: CallNode{name: name.to_string(), args: vec![]}, value: None},
-                    children: vec![],
-                };
-                Interpreter::bind_to(&mut new, rest.to_vec(), binding)?;
-                curr.children.push(new);
-            }
-            _ => panic!("unexpectedly long head of vector"),
-        }
-        return Ok(());
-    }
-    pub fn lookup(&self, path: Vec<String>) -> Option<LetNode> {
-        let mut curr = &self.scope;
-
-        'name: for name in path {
-            for child in &curr.children {
-                if child.value.call.name == name {
-                    curr = child;
-                    continue 'name;
-                }
-            }
-            return None;
-        }
-        return Some((*curr).value.clone());
-    }
 }
 
 impl Default for Interpreter {
     fn default() -> Interpreter {
-        Interpreter {
-            scope: Tree {
-                value: LetNode{call: CallNode{name: "".to_string(), args: vec![]}, value: None },
-                children: vec![],
-            },
-        }
+        Interpreter {}
     }
 }
 
@@ -78,31 +31,27 @@ type State = Vec<Frame>;
 impl Visitor<State, PrimValue, PrimValue, InterpreterError> for Interpreter {
 
     fn visit_root(&mut self, expr: &Node) -> Res {
-        let mut state = vec![vec![]];
+        let mut state = vec![Frame::new()];
         self.visit(&mut state, expr)
     }
 
-    fn visit_call(&mut self, state: &mut State, expr: &CallNode) -> Res {
+    fn visit_sym(&mut self, state: &mut State, expr: &String) -> Res {
         use PrimValue::*;
-        match expr.name.as_str() {
+        match expr.as_str() {
             "true" => return Ok(Bool(true)),
             "false" => return Ok(Bool(false)),
             n => {
                 for frame in state.iter().rev() {
-                    for var in frame.iter() {
-                        if n == var.call.name {
-                            match &var.value {
-                                Some(val) => {
-                                    let mut next = state.clone();
-                                    next.push(vec![]);
-                                    let result = self.visit(
-                                    &mut next,
-                                    &*val.clone());
-                                    return result
-                                }, // This is the variable
-                                None => {},
-                            }
-                        }
+                    match frame.get(n) {
+                        Some(val) => {
+                            let mut next = state.clone();
+                            next.push(Frame::new());
+                            let result = self.visit(
+                            &mut next,
+                            &val.clone());
+                            return result
+                        }, // This is the variable
+                        None => {},
                     }
                     // Not in this frame, go back up.
                 }
@@ -115,15 +64,32 @@ impl Visitor<State, PrimValue, PrimValue, InterpreterError> for Interpreter {
         Ok(expr.clone())
     }
 
+    fn visit_apply(&mut self, state: &mut State, expr: &ApplyNode) -> Res {
+        println!("apply: {:?} to {:?}", expr.args, expr.inner);
+        // Add a new scope
+        state.push(Frame::new());
+        for arg in expr.args.iter() {
+            let n = Node::Let(arg.clone());
+            println!("def: {:?}", n);
+            self.visit(state, &n);
+        }
+        // Visit the expr.inner
+        let res = self.visit(state, &*expr.inner);
+        state.pop();
+        res
+    }
+
     fn visit_let(&mut self, state: &mut State, expr: &LetNode) -> Res {
+        println!("let: {:?}", expr);
         use PrimValue::*;
-        match state.last_mut() {
-            None => panic!("there is no stack frame"),
-            Some(frame) => {
-                frame.push(expr.clone());
-                return Ok(Unit);
+        match (state.last_mut(), expr.value.as_ref()) {
+            (None, _) => panic!("there is no stack frame"),
+            (_, None) => {},
+            (Some(frame), Some(val)) => {
+                frame.insert(expr.name.clone(), *val.clone());
             }
         }
+        return Ok(Unit);
     }
 
     fn visit_un_op(&mut self, state: &mut State, expr: &UnOpNode) -> Res {
@@ -330,72 +296,5 @@ mod tests {
     #[test]
     fn parse_and_eval_let() {
         assert_eq!(eval_str("x=3;x".to_string()), Ok(I32(3)));
-    }
-
-    fn sym(name: String) -> CallNode {
-        CallNode {
-            name: name,
-            args: vec![],
-        }
-    }
-
-    #[test]
-    fn bind_sym() {
-        let mut interp = Interpreter::default();
-        let value = Prim(I32(12));
-        let let_x = LetNode {
-            call: sym("x".to_string()),
-            value: Some(Box::new(value))
-        };
-
-        interp.bind(vec!["x".to_string()], let_x.clone()).expect("binding x failed");
-        assert_eq!(interp.lookup(
-                vec!["x".to_string()]
-            ), Some(let_x));
-    }
-
-    #[test]
-    fn bind_sym_near_other() {
-        let mut interp = Interpreter::default();
-        let value = Node::Prim(PrimValue::I32(12));
-        let let_x = LetNode {
-            call: sym("x".to_string()),
-            value: Some(Box::new(value))
-        };
-        let let_y = LetNode {
-            call: sym("y".to_string()),
-            value: Some(Box::new(Prim(I32(13))))
-        };
-
-
-        interp.bind(vec!["x".to_string()], let_x.clone()).expect("binding x failed");
-        interp.bind(vec!["y".to_string()], let_y.clone()).expect("binding y failed");
-        assert_eq!(interp.lookup(
-                vec!["x".to_string()]
-            ), Some(let_x));
-    }
-
-    #[test]
-    fn bind_sym_near_overlap() {
-        let mut interp = Interpreter::default();
-        let value = Node::Prim(PrimValue::I32(12));
-        let let_x = LetNode {
-            call: sym("x".to_string()),
-            value: Some(Box::new(value))
-        };
-        let let_y = LetNode {
-            call: sym("x".to_string()),
-            value: Some(Box::new(Node::Prim(PrimValue::I32(13))))
-        };
-
-
-        interp.bind(vec!["x".to_string()], let_x.clone()).expect("binding x failed");
-        interp.bind(vec!["inner".to_string(), "x".to_string()], let_y.clone()).expect("binding inner/x failed");
-        assert_eq!(interp.lookup(
-                vec!["x".to_string()]
-            ), Some(let_x));
-        assert_eq!(interp.lookup(
-                vec!["inner".to_string(), "x".to_string()]
-            ), Some(let_y));
     }
 }

@@ -69,8 +69,8 @@ impl Visitor<State, Vec<String>, Tree<String>, CompilerError> for Compiler {
         });
     }
 
-    fn visit_call(&mut self, state: &mut State, expr: &CallNode) -> Res {
-        panic!("Call not implemented in wasm");
+    fn visit_sym(&mut self, state: &mut State, expr: &String) -> Res {
+        panic!("Sym not implemented in wasm");
     }
 
     fn visit_prim(&mut self, expr: &PrimValue) -> Res {
@@ -79,6 +79,10 @@ impl Visitor<State, Vec<String>, Tree<String>, CompilerError> for Compiler {
             I32(n) => Ok(vec!["i32.const ".to_string() + &n.to_string()]),
             _ => unimplemented!(),
         }
+    }
+
+    fn visit_apply(&mut self, state: &mut State, expr: &ApplyNode) -> Res {
+        panic!("Apply not implemented in wasm");
     }
 
     fn visit_let(&mut self, state: &mut State, expr: &LetNode) -> Res {

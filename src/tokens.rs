@@ -4,7 +4,8 @@ use std::fmt;
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub enum TokenType {
     Op,
-    Bracket,
+    OpenBracket,
+    CloseBracket,
     NumLit,
     StringLit,
     Sym,
@@ -25,7 +26,8 @@ impl fmt::Debug for Token {
 }
 
 const OPERATORS: &str = "~!@#$%^&*-+=<>|\\/?.,:;";
-const BRACKETS: &str = "([{}])";
+const OPENBRACKETS: &str = "([{";
+const CLOSEBRACKETS: &str = ")]}";
 const NUMBERS: &str = "0123456789";
 const SYMBOLS: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_";
 const WHITESPACE: &str = "\n\r\t ";
@@ -43,8 +45,11 @@ fn classify_char(ch: char) -> TokenType {
     if OPERATORS.contains(ch) {
         return TokenType::Op;
     }
-    if BRACKETS.contains(ch) {
-        return TokenType::Bracket;
+    if OPENBRACKETS.contains(ch) {
+        return TokenType::OpenBracket;
+    }
+    if CLOSEBRACKETS.contains(ch) {
+        return TokenType::CloseBracket;
     }
     if NUMBERS.contains(ch) {
         return TokenType::NumLit;
@@ -85,7 +90,8 @@ pub fn lex_head(mut contents: VecDeque<char>) -> (Token, VecDeque<char>) {
                     (TokenType::Sym, TokenType::NumLit) => TokenType::Sym,
                     (TokenType::Sym, _) => break, // Token finished.
 
-                    (TokenType::Bracket, _) => break, // Token finished.
+                    (TokenType::OpenBracket, _) => break, // Token finished.
+                    (TokenType::CloseBracket, _) => break, // Token finished.
                     _unexpected => {
                         unimplemented!() // Can't mix other tokentypes
                     }
@@ -171,12 +177,12 @@ mod tests {
 
     #[test]
     fn classify_brackets() {
-        assert_eq!(classify_char('('), TokenType::Bracket);
-        assert_eq!(classify_char(')'), TokenType::Bracket);
-        assert_eq!(classify_char('['), TokenType::Bracket);
-        assert_eq!(classify_char(']'), TokenType::Bracket);
-        assert_eq!(classify_char('{'), TokenType::Bracket);
-        assert_eq!(classify_char('}'), TokenType::Bracket);
+        assert_eq!(classify_char('('), TokenType::OpenBracket);
+        assert_eq!(classify_char(')'), TokenType::CloseBracket);
+        assert_eq!(classify_char('['), TokenType::OpenBracket);
+        assert_eq!(classify_char(']'), TokenType::CloseBracket);
+        assert_eq!(classify_char('{'), TokenType::OpenBracket);
+        assert_eq!(classify_char('}'), TokenType::CloseBracket);
     }
 
     #[test]
