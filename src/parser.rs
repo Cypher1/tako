@@ -24,6 +24,7 @@ fn binding_power(tok: &Token) -> (i32, bool) {
             "^" => 70,
             "+" => 80,
             "-" => 80,
+            "!" => 80,
             "*" => 90,
             "/" => 90,
             "%" => 90,
@@ -47,15 +48,15 @@ fn binding_power(tok: &Token) -> (i32, bool) {
     return (bind, assoc_right);
 }
 
-fn getDefs(root: Node) -> Vec<LetNode> {
+fn get_defs(root: Node) -> Vec<LetNode> {
     let mut args = vec![];
 
     match root {
         Node::Let(n) => args.push(n),
         Node::BinOp(BinOpNode{name, left, right}) => {
             if name == "," {
-                args.append(&mut getDefs(*left));
-                args.append(&mut getDefs(*right));
+                args.append(&mut get_defs(*left));
+                args.append(&mut get_defs(*right));
             } else {
                 args.push(LetNode{name: "it".to_string(), value: Some(Box::new(Node::BinOp(BinOpNode{name, left, right})))});
             }
@@ -180,7 +181,7 @@ fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
                 }
                 new_toks.pop_front();
                 // Introduce arguments
-                let args = getDefs(inner);
+                let args = get_defs(inner);
                 return (Apply(ApplyNode{inner: Box::new(left), args}), new_toks);
             },
             TokenType::Sym => {
