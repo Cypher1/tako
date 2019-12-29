@@ -48,36 +48,38 @@ fn binding_power(tok: &Token) -> (i32, bool) {
     return (bind, assoc_right);
 }
 
-fn get_defs(root: Node) -> Vec<LetNode> {
+fn get_defs(root: Node) -> Vec<Let> {
+    use Node::*;
     let mut args = vec![];
 
     match root {
-        Node::Let(n) => args.push(n),
-        Node::BinOp(BinOpNode{name, left, right}) => {
+        LetNode(n) => args.push(n),
+        BinOpNode(BinOp{name, left, right}) => {
             if name == "," {
                 args.append(&mut get_defs(*left));
                 args.append(&mut get_defs(*right));
             } else {
-                args.push(LetNode{name: "it".to_string(), value: Some(Box::new(Node::BinOp(BinOpNode{name, left, right})))});
+                args.push(Let{name: "it".to_string(), value: Some(Box::new(BinOpNode(BinOp{name, left, right})))});
             }
         },
-        n => args.push(LetNode{name: "it".to_string(), value: Some(Box::new(n))}),
+        n => args.push(Let{name: "it".to_string(), value: Some(Box::new(n))}),
     }
 
     return args;
 }
 
 fn nud(mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
+    use Node::*;
     match toks.pop_front() {
         None => (Node::Error("Unexpected eof, expected expr".to_string()), toks),
         Some(head) => match head.tok_type {
-            TokenType::NumLit => (Node::Prim(PrimValue::I32(head.value.parse().unwrap())), toks),
-            TokenType::StringLit => (Node::Prim(PrimValue::Str(head.value)), toks),
+            TokenType::NumLit => (Node::PrimNode(Prim::I32(head.value.parse().unwrap())), toks),
+            TokenType::StringLit => (Node::PrimNode(Prim::Str(head.value)), toks),
             TokenType::Op => {
                 let (lbp, _) = binding_power(&head);
                 let (right, new_toks) = expr(toks, lbp);
                 return (
-                    Node::UnOp(UnOpNode {
+                    Node::UnOpNode(UnOp {
                         name: head.value,
                         inner: Box::new(right),
                     }),
@@ -112,7 +114,7 @@ fn nud(mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
             TokenType::Sym => {
                 // Handle args.
                 return (
-                    Node::Sym(head.value),
+                    SymNode(Sym{name: head.value}),
                     toks,
                 );
             },
@@ -132,16 +134,16 @@ fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
     match toks.pop_front() {
         None => (Error("Unexpected eof, expected expr tail".to_string()), toks),
         Some(head) => match head.tok_type {
-            TokenType::NumLit => (Prim(PrimValue::I32(head.value.parse().unwrap())), toks),
-            TokenType::StringLit => (Prim(PrimValue::Str(head.value)), toks),
+            TokenType::NumLit => (PrimNode(Prim::I32(head.value.parse().unwrap())), toks),
+            TokenType::StringLit => (PrimNode(Prim::Str(head.value)), toks),
             TokenType::Op => {
                 let (lbp, assoc_right) = binding_power(&head);
                 let (right, new_toks) = expr(toks, lbp - if assoc_right {1} else {0});
                 if head.value == "=".to_string() {
                     match left {
-                        Sym(s) => {
-                            return (Let(LetNode {
-                                name: s,
+                        SymNode(s) => {
+                            return (LetNode(Let {
+                                name: s.name,
                                 value: Some(Box::new(right)),
                             }), new_toks);
                         },
@@ -149,7 +151,7 @@ fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
                     }
                 }
                 return (
-                    BinOp(BinOpNode {
+                    BinOpNode(BinOp {
                         name: head.value,
                         left: Box::new(left),
                         right: Box::new(right),
@@ -182,7 +184,7 @@ fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
                 new_toks.pop_front();
                 // Introduce arguments
                 let args = get_defs(inner);
-                return (Apply(ApplyNode{inner: Box::new(left), args}), new_toks);
+                return (ApplyNode(Apply{inner: Box::new(left), args}), new_toks);
             },
             TokenType::Sym => {
                 panic!("Infix symbols not currently supported".to_string());
@@ -254,37 +256,37 @@ mod tests {
     use super::parse;
     use super::super::ast::*;
     use Node::*;
-    use PrimValue::*;
+    use Prim::*;
 
     fn num_lit(x: i32) -> Box<Node> {
-        Box::new(Prim(I32(x)))
+        Box::new(PrimNode(I32(x)))
     }
 
     fn str_lit(x: String) -> Box<Node> {
-        Box::new(Prim(Str(x)))
+        Box::new(PrimNode(Str(x)))
     }
 
     #[test]
     fn parse_num() {
-        assert_eq!(parse("12".to_string()), Prim(I32(12)));
+        assert_eq!(parse("12".to_string()), PrimNode(I32(12)));
     }
 
     #[test]
     fn parse_str() {
         assert_eq!(parse("\"hello world\"".to_string()),
-            Prim(Str("hello world".to_string())));
+            PrimNode(Str("hello world".to_string())));
     }
 
     #[test]
     fn parse_un_op() {
-        assert_eq!(parse("-12".to_string()), UnOp(UnOpNode {name: "-".to_string(),
-       inner: Box::new(Prim(I32(12)))}));
+        assert_eq!(parse("-12".to_string()), UnOpNode(UnOp {name: "-".to_string(),
+       inner: Box::new(PrimNode(I32(12)))}));
     }
 
     #[test]
     fn parse_min_op() {
         assert_eq!(parse("14-12".to_string()),
-        Node::BinOp(BinOpNode {
+        Node::BinOpNode(BinOp {
             name: "-".to_string(),
             left: num_lit(14),
             right: num_lit(12)
@@ -294,7 +296,7 @@ mod tests {
     #[test]
     fn parse_mul_op() {
         assert_eq!(parse("14*12".to_string()),
-        Node::BinOp(BinOpNode {
+        Node::BinOpNode(BinOp {
             name: "*".to_string(),
             left: num_lit(14),
             right: num_lit(12)
@@ -304,11 +306,11 @@ mod tests {
     #[test]
     fn parse_add_mul_precedence() {
         assert_eq!(parse("3+2*4".to_string()),
-        Node::BinOp(BinOpNode {
+        Node::BinOpNode(BinOp {
             name: "+".to_string(),
             left: num_lit(3),
             right: Box::new(
-                Node::BinOp(BinOpNode {
+                Node::BinOpNode(BinOp {
                     name: "*".to_string(),
                     left: num_lit(2),
                     right: num_lit(4)
@@ -320,10 +322,10 @@ mod tests {
     #[test]
     fn parse_mul_add_precedence() {
         assert_eq!(parse("3*2+4".to_string()),
-        Node::BinOp(BinOpNode {
+        Node::BinOpNode(BinOp {
             name: "+".to_string(),
             left: Box::new(
-                Node::BinOp(BinOpNode {
+                Node::BinOpNode(BinOp {
                     name: "*".to_string(),
                     left: num_lit(3),
                     right: num_lit(2)
@@ -336,11 +338,11 @@ mod tests {
     #[test]
     fn parse_mul_add_parens() {
         assert_eq!(parse("3*(2+4)".to_string()),
-        Node::BinOp(BinOpNode {
+        Node::BinOpNode(BinOp {
             name: "*".to_string(),
             left: num_lit(3),
             right: Box::new(
-                Node::BinOp(BinOpNode {
+                Node::BinOpNode(BinOp {
                     name: "+".to_string(),
                     left: num_lit(2),
                     right: num_lit(4)
@@ -352,7 +354,7 @@ mod tests {
     #[test]
     fn parse_add_str() {
         assert_eq!(parse("\"hello\"+\" world\"".to_string()),
-            Node::BinOp(BinOpNode {
+            Node::BinOpNode(BinOp {
                name: "+".to_string(),
                 left: str_lit("hello".to_string()),
                 right: str_lit(" world".to_string())

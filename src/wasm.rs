@@ -69,28 +69,28 @@ impl Visitor<State, Vec<String>, Tree<String>, CompilerError> for Compiler {
         });
     }
 
-    fn visit_sym(&mut self, state: &mut State, expr: &String) -> Res {
+    fn visit_sym(&mut self, state: &mut State, expr: &Sym) -> Res {
         panic!("Sym not implemented in wasm");
     }
 
-    fn visit_prim(&mut self, expr: &PrimValue) -> Res {
-        use PrimValue::*;
+    fn visit_prim(&mut self, expr: &Prim) -> Res {
+        use Prim::*;
         match expr {
             I32(n) => Ok(vec!["i32.const ".to_string() + &n.to_string()]),
             _ => unimplemented!(),
         }
     }
 
-    fn visit_apply(&mut self, state: &mut State, expr: &ApplyNode) -> Res {
+    fn visit_apply(&mut self, state: &mut State, expr: &Apply) -> Res {
         panic!("Apply not implemented in wasm");
     }
 
-    fn visit_let(&mut self, state: &mut State, expr: &LetNode) -> Res {
+    fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
         panic!("Let not implemented in wasm");
     }
 
-    fn visit_un_op(&mut self, state: &mut State, expr: &UnOpNode) -> Res {
-        use PrimValue::*;
+    fn visit_un_op(&mut self, state: &mut State, expr: &UnOp) -> Res {
+        use Prim::*;
         let mut res = Vec::new();
         let mut inner = self.visit(state, &expr.inner)?;
         match expr.name.as_str() {
@@ -106,7 +106,7 @@ impl Visitor<State, Vec<String>, Tree<String>, CompilerError> for Compiler {
         };
         return Ok(res);
     }
-    fn visit_bin_op(&mut self, state: &mut State, expr: &BinOpNode) -> Res {
+    fn visit_bin_op(&mut self, state: &mut State, expr: &BinOp) -> Res {
         let mut res = Vec::new();
         res.append(&mut self.visit(state, &expr.left)?);
         res.append(&mut self.visit(state, &expr.right)?);

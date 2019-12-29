@@ -7,8 +7,8 @@ pub enum InterpreterError {
     UnknownInfixOperator(String),
     UnknownPrefixOperator(String),
     FailedParse(String),
-    TypeMismatch(String, PrimValue),
-    TypeMismatch2(String, PrimValue, PrimValue),
+    TypeMismatch(String, Prim),
+    TypeMismatch2(String, Prim, Prim),
 }
 
 type Frame = HashMap<String, Node>;
@@ -26,18 +26,18 @@ impl Default for Interpreter {
     }
 }
 
-type Res = Result<PrimValue, InterpreterError>;
+type Res = Result<Prim, InterpreterError>;
 type State = Vec<Frame>;
-impl Visitor<State, PrimValue, PrimValue, InterpreterError> for Interpreter {
+impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
 
     fn visit_root(&mut self, expr: &Node) -> Res {
         let mut state = vec![Frame::new()];
         self.visit(&mut state, expr)
     }
 
-    fn visit_sym(&mut self, state: &mut State, expr: &String) -> Res {
-        use PrimValue::*;
-        match expr.as_str() {
+    fn visit_sym(&mut self, state: &mut State, expr: &Sym) -> Res {
+        use Prim::*;
+        match expr.name.as_str() {
             "true" => return Ok(Bool(true)),
             "false" => return Ok(Bool(false)),
             n => {
@@ -60,16 +60,16 @@ impl Visitor<State, PrimValue, PrimValue, InterpreterError> for Interpreter {
         }
     }
 
-    fn visit_prim(&mut self, expr: &PrimValue) -> Res {
+    fn visit_prim(&mut self, expr: &Prim) -> Res {
         Ok(expr.clone())
     }
 
-    fn visit_apply(&mut self, state: &mut State, expr: &ApplyNode) -> Res {
+    fn visit_apply(&mut self, state: &mut State, expr: &Apply) -> Res {
         println!("apply: {:?} to {:?}", expr.args, expr.inner);
         // Add a new scope
         state.push(Frame::new());
         for arg in expr.args.iter() {
-            let n = Node::Let(arg.clone());
+            let n = Node::LetNode(arg.clone());
             println!("def: {:?}", n);
             self.visit(state, &n)?;
         }
@@ -79,9 +79,9 @@ impl Visitor<State, PrimValue, PrimValue, InterpreterError> for Interpreter {
         res
     }
 
-    fn visit_let(&mut self, state: &mut State, expr: &LetNode) -> Res {
+    fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
         println!("let: {:?}", expr);
-        use PrimValue::*;
+        use Prim::*;
         match (state.last_mut(), expr.value.as_ref()) {
             (None, _) => panic!("there is no stack frame"),
             (_, None) => {},
@@ -92,8 +92,8 @@ impl Visitor<State, PrimValue, PrimValue, InterpreterError> for Interpreter {
         return Ok(Unit);
     }
 
-    fn visit_un_op(&mut self, state: &mut State, expr: &UnOpNode) -> Res {
-        use PrimValue::*;
+    fn visit_un_op(&mut self, state: &mut State, expr: &UnOp) -> Res {
+        use Prim::*;
         let i = self.visit(state, &expr.inner)?;
         match expr.name.as_str() {
             "!" => match i {
@@ -113,8 +113,8 @@ impl Visitor<State, PrimValue, PrimValue, InterpreterError> for Interpreter {
         }
     }
 
-    fn visit_bin_op(&mut self, state: &mut State, expr: &BinOpNode) -> Res {
-        use PrimValue::*;
+    fn visit_bin_op(&mut self, state: &mut State, expr: &BinOp) -> Res {
+        use Prim::*;
         let l = self.visit(state, &expr.left)?;
         let r = self.visit(state, &expr.right)?;
         match expr.name.as_str() {
@@ -222,13 +222,13 @@ mod tests {
     use super::Res;
     use super::super::parser;
     use super::super::ast::*;
-    use PrimValue::*;
+    use Prim::*;
     use Node::*;
 
     #[test]
     fn eval_num() {
         let mut interp = Interpreter::default();
-        let tree = Prim(I32(12));
+        let tree = PrimNode(I32(12));
         assert_eq!(interp.visit_root(&tree), Ok(I32(12)));
     }
 
