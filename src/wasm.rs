@@ -76,7 +76,7 @@ impl Visitor<State, Vec<String>, Tree<String>, CompilerError> for Compiler {
     fn visit_prim(&mut self, expr: &Prim) -> Res {
         use Prim::*;
         match expr {
-            I32(n) => Ok(vec!["i32.const ".to_string() + &n.to_string()]),
+            I32(n, _) => Ok(vec!["i32.const ".to_string() + &n.to_string()]),
             _ => unimplemented!(),
         }
     }
@@ -98,7 +98,7 @@ impl Visitor<State, Vec<String>, Tree<String>, CompilerError> for Compiler {
                 res.append(&mut inner);
             },
             "-" => {
-                res.append(&mut self.visit_prim(&I32(0))?);
+                res.append(&mut self.visit_prim(&I32(0, expr.clone().get_info()))?);
                 res.append(&mut inner);
                 res.push("i32.sub".to_string());
             },
