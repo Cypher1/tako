@@ -8,6 +8,7 @@ mod interpreter;
 mod parser;
 mod tokens;
 mod tree;
+mod location;
 
 use ast::Visitor;
 use wasm::Compiler;

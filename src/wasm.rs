@@ -18,9 +18,9 @@ use super::ast::*;
 #[derive(Debug)]
 #[derive(PartialEq)]
 pub enum CompilerError {
-    UnknownInfixOperator(String),
-    UnknownPrefixOperator(String),
-    FailedParse(String),
+    UnknownInfixOperator(String, Info),
+    UnknownPrefixOperator(String, Info),
+    FailedParse(String, Info),
 }
 
 // Walks the AST compiling it to wasm.
@@ -93,6 +93,7 @@ impl Visitor<State, Vec<String>, Tree<String>, CompilerError> for Compiler {
         use Prim::*;
         let mut res = Vec::new();
         let mut inner = self.visit(state, &expr.inner)?;
+        let info = expr.get_info();
         match expr.name.as_str() {
             "+" => {
                 res.append(&mut inner);
@@ -102,11 +103,12 @@ impl Visitor<State, Vec<String>, Tree<String>, CompilerError> for Compiler {
                 res.append(&mut inner);
                 res.push("i32.sub".to_string());
             },
-            op => return Err(CompilerError::UnknownPrefixOperator(op.to_string())),
+            op => return Err(CompilerError::UnknownPrefixOperator(op.to_string(), info)),
         };
         return Ok(res);
     }
     fn visit_bin_op(&mut self, state: &mut State, expr: &BinOp) -> Res {
+        let info = expr.get_info();
         let mut res = Vec::new();
         res.append(&mut self.visit(state, &expr.left)?);
         res.append(&mut self.visit(state, &expr.right)?);
@@ -117,13 +119,13 @@ impl Visitor<State, Vec<String>, Tree<String>, CompilerError> for Compiler {
             "/" => "i32.div_s".to_string(), // TODO: require divisibility
             "-" => "i32.sub".to_string(),
             "^" => "i32.pow".to_string(), // TODO: require pos pow
-            op => return Err(CompilerError::UnknownInfixOperator(op.to_string())),
+            op => return Err(CompilerError::UnknownInfixOperator(op.to_string(), info)),
         };
         res.push(s);
         return Ok(res);
     }
 
-    fn handle_error(&mut self, state: &mut State, expr: &String) -> Res {
-        Err(CompilerError::FailedParse(expr.to_string()))
+    fn handle_error(&mut self, state: &mut State, expr: &Err) -> Res {
+        Err(CompilerError::FailedParse(expr.msg.clone(), expr.get_info()))
     }
 }
