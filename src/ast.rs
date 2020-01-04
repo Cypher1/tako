@@ -1,4 +1,5 @@
 use super::location::*;
+use super::types::*;
 
 #[derive(Debug)]
 #[derive(PartialEq)]
@@ -136,8 +137,8 @@ impl ToNode for BinOp {
 #[derive(Clone)]
 pub struct Info {
     pub loc: Option<Loc>,
+    pub ty: Option<TypeInfo>,
 }
-
 
 impl PartialEq for Info {
     fn eq(&self, other: &Self) -> bool {
@@ -147,8 +148,16 @@ impl PartialEq for Info {
 
 impl Default for Info {
     fn default() -> Info {
-        Info {loc: None}
+        Info {loc: None, ty: None}
     }
+}
+
+#[derive(Debug)]
+#[derive(PartialEq)]
+#[derive(Clone)]
+pub struct TypeInfo {
+  reqs: Vec<Node>,
+  structure: Type,
 }
 
 #[derive(Debug)]

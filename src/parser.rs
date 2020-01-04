@@ -71,13 +71,13 @@ fn get_defs(root: Node) -> Vec<Let> {
 
 impl Token {
     pub fn get_info(&self) -> Info {
-        Info {loc: Some(self.pos.clone())}
+        Info {loc: Some(self.pos.clone()), ty: None}
     }
 }
 
 impl Loc {
     pub fn get_info(self) -> Info {
-        Info {loc: Some(self)}
+        Info {loc: Some(self), ty: None}
     }
 }
 
