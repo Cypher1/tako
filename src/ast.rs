@@ -157,7 +157,7 @@ impl Default for Info {
 #[derive(Clone)]
 pub struct TypeInfo {
   reqs: Vec<Node>,
-  structure: Type,
+  structure: DataType,
 }
 
 #[derive(Debug)]
