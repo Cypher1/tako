@@ -69,7 +69,7 @@ impl Visitor<State, Vec<String>, Tree<String>, CompilerError> for Compiler {
         });
     }
 
-    fn visit_sym(&mut self, state: &mut State, expr: &Sym) -> Res {
+    fn visit_sym(&mut self, _state: &mut State, _expr: &Sym) -> Res {
         panic!("Sym not implemented in wasm");
     }
 
@@ -81,11 +81,11 @@ impl Visitor<State, Vec<String>, Tree<String>, CompilerError> for Compiler {
         }
     }
 
-    fn visit_apply(&mut self, state: &mut State, expr: &Apply) -> Res {
+    fn visit_apply(&mut self, _state: &mut State, _expr: &Apply) -> Res {
         panic!("Apply not implemented in wasm");
     }
 
-    fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
+    fn visit_let(&mut self, _state: &mut State, _expr: &Let) -> Res {
         panic!("Let not implemented in wasm");
     }
 
@@ -125,7 +125,7 @@ impl Visitor<State, Vec<String>, Tree<String>, CompilerError> for Compiler {
         return Ok(res);
     }
 
-    fn handle_error(&mut self, state: &mut State, expr: &Err) -> Res {
+    fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {
         Err(CompilerError::FailedParse(expr.msg.clone(), expr.get_info()))
     }
 }

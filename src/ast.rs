@@ -1,5 +1,6 @@
 use super::location::*;
 use super::types::*;
+use std::fmt;
 
 #[derive(Debug)]
 #[derive(PartialEq)]
@@ -133,15 +134,20 @@ impl ToNode for BinOp {
     }
 }
 
-#[derive(Debug)]
 #[derive(Clone)]
 pub struct Info {
     pub loc: Option<Loc>,
     pub ty: Option<TypeInfo>,
 }
 
+impl fmt::Debug for Info {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "")
+    }
+}
+
 impl PartialEq for Info {
-    fn eq(&self, other: &Self) -> bool {
+    fn eq(&self, _other: &Self) -> bool {
         true
     }
 }

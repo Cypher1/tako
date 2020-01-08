@@ -8,12 +8,10 @@ use super::location::*;
 fn binding_power(tok: &Token) -> (i32, bool) {
     let bind = match &tok.tok_type {
         TokenType::Op => match tok.value.as_str() {
-            "]" => 0,
-            ")" => 0,
-            "}" => 0,
             ";" => 20,
             "," => 30,
             "=" => 40,
+            "?" => 45,
             "<" => 50,
             "<=" => 50,
             ">" => 50,
@@ -30,13 +28,16 @@ fn binding_power(tok: &Token) -> (i32, bool) {
             "/" => 90,
             "%" => 90,
             "." => 100,
-            "[" => 110,
             "(" => 110,
+            ")" => 110,
+            "[" => 110,
+            "]" => 110,
             "{" => 110,
+            "}" => 110,
             _ => panic!("Unknown operator"),
         },
-        TokenType::NumLit => 10,
-        _ => 10, // TODO impossible
+        TokenType::NumLit => 1000,
+        _ => 1000, // TODO impossible
     };
     let assoc_right = match &tok.tok_type {
         TokenType::Op => match tok.value.as_str() {
@@ -179,10 +180,10 @@ fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
             }
             TokenType::OpenBracket => {
                 let (inner, mut new_toks) = expr(toks, 0);
-                // TODO require close bracket.
+                // TODO: Handle empty parens
                 let close = new_toks.front();
                 match (head.value.as_str(), close) {
-                    (open, Some(Token{value: close, tok_type: TokenType::CloseBracket, pos})) => {
+                    (open, Some(Token{value: close, tok_type: TokenType::CloseBracket, pos: _})) => {
                         match (open, close.as_str()) {
                             ("(", ")") => {},
                             ("[", "]") => {},
