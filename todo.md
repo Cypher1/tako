@@ -23,3 +23,10 @@
 - Improve on Read me
 - Language documentation
 - Mascot?
+
+## Pain points
+- Debug and format for ast, info and datatype types
+- No way to run machine or low level instructions
+- No way to hide local data from a child function (locals)
+- No type checking (requirements and exhuastiveness checking)
+- Compiler is far behind interpreter feature set
