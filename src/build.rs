@@ -47,7 +47,7 @@ fn {fn_name}() {{
     let mut file = File::open(\"{name}\").expect(\"File missing\");
     file.read_to_string(&mut contents).expect(\"Couldnt read file\");
 
-    let ast = parser::parse(contents);
+    let ast = parser::parse_file(\"{name}\".to_string(), contents);
     let mut interp = Interpreter::default();
     interp.visit_root(&ast).expect(\"Failed to evaluate ast\");
 }}",
@@ -79,7 +79,7 @@ fn {fn_name}() {{
     let mut file = File::open(\"{name}\").expect(\"File missing\");
     file.read_to_string(&mut contents).expect(\"Couldnt read file\");
 
-    let ast = parser::parse(contents);
+    let ast = parser::parse_file(\"{name}\".to_string(), contents);
     let mut interp = Interpreter::default();
     interp.visit_root(&ast).expect(\"Failed to evaluate ast\");
 }}",

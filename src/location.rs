@@ -1,10 +1,22 @@
-#[derive(Debug)]
+use std::fmt;
+
 #[derive(PartialEq)]
 #[derive(Clone)]
 pub struct Loc {
-    filename: Option<String>,
-    line: i32,
-    col: i32,
+    pub filename: Option<String>,
+    pub line: i32,
+    pub col: i32,
+}
+
+impl std::fmt::Debug for Loc {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+
+        match &self.filename {
+            Some(file) => write!(f, "{} ", file),
+            None => write!(f, ""),
+        }?;
+        write!(f, "at line {}, column {}", self.line, self.col)
+    }
 }
 
 impl Loc {

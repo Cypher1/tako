@@ -140,9 +140,17 @@ pub struct Info {
     pub ty: Option<TypeInfo>,
 }
 
-impl fmt::Debug for Info {
+impl std::fmt::Debug for Info {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "")
+        match &self.loc {
+            Some(loc) => write!(f, "{:?}", loc),
+            None => write!(f, ""),
+        }?;
+        match &self.ty {
+            Some(ty) => write!(f, "{:?}", ty),
+            None => write!(f, ""),
+        }?;
+        Ok(())
     }
 }
 
@@ -166,7 +174,7 @@ pub struct TypeInfo {
   structure: DataType,
 }
 
-#[derive(Debug)]
+// #[derive(Debug)]
 #[derive(PartialEq)]
 #[derive(Clone)]
 pub enum Node {
@@ -177,6 +185,21 @@ pub enum Node {
     LetNode(Let),
     UnOpNode(UnOp),
     BinOpNode(BinOp),
+}
+
+impl std::fmt::Debug for Node {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use Node::*;
+        match self {
+            Error(n) => n.fmt(f),
+            SymNode(n) => n.fmt(f),
+            PrimNode(n) => n.fmt(f),
+            ApplyNode(n) => n.fmt(f),
+            LetNode(n) => n.fmt(f),
+            UnOpNode(n) => n.fmt(f),
+            BinOpNode(n) => n.fmt(f),
+        }
+    }
 }
 
 impl ToNode for Node {
