@@ -85,11 +85,17 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
 
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
         use Prim::*;
-        match (state.last_mut(), expr.value.as_ref()) {
-            (None, _) => panic!("there is no stack frame"),
-            (_, None) => {},
-            (Some(frame), Some(val)) => {
-                frame.insert(expr.name.clone(), *val.clone());
+        match expr.value.as_ref() {
+            None => {},
+            Some(val) => {
+                let result = self.visit(state, val)?;
+                match state.last_mut() {
+                    None => panic!("there is no stack frame"),
+                    Some(frame) => {
+                        frame.insert(expr.name.clone(), result.clone().to_node());
+                        return Ok(result);
+                    }
+                }
             }
         }
         return Ok(Unit(expr.clone().get_info()));
