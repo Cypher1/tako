@@ -37,7 +37,7 @@ fn main() {
     }).expect("Failed finding test files.");
 
     for p in params {
-        let nm = p.replace("/", "_").replace("\\", "_").replace(".ik", "").replace("._", "");
+        let nm = p.replace("/", "_").replace("\\", "_").replace(".tk", "").replace("._", "");
         write!(
             f,
             "
@@ -68,7 +68,7 @@ fn {fn_name}() {{
     }).expect("Failed finding test files.");
 
     for p in params {
-        let nm = p.replace("/", "_").replace("\\", "_").replace(".ik", "").replace("._", "");
+        let nm = p.replace("/", "_").replace("\\", "_").replace(".tk", "").replace("._", "");
         write!(
             f,
             "
