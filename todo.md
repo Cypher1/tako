@@ -3,11 +3,11 @@
 ## Engineering
 - Build steps in rust (reduce dependencies where possible)
 - Standardize on cli arguments (copying, where possible from go, rustc, cargo)
-  - ika help
-  - ika build
-  - ika run
-  - ika doc
-  - ika clean
+  - tako help
+  - tako build
+  - tako run
+  - tako doc
+  - tako clean
 - Features:
   - Definitions +/ locals
   - Functions

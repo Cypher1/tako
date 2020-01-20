@@ -1,5 +1,5 @@
 [package]
-name = "ika"
+name = "tako"
 version = "0.1.0"
 authors = ["Joshua Pratt <jp10010101010000@gmail.com>"]
 edition = "2018"

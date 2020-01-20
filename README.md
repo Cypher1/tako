@@ -1,7 +1,7 @@
-# Ika
+# Tako
 
-[![Build Status](https://github.com/Cypher1/ika/workflows/Rust/badge.svg)](https://github.com/Cypher1/ika/actions)
-[![GitHub issues](https://img.shields.io/github/issues/Cypher1/ika.svg)](https://github.com/Cypher1/ika/issues)
+[![Build Status](https://github.com/Cypher1/tako/workflows/Rust/badge.svg)](https://github.com/Cypher1/tako/actions)
+[![GitHub issues](https://img.shields.io/github/issues/Cypher1/tako.svg)](https://github.com/Cypher1/tako/issues)
 
 An experimental programming language for ergonomic software verification using [Hoare Logic](https://en.wikipedia.org/wiki/Hoare_logic).
 
@@ -12,7 +12,7 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Prerequisites
 
-Ika currently uses `cargo` for builds and running tests and git submodules for dependency management.
+Tako currently uses `cargo` for builds and running tests and git submodules for dependency management.
 
 Installation instructions can be found at https://rustup.rs/
 Non-rust dependencies can be installed via
@@ -30,7 +30,7 @@ cargo build
 This allows us to run our prototype parser.
 
 ```
-./target/debug/ika <file>
+./target/debug/tako <file>
 ```
 
 ## Running the tests
@@ -43,7 +43,7 @@ cargo test
 
 ## Installation
 
-ika is a standalone single file. It can be installed simply by building and copy/moving ./ika into your /usr/bin directory.
+tako is a standalone single file. It can be installed simply by building and copy/moving ./tako into your /usr/bin directory.
 
 ## Contributing
 
@@ -51,7 +51,7 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduc
 
 ## Versioning
 
-We will use [SemVer](http://semver.org/) for versioning. There are no versions currently available, but see the [tags on this repository](https://github.com/Cypher1/ika/tags).
+We will use [SemVer](http://semver.org/) for versioning. There are no versions currently available, but see the [tags on this repository](https://github.com/Cypher1/tako/tags).
 
 ## Authors
 
