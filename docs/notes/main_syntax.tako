@@ -1,0 +1,28 @@
+import 'stdio'
+import 'mathtest'
+
+main : argc:int -> argv:string[] -> int = {
+  result = add 42 1337
+  printf '%d\n' result
+  return 0
+}
+
+//-------------
+mathlib=if(lib::exists('math'), 'math', 'libc')
+
+import('stdio')
+import(mathlib)
+import(if(lib::exists('math'), 'math', 'libc'))
+
+main:int = { result = add(42, 1337) -|
+  printf('%d\n', result) 
+|- return(0) }
+
+//-------------
+import('stdio')
+import(if(lib::exists('math'), 'math', 'libc'))
+import(from('math', lib::exists, 'libc'))
+
+main(args:string[]):int = { args.length > 1, result = add(42, 1337) -|
+  printf('%s %d\n', args[0], result)
+|- success }
