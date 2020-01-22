@@ -1,4 +1,4 @@
 # Coming soon...
 
-[![CircleCI](https://img.shields.io/circleci/project/github/Cypher1/tako.svg)](https://circleci.com/gh/Cypher1/tako/tree/master)
+[![Build Status](https://github.com/Cypher1/tako/workflows/Rust/badge.svg)](https://github.com/Cypher1/tako/actions)
 [![GitHub issues](https://img.shields.io/github/issues/Cypher1/tako.svg)](https://github.com/Cypher1/tako/issues)
