@@ -1,17 +1,8 @@
 use super::ast::*;
 use std::collections::HashMap;
 
-macro_rules! map(
-    { $($key:expr => $value:expr),+ } => {
-        {
-            let mut m = ::std::collections::HashMap::new();
-            $(
-                m.insert($key, $value);
-            )+
-            m
-        }
-     };
-);
+#[macro_use]
+use super::map_macros;
 
 #[derive(Debug)]
 #[derive(PartialEq)]
