@@ -63,7 +63,23 @@ impl Visitor<State, Node, Node, ReScoperError> for ReScoper {
     }
 
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
-        Ok(expr.clone().to_node())
+        let ref value: Option<Box<Node>> = expr.value;
+
+        let frame = state.last_mut().unwrap();
+        frame.push("self".to_string()); // For recursion
+
+        if value.is_none() {
+            return Ok(expr.clone().to_node());
+        }
+        let inner = self.visit(state, &(*value).clone().unwrap())?;
+        match state.last_mut() {
+            Some(frame) => {
+                // Now that the variable has been defined we can use it.
+                frame.push(expr.name.clone());
+            },
+            None => {}
+        }
+        Ok(Let{name: expr.name.clone(), value: Some(Box::new(inner)), info: expr.get_info()}.to_node())
     }
 
     fn visit_un_op(&mut self, state: &mut State, expr: &UnOp) -> Res {
