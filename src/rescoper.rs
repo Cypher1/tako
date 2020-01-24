@@ -54,7 +54,7 @@ impl Visitor<State, Node, Node, ReScoperError> for ReScoper {
         Ok(Sym {name: format!("{}#{}", expr.name, depth), info: expr.get_info()}.to_node())
     }
 
-    fn visit_prim(&mut self, expr: &Prim) -> Res {
+    fn visit_prim(&mut self, state: &mut State, expr: &Prim) -> Res {
         Ok(expr.clone().to_node())
     }
 
