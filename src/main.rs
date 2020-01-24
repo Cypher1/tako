@@ -3,17 +3,20 @@ use std::fs::File;
 use std::io::prelude::*;
 
 mod ast;
-mod wasm;
-mod interpreter;
 mod parser;
 mod tokens;
 mod tree;
 mod location;
 mod types;
 
+mod wasm;
+mod interpreter;
+mod pretty_print;
+
 use ast::Visitor;
 use wasm::Compiler;
 use interpreter::Interpreter;
+use pretty_print::PrettyPrint;
 
 fn main() -> std::io::Result<()> {
     let all_args: Vec<String> = env::args().collect();
@@ -28,7 +31,7 @@ fn main() -> std::io::Result<()> {
                 files.push("/dev/stdin".to_string());
             }
             "-r" => interactive = true,
-            "-ast" => show_ast = true,
+            "--ast" => show_ast = true,
             _ => files.push(f),
         }
     }
@@ -41,6 +44,8 @@ fn main() -> std::io::Result<()> {
 fn work(filename: String, interactive: bool, show_ast: bool) -> std::io::Result<()> {
     let mut contents = String::new();
     let mut file = File::open(filename.clone())?;
+    println!("Filename: '{}'", filename);
+
     file.read_to_string(&mut contents)?;
     // println!("Content: '\n{}'", contents);
 
@@ -48,6 +53,15 @@ fn work(filename: String, interactive: bool, show_ast: bool) -> std::io::Result<
 
     if show_ast {
         println!("R: {:#?}", ast);
+        let mut ppr = PrettyPrint::default();
+        match ppr.visit_root(&ast) {
+            Ok(res) => {
+                println!("R: {}", res);
+            },
+            Err(err) => {
+                println!("{:#?}", err);
+            }
+        }
     }
     if interactive {
 

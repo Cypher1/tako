@@ -234,7 +234,7 @@ pub trait Visitor<State, Res, Final, ErrT> {
 
     fn handle_error(&mut self, state: &mut State, e: &Err) -> Result<Res, ErrT>;
     fn visit_sym(&mut self, state: &mut State, e: &Sym) -> Result<Res, ErrT>;
-    fn visit_prim(&mut self, e: &Prim) -> Result<Res, ErrT>;
+    fn visit_prim(&mut self, state: &mut State, e: &Prim) -> Result<Res, ErrT>;
     fn visit_apply(&mut self, state: &mut State, e: &Apply) -> Result<Res, ErrT>;
     fn visit_let(&mut self, state: &mut State, e: &Let) -> Result<Res, ErrT>;
     fn visit_un_op(&mut self, state: &mut State, e: &UnOp) -> Result<Res, ErrT>;
@@ -246,7 +246,7 @@ pub trait Visitor<State, Res, Final, ErrT> {
         match e {
             Error(n) => self.handle_error(state, n),
             SymNode(n) => self.visit_sym(state, n),
-            PrimNode(n) => self.visit_prim(n),
+            PrimNode(n) => self.visit_prim(state, n),
             ApplyNode(n) => self.visit_apply(state, n),
             LetNode(n) => self.visit_let(state, n),
             UnOpNode(n) => self.visit_un_op(state, n),
