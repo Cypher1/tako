@@ -76,7 +76,7 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
         Err(InterpreterError::UnknownSymbol(n.to_string(), info))
     }
 
-    fn visit_prim(&mut self, expr: &Prim) -> Res {
+    fn visit_prim(&mut self, state: &mut State, expr: &Prim) -> Res {
         Ok(expr.clone())
     }
 
