@@ -35,12 +35,27 @@ impl Visitor<State, (), String, PrettyPrintError> for PrettyPrint {
     fn visit_prim(&mut self, state: &mut State, expr: &Prim) -> Res {
         use Prim::*;
         match expr {
-            Unit(_) => write!(state, "()"),
-            Bool(val, _) => write!(state, "{}", val),
-            I32(val, _) => write!(state, "{}", val),
-            Str(val, _) => write!(state, "{}", val),
-        };
-        Ok(())
+            Unit(_) => {
+                write!(state, "()");
+                Ok(())
+            },
+            Bool(val, _) => {
+                write!(state, "{}", val);
+                Ok(())
+            },
+            I32(val, _) => {
+                write!(state, "{}", val);
+                Ok(())
+            },
+            Str(val, _) => {
+                write!(state, "{}", val);
+                Ok(())
+            },
+            Lambda(val) => {
+                self.visit(state, val)?;
+                Ok(())
+            },
+        }
     }
 
     fn visit_apply(&mut self, state: &mut State, expr: &Apply) -> Res {
