@@ -48,7 +48,7 @@ impl Visitor<State, (), String, PrettyPrintError> for PrettyPrint {
                 Ok(())
             },
             Str(val, _) => {
-                write!(state, "{}", val);
+                write!(state, "'{}'", val);
                 Ok(())
             },
             Lambda(val) => {
