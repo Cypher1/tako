@@ -87,15 +87,9 @@ fn work(filename: &String, opts: &Options) -> std::io::Result<()> {
         }
     }
 
-    let mut rescoper = ReScoper::default();
-    let scoped_ast = match rescoper.visit_root(&ast) {
-        Ok(res) => res,
-        Err(err) => panic!(format!("{:#?}", err)),
-    };
-
     if opts.interactive {
         let mut interp = Interpreter::default();
-        match interp.visit_root(&scoped_ast) {
+        match interp.visit_root(&ast) {
             Ok(res) => {
                 let mut ppr = PrettyPrint::default();
                 use crate::ast::ToNode;
@@ -115,7 +109,7 @@ fn work(filename: &String, opts: &Options) -> std::io::Result<()> {
         return Ok(());
     }
     let mut comp = Compiler::default();
-    match comp.visit_root(&scoped_ast) {
+    match comp.visit_root(&ast) {
         Ok(res) => {
             println!("{}", res);
         },
