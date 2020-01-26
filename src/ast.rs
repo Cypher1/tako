@@ -62,6 +62,7 @@ pub enum Prim {
     Bool(bool, Info),
     I32(i32, Info),
     Str(String, Info),
+    Lambda(Box<Node>),
 }
 
 impl ToNode for Prim {
@@ -75,6 +76,7 @@ impl ToNode for Prim {
             Bool(_, info) => info.clone(),
             I32(_, info) => info.clone(),
             Str(_, info) => info.clone(),
+            Lambda(node) => (*node).get_info(),
         }
     }
 }

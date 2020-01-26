@@ -1,0 +1,2 @@
+(x=3):'()'
+// This now fails as `=` returns the assigned value (such that x=y=3 <==> x=3;y=3).
