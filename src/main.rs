@@ -22,30 +22,47 @@ use interpreter::Interpreter;
 use pretty_print::PrettyPrint;
 use rescoper::ReScoper;
 
+struct Options {
+    files: Vec<String>,
+    interactive: bool,
+    show_ast: bool,
+    show_full_ast: bool,
+}
+
+impl Default for Options {
+    fn default() -> Options {
+        Options {
+        files: vec![],
+        interactive: false,
+        show_ast: false,
+        show_full_ast: false,
+        }
+    }
+}
+
 fn main() -> std::io::Result<()> {
     let all_args: Vec<String> = env::args().collect();
     let args: Vec<String> = all_args[1..].to_vec();
-    let mut files: Vec<String> = vec![];
-    let mut interactive = false;
-    let mut show_ast = false;
+    let mut opts = Options::default();
     for f in args {
         match f.as_str() {
             "-i" => {
-                interactive = true;
-                files.push("/dev/stdin".to_string());
+                opts.interactive = true;
+                opts.files.push("/dev/stdin".to_string());
             }
-            "-r" => interactive = true,
-            "--ast" => show_ast = true,
-            _ => files.push(f),
+            "-r" => opts.interactive = true,
+            "--ast" => opts.show_ast = true,
+            "--full_ast" => opts.show_full_ast = true,
+            _ => opts.files.push(f),
         }
     }
-    for f in files {
-        work(f, interactive, show_ast)?
+    for f in opts.files.iter() {
+        work(&f, &opts)?
     }
     Ok(())
 }
 
-fn work(filename: String, interactive: bool, show_ast: bool) -> std::io::Result<()> {
+fn work(filename: &String, opts: &Options) -> std::io::Result<()> {
     let mut contents = String::new();
     let mut file = File::open(filename.clone())?;
     println!("Filename: '{}'", filename);
@@ -53,10 +70,12 @@ fn work(filename: String, interactive: bool, show_ast: bool) -> std::io::Result<
     file.read_to_string(&mut contents)?;
     // println!("Content: '\n{}'", contents);
 
-    let ast = parser::parse_file(filename, contents);
+    let ast = parser::parse_file(filename.clone(), contents);
 
-    if show_ast {
+    if opts.show_full_ast {
         println!("R: {:#?}", ast);
+    }
+    if opts.show_ast {
         let mut ppr = PrettyPrint::default();
         match ppr.visit_root(&ast) {
             Ok(res) => {
@@ -74,7 +93,7 @@ fn work(filename: String, interactive: bool, show_ast: bool) -> std::io::Result<
         Err(err) => panic!(format!("{:#?}", err)),
     };
 
-    if interactive {
+    if opts.interactive {
         let mut interp = Interpreter::default();
         match interp.visit_root(&scoped_ast) {
             Ok(res) => {
