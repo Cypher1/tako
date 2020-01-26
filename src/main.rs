@@ -73,13 +73,13 @@ fn work(filename: &String, opts: &Options) -> std::io::Result<()> {
     let ast = parser::parse_file(filename.clone(), contents);
 
     if opts.show_full_ast {
-        println!("R: {:#?}", ast);
+        println!("debug ast: {:#?}", ast);
     }
     if opts.show_ast {
         let mut ppr = PrettyPrint::default();
         match ppr.visit_root(&ast) {
             Ok(res) => {
-                println!("R: {}", res);
+                println!("{}", res);
             },
             Err(err) => {
                 println!("{:#?}", err);
@@ -97,7 +97,16 @@ fn work(filename: &String, opts: &Options) -> std::io::Result<()> {
         let mut interp = Interpreter::default();
         match interp.visit_root(&scoped_ast) {
             Ok(res) => {
-                println!("{:#?}", res);
+                let mut ppr = PrettyPrint::default();
+                use crate::ast::ToNode;
+                match ppr.visit_root(&res.to_node()) {
+                    Ok(res) => {
+                        println!(">> {}", res);
+                    },
+                    Err(err) => {
+                        println!("{:#?}", err);
+                    }
+                }
             },
             Err(err) => {
                 println!("{:#?}", err);
