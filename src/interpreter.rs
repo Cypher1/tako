@@ -53,16 +53,18 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
             match frame.get(n) {
                 Some(val) => {
                     let mut next = state.clone();
-                    next.push(Frame::new());
                     let result = self.visit(
-                    &mut next,
-                    &val.clone());
+                        &mut next,
+                        &val.clone()
+                    );
                     return result
                 }, // This is the variable
                 None => {},
             }
             // Not in this frame, go back up.
         }
+        // TODO: Condense the stack here to save a closure with a function pointer inside. Return a
+        // pointer to the new closure.
         Ok(Prim::Lambda(Box::new(expr.clone().to_node())))
     }
 
