@@ -76,15 +76,7 @@ fn work(filename: &String, opts: &Options) -> std::io::Result<()> {
         println!("debug ast: {:#?}", ast);
     }
     if opts.show_ast {
-        let mut ppr = PrettyPrint::default();
-        match ppr.visit_root(&ast) {
-            Ok(res) => {
-                println!("{}", res);
-            },
-            Err(err) => {
-                println!("{:#?}", err);
-            }
-        }
+        println!("{}", ast);
     }
 
     if opts.interactive {
@@ -92,7 +84,7 @@ fn work(filename: &String, opts: &Options) -> std::io::Result<()> {
         match interp.visit_root(&ast) {
             Ok(res) => {
                 let mut ppr = PrettyPrint::default();
-                use crate::ast::ToNode;
+                use ast::ToNode;
                 match ppr.visit_root(&res.to_node()) {
                     Ok(res) => {
                         println!(">> {}", res);
