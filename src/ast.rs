@@ -204,6 +204,21 @@ impl std::fmt::Debug for Node {
     }
 }
 
+impl fmt::Display for Node {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use super::PrettyPrint;
+        let mut ppr = PrettyPrint::default();
+        match ppr.visit_root(&self) {
+            Ok(res) => {
+                write!(f, "{}", res)
+            },
+            Err(err) => {
+                write!(f, "{:#?}", err)
+            }
+        }
+    }
+}
+
 impl ToNode for Node {
     fn to_node(self) -> Node {
         self
