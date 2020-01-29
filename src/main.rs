@@ -45,15 +45,22 @@ fn main() -> std::io::Result<()> {
     let args: Vec<String> = all_args[1..].to_vec();
     let mut opts = Options::default();
     for f in args {
-        match f.as_str() {
-            "-i" => {
-                opts.interactive = true;
-                opts.files.push("/dev/stdin".to_string());
+        if &f.chars().next() != &Some('-') {
+            opts.files.push(f);
+        } else {
+            match f.as_str() {
+                "-i" => {
+                    opts.interactive = true;
+                    opts.files.push("/dev/stdin".to_string());
+                }
+                "-r" => opts.interactive = true,
+                "--ast" => opts.show_ast = true,
+                "--full_ast" => opts.show_full_ast = true,
+                _ => {
+                    println!("unexpected flag '{}'", f);
+                    return Ok(());
+                },
             }
-            "-r" => opts.interactive = true,
-            "--ast" => opts.show_ast = true,
-            "--full_ast" => opts.show_full_ast = true,
-            _ => opts.files.push(f),
         }
     }
     for f in opts.files.iter() {
