@@ -1,9 +1,6 @@
 use super::ast::*;
 use std::collections::HashMap;
 
-#[macro_export]
-use super::map_macros;
-
 #[derive(Debug)]
 #[derive(PartialEq)]
 pub enum ReScoperError {
@@ -54,11 +51,11 @@ impl Visitor<State, Node, Node, ReScoperError> for ReScoper {
         Ok(Sym {name: format!("{}#{}", expr.name, depth), info: expr.get_info()}.to_node())
     }
 
-    fn visit_prim(&mut self, state: &mut State, expr: &Prim) -> Res {
+    fn visit_prim(&mut self, _state: &mut State, expr: &Prim) -> Res {
         Ok(expr.clone().to_node())
     }
 
-    fn visit_apply(&mut self, state: &mut State, expr: &Apply) -> Res {
+    fn visit_apply(&mut self, _state: &mut State, expr: &Apply) -> Res {
         Ok(expr.clone().to_node())
     }
 
@@ -82,11 +79,11 @@ impl Visitor<State, Node, Node, ReScoperError> for ReScoper {
         Ok(Let{name: expr.name.clone(), value: Some(Box::new(inner)), info: expr.get_info()}.to_node())
     }
 
-    fn visit_un_op(&mut self, state: &mut State, expr: &UnOp) -> Res {
+    fn visit_un_op(&mut self, _state: &mut State, expr: &UnOp) -> Res {
         Ok(expr.clone().to_node())
     }
 
-    fn visit_bin_op(&mut self, state: &mut State, expr: &BinOp) -> Res {
+    fn visit_bin_op(&mut self, _state: &mut State, expr: &BinOp) -> Res {
         Ok(expr.clone().to_node())
     }
 
