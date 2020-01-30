@@ -239,10 +239,6 @@ fn expr(init_toks: VecDeque<Token>, init_lbp: i32) -> (Node, VecDeque<Token>) {
     return (left, toks);
 }
 
-pub fn parse(contents: String) -> Node {
-    parse_impl(None, contents)
-}
-
 pub fn parse_file(filename: String, contents: String) -> Node {
     parse_impl(Some(filename), contents)
 }
@@ -279,9 +275,13 @@ fn parse_impl(filename: Option<String>, contents: String) -> Node {
 
 #[cfg(test)]
 mod tests {
-    use super::parse;
+    use super::parse_impl;
     use super::super::ast::*;
     use Prim::*;
+
+    fn parse(contents: String) -> Node {
+        parse_impl(None, contents)
+    }
 
     fn num_lit(x: i32) -> Box<Node> {
         Box::new(I32(x, Info::default()).to_node())

@@ -73,7 +73,7 @@ impl Visitor<State, Vec<String>, Tree<String>, CompilerError> for Compiler {
         panic!("Sym not implemented in wasm");
     }
 
-    fn visit_prim(&mut self, state: &mut State, expr: &Prim) -> Res {
+    fn visit_prim(&mut self, _state: &mut State, expr: &Prim) -> Res {
         use Prim::*;
         match expr {
             I32(n, _) => Ok(vec!["i32.const ".to_string() + &n.to_string()]),

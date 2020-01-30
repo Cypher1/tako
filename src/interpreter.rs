@@ -1,15 +1,12 @@
 use super::ast::*;
 use std::collections::HashMap;
 
-#[macro_use]
-use super::map_macros;
-
 #[derive(Debug)]
 #[derive(PartialEq)]
 pub enum InterpreterError {
     UnknownInfixOperator(String, Info),
     UnknownPrefixOperator(String, Info),
-    UnknownSymbol(String, Info),
+    // UnknownSymbol(String, Info),
     FailedParse(String, Info),
     TypeMismatch(String, Prim, Info),
     TypeMismatch2(String, Prim, Prim, Info),
@@ -68,7 +65,7 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
         Ok(Prim::Lambda(Box::new(expr.clone().to_node())))
     }
 
-    fn visit_prim(&mut self, state: &mut State, expr: &Prim) -> Res {
+    fn visit_prim(&mut self, _state: &mut State, expr: &Prim) -> Res {
         Ok(expr.clone())
     }
 
@@ -254,7 +251,7 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
                 (_, Lambda(_)) => Ok(Lambda(Box::new(expr.clone().to_node()))),
                 (l, r) => Err(InterpreterError::TypeMismatch2("^".to_string(), (*l).clone(), (*r).clone(), info))
             },
-            "?" => match (l) {
+            "?" => match l {
                 Ok(Lambda(_)) => Ok(Lambda(Box::new(expr.clone().to_node()))),
                 Err(_) => r(),
                 l => l,
@@ -311,7 +308,7 @@ mod tests {
     }
 
     fn eval_str(s: String) -> Res {
-        let ast = parser::parse(s);
+        let ast = parser::parse_file("test".to_string(), s);
         let mut interp = Interpreter::default();
         interp.visit_root(&ast)
     }

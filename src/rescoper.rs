@@ -1,9 +1,4 @@
 use super::ast::*;
-use std::collections::HashMap;
-
-#[macro_export]
-use super::map_macros;
-
 #[derive(Debug)]
 #[derive(PartialEq)]
 pub enum ReScoperError {
@@ -40,12 +35,12 @@ impl Visitor<State, Node, Node, ReScoperError> for ReScoper {
 
     fn visit_sym(&mut self, state: &mut State, expr: &Sym) -> Res {
         let mut depth = 0;
-        let mut found = false;
+        // let mut found = false;
         'walk_stack: for frame in state.iter() {
             for name in frame.iter() {
                 if *name == expr.name {
                     // The name is in scope.
-                    found = true;
+                    // found = true;
                     break 'walk_stack;
                 }
             }
@@ -54,11 +49,11 @@ impl Visitor<State, Node, Node, ReScoperError> for ReScoper {
         Ok(Sym {name: format!("{}#{}", expr.name, depth), info: expr.get_info()}.to_node())
     }
 
-    fn visit_prim(&mut self, state: &mut State, expr: &Prim) -> Res {
+    fn visit_prim(&mut self, _state: &mut State, expr: &Prim) -> Res {
         Ok(expr.clone().to_node())
     }
 
-    fn visit_apply(&mut self, state: &mut State, expr: &Apply) -> Res {
+    fn visit_apply(&mut self, _state: &mut State, expr: &Apply) -> Res {
         Ok(expr.clone().to_node())
     }
 
@@ -82,11 +77,11 @@ impl Visitor<State, Node, Node, ReScoperError> for ReScoper {
         Ok(Let{name: expr.name.clone(), value: Some(Box::new(inner)), info: expr.get_info()}.to_node())
     }
 
-    fn visit_un_op(&mut self, state: &mut State, expr: &UnOp) -> Res {
+    fn visit_un_op(&mut self, _state: &mut State, expr: &UnOp) -> Res {
         Ok(expr.clone().to_node())
     }
 
-    fn visit_bin_op(&mut self, state: &mut State, expr: &BinOp) -> Res {
+    fn visit_bin_op(&mut self, _state: &mut State, expr: &BinOp) -> Res {
         Ok(expr.clone().to_node())
     }
 
@@ -97,10 +92,4 @@ impl Visitor<State, Node, Node, ReScoperError> for ReScoper {
 
 #[cfg(test)]
 mod tests {
-    use super::ReScoper;
-    use super::Res;
-    use super::super::parser;
-    use super::super::ast::*;
-    use Prim::*;
-    use Node::*;
 }

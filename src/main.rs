@@ -20,7 +20,6 @@ use ast::Visitor;
 use wasm::Compiler;
 use interpreter::Interpreter;
 use pretty_print::PrettyPrint;
-use rescoper::ReScoper;
 
 struct Options {
     files: Vec<String>,

@@ -242,10 +242,6 @@ pub trait ToNode {
     fn get_info(self: &Self) -> Info;
 }
 
-pub fn get_loc<T: ToNode>(n: &T) -> Option<Loc> {
-    n.get_info().loc
-}
-
 pub trait Visitor<State, Res, Final, ErrT> {
     fn visit_root(&mut self, e: &Node) -> Result<Final, ErrT>;
 
