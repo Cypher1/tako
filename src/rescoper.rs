@@ -1,6 +1,4 @@
 use super::ast::*;
-use std::collections::HashMap;
-
 #[derive(Debug)]
 #[derive(PartialEq)]
 pub enum ReScoperError {
@@ -37,12 +35,12 @@ impl Visitor<State, Node, Node, ReScoperError> for ReScoper {
 
     fn visit_sym(&mut self, state: &mut State, expr: &Sym) -> Res {
         let mut depth = 0;
-        let mut found = false;
+        // let mut found = false;
         'walk_stack: for frame in state.iter() {
             for name in frame.iter() {
                 if *name == expr.name {
                     // The name is in scope.
-                    found = true;
+                    // found = true;
                     break 'walk_stack;
                 }
             }
