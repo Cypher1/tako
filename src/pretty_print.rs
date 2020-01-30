@@ -108,10 +108,4 @@ impl Visitor<State, (), String, PrettyPrintError> for PrettyPrint {
 
 #[cfg(test)]
 mod tests {
-    use super::PrettyPrint;
-    use super::Res;
-    use super::super::parser;
-    use super::super::ast::*;
-    use Prim::*;
-    use Node::*;
 }

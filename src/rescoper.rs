@@ -97,10 +97,4 @@ impl Visitor<State, Node, Node, ReScoperError> for ReScoper {
 
 #[cfg(test)]
 mod tests {
-    use super::ReScoper;
-    use super::Res;
-    use super::super::parser;
-    use super::super::ast::*;
-    use Prim::*;
-    use Node::*;
 }
