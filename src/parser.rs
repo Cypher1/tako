@@ -275,7 +275,7 @@ fn parse_impl(filename: Option<String>, contents: String) -> Node {
 
 #[cfg(test)]
 mod tests {
-    use super::parse;
+    use super::parse_impl;
     use super::super::ast::*;
     use Prim::*;
 

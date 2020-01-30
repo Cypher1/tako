@@ -308,7 +308,7 @@ mod tests {
     }
 
     fn eval_str(s: String) -> Res {
-        let ast = parser::parse(s);
+        let ast = parser::parse_file("test".to_string(), s);
         let mut interp = Interpreter::default();
         interp.visit_root(&ast)
     }
