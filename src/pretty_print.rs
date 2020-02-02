@@ -35,10 +35,6 @@ impl Visitor<State, (), String, PrettyPrintError> for PrettyPrint {
     fn visit_prim(&mut self, state: &mut State, expr: &Prim) -> Res {
         use Prim::*;
         match expr {
-            Unit(_) => {
-                write!(state, "()").unwrap();
-                Ok(())
-            },
             Bool(val, _) => {
                 write!(state, "{}", val).unwrap();
                 Ok(())
@@ -74,15 +70,8 @@ impl Visitor<State, (), String, PrettyPrintError> for PrettyPrint {
     }
 
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
-        write!(state, "{}", expr.name).unwrap();
-        match &expr.value {
-            Some(val) => {
-                write!(state, "=").unwrap();
-                self.visit(state, &*val)?
-            },
-            None => {}
-        }
-        Ok(())
+        write!(state, "{}=", expr.name).unwrap();
+        self.visit(state, &*expr.value)
     }
 
     fn visit_un_op(&mut self, state: &mut State, expr: &UnOp) -> Res {

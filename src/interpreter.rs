@@ -82,25 +82,18 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
     }
 
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
-        use Prim::*;
-        match expr.value.as_ref() {
-            None => {},
-            Some(val) => {
-                // Add a new scope
-                state.push(Frame::new());
-                let result = self.visit(state, val)?;
-                // Drop the finished scope
-                state.pop();
-                match state.last_mut() {
-                    None => panic!("there is no stack frame"),
-                    Some(frame) => {
-                        frame.insert(expr.name.clone(), result.clone().to_node());
-                        return Ok(result);
-                    }
-                }
+        // Add a new scope
+        state.push(Frame::new());
+        let result = self.visit(state, &expr.value)?;
+        // Drop the finished scope
+        state.pop();
+        match state.last_mut() {
+            None => panic!("there is no stack frame"),
+            Some(frame) => {
+                frame.insert(expr.name.clone(), result.clone().to_node());
+                return Ok(result);
             }
         }
-        return Ok(Unit(expr.clone().get_info()));
     }
 
     fn visit_un_op(&mut self, state: &mut State, expr: &UnOp) -> Res {
@@ -149,7 +142,6 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
                 (Str(l, _), Str(r, _)) => Ok(Str(l.to_string() + &r.to_string(), info)),
                 (Lambda(_), _) => Ok(Lambda(Box::new(expr.clone().to_node()))),
                 (_, Lambda(_)) => Ok(Lambda(Box::new(expr.clone().to_node()))),
-                (l, r) => Err(InterpreterError::TypeMismatch2("+".to_string(), (*l).clone(), (*r).clone(), info))
             },
             "==" => match (&l?, &r()?) {
                 (Bool(l, _), Bool(r, _)) => Ok(Bool(*l == *r, info)),
@@ -264,10 +256,6 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
                 l => l,
             },
             ":" => match (&l?, &r()?) {
-                (Unit(i), Str(ty, _)) => match ty.as_ref() {
-                    "()" => Ok(Unit((*i).clone())),
-                    t => Err(InterpreterError::TypeMismatch(t.to_string(), Unit((*i).clone()), (*i).clone())),
-            },
                 (Bool(b, i), Str(ty, _)) => match ty.as_ref() {
                     "bool" => Ok(Bool(*b, (*i).clone())),
                     t => Err(InterpreterError::TypeMismatch(t.to_string(), Bool(*b, (*i).clone()), (*i).clone())),
