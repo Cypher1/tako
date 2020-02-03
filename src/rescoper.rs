@@ -78,7 +78,7 @@ impl Visitor<State, Node, Node, ReScoperError> for ReScoper {
             },
             None => {}
         }
-        Ok(Let{name: expr.name.clone(), value, info: expr.get_info()}.to_node())
+        Ok(Let{name: expr.name.clone(), requires: Some(vec![]), value, info: expr.get_info()}.to_node())
     }
 
     fn visit_un_op(&mut self, state: &mut State, expr: &UnOp) -> Res {
