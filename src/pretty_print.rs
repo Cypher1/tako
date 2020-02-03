@@ -28,7 +28,10 @@ impl Visitor<State, (), String, PrettyPrintError> for PrettyPrint {
     }
 
     fn visit_sym(&mut self, state: &mut State, expr: &Sym) -> Res {
-        write!(state, "{}#{}", expr.name, expr.depth.unwrap_or(0)).unwrap();
+        match expr.depth.clone() {
+            Some(0) | None => write!(state, "{}", expr.name),
+            Some(depth) => write!(state, "{}#{}", expr.name, depth),
+        }.unwrap();
         Ok(())
     }
 
