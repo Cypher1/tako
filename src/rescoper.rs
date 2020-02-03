@@ -46,22 +46,31 @@ impl Visitor<State, Node, Node, ReScoperError> for ReScoper {
             }
             depth += 1;
         }
-        Ok(Sym {name: format!("{}#{}", expr.name, depth), info: expr.get_info()}.to_node())
+        Ok(Sym {name: expr.name.clone(), depth: Some(depth), info: expr.get_info()}.to_node())
     }
 
     fn visit_prim(&mut self, _state: &mut State, expr: &Prim) -> Res {
         Ok(expr.clone().to_node())
     }
 
-    fn visit_apply(&mut self, _state: &mut State, expr: &Apply) -> Res {
-        Ok(expr.clone().to_node())
+    fn visit_apply(&mut self, state: &mut State, expr: &Apply) -> Res {
+        let mut args = vec![];
+        for arg in expr.args.iter() {
+            let new_arg = self.visit_let(state, arg)?;
+            match new_arg {
+                Node::LetNode(letter) => args.push(letter),
+                letter => panic!(format!("Rescoper built {} from let", letter)),
+            }
+        }
+        let inner = Box::new(self.visit(state, &*expr.inner)?);
+        Ok(Apply{inner, args, info: expr.get_info()}.to_node())
     }
 
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
         let frame = state.last_mut().unwrap();
         frame.push("self".to_string()); // For recursion
 
-        let inner = self.visit(state, &expr.value)?;
+        let value = Box::new(self.visit(state, &expr.value)?);
         match state.last_mut() {
             Some(frame) => {
                 // Now that the variable has been defined we can use it.
@@ -69,18 +78,21 @@ impl Visitor<State, Node, Node, ReScoperError> for ReScoper {
             },
             None => {}
         }
-        Ok(Let{name: expr.name.clone(), value: Box::new(inner), info: expr.get_info()}.to_node())
+        Ok(Let{name: expr.name.clone(), value, info: expr.get_info()}.to_node())
     }
 
-    fn visit_un_op(&mut self, _state: &mut State, expr: &UnOp) -> Res {
-        Ok(expr.clone().to_node())
+    fn visit_un_op(&mut self, state: &mut State, expr: &UnOp) -> Res {
+        let inner = Box::new(self.visit(state, &expr.inner)?);
+        Ok(UnOp{name: expr.name.clone(), inner, info: expr.get_info()}.to_node())
     }
 
-    fn visit_bin_op(&mut self, _state: &mut State, expr: &BinOp) -> Res {
-        Ok(expr.clone().to_node())
+    fn visit_bin_op(&mut self, state: &mut State, expr: &BinOp) -> Res {
+        let left = Box::new(self.visit(state, &expr.left)?);
+        let right = Box::new(self.visit(state, &expr.right)?);
+        Ok(BinOp{name: expr.name.clone(), left, right, info: expr.get_info()}.to_node())
     }
 
-    fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {
+    fn handle_error(&mut self, state: &mut State, expr: &Err) -> Res {
         Err(ReScoperError::FailedParse(expr.msg.to_string(), expr.get_info()))
     }
 }

@@ -42,6 +42,7 @@ impl ToNode for Apply {
 #[derive(Clone)]
 pub struct Sym {
     pub name: String,
+    pub depth: Option<i32>,
     pub info: Info,
 }
 
