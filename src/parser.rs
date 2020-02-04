@@ -63,10 +63,11 @@ fn get_defs(root: Node) -> Vec<Let> {
                 args.append(&mut get_defs(*left));
                 args.append(&mut get_defs(*right));
             } else {
-                args.push(Let{name: "it".to_string(), value: Box::new(BinOp{name, left, right, info: info.clone()}.to_node()), info});
+                args.push(Let{name: "it".to_string(),
+                    requires: None, value: Box::new(BinOp{name, left, right, info: info.clone()}.to_node()), info});
             }
         },
-        n => args.push(Let{name: "it".to_string(), value: Box::new(n.clone()), info: n.get_info()}),
+        n => args.push(Let{name: "it".to_string(), requires: None, value: Box::new(n.clone()), info: n.get_info()}),
     }
 
     return args;
@@ -130,7 +131,7 @@ fn nud(mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
             TokenType::Sym => {
                 // Handle args.
                 return (
-                    Sym{name: head.value.clone(), info: head.get_info()}.to_node(),
+                    Sym{name: head.value.clone(), depth: None, info: head.get_info()}.to_node(),
                     toks,
                 );
             },
@@ -159,6 +160,7 @@ fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
                         Node::SymNode(s) => {
                             return (Let {
                                 name: s.name,
+                                requires: None,
                                 value: Box::new(right),
                                 info: head.get_info(),
                             }.to_node(), new_toks);

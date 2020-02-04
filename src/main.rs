@@ -16,10 +16,11 @@ mod interpreter;
 mod pretty_print;
 mod rescoper;
 
-use ast::Visitor;
 use wasm::Compiler;
-use interpreter::Interpreter;
 use pretty_print::PrettyPrint;
+use ast::Visitor;
+use interpreter::Interpreter;
+use rescoper::ReScoper;
 
 struct Options {
     files: Vec<String>,
@@ -78,16 +79,19 @@ fn work(filename: &String, opts: &Options) -> std::io::Result<()> {
 
     let ast = parser::parse_file(filename.clone(), contents);
 
+    let mut scoper = ReScoper::default();
+    let scoped = scoper.visit_root(&ast).expect("failed scoping");
+
     if opts.show_full_ast {
-        println!("debug ast: {:#?}", ast);
+        println!("debug ast: {:#?}", scoped);
     }
     if opts.show_ast {
-        println!("{}", ast);
+        println!("{}", scoped);
     }
 
     if opts.interactive {
         let mut interp = Interpreter::default();
-        match interp.visit_root(&ast) {
+        match interp.visit_root(&scoped) {
             Ok(res) => {
                 let mut ppr = PrettyPrint::default();
                 use ast::ToNode;
@@ -107,7 +111,7 @@ fn work(filename: &String, opts: &Options) -> std::io::Result<()> {
         return Ok(());
     }
     let mut comp = Compiler::default();
-    match comp.visit_root(&ast) {
+    match comp.visit_root(&scoped) {
         Ok(res) => {
             println!("{}", res);
         },

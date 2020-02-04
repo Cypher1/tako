@@ -42,6 +42,7 @@ impl ToNode for Apply {
 #[derive(Clone)]
 pub struct Sym {
     pub name: String,
+    pub depth: Option<i32>,
     pub info: Info,
 }
 
@@ -85,6 +86,7 @@ impl ToNode for Prim {
 pub struct Let {
     pub name: String,
     pub value: Box<Node>,
+    pub requires: Option<Vec<String>>,
     pub info: Info,
 }
 
