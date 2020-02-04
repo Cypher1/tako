@@ -379,4 +379,14 @@ mod tests {
     fn parse_and_eval_let() {
         assert_eq!(eval_str("x=3;x".to_string()), Ok(I32(3, Info::default())));
     }
+
+    #[test]
+    fn parse_and_eval_let_with_imolicit_args() {
+        assert_eq!(eval_str("x=it*2;x(3)".to_string()), Ok(I32(6, Info::default())));
+    }
+
+    #[test]
+    fn parse_and_eval_let_with_args() {
+        assert_eq!(eval_str("x(it)=it*2;x(3)".to_string()), Ok(I32(6, Info::default())));
+    }
 }

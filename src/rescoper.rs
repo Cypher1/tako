@@ -92,6 +92,21 @@ impl Visitor<State, Node, Node, ReScoperError> for ReScoper {
         let value = Box::new(self.visit(state, &expr.value)?);
         std::mem::swap(&mut requires, &mut state.requires);
 
+        for req in state.requires.iter() {
+            if !requires.iter().any(|r| r.name == req.name) {
+                requires.push(req.clone());
+            }
+        }
+        let mut i = 0;
+        while i != requires.len() {
+            if state.requires.iter().any(|r| r.name == requires[i].name) {
+                requires.remove(i); // Already in scope.
+            } else {
+                i += 1;
+            }
+        }
+
+        // Now that the variable has been defined we can use it.
         for req in requires.iter() {
             if !state.requires.iter().any(|r| r.name == req.name) {
                 state.requires.push(req.clone());

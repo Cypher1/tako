@@ -175,10 +175,10 @@ fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
                                         info: head.get_info(),
                                     }.to_node(), new_toks);
                                 },
-                                _ => panic!(format!("Cannot assign to {:?}", a))
+                                _ => panic!(format!("Cannot assign to {}", a.to_node()))
                             }
-                        }
-                        _ => panic!(format!("Cannot assign to {:?}", left))
+                        },
+                        _ => panic!(format!("Cannot assign to {}", left))
                     }
                 }
                 let info = head.get_info();
