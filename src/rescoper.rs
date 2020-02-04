@@ -27,7 +27,7 @@ type Res = Result<Node, ReScoperError>;
 type Frame = Vec<String>;
 pub struct State {
     stack: Vec<Frame>,
-    requires: Vec<String>,
+    requires: Vec<Sym>,
 }
 impl Visitor<State, Node, Node, ReScoperError> for ReScoper {
 
@@ -35,6 +35,9 @@ impl Visitor<State, Node, Node, ReScoperError> for ReScoper {
         let mut state = State{stack: vec![globals()], requires: vec![]};
         let res = self.visit(&mut state, expr)?;
         // Check requires
+        if state.requires.len() > 0 {
+            println!("{:?} not declared", state.requires);
+        }
         Ok(res)
     }
 
@@ -54,8 +57,8 @@ impl Visitor<State, Node, Node, ReScoperError> for ReScoper {
         }
 
         let mut depth = Some(look_depth);
-        if !found && !state.requires.contains(&expr.name) {
-            state.requires.push(expr.name.clone());
+        if !found && !state.requires.iter().any(|r| r.name == expr.name) {
+            state.requires.push(expr.clone());
             depth = None;
         }
         Ok(Sym {name: expr.name.clone(), depth, info: expr.get_info()}.to_node())
@@ -89,9 +92,9 @@ impl Visitor<State, Node, Node, ReScoperError> for ReScoper {
         let value = Box::new(self.visit(state, &expr.value)?);
         std::mem::swap(&mut requires, &mut state.requires);
 
-        for name in requires.iter() {
-            if !state.requires.contains(&name) {
-                state.requires.push(name.to_string());
+        for req in requires.iter() {
+            if !state.requires.iter().any(|r| r.name == req.name) {
+                state.requires.push(req.clone());
             }
         }
         // Now that the variable has been defined we can use it.

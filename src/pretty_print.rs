@@ -84,7 +84,7 @@ impl Visitor<State, (), String, PrettyPrintError> for PrettyPrint {
                     if !is_first {
                         write!(state, ", ").unwrap();
                     }
-                    write!(state, "{}", arg).unwrap();
+                    self.visit_sym(state, &arg)?;
                     is_first = false;
                 }
                 if reqs.len() > 0 {
