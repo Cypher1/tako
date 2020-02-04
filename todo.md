@@ -15,6 +15,12 @@
   - Main function argument parsing
   - Imports
   - More operators
+  - Conversion to ssa
+  - Conversion to stack
+  - Tests for compilation
+  - Test using work from main.rs
+  - Move globals / std into a file using low level ops
+  - Type checking
 - Testing
   - Tests for parser
   - Tests for interpreter
@@ -24,7 +30,6 @@
 ## Communication
 - Improve on Read me
 - Language documentation
-- Mascot?
 
 ## Pain points
 - Debug and format for ast, info and datatype types
