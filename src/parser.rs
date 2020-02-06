@@ -153,9 +153,10 @@ fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
             TokenType::NumLit => (Prim::I32(head.value.parse().unwrap(), head.get_info()).to_node(), toks),
             TokenType::StringLit => (Prim::Str(head.value.clone(), head.get_info()).to_node(), toks),
             TokenType::Sym => {
-                toks.push_front(Token{tok_type: TokenType::Op, value: ";".to_string(), pos: head.pos.clone()});
+                let pos = head.pos.clone();
                 toks.push_front(head);
-                return led(toks, left);
+                toks.push_front(Token{tok_type: TokenType::Op, value: ";".to_string(), pos});
+                return (left, toks);
             },
             TokenType::Op => {
                 let (lbp, assoc_right) = binding_power(&head);
