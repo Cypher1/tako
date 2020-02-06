@@ -165,6 +165,19 @@ fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
                                 info: head.get_info(),
                             }.to_node(), new_toks);
                         },
+                        Node::ApplyNode(a) => {
+                            match *a.inner {
+                                Node::SymNode(s) => {
+                                    return (Let {
+                                        name: s.name,
+                                        requires: Some(vec![]),
+                                        value: Box::new(right),
+                                        info: head.get_info(),
+                                    }.to_node(), new_toks);
+                                },
+                                _ => panic!(format!("Cannot assign to {:?}", a))
+                            }
+                        }
                         _ => panic!(format!("Cannot assign to {:?}", left))
                     }
                 }

@@ -80,7 +80,9 @@ impl Visitor<State, Node, Node, ReScoperError> for ReScoper {
 
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
         let frame = state.stack.last_mut().unwrap();
-        frame.push("self".to_string()); // For recursion
+        // if recursive
+        frame.push(expr.name.clone());
+        frame.extend(expr.requires.clone().unwrap_or(vec![]));
 
         let mut requires = vec![];
         std::mem::swap(&mut requires, &mut state.requires);
@@ -93,7 +95,7 @@ impl Visitor<State, Node, Node, ReScoperError> for ReScoper {
             }
         }
         // Now that the variable has been defined we can use it.
-        state.stack.last_mut().unwrap().push(expr.name.clone());
+        // if !recursive // frame.push(expr.name.clone());
 
         Ok(Let{name: expr.name.clone(), requires: Some(requires), value, info: expr.get_info()}.to_node())
     }

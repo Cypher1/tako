@@ -27,6 +27,7 @@ struct Options {
     interactive: bool,
     show_ast: bool,
     show_full_ast: bool,
+    debug: i32,
 }
 
 impl Default for Options {
@@ -36,6 +37,7 @@ impl Default for Options {
         interactive: false,
         show_ast: false,
         show_full_ast: false,
+        debug: 0,
         }
     }
 }
@@ -54,6 +56,7 @@ fn main() -> std::io::Result<()> {
                     opts.files.push("/dev/stdin".to_string());
                 }
                 "-r" => opts.interactive = true,
+                "-d" => opts.debug = 1,
                 "--ast" => opts.show_ast = true,
                 "--full_ast" => opts.show_full_ast = true,
                 _ => {
@@ -91,6 +94,7 @@ fn work(filename: &String, opts: &Options) -> std::io::Result<()> {
 
     if opts.interactive {
         let mut interp = Interpreter::default();
+        interp.debug = opts.debug;
         match interp.visit_root(&scoped) {
             Ok(res) => {
                 let mut ppr = PrettyPrint::default();
