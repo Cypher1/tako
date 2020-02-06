@@ -18,6 +18,8 @@
 - Testing
   - Tests for parser
   - Tests for interpreter
+  - Explicit evaluation of funcs
+  - Type checking
 
 ## Communication
 - Improve on Read me

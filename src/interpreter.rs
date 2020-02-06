@@ -17,11 +17,12 @@ type Frame = HashMap<String, Node>;
 
 // Walks the AST interpreting it.
 pub struct Interpreter {
+    pub debug: i32,
 }
 
 impl Default for Interpreter {
     fn default() -> Interpreter {
-        Interpreter {}
+        Interpreter {debug: 0}
     }
 }
 
@@ -45,16 +46,22 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
     }
 
     fn visit_sym(&mut self, state: &mut State, expr: &Sym) -> Res {
-        let n = expr.name.as_str();
+        if self.debug > 0 {
+            println!("evaluating {}", expr.clone().to_node());
+        }
+        let name = expr.name.as_str();
         for frame in state.iter().rev() {
-            match frame.get(n) {
+            match frame.get(name) {
                 Some(val) => {
                     let mut next = state.clone();
                     let result = self.visit(
                         &mut next,
                         &val.clone()
-                    );
-                    return result
+                    )?;
+                    if self.debug > 0 {
+                        println!("got {}", result.clone().to_node());
+                    }
+                    return Ok(result)
                 }, // This is the variable
                 None => {},
             }
@@ -62,6 +69,9 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
         }
         // TODO: Condense the stack here to save a closure with a function pointer inside. Return a
         // pointer to the new closure.
+        if self.debug > 0 {
+            println!("lambda {}", expr.clone().to_node());
+        }
         Ok(Prim::Lambda(Box::new(expr.clone().to_node())))
     }
 
@@ -82,6 +92,9 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
     }
 
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
+        if self.debug > 0 {
+            println!("evaluating let {}", expr.clone().to_node());
+        }
         // Add a new scope
         state.push(Frame::new());
         let result = self.visit(state, &expr.value)?;
@@ -97,6 +110,9 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
     }
 
     fn visit_un_op(&mut self, state: &mut State, expr: &UnOp) -> Res {
+        if self.debug > 0 {
+            println!("evaluating unop {}", expr.clone().to_node());
+        }
         use Prim::*;
         let i = self.visit(state, &expr.inner)?;
         let info = expr.clone().get_info();
@@ -122,6 +138,9 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
     }
 
     fn visit_bin_op(&mut self, state: &mut State, expr: &BinOp) -> Res {
+        if self.debug > 0 {
+            println!("evaluating binop {}", expr.clone().to_node());
+        }
         use Prim::*;
         let info = expr.clone().get_info();
         let l = self.visit(state, &expr.left);
