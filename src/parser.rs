@@ -152,6 +152,11 @@ fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
         Some(head) => match head.tok_type {
             TokenType::NumLit => (Prim::I32(head.value.parse().unwrap(), head.get_info()).to_node(), toks),
             TokenType::StringLit => (Prim::Str(head.value.clone(), head.get_info()).to_node(), toks),
+            TokenType::Sym => {
+                toks.push_front(Token{tok_type: TokenType::Op, value: ";".to_string(), pos: head.pos.clone()});
+                toks.push_front(head);
+                return led(toks, left);
+            },
             TokenType::Op => {
                 let (lbp, assoc_right) = binding_power(&head);
                 let (right, new_toks) = expr(toks, lbp - if assoc_right {1} else {0});
@@ -223,9 +228,6 @@ fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
                 let args = get_defs(inner);
                 return (Apply{inner: Box::new(left), args, info: head.get_info()}.to_node(), new_toks);
             },
-            TokenType::Sym => {
-                panic!("Infix symbols not currently supported".to_string());
-            }
             TokenType::Unknown | TokenType::Whitespace => panic!("Lexer should not produce unknown or whitespace"),
         },
     }
