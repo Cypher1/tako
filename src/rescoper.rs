@@ -15,19 +15,19 @@ impl Default for ReScoper {
     }
 }
 
-fn globals() -> Vec<String> {
+fn globals() -> Vec<Sym> {
     vec!{
-        "true".to_string(),
-        "false".to_string(),
+        Sym::new("true".to_string()),
+        Sym::new("false".to_string()),
     }
 }
 
 // TODO: Return nodes.
 type Res = Result<Node, ReScoperError>;
-type Frame = Vec<String>;
+type Frame = Vec<Sym>;
 pub struct State {
     stack: Vec<Frame>,
-    requires: Vec<String>,
+    requires: Vec<Sym>,
 }
 impl Visitor<State, Node, Node, ReScoperError> for ReScoper {
 
@@ -35,6 +35,9 @@ impl Visitor<State, Node, Node, ReScoperError> for ReScoper {
         let mut state = State{stack: vec![globals()], requires: vec![]};
         let res = self.visit(&mut state, expr)?;
         // Check requires
+        if state.requires.len() > 0 {
+            println!("{:?} not declared", state.requires);
+        }
         Ok(res)
     }
 
@@ -44,7 +47,7 @@ impl Visitor<State, Node, Node, ReScoperError> for ReScoper {
 
         'walk_stack: for frame in state.stack.iter() {
             for name in frame.iter() {
-                if *name == expr.name {
+                if *name.name == expr.name {
                     // The name is in scope.
                     found = true;
                     break 'walk_stack;
@@ -54,8 +57,8 @@ impl Visitor<State, Node, Node, ReScoperError> for ReScoper {
         }
 
         let mut depth = Some(look_depth);
-        if !found && !state.requires.contains(&expr.name) {
-            state.requires.push(expr.name.clone());
+        if !found && !state.requires.iter().any(|r| r.name == expr.name) {
+            state.requires.push(expr.clone());
             depth = None;
         }
         Ok(Sym {name: expr.name.clone(), depth, info: expr.get_info()}.to_node())
@@ -81,17 +84,35 @@ impl Visitor<State, Node, Node, ReScoperError> for ReScoper {
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
         let frame = state.stack.last_mut().unwrap();
         // if recursive
-        frame.push(expr.name.clone());
-        frame.extend(expr.requires.clone().unwrap_or(vec![]));
+        frame.push(expr.to_sym());
 
+        let expr_reqs = expr.requires.clone().unwrap_or(vec![]);
+        frame.extend(expr_reqs);
+
+        // Find new reqyirements
         let mut requires = vec![];
         std::mem::swap(&mut requires, &mut state.requires);
         let value = Box::new(self.visit(state, &expr.value)?);
         std::mem::swap(&mut requires, &mut state.requires);
 
-        for name in requires.iter() {
-            if !state.requires.contains(&name) {
-                state.requires.push(name.to_string());
+        for req in state.requires.iter() {
+            if !requires.iter().any(|r| r.name == req.name) {
+                requires.push(req.clone());
+            }
+        }
+        let mut i = 0;
+        while i != requires.len() {
+            if state.requires.iter().any(|r| r.name == requires[i].name) {
+                requires.remove(i); // Already in scope.
+            } else {
+                i += 1;
+            }
+        }
+
+        // Now that the variable has been defined we can use it.
+        for req in requires.iter() {
+            if !state.requires.iter().any(|r| r.name == req.name) {
+                state.requires.push(req.clone());
             }
         }
         // Now that the variable has been defined we can use it.
@@ -111,7 +132,7 @@ impl Visitor<State, Node, Node, ReScoperError> for ReScoper {
         Ok(BinOp{name: expr.name.clone(), left, right, info: expr.get_info()}.to_node())
     }
 
-    fn handle_error(&mut self, state: &mut State, expr: &Err) -> Res {
+    fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {
         Err(ReScoperError::FailedParse(expr.msg.to_string(), expr.get_info()))
     }
 }
