@@ -196,6 +196,10 @@ fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
                 panic!("Unexpected close bracket");
             }
             TokenType::OpenBracket => {
+                if head.value.as_str() == "(" && toks.front().map(|t| &t.value) == Some(&")".to_string()) {
+                    toks.pop_front();
+                    return (Apply{inner: Box::new(left), args: vec![], info: head.get_info()}.to_node(), toks);
+                }
                 let (inner, mut new_toks) = expr(toks, 0);
                 // TODO: Handle empty parens
                 let close = new_toks.front();

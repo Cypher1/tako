@@ -15,16 +15,16 @@ impl Default for ReScoper {
     }
 }
 
-fn globals() -> Vec<String> {
+fn globals() -> Vec<Sym> {
     vec!{
-        "true".to_string(),
-        "false".to_string(),
+        Sym::new("true".to_string()),
+        Sym::new("false".to_string()),
     }
 }
 
 // TODO: Return nodes.
 type Res = Result<Node, ReScoperError>;
-type Frame = Vec<String>;
+type Frame = Vec<Sym>;
 pub struct State {
     stack: Vec<Frame>,
     requires: Vec<Sym>,
@@ -47,7 +47,7 @@ impl Visitor<State, Node, Node, ReScoperError> for ReScoper {
 
         'walk_stack: for frame in state.stack.iter() {
             for name in frame.iter() {
-                if *name == expr.name {
+                if *name.name == expr.name {
                     // The name is in scope.
                     found = true;
                     break 'walk_stack;
@@ -84,9 +84,12 @@ impl Visitor<State, Node, Node, ReScoperError> for ReScoper {
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
         let frame = state.stack.last_mut().unwrap();
         // if recursive
-        frame.push(expr.name.clone());
-        frame.extend(expr.requires.clone().unwrap_or(vec![]));
+        frame.push(expr.to_sym());
 
+        let expr_reqs = expr.requires.clone().unwrap_or(vec![]);
+        frame.extend(expr_reqs);
+
+        // Find new reqyirements
         let mut requires = vec![];
         std::mem::swap(&mut requires, &mut state.requires);
         let value = Box::new(self.visit(state, &expr.value)?);
@@ -129,7 +132,7 @@ impl Visitor<State, Node, Node, ReScoperError> for ReScoper {
         Ok(BinOp{name: expr.name.clone(), left, right, info: expr.get_info()}.to_node())
     }
 
-    fn handle_error(&mut self, state: &mut State, expr: &Err) -> Res {
+    fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {
         Err(ReScoperError::FailedParse(expr.msg.to_string(), expr.get_info()))
     }
 }

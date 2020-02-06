@@ -46,6 +46,12 @@ pub struct Sym {
     pub info: Info,
 }
 
+impl Sym {
+    pub fn new(name: String) -> Sym {
+        Sym {name, depth: None, info: Info::default()}
+    }
+}
+
 impl ToNode for Sym {
     fn to_node(self) -> Node {
         Node::SymNode(self)
@@ -88,6 +94,12 @@ pub struct Let {
     pub value: Box<Node>,
     pub requires: Option<Vec<Sym>>,
     pub info: Info,
+}
+
+impl Let {
+    pub fn to_sym(self: &Let) -> Sym {
+        Sym {name: self.name.clone(), depth: None, info: self.get_info()}
+    }
 }
 
 impl ToNode for Let {
