@@ -34,7 +34,7 @@ impl Default for Options {
     fn default() -> Options {
         Options {
         files: vec![],
-        interactive: false,
+        interactive: true,
         show_ast: false,
         show_full_ast: false,
         debug: 0,
@@ -56,6 +56,7 @@ fn main() -> std::io::Result<()> {
                     opts.files.push("/dev/stdin".to_string());
                 }
                 "-r" => opts.interactive = true,
+                "--wasm" => opts.interactive = false,
                 "-d" => opts.debug = 1,
                 "--ast" => opts.show_ast = true,
                 "--full_ast" => opts.show_full_ast = true,
@@ -95,18 +96,12 @@ fn work(filename: &String, opts: &Options) -> std::io::Result<()> {
     if opts.interactive {
         let mut interp = Interpreter::default();
         interp.debug = opts.debug;
-        match interp.visit_root(&scoped) {
+        let res = interp.visit_root(&scoped).expect("couldnt not interpret program");
+        let mut ppr = PrettyPrint::default();
+        use ast::ToNode;
+        match ppr.visit_root(&res.to_node()) {
             Ok(res) => {
-                let mut ppr = PrettyPrint::default();
-                use ast::ToNode;
-                match ppr.visit_root(&res.to_node()) {
-                    Ok(res) => {
-                        println!(">> {}", res);
-                    },
-                    Err(err) => {
-                        println!("{:#?}", err);
-                    }
-                }
+                println!(">> {}", res);
             },
             Err(err) => {
                 println!("{:#?}", err);
@@ -115,26 +110,13 @@ fn work(filename: &String, opts: &Options) -> std::io::Result<()> {
         return Ok(());
     }
     let mut comp = Compiler::default();
-    match comp.visit_root(&scoped) {
-        Ok(res) => {
-            println!("{}", res);
-        },
-        Err(err) => {
-            println!("{:#?}", err);
-        }
-    }
+    let res = comp.visit_root(&scoped).expect("couldnt not compile program");
+    println!("{}", res);
     return Ok(());
 }
 
 #[cfg(test)]
     mod tests {
-    use std::fs::File;
-    use std::io::prelude::*;
-
-    use super::ast::Visitor;
-    use super::interpreter::Interpreter;
-    use super::parser;
-
     include!(concat!(env!("OUT_DIR"), "/test.rs"));
 }
 
