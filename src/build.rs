@@ -43,13 +43,9 @@ fn main() {
             "
 #[test]
 fn {fn_name}() {{
-    let mut contents = String::new();
-    let mut file = File::open(\"{name}\").expect(\"File missing\");
-    file.read_to_string(&mut contents).expect(\"Couldnt read file\");
-
-    let ast = parser::parse_file(\"{name}\".to_string(), contents);
-    let mut interp = Interpreter::default();
-    interp.visit_root(&ast).expect(\"Failed to evaluate ast\");
+    let file = \"{name}\".to_string();
+    let opts = super::Options::default();
+    super::work(&file, &opts).expect(\"failed to interpret\");
 }}",
             name = p.replace("\\", "/"),
             fn_name = nm
@@ -75,13 +71,9 @@ fn {fn_name}() {{
 #[test]
 #[should_panic]
 fn {fn_name}() {{
-    let mut contents = String::new();
-    let mut file = File::open(\"{name}\").expect(\"File missing\");
-    file.read_to_string(&mut contents).expect(\"Couldnt read file\");
-
-    let ast = parser::parse_file(\"{name}\".to_string(), contents);
-    let mut interp = Interpreter::default();
-    interp.visit_root(&ast).expect(\"Failed to evaluate ast\");
+    let file = \"{name}\".to_string();
+    let opts = super::Options::default();
+    super::work(&file, &opts).expect(\"failed to interpret\");
 }}",
             name = p.replace("\\", "/"),
             fn_name = nm
