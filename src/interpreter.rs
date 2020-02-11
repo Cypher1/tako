@@ -35,6 +35,20 @@ fn globals() -> Frame {
     }
 }
 
+
+fn find_symbol<'a>(state: &'a State, name: &String) -> Option<&'a Node> {
+    for frame in state.iter().rev() {
+        match frame.get(name) {
+            Some(val) => {
+                return Some(val)
+            }, // This is the variable
+            None => {},
+        }
+        // Not in this frame, go back up.
+    }
+    return None;
+}
+
 // TODO: Return nodes.
 type Res = Result<Prim, InterpreterError>;
 type State = Vec<Frame>;
@@ -49,23 +63,21 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
         if self.debug > 0 {
             println!("evaluating {}", expr.clone().to_node());
         }
-        let name = expr.name.as_str();
-        for frame in state.iter().rev() {
-            match frame.get(name) {
-                Some(val) => {
-                    let mut next = state.clone();
-                    let result = self.visit(
-                        &mut next,
-                        &val.clone()
-                    )?;
-                    if self.debug > 0 {
-                        println!("got {}", result.clone().to_node());
-                    }
-                    return Ok(result)
-                }, // This is the variable
-                None => {},
-            }
-            // Not in this frame, go back up.
+        let name = &expr.name;
+        let value = find_symbol(&state, name);
+        match value {
+            Some(val) => {
+                let mut next = state.clone();
+                let result = self.visit(
+                    &mut next,
+                    &val.clone()
+                )?;
+                if self.debug > 0 {
+                    println!("got {}", result.clone().to_node());
+                }
+                return Ok(result)
+            }, // This is the variable
+            None => {},
         }
         // TODO: Condense the stack here to save a closure with a function pointer inside. Return a
         // pointer to the new closure.
@@ -94,6 +106,16 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
         if self.debug > 0 {
             println!("evaluating let {}", expr.clone().to_node());
+        }
+
+        for req in expr.requires.clone().unwrap_or(vec![]).iter() {
+            match find_symbol(&state, &req.name) {
+                Some(_) => {},
+                None => {
+                    state.last_mut().unwrap().insert(expr.name.clone(), expr.value.clone().to_node());
+                    return Ok(Prim::Lambda(Box::new(expr.to_sym().to_node())));
+                }
+            }
         }
         // Add a new scope
         state.push(Frame::new());
@@ -366,7 +388,8 @@ mod tests {
     fn parse_and_eval_i32_pow() {
         assert_eq!(eval_str("2^3".to_string()), Ok(I32(8, Info::default())));
         assert_eq!(eval_str("3^2".to_string()), Ok(I32(9, Info::default())));
-        assert_eq!(eval_str("-4^2".to_string()), Ok(I32(16, Info::default())));
+        assert_eq!(eval_str("-4^2".to_string()), Ok(I32(-16, Info::default())));
+        assert_eq!(eval_str("(-4)^2".to_string()), Ok(I32(16, Info::default())));
         assert_eq!(eval_str("2^3^2".to_string()), Ok(I32(512, Info::default())));
     }
 
