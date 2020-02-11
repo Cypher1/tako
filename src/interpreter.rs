@@ -388,7 +388,8 @@ mod tests {
     fn parse_and_eval_i32_pow() {
         assert_eq!(eval_str("2^3".to_string()), Ok(I32(8, Info::default())));
         assert_eq!(eval_str("3^2".to_string()), Ok(I32(9, Info::default())));
-        assert_eq!(eval_str("-4^2".to_string()), Ok(I32(16, Info::default())));
+        assert_eq!(eval_str("-4^2".to_string()), Ok(I32(-16, Info::default())));
+        assert_eq!(eval_str("(-4)^2".to_string()), Ok(I32(16, Info::default())));
         assert_eq!(eval_str("2^3^2".to_string()), Ok(I32(512, Info::default())));
     }
 
