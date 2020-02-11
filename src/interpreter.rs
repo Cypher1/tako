@@ -66,7 +66,16 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
         let name = &expr.name;
         let value = find_symbol(&state, name);
         match value {
+            Some(Node::PrimNode(prim)) => {
+                if self.debug > 0 {
+                    println!("from stack {}", prim.clone().to_node());
+                }
+                return Ok(prim.clone());
+            },
             Some(val) => {
+                if self.debug > 0 {
+                    println!("running lambda {}", val);
+                }
                 let mut next = state.clone();
                 let result = self.visit(
                     &mut next,
@@ -132,7 +141,7 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
     }
 
     fn visit_un_op(&mut self, state: &mut State, expr: &UnOp) -> Res {
-        if self.debug > 0 {
+        if self.debug > 1 {
             println!("evaluating unop {}", expr.clone().to_node());
         }
         use Prim::*;
@@ -160,7 +169,7 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
     }
 
     fn visit_bin_op(&mut self, state: &mut State, expr: &BinOp) -> Res {
-        if self.debug > 0 {
+        if self.debug > 1 {
             println!("evaluating binop {}", expr.clone().to_node());
         }
         use Prim::*;
