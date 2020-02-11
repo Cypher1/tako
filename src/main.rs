@@ -57,7 +57,7 @@ fn main() -> std::io::Result<()> {
                 }
                 "-r" => opts.interactive = true,
                 "--wasm" => opts.interactive = false,
-                "-d" => opts.debug = 1,
+                "-d" => opts.debug += 1,
                 "--ast" => opts.show_ast = true,
                 "--full_ast" => opts.show_full_ast = true,
                 _ => {
