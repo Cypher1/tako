@@ -22,6 +22,7 @@ use ast::Visitor;
 use interpreter::Interpreter;
 use rescoper::ReScoper;
 
+#[derive(Debug)]
 struct Options {
     files: Vec<String>,
     interactive: bool,
@@ -33,20 +34,40 @@ struct Options {
 impl Default for Options {
     fn default() -> Options {
         Options {
-        files: vec![],
-        interactive: true,
-        show_ast: false,
-        show_full_ast: false,
-        debug: 0,
+            files: vec![],
+            interactive: true,
+            show_ast: false,
+            show_full_ast: false,
+            debug: 0,
         }
     }
 }
 
+const TITLE: &'static str = "tako v";
+
+const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+
+const USAGE: &'static str = "An experimental programming language for ergonomic software verification.
+
+Usage:
+  tako [-i|-r] [-d <level>] [--ast] [--full-ast] <files>...
+  tako (-h | --help)
+  tako --version
+
+Options:
+  -i --interactive    Run as a repl (interactive mode).
+  -r --run            Run files in interpreter.
+  -d --debug=<level>  Level of debug logging to use [default: 0].
+  --ast               Pretty print an abstract syntax tree of the code.
+  --full_ast          Debug print an abstract syntax tree of the code.
+  -h --help           Show this screen.
+  --version           Show compiler version.
+";
+
 fn main() -> std::io::Result<()> {
-    let all_args: Vec<String> = env::args().collect();
-    let args: Vec<String> = all_args[1..].to_vec();
+    let args: Vec<String> = env::args().collect();
     let mut opts = Options::default();
-    for f in args {
+    for f in args[1..].to_vec() {
         if &f.chars().next() != &Some('-') {
             opts.files.push(f);
         } else {
@@ -60,8 +81,15 @@ fn main() -> std::io::Result<()> {
                 "-d" => opts.debug += 1,
                 "--ast" => opts.show_ast = true,
                 "--full_ast" => opts.show_full_ast = true,
-                _ => {
-                    println!("unexpected flag '{}'", f);
+                "--version" => {
+                    println!("{}{}", TITLE, VERSION);
+                    return Ok(());
+                },
+                arg => {
+                    if arg != "-h" && arg != "--help" {
+                        println!("unexpected flag '{}'", f);
+                    }
+                    println!("{}{}\n{}", TITLE, VERSION, USAGE);
                     return Ok(());
                 },
             }
