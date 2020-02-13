@@ -117,14 +117,9 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
             println!("evaluating let {}", expr.clone().to_node());
         }
 
-        for req in expr.requires.clone().unwrap_or(vec![]).iter() {
-            match find_symbol(&state, &req.name) {
-                Some(_) => {},
-                None => {
-                    state.last_mut().unwrap().insert(expr.name.clone(), expr.value.clone().to_node());
-                    return Ok(Prim::Lambda(Box::new(expr.to_sym().to_node())));
-                }
-            }
+        if expr.is_function {
+            state.last_mut().unwrap().insert(expr.name.clone(), expr.value.clone().to_node());
+            return Ok(Prim::Lambda(Box::new(expr.to_sym().to_node())));
         }
         // Add a new scope
         state.push(Frame::new());
