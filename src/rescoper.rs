@@ -118,7 +118,12 @@ impl Visitor<State, Node, Node, ReScoperError> for ReScoper {
         // Now that the variable has been defined we can use it.
         // if !recursive // frame.push(expr.name.clone());
 
-        Ok(Let{name: expr.name.clone(), requires: Some(requires), value, info: expr.get_info()}.to_node())
+        Ok(Let{
+            name: expr.name.clone(),
+            is_function: expr.is_function || requires.len() != 0,
+            requires: Some(requires),
+            value, info: expr.get_info()
+        }.to_node())
     }
 
     fn visit_un_op(&mut self, state: &mut State, expr: &UnOp) -> Res {
