@@ -8,18 +8,21 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        - os: ubuntu-latest
+          artifact_name: tako
+          asset_name: tako-linux-amd64
+        - os: windows-latest
+          artifact_name: tako.exe
+          asset_name: tako-windows-amd64
 
     steps:
     - uses: actions/checkout@v1
     - name: Build
       run: cargo build --release --verbose
-    - id: getfilename
-      run: echo "::set-output name=file::$(ls target/release/tako target/release/tako.exe)"
     - name: Run tests
       run: cargo test --release --verbose
     - name: Upload executable
       uses: actions/upload-artifact@v1
       with:
-        name: tako-${{ matrix.os }}
-        path: ${{ steps.getfilename.outputs.file }}
+        name: ${{ matrix.asset_name }}
+        path: ${{ matrix.artifact_name }}
