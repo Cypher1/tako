@@ -14,10 +14,12 @@ jobs:
     - uses: actions/checkout@v1
     - name: Build
       run: cargo build --release --verbose
+    - id: getfilename
+      run: echo "::set-output name=file::$(ls target/release/tako*)"
     - name: Run tests
       run: cargo test --release --verbose
     - name: Upload executable
       uses: actions/upload-artifact@v1
       with:
         name: tako-${{ matrix.os }}
-        path: target/release/tako*
+        path: ${{ steps.getfilename.outputs.file }}
