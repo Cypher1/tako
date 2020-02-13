@@ -1,0 +1,3 @@
+add(x,y)=x+y
+add5(x)=add(x=x, y=5)
+add5(x=2)
