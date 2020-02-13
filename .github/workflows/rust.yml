@@ -15,7 +15,7 @@ jobs:
     - name: Build
       run: cargo build --release --verbose
     - id: getfilename
-      run: echo "::set-output name=file::$(ls target/release/tako*)"
+      run: echo "::set-output name=file::$(ls target/release/tako target/release/tako.exe)"
     - name: Run tests
       run: cargo test --release --verbose
     - name: Upload executable
