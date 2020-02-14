@@ -109,10 +109,10 @@ fn work(filename: &String, opts: &Options) -> std::io::Result<()> {
     file.read_to_string(&mut contents)?;
     // println!("Content: '\n{}'", contents);
 
-    let ast = parser::parse_file(filename.clone(), contents);
+    let program = parser::parse_file(filename.clone(), contents);
 
     let mut scoper = ReScoper::default();
-    let scoped = scoper.visit_root(&ast).expect("failed scoping");
+    let scoped = scoper.visit_root(&program).expect("failed scoping");
 
     if opts.show_full_ast {
         println!("debug ast: {:#?}", scoped);
@@ -127,7 +127,7 @@ fn work(filename: &String, opts: &Options) -> std::io::Result<()> {
         let res = interp.visit_root(&scoped).expect("couldnt not interpret program");
         let mut ppr = PrettyPrint::default();
         use ast::ToNode;
-        match ppr.visit_root(&res.to_node()) {
+        match ppr.visit_root(&res.to_node().to_root()) {
             Ok(res) => {
                 println!(">> {}", res);
             },
