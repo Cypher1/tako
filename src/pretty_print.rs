@@ -21,9 +21,9 @@ impl Default for PrettyPrint {
 type Res = Result<(), PrettyPrintError>;
 type State = String;
 impl Visitor<State, (), String, PrettyPrintError> for PrettyPrint {
-    fn visit_root(&mut self, expr: &Node) -> Result<String, PrettyPrintError> {
+    fn visit_root(&mut self, expr: &Root) -> Result<String, PrettyPrintError> {
         let mut state: String = "".to_string();
-        self.visit(&mut state, expr)?;
+        self.visit(&mut state, &expr.ast)?;
         Ok(state)
     }
 

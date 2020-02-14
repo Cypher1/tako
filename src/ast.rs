@@ -1,6 +1,8 @@
 use super::location::*;
 use super::types::*;
 use std::fmt;
+use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
 
 #[derive(Debug)]
 #[derive(PartialEq)]
@@ -38,7 +40,8 @@ impl ToNode for Apply {
 }
 
 #[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
+#[derive(Hash)]
 #[derive(Clone)]
 pub struct Sym {
     pub name: String,
@@ -169,11 +172,18 @@ impl std::fmt::Debug for Info {
     }
 }
 
+impl Eq for Info {}
 impl PartialEq for Info {
     fn eq(&self, _other: &Self) -> bool {
         true
     }
 }
+
+impl Hash for Info {
+    fn hash<H: Hasher>(&self, _state: &mut H) {
+    }
+}
+
 
 impl Default for Info {
     fn default() -> Info {
@@ -221,7 +231,7 @@ impl fmt::Display for Node {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use super::PrettyPrint;
         let mut ppr = PrettyPrint::default();
-        match ppr.visit_root(&self) {
+        match ppr.visit_root(&self.clone().to_root()) {
             Ok(res) => {
                 write!(f, "{}", res)
             },
@@ -229,6 +239,12 @@ impl fmt::Display for Node {
                 write!(f, "{:#?}", err)
             }
         }
+    }
+}
+
+impl fmt::Display for Root {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.ast.fmt(f)
     }
 }
 
@@ -255,8 +271,21 @@ pub trait ToNode {
     fn get_info(self: &Self) -> Info;
 }
 
+impl Node {
+    pub fn to_root(self: Self) -> Root {
+        Root {ast: self, requirements: HashMap::new()}
+    }
+}
+
+#[derive(Debug)]
+#[derive(Clone)]
+pub struct Root {
+    pub ast: Node,
+    pub requirements: HashMap<Sym, Vec<Sym>>,
+}
+
 pub trait Visitor<State, Res, Final, ErrT> {
-    fn visit_root(&mut self, e: &Node) -> Result<Final, ErrT>;
+    fn visit_root(&mut self, e: &Root) -> Result<Final, ErrT>;
 
     fn handle_error(&mut self, state: &mut State, e: &Err) -> Result<Res, ErrT>;
     fn visit_sym(&mut self, state: &mut State, e: &Sym) -> Result<Res, ErrT>;

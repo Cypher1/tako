@@ -29,16 +29,16 @@ pub struct State {
     stack: Vec<Frame>,
     requires: Vec<Sym>,
 }
-impl Visitor<State, Node, Node, ReScoperError> for ReScoper {
+impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
 
-    fn visit_root(&mut self, expr: &Node) -> Res {
+    fn visit_root(&mut self, expr: &Root) -> Result<Root, ReScoperError> {
         let mut state = State{stack: vec![globals()], requires: vec![]};
-        let res = self.visit(&mut state, expr)?;
+        let res = self.visit(&mut state, &expr.ast)?;
         // Check requires
         if state.requires.len() > 0 {
             println!("{:?} not declared", state.requires);
         }
-        Ok(res)
+        Ok(res.to_root())
     }
 
     fn visit_sym(&mut self, state: &mut State, expr: &Sym) -> Res {

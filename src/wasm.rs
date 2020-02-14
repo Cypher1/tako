@@ -35,7 +35,7 @@ impl Default for Compiler {
 type Res = Result<Vec<String>, CompilerError>;
 type State = ();
 impl Visitor<State, Vec<String>, Tree<String>, CompilerError> for Compiler {
-    fn visit_root(&mut self, expr: &Node) -> Result<Tree<String>, CompilerError> {
+    fn visit_root(&mut self, root: &Root) -> Result<Tree<String>, CompilerError> {
         let mut state = ();
         let name = Tree {
             value: "\"run_main\"".to_string(),
@@ -58,7 +58,7 @@ impl Visitor<State, Vec<String>, Tree<String>, CompilerError> for Compiler {
             children: vec![node_i32.clone()],
         };
         let mut children = vec![def, param, result];
-        children.append(&mut to_tree(self.visit(&mut state, &expr)?));
+        children.append(&mut to_tree(self.visit(&mut state, &root.ast)?));
         let func = Tree {
             value: "func".to_string(),
             children: children,

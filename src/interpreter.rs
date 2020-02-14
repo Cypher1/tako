@@ -54,9 +54,9 @@ type Res = Result<Prim, InterpreterError>;
 type State = Vec<Frame>;
 impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
 
-    fn visit_root(&mut self, expr: &Node) -> Res {
+    fn visit_root(&mut self, root: &Root) -> Res {
         let mut state = vec![globals()];
-        self.visit(&mut state, expr)
+        self.visit(&mut state, &root.ast)
     }
 
     fn visit_sym(&mut self, state: &mut State, expr: &Sym) -> Res {
@@ -336,7 +336,7 @@ mod tests {
     #[test]
     fn eval_num() {
         let mut interp = Interpreter::default();
-        let tree = PrimNode(I32(12, Info::default()));
+        let tree = PrimNode(I32(12, Info::default())).to_root();
         assert_eq!(interp.visit_root(&tree), Ok(I32(12, Info::default())));
     }
 
