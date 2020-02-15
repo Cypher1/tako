@@ -77,6 +77,10 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
     }
 
     fn visit_apply(&mut self, state: &mut State, expr: &Apply) -> Res {
+        state.stack.push(Namespace{
+            name: "".to_string(),
+            defines: vec![],
+        });
         let mut args = vec![];
         for arg in expr.args.iter() {
             let new_arg = self.visit_let(state, arg)?;
@@ -86,6 +90,7 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
             }
         }
         let inner = Box::new(self.visit(state, &*expr.inner)?);
+        state.stack.pop();
         Ok(Apply{inner, args, info: expr.get_info()}.to_node())
     }
 
@@ -97,6 +102,10 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
         let expr_reqs = expr.requires.clone().unwrap_or(vec![]);
         frame.defines.extend(expr_reqs);
 
+        state.stack.push(Namespace{
+            name: expr.name.clone(),
+            defines: vec![],
+        });
         // Find new reqyirements
         let mut requires = vec![];
         std::mem::swap(&mut requires, &mut state.requires);
@@ -125,6 +134,7 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
         }
         // Now that the variable has been defined we can use it.
         // if !recursive // frame.push(expr.name.clone());
+        state.stack.pop();
 
         Ok(Let{
             name: expr.name.clone(),
