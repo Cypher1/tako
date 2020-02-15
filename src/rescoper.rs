@@ -15,20 +15,28 @@ impl Default for ReScoper {
     }
 }
 
-fn globals() -> Vec<Sym> {
-    vec!{
-        Sym::new("true".to_string()),
-        Sym::new("false".to_string()),
+// TODO: Return nodes.
+type Res = Result<Node, ReScoperError>;
+pub struct Namespace {
+    name: String,
+    defines: Vec<Sym>,
+}
+
+fn globals() -> Namespace {
+    Namespace {
+        name: "".to_string(),
+        defines: vec!{
+            Sym::new("true".to_string()),
+            Sym::new("false".to_string()),
+        }
     }
 }
 
-// TODO: Return nodes.
-type Res = Result<Node, ReScoperError>;
-type Frame = Vec<Sym>;
 pub struct State {
-    stack: Vec<Frame>,
+    stack: Vec<Namespace>,
     requires: Vec<Sym>,
 }
+
 impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
 
     fn visit_root(&mut self, expr: &Root) -> Result<Root, ReScoperError> {
@@ -46,7 +54,7 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
         let mut found = false;
 
         'walk_stack: for frame in state.stack.iter() {
-            for name in frame.iter() {
+            for name in frame.defines.iter() {
                 if *name.name == expr.name {
                     // The name is in scope.
                     found = true;
@@ -84,10 +92,10 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
         let frame = state.stack.last_mut().unwrap();
         // if recursive
-        frame.push(expr.to_sym());
+        frame.defines.push(expr.to_sym());
 
         let expr_reqs = expr.requires.clone().unwrap_or(vec![]);
-        frame.extend(expr_reqs);
+        frame.defines.extend(expr_reqs);
 
         // Find new reqyirements
         let mut requires = vec![];
