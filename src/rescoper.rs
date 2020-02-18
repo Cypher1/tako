@@ -60,7 +60,7 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
         let mut look_depth = 0;
         let mut found = false;
 
-        'walk_stack: for frame in state.stack.iter() {
+        'walk_stack: for frame in state.stack.iter().rev() {
             for name in frame.defines.iter() {
                 if *name.name == expr.name {
                     // The name is in scope.
