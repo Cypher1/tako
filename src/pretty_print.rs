@@ -1,15 +1,13 @@
 use super::ast::*;
 use std::fmt::Write;
 
-#[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum PrettyPrintError {
     FailedParse(String, Info),
 }
 
 // Walks the AST interpreting it.
-pub struct PrettyPrint {
-}
+pub struct PrettyPrint {}
 
 impl Default for PrettyPrint {
     fn default() -> PrettyPrint {
@@ -31,7 +29,8 @@ impl Visitor<State, (), String, PrettyPrintError> for PrettyPrint {
         match expr.depth.clone() {
             Some(0) | None => write!(state, "{}", expr.name),
             Some(depth) => write!(state, "{}#{}", expr.name, depth),
-        }.unwrap();
+        }
+        .unwrap();
         Ok(())
     }
 
@@ -41,19 +40,19 @@ impl Visitor<State, (), String, PrettyPrintError> for PrettyPrint {
             Bool(val, _) => {
                 write!(state, "{}", val).unwrap();
                 Ok(())
-            },
+            }
             I32(val, _) => {
                 write!(state, "{}", val).unwrap();
                 Ok(())
-            },
+            }
             Str(val, _) => {
                 write!(state, "'{}'", val).unwrap();
                 Ok(())
-            },
+            }
             Lambda(val) => {
                 self.visit(state, val)?;
                 Ok(())
-            },
+            }
         }
     }
 
@@ -76,7 +75,7 @@ impl Visitor<State, (), String, PrettyPrintError> for PrettyPrint {
         write!(state, "{}", expr.name).unwrap();
         match &expr.requires {
             Some(reqs) => {
-                    if reqs.len() > 0 {
+                if reqs.len() > 0 {
                     write!(state, "(").unwrap();
                 }
                 let mut is_first = true;
@@ -90,8 +89,8 @@ impl Visitor<State, (), String, PrettyPrintError> for PrettyPrint {
                 if reqs.len() > 0 {
                     write!(state, ")").unwrap();
                 }
-            },
-            None => {},
+            }
+            None => {}
         }
         write!(state, "=").unwrap();
         self.visit(state, &*expr.value)
@@ -114,10 +113,12 @@ impl Visitor<State, (), String, PrettyPrintError> for PrettyPrint {
     }
 
     fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {
-        Err(PrettyPrintError::FailedParse(expr.msg.to_string(), expr.get_info()))
+        Err(PrettyPrintError::FailedParse(
+            expr.msg.to_string(),
+            expr.get_info(),
+        ))
     }
 }
 
 #[cfg(test)]
-mod tests {
-}
+mod tests {}

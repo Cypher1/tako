@@ -1,7 +1,6 @@
 use std::fmt;
 
-#[derive(PartialEq)]
-#[derive(Clone)]
+#[derive(PartialEq, Clone)]
 pub struct Loc {
     pub filename: Option<String>,
     pub line: i32,
@@ -10,7 +9,6 @@ pub struct Loc {
 
 impl std::fmt::Debug for Loc {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-
         match &self.filename {
             Some(file) => write!(f, "{} ", file),
             None => write!(f, ""),
@@ -33,6 +31,10 @@ impl Loc {
 
 impl Default for Loc {
     fn default() -> Self {
-        Loc {filename: None, line: 1, col: 1}
+        Loc {
+            filename: None,
+            line: 1,
+            col: 1,
+        }
     }
 }

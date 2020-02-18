@@ -1,5 +1,5 @@
-use std::io;
 use std::fs::{self, DirEntry};
+use std::io;
 use std::io::prelude::*;
 use std::path::Path;
 
@@ -19,7 +19,6 @@ fn visit_dirs(dir: &Path, cb: &mut dyn FnMut(&DirEntry)) -> io::Result<()> {
     Ok(())
 }
 
-
 fn main() {
     let out_dir = std::env::var("OUT_DIR").unwrap();
     let destination = std::path::Path::new(&out_dir).join("test.rs");
@@ -31,13 +30,18 @@ fn main() {
         match pth.to_str() {
             Some(s) => {
                 &mut params.push(s.to_string());
-            },
+            }
             _ => panic!(),
         }
-    }).expect("Failed finding test files.");
+    })
+    .expect("Failed finding test files.");
 
     for p in params {
-        let nm = p.replace("/", "_").replace("\\", "_").replace(".tk", "").replace("._", "");
+        let nm = p
+            .replace("/", "_")
+            .replace("\\", "_")
+            .replace(".tk", "")
+            .replace("._", "");
         write!(
             f,
             "
@@ -49,7 +53,8 @@ fn {fn_name}() {{
 }}",
             name = p.replace("\\", "/"),
             fn_name = nm
-        ).unwrap();
+        )
+        .unwrap();
     }
 
     let mut params: Vec<String> = vec![];
@@ -58,13 +63,18 @@ fn {fn_name}() {{
         match pth.to_str() {
             Some(s) => {
                 &mut params.push(s.to_string());
-            },
+            }
             _ => panic!(),
         }
-    }).expect("Failed finding test files.");
+    })
+    .expect("Failed finding test files.");
 
     for p in params {
-        let nm = p.replace("/", "_").replace("\\", "_").replace(".tk", "").replace("._", "");
+        let nm = p
+            .replace("/", "_")
+            .replace("\\", "_")
+            .replace(".tk", "")
+            .replace("._", "");
         write!(
             f,
             "
@@ -77,6 +87,7 @@ fn {fn_name}() {{
 }}",
             name = p.replace("\\", "/"),
             fn_name = nm
-        ).unwrap();
+        )
+        .unwrap();
     }
 }

@@ -1,8 +1,7 @@
 use super::ast::*;
 use std::collections::HashMap;
 
-#[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum InterpreterError {
     UnknownInfixOperator(String, Info),
     UnknownPrefixOperator(String, Info),
@@ -22,27 +21,24 @@ pub struct Interpreter {
 
 impl Default for Interpreter {
     fn default() -> Interpreter {
-        Interpreter {debug: 0}
+        Interpreter { debug: 0 }
     }
 }
 
 fn globals() -> Frame {
     use Node::*;
     use Prim::*;
-    map!{
+    map! {
         "true".to_string() => PrimNode(Bool(true, Info::default())),
         "false".to_string() => PrimNode(Bool(false, Info::default()))
     }
 }
 
-
 fn find_symbol<'a>(state: &'a State, name: &String) -> Option<&'a Node> {
     for frame in state.iter().rev() {
         match frame.get(name) {
-            Some(val) => {
-                return Some(val)
-            }, // This is the variable
-            None => {},
+            Some(val) => return Some(val), // This is the variable
+            None => {}
         }
         // Not in this frame, go back up.
     }
@@ -53,7 +49,6 @@ fn find_symbol<'a>(state: &'a State, name: &String) -> Option<&'a Node> {
 type Res = Result<Prim, InterpreterError>;
 type State = Vec<Frame>;
 impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
-
     fn visit_root(&mut self, root: &Root) -> Res {
         let mut state = vec![globals()];
         self.visit(&mut state, &root.ast)
@@ -71,22 +66,19 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
                     println!("from stack {}", prim.clone().to_node());
                 }
                 return Ok(prim.clone());
-            },
+            }
             Some(val) => {
                 if self.debug > 0 {
                     println!("running lambda {}", val);
                 }
                 let mut next = state.clone();
-                let result = self.visit(
-                    &mut next,
-                    &val.clone()
-                )?;
+                let result = self.visit(&mut next, &val.clone())?;
                 if self.debug > 0 {
                     println!("got {}", result.clone().to_node());
                 }
-                return Ok(result)
-            }, // This is the variable
-            None => {},
+                return Ok(result);
+            } // This is the variable
+            None => {}
         }
         // TODO: Condense the stack here to save a closure with a function pointer inside. Return a
         // pointer to the new closure.
@@ -118,7 +110,10 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
         }
 
         if expr.is_function {
-            state.last_mut().unwrap().insert(expr.name.clone(), expr.value.clone().to_node());
+            state
+                .last_mut()
+                .unwrap()
+                .insert(expr.name.clone(), expr.value.clone().to_node());
             return Ok(Prim::Lambda(Box::new(expr.to_sym().to_node())));
         }
         // Add a new scope
@@ -146,20 +141,22 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
             "!" => match i {
                 Bool(n, _) => Ok(Bool(!n, info)),
                 Lambda(_) => Ok(Lambda(Box::new(expr.clone().to_node()))),
-                _ => Err(InterpreterError::TypeMismatch("!".to_string(), i, info))
+                _ => Err(InterpreterError::TypeMismatch("!".to_string(), i, info)),
             },
             "+" => match i {
                 I32(n, _) => Ok(I32(n, info)),
                 Lambda(_) => Ok(Lambda(Box::new(expr.clone().to_node()))),
-                _ => Err(InterpreterError::TypeMismatch("+".to_string(), i, info))
-
-            }
+                _ => Err(InterpreterError::TypeMismatch("+".to_string(), i, info)),
+            },
             "-" => match i {
                 I32(n, _) => Ok(I32(-n, info)),
                 Lambda(_) => Ok(Lambda(Box::new(expr.clone().to_node()))),
-                _ => Err(InterpreterError::TypeMismatch("-".to_string(), i, info))
+                _ => Err(InterpreterError::TypeMismatch("-".to_string(), i, info)),
             },
-            op => Err(InterpreterError::UnknownPrefixOperator(op.to_string(), info)),
+            op => Err(InterpreterError::UnknownPrefixOperator(
+                op.to_string(),
+                info,
+            )),
         }
     }
 
@@ -176,10 +173,12 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
                 (_, r) => Ok(r.clone()),
             },
             "+" => match (&l?, &r()?) {
-                (Bool(l, _), Bool(r, _)) => Ok(I32(if *l {1} else {0} + if *r {1} else {0}, info)),
-                (Bool(l, _), I32(r, _)) => Ok(I32(if *l {1} else {0} + r, info)),
+                (Bool(l, _), Bool(r, _)) => {
+                    Ok(I32(if *l { 1 } else { 0 } + if *r { 1 } else { 0 }, info))
+                }
+                (Bool(l, _), I32(r, _)) => Ok(I32(if *l { 1 } else { 0 } + r, info)),
                 (Bool(l, _), Str(r, _)) => Ok(Str(l.to_string() + &r.to_string(), info)),
-                (I32(l, _), Bool(r, _)) => Ok(I32(l + if *r {1} else {0}, info)),
+                (I32(l, _), Bool(r, _)) => Ok(I32(l + if *r { 1 } else { 0 }, info)),
                 (I32(l, _), I32(r, _)) => Ok(I32(l + r, info)),
                 (I32(l, _), Str(r, _)) => Ok(Str(l.to_string() + &r.to_string(), info)),
                 (Str(l, _), Bool(r, _)) => Ok(Str(l.to_string() + &r.to_string(), info)),
@@ -194,7 +193,12 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
                 (Str(l, _), Str(r, _)) => Ok(Bool(l.to_string() == r.to_string(), info)),
                 (Lambda(_), _) => Ok(Lambda(Box::new(expr.clone().to_node()))),
                 (_, Lambda(_)) => Ok(Lambda(Box::new(expr.clone().to_node()))),
-                (l, r) => Err(InterpreterError::TypeMismatch2("==".to_string(), (*l).clone(), (*r).clone(), info))
+                (l, r) => Err(InterpreterError::TypeMismatch2(
+                    "==".to_string(),
+                    (*l).clone(),
+                    (*r).clone(),
+                    info,
+                )),
             },
             "!=" => match (&l?, &r()?) {
                 (Bool(l, _), Bool(r, _)) => Ok(Bool(*l != *r, info)),
@@ -202,7 +206,12 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
                 (Str(l, _), Str(r, _)) => Ok(Bool(l.to_string() != r.to_string(), info)),
                 (Lambda(_), _) => Ok(Lambda(Box::new(expr.clone().to_node()))),
                 (_, Lambda(_)) => Ok(Lambda(Box::new(expr.clone().to_node()))),
-                (l, r) => Err(InterpreterError::TypeMismatch2("!=".to_string(), (*l).clone(), (*r).clone(), info))
+                (l, r) => Err(InterpreterError::TypeMismatch2(
+                    "!=".to_string(),
+                    (*l).clone(),
+                    (*r).clone(),
+                    info,
+                )),
             },
             ">" => match (&l?, &r()?) {
                 (Bool(l, _), Bool(r, _)) => Ok(Bool(*l > *r, info)),
@@ -210,7 +219,12 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
                 (Str(l, _), Str(r, _)) => Ok(Bool(l.to_string() > r.to_string(), info)),
                 (Lambda(_), _) => Ok(Lambda(Box::new(expr.clone().to_node()))),
                 (_, Lambda(_)) => Ok(Lambda(Box::new(expr.clone().to_node()))),
-                (l, r) => Err(InterpreterError::TypeMismatch2(">".to_string(), (*l).clone(), (*r).clone(), info))
+                (l, r) => Err(InterpreterError::TypeMismatch2(
+                    ">".to_string(),
+                    (*l).clone(),
+                    (*r).clone(),
+                    info,
+                )),
             },
             "<" => match (&l?, &r()?) {
                 (Bool(l, _), Bool(r, _)) => Ok(Bool(*l < *r, info)),
@@ -218,7 +232,12 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
                 (Str(l, _), Str(r, _)) => Ok(Bool(l.to_string() < r.to_string(), info)),
                 (Lambda(_), _) => Ok(Lambda(Box::new(expr.clone().to_node()))),
                 (_, Lambda(_)) => Ok(Lambda(Box::new(expr.clone().to_node()))),
-                (l, r) => Err(InterpreterError::TypeMismatch2("<".to_string(), (*l).clone(), (*r).clone(), info))
+                (l, r) => Err(InterpreterError::TypeMismatch2(
+                    "<".to_string(),
+                    (*l).clone(),
+                    (*r).clone(),
+                    info,
+                )),
             },
             ">=" => match (&l?, &r()?) {
                 (Bool(l, _), Bool(r, _)) => Ok(Bool(*l >= *r, info)),
@@ -226,7 +245,12 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
                 (Str(l, _), Str(r, _)) => Ok(Bool(l.to_string() >= r.to_string(), info)),
                 (Lambda(_), _) => Ok(Lambda(Box::new(expr.clone().to_node()))),
                 (_, Lambda(_)) => Ok(Lambda(Box::new(expr.clone().to_node()))),
-                (l, r) => Err(InterpreterError::TypeMismatch2(">=".to_string(), (*l).clone(), (*r).clone(), info))
+                (l, r) => Err(InterpreterError::TypeMismatch2(
+                    ">=".to_string(),
+                    (*l).clone(),
+                    (*r).clone(),
+                    info,
+                )),
             },
             "<=" => match (&l?, &r()?) {
                 (Bool(l, _), Bool(r, _)) => Ok(Bool(*l <= *r, info)),
@@ -234,59 +258,103 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
                 (Str(l, _), Str(r, _)) => Ok(Bool(l.to_string() <= r.to_string(), info)),
                 (Lambda(_), _) => Ok(Lambda(Box::new(expr.clone().to_node()))),
                 (_, Lambda(_)) => Ok(Lambda(Box::new(expr.clone().to_node()))),
-                (l, r) => Err(InterpreterError::TypeMismatch2("<=".to_string(), (*l).clone(), (*r).clone(), info))
+                (l, r) => Err(InterpreterError::TypeMismatch2(
+                    "<=".to_string(),
+                    (*l).clone(),
+                    (*r).clone(),
+                    info,
+                )),
             },
             "-" => match (&l?, &r()?) {
-                (I32(l, _), Bool(r, _)) => Ok(I32(l - if *r {1} else {0}, info)),
+                (I32(l, _), Bool(r, _)) => Ok(I32(l - if *r { 1 } else { 0 }, info)),
                 (I32(l, _), I32(r, _)) => Ok(I32(l - r, info)),
                 (Lambda(_), _) => Ok(Lambda(Box::new(expr.clone().to_node()))),
                 (_, Lambda(_)) => Ok(Lambda(Box::new(expr.clone().to_node()))),
-                (l, r) => Err(InterpreterError::TypeMismatch2("-".to_string(), (*l).clone(), (*r).clone(), info))
+                (l, r) => Err(InterpreterError::TypeMismatch2(
+                    "-".to_string(),
+                    (*l).clone(),
+                    (*r).clone(),
+                    info,
+                )),
             },
             "*" => match (&l?, &r()?) {
-                (Bool(l, _), I32(r, _)) => Ok(I32(if *l {*r} else {0}, info)),
-                (Bool(l, _), Str(r, _)) => Ok(Str(if *l {r.to_string()} else {"".to_string()}, info)),
-                (I32(l, _), Bool(r, _)) => Ok(I32(if *r {*l} else {0}, info)),
+                (Bool(l, _), I32(r, _)) => Ok(I32(if *l { *r } else { 0 }, info)),
+                (Bool(l, _), Str(r, _)) => {
+                    Ok(Str(if *l { r.to_string() } else { "".to_string() }, info))
+                }
+                (I32(l, _), Bool(r, _)) => Ok(I32(if *r { *l } else { 0 }, info)),
                 (I32(l, _), I32(r, _)) => Ok(I32(l * r, info)),
                 // (I32(l, _), Str(r, _)) => Ok(Str(l.to_string() * r, info)),
-                (Str(l, _), Bool(r, _)) => Ok(Str(if *r {l.to_string()} else {"".to_string()}, info)),
+                (Str(l, _), Bool(r, _)) => {
+                    Ok(Str(if *r { l.to_string() } else { "".to_string() }, info))
+                }
                 // (Str(l, _), I32(r, _)) => Ok(Str(l * r.to_string(), info)),
                 (Lambda(_), _) => Ok(Lambda(Box::new(expr.clone().to_node()))),
                 (_, Lambda(_)) => Ok(Lambda(Box::new(expr.clone().to_node()))),
-                (l, r) => Err(InterpreterError::TypeMismatch2("*".to_string(), (*l).clone(), (*r).clone(), info))
+                (l, r) => Err(InterpreterError::TypeMismatch2(
+                    "*".to_string(),
+                    (*l).clone(),
+                    (*r).clone(),
+                    info,
+                )),
             },
             "/" => match (&l?, &r()?) {
                 (I32(l, _), I32(r, _)) => Ok(I32(l / r, info)),
                 (Lambda(_), _) => Ok(Lambda(Box::new(expr.clone().to_node()))),
                 (_, Lambda(_)) => Ok(Lambda(Box::new(expr.clone().to_node()))),
-                (l, r) => Err(InterpreterError::TypeMismatch2("/".to_string(), (*l).clone(), (*r).clone(), info))
+                (l, r) => Err(InterpreterError::TypeMismatch2(
+                    "/".to_string(),
+                    (*l).clone(),
+                    (*r).clone(),
+                    info,
+                )),
             },
             "%" => match (&l?, &r()?) {
                 (I32(l, _), I32(r, _)) => Ok(I32(l % r, info)),
                 (Lambda(_), _) => Ok(Lambda(Box::new(expr.clone().to_node()))),
                 (_, Lambda(_)) => Ok(Lambda(Box::new(expr.clone().to_node()))),
-                (l, r) => Err(InterpreterError::TypeMismatch2("%".to_string(), (*l).clone(), (*r).clone(), info))
+                (l, r) => Err(InterpreterError::TypeMismatch2(
+                    "%".to_string(),
+                    (*l).clone(),
+                    (*r).clone(),
+                    info,
+                )),
             },
             "&&" => match (&l?, &r()?) {
-                (Bool(l, _), Bool(r, _)) => Ok(Bool(*l&&*r, info)),
+                (Bool(l, _), Bool(r, _)) => Ok(Bool(*l && *r, info)),
                 (Lambda(_), _) => Ok(Lambda(Box::new(expr.clone().to_node()))),
                 (_, Lambda(_)) => Ok(Lambda(Box::new(expr.clone().to_node()))),
-                (l, r) => Err(InterpreterError::TypeMismatch2("&&".to_string(), (*l).clone(), (*r).clone(), info))
-
+                (l, r) => Err(InterpreterError::TypeMismatch2(
+                    "&&".to_string(),
+                    (*l).clone(),
+                    (*r).clone(),
+                    info,
+                )),
             },
             "||" => match (&l?, &r()?) {
-                (Bool(l, _), Bool(r, _)) => Ok(Bool(*l||*r, info)),
+                (Bool(l, _), Bool(r, _)) => Ok(Bool(*l || *r, info)),
                 (Lambda(_), _) => Ok(Lambda(Box::new(expr.clone().to_node()))),
                 (_, Lambda(_)) => Ok(Lambda(Box::new(expr.clone().to_node()))),
-                (l, r) => Err(InterpreterError::TypeMismatch2("||".to_string(), (*l).clone(), (*r).clone(), info))
-
+                (l, r) => Err(InterpreterError::TypeMismatch2(
+                    "||".to_string(),
+                    (*l).clone(),
+                    (*r).clone(),
+                    info,
+                )),
             },
             "^" => match (&l?, &r()?) {
-                (I32(l, _), Bool(r, _)) => Ok(I32(if *r {*l} else {1}, info)),
-                (I32(l, _), I32(r, _)) => Ok(I32(i32::pow((*l).clone(), (*r).clone() as u32), info)), // TODO: require pos pow
+                (I32(l, _), Bool(r, _)) => Ok(I32(if *r { *l } else { 1 }, info)),
+                (I32(l, _), I32(r, _)) => {
+                    Ok(I32(i32::pow((*l).clone(), (*r).clone() as u32), info))
+                } // TODO: require pos pow
                 (Lambda(_), _) => Ok(Lambda(Box::new(expr.clone().to_node()))),
                 (_, Lambda(_)) => Ok(Lambda(Box::new(expr.clone().to_node()))),
-                (l, r) => Err(InterpreterError::TypeMismatch2("^".to_string(), (*l).clone(), (*r).clone(), info))
+                (l, r) => Err(InterpreterError::TypeMismatch2(
+                    "^".to_string(),
+                    (*l).clone(),
+                    (*r).clone(),
+                    info,
+                )),
             },
             "?" => match l {
                 Ok(Lambda(_)) => Ok(Lambda(Box::new(expr.clone().to_node()))),
@@ -303,35 +371,54 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
             ":" => match (&l?, &r()?) {
                 (Bool(b, i), Str(ty, _)) => match ty.as_ref() {
                     "bool" => Ok(Bool(*b, (*i).clone())),
-                    t => Err(InterpreterError::TypeMismatch(t.to_string(), Bool(*b, (*i).clone()), (*i).clone())),
-            },
+                    t => Err(InterpreterError::TypeMismatch(
+                        t.to_string(),
+                        Bool(*b, (*i).clone()),
+                        (*i).clone(),
+                    )),
+                },
                 (I32(b, i), Str(ty, _)) => match ty.as_ref() {
                     "i32" => Ok(I32(*b, (*i).clone())),
-                    t => Err(InterpreterError::TypeMismatch(t.to_string(), I32(*b, (*i).clone()), (*i).clone())),
-            },
+                    t => Err(InterpreterError::TypeMismatch(
+                        t.to_string(),
+                        I32(*b, (*i).clone()),
+                        (*i).clone(),
+                    )),
+                },
                 (Str(b, i), Str(ty, _)) => match ty.as_ref() {
                     "string" => Ok(Str((*b).clone(), (*i).clone())),
-                    t => Err(InterpreterError::TypeMismatch(t.to_string(), Str((*b).clone(), (*i).clone()), (*i).clone())),
+                    t => Err(InterpreterError::TypeMismatch(
+                        t.to_string(),
+                        Str((*b).clone(), (*i).clone()),
+                        (*i).clone(),
+                    )),
+                },
+                (_, t) => Err(InterpreterError::TypeMismatch(
+                    "type".to_string(),
+                    t.clone(),
+                    t.get_info(),
+                )),
             },
-                (_, t) => Err(InterpreterError::TypeMismatch("type".to_string(), t.clone(), t.get_info())),
-        }
-        op => Err(InterpreterError::UnknownInfixOperator(op.to_string(), info)),
+            op => Err(InterpreterError::UnknownInfixOperator(op.to_string(), info)),
         }
     }
 
     fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {
-        Err(InterpreterError::FailedParse(expr.msg.to_string(), expr.get_info()))
+        Err(InterpreterError::FailedParse(
+            expr.msg.to_string(),
+            expr.get_info(),
+        ))
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::super::ast::*;
+    use super::super::parser;
     use super::Interpreter;
     use super::Res;
-    use super::super::parser;
-    use super::super::ast::*;
-    use Prim::*;
     use Node::*;
+    use Prim::*;
 
     #[test]
     fn eval_num() {
@@ -348,31 +435,70 @@ mod tests {
 
     #[test]
     fn parse_and_eval_bool() {
-        assert_eq!(eval_str("true".to_string()), Ok(Bool(true, Info::default())));
+        assert_eq!(
+            eval_str("true".to_string()),
+            Ok(Bool(true, Info::default()))
+        );
     }
 
     #[test]
     fn parse_and_eval_bool_and() {
-        assert_eq!(eval_str("true&&true".to_string()), Ok(Bool(true, Info::default())));
-        assert_eq!(eval_str("false&&true".to_string()), Ok(Bool(false, Info::default())));
-        assert_eq!(eval_str("true&&false".to_string()), Ok(Bool(false, Info::default())));
-        assert_eq!(eval_str("false&&false".to_string()), Ok(Bool(false, Info::default())));
+        assert_eq!(
+            eval_str("true&&true".to_string()),
+            Ok(Bool(true, Info::default()))
+        );
+        assert_eq!(
+            eval_str("false&&true".to_string()),
+            Ok(Bool(false, Info::default()))
+        );
+        assert_eq!(
+            eval_str("true&&false".to_string()),
+            Ok(Bool(false, Info::default()))
+        );
+        assert_eq!(
+            eval_str("false&&false".to_string()),
+            Ok(Bool(false, Info::default()))
+        );
     }
 
     #[test]
     fn parse_and_eval_bool_or() {
-        assert_eq!(eval_str("true||true".to_string()), Ok(Bool(true, Info::default())));
-        assert_eq!(eval_str("false||true".to_string()), Ok(Bool(true, Info::default())));
-        assert_eq!(eval_str("true||false".to_string()), Ok(Bool(true, Info::default())));
-        assert_eq!(eval_str("false||false".to_string()), Ok(Bool(false, Info::default())));
+        assert_eq!(
+            eval_str("true||true".to_string()),
+            Ok(Bool(true, Info::default()))
+        );
+        assert_eq!(
+            eval_str("false||true".to_string()),
+            Ok(Bool(true, Info::default()))
+        );
+        assert_eq!(
+            eval_str("true||false".to_string()),
+            Ok(Bool(true, Info::default()))
+        );
+        assert_eq!(
+            eval_str("false||false".to_string()),
+            Ok(Bool(false, Info::default()))
+        );
     }
 
     #[test]
     fn parse_and_eval_bool_eq() {
-        assert_eq!(eval_str("true==true".to_string()), Ok(Bool(true, Info::default())));
-        assert_eq!(eval_str("false==true".to_string()), Ok(Bool(false, Info::default())));
-        assert_eq!(eval_str("true==false".to_string()), Ok(Bool(false, Info::default())));
-        assert_eq!(eval_str("false==false".to_string()), Ok(Bool(true, Info::default())));
+        assert_eq!(
+            eval_str("true==true".to_string()),
+            Ok(Bool(true, Info::default()))
+        );
+        assert_eq!(
+            eval_str("false==true".to_string()),
+            Ok(Bool(false, Info::default()))
+        );
+        assert_eq!(
+            eval_str("true==false".to_string()),
+            Ok(Bool(false, Info::default()))
+        );
+        assert_eq!(
+            eval_str("false==false".to_string()),
+            Ok(Bool(true, Info::default()))
+        );
     }
 
     #[test]
@@ -382,10 +508,22 @@ mod tests {
 
     #[test]
     fn parse_and_eval_i32_eq() {
-        assert_eq!(eval_str("0==0".to_string()), Ok(Bool(true, Info::default())));
-        assert_eq!(eval_str("-1==1".to_string()), Ok(Bool(false, Info::default())));
-        assert_eq!(eval_str("1==123".to_string()), Ok(Bool(false, Info::default())));
-        assert_eq!(eval_str("1302==1302".to_string()), Ok(Bool(true, Info::default())));
+        assert_eq!(
+            eval_str("0==0".to_string()),
+            Ok(Bool(true, Info::default()))
+        );
+        assert_eq!(
+            eval_str("-1==1".to_string()),
+            Ok(Bool(false, Info::default()))
+        );
+        assert_eq!(
+            eval_str("1==123".to_string()),
+            Ok(Bool(false, Info::default()))
+        );
+        assert_eq!(
+            eval_str("1302==1302".to_string()),
+            Ok(Bool(true, Info::default()))
+        );
     }
 
     #[test]
@@ -399,7 +537,10 @@ mod tests {
 
     #[test]
     fn parse_and_eval_str() {
-        assert_eq!(eval_str("\"32\"".to_string()), Ok(Str("32".to_string(), Info::default())));
+        assert_eq!(
+            eval_str("\"32\"".to_string()),
+            Ok(Str("32".to_string(), Info::default()))
+        );
     }
 
     #[test]
@@ -409,11 +550,17 @@ mod tests {
 
     #[test]
     fn parse_and_eval_let_with_imolicit_args() {
-        assert_eq!(eval_str("x=it*2;x(3)".to_string()), Ok(I32(6, Info::default())));
+        assert_eq!(
+            eval_str("x=it*2;x(3)".to_string()),
+            Ok(I32(6, Info::default()))
+        );
     }
 
     #[test]
     fn parse_and_eval_let_with_args() {
-        assert_eq!(eval_str("x(it)=it*2;x(3)".to_string()), Ok(I32(6, Info::default())));
+        assert_eq!(
+            eval_str("x(it)=it*2;x(3)".to_string()),
+            Ok(I32(6, Info::default()))
+        );
     }
 }

@@ -1,12 +1,10 @@
 use super::location::*;
 use super::types::*;
-use std::fmt;
 use std::collections::HashMap;
+use std::fmt;
 use std::hash::{Hash, Hasher};
 
-#[derive(Debug)]
-#[derive(PartialEq)]
-#[derive(Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Err {
     pub msg: String,
     pub info: Info,
@@ -21,9 +19,7 @@ impl ToNode for Err {
     }
 }
 
-#[derive(Debug)]
-#[derive(PartialEq)]
-#[derive(Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Apply {
     pub inner: Box<Node>,
     pub args: Vec<Let>,
@@ -39,10 +35,7 @@ impl ToNode for Apply {
     }
 }
 
-#[derive(Debug)]
-#[derive(PartialEq, Eq)]
-#[derive(Hash)]
-#[derive(Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Sym {
     pub name: String,
     pub depth: Option<i32>,
@@ -51,7 +44,11 @@ pub struct Sym {
 
 impl Sym {
     pub fn new(name: String) -> Sym {
-        Sym {name, depth: None, info: Info::default()}
+        Sym {
+            name,
+            depth: None,
+            info: Info::default(),
+        }
     }
 }
 
@@ -64,9 +61,7 @@ impl ToNode for Sym {
     }
 }
 
-#[derive(Debug)]
-#[derive(PartialEq)]
-#[derive(Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Prim {
     Bool(bool, Info),
     I32(i32, Info),
@@ -89,9 +84,7 @@ impl ToNode for Prim {
     }
 }
 
-#[derive(Debug)]
-#[derive(PartialEq)]
-#[derive(Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Let {
     pub name: String,
     pub value: Box<Node>,
@@ -102,7 +95,11 @@ pub struct Let {
 
 impl Let {
     pub fn to_sym(self: &Let) -> Sym {
-        Sym {name: self.name.clone(), depth: None, info: self.get_info()}
+        Sym {
+            name: self.name.clone(),
+            depth: None,
+            info: self.get_info(),
+        }
     }
 }
 
@@ -115,9 +112,7 @@ impl ToNode for Let {
     }
 }
 
-#[derive(Debug)]
-#[derive(PartialEq)]
-#[derive(Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct UnOp {
     pub name: String,
     pub inner: Box<Node>,
@@ -133,9 +128,7 @@ impl ToNode for UnOp {
     }
 }
 
-#[derive(Debug)]
-#[derive(PartialEq)]
-#[derive(Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct BinOp {
     pub name: String,
     pub left: Box<Node>,
@@ -181,28 +174,27 @@ impl PartialEq for Info {
 }
 
 impl Hash for Info {
-    fn hash<H: Hasher>(&self, _state: &mut H) {
-    }
+    fn hash<H: Hasher>(&self, _state: &mut H) {}
 }
-
 
 impl Default for Info {
     fn default() -> Info {
-        Info {loc: None, ty: None, defined_at: None}
+        Info {
+            loc: None,
+            ty: None,
+            defined_at: None,
+        }
     }
 }
 
-#[derive(Debug)]
-#[derive(PartialEq)]
-#[derive(Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct TypeInfo {
-  reqs: Vec<Node>,
-  structure: DataType,
+    reqs: Vec<Node>,
+    structure: DataType,
 }
 
 // #[derive(Debug)]
-#[derive(PartialEq)]
-#[derive(Clone)]
+#[derive(PartialEq, Clone)]
 pub enum Node {
     Error(Err),
     SymNode(Sym),
@@ -233,12 +225,8 @@ impl fmt::Display for Node {
         use super::PrettyPrint;
         let mut ppr = PrettyPrint::default();
         match ppr.visit_root(&self.clone().to_root()) {
-            Ok(res) => {
-                write!(f, "{}", res)
-            },
-            Err(err) => {
-                write!(f, "{:#?}", err)
-            }
+            Ok(res) => write!(f, "{}", res),
+            Err(err) => write!(f, "{:#?}", err),
         }
     }
 }
@@ -274,22 +262,21 @@ pub trait ToNode {
 
 impl Node {
     pub fn to_root(self: Self) -> Root {
-        Root {ast: self, requirements: HashMap::new()}
+        Root {
+            ast: self,
+            requirements: HashMap::new(),
+        }
     }
 }
 
-#[derive(Debug)]
-#[derive(Clone)]
-#[derive(Hash)]
-#[derive(PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum ScopeName {
     Unknown(),
     Anon(i32),
     Named(String),
 }
 
-#[derive(Debug)]
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Root {
     pub ast: Node,
     pub requirements: HashMap<Vec<ScopeName>, Vec<Sym>>,
