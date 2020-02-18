@@ -94,6 +94,7 @@ impl ToNode for Prim {
 #[derive(Clone)]
 pub struct Let {
     pub name: String,
+    pub sym: Option<Vec<ScopeName>>,
     pub value: Box<Node>,
     pub requires: Option<Vec<Sym>>,
     pub is_function: bool,
@@ -279,9 +280,19 @@ impl Node {
 
 #[derive(Debug)]
 #[derive(Clone)]
+#[derive(Hash)]
+#[derive(PartialEq, Eq)]
+pub enum ScopeName {
+    Unknown(),
+    Anon(i32),
+    Named(String),
+}
+
+#[derive(Debug)]
+#[derive(Clone)]
 pub struct Root {
     pub ast: Node,
-    pub requirements: HashMap<Sym, Vec<Sym>>,
+    pub requirements: HashMap<Vec<ScopeName>, Vec<Sym>>,
 }
 
 pub trait Visitor<State, Res, Final, ErrT> {

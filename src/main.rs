@@ -112,6 +112,7 @@ fn work(filename: &String, opts: &Options) -> std::io::Result<()> {
     let program = parser::parse_file(filename.clone(), contents);
 
     let mut scoper = ReScoper::default();
+    scoper.debug = opts.debug;
     let scoped = scoper.visit_root(&program).expect("failed scoping");
 
     if opts.show_full_ast {
