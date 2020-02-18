@@ -80,7 +80,7 @@ fn main() -> std::io::Result<()> {
                 "--wasm" => opts.interactive = false,
                 "-d" => opts.debug += 1,
                 "--ast" => opts.show_ast = true,
-                "--full_ast" => opts.show_full_ast = true,
+                "--full-ast" => opts.show_full_ast = true,
                 "--version" => {
                     println!("{}{}", TITLE, VERSION);
                     return Ok(());
