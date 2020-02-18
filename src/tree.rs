@@ -9,7 +9,7 @@ pub struct Tree<T> {
 pub fn to_tree<T: std::clone::Clone>(t: Vec<T>) -> Vec<Tree<T>> {
     let mut output = Vec::new();
     output.extend(t.iter().map(to_root));
-    return output;
+    output
 }
 
 pub fn to_root<T: std::clone::Clone>(t: &T) -> Tree<T> {
@@ -21,7 +21,7 @@ pub fn to_root<T: std::clone::Clone>(t: &T) -> Tree<T> {
 
 impl<T: fmt::Debug> fmt::Debug for Tree<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.children.len() == 0 {
+        if self.children.is_empty() {
             write!(f, "{:?}", self.value)
         } else {
             write!(f, "{:?} {:?}", self.value, self.children)
@@ -31,7 +31,7 @@ impl<T: fmt::Debug> fmt::Debug for Tree<T> {
 
 impl<T: fmt::Display> fmt::Display for Tree<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.children.len() == 0 {
+        if self.children.is_empty() {
             write!(f, "{}", self.value)
         } else {
             write!(f, "({}", self.value).ok();

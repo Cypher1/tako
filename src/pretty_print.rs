@@ -26,7 +26,7 @@ impl Visitor<State, (), String, PrettyPrintError> for PrettyPrint {
     }
 
     fn visit_sym(&mut self, state: &mut State, expr: &Sym) -> Res {
-        match expr.depth.clone() {
+        match expr.depth {
             Some(0) | None => write!(state, "{}", expr.name),
             Some(depth) => write!(state, "{}#{}", expr.name, depth),
         }
@@ -75,7 +75,7 @@ impl Visitor<State, (), String, PrettyPrintError> for PrettyPrint {
         write!(state, "{}", expr.name).unwrap();
         match &expr.requires {
             Some(reqs) => {
-                if reqs.len() > 0 {
+                if !reqs.is_empty() {
                     write!(state, "(").unwrap();
                 }
                 let mut is_first = true;
@@ -86,7 +86,7 @@ impl Visitor<State, (), String, PrettyPrintError> for PrettyPrint {
                     self.visit_sym(state, &arg)?;
                     is_first = false;
                 }
-                if reqs.len() > 0 {
+                if !reqs.is_empty() {
                     write!(state, ")").unwrap();
                 }
             }

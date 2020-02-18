@@ -49,7 +49,7 @@ fn binding_power(tok: &Token) -> (i32, bool) {
         },
         _ => false,
     };
-    return (bind, assoc_right);
+    (bind, assoc_right)
 }
 
 fn get_defs(root: Node) -> Vec<Let> {
@@ -94,7 +94,7 @@ fn get_defs(root: Node) -> Vec<Let> {
         }),
     }
 
-    return args;
+    args
 }
 
 impl Token {
@@ -134,7 +134,7 @@ fn nud(mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
             TokenType::Op => {
                 let (lbp, _) = binding_power(&head);
                 let (right, new_toks) = expr(toks, lbp);
-                return (
+                (
                     UnOp {
                         name: head.value.clone(),
                         inner: Box::new(right),
@@ -142,7 +142,7 @@ fn nud(mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
                     }
                     .to_node(),
                     new_toks,
-                );
+                )
             }
             TokenType::CloseBracket => {
                 panic!("Unexpected close bracket {}", head.value);
@@ -177,11 +177,11 @@ fn nud(mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
                     }
                 }
                 new_toks.pop_front();
-                return (inner, new_toks);
+                (inner, new_toks)
             }
             TokenType::Sym => {
                 // Handle args.
-                return (
+                (
                     Sym {
                         name: head.value.clone(),
                         depth: None,
@@ -189,7 +189,7 @@ fn nud(mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
                     }
                     .to_node(),
                     toks,
-                );
+                )
             }
             TokenType::Unknown | TokenType::Whitespace => {
                 panic!("Lexer should not produce unknown or whitespace")
@@ -200,22 +200,19 @@ fn nud(mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
 
 fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
     // println!("here {:?} {:?}", toks, left);
-    match toks.front() {
-        Some(Token {
+    if let Some(Token {
             tok_type: TokenType::CloseBracket,
-            value: _,
             pos,
-        }) => {
-            return (
-                Err {
-                    msg: "Close bracket".to_string(),
-                    info: pos.clone().get_info(),
-                }
-                .to_node(),
-                toks,
-            );
-        }
-        _ => {}
+            ..
+        }) = toks.front() {
+        return (
+            Err {
+                msg: "Close bracket".to_string(),
+                info: pos.clone().get_info(),
+            }
+            .to_node(),
+            toks,
+        )
     }
 
     match toks.pop_front() {
@@ -244,12 +241,12 @@ fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
                     value: ";".to_string(),
                     pos,
                 });
-                return (left, toks);
+                (left, toks)
             }
             TokenType::Op => {
                 let (lbp, assoc_right) = binding_power(&head);
                 let (right, new_toks) = expr(toks, lbp - if assoc_right { 1 } else { 0 });
-                if head.value == "=".to_string() {
+                if head.value == "=" {
                     match left {
                         Node::SymNode(s) => {
                             return (
@@ -286,7 +283,7 @@ fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
                     }
                 }
                 let info = head.get_info();
-                return (
+                (
                     BinOp {
                         name: head.value,
                         left: Box::new(left),
@@ -295,7 +292,7 @@ fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
                     }
                     .to_node(),
                     new_toks,
-                );
+                )
             }
             TokenType::CloseBracket => {
                 panic!("Unexpected close bracket");
@@ -324,7 +321,7 @@ fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
                         Some(Token {
                             value: close,
                             tok_type: TokenType::CloseBracket,
-                            pos: _,
+                            ..
                         }),
                     ) => {
                         match (open, close.as_str()) {
@@ -346,7 +343,7 @@ fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
                 new_toks.pop_front();
                 // Introduce arguments
                 let args = get_defs(inner);
-                return (
+                (
                     Apply {
                         inner: Box::new(left),
                         args,
@@ -354,7 +351,7 @@ fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
                     }
                     .to_node(),
                     new_toks,
-                );
+                )
             }
             TokenType::Unknown | TokenType::Whitespace => {
                 panic!("Lexer should not produce unknown or whitespace")
@@ -379,17 +376,14 @@ fn expr(init_toks: VecDeque<Token>, init_lbp: i32) -> (Node, VecDeque<Token>) {
             }
         }
         let update = led(toks, left.clone());
-        match update {
-            (Node::Error(_), new_toks) => {
-                return (left, new_toks);
-            }
-            _ => {}
+        if let (Node::Error(_), new_toks) = update {
+            return (left, new_toks);
         }
         left = update.0;
         toks = update.1;
     }
 
-    return (left, toks);
+    (left, toks)
 }
 
 pub fn parse_file(filename: String, contents: String) -> Root {
@@ -423,11 +417,11 @@ fn parse_impl(filename: Option<String>, contents: String) -> Node {
 
     let (root, left_over) = expr(toks, 0);
 
-    if left_over.len() != 0 {
+    if !left_over.is_empty() {
         panic!("Oh no: Left over tokens {:?}", left_over);
     }
 
-    return root;
+    root
 }
 
 #[cfg(test)]

@@ -59,7 +59,7 @@ fn classify_char(ch: char) -> TokenType {
     if QUOTES.contains(ch) {
         return TokenType::StringLit;
     }
-    return TokenType::Unknown;
+     TokenType::Unknown
 }
 
 // Consumes a single token from a Deque of characters.
@@ -70,48 +70,43 @@ pub fn lex_head(mut contents: VecDeque<char>, pos: &mut Loc) -> (Token, VecDeque
     let mut quote: Option<char> = None;
     let start = pos.clone();
 
-    loop {
-        match contents.front() {
-            Some(chr) => {
-                let chr_type = classify_char(*chr);
-                tok_type = match (tok_type.clone(), chr_type.clone()) {
-                    (TokenType::Unknown, TokenType::Whitespace) => TokenType::Unknown, // Ignore
-                    (TokenType::Unknown, TokenType::StringLit) => {
-                        quote = Some(chr.clone());
-                        TokenType::StringLit
-                    }
-                    (TokenType::Unknown, new_tok_type) => new_tok_type,
-                    (_, TokenType::Whitespace) => break, // Token finished.
-                    (TokenType::Op, TokenType::Op) => TokenType::Op,
-                    (TokenType::Op, _) => break, // Token finished.
-
-                    (TokenType::NumLit, TokenType::NumLit) => TokenType::NumLit,
-                    (TokenType::NumLit, TokenType::Sym) => TokenType::Sym, // Promotion
-                    (TokenType::NumLit, _) => break,                       // Token finished.
-
-                    (TokenType::Sym, TokenType::Sym) => TokenType::Sym,
-                    (TokenType::Sym, TokenType::NumLit) => TokenType::Sym,
-                    (TokenType::Sym, _) => break, // Token finished.
-
-                    (TokenType::OpenBracket, _) => break, // Token finished.
-                    (TokenType::CloseBracket, _) => break, // Token finished.
-                    _unexpected => {
-                        unimplemented!() // Can't mix other tokentypes
-                    }
-                };
-                if chr_type == TokenType::StringLit {
-                    break;
-                }
-                if chr_type != TokenType::Whitespace {
-                    // Add the character.
-                    head.push_back(chr.clone());
-                }
-                // Continue past the character.
-                pos.next(contents.front());
-                contents.pop_front();
+    while let Some(chr) = contents.front() {
+        let chr_type = classify_char(*chr);
+        tok_type = match (tok_type.clone(), chr_type.clone()) {
+            (TokenType::Unknown, TokenType::Whitespace) => TokenType::Unknown, // Ignore
+            (TokenType::Unknown, TokenType::StringLit) => {
+                quote = Some(*chr);
+                TokenType::StringLit
             }
-            None => break,
+            (TokenType::Unknown, new_tok_type) => new_tok_type,
+            (_, TokenType::Whitespace) => break, // Token finished.
+            (TokenType::Op, TokenType::Op) => TokenType::Op,
+            (TokenType::Op, _) => break, // Token finished.
+
+            (TokenType::NumLit, TokenType::NumLit) => TokenType::NumLit,
+            (TokenType::NumLit, TokenType::Sym) => TokenType::Sym, // Promotion
+            (TokenType::NumLit, _) => break,                       // Token finished.
+
+            (TokenType::Sym, TokenType::Sym) => TokenType::Sym,
+            (TokenType::Sym, TokenType::NumLit) => TokenType::Sym,
+            (TokenType::Sym, _) => break, // Token finished.
+
+            (TokenType::OpenBracket, _) => break, // Token finished.
+            (TokenType::CloseBracket, _) => break, // Token finished.
+            _unexpected => {
+                unimplemented!() // Can't mix other tokentypes
+            }
+        };
+        if chr_type == TokenType::StringLit {
+            break;
         }
+        if chr_type != TokenType::Whitespace {
+            // Add the character.
+            head.push_back(chr.clone());
+        }
+        // Continue past the character.
+        pos.next(contents.front());
+        contents.pop_front();
     }
     if tok_type == TokenType::StringLit {
         // We hit a quote.

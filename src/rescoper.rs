@@ -50,7 +50,7 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
         };
         let mut res = self.visit(&mut state, &expr.ast)?.to_root();
         // Check requires
-        if state.requires.len() > 0 {
+        if !state.requires.is_empty() {
             println!("{:?} not declared", state.requires);
         }
         // TODO(cypher1): Avoid this copy (use swaps?)
@@ -74,11 +74,12 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
             }
         }
 
-        let mut depth = Some(space.len() as i32);
-        if !found && !state.requires.iter().any(|r| r.name == expr.name) {
+        let depth = if !found && !state.requires.iter().any(|r| r.name == expr.name) {
             state.requires.push(expr.clone());
-            depth = None;
-        }
+            None
+        } else {
+            Some(space.len() as i32)
+        };
         Ok(Sym {
             name: expr.name.clone(),
             depth,
@@ -121,8 +122,9 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
             // if recursive
             frame.defines.push(expr.to_sym());
 
-            let expr_reqs = expr.requires.clone().unwrap_or(vec![]);
-            frame.defines.extend(expr_reqs);
+            if let Some(expr_reqs) = expr.requires.clone() {
+                frame.defines.extend(expr_reqs)
+            }
 
             state.stack.push(Namespace {
                 name: ScopeName::Named(expr.name.clone()),
@@ -175,7 +177,7 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
 
         Ok(Let {
             name: expr.name.clone(),
-            is_function: expr.is_function || requires.len() != 0,
+            is_function: expr.is_function || !requires.is_empty(),
             requires: Some(requires),
             value,
             info,

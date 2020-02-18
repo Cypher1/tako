@@ -35,14 +35,13 @@ type Res = Result<Vec<String>, CompilerError>;
 type State = ();
 impl Visitor<State, Vec<String>, Tree<String>, CompilerError> for Compiler {
     fn visit_root(&mut self, root: &Root) -> Result<Tree<String>, CompilerError> {
-        let mut state = ();
         let name = Tree {
             value: "\"run_main\"".to_string(),
             children: vec![],
         };
         let def = Tree {
             value: "export".to_string(),
-            children: vec![name.clone()],
+            children: vec![name],
         };
         let node_i32 = Tree {
             value: "i32".to_string(),
@@ -54,18 +53,18 @@ impl Visitor<State, Vec<String>, Tree<String>, CompilerError> for Compiler {
         };
         let result = Tree {
             value: "result".to_string(),
-            children: vec![node_i32.clone()],
+            children: vec![node_i32],
         };
         let mut children = vec![def, param, result];
-        children.append(&mut to_tree(self.visit(&mut state, &root.ast)?));
+        children.append(&mut to_tree(self.visit(&mut (), &root.ast)?));
         let func = Tree {
             value: "func".to_string(),
-            children: children,
+            children,
         };
-        return Ok(Tree {
+        Ok(Tree {
             value: "module".to_string(),
             children: vec![func],
-        });
+        })
     }
 
     fn visit_sym(&mut self, _state: &mut State, _expr: &Sym) -> Res {
@@ -104,7 +103,7 @@ impl Visitor<State, Vec<String>, Tree<String>, CompilerError> for Compiler {
             }
             op => return Err(CompilerError::UnknownPrefixOperator(op.to_string(), info)),
         };
-        return Ok(res);
+        Ok(res)
     }
     fn visit_bin_op(&mut self, state: &mut State, expr: &BinOp) -> Res {
         let info = expr.get_info();
@@ -121,7 +120,7 @@ impl Visitor<State, Vec<String>, Tree<String>, CompilerError> for Compiler {
             op => return Err(CompilerError::UnknownInfixOperator(op.to_string(), info)),
         };
         res.push(s);
-        return Ok(res);
+        Ok(res)
     }
 
     fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {
