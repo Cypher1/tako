@@ -57,26 +57,27 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
     }
 
     fn visit_sym(&mut self, state: &mut State, expr: &Sym) -> Res {
-        let mut look_depth = 0;
         let mut found = false;
+        let mut info = expr.get_info();
 
-        'walk_stack: for frame in state.stack.iter().rev() {
-            for name in frame.defines.iter() {
+        let mut space = vec![];
+        for namespace in state.stack.iter().rev() {
+            space.push(namespace.name.clone());
+            for name in namespace.defines.iter() {
                 if *name.name == expr.name {
                     // The name is in scope.
                     found = true;
-                    break 'walk_stack;
+                    info.defined_at = Some(space.clone());
                 }
             }
-            look_depth += 1;
         }
 
-        let mut depth = Some(look_depth);
+        let mut depth = Some(space.len() as i32);
         if !found && !state.requires.iter().any(|r| r.name == expr.name) {
             state.requires.push(expr.clone());
             depth = None;
         }
-        Ok(Sym {name: expr.name.clone(), depth, info: expr.get_info()}.to_node())
+        Ok(Sym {name: expr.name.clone(), depth, info}.to_node())
     }
 
     fn visit_prim(&mut self, _state: &mut State, expr: &Prim) -> Res {
