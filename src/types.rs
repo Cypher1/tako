@@ -45,7 +45,7 @@ pub fn size(ty: DataType) -> usize {
             num_bits(s.len())
                 + s.iter().fold(0, |res, sty| {
                     let t = sty.0.clone();
-                    let offset = sty.1.clone();
+                    let offset = sty.1;
                     // This includes padding in size.
                     let c = offset + size(*t);
                     if res > c {
@@ -57,7 +57,7 @@ pub fn size(ty: DataType) -> usize {
         }
         Struct(s) => s.iter().fold(0, |res, sty| {
             let t = sty.0.clone();
-            let offset = sty.1.clone();
+            let offset = sty.1;
             res + offset + size(*t)
         }),
         Pointer(ptr_size, _t) => ptr_size,

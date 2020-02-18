@@ -43,11 +43,11 @@ impl Default for Options {
     }
 }
 
-const TITLE: &'static str = "tako v";
+const TITLE: &str = "tako v";
 
-const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const USAGE: &'static str =
+const USAGE: &str =
     "An experimental programming language for ergonomic software verification.
 
 Usage:
@@ -69,7 +69,7 @@ fn main() -> std::io::Result<()> {
     let args: Vec<String> = env::args().collect();
     let mut opts = Options::default();
     for f in args[1..].to_vec() {
-        if &f.chars().next() != &Some('-') {
+        if !f.starts_with('-') {
             opts.files.push(f);
         } else {
             match f.as_str() {
@@ -102,15 +102,15 @@ fn main() -> std::io::Result<()> {
     Ok(())
 }
 
-fn work(filename: &String, opts: &Options) -> std::io::Result<()> {
+fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
     let mut contents = String::new();
-    let mut file = File::open(filename.clone())?;
+    let mut file = File::open(filename.to_string())?;
     println!("Filename: '{}'", filename);
 
     file.read_to_string(&mut contents)?;
     // println!("Content: '\n{}'", contents);
 
-    let program = parser::parse_file(filename.clone(), contents);
+    let program = parser::parse_file(filename.to_string(), contents);
 
     let mut scoper = ReScoper::default();
     scoper.debug = opts.debug;
@@ -146,7 +146,7 @@ fn work(filename: &String, opts: &Options) -> std::io::Result<()> {
         .visit_root(&scoped)
         .expect("couldnt not compile program");
     println!("{}", res);
-    return Ok(());
+    Ok(())
 }
 
 #[cfg(test)]
