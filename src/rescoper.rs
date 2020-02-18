@@ -1,4 +1,6 @@
 use super::ast::*;
+use std::collections::HashMap;
+
 #[derive(Debug)]
 #[derive(PartialEq)]
 pub enum ReScoperError {
@@ -7,24 +9,26 @@ pub enum ReScoperError {
 
 // Walks the AST interpreting it.
 pub struct ReScoper {
+    pub debug: i32,
+    pub requirements: HashMap<Vec<ScopeName>, Vec<Sym>>,
 }
 
 impl Default for ReScoper {
     fn default() -> ReScoper {
-        ReScoper {}
+        ReScoper {debug: 0, requirements: HashMap::new()}
     }
 }
 
 // TODO: Return nodes.
 type Res = Result<Node, ReScoperError>;
 pub struct Namespace {
-    name: String,
+    name: ScopeName,
     defines: Vec<Sym>,
 }
 
 fn globals() -> Namespace {
     Namespace {
-        name: "".to_string(),
+        name: ScopeName::Unknown(),
         defines: vec!{
             Sym::new("true".to_string()),
             Sym::new("false".to_string()),
@@ -35,18 +39,21 @@ fn globals() -> Namespace {
 pub struct State {
     stack: Vec<Namespace>,
     requires: Vec<Sym>,
+    counter: i32, // used for ensuring uniqueness in new variables and scooe names
 }
 
 impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
 
     fn visit_root(&mut self, expr: &Root) -> Result<Root, ReScoperError> {
-        let mut state = State{stack: vec![globals()], requires: vec![]};
-        let res = self.visit(&mut state, &expr.ast)?;
+        let mut state = State{stack: vec![globals()], requires: vec![], counter: 0};
+        let mut res = self.visit(&mut state, &expr.ast)?.to_root();
         // Check requires
         if state.requires.len() > 0 {
             println!("{:?} not declared", state.requires);
         }
-        Ok(res.to_root())
+        // TODO(cypher1): Avoid this copy (use swaps?)
+        res.requirements = self.requirements.clone();
+        Ok(res)
     }
 
     fn visit_sym(&mut self, state: &mut State, expr: &Sym) -> Res {
@@ -78,9 +85,10 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
 
     fn visit_apply(&mut self, state: &mut State, expr: &Apply) -> Res {
         state.stack.push(Namespace{
-            name: "".to_string(),
+            name: ScopeName::Anon(state.counter),
             defines: vec![],
         });
+        state.counter += 1;
         let mut args = vec![];
         for arg in expr.args.iter() {
             let new_arg = self.visit_let(state, arg)?;
@@ -95,17 +103,20 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
     }
 
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
-        let frame = state.stack.last_mut().unwrap();
-        // if recursive
-        frame.defines.push(expr.to_sym());
+        {
+            let frame = state.stack.last_mut().unwrap();
+            // if recursive
+            frame.defines.push(expr.to_sym());
 
-        let expr_reqs = expr.requires.clone().unwrap_or(vec![]);
-        frame.defines.extend(expr_reqs);
+            let expr_reqs = expr.requires.clone().unwrap_or(vec![]);
+            frame.defines.extend(expr_reqs);
 
-        state.stack.push(Namespace{
-            name: expr.name.clone(),
-            defines: vec![],
-        });
+            state.stack.push(Namespace{
+                name: ScopeName::Named(expr.name.clone()),
+                defines: vec![],
+            });
+        }
+
         // Find new reqyirements
         let mut requires = vec![];
         std::mem::swap(&mut requires, &mut state.requires);
@@ -134,10 +145,22 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
         }
         // Now that the variable has been defined we can use it.
         // if !recursive // frame.push(expr.name.clone());
+
+        let mut space = vec![];
+        for namespace in state.stack.iter() {
+            space.push(namespace.name.clone());
+        }
+
+        self.requirements.insert(space.clone(), requires.clone());
+        if self.debug > 1 {
+            println!("visiting {:?}", space);
+        }
+
         state.stack.pop();
 
         Ok(Let{
             name: expr.name.clone(),
+            sym: Some(space),
             is_function: expr.is_function || requires.len() != 0,
             requires: Some(requires),
             value, info: expr.get_info()
