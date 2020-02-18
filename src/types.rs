@@ -1,9 +1,7 @@
 // A list of types with an offset to get to the first bit (used for padding, frequently 0).
 type Layout = Vec<(Box<DataType>, usize)>;
 
-#[derive(Debug)]
-#[derive(PartialEq)]
-#[derive(Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum DataType {
     Union(Layout),
     Struct(Layout),
@@ -23,7 +21,7 @@ pub fn card(ty: DataType) -> usize {
             res * card(*t)
         }),
         Pointer(_ptr_size, t) => card(*t),
-        Static => panic!("Functions shouldnt be treated as cardinality")
+        Static => panic!("Functions shouldnt be treated as cardinality"),
     }
 }
 
@@ -34,8 +32,8 @@ fn num_bits(n: usize) -> usize {
         if n <= p {
             return k;
         }
-        k+=1;
-        p*=2;
+        k += 1;
+        p *= 2;
     }
 }
 
@@ -43,13 +41,20 @@ fn num_bits(n: usize) -> usize {
 pub fn size(ty: DataType) -> usize {
     use DataType::*;
     match ty {
-        Union(s) => num_bits(s.len())+s.iter().fold(0, |res, sty| {
-            let t = sty.0.clone();
-            let offset = sty.1.clone();
-            // This includes padding in size.
-            let c = offset+size(*t);
-            if res > c { res } else { c }
-        }),
+        Union(s) => {
+            num_bits(s.len())
+                + s.iter().fold(0, |res, sty| {
+                    let t = sty.0.clone();
+                    let offset = sty.1.clone();
+                    // This includes padding in size.
+                    let c = offset + size(*t);
+                    if res > c {
+                        res
+                    } else {
+                        c
+                    }
+                })
+        }
         Struct(s) => s.iter().fold(0, |res, sty| {
             let t = sty.0.clone();
             let offset = sty.1.clone();
@@ -62,8 +67,8 @@ pub fn size(ty: DataType) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::DataType::*;
+    use super::*;
 
     #[test]
     fn cardinality_void() {
@@ -88,7 +93,7 @@ mod tests {
         let trit = Union(vec![
             (Box::new(unit.clone()), 0),
             (Box::new(unit.clone()), 0),
-            (Box::new(unit), 0)
+            (Box::new(unit), 0),
         ]);
 
         assert_eq!(card(trit), 3);
@@ -109,7 +114,7 @@ mod tests {
             (Box::new(unit.clone()), 0),
             (Box::new(unit.clone()), 0),
             (Box::new(unit.clone()), 0),
-            (Box::new(unit), 0)
+            (Box::new(unit), 0),
         ]);
 
         assert_eq!(card(trit), 5);
@@ -119,7 +124,10 @@ mod tests {
         let unit = Struct(vec![]);
         let boolt = Union(vec![(Box::new(unit.clone()), 0), (Box::new(unit), 0)]);
         let bool_ptr = Pointer(64, Box::new(boolt.clone()));
-        let quad = Struct(vec![(Box::new(bool_ptr.clone()), 0), (Box::new(bool_ptr), 0)]);
+        let quad = Struct(vec![
+            (Box::new(bool_ptr.clone()), 0),
+            (Box::new(bool_ptr), 0),
+        ]);
 
         assert_eq!(card(quad), 4);
     }
@@ -147,7 +155,7 @@ mod tests {
         let trit = Union(vec![
             (Box::new(unit.clone()), 0),
             (Box::new(unit.clone()), 0),
-            (Box::new(unit), 0)
+            (Box::new(unit), 0),
         ]);
 
         assert_eq!(size(trit), 2);
@@ -168,7 +176,7 @@ mod tests {
             (Box::new(unit.clone()), 0),
             (Box::new(unit.clone()), 0),
             (Box::new(unit.clone()), 0),
-            (Box::new(unit), 0)
+            (Box::new(unit), 0),
         ]);
 
         assert_eq!(size(trit), 3);
@@ -178,18 +186,24 @@ mod tests {
         let unit = Struct(vec![]);
         let boolt = Union(vec![(Box::new(unit.clone()), 0), (Box::new(unit), 0)]);
         let bool_ptr = Pointer(32, Box::new(boolt.clone()));
-        let quad = Struct(vec![(Box::new(bool_ptr.clone()), 0), (Box::new(bool_ptr), 0)]);
+        let quad = Struct(vec![
+            (Box::new(bool_ptr.clone()), 0),
+            (Box::new(bool_ptr), 0),
+        ]);
 
-        assert_eq!(size(quad), 2*32);
+        assert_eq!(size(quad), 2 * 32);
     }
     #[test]
     fn size_pair_bool_ptrs64() {
         let unit = Struct(vec![]);
         let boolt = Union(vec![(Box::new(unit.clone()), 0), (Box::new(unit), 0)]);
         let bool_ptr = Pointer(64, Box::new(boolt.clone()));
-        let quad = Struct(vec![(Box::new(bool_ptr.clone()), 0), (Box::new(bool_ptr), 0)]);
+        let quad = Struct(vec![
+            (Box::new(bool_ptr.clone()), 0),
+            (Box::new(bool_ptr), 0),
+        ]);
 
-        assert_eq!(size(quad), 2*64);
+        assert_eq!(size(quad), 2 * 64);
     }
 
     #[test]

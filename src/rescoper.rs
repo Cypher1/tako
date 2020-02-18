@@ -1,8 +1,7 @@
 use super::ast::*;
 use std::collections::HashMap;
 
-#[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum ReScoperError {
     FailedParse(String, Info),
 }
@@ -15,7 +14,10 @@ pub struct ReScoper {
 
 impl Default for ReScoper {
     fn default() -> ReScoper {
-        ReScoper {debug: 0, requirements: HashMap::new()}
+        ReScoper {
+            debug: 0,
+            requirements: HashMap::new(),
+        }
     }
 }
 
@@ -29,10 +31,7 @@ pub struct Namespace {
 fn globals() -> Namespace {
     Namespace {
         name: ScopeName::Unknown(),
-        defines: vec!{
-            Sym::new("true".to_string()),
-            Sym::new("false".to_string()),
-        }
+        defines: vec![Sym::new("true".to_string()), Sym::new("false".to_string())],
     }
 }
 
@@ -43,9 +42,12 @@ pub struct State {
 }
 
 impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
-
     fn visit_root(&mut self, expr: &Root) -> Result<Root, ReScoperError> {
-        let mut state = State{stack: vec![globals()], requires: vec![], counter: 0};
+        let mut state = State {
+            stack: vec![globals()],
+            requires: vec![],
+            counter: 0,
+        };
         let mut res = self.visit(&mut state, &expr.ast)?.to_root();
         // Check requires
         if state.requires.len() > 0 {
@@ -77,7 +79,12 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
             state.requires.push(expr.clone());
             depth = None;
         }
-        Ok(Sym {name: expr.name.clone(), depth, info}.to_node())
+        Ok(Sym {
+            name: expr.name.clone(),
+            depth,
+            info,
+        }
+        .to_node())
     }
 
     fn visit_prim(&mut self, _state: &mut State, expr: &Prim) -> Res {
@@ -85,7 +92,7 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
     }
 
     fn visit_apply(&mut self, state: &mut State, expr: &Apply) -> Res {
-        state.stack.push(Namespace{
+        state.stack.push(Namespace {
             name: ScopeName::Anon(state.counter),
             defines: vec![],
         });
@@ -100,7 +107,12 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
         }
         let inner = Box::new(self.visit(state, &*expr.inner)?);
         state.stack.pop();
-        Ok(Apply{inner, args, info: expr.get_info()}.to_node())
+        Ok(Apply {
+            inner,
+            args,
+            info: expr.get_info(),
+        }
+        .to_node())
     }
 
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
@@ -112,7 +124,7 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
             let expr_reqs = expr.requires.clone().unwrap_or(vec![]);
             frame.defines.extend(expr_reqs);
 
-            state.stack.push(Namespace{
+            state.stack.push(Namespace {
                 name: ScopeName::Named(expr.name.clone()),
                 defines: vec![],
             });
@@ -161,30 +173,45 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
         let mut info = expr.get_info();
         info.defined_at = Some(space);
 
-        Ok(Let{
+        Ok(Let {
             name: expr.name.clone(),
             is_function: expr.is_function || requires.len() != 0,
             requires: Some(requires),
-            value, info
-        }.to_node())
+            value,
+            info,
+        }
+        .to_node())
     }
 
     fn visit_un_op(&mut self, state: &mut State, expr: &UnOp) -> Res {
         let inner = Box::new(self.visit(state, &expr.inner)?);
-        Ok(UnOp{name: expr.name.clone(), inner, info: expr.get_info()}.to_node())
+        Ok(UnOp {
+            name: expr.name.clone(),
+            inner,
+            info: expr.get_info(),
+        }
+        .to_node())
     }
 
     fn visit_bin_op(&mut self, state: &mut State, expr: &BinOp) -> Res {
         let left = Box::new(self.visit(state, &expr.left)?);
         let right = Box::new(self.visit(state, &expr.right)?);
-        Ok(BinOp{name: expr.name.clone(), left, right, info: expr.get_info()}.to_node())
+        Ok(BinOp {
+            name: expr.name.clone(),
+            left,
+            right,
+            info: expr.get_info(),
+        }
+        .to_node())
     }
 
     fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {
-        Err(ReScoperError::FailedParse(expr.msg.to_string(), expr.get_info()))
+        Err(ReScoperError::FailedParse(
+            expr.msg.to_string(),
+            expr.get_info(),
+        ))
     }
 }
 
 #[cfg(test)]
-mod tests {
-}
+mod tests {}

@@ -5,22 +5,22 @@ use std::io::prelude::*;
 mod map_macros;
 
 mod ast;
+mod location;
 mod parser;
 mod tokens;
 mod tree;
-mod location;
 mod types;
 
-mod wasm;
 mod interpreter;
 mod pretty_print;
 mod rescoper;
+mod wasm;
 
-use wasm::Compiler;
-use pretty_print::PrettyPrint;
 use ast::Visitor;
 use interpreter::Interpreter;
+use pretty_print::PrettyPrint;
 use rescoper::ReScoper;
+use wasm::Compiler;
 
 #[derive(Debug)]
 struct Options {
@@ -47,7 +47,8 @@ const TITLE: &'static str = "tako v";
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
-const USAGE: &'static str = "An experimental programming language for ergonomic software verification.
+const USAGE: &'static str =
+    "An experimental programming language for ergonomic software verification.
 
 Usage:
   tako [-i|-r] [-d <level>] [--ast] [--full-ast] <files>...
@@ -84,14 +85,14 @@ fn main() -> std::io::Result<()> {
                 "--version" => {
                     println!("{}{}", TITLE, VERSION);
                     return Ok(());
-                },
+                }
                 arg => {
                     if arg != "-h" && arg != "--help" {
                         println!("unexpected flag '{}'", f);
                     }
                     println!("{}{}\n{}", TITLE, VERSION, USAGE);
                     return Ok(());
-                },
+                }
             }
         }
     }
@@ -125,13 +126,15 @@ fn work(filename: &String, opts: &Options) -> std::io::Result<()> {
     if opts.interactive {
         let mut interp = Interpreter::default();
         interp.debug = opts.debug;
-        let res = interp.visit_root(&scoped).expect("couldnt not interpret program");
+        let res = interp
+            .visit_root(&scoped)
+            .expect("couldnt not interpret program");
         let mut ppr = PrettyPrint::default();
         use ast::ToNode;
         match ppr.visit_root(&res.to_node().to_root()) {
             Ok(res) => {
                 println!(">> {}", res);
-            },
+            }
             Err(err) => {
                 println!("{:#?}", err);
             }
@@ -139,13 +142,14 @@ fn work(filename: &String, opts: &Options) -> std::io::Result<()> {
         return Ok(());
     }
     let mut comp = Compiler::default();
-    let res = comp.visit_root(&scoped).expect("couldnt not compile program");
+    let res = comp
+        .visit_root(&scoped)
+        .expect("couldnt not compile program");
     println!("{}", res);
     return Ok(());
 }
 
 #[cfg(test)]
-    mod tests {
+mod tests {
     include!(concat!(env!("OUT_DIR"), "/test.rs"));
 }
-

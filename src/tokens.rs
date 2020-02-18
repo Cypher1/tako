@@ -1,6 +1,6 @@
+use super::location::*;
 use std::collections::VecDeque;
 use std::fmt;
-use super::location::*;
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub enum TokenType {
@@ -79,7 +79,7 @@ pub fn lex_head(mut contents: VecDeque<char>, pos: &mut Loc) -> (Token, VecDeque
                     (TokenType::Unknown, TokenType::StringLit) => {
                         quote = Some(chr.clone());
                         TokenType::StringLit
-                    },
+                    }
                     (TokenType::Unknown, new_tok_type) => new_tok_type,
                     (_, TokenType::Whitespace) => break, // Token finished.
                     (TokenType::Op, TokenType::Op) => TokenType::Op,
@@ -121,10 +121,12 @@ pub fn lex_head(mut contents: VecDeque<char>, pos: &mut Loc) -> (Token, VecDeque
             // Add the character.
             match contents.front() {
                 Some(chr) => {
-                    if Some(*chr) == quote { break }
+                    if Some(*chr) == quote {
+                        break;
+                    }
                     head.push_back(chr.clone());
                 }
-                _ => break
+                _ => break,
             }
         }
         // Drop the quote
@@ -135,7 +137,14 @@ pub fn lex_head(mut contents: VecDeque<char>, pos: &mut Loc) -> (Token, VecDeque
     let comment = value == COMMENT;
     let multi_comment = value == MULTI_COMMENT;
     if !comment && !multi_comment {
-        return (Token { value, tok_type, pos: start}, contents);
+        return (
+            Token {
+                value,
+                tok_type,
+                pos: start,
+            },
+            contents,
+        );
     }
     // Track depth of mutli line comments
     let mut depth = 1;
@@ -147,7 +156,7 @@ pub fn lex_head(mut contents: VecDeque<char>, pos: &mut Loc) -> (Token, VecDeque
         match (last, &mut contents.front()) {
             (Some('/'), Some('*')) => {
                 depth += 1;
-            },
+            }
             (Some('*'), Some('/')) => {
                 depth -= 1;
                 if multi_comment && depth == 0 {
@@ -155,7 +164,7 @@ pub fn lex_head(mut contents: VecDeque<char>, pos: &mut Loc) -> (Token, VecDeque
                     contents.pop_front();
                     return lex_head(contents, pos);
                 }
-            },
+            }
             (_, Some(chr)) => {
                 if comment && **chr == '\n' {
                     pos.next(contents.front());
@@ -163,20 +172,20 @@ pub fn lex_head(mut contents: VecDeque<char>, pos: &mut Loc) -> (Token, VecDeque
                     return lex_head(contents, pos);
                 }
                 last = Some(**chr);
-            },
-            (_, None) => {return lex_head(contents, pos)},
+            }
+            (_, None) => return lex_head(contents, pos),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::super::location::*;
     use super::classify_char;
     use super::lex_head;
     use super::TokenType;
     use std::collections::VecDeque;
     use std::iter::FromIterator;
-    use super::super::location::*;
 
     #[test]
     fn classify_whitespace() {

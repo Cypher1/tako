@@ -15,8 +15,7 @@ use super::tree::*;
 
 use super::ast::*;
 
-#[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum CompilerError {
     UnknownInfixOperator(String, Info),
     UnknownPrefixOperator(String, Info),
@@ -97,12 +96,12 @@ impl Visitor<State, Vec<String>, Tree<String>, CompilerError> for Compiler {
         match expr.name.as_str() {
             "+" => {
                 res.append(&mut inner);
-            },
+            }
             "-" => {
                 res.append(&mut self.visit_prim(state, &I32(0, expr.clone().get_info()))?);
                 res.append(&mut inner);
                 res.push("i32.sub".to_string());
-            },
+            }
             op => return Err(CompilerError::UnknownPrefixOperator(op.to_string(), info)),
         };
         return Ok(res);
@@ -126,6 +125,9 @@ impl Visitor<State, Vec<String>, Tree<String>, CompilerError> for Compiler {
     }
 
     fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {
-        Err(CompilerError::FailedParse(expr.msg.clone(), expr.get_info()))
+        Err(CompilerError::FailedParse(
+            expr.msg.clone(),
+            expr.get_info(),
+        ))
     }
 }
