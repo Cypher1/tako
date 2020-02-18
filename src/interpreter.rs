@@ -368,28 +368,28 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
                 l => l,
             },
             ":" => match (&l?, &r()?) {
-                (Bool(b, i), Str(ty, _)) => match ty.as_ref() {
-                    "bool" => Ok(Bool(*b, (*i).clone())),
+                (Bool(bool_val, inf), Str(ty, _)) => match ty.as_ref() {
+                    "bool" => Ok(Bool(*bool_val, (*inf).clone())),
                     t => Err(InterpreterError::TypeMismatch(
                         t.to_string(),
-                        Bool(*b, (*i).clone()),
-                        (*i).clone(),
+                        Bool(*bool_val, (*inf).clone()),
+                        (*inf).clone(),
                     )),
                 },
-                (I32(b, i), Str(ty, _)) => match ty.as_ref() {
-                    "i32" => Ok(I32(*b, (*i).clone())),
+                (I32(int_val, inf), Str(ty, _)) => match ty.as_ref() {
+                    "i32" => Ok(I32(*int_val, (*inf).clone())),
                     t => Err(InterpreterError::TypeMismatch(
                         t.to_string(),
-                        I32(*b, (*i).clone()),
-                        (*i).clone(),
+                        I32(*int_val, (*inf).clone()),
+                        (*inf).clone(),
                     )),
                 },
-                (Str(b, i), Str(ty, _)) => match ty.as_ref() {
-                    "string" => Ok(Str((*b).clone(), (*i).clone())),
+                (Str(str_val, inf), Str(ty, _)) => match ty.as_ref() {
+                    "string" => Ok(Str((*str_val).clone(), (*inf).clone())),
                     t => Err(InterpreterError::TypeMismatch(
                         t.to_string(),
-                        Str((*b).clone(), (*i).clone()),
-                        (*i).clone(),
+                        Str((*str_val).clone(), (*inf).clone()),
+                        (*inf).clone(),
                     )),
                 },
                 (_, t) => Err(InterpreterError::TypeMismatch(
