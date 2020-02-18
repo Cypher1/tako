@@ -157,13 +157,14 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
         }
 
         state.stack.pop();
+        let mut info = expr.get_info();
+        info.defined_at = Some(space);
 
         Ok(Let{
             name: expr.name.clone(),
-            sym: Some(space),
             is_function: expr.is_function || requires.len() != 0,
             requires: Some(requires),
-            value, info: expr.get_info()
+            value, info
         }.to_node())
     }
 
