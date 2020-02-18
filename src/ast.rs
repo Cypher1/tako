@@ -94,7 +94,6 @@ impl ToNode for Prim {
 #[derive(Clone)]
 pub struct Let {
     pub name: String,
-    pub sym: Option<Vec<ScopeName>>,
     pub value: Box<Node>,
     pub requires: Option<Vec<Sym>>,
     pub is_function: bool,
@@ -157,6 +156,7 @@ impl ToNode for BinOp {
 pub struct Info {
     pub loc: Option<Loc>,
     pub ty: Option<TypeInfo>,
+    pub defined_at: Option<Vec<ScopeName>>,
 }
 
 impl std::fmt::Debug for Info {
@@ -188,7 +188,7 @@ impl Hash for Info {
 
 impl Default for Info {
     fn default() -> Info {
-        Info {loc: None, ty: None}
+        Info {loc: None, ty: None, defined_at: None}
     }
 }
 
