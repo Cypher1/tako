@@ -199,7 +199,7 @@ fn nud(mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
 }
 
 fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
-    // println!("here {:?} {:?}", toks, left);
+    // eprintln!("here {:?} {:?}", toks, left);
     if let Some(Token {
         tok_type: TokenType::CloseBracket,
         pos,
@@ -403,7 +403,7 @@ fn parse_impl(filename: Option<String>, contents: String) -> Node {
     loop {
         let (next, new_chars) = lex_head(chars, &mut pos);
 
-        // println!("LEXING {:?}", next);
+        // eprintln!("LEXING {:?}", next);
 
         if next.tok_type == TokenType::Unknown {
             break; // TODO done / skip?
@@ -414,7 +414,7 @@ fn parse_impl(filename: Option<String>, contents: String) -> Node {
         chars = new_chars;
     }
 
-    // println!("Toks: {:?}", toks);
+    // eprintln!("Toks: {:?}", toks);
 
     let (root, left_over) = expr(toks, 0);
 

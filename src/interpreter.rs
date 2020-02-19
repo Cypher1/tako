@@ -233,25 +233,25 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
 
     fn visit_sym(&mut self, state: &mut State, expr: &Sym) -> Res {
         if self.debug > 0 {
-            println!("evaluating {}", expr.clone().to_node());
+            eprintln!("evaluating {}", expr.clone().to_node());
         }
         let name = &expr.name;
         let value = find_symbol(&state, name);
         match value {
             Some(Node::PrimNode(prim)) => {
                 if self.debug > 0 {
-                    println!("from stack {}", prim.clone().to_node());
+                    eprintln!("from stack {}", prim.clone().to_node());
                 }
                 Ok(prim.clone())
             }
             Some(val) => {
                 if self.debug > 0 {
-                    println!("running lambda {}", val);
+                    eprintln!("running lambda {}", val);
                 }
                 let mut next = state.clone();
                 let result = self.visit(&mut next, &val.clone())?;
                 if self.debug > 0 {
-                    println!("got {}", result.clone().to_node());
+                    eprintln!("got {}", result.clone().to_node());
                 }
                 Ok(result)
             } // This is the variable
@@ -280,7 +280,7 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
 
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
         if self.debug > 0 {
-            println!("evaluating let {}", expr.clone().to_node());
+            eprintln!("evaluating let {}", expr.clone().to_node());
         }
 
         if expr.is_function {
@@ -306,7 +306,7 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
 
     fn visit_un_op(&mut self, state: &mut State, expr: &UnOp) -> Res {
         if self.debug > 1 {
-            println!("evaluating unop {}", expr.clone().to_node());
+            eprintln!("evaluating unop {}", expr.clone().to_node());
         }
         use Prim::*;
         let i = self.visit(state, &expr.inner)?;
@@ -336,7 +336,7 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
 
     fn visit_bin_op(&mut self, state: &mut State, expr: &BinOp) -> Res {
         if self.debug > 1 {
-            println!("evaluating binop {}", expr.clone().to_node());
+            eprintln!("evaluating binop {}", expr.clone().to_node());
         }
         use Prim::*;
         let info = expr.clone().get_info();
