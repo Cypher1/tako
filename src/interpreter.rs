@@ -267,15 +267,14 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
     }
 
     fn visit_apply(&mut self, state: &mut State, expr: &Apply) -> Res {
+        state.push(Frame::new());
         for arg in expr.args.iter() {
             self.visit_let(state, arg)?;
         }
         // Visit the expr.inner
         let res = self.visit(state, &*expr.inner)?;
-        match res {
-            Prim::Lambda(lambda) => self.visit(state, &lambda),
-            _ => Ok(res),
-        }
+        state.pop();
+        Ok(res)
     }
 
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
