@@ -47,8 +47,7 @@ const TITLE: &str = "tako v";
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const USAGE: &str =
-    "An experimental programming language for ergonomic software verification.
+const USAGE: &str = "An experimental programming language for ergonomic software verification.
 
 Usage:
   tako [-i|-r] [-d <level>] [--ast] [--full-ast] <files>...
