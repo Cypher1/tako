@@ -1,3 +1,0 @@
-add=x+y
-add5=add(y=5)
-add5(x=2)
