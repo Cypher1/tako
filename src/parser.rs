@@ -201,10 +201,11 @@ fn nud(mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
 fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
     // println!("here {:?} {:?}", toks, left);
     if let Some(Token {
-            tok_type: TokenType::CloseBracket,
-            pos,
-            ..
-        }) = toks.front() {
+        tok_type: TokenType::CloseBracket,
+        pos,
+        ..
+    }) = toks.front()
+    {
         return (
             Err {
                 msg: "Close bracket".to_string(),
@@ -212,7 +213,7 @@ fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
             }
             .to_node(),
             toks,
-        )
+        );
     }
 
     match toks.pop_front() {

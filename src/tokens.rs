@@ -59,7 +59,7 @@ fn classify_char(ch: char) -> TokenType {
     if QUOTES.contains(ch) {
         return TokenType::StringLit;
     }
-     TokenType::Unknown
+    TokenType::Unknown
 }
 
 // Consumes a single token from a Deque of characters.
