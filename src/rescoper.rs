@@ -51,7 +51,7 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
         let mut res = self.visit(&mut state, &expr.ast)?.to_root();
         // Check requires
         if !state.requires.is_empty() {
-            println!("{:?} not declared", state.requires);
+            eprintln!("{:?} not declared", state.requires);
         }
         // TODO(cypher1): Avoid this copy (use swaps?)
         res.requirements = self.requirements.clone();
@@ -168,7 +168,7 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
 
         self.requirements.insert(space.clone(), requires.clone());
         if self.debug > 1 {
-            println!("visiting {:?}", space);
+            eprintln!("visiting {:?}", space);
         }
 
         state.stack.pop();

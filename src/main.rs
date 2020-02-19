@@ -35,7 +35,7 @@ impl Default for Options {
     fn default() -> Options {
         Options {
             files: vec![],
-            interactive: true,
+            interactive: false,
             show_ast: false,
             show_full_ast: false,
             debug: 0,
@@ -72,12 +72,11 @@ fn main() -> std::io::Result<()> {
             opts.files.push(f);
         } else {
             match f.as_str() {
-                "-i" => {
+                "-i" | "--interactive" => {
                     opts.interactive = true;
                     opts.files.push("/dev/stdin".to_string());
                 }
-                "-r" => opts.interactive = true,
-                "--wasm" => opts.interactive = false,
+                "-r" | "--run" => opts.interactive = true,
                 "-d" => opts.debug += 1,
                 "--ast" => opts.show_ast = true,
                 "--full-ast" => opts.show_full_ast = true,
@@ -87,9 +86,9 @@ fn main() -> std::io::Result<()> {
                 }
                 arg => {
                     if arg != "-h" && arg != "--help" {
-                        println!("unexpected flag '{}'", f);
+                        eprintln!("unexpected flag '{}'", f);
                     }
-                    println!("{}{}\n{}", TITLE, VERSION, USAGE);
+                    eprintln!("{}{}\n{}", TITLE, VERSION, USAGE);
                     return Ok(());
                 }
             }
@@ -104,10 +103,10 @@ fn main() -> std::io::Result<()> {
 fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
     let mut contents = String::new();
     let mut file = File::open(filename.to_string())?;
-    println!("Filename: '{}'", filename);
+    eprintln!("Filename: '{}'", filename);
 
     file.read_to_string(&mut contents)?;
-    // println!("Content: '\n{}'", contents);
+    // eprintln!("Content: '\n{}'", contents);
 
     let program = parser::parse_file(filename.to_string(), contents);
 
@@ -116,10 +115,10 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
     let scoped = scoper.visit_root(&program).expect("failed scoping");
 
     if opts.show_full_ast {
-        println!("debug ast: {:#?}", scoped);
+        eprintln!("debug ast: {:#?}", scoped);
     }
     if opts.show_ast {
-        println!("{}", scoped);
+        eprintln!("{}", scoped);
     }
 
     if opts.interactive {
@@ -132,10 +131,10 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
         use ast::ToNode;
         match ppr.visit_root(&res.to_node().to_root()) {
             Ok(res) => {
-                println!(">> {}", res);
+                eprintln!(">> {}", res);
             }
             Err(err) => {
-                println!("{:#?}", err);
+                eprintln!("{:#?}", err);
             }
         }
         return Ok(());

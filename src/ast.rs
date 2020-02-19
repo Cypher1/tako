@@ -294,7 +294,7 @@ pub trait Visitor<State, Res, Final, ErrT> {
     fn visit_bin_op(&mut self, state: &mut State, e: &BinOp) -> Result<Res, ErrT>;
 
     fn visit(&mut self, state: &mut State, e: &Node) -> Result<Res, ErrT> {
-        // println!("{:?}", e);
+        // eprintln!("{:?}", e);
         use Node::*;
         match e {
             Error(n) => self.handle_error(state, n),
