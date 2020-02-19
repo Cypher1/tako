@@ -37,7 +37,7 @@ fn globals() -> Frame {
 fn find_symbol<'a>(state: &'a State, name: &str) -> Option<&'a Node> {
     for frame in state.iter().rev() {
         if let Some(val) = frame.get(name) {
-            return Some(val) // This is the variable
+            return Some(val); // This is the variable
         }
         // Not in this frame, go back up.
     }
@@ -47,9 +47,7 @@ fn find_symbol<'a>(state: &'a State, name: &str) -> Option<&'a Node> {
 fn prim_add(l: &Prim, r: &Prim, info: Info) -> Res {
     use Prim::*;
     match (l, r) {
-        (Bool(l, _), Bool(r, _)) => {
-            Ok(I32(if *l { 1 } else { 0 } + if *r { 1 } else { 0 }, info))
-        }
+        (Bool(l, _), Bool(r, _)) => Ok(I32(if *l { 1 } else { 0 } + if *r { 1 } else { 0 }, info)),
         (Bool(l, _), I32(r, _)) => Ok(I32(if *l { 1 } else { 0 } + r, info)),
         (Bool(l, _), Str(r, _)) => Ok(Str(l.to_string() + &r.to_string(), info)),
         (I32(l, _), Bool(r, _)) => Ok(I32(l + if *r { 1 } else { 0 }, info)),
@@ -96,7 +94,6 @@ fn prim_neq(l: &Prim, r: &Prim, info: Info) -> Res {
         )),
     }
 }
-
 
 fn prim_gt(l: &Prim, r: &Prim, info: Info) -> Res {
     use Prim::*;
@@ -146,20 +143,16 @@ fn prim_mul(l: &Prim, r: &Prim, info: Info) -> Res {
     use Prim::*;
     match (l, r) {
         (Bool(l, _), I32(r, _)) => Ok(I32(if *l { *r } else { 0 }, info)),
-        (Bool(l, _), Str(r, _)) => {
-            Ok(Str(if *l { r.to_string() } else { "".to_string() }, info))
-        }
+        (Bool(l, _), Str(r, _)) => Ok(Str(if *l { r.to_string() } else { "".to_string() }, info)),
         (I32(l, _), Bool(r, _)) => Ok(I32(if *r { *l } else { 0 }, info)),
         (I32(l, _), I32(r, _)) => Ok(I32(l * r, info)),
-        (Str(l, _), Bool(r, _)) => {
-            Ok(Str(if *r { l.to_string() } else { "".to_string() }, info))
-        }
+        (Str(l, _), Bool(r, _)) => Ok(Str(if *r { l.to_string() } else { "".to_string() }, info)),
         (l, r) => Err(InterpreterError::TypeMismatch2(
             "*".to_string(),
             (*l).clone(),
             (*r).clone(),
             info,
-        ))
+        )),
     }
 }
 
@@ -219,9 +212,7 @@ fn prim_pow(l: &Prim, r: &Prim, info: Info) -> Res {
     use Prim::*;
     match (l, r) {
         (I32(l, _), Bool(r, _)) => Ok(I32(if *r { *l } else { 1 }, info)),
-        (I32(l, _), I32(r, _)) => {
-            Ok(I32(i32::pow(*l, *r as u32), info))
-        } // TODO: require pos pow
+        (I32(l, _), I32(r, _)) => Ok(I32(i32::pow(*l, *r as u32), info)), // TODO: require pos pow
         (l, r) => Err(InterpreterError::TypeMismatch2(
             "^".to_string(),
             (*l).clone(),
@@ -251,7 +242,7 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
                 if self.debug > 0 {
                     println!("from stack {}", prim.clone().to_node());
                 }
-                return Ok(prim.clone());
+                Ok(prim.clone())
             }
             Some(val) => {
                 if self.debug > 0 {
@@ -262,11 +253,12 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
                 if self.debug > 0 {
                     println!("got {}", result.clone().to_node());
                 }
-                return Ok(result);
+                Ok(result)
             } // This is the variable
-            None => {
-                return Err(InterpreterError::UnknownSymbol(name.to_string(), expr.info.clone()));
-            }
+            None => Err(InterpreterError::UnknownSymbol(
+                name.to_string(),
+                expr.info.clone(),
+            )),
         }
     }
 
