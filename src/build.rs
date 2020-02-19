@@ -48,7 +48,8 @@ fn main() {
 #[test]
 fn {fn_name}() {{
     let file = \"{name}\".to_string();
-    let opts = super::Options::default();
+    let mut opts = super::Options::default();
+    opts.interactive = true;
     super::work(&file, &opts).expect(\"failed to interpret\");
 }}",
             name = p.replace("\\", "/"),
@@ -82,7 +83,8 @@ fn {fn_name}() {{
 #[should_panic]
 fn {fn_name}() {{
     let file = \"{name}\".to_string();
-    let opts = super::Options::default();
+    let mut opts = super::Options::default();
+    opts.interactive = true;
     super::work(&file, &opts).expect(\"failed to interpret\");
 }}",
             name = p.replace("\\", "/"),
