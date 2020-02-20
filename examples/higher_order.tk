@@ -1,0 +1,3 @@
+apply(x, f)=f(x=f(x=x))
+
+apply(x=3, f(x)=x*2)+"  "+apply(x=true, f(x)=(!x))
