@@ -30,7 +30,7 @@ pub struct Namespace {
 
 fn globals() -> Namespace {
     Namespace {
-        name: ScopeName::Unknown(),
+        name: ScopeName::Unknown(0),
         defines: vec![Sym::new("true".to_string()), Sym::new("false".to_string())],
     }
 }
@@ -46,7 +46,7 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
         let mut state = State {
             stack: vec![globals()],
             requires: vec![],
-            counter: 0,
+            counter: 1,
         };
         let mut res = self.visit(&mut state, &expr.ast)?.to_root();
         // Check requires
@@ -127,9 +127,10 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
             }
 
             state.stack.push(Namespace {
-                name: ScopeName::Named(expr.name.clone()),
+                name: ScopeName::Named(expr.name.clone(), state.counter),
                 defines: vec![],
             });
+            state.counter += 1;
         }
 
         // Find new reqyirements
