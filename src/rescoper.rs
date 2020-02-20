@@ -9,14 +9,14 @@ pub enum ReScoperError {
 // Walks the AST interpreting it.
 pub struct ReScoper {
     pub debug: i32,
-    pub requirements: HashMap<Vec<ScopeName>, Vec<Sym>>,
+    pub graph: CallGraph,
 }
 
 impl Default for ReScoper {
     fn default() -> ReScoper {
         ReScoper {
             debug: 0,
-            requirements: HashMap::new(),
+            graph: HashMap::new(),
         }
     }
 }
@@ -54,7 +54,7 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
             eprintln!("{:?} not declared", state.requires);
         }
         // TODO(cypher1): Avoid this copy (use swaps?)
-        res.requirements = self.requirements.clone();
+        res.graph = self.graph.clone();
         Ok(res)
     }
 
@@ -128,7 +128,7 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
             state.counter += 1;
         }
 
-        // Find new requirements
+        // Find new graph
         let mut requires = vec![];
         std::mem::swap(&mut requires, &mut state.requires);
         let value = Box::new(self.visit(state, &expr.value)?);
@@ -162,7 +162,10 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
             space.push(namespace.name.clone());
         }
 
-        self.requirements.insert(space.clone(), requires.clone());
+        self.graph.insert(space.clone(), Definition {
+            requires: requires.clone(),
+            defines: HashMap::new(),
+        });
         if self.debug > 1 {
             eprintln!("visiting {:?}", space);
         }
