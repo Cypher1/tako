@@ -178,7 +178,7 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
 
         Ok(Let {
             name: expr.name.clone(),
-            is_function: expr.is_function || !requires.is_empty(),
+            is_function: expr.is_function,
             requires: Some(requires),
             value,
             info,
