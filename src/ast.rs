@@ -271,9 +271,9 @@ impl Node {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum ScopeName {
-    Unknown(),
+    Unknown(i32),
     Anon(i32),
-    Named(String),
+    Named(String, i32),
 }
 
 #[derive(Debug, Clone)]
