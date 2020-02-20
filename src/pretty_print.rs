@@ -73,7 +73,7 @@ impl Visitor<State, (), String, PrettyPrintError> for PrettyPrint {
 
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
         write!(state, "{}", expr.name).unwrap();
-        match &expr.requires {
+        match &expr.args {
             Some(reqs) => {
                 if !reqs.is_empty() {
                     write!(state, "(").unwrap();

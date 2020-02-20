@@ -88,7 +88,7 @@ impl ToNode for Prim {
 pub struct Let {
     pub name: String,
     pub value: Box<Node>,
-    pub requires: Option<Vec<Sym>>,
+    pub args: Option<Vec<Sym>>,
     pub is_function: bool,
     pub info: Info,
 }

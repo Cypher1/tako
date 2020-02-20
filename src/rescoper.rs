@@ -119,21 +119,16 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
         {
             let frame = state.stack.last_mut().unwrap();
-            // if recursive
             frame.defines.push(expr.to_sym());
-
-            if let Some(expr_reqs) = expr.requires.clone() {
-                frame.defines.extend(expr_reqs)
-            }
 
             state.stack.push(Namespace {
                 name: ScopeName::Named(expr.name.clone(), state.counter),
-                defines: vec![],
+                defines: expr.args.clone().unwrap_or(vec![]),
             });
             state.counter += 1;
         }
 
-        // Find new reqyirements
+        // Find new requirements
         let mut requires = vec![];
         std::mem::swap(&mut requires, &mut state.requires);
         let value = Box::new(self.visit(state, &expr.value)?);
@@ -179,7 +174,7 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
         Ok(Let {
             name: expr.name.clone(),
             is_function: expr.is_function,
-            requires: Some(requires),
+            args: Some(requires),
             value,
             info,
         }
