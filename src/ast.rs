@@ -264,7 +264,7 @@ impl Node {
     pub fn to_root(self: &Self) -> Root {
         Root {
             ast: self.clone(),
-            requirements: HashMap::new(),
+            graph: HashMap::new(),
         }
     }
 }
@@ -277,9 +277,17 @@ pub enum ScopeName {
 }
 
 #[derive(Debug, Clone)]
+pub struct Definition {
+    pub requires: Vec<Sym>,
+    pub defines: HashMap<Sym, Vec<ScopeName>>,
+}
+
+pub type CallGraph = HashMap<Vec<ScopeName>, Definition>;
+
+#[derive(Debug, Clone)]
 pub struct Root {
     pub ast: Node,
-    pub requirements: HashMap<Vec<ScopeName>, Vec<Sym>>,
+    pub graph: CallGraph,
 }
 
 pub trait Visitor<State, Res, Final, ErrT> {
