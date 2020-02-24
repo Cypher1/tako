@@ -23,22 +23,29 @@ impl Default for ReScoper {
 
 // TODO: Return nodes.
 type Res = Result<Node, ReScoperError>;
+
 pub struct Namespace {
     name: ScopeName,
-    defines: Vec<Sym>,
+    info: Definition,
 }
 
 fn globals() -> Namespace {
+    let mut defines = HashMap::new();
+    defines.insert(Sym::new("true".to_string()), vec![]);
+    defines.insert(Sym::new("false".to_string()), vec![]);
     Namespace {
         name: ScopeName::Unknown(0),
-        defines: vec![Sym::new("true".to_string()), Sym::new("false".to_string())],
+        info: Definition {
+        requires: vec![],
+        defines
+        }
     }
 }
 
 pub struct State {
     stack: Vec<Namespace>,
     requires: Vec<Sym>,
-    counter: i32, // used for ensuring uniqueness in new variables and scooe names
+    counter: i32, // used for ensuring uniqueness in new variables and scope names
 }
 
 impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
@@ -65,8 +72,8 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
         let mut space = vec![];
         for namespace in state.stack.iter().rev() {
             space.push(namespace.name.clone());
-            for name in namespace.defines.iter() {
-                if *name.name == expr.name {
+            for name in namespace.info.defines.iter() {
+                if *name.0.name == expr.name {
                     // The name is in scope.
                     found = true;
                     info.defined_at = Some(space.clone());
@@ -95,7 +102,7 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
     fn visit_apply(&mut self, state: &mut State, expr: &Apply) -> Res {
         state.stack.push(Namespace {
             name: ScopeName::Anon(state.counter),
-            defines: vec![],
+            info: Definition{defines: HashMap::new(), requires: vec![]},
         });
         state.counter += 1;
         let mut args = vec![];
@@ -117,39 +124,41 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
     }
 
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
+        let mut space = vec![];
+        for namespace in state.stack.iter() {
+            space.push(namespace.name.clone());
+        }
         {
             let frame = state.stack.last_mut().unwrap();
-            frame.defines.push(expr.to_sym());
-
-            state.stack.push(Namespace {
-                name: ScopeName::Named(expr.name.clone(), state.counter),
-                defines: expr.args.clone().unwrap_or(vec![]),
-            });
-            state.counter += 1;
+            frame.info.defines.insert(expr.to_sym(), space.clone());
         }
 
-        // Find new graph
-        let mut requires = vec![];
-        std::mem::swap(&mut requires, &mut state.requires);
+        state.stack.push(Namespace {
+            name: ScopeName::Named(expr.name.clone(), state.counter),
+            info: Definition {
+                defines: HashMap::new(),
+                requires: expr.args.clone().unwrap_or(vec![]),
+            }
+        });
+        state.counter += 1;
+
+        // Find new graph node
+        let mut node = Definition {
+            requires: vec![],
+            defines: HashMap::new(),
+        };
+        std::mem::swap(&mut node.requires, &mut state.requires);
         let value = Box::new(self.visit(state, &expr.value)?);
-        std::mem::swap(&mut requires, &mut state.requires);
+        std::mem::swap(&mut node.requires, &mut state.requires);
 
         for req in state.requires.iter() {
-            if !requires.iter().any(|r| r.name == req.name) {
-                requires.push(req.clone());
-            }
-        }
-        let mut i = 0;
-        while i != requires.len() {
-            if state.requires.iter().any(|r| r.name == requires[i].name) {
-                requires.remove(i); // Already in scope.
-            } else {
-                i += 1;
+            if !node.requires.iter().any(|r| r.name == req.name) {
+                node.requires.push(req.clone());
             }
         }
 
         // Now that the variable has been defined we can use it.
-        for req in requires.iter() {
+        for req in node.requires.iter() {
             if !state.requires.iter().any(|r| r.name == req.name) {
                 state.requires.push(req.clone());
             }
@@ -157,15 +166,7 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
         // Now that the variable has been defined we can use it.
         // if !recursive // frame.push(expr.name.clone());
 
-        let mut space = vec![];
-        for namespace in state.stack.iter() {
-            space.push(namespace.name.clone());
-        }
-
-        self.graph.insert(space.clone(), Definition {
-            requires: requires.clone(),
-            defines: HashMap::new(),
-        });
+        self.graph.insert(space.clone(), node.clone());
         if self.debug > 1 {
             eprintln!("visiting {:?}", space);
         }
@@ -177,7 +178,7 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
         Ok(Let {
             name: expr.name.clone(),
             is_function: expr.is_function,
-            args: Some(requires),
+            args: Some(node.requires),
             value,
             info,
         }
