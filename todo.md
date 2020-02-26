@@ -9,10 +9,8 @@
   - tako doc
   - tako clean
 - Features:
-  - Definitions +/ locals
-  - Functions
-  - Function arguments
-  - Main function argument parsing
+  - Locals
+  - Main / command function argument parsing
   - Imports
   - More operators
   - Conversion to ssa
