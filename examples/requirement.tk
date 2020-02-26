@@ -1,2 +1,2 @@
-x()= !it-|it;
-x(false)
+x(y)= !y-|y;
+x(y=false)
