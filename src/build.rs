@@ -19,77 +19,54 @@ fn visit_dirs(dir: &Path, cb: &mut dyn FnMut(&DirEntry)) -> io::Result<()> {
     Ok(())
 }
 
+fn build_test(mut f: &std::fs::File, p: String, test_type: &str) {
+    let nm = p
+        .replace("/", "_")
+        .replace("\\", "_")
+        .replace(".tk", "")
+        .replace("._", "");
+    write!(
+        f,
+        "
+#[test]{test_type}
+fn {fn_name}() {{
+    let file = \"{name}\".to_string();
+    let mut opts = super::Options::default();
+    opts.interactive = true;
+    super::work(&file, &opts).expect(\"failed to interpret\");
+}}",
+        name = p.replace("\\", "/"),
+        fn_name = nm,
+        test_type = test_type
+    )
+    .unwrap();
+}
+
+fn files_from(path: &str) -> Vec<String> {
+    let mut params: Vec<String> = vec![];
+    visit_dirs(Path::new(path), &mut |filename| {
+        let pth = filename.path();
+        match pth.to_str() {
+            Some(s) => {
+                &mut params.push(s.to_string());
+            }
+            _ => panic!(),
+        }
+    })
+    .expect("Failed finding test files.");
+    params
+}
+
 fn main() {
     let out_dir = std::env::var("OUT_DIR").unwrap();
     let destination = std::path::Path::new(&out_dir).join("test.rs");
     let mut f = std::fs::File::create(&destination).unwrap();
 
-    let mut params: Vec<String> = vec![];
-    visit_dirs(Path::new("examples"), &mut |filename| {
-        let pth = filename.path();
-        match pth.to_str() {
-            Some(s) => {
-                &mut params.push(s.to_string());
-            }
-            _ => panic!(),
-        }
-    })
-    .expect("Failed finding test files.");
-
-    for p in params {
-        let nm = p
-            .replace("/", "_")
-            .replace("\\", "_")
-            .replace(".tk", "")
-            .replace("._", "");
-        write!(
-            f,
-            "
-#[test]
-fn {fn_name}() {{
-    let file = \"{name}\".to_string();
-    let mut opts = super::Options::default();
-    opts.interactive = true;
-    super::work(&file, &opts).expect(\"failed to interpret\");
-}}",
-            name = p.replace("\\", "/"),
-            fn_name = nm
-        )
-        .unwrap();
+    for p in files_from("examples") {
+        build_test(&mut f, p, "");
     }
 
-    let mut params: Vec<String> = vec![];
-    visit_dirs(Path::new("counter_examples"), &mut |filename| {
-        let pth = filename.path();
-        match pth.to_str() {
-            Some(s) => {
-                &mut params.push(s.to_string());
-            }
-            _ => panic!(),
-        }
-    })
-    .expect("Failed finding test files.");
-
-    for p in params {
-        let nm = p
-            .replace("/", "_")
-            .replace("\\", "_")
-            .replace(".tk", "")
-            .replace("._", "");
-        write!(
-            f,
-            "
-#[test]
-#[should_panic]
-fn {fn_name}() {{
-    let file = \"{name}\".to_string();
-    let mut opts = super::Options::default();
-    opts.interactive = true;
-    super::work(&file, &opts).expect(\"failed to interpret\");
-}}",
-            name = p.replace("\\", "/"),
-            fn_name = nm
-        )
-        .unwrap();
+    for p in files_from("counter_examples") {
+        build_test(&mut f, p, "\n#[should_panic]");
     }
 }
