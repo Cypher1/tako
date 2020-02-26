@@ -58,6 +58,15 @@ fn get_defs(root: Node) -> Vec<Let> {
 
     match root {
         LetNode(n) => args.push(n),
+        SymNode(n) => args.push(Let {
+            name: n.name.clone(),
+            args: None,
+            is_function: false,
+            info: n.get_info(),
+            value: Box::new(
+                n.to_node(),
+            ),
+        }),
         BinOpNode(BinOp {
             name,
             left,
@@ -85,13 +94,15 @@ fn get_defs(root: Node) -> Vec<Let> {
                 });
             }
         }
-        n => args.push(Let {
-            name: "it".to_string(),
-            args: None,
-            is_function: false,
-            value: Box::new(n.clone()),
-            info: n.get_info(),
-        }),
+        n => {
+            args.push(Let {
+                name: "it".to_string(),
+                args: None,
+                is_function: false,
+                value: Box::new(n.clone()),
+                info: n.get_info(),
+            })
+        },
     }
 
     args

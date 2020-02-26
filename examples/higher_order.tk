@@ -1,3 +1,3 @@
-apply(x, f)=f(f(x))
+apply(x, f)=f(y=f(y=x))
 
-apply(x=3, f(it)=it*2)+"  "+apply(x=true, f(it)=(!it))
+apply(x=3, f(y)=y*2)+"  "+apply(x=true, f(y)=(!y))

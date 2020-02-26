@@ -126,7 +126,7 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
         interp.debug = opts.debug;
         let res = interp
             .visit_root(&scoped)
-            .expect("couldnt not interpret program");
+            .expect("could not interpret program");
         let mut ppr = PrettyPrint::default();
         use ast::ToNode;
         match ppr.visit_root(&res.to_node().to_root()) {
@@ -142,7 +142,7 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
     let mut comp = Compiler::default();
     let res = comp
         .visit_root(&scoped)
-        .expect("couldnt not compile program");
+        .expect("could not compile program");
     println!("{}", res);
     Ok(())
 }
