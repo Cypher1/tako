@@ -19,7 +19,7 @@ fn visit_dirs(dir: &Path, cb: &mut dyn FnMut(&DirEntry)) -> io::Result<()> {
     Ok(())
 }
 
-fn build_test(mut f: &std::fs::File, p: String, test_type: &str) {
+fn build_test(mut f: &std::fs::File, p: String, test_type: &str, opts: &str) {
     let nm = p
         .replace("/", "_")
         .replace("\\", "_")
@@ -32,12 +32,13 @@ fn build_test(mut f: &std::fs::File, p: String, test_type: &str) {
 fn {fn_name}() {{
     let file = \"{name}\".to_string();
     let mut opts = super::Options::default();
-    opts.interactive = true;
+    {opts}
     super::work(&file, &opts).expect(\"failed to interpret\");
 }}",
         name = p.replace("\\", "/"),
         fn_name = nm,
-        test_type = test_type
+        test_type = test_type,
+        opts = opts
     )
     .unwrap();
 }
@@ -62,11 +63,17 @@ fn main() {
     let destination = std::path::Path::new(&out_dir).join("test.rs");
     let mut f = std::fs::File::create(&destination).unwrap();
 
+    let interactive = "opts.interactive = true;";
     for p in files_from("examples") {
-        build_test(&mut f, p, "");
+        build_test(&mut f, p, "", interactive);
     }
 
     for p in files_from("counter_examples") {
-        build_test(&mut f, p, "\n#[should_panic]");
+        build_test(&mut f, p, "\n#[should_panic]", interactive);
     }
+
+    for p in files_from("compiled_examples") {
+        build_test(&mut f, p, "", "");
+    }
+
 }
