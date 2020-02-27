@@ -6,12 +6,6 @@ pub struct Tree<T> {
     pub children: Vec<Tree<T>>,
 }
 
-pub fn to_tree<T: std::clone::Clone>(t: Vec<T>) -> Vec<Tree<T>> {
-    let mut output = Vec::new();
-    output.extend(t.iter().map(to_root));
-    output
-}
-
 pub fn to_root<T: std::clone::Clone>(t: &T) -> Tree<T> {
     Tree {
         value: t.clone(),

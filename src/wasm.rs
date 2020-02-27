@@ -31,22 +31,16 @@ impl Default for Compiler {
     }
 }
 
-type Res = Result<Vec<String>, CompilerError>;
+type Res = Result<Tree<String>, CompilerError>;
 type State = ();
-impl Visitor<State, Vec<String>, Tree<String>, CompilerError> for Compiler {
+impl Visitor<State, Tree<String>, Tree<String>, CompilerError> for Compiler {
     fn visit_root(&mut self, root: &Root) -> Result<Tree<String>, CompilerError> {
-        let name = Tree {
-            value: "\"run_main\"".to_string(),
-            children: vec![],
-        };
+        let name = to_root(&"\"run_main\"".to_string());
         let def = Tree {
             value: "export".to_string(),
             children: vec![name],
         };
-        let node_i32 = Tree {
-            value: "i32".to_string(),
-            children: vec![],
-        };
+        let node_i32 = to_root(&"i32".to_string());
         let param = Tree {
             value: "param".to_string(),
             children: vec![node_i32.clone(), node_i32.clone()],
@@ -56,7 +50,7 @@ impl Visitor<State, Vec<String>, Tree<String>, CompilerError> for Compiler {
             children: vec![node_i32],
         };
         let mut children = vec![def, param, result];
-        children.append(&mut to_tree(self.visit(&mut (), &root.ast)?));
+        children.push(self.visit(&mut (), &root.ast)?);
         let func = Tree {
             value: "func".to_string(),
             children,
@@ -67,14 +61,19 @@ impl Visitor<State, Vec<String>, Tree<String>, CompilerError> for Compiler {
         })
     }
 
-    fn visit_sym(&mut self, _state: &mut State, _expr: &Sym) -> Res {
-        panic!("Sym not implemented in wasm");
+    fn visit_sym(&mut self, _state: &mut State, expr: &Sym) -> Res {
+        let name = format!("${}", expr.name.to_string());
+        let namet = to_root(&name);
+        Ok(Tree {
+            value: "local.get".to_string(),
+            children: vec![namet],
+        })
     }
 
     fn visit_prim(&mut self, _state: &mut State, expr: &Prim) -> Res {
         use Prim::*;
         match expr {
-            I32(n, _) => Ok(vec!["i32.const ".to_string() + &n.to_string()]),
+            I32(n, _) => Ok(to_root(&("i32.const ".to_string() + &n.to_string()))),
             _ => unimplemented!(),
         }
     }
@@ -90,26 +89,28 @@ impl Visitor<State, Vec<String>, Tree<String>, CompilerError> for Compiler {
     fn visit_un_op(&mut self, state: &mut State, expr: &UnOp) -> Res {
         use Prim::*;
         let mut res = Vec::new();
-        let mut inner = self.visit(state, &expr.inner)?;
+        let inner = self.visit(state, &expr.inner)?;
         let info = expr.get_info();
         match expr.name.as_str() {
             "+" => {
-                res.append(&mut inner);
+                Ok(inner)
             }
             "-" => {
-                res.append(&mut self.visit_prim(state, &I32(0, expr.clone().get_info()))?);
-                res.append(&mut inner);
-                res.push("i32.sub".to_string());
+                res.push(self.visit_prim(state, &I32(0, expr.clone().get_info()))?);
+                res.push(inner);
+                Ok(Tree{
+                    value: "i32.sub".to_string(),
+                    children: res
+                })
             }
-            op => return Err(CompilerError::UnknownPrefixOperator(op.to_string(), info)),
-        };
-        Ok(res)
+            op => Err(CompilerError::UnknownPrefixOperator(op.to_string(), info))
+        }
     }
     fn visit_bin_op(&mut self, state: &mut State, expr: &BinOp) -> Res {
         let info = expr.get_info();
         let mut res = Vec::new();
-        res.append(&mut self.visit(state, &expr.left)?);
-        res.append(&mut self.visit(state, &expr.right)?);
+        res.push(self.visit(state, &expr.left.clone())?);
+        res.push(self.visit(state, &expr.right.clone())?);
         // TODO: require 2 children
         let s = match expr.name.as_str() {
             "*" => "i32.mul".to_string(),
@@ -119,8 +120,10 @@ impl Visitor<State, Vec<String>, Tree<String>, CompilerError> for Compiler {
             "^" => "i32.pow".to_string(), // TODO: require pos pow
             op => return Err(CompilerError::UnknownInfixOperator(op.to_string(), info)),
         };
-        res.push(s);
-        Ok(res)
+        Ok(Tree{
+            value: s,
+            children: res
+        })
     }
 
     fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {
