@@ -31,14 +31,15 @@ fn build_test(mut f: &std::fs::File, p: String, test_type: &str, opts: &str) {
 #[test]{test_type}
 fn {fn_name}() {{
     let file = \"{name}\".to_string();
-    let mut opts = super::Options::default();
+    let{muted} opts = super::Options::default();
     {opts}
     super::work(&file, &opts).expect(\"failed to interpret\");
 }}",
         name = p.replace("\\", "/"),
         fn_name = nm,
         test_type = test_type,
-        opts = opts
+        opts = opts,
+        muted = if opts == "" { "" } else { " mut" }
     )
     .unwrap();
 }
