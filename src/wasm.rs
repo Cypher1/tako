@@ -50,6 +50,11 @@ impl Visitor<State, Tree<String>, Tree<String>, CompilerError> for Compiler {
             children: vec![node_i32],
         };
         let mut children = vec![def, param, result];
+
+        for def in root.graph.iter() {
+            eprintln!("def {:?}", def);
+            // children.push();
+        }
         children.push(self.visit(&mut (), &root.ast)?);
         let func = Tree {
             value: "func".to_string(),
@@ -73,7 +78,10 @@ impl Visitor<State, Tree<String>, Tree<String>, CompilerError> for Compiler {
     fn visit_prim(&mut self, _state: &mut State, expr: &Prim) -> Res {
         use Prim::*;
         match expr {
-            I32(n, _) => Ok(to_root(&("i32.const ".to_string() + &n.to_string()))),
+            I32(n, _) => Ok(Tree {
+                value: "i32.const".to_string(),
+                children: vec![to_root(&n.to_string())]
+            }),
             _ => unimplemented!(),
         }
     }
@@ -82,8 +90,13 @@ impl Visitor<State, Tree<String>, Tree<String>, CompilerError> for Compiler {
         panic!("Apply not implemented in wasm");
     }
 
-    fn visit_let(&mut self, _state: &mut State, _expr: &Let) -> Res {
-        panic!("Let not implemented in wasm");
+    fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
+        let name = format!("${}", expr.name.to_string());
+        let namet = to_root(&name);
+        Ok(Tree {
+            value: "local.set".to_string(),
+            children: vec![namet, self.visit(state, &expr.value)?]
+        })
     }
 
     fn visit_un_op(&mut self, state: &mut State, expr: &UnOp) -> Res {
@@ -118,6 +131,7 @@ impl Visitor<State, Tree<String>, Tree<String>, CompilerError> for Compiler {
             "/" => "i32.div_s".to_string(), // TODO: require divisibility
             "-" => "i32.sub".to_string(),
             "^" => "i32.pow".to_string(), // TODO: require pos pow
+            ";" => "block".to_string(),
             op => return Err(CompilerError::UnknownInfixOperator(op.to_string(), info)),
         };
         Ok(Tree{
