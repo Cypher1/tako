@@ -25,7 +25,7 @@ impl Default for ReScoper {
 // TODO: Return nodes.
 type Res = Result<Node, ReScoperError>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Namespace {
     name: ScopeName,
     info: Definition,
@@ -38,12 +38,13 @@ fn globals() -> Namespace {
     Namespace {
         name: ScopeName::Unknown(0),
         info: Definition {
-        requires: vec![],
-        defines
+            requires: vec![],
+            defines
         }
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct State {
     stack: Vec<Namespace>,
     requires: Vec<Sym>,
@@ -67,6 +68,10 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
                 expr.ast.get_info(),
             ))
         }
+        if self.debug > 3 {
+            eprintln!("graph {:?}", res.graph.clone());
+        }
+
         Ok(res)
     }
 
@@ -171,6 +176,7 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
         // Finish the scope. Retrieve any information from.the stack.
         node = state.stack.pop().unwrap().info;
 
+        eprintln!("graph def: {:?} -> {:?}", space, node);
         self.graph.insert(space.clone(), node.clone());
 
         let mut info = expr.get_info();
