@@ -136,9 +136,13 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
 
         let recursive = expr.is_function;
         if recursive {
-            let frame = state.stack.last_mut().unwrap();
             // Let this node and its siblings call this node.
-            frame.info.defines.insert(expr.to_sym(), space.clone());
+            match state.stack.last_mut() {
+                Some(frame) => {
+                    frame.info.defines.insert(expr.to_sym(), space.clone());
+                },
+                None => panic!("here1"),
+            }
         }
 
         // Find new graph node
@@ -167,9 +171,13 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
 
         // Now that the variable has been defined we can use it.
         if !recursive {
-            let frame = state.stack.last_mut().unwrap();
             // Let this node and its siblings call this node.
-            frame.info.defines.insert(expr.to_sym(), space.clone());
+            match state.stack.last_mut() {
+                Some(frame) => {
+                    frame.info.defines.insert(expr.to_sym(), space.clone());
+                },
+                None => panic!("here1"),
+            }
         }
 
         eprintln!("graph def: {:?} -> {:?}", space, node);
