@@ -26,11 +26,7 @@ impl Visitor<State, (), String, PrettyPrintError> for PrettyPrint {
     }
 
     fn visit_sym(&mut self, state: &mut State, expr: &Sym) -> Res {
-        match expr.depth {
-            Some(0) | None => write!(state, "{}", expr.name),
-            Some(depth) => write!(state, "{}#{}", expr.name, depth),
-        }
-        .unwrap();
+        write!(state, "{}", expr.name).unwrap();
         Ok(())
     }
 
