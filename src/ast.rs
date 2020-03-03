@@ -38,7 +38,6 @@ impl ToNode for Apply {
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Sym {
     pub name: String,
-    pub depth: Option<i32>,
     pub info: Info,
 }
 
@@ -46,7 +45,6 @@ impl Sym {
     pub fn new(name: String) -> Sym {
         Sym {
             name,
-            depth: None,
             info: Info::default(),
         }
     }
@@ -97,7 +95,6 @@ impl Let {
     pub fn to_sym(self: &Let) -> Sym {
         Sym {
             name: self.name.clone(),
-            depth: None,
             info: self.get_info(),
         }
     }
@@ -274,6 +271,16 @@ pub enum ScopeName {
     Unknown(i32),
     Anon(i32),
     Named(String, i32),
+}
+
+impl ScopeName {
+    pub fn to_name(self: ScopeName) -> String {
+        match self {
+            ScopeName::Unknown(n) => format!("{}", n).to_string(),
+            ScopeName::Anon(n) => format!("{}", n).to_string(),
+            ScopeName::Named(name, n) => format!("{}{}", name, n).to_string(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

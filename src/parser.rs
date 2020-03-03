@@ -195,7 +195,6 @@ fn nud(mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
                 (
                     Sym {
                         name: head.value.clone(),
-                        depth: None,
                         info: head.get_info(),
                     }
                     .to_node(),

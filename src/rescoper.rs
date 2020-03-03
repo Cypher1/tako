@@ -76,30 +76,19 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
     }
 
     fn visit_sym(&mut self, state: &mut State, expr: &Sym) -> Res {
-        let mut found = false;
         let mut info = expr.get_info();
 
-        let mut space = vec![];
         for namespace in state.stack.iter().rev() {
-            space.push(namespace.name.clone());
             for name in namespace.info.defines.iter() {
                 if *name.0.name == expr.name {
                     // The name is in scope.
-                    found = true;
-                    info.defined_at = Some(space.clone());
+                    info.defined_at = Some((*name.1).clone());
                 }
             }
         }
 
-        let depth = if !found && !state.requires.iter().any(|r| r.name == expr.name) {
-            state.requires.push(expr.clone());
-            None
-        } else {
-            Some(space.len() as i32)
-        };
         Ok(Sym {
             name: expr.name.clone(),
-            depth,
             info,
         }
         .to_node())
@@ -138,12 +127,15 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
         for namespace in state.stack.iter() {
             space.push(namespace.name.clone());
         }
+        space.push(ScopeName::Named(expr.name.clone(), state.counter));
+        state.counter += 1;
 
         if self.debug > 1 {
             eprintln!("visiting {:?}", space.clone());
         }
 
-        {
+        let recursive = expr.is_function;
+        if recursive {
             let frame = state.stack.last_mut().unwrap();
             // Let this node and its siblings call this node.
             frame.info.defines.insert(expr.to_sym(), space.clone());
@@ -170,11 +162,15 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
         // Examine the body of the let binding.
         let value = Box::new(self.visit(state, &expr.value)?);
 
-        // Now that the variable has been defined we can use it.
-        // if !recursive // frame.push(expr.name.clone());
-
         // Finish the scope. Retrieve any information from.the stack.
         node = state.stack.pop().unwrap().info;
+
+        // Now that the variable has been defined we can use it.
+        if !recursive {
+            let frame = state.stack.last_mut().unwrap();
+            // Let this node and its siblings call this node.
+            frame.info.defines.insert(expr.to_sym(), space.clone());
+        }
 
         eprintln!("graph def: {:?} -> {:?}", space, node);
         self.graph.insert(space.clone(), node.clone());
