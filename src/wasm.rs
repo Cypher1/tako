@@ -46,15 +46,15 @@ impl Visitor<State, Vec<Tree<String>>, Tree<String>, CompilerError> for Compiler
             children: vec![name],
         };
         let node_i32 = to_root(&"i32".to_string());
-        let param = Tree {
-            value: "param".to_string(),
-            children: vec![node_i32.clone(), node_i32.clone()],
-        };
+        // let param = Tree {
+            // value: "param".to_string(),
+            // children: vec![node_i32.clone(), node_i32.clone()],
+        // };
         let result = Tree {
             value: "result".to_string(),
             children: vec![node_i32.clone()],
         };
-        let mut children = vec![def, param, result];
+        let mut children = vec![def, result];
 
         for def in root.graph.iter() {
             let lname = make_name(def.0.to_vec());
