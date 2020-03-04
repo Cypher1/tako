@@ -5,16 +5,8 @@
 #include "gen/addTwo.h"
 
 int main(int argc, char* argv[]) {
-
-  if(argc < 3) {
-    return 1;
-  }
-
-  int x = atoi(argv[1]);
-  int y = atoi(argv[2]);
-
   init();
-  int z = Z_run_mainZ_iii(x, y);
-  printf("%d + 3*%d = %d\n", x, y, z);
+  int z = Z_run_mainZ_iv();
+  printf("%d\n", z);
   return 0;
 }

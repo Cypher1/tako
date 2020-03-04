@@ -3,7 +3,7 @@
 function realt() {
   >&2 echo "timing '$@'"
   START=$(date +%s.%N)
-  >&2 $@
+  >&2 $@ || exit 1
   END=$(date +%s.%N)
   >&2 echo -e "\trealtime: $(bc <<< "$END - $START")"
 }
@@ -42,10 +42,10 @@ function wat2c() {
     cd gen
 
     # Convert readable wat to wasm byte code.
-    ../wabt/build/wat2wasm "${FILE}.wat" -o "${FILE}.wasm"
+    ../wabt/build/wat2wasm "${FILE}.wat" -o "${FILE}.wasm" || exit 1
 
     # Generate C impl and header from wasm.
-    ../wabt/build/wasm2c "${FILE}.wasm" -o "${FILE}.c"
+    ../wabt/build/wasm2c "${FILE}.wasm" -o "${FILE}.c" || exit 1
   )
 }
 
