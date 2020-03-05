@@ -65,6 +65,7 @@ fn main() {
     let mut f = std::fs::File::create(&destination).unwrap();
 
     let interactive = "opts.interactive = true;";
+    let wasm = "opts.wasm = true;";
     for p in files_from("examples") {
         build_test(&mut f, p, "", interactive);
     }
@@ -74,7 +75,10 @@ fn main() {
     }
 
     for p in files_from("compiled_examples_wasm") {
-        build_test(&mut f, p, "", "");
+        build_test(&mut f, p, "", wasm);
     }
 
+    for p in files_from("compiled_examples_c") {
+        build_test(&mut f, p, "", "");
+    }
 }
