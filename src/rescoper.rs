@@ -32,9 +32,7 @@ pub struct Namespace {
 }
 
 fn globals() -> Namespace {
-    let mut defines = HashMap::new();
-    defines.insert(Sym::new("true".to_string()), vec![]);
-    defines.insert(Sym::new("false".to_string()), vec![]);
+    let defines = HashMap::new();
     Namespace {
         name: ScopeName::Unknown(0),
         info: Definition {

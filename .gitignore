@@ -2,3 +2,5 @@
 **/build
 **/gen
 **/*.rs.bk
+*.out
+out.c
