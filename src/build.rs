@@ -73,7 +73,7 @@ fn main() {
         build_test(&mut f, p, "\n#[should_panic]", interactive);
     }
 
-    for p in files_from("compiled_examples") {
+    for p in files_from("compiled_examples_wasm") {
         build_test(&mut f, p, "", "");
     }
 
