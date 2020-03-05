@@ -56,7 +56,7 @@ function initTako() {
 }
 
 function tako() {
-  $TAKO_PATH "$1" > gen/addTwo.wat
+  $TAKO_PATH --wasm "$1" > gen/addTwo.wat
 }
 
 # Make sure our output dirs are available.
@@ -74,7 +74,7 @@ require "header from wabt" "gen/wasm-rt.h" || \
   cp wabt/wasm2c/wasm-rt.h gen/wasm-rt.h
 
 # Run tako's core.
-realt tako --wasm "$1"
+realt tako "$1"
 # Generate our C files ('compile to C')
 realt wat2c "addTwo"
 
