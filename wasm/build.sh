@@ -74,7 +74,7 @@ require "header from wabt" "gen/wasm-rt.h" || \
   cp wabt/wasm2c/wasm-rt.h gen/wasm-rt.h
 
 # Run tako's core.
-realt tako "$1"
+realt tako --wasm "$1"
 # Generate our C files ('compile to C')
 realt wat2c "addTwo"
 
