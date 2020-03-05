@@ -191,7 +191,18 @@ fn nud(mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
                 (inner, new_toks)
             }
             TokenType::Sym => {
-                // Handle args.
+                if head.value == "true" {
+                    return (
+                        Prim::Bool(true, head.get_info()).to_node(),
+                        toks,
+                    )
+                }
+                if head.value == "false" {
+                    return (
+                        Prim::Bool(false, head.get_info()).to_node(),
+                        toks,
+                    )
+                }
                 (
                     Sym {
                         name: head.value.clone(),

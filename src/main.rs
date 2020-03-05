@@ -15,17 +15,18 @@ mod interpreter;
 mod pretty_print;
 mod rescoper;
 mod wasm;
+mod to_c;
 
 use ast::Visitor;
 use interpreter::Interpreter;
 use pretty_print::PrettyPrint;
 use rescoper::ReScoper;
-use wasm::Compiler;
 
 #[derive(Debug)]
 struct Options {
     files: Vec<String>,
     interactive: bool,
+    wasm: bool,
     show_ast: bool,
     show_full_ast: bool,
     debug: i32,
@@ -36,6 +37,7 @@ impl Default for Options {
         Options {
             files: vec![],
             interactive: false,
+            wasm: false,
             show_ast: false,
             show_full_ast: false,
             debug: 0,
@@ -58,6 +60,7 @@ Options:
   -i --interactive    Run as a repl (interactive mode).
   -r --run            Run files in interpreter.
   -d --debug=<level>  Level of debug logging to use [default: 0].
+  --wasm              Compile to wasm [default: false].
   --ast               Pretty print an abstract syntax tree of the code.
   --full_ast          Debug print an abstract syntax tree of the code.
   -h --help           Show this screen.
@@ -79,6 +82,7 @@ fn main() -> std::io::Result<()> {
                 "-r" | "--run" => opts.interactive = true,
                 "-d" => opts.debug += 1,
                 "--ast" => opts.show_ast = true,
+                "--wasm" => opts.wasm = true,
                 "--full-ast" => opts.show_full_ast = true,
                 "--version" => {
                     println!("{}{}", TITLE, VERSION);
@@ -139,7 +143,17 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
         }
         return Ok(());
     }
-    let mut comp = Compiler::default();
+
+    if opts.wasm {
+        let mut comp = wasm::Compiler::default();
+        let res = comp
+            .visit_root(&scoped)
+            .expect("could not compile program");
+        println!("{}", res);
+        return Ok(());
+    }
+
+    let mut comp = to_c::Compiler::default();
     let res = comp
         .visit_root(&scoped)
         .expect("could not compile program");

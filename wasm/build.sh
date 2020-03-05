@@ -56,7 +56,7 @@ function initTako() {
 }
 
 function tako() {
-  $TAKO_PATH "$1" > gen/addTwo.wat
+  $TAKO_PATH --wasm "$1" > gen/addTwo.wat
 }
 
 # Make sure our output dirs are available.
