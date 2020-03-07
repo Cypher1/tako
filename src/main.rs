@@ -161,11 +161,12 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
         .expect("could not compile program");
     // println!("{}", res);
 
-    let destination = std::path::Path::new("out.c");
+    let outf = format!("{}.c", filename);
+    let destination = std::path::Path::new(&outf);
     let mut f = std::fs::File::create(&destination).unwrap();
     write!(f, "{}\n", res)?;
 
-    let output = Command::new("gcc").arg("-lm").arg("-Wall").arg("-Werror").arg("out.c").output()?;
+    let output = Command::new("gcc").arg("-lm").arg("-Wall").arg("-Werror").arg(outf).output()?;
     if !output.status.success() {
         let s = String::from_utf8(output.stderr).unwrap();
         eprintln!("{}", s);
