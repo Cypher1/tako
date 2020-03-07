@@ -1,6 +1,8 @@
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
+use std::process::Command;
+
 #[macro_use]
 mod map_macros;
 
@@ -157,7 +159,21 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
     let res = comp
         .visit_root(&scoped)
         .expect("could not compile program");
-    println!("{}", res);
+    // println!("{}", res);
+
+    let outf = format!("{}.c", filename);
+    let destination = std::path::Path::new(&outf);
+    let mut f = std::fs::File::create(&destination).unwrap();
+    write!(f, "{}\n", res)?;
+
+    let output = Command::new("gcc").arg("-lm").arg("-Wall").arg("-Werror").arg(outf).output()?;
+    if !output.status.success() {
+        let s = String::from_utf8(output.stderr).unwrap();
+        eprintln!("{}", s);
+        panic!("Command executed with failing error code");
+    }
+    let s = String::from_utf8(output.stdout).unwrap();
+    eprintln!("{}", s);
     Ok(())
 }
 

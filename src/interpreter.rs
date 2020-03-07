@@ -26,12 +26,7 @@ impl Default for Interpreter {
 }
 
 fn globals() -> Frame {
-    use Node::*;
-    use Prim::*;
-    map! {
-        "true".to_string() => PrimNode(Bool(true, Info::default())),
-        "false".to_string() => PrimNode(Bool(false, Info::default()))
-    }
+    HashMap::new()
 }
 
 fn find_symbol<'a>(state: &'a State, name: &str) -> Option<&'a Node> {
