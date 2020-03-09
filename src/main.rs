@@ -16,8 +16,8 @@ mod types;
 mod interpreter;
 mod pretty_print;
 mod rescoper;
-mod wasm;
 mod to_c;
+mod wasm;
 
 use ast::Visitor;
 use interpreter::Interpreter;
@@ -148,25 +148,26 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
 
     if opts.wasm {
         let mut comp = wasm::Compiler::default();
-        let res = comp
-            .visit_root(&scoped)
-            .expect("could not compile program");
+        let res = comp.visit_root(&scoped).expect("could not compile program");
         println!("{}", res);
         return Ok(());
     }
 
     let mut comp = to_c::Compiler::default();
-    let res = comp
-        .visit_root(&scoped)
-        .expect("could not compile program");
+    let res = comp.visit_root(&scoped).expect("could not compile program");
     // println!("{}", res);
 
     let outf = format!("{}.c", filename);
     let destination = std::path::Path::new(&outf);
     let mut f = std::fs::File::create(&destination).unwrap();
-    write!(f, "{}\n", res)?;
+    writeln!(f, "{}", res)?;
 
-    let output = Command::new("gcc").arg("-lm").arg("-Wall").arg("-Werror").arg(outf).output()?;
+    let output = Command::new("gcc")
+        .arg("-lm")
+        .arg("-Wall")
+        .arg("-Werror")
+        .arg(outf)
+        .output()?;
     if !output.status.success() {
         let s = String::from_utf8(output.stderr).unwrap();
         eprintln!("{}", s);

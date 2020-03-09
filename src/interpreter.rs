@@ -29,7 +29,7 @@ fn globals() -> Frame {
     HashMap::new()
 }
 
-fn find_symbol<'a>(state: &'a State, name: &str) -> Option<&'a Node> {
+fn find_symbol<'a>(state: &'a [Frame], name: &str) -> Option<&'a Node> {
     for frame in state.iter().rev() {
         if let Some(val) = frame.get(name) {
             return Some(val); // This is the variable

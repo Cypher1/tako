@@ -32,7 +32,7 @@ impl Default for Compiler {
 }
 
 pub fn make_name(def: Vec<ScopeName>) -> String {
-    let def_n: Vec<String> = def[1..].into_iter().map(|n| n.clone().to_name()).collect();
+    let def_n: Vec<String> = def[1..].iter().map(|n| n.clone().to_name()).collect();
     return format!("${}", def_n.join("_"));
 }
 
@@ -47,8 +47,8 @@ impl Visitor<State, Vec<Tree<String>>, Tree<String>, CompilerError> for Compiler
         };
         let node_i32 = to_root(&"i32".to_string());
         // let param = Tree {
-            // value: "param".to_string(),
-            // children: vec![node_i32.clone(), node_i32.clone()],
+        // value: "param".to_string(),
+        // children: vec![node_i32.clone(), node_i32.clone()],
         // };
         let result = Tree {
             value: "result".to_string(),
@@ -92,7 +92,7 @@ impl Visitor<State, Vec<Tree<String>>, Tree<String>, CompilerError> for Compiler
         match expr {
             I32(n, _) => Ok(vec![Tree {
                 value: "i32.const".to_string(),
-                children: vec![to_root(&n.to_string())]
+                children: vec![to_root(&n.to_string())],
             }]),
             _ => unimplemented!(),
         }
@@ -108,7 +108,7 @@ impl Visitor<State, Vec<Tree<String>>, Tree<String>, CompilerError> for Compiler
         namet.extend(self.visit(state, &expr.value)?);
         Ok(vec![Tree {
             value: "local.set".to_string(),
-            children: namet
+            children: namet,
         }])
     }
 
@@ -118,18 +118,16 @@ impl Visitor<State, Vec<Tree<String>>, Tree<String>, CompilerError> for Compiler
         let inner = self.visit(state, &expr.inner)?;
         let info = expr.get_info();
         match expr.name.as_str() {
-            "+" => {
-                Ok(inner)
-            }
+            "+" => Ok(inner),
             "-" => {
                 res.extend(self.visit_prim(state, &I32(0, expr.clone().get_info()))?);
                 res.extend(inner);
-                Ok(vec![Tree{
+                Ok(vec![Tree {
                     value: "i32.sub".to_string(),
-                    children: res
+                    children: res,
                 }])
             }
-            op => Err(CompilerError::UnknownPrefixOperator(op.to_string(), info))
+            op => Err(CompilerError::UnknownPrefixOperator(op.to_string(), info)),
         }
     }
     fn visit_bin_op(&mut self, state: &mut State, expr: &BinOp) -> Res {
@@ -147,9 +145,9 @@ impl Visitor<State, Vec<Tree<String>>, Tree<String>, CompilerError> for Compiler
             ";" => return Ok(res),
             op => return Err(CompilerError::UnknownInfixOperator(op.to_string(), info)),
         };
-        Ok(vec![Tree{
+        Ok(vec![Tree {
             value: s,
-            children: res
+            children: res,
         }])
     }
 
