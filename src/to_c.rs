@@ -44,8 +44,8 @@ impl Visitor<State, Tree<String>, String, CompilerError> for Compiler {
     fn visit_root(&mut self, root: &Root) -> Result<String, CompilerError> {
         let includes = "#include <stdio.h>\n#include <math.h>\n\n";
         let children = self.visit(&mut (), &root.ast)?;
-        let (body, ret) = build_src(&children, &"\n".to_string());
-        let main = format!("{}\nint main() {{\n  return {};\n}}", body, ret);
+        let (body, ret) = build_src(&children, &"\n  ".to_string());
+        let main = format!("int main() {{{}\n  return {};\n}}", body, ret);
         Ok(format!(
                 "{}{}{}{}",
                 includes,
