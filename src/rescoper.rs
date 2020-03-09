@@ -75,14 +75,21 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
 
     fn visit_sym(&mut self, state: &mut State, expr: &Sym) -> Res {
         let mut info = expr.get_info();
+        let mut found = false;
 
         for namespace in state.stack.iter().rev() {
             for name in namespace.info.defines.iter() {
                 if *name.0.name == expr.name {
+                    found = true;
                     // The name is in scope.
                     info.defined_at = Some((*name.1).clone());
                 }
             }
+        }
+
+        if !found {
+            eprintln!("Warning: {} found but not previously defined.", expr.name.clone());
+            state.requires.push(expr.clone());
         }
 
         Ok(Sym {
@@ -150,8 +157,13 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
         };
 
         // Consider the function arguments defined in this scope.
-        for arg in expr.args.clone().unwrap_or(vec![]) {
-            node.defines.insert(arg, space.clone());
+        for mut arg in expr.args.clone().unwrap_or(vec![]) {
+            let mut arg_space = space.clone();
+            arg_space.push(ScopeName::Named(arg.name.clone(), state.counter));
+            state.counter += 1;
+            arg.info.defined_at = Some(arg_space.clone());
+            node.requires.push(arg.clone());
+            node.defines.insert(arg, arg_space);
         }
 
         // Push the scope onto the stack.
@@ -166,7 +178,6 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
 
         // Finish the scope. Retrieve any information from.the stack.
         node = state.stack.pop().unwrap().info;
-
         // Now that the variable has been defined we can use it.
         if !recursive {
             // Let this node and its siblings call this node.
@@ -178,7 +189,6 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
             }
         }
 
-        eprintln!("graph def: {:?} -> {:?}", space, node);
         self.graph.insert(space.clone(), node.clone());
 
         let mut info = expr.get_info();

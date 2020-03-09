@@ -36,10 +36,10 @@ type Res = Result<Tree<String>, CompilerError>;
 type State = ();
 impl Visitor<State, Tree<String>, String, CompilerError> for Compiler {
     fn visit_root(&mut self, root: &Root) -> Result<String, CompilerError> {
-        let includes = "#include <stdio.h>\n#include <math.h>\n";
+        let includes = "#include <stdio.h>\n#include <math.h>\n\n";
         let children = self.visit(&mut (), &root.ast)?;
-        let (body, ret) = build_src(&children, &"\n  ".to_string());
-        let main = format!("int main() {{{}\n  return {};\n}}", body, ret);
+        let (body, ret) = build_src(&children, &"\n".to_string());
+        let main = format!("{}\nint main() {{\n  return {};\n}}", body, ret);
         Ok(format!("{}{}{}", includes, "", main))
     }
 
@@ -58,14 +58,36 @@ impl Visitor<State, Tree<String>, String, CompilerError> for Compiler {
         }
     }
 
-    fn visit_apply(&mut self, _state: &mut State, _expr: &Apply) -> Res {
-        panic!("Apply not implemented in wasm");
+    fn visit_apply(&mut self, state: &mut State, expr: &Apply) -> Res {
+        let val = self.visit(state, &expr.inner)?;
+        let args: Vec<Tree<String>> = expr.args
+            .iter().map(|s| self.visit(state, &s.value).unwrap())
+            .collect();
+        let mut children = vec![];
+        let mut arg_exprs = vec![];
+        for arg in args.iter() {
+            arg_exprs.push(arg.value.clone());
+            children.extend(arg.children.clone());
+        }
+        let arg_str = arg_exprs.join(", ");
+        Ok(to_root(&format!("{}({})", val, arg_str)))
     }
 
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
         let name = make_name(expr.get_info().defined_at.unwrap());
         let val = self.visit(state, &expr.value)?;
-        Ok(to_root(&format!("int {} = {};", name, val)))
+        if expr.is_function {
+            let emp = vec![];
+            let args: Vec<String> = expr.args.as_ref()
+                .unwrap_or(&emp).iter().map(|s| make_name(
+                    s.get_info().defined_at.unwrap()
+                ).clone())
+                .collect();
+            let arg_str = args.join(", ");
+            return Ok(to_root(&format!("int {}({}) {{\n  return {};\n}}\n", name, arg_str, val)))
+
+        }
+        Ok(to_root(&format!("const int {} = {};", name, val)))
     }
 
     fn visit_un_op(&mut self, state: &mut State, expr: &UnOp) -> Res {
