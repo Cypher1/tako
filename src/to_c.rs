@@ -9,11 +9,17 @@ pub enum CompilerError {
 }
 
 // Walks the AST compiling it to wasm.
-pub struct Compiler;
+pub struct Compiler {
+    forward_decls: String,
+    functions: String,
+}
 
 impl Default for Compiler {
     fn default() -> Compiler {
-        Compiler {}
+        Compiler {
+            forward_decls: "".to_string(),
+            functions: "".to_string(),
+        }
     }
 }
 
@@ -40,7 +46,14 @@ impl Visitor<State, Tree<String>, String, CompilerError> for Compiler {
         let children = self.visit(&mut (), &root.ast)?;
         let (body, ret) = build_src(&children, &"\n".to_string());
         let main = format!("{}\nint main() {{\n  return {};\n}}", body, ret);
-        Ok(format!("{}{}{}", includes, "", main))
+        Ok(format!(
+                "{}{}{}{}",
+                includes,
+                self.forward_decls,
+                self.functions,
+                main
+            )
+        )
     }
 
     fn visit_sym(&mut self, _state: &mut State, expr: &Sym) -> Res {
@@ -84,8 +97,9 @@ impl Visitor<State, Tree<String>, String, CompilerError> for Compiler {
                 ).clone())
                 .collect();
             let arg_str = args.join(", ");
-            return Ok(to_root(&format!("int {}({}) {{\n  return {};\n}}\n", name, arg_str, val)))
-
+            self.forward_decls = format!("{}int {}({});\n", self.forward_decls, name, arg_str);
+            self.functions = format!("{}int {}({}) {{\n  return {};\n}}\n", self.functions, name, arg_str, val);
+            return Ok(to_root(&"".to_string()));
         }
         Ok(to_root(&format!("const int {} = {};", name, val)))
     }
@@ -110,6 +124,12 @@ impl Visitor<State, Tree<String>, String, CompilerError> for Compiler {
             "+" => format!("({}+{})", left, right),
             "/" => format!("({}/{})", left, right), // TODO: require divisibility
             "-" => format!("({}-{})", left, right),
+            "==" => format!("({}=={})", left, right),
+            "!=" => format!("({}!={})", left, right),
+            ">" => format!("({}>{})", left, right),
+            "<" => format!("({}<{})", left, right),
+            ">=" => format!("({}>={})", left, right),
+            "<=" => format!("({}<={})", left, right),
             "^" => format!("pow({}, {})", left, right), // TODO: require pos pow
             ";" => {
                 let mut children = vec![left];
