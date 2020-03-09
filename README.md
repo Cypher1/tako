@@ -25,13 +25,23 @@ git submodule update --init --recursive
 
 Building requires a single step,
 ```
-cargo build
+cargo build --release
 ```
 
-This allows us to run our prototype parser.
+This allows us to run the compiler.
 
 ```
-./target/debug/tako <file>
+./target/release/tako <file>
+```
+
+And the interpreter:
+```
+./target/release/tako -r <file>
+```
+
+And interactive interpreter / repl:
+```
+./target/release/tako -i
 ```
 
 ## Running the tests
@@ -39,12 +49,14 @@ This allows us to run our prototype parser.
 Running the tests should also be fairly simple, but relies on some dependencies which we will fetch using git.
 
 ```
-cargo test
+cargo test --release
 ```
+
+Note: Currently `--release` is needed as some of the tests rely on rust optimisations that decrease stack usage. Tracking bug: https://github.com/Cypher1/tako/issues/179
 
 ## Installation
 
-tako is a standalone single file. It can be installed simply by building and copy/moving ./tako into your /usr/bin directory.
+tako is a standalone single file. It can be installed simply by building and copy/moving ./release/tako into your /usr/bin directory.
 
 ## Contributing
 
