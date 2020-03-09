@@ -50,7 +50,9 @@ fn files_from(path: &str) -> Vec<String> {
         let pth = filename.path();
         match pth.to_str() {
             Some(s) => {
-                &mut params.push(s.to_string());
+                if s.ends_with(".tk") {
+                    &mut params.push(s.to_string());
+                }
             }
             _ => panic!(),
         }
