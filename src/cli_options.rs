@@ -1,11 +1,11 @@
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Options {
-    files: Vec<String>,
-    interactive: bool,
-    wasm: bool,
-    show_ast: bool,
-    show_full_ast: bool,
-    debug: i32,
+    pub files: Vec<String>,
+    pub interactive: bool,
+    pub wasm: bool,
+    pub show_ast: bool,
+    pub show_full_ast: bool,
+    pub debug: i32,
 }
 
 impl Default for Options {
@@ -21,11 +21,11 @@ impl Default for Options {
     }
 }
 
-pub fn parseArgs(args: Vec<String>) -> Options::Err {
+pub fn parse_args(args: Vec<String>) -> Options {
     let mut opts = Options::default();
     for f in args {
         if !f.starts_with('-') {
-            opts.files.push(f);
+            opts.files.push(f.to_string());
         } else {
             match f.as_str() {
                 "-i" | "--interactive" => {
@@ -39,19 +39,19 @@ pub fn parseArgs(args: Vec<String>) -> Options::Err {
                 "--full-ast" => opts.show_full_ast = true,
                 "--version" => {
                     println!("{}{}", TITLE, VERSION);
-                    return Ok(opts);
+                    return opts;
                 }
                 arg => {
                     if arg != "-h" && arg != "--help" {
                         eprintln!("unexpected flag '{}'", f);
                     }
                     eprintln!("{}{}\n{}", TITLE, VERSION, USAGE);
-                    return Ok(opts);
+                    return opts;
                 }
             }
         }
     }
-    Ok(opts)
+    opts
 }
 
 pub const TITLE: &str = "tako v";

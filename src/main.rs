@@ -19,6 +19,8 @@ mod rescoper;
 mod to_c;
 mod wasm;
 mod cli_options;
+// Declared to make tests build, not used in main
+mod test_options;
 
 use ast::Visitor;
 use interpreter::Interpreter;
@@ -26,13 +28,11 @@ use pretty_print::PrettyPrint;
 use rescoper::ReScoper;
 
 use cli_options::Options;
-use cli_options::USAGE;
-use cli_options::TITLE;
-use cli_options::VERSION;
+use cli_options::parse_args;
 
 fn main() -> std::io::Result<()> {
     let args: Vec<String> = env::args().collect();
-    let opts = parseArgs(args[1..].to_vec())?;
+    let opts = parse_args(args[1..].to_vec());
     for f in opts.files.iter() {
         work(&f, &opts)?
     }
