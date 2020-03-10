@@ -21,10 +21,14 @@ impl Default for Options {
     }
 }
 
-pub fn parse_args(args: Vec<String>) -> Options {
+pub fn parse_args<I, T>(args: I) -> Options
+where
+    I: IntoIterator<Item = T>,
+    T: Into<String>,
+{
     let mut opts = Options::default();
-    for f in args {
-        if f == "" {
+    for f in args.into_iter().map(Into::into) {
+        if f.is_empty() {
         } else if !f.starts_with('-') {
             opts.files.push(f.to_string());
         } else {

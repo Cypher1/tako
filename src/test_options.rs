@@ -40,9 +40,7 @@ impl FromStr for TestOptions {
     type Err = ParseIntError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let args: Vec<String> = s.split('\n')
-            .map(|arg| arg.to_string())
-            .collect();
+        let args: Vec<&str> = s.lines().collect();
         let opts = parse_args(args[1..].to_vec());
         let expected = TestResult::from_str(&args[0])?;
         Ok(TestOptions {

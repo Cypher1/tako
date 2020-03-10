@@ -32,7 +32,7 @@ use cli_options::parse_args;
 
 fn main() -> std::io::Result<()> {
     let args: Vec<String> = env::args().collect();
-    let opts = parse_args(args[1..].to_vec());
+    let opts = parse_args(&args[1..]);
     for f in opts.files.iter() {
         work(&f, &opts)?
     }
