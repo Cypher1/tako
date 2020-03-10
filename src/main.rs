@@ -18,88 +18,21 @@ mod pretty_print;
 mod rescoper;
 mod to_c;
 mod wasm;
+mod cli_options;
 
 use ast::Visitor;
 use interpreter::Interpreter;
 use pretty_print::PrettyPrint;
 use rescoper::ReScoper;
 
-#[derive(Debug)]
-struct Options {
-    files: Vec<String>,
-    interactive: bool,
-    wasm: bool,
-    show_ast: bool,
-    show_full_ast: bool,
-    debug: i32,
-}
-
-impl Default for Options {
-    fn default() -> Options {
-        Options {
-            files: vec![],
-            interactive: false,
-            wasm: false,
-            show_ast: false,
-            show_full_ast: false,
-            debug: 0,
-        }
-    }
-}
-
-const TITLE: &str = "tako v";
-
-const VERSION: &str = env!("CARGO_PKG_VERSION");
-
-const USAGE: &str = "An experimental programming language for ergonomic software verification.
-
-Usage:
-  tako [-i|-r] [-d <level>] [--ast] [--full-ast] <files>...
-  tako (-h | --help)
-  tako --version
-
-Options:
-  -i --interactive    Run as a repl (interactive mode).
-  -r --run            Run files in interpreter.
-  -d --debug=<level>  Level of debug logging to use [default: 0].
-  --wasm              Compile to wasm [default: false].
-  --ast               Pretty print an abstract syntax tree of the code.
-  --full_ast          Debug print an abstract syntax tree of the code.
-  -h --help           Show this screen.
-  --version           Show compiler version.
-";
+use cli_options::Options;
+use cli_options::USAGE;
+use cli_options::TITLE;
+use cli_options::VERSION;
 
 fn main() -> std::io::Result<()> {
     let args: Vec<String> = env::args().collect();
-    let mut opts = Options::default();
-    for f in args[1..].to_vec() {
-        if !f.starts_with('-') {
-            opts.files.push(f);
-        } else {
-            match f.as_str() {
-                "-i" | "--interactive" => {
-                    opts.interactive = true;
-                    opts.files.push("/dev/stdin".to_string());
-                }
-                "-r" | "--run" => opts.interactive = true,
-                "-d" => opts.debug += 1,
-                "--ast" => opts.show_ast = true,
-                "--wasm" => opts.wasm = true,
-                "--full-ast" => opts.show_full_ast = true,
-                "--version" => {
-                    println!("{}{}", TITLE, VERSION);
-                    return Ok(());
-                }
-                arg => {
-                    if arg != "-h" && arg != "--help" {
-                        eprintln!("unexpected flag '{}'", f);
-                    }
-                    eprintln!("{}{}\n{}", TITLE, VERSION, USAGE);
-                    return Ok(());
-                }
-            }
-        }
-    }
+    let opts = parseArgs(args[1..].to_vec())?;
     for f in opts.files.iter() {
         work(&f, &opts)?
     }
