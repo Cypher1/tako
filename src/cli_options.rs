@@ -24,7 +24,8 @@ impl Default for Options {
 pub fn parse_args(args: Vec<String>) -> Options {
     let mut opts = Options::default();
     for f in args {
-        if !f.starts_with('-') {
+        if f == "" {
+        } else if !f.starts_with('-') {
             opts.files.push(f.to_string());
         } else {
             match f.as_str() {

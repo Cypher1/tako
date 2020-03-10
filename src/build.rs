@@ -26,12 +26,12 @@ fn visit_dirs(dir: &Path, cb: &mut dyn FnMut(&DirEntry)) -> io::Result<()> {
 }
 
 fn build_test(mut f: &std::fs::File, path: String) {
-    let mut contents = String::new();
-    let mut file = File::open(path.to_string())?;
-    file.read_to_string(&mut contents)?;
-    eprintln!("Test : '{}\n{}'", path, contents);
+    let mut test = String::new();
+    let mut file = std::fs::File::open(path.to_string()).unwrap();
+    file.read_to_string(&mut test).unwrap();
 
-    let opts = TestOptions::from_str(test).expect("Couldn't read test options");
+    eprintln!("Building test '{}'", path);
+    let opts = TestOptions::from_str(&test).expect("Couldn't read test options");
     let test_type = if opts.expected == TestResult::Panic {
         "\n#[should_panic]"
     } else { "" };
@@ -46,12 +46,11 @@ fn build_test(mut f: &std::fs::File, path: String) {
 #[test]{test_type}
 fn {fn_name}() {{
     let  topts = TestOptions::from_str(\"{opts}\").expect(\"Couldn't read test options\");
-    let  opts = tops.opts;
-    for f in opts.files.iter() {
+    let  opts = topts.opts;
+    for f in opts.files.iter() {{
         super::work(&f, &opts).expect(\"failed\");
-    }
+    }}
 }}",
-        name = path.replace("\\", "/"),
         fn_name = fn_name,
         test_type = test_type,
         opts = test,
