@@ -274,11 +274,11 @@ pub enum ScopeName {
 }
 
 impl ScopeName {
-    pub fn to_name(self: ScopeName) -> String {
+    pub fn to_name(self: &ScopeName) -> String {
         match self {
-            ScopeName::Unknown(n) => format!("{}", n).to_string(),
-            ScopeName::Anon(n) => format!("{}", n).to_string(),
-            ScopeName::Named(name, n) => format!("{}{}", name, n).to_string(),
+            ScopeName::Unknown(n) => format!("{}", n),
+            ScopeName::Anon(n) => format!("{}", n),
+            ScopeName::Named(name, n) => format!("{}{}", name, n),
         }
     }
 }

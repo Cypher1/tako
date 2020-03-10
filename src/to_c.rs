@@ -1,5 +1,5 @@
-use super::tree::*;
 use super::ast::*;
+use super::tree::*;
 
 #[derive(Debug, PartialEq)]
 pub enum CompilerError {
@@ -24,13 +24,13 @@ impl Default for Compiler {
 }
 
 pub fn make_name(def: Vec<ScopeName>) -> String {
-    let def_n: Vec<String> = def[1..].into_iter().map(|n| n.clone().to_name()).collect();
-    return format!("{}", def_n.join("_"));
+    let def_n: Vec<String> = def[1..].iter().map(|n| n.clone().to_name()).collect();
+    def_n.join("_")
 }
 
-fn build_src(src: &Tree<String>, indent: &String) -> (String, String) {
+fn build_src(src: &Tree<String>, indent: &str) -> (String, String) {
     let mut body = "".to_string();
-    let next_indent = indent.clone()+&"  ".to_string();
+    let next_indent = indent.to_string() + &"  ".to_string();
     for child in src.children.iter() {
         let (dep, expr) = build_src(child, &next_indent);
         body = format!("{}{}{}{}", body, dep, indent, expr);
@@ -47,13 +47,9 @@ impl Visitor<State, Tree<String>, String, CompilerError> for Compiler {
         let (body, ret) = build_src(&children, &"\n  ".to_string());
         let main = format!("int main() {{{}\n  return {};\n}}", body, ret);
         Ok(format!(
-                "{}{}{}{}",
-                includes,
-                self.forward_decls,
-                self.functions,
-                main
-            )
-        )
+            "{}{}{}{}",
+            includes, self.forward_decls, self.functions, main
+        ))
     }
 
     fn visit_sym(&mut self, _state: &mut State, expr: &Sym) -> Res {
@@ -73,8 +69,10 @@ impl Visitor<State, Tree<String>, String, CompilerError> for Compiler {
 
     fn visit_apply(&mut self, state: &mut State, expr: &Apply) -> Res {
         let val = self.visit(state, &expr.inner)?;
-        let args: Vec<Tree<String>> = expr.args
-            .iter().map(|s| self.visit(state, &s.value).unwrap())
+        let args: Vec<Tree<String>> = expr
+            .args
+            .iter()
+            .map(|s| self.visit(state, &s.value).unwrap())
             .collect();
         let mut children = vec![];
         let mut arg_exprs = vec![];
@@ -91,14 +89,19 @@ impl Visitor<State, Tree<String>, String, CompilerError> for Compiler {
         let val = self.visit(state, &expr.value)?;
         if expr.is_function {
             let emp = vec![];
-            let args: Vec<String> = expr.args.as_ref()
-                .unwrap_or(&emp).iter().map(|s| make_name(
-                    s.get_info().defined_at.unwrap()
-                ).clone())
+            let args: Vec<String> = expr
+                .args
+                .as_ref()
+                .unwrap_or(&emp)
+                .iter()
+                .map(|s| make_name(s.get_info().defined_at.unwrap()))
                 .collect();
             let arg_str = args.join(", ");
             self.forward_decls = format!("{}int {}({});\n", self.forward_decls, name, arg_str);
-            self.functions = format!("{}int {}({}) {{\n  return {};\n}}\n", self.functions, name, arg_str, val);
+            self.functions = format!(
+                "{}int {}({}) {{\n  return {};\n}}\n",
+                self.functions, name, arg_str, val
+            );
             return Ok(to_root(&"".to_string()));
         }
         Ok(to_root(&format!("const int {} = {};", name, val)))
@@ -111,7 +114,7 @@ impl Visitor<State, Tree<String>, String, CompilerError> for Compiler {
             "+" => Ok(inner),
             "-" => Ok(to_root(&format!("-({})", inner))),
             "!" => Ok(to_root(&format!("!({})", inner))),
-            op => Err(CompilerError::UnknownPrefixOperator(op.to_string(), info))
+            op => Err(CompilerError::UnknownPrefixOperator(op.to_string(), info)),
         }
     }
     fn visit_bin_op(&mut self, state: &mut State, expr: &BinOp) -> Res {
@@ -134,8 +137,11 @@ impl Visitor<State, Tree<String>, String, CompilerError> for Compiler {
             ";" => {
                 let mut children = vec![left];
                 children.extend(right.children);
-                return Ok(Tree {children, value: right.value});
-            },
+                return Ok(Tree {
+                    children,
+                    value: right.value,
+                });
+            }
             op => return Err(CompilerError::UnknownInfixOperator(op.to_string(), info)),
         };
         Ok(to_root(&s))

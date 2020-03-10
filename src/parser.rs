@@ -63,9 +63,7 @@ fn get_defs(root: Node) -> Vec<Let> {
             args: None,
             is_function: false,
             info: n.get_info(),
-            value: Box::new(
-                n.to_node(),
-            ),
+            value: Box::new(n.to_node()),
         }),
         BinOpNode(BinOp {
             name,
@@ -94,15 +92,13 @@ fn get_defs(root: Node) -> Vec<Let> {
                 });
             }
         }
-        n => {
-            args.push(Let {
-                name: "it".to_string(),
-                args: None,
-                is_function: false,
-                value: Box::new(n.clone()),
-                info: n.get_info(),
-            })
-        },
+        n => args.push(Let {
+            name: "it".to_string(),
+            args: None,
+            is_function: false,
+            value: Box::new(n.clone()),
+            info: n.get_info(),
+        }),
     }
 
     args
@@ -192,16 +188,10 @@ fn nud(mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
             }
             TokenType::Sym => {
                 if head.value == "true" {
-                    return (
-                        Prim::Bool(true, head.get_info()).to_node(),
-                        toks,
-                    )
+                    return (Prim::Bool(true, head.get_info()).to_node(), toks);
                 }
                 if head.value == "false" {
-                    return (
-                        Prim::Bool(false, head.get_info()).to_node(),
-                        toks,
-                    )
+                    return (Prim::Bool(false, head.get_info()).to_node(), toks);
                 }
                 (
                     Sym {

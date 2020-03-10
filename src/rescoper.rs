@@ -37,8 +37,8 @@ fn globals() -> Namespace {
         name: ScopeName::Unknown(0),
         info: Definition {
             requires: vec![],
-            defines
-        }
+            defines,
+        },
     }
 }
 
@@ -64,7 +64,7 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
             return Err(ReScoperError::FailedSymbolLookup(
                 format!("{:?} not declared", state.requires),
                 expr.ast.get_info(),
-            ))
+            ));
         }
         if self.debug > 3 {
             eprintln!("graph {:?}", res.graph.clone());
@@ -88,7 +88,10 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
         }
 
         if !found {
-            eprintln!("Warning: {} found but not previously defined.", expr.name.clone());
+            eprintln!(
+                "Warning: {} found but not previously defined.",
+                expr.name.clone()
+            );
             state.requires.push(expr.clone());
         }
 
@@ -106,7 +109,10 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
     fn visit_apply(&mut self, state: &mut State, expr: &Apply) -> Res {
         state.stack.push(Namespace {
             name: ScopeName::Anon(state.counter),
-            info: Definition{defines: HashMap::new(), requires: vec![]},
+            info: Definition {
+                defines: HashMap::new(),
+                requires: vec![],
+            },
         });
         state.counter += 1;
         let mut args = vec![];
@@ -145,7 +151,7 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
             match state.stack.last_mut() {
                 Some(frame) => {
                     frame.info.defines.insert(expr.to_sym(), space.clone());
-                },
+                }
                 None => panic!("here1"),
             }
         }
@@ -157,7 +163,7 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
         };
 
         // Consider the function arguments defined in this scope.
-        for mut arg in expr.args.clone().unwrap_or(vec![]) {
+        for mut arg in expr.args.clone().unwrap_or_else(|| vec![]) {
             let mut arg_space = space.clone();
             arg_space.push(ScopeName::Named(arg.name.clone(), state.counter));
             state.counter += 1;
@@ -184,7 +190,7 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
             match state.stack.last_mut() {
                 Some(frame) => {
                     frame.info.defines.insert(expr.to_sym(), space.clone());
-                },
+                }
                 None => panic!("here1"),
             }
         }
@@ -243,7 +249,6 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
                 state.requires.push(req.clone());
             }
         }
-
 
         Ok(BinOp {
             name: expr.name.clone(),
