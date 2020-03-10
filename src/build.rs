@@ -2,6 +2,12 @@ use std::fs::{self, DirEntry};
 use std::io;
 use std::io::prelude::*;
 use std::path::Path;
+use std::str::FromStr;
+
+mod cli_options;
+mod test_options;
+use test_options::TestOptions;
+use test_options::TestResult;
 
 // one possible implementation of walking a directory only visiting files
 fn visit_dirs(dir: &Path, cb: &mut dyn FnMut(&DirEntry)) -> io::Result<()> {
@@ -19,27 +25,35 @@ fn visit_dirs(dir: &Path, cb: &mut dyn FnMut(&DirEntry)) -> io::Result<()> {
     Ok(())
 }
 
-fn build_test(mut f: &std::fs::File, p: String, test_type: &str, opts: &str) {
-    let nm = p
+fn build_test(mut f: &std::fs::File, path: String) {
+    let mut test = String::new();
+    let mut file = std::fs::File::open(path.to_string()).unwrap();
+    file.read_to_string(&mut test).unwrap();
+
+    eprintln!("Building test '{}'", path);
+    let opts = TestOptions::from_str(&test).expect("Couldn't read test options");
+    let test_type = if opts.expected == TestResult::Panic {
+        "\n#[should_panic]"
+    } else { "" };
+
+    let fn_name = path
         .replace("/", "_")
         .replace("\\", "_")
-        .replace(".tk", "")
         .replace("._", "");
     write!(
         f,
         "
 #[test]{test_type}
 fn {fn_name}() {{
-    let file = \"{name}\".to_string();
-    let{muted} opts = super::Options::default();
-    {opts}
-    super::work(&file, &opts).expect(\"failed to interpret\");
+    let  topts = TestOptions::from_str(\"{opts}\").expect(\"Couldn't read test options\");
+    let  opts = topts.opts;
+    for f in opts.files.iter() {{
+        super::work(&f, &opts).expect(\"failed\");
+    }}
 }}",
-        name = p.replace("\\", "/"),
-        fn_name = nm,
+        fn_name = fn_name,
         test_type = test_type,
-        opts = opts,
-        muted = if opts == "" { "" } else { " mut" }
+        opts = test,
     )
     .unwrap();
 }
@@ -50,7 +64,7 @@ fn files_from(path: &str) -> Vec<String> {
         let pth = filename.path();
         match pth.to_str() {
             Some(s) => {
-                if s.ends_with(".tk") {
+                if !s.ends_with(".tk") && !s.ends_with(".c") {
                     &mut params.push(s.to_string());
                 }
             }
@@ -61,26 +75,20 @@ fn files_from(path: &str) -> Vec<String> {
     params
 }
 
-fn main() {
+fn main() -> std::io::Result<()> {
     let out_dir = std::env::var("OUT_DIR").unwrap();
     let destination = std::path::Path::new(&out_dir).join("test.rs");
     let mut f = std::fs::File::create(&destination).unwrap();
 
-    let interactive = "opts.interactive = true;";
-    let wasm = "opts.wasm = true;";
+    writeln!(f, "use super::test_options::TestOptions;")?;
+    writeln!(f, "use std::str::FromStr;")?;
+
     for p in files_from("examples") {
-        build_test(&mut f, p, "", interactive);
+        build_test(&mut f, p);
     }
 
     for p in files_from("counter_examples") {
-        build_test(&mut f, p, "\n#[should_panic]", interactive);
+        build_test(&mut f, p);
     }
-
-    for p in files_from("compiled_examples_wasm") {
-        build_test(&mut f, p, "", wasm);
-    }
-
-    for p in files_from("compiled_examples_c") {
-        build_test(&mut f, p, "", "");
-    }
+    Ok(())
 }
