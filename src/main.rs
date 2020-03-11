@@ -42,7 +42,6 @@ fn main() -> std::io::Result<()> {
 fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
     let mut contents = String::new();
     let mut file = File::open(filename.to_string())?;
-    let name = filename.trim_end_matches(".tk").replace("/", "_");
     eprintln!("Filename: '{}'", filename);
 
     file.read_to_string(&mut contents)?;
@@ -90,7 +89,13 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
     let mut comp = to_c::Compiler::default();
     let res = comp.visit_root(&scoped).expect("could not compile program");
     // println!("{}", res);
-    std::fs::create_dir_all("build")?;
+
+    let start_of_name = filename.rfind('/').unwrap_or(0);
+    let dir = &filename[..start_of_name];
+    eprintln!("dir {}", dir);
+    let name = filename.trim_end_matches(".tk");
+
+    std::fs::create_dir_all(format!("build/{}", dir))?;
 
     let outf = format!("build/{}.c", name);
     let execf = format!("build/{}", name);
