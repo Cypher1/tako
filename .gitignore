@@ -4,4 +4,3 @@
 **/*.rs.bk
 *.out
 out.c
-**/*.tk.c
