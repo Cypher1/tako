@@ -42,10 +42,8 @@ fn main() -> std::io::Result<()> {
 fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
     let mut contents = String::new();
     let mut file = File::open(filename.to_string())?;
-    eprintln!("Filename: '{}'", filename);
 
     file.read_to_string(&mut contents)?;
-    // eprintln!("Content: '\n{}'", contents);
 
     let program = parser::parse_file(filename.to_string(), contents);
 
@@ -57,7 +55,7 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
         eprintln!("debug ast: {:#?}", scoped);
     }
     if opts.show_ast {
-        eprintln!("{}", scoped);
+        eprintln!("ast: {}", scoped);
     }
 
     if opts.interactive {
@@ -92,7 +90,6 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
 
     let start_of_name = filename.rfind('/').unwrap_or(0);
     let dir = &filename[..start_of_name];
-    eprintln!("dir {}", dir);
     let name = filename.trim_end_matches(".tk");
 
     std::fs::create_dir_all(format!("build/{}", dir))?;
