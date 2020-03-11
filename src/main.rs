@@ -91,6 +91,7 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
     // println!("{}", res);
 
     let outf = format!("{}.c", filename);
+    let execf = format!("{}.out", filename);
     let destination = std::path::Path::new(&outf);
     let mut f = std::fs::File::create(&destination).unwrap();
     writeln!(f, "{}", res)?;
@@ -100,6 +101,7 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
         .arg("-Wall")
         .arg("-Werror")
         .arg(outf)
+        .arg(format!("-o {}.out", execf))
         .output()?;
     if !output.status.success() {
         let s = String::from_utf8(output.stderr).unwrap();
