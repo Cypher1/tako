@@ -100,10 +100,15 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
     let mut f = std::fs::File::create(&destination).expect("could not open output file");
     writeln!(f, "{}", res)?;
 
-    let output = Command::new("gcc")
-        .arg("-lm")
+
+    let mut cmd = Command::new("gcc");
+    for arg in comp.flags.iter() {
+        cmd.arg(arg);
+    }
+    let output = cmd
         .arg("-Wall")
         .arg("-Werror")
+        .arg("-O3")
         .arg(outf)
         .arg("-o")
         .arg(execf)

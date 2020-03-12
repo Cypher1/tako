@@ -1,5 +1,6 @@
 use super::ast::*;
 use super::tree::*;
+use std::collections::HashSet;
 
 #[derive(Debug, PartialEq)]
 pub enum CompilerError {
@@ -12,6 +13,8 @@ pub enum CompilerError {
 pub struct Compiler {
     forward_decls: String,
     functions: String,
+    includes: HashSet<String>,
+    pub flags: HashSet<String>,
 }
 
 impl Default for Compiler {
@@ -19,6 +22,8 @@ impl Default for Compiler {
         Compiler {
             forward_decls: "".to_string(),
             functions: "".to_string(),
+            includes: HashSet::new(),
+            flags: HashSet::new(),
         }
     }
 }
@@ -42,8 +47,12 @@ type Res = Result<Tree<String>, CompilerError>;
 type State = ();
 impl Visitor<State, Tree<String>, String, CompilerError> for Compiler {
     fn visit_root(&mut self, root: &Root) -> Result<String, CompilerError> {
-        let includes = "#include <stdio.h>\n#include <math.h>\n\n";
         let children = self.visit(&mut (), &root.ast)?;
+
+        let mut includes = "".to_string();
+        for inc in self.includes.iter() {
+            includes = format!("{}{}\n", includes, inc);
+        }
         let (body, ret) = build_src(&children, &"\n  ".to_string());
         let main = format!("int main() {{{}\n  return {};\n}}", body, ret);
         Ok(format!(
@@ -133,7 +142,11 @@ impl Visitor<State, Tree<String>, String, CompilerError> for Compiler {
             "<" => format!("({}<{})", left, right),
             ">=" => format!("({}>={})", left, right),
             "<=" => format!("({}<={})", left, right),
-            "^" => format!("pow({}, {})", left, right), // TODO: require pos pow
+            "^" => {
+                self.includes.insert("#include <math.h>".to_string());
+                self.flags.insert("-lm".to_string());
+                format!("pow({}, {})", left, right)
+            }, // TODO: require pos pow
             ";" => {
                 let mut children = vec![left];
                 children.extend(right.children);
