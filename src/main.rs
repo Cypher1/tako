@@ -104,6 +104,7 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
         .arg("-lm")
         .arg("-Wall")
         .arg("-Werror")
+        .arg("-O3")
         .arg(outf)
         .arg("-o")
         .arg(execf)
