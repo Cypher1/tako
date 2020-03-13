@@ -2,7 +2,6 @@
 pub struct Options {
     pub files: Vec<String>,
     pub interactive: bool,
-    pub wasm: bool,
     pub show_ast: bool,
     pub show_full_ast: bool,
     pub debug: i32,
@@ -13,7 +12,6 @@ impl Default for Options {
         Options {
             files: vec![],
             interactive: false,
-            wasm: false,
             show_ast: false,
             show_full_ast: false,
             debug: 0,
@@ -40,7 +38,6 @@ where
                 "-r" | "--run" => opts.interactive = true,
                 "-d" => opts.debug += 1,
                 "--ast" => opts.show_ast = true,
-                "--wasm" => opts.wasm = true,
                 "--full-ast" => opts.show_full_ast = true,
                 "--version" => {
                     println!("{}{}", TITLE, VERSION);
@@ -74,7 +71,6 @@ Options:
   -i --interactive    Run as a repl (interactive mode).
   -r --run            Run files in interpreter.
   -d --debug=<level>  Level of debug logging to use [default: 0].
-  --wasm              Compile to wasm [default: false].
   --ast               Pretty print an abstract syntax tree of the code.
   --full_ast          Debug print an abstract syntax tree of the code.
   -h --help           Show this screen.
