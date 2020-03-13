@@ -17,7 +17,6 @@ mod interpreter;
 mod pretty_print;
 mod rescoper;
 mod to_c;
-mod wasm;
 mod cli_options;
 // Declared to make tests build, not used in main
 mod test_options;
@@ -74,13 +73,6 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
                 eprintln!("{:#?}", err);
             }
         }
-        return Ok(());
-    }
-
-    if opts.wasm {
-        let mut comp = wasm::Compiler::default();
-        let res = comp.visit_root(&scoped).expect("could not compile program");
-        println!("{}", res);
         return Ok(());
     }
 

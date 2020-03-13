@@ -16,9 +16,6 @@ jobs:
       run: cargo build --release --verbose
     - name: Run tests
       run: cargo test --release --verbose
-      # - name: Compile examples via wasm
-      # if: runner.os == 'Linux'
-      # run: cd wasm && ./buildAll.sh
     - name: Upload executable Linux
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v1
