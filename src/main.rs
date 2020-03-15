@@ -13,11 +13,11 @@ mod tokens;
 mod tree;
 mod types;
 
+mod cli_options;
 mod interpreter;
 mod pretty_print;
 mod rescoper;
 mod to_c;
-mod cli_options;
 // Declared to make tests build, not used in main
 mod test_options;
 
@@ -26,8 +26,8 @@ use interpreter::Interpreter;
 use pretty_print::PrettyPrint;
 use rescoper::ReScoper;
 
-use cli_options::Options;
 use cli_options::parse_args;
+use cli_options::Options;
 
 fn main() -> std::io::Result<()> {
     let args: Vec<String> = env::args().collect();
@@ -91,7 +91,6 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
     let destination = std::path::Path::new(&outf);
     let mut f = std::fs::File::create(&destination).expect("could not open output file");
     writeln!(f, "{}", res)?;
-
 
     let mut cmd = Command::new("gcc");
     for arg in comp.flags.iter() {

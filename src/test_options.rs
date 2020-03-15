@@ -1,14 +1,14 @@
-use std::str::FromStr;
 use std::num::ParseIntError;
+use std::str::FromStr;
 
-use super::cli_options::Options;
 use super::cli_options::parse_args;
+use super::cli_options::Options;
 
 #[derive(Debug, PartialEq)]
 pub enum TestResult {
     Panic,
     Success, // With an unspecified value
-    // ReturnValue(i32),
+             // ReturnValue(i32),
 }
 
 impl FromStr for TestResult {
@@ -29,7 +29,6 @@ impl FromStr for TestResult {
     }
 }
 
-
 #[derive(Debug, PartialEq)]
 pub struct TestOptions {
     pub expected: TestResult,
@@ -43,11 +42,6 @@ impl FromStr for TestOptions {
         let args: Vec<&str> = s.lines().collect();
         let opts = parse_args(args[1..].to_vec());
         let expected = TestResult::from_str(&args[0])?;
-        Ok(TestOptions {
-            expected,
-            opts,
-        })
+        Ok(TestOptions { expected, opts })
     }
 }
-
-

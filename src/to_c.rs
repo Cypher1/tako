@@ -20,20 +20,20 @@ pub struct Compiler {
 pub struct Code {
     // e.g. Some("int main", vec!["int argc", "char* argv[]"])
     label: Option<(String, Vec<String>)>,
-    expr: String,        // e.g. 3;
-    // Should print as
-    // int main(int argc, char* argv[]) {
-    //   ... // Lines from this nodes children
-    //   return 3;
-    // }
+    expr: String, // e.g. 3;
+                  // Should print as
+                  // int main(int argc, char* argv[]) {
+                  //   ... // Lines from this nodes children
+                  //   return 3;
+                  // }
 }
 
 impl Code {
     fn new(expr: String) -> Code {
-        Code {label: None, expr}
+        Code { label: None, expr }
     }
     fn block(label: Option<(String, Vec<String>)>, expr: String) -> Code {
-        Code {label, expr}
+        Code { label, expr }
     }
 }
 
@@ -63,10 +63,10 @@ fn pretty_print_block(src: Tree<Code>, indent: &str) -> String {
     // TODO: Consider if it is dropped (should it be stored? is it a side effect?)
     body = format!("{}{}{}", body, &next_indent, src.value.expr);
     let header = if let Some((label, args)) = src.value.label {
-      body = format!("{{{}{}}}", body, indent);
-      format!("{}{}({}) ", indent, label, args.join(", "))
+        body = format!("{{{}{}}}", body, indent);
+        format!("{}{}({}) ", indent, label, args.join(", "))
     } else {
-      indent.to_owned()
+        indent.to_owned()
     };
     format!("{}{}", header, body)
 }
@@ -95,14 +95,12 @@ impl Visitor<State, Tree<Code>, String, CompilerError> for Compiler {
         let main_body = Tree {
             value: Code {
                 expr: format!("return {};", child.value.expr),
-                label: Some(
-                    (
-                        "int main".to_string(),
-                        vec!["int argc".to_string(), "char* argv[]".to_string()]
-                    )
-                ),
+                label: Some((
+                    "int main".to_string(),
+                    vec!["int argc".to_string(), "char* argv[]".to_string()],
+                )),
             },
-            children: child.children
+            children: child.children,
         };
         self.functions.push(main_body);
 
@@ -146,7 +144,10 @@ impl Visitor<State, Tree<Code>, String, CompilerError> for Compiler {
         // TODO: require label is none.
         let arg_str = arg_exprs.join(", ");
         let with_args = format!("{}({})", val.value.expr, arg_str);
-        Ok(Tree{value: Code::new(with_args), children})
+        Ok(Tree {
+            value: Code::new(with_args),
+            children,
+        })
     }
 
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
@@ -164,12 +165,12 @@ impl Visitor<State, Tree<Code>, String, CompilerError> for Compiler {
             let node = Code::block(Some((label, args)), format!("return {};", code.value.expr));
             return Ok(Tree {
                 value: node,
-                children: code.children
+                children: code.children,
             });
         }
         Ok(Tree {
             value: Code::new(format!("const int {} = {};", name, code.value.expr)),
-            children: code.children
+            children: code.children,
         })
     }
 
@@ -182,7 +183,10 @@ impl Visitor<State, Tree<Code>, String, CompilerError> for Compiler {
             "!" => format!("!({})", code.value.expr),
             op => return Err(CompilerError::UnknownPrefixOperator(op.to_string(), info)),
         };
-        Ok(Tree{value: Code::new(res), children: code.children})
+        Ok(Tree {
+            value: Code::new(res),
+            children: code.children,
+        })
     }
     fn visit_bin_op(&mut self, state: &mut State, expr: &BinOp) -> Res {
         let info = expr.get_info();
@@ -206,7 +210,7 @@ impl Visitor<State, Tree<Code>, String, CompilerError> for Compiler {
                 self.includes.insert("#include <math.h>".to_string());
                 self.flags.insert("-lm".to_string());
                 format!("pow({}, {})", left.value.expr, right.value.expr)
-            }, // TODO: require pos pow
+            } // TODO: require pos pow
             "-|" => {
                 // TODO: handle 'error' values more widly.
                 children.push(to_root(&left.value));
@@ -215,7 +219,7 @@ impl Visitor<State, Tree<Code>, String, CompilerError> for Compiler {
                     children,
                     value: right.value,
                 });
-            },
+            }
             ";" => {
                 // TODO: handle 'error' values more widly.
                 children.push(to_root(&left.value));
@@ -224,12 +228,15 @@ impl Visitor<State, Tree<Code>, String, CompilerError> for Compiler {
                     children,
                     value: right.value,
                 });
-            },
+            }
             op => return Err(CompilerError::UnknownInfixOperator(op.to_string(), info)),
         };
         // TODO: Short circuiting of deps.
         children.extend(right.children);
-        Ok(Tree{value: Code::new(s), children})
+        Ok(Tree {
+            value: Code::new(s),
+            children,
+        })
     }
 
     fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {

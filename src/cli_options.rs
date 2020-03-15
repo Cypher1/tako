@@ -76,4 +76,3 @@ Options:
   -h --help           Show this screen.
   --version           Show compiler version.
 ";
-

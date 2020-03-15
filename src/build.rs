@@ -34,12 +34,11 @@ fn build_test(mut f: &std::fs::File, path: String) {
     let opts = TestOptions::from_str(&test).expect("Couldn't read test options");
     let test_type = if opts.expected == TestResult::Panic {
         "\n#[should_panic]"
-    } else { "" };
+    } else {
+        ""
+    };
 
-    let fn_name = path
-        .replace("/", "_")
-        .replace("\\", "_")
-        .replace("._", "");
+    let fn_name = path.replace("/", "_").replace("\\", "_").replace("._", "");
     write!(
         f,
         "
