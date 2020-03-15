@@ -11,7 +11,6 @@ pub enum CompilerError {
 
 // Walks the AST compiling it to wasm.
 pub struct Compiler {
-    forward_decls: String,
     functions: Vec<Tree<Code>>,
     includes: HashSet<String>,
     pub flags: HashSet<String>,
@@ -41,7 +40,6 @@ impl Code {
 impl Default for Compiler {
     fn default() -> Compiler {
         Compiler {
-            forward_decls: "".to_string(),
             functions: vec![],
             includes: HashSet::new(),
             flags: HashSet::new(),
@@ -182,7 +180,7 @@ impl Visitor<State, Tree<Code>, String, CompilerError> for Compiler {
             "+" => code.value.expr,
             "-" => format!("-({})", code.value.expr),
             "!" => format!("!({})", code.value.expr),
-            op => Err(CompilerError::UnknownPrefixOperator(op.to_string(), info))?,
+            op => return Err(CompilerError::UnknownPrefixOperator(op.to_string(), info)),
         };
         Ok(Tree{value: Code::new(res), children: code.children})
     }
