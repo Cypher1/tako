@@ -6,3 +6,7 @@ edition = "2018"
 build = "src/build.rs"
 
 [dependencies]
+
+[dev-dependencies]
+quickcheck = "0.9"
+quickcheck_macros = "0.9"

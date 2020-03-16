@@ -18,8 +18,15 @@ mod interpreter;
 mod pretty_print;
 mod rescoper;
 mod to_c;
-// Declared to make tests build, not used in main
+
+// The following are only for tests
+#[cfg(test)]
 mod test_options;
+#[cfg(test)]
+extern crate quickcheck;
+#[cfg(test)]
+#[macro_use(quickcheck)]
+extern crate quickcheck_macros;
 
 use ast::Visitor;
 use interpreter::Interpreter;
