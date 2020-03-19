@@ -6,9 +6,9 @@ pub struct Tree<T> {
     pub children: Vec<Tree<T>>,
 }
 
-pub fn to_root<T: std::clone::Clone>(t: &T) -> Tree<T> {
+pub fn to_root<T>(t: T) -> Tree<T> {
     Tree {
-        value: t.clone(),
+        value: t,
         children: vec![],
     }
 }
