@@ -258,9 +258,9 @@ pub trait ToNode {
 }
 
 impl Node {
-    pub fn to_root(self: &Self) -> Root {
+    pub fn to_root(self: Self) -> Root {
         Root {
-            ast: self.clone(),
+            ast: self,
             graph: HashMap::new(),
         }
     }

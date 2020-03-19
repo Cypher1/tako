@@ -555,15 +555,17 @@ mod tests {
 
     #[quickcheck]
     fn tako_add_eq_rust_eq(num1: i32, num2: i32) -> bool {
-        let res = num1+num2;
+        let res = num1 + num2;
         eprintln!("mul {:?} + {:?} = {:?}", num1, num2, res);
-        eval_str(format!("mul(x, y)=x+y;mul(x= {}, y= {})", num1, num2)) == Ok(I32(res, Info::default()))
+        eval_str(format!("mul(x, y)=x+y;mul(x= {}, y= {})", num1, num2))
+            == Ok(I32(res, Info::default()))
     }
 
     #[quickcheck]
     fn tako_mul_eq_rust_eq(num1: i32, num2: i32) -> bool {
-        let res = num1*num2;
+        let res = num1 * num2;
         eprintln!("mul {:?} * {:?} = {:?}", num1, num2, res);
-        eval_str(format!("mul(x, y)=x*y;mul(x= {}, y= {})", num1, num2)) == Ok(I32(res, Info::default()))
+        eval_str(format!("mul(x, y)=x*y;mul(x= {}, y= {})", num1, num2))
+            == Ok(I32(res, Info::default()))
     }
 }

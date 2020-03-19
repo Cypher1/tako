@@ -115,15 +115,15 @@ impl Visitor<State, Tree<Code>, String, CompilerError> for Compiler {
 
     fn visit_sym(&mut self, _state: &mut State, expr: &Sym) -> Res {
         let name = make_name(expr.get_info().defined_at.unwrap());
-        Ok(to_root(&Code::new(name)))
+        Ok(to_root(Code::new(name).clone()))
     }
 
     fn visit_prim(&mut self, _state: &mut State, expr: &Prim) -> Res {
         use Prim::*;
         match expr {
-            I32(n, _) => Ok(to_root(&Code::new(n.to_string()))),
-            Bool(true, _) => Ok(to_root(&Code::new("1".to_string()))),
-            Bool(false, _) => Ok(to_root(&Code::new("0".to_string()))),
+            I32(n, _) => Ok(to_root(Code::new(n.to_string()).clone())),
+            Bool(true, _) => Ok(to_root(Code::new("1".to_string()).clone())),
+            Bool(false, _) => Ok(to_root(Code::new("0".to_string()).clone())),
             _ => unimplemented!(),
         }
     }
@@ -213,7 +213,7 @@ impl Visitor<State, Tree<Code>, String, CompilerError> for Compiler {
             } // TODO: require pos pow
             "-|" => {
                 // TODO: handle 'error' values more widly.
-                children.push(to_root(&left.value));
+                children.push(to_root(left.value.clone()));
                 children.extend(right.children);
                 return Ok(Tree {
                     children,
@@ -222,7 +222,7 @@ impl Visitor<State, Tree<Code>, String, CompilerError> for Compiler {
             }
             ";" => {
                 // TODO: handle 'error' values more widly.
-                children.push(to_root(&left.value));
+                children.push(to_root(left.value.clone()));
                 children.extend(right.children);
                 return Ok(Tree {
                     children,
