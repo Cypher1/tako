@@ -5,6 +5,7 @@ use std::hash::{Hash, Hasher};
 use super::cli_options::Options;
 use super::errors::TError;
 use super::location::*;
+use super::tree::*;
 use super::types::*;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -44,15 +45,6 @@ pub struct Sym {
     pub info: Info,
 }
 
-impl Sym {
-    pub fn new(name: String) -> Sym {
-        Sym {
-            name,
-            info: Info::default(),
-        }
-    }
-}
-
 impl ToNode for Sym {
     fn to_node(self) -> Node {
         Node::SymNode(self)
@@ -89,7 +81,7 @@ impl ToNode for Prim {
 pub struct Let {
     pub name: String,
     pub value: Box<Node>,
-    pub args: Option<Vec<Sym>>,
+    pub args: Option<Vec<Sym>>, // TODO(cypher1): Args should be let nodes.
     pub is_function: bool,
     pub info: Info,
 }
@@ -166,14 +158,15 @@ impl Default for Info {
 
 impl std::fmt::Debug for Info {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.loc {
-            Some(loc) => write!(f, "{:?}", loc),
-            None => write!(f, ""),
-        }?;
-        match &self.ty {
-            Some(ty) => write!(f, "{:?}", ty),
-            None => write!(f, ""),
-        }?;
+        if let Some(loc) = &self.loc {
+            write!(f, "{:?}", loc)?;
+        }
+        if let Some(ty) = &self.ty {
+            write!(f, "{:?}", ty)?;
+        }
+        if let Some(def) = &self.defined_at {
+            write!(f, " from {:?}", def)?;
+        }
         Ok(())
     }
 }
@@ -235,7 +228,9 @@ impl fmt::Display for Node {
 
 impl fmt::Display for Root {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.ast.fmt(f)
+        self.ast.fmt(f)?;
+        write!(f, "{:#?}", self.table)?;
+        Ok(())
     }
 }
 
@@ -266,7 +261,7 @@ impl Node {
     pub fn to_root(self: Self) -> Root {
         Root {
             ast: self,
-            graph: HashMap::new(),
+            table: None,
         }
     }
 }
@@ -276,6 +271,17 @@ pub enum ScopeName {
     Unknown(i32),
     Anon(i32),
     Named(String, i32),
+}
+
+impl fmt::Display for ScopeName {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ScopeName::Unknown(n) => write!(f, "?#{}", n)?,
+            ScopeName::Anon(n) => write!(f, "anonymous?#{}", n)?,
+            ScopeName::Named(name, n) => write!(f, "{}#{}", name, n)?,
+        }
+        Ok(())
+    }
 }
 
 impl ScopeName {
@@ -289,17 +295,37 @@ impl ScopeName {
 }
 
 #[derive(Debug, Clone)]
-pub struct Definition {
+pub struct Entry {
     pub requires: Vec<Sym>,
     pub defines: HashMap<Sym, Vec<ScopeName>>,
 }
 
-pub type CallGraph = HashMap<Vec<ScopeName>, Definition>;
+impl Default for Entry {
+    fn default() -> Entry {
+        Entry {
+            requires: vec![],
+            defines: HashMap::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Symbol {
+    pub name: ScopeName,
+    pub info: Entry,
+}
+
+impl fmt::Display for Symbol {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.name)?;
+        Ok(())
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Root {
     pub ast: Node,
-    pub graph: CallGraph,
+    pub table: Option<Tree<Symbol>>,
 }
 
 pub trait Visitor<State, Res, Final> {
