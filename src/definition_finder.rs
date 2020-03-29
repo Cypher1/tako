@@ -98,8 +98,16 @@ impl Visitor<State, Node, Root, DefinitionFinderError> for DefinitionFinder {
     }
 
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
+        let mut info = expr.get_info();
+        eprintln!("defining {} at {:?}", expr.name.clone(), state.path.clone());
         let id = state.get_unique_id();
-        state.path.push(ScopeName::Named(expr.name.clone(), id));
+        let path_name = ScopeName::Named(expr.name.clone(), id);
+        let mut path = state.path.clone();
+        path.push(path_name.clone());
+        info.defined_at = Some(path);
+        if expr.is_function {
+            state.path.push(path_name);
+        }
         let value = Box::new(self.visit(state, &expr.value)?);
         state.path.pop();
         Ok(Let {
