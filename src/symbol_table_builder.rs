@@ -1,4 +1,5 @@
 use super::ast::*;
+use super::cli_options::Options;
 use super::tree::to_root;
 use super::tree::Tree;
 
@@ -10,12 +11,6 @@ pub enum SymbolTableBuilderError {
 // Walks the AST interpreting it.
 pub struct SymbolTableBuilder {
     pub debug: i32,
-}
-
-impl Default for SymbolTableBuilder {
-    fn default() -> SymbolTableBuilder {
-        SymbolTableBuilder { debug: 0 }
-    }
 }
 
 // TODO: Return nodes.
@@ -104,6 +99,10 @@ impl State {
 }
 
 impl Visitor<State, (), Root, SymbolTableBuilderError> for SymbolTableBuilder {
+    fn new(opts: &Options) -> SymbolTableBuilder {
+        SymbolTableBuilder { debug: opts.debug }
+    }
+
     fn visit_root(&mut self, expr: &Root) -> Result<Root, SymbolTableBuilderError> {
         let mut state = State {
             table: to_root(Symbol {

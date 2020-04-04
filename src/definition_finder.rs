@@ -1,4 +1,5 @@
 use super::ast::*;
+use super::cli_options::Options;
 use super::symbol_table_builder::State;
 
 #[derive(Debug, PartialEq)]
@@ -12,12 +13,6 @@ pub struct DefinitionFinder {
     pub debug: i32,
 }
 
-impl Default for DefinitionFinder {
-    fn default() -> DefinitionFinder {
-        DefinitionFinder { debug: 0 }
-    }
-}
-
 // TODO: Return nodes.
 type Res = Result<Node, DefinitionFinderError>;
 
@@ -28,6 +23,10 @@ pub struct Namespace {
 }
 
 impl Visitor<State, Node, Root, DefinitionFinderError> for DefinitionFinder {
+    fn new(opts: &Options) -> DefinitionFinder {
+        DefinitionFinder { debug: opts.debug }
+    }
+
     fn visit_root(&mut self, expr: &Root) -> Result<Root, DefinitionFinderError> {
         let mut state = State {
             path: vec![],

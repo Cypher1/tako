@@ -392,6 +392,7 @@ impl Visitor<State, Prim, Prim> for Interpreter {
 mod tests {
     use super::super::ast::*;
     use super::super::cli_options::Options;
+    use super::super::cli_options::Options;
     use super::super::parser;
     use super::Interpreter;
     use super::Res;
