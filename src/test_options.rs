@@ -22,7 +22,7 @@ impl FromStr for TestResult {
         if res == "Success" {
             return Ok(TestResult::Success);
         }
-        panic!("Unhandled test result value: '{}'", res_);
+        panic!("Unexpected value in test configuration for expected test result: \"{}\".", res_);
         // let arg = res.strip_prefix("ReturnValue(").expect("Unexpected test result value.");
         // let arg_as_i32 = arg.parse::<i32>()?;
         // Ok(TestResult::ReturnValue(arg_as_i32))
