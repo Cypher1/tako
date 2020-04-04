@@ -122,8 +122,8 @@ impl Visitor<State, Tree<Code>, String, CompilerError> for Compiler {
         use Prim::*;
         match expr {
             I32(n, _) => Ok(to_root(Code::new(n.to_string()).clone())),
-            Bool(true, _) => Ok(to_root(Code::new("1".to_string()).clone())),
-            Bool(false, _) => Ok(to_root(Code::new("0".to_string()).clone())),
+            Bool(true, _) => Ok(to_root(Code::new(1.to_string()).clone())),
+            Bool(false, _) => Ok(to_root(Code::new(0.to_string()).clone())),
             _ => unimplemented!(),
         }
     }
