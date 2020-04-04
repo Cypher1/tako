@@ -1,4 +1,5 @@
 use super::ast::*;
+use super::cli_options::Options;
 use std::collections::HashMap;
 
 #[derive(Debug, PartialEq)]
@@ -17,12 +18,6 @@ type Frame = HashMap<String, Node>;
 // Walks the AST interpreting it.
 pub struct Interpreter {
     pub debug: i32,
-}
-
-impl Default for Interpreter {
-    fn default() -> Interpreter {
-        Interpreter { debug: 0 }
-    }
 }
 
 fn globals() -> Frame {
@@ -221,6 +216,12 @@ fn prim_pow(l: &Prim, r: &Prim, info: Info) -> Res {
 type Res = Result<Prim, InterpreterError>;
 type State = Vec<Frame>;
 impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
+    fn new(opts: &Options) -> Interpreter {
+        Interpreter {
+            debug: opts.debug
+        }
+    }
+
     fn visit_root(&mut self, root: &Root) -> Res {
         let mut state = vec![globals()];
         self.visit(&mut state, &root.ast)
@@ -412,6 +413,7 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
 mod tests {
     use super::super::ast::*;
     use super::super::parser;
+    use super::super::cli_options::Options;
     use super::Interpreter;
     use super::Res;
     use Node::*;
@@ -419,14 +421,14 @@ mod tests {
 
     #[test]
     fn eval_num() {
-        let mut interp = Interpreter::default();
+        let mut interp = Interpreter::new(&Options::default());
         let tree = PrimNode(I32(12, Info::default())).to_root();
         assert_eq!(interp.visit_root(&tree), Ok(I32(12, Info::default())));
     }
 
     fn eval_str(s: String) -> Res {
         let ast = parser::parse_file("test".to_string(), s);
-        let mut interp = Interpreter::default();
+        let mut interp = Interpreter::new(&Options::default());
         interp.visit_root(&ast)
     }
 

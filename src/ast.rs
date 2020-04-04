@@ -3,6 +3,7 @@ use super::types::*;
 use std::collections::HashMap;
 use std::fmt;
 use std::hash::{Hash, Hasher};
+use super::cli_options::Options;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Err {
@@ -222,7 +223,7 @@ impl std::fmt::Debug for Node {
 impl fmt::Display for Node {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use super::PrettyPrint;
-        let mut ppr = PrettyPrint::default();
+        let mut ppr = PrettyPrint::new(&Options::default());
         match ppr.visit_root(&self.clone().to_root()) {
             Ok(res) => write!(f, "{}", res),
             Err(err) => write!(f, "{:#?}", err),
@@ -300,6 +301,8 @@ pub struct Root {
 }
 
 pub trait Visitor<State, Res, Final, ErrT> {
+    fn new(opts: &Options) -> Self;
+
     fn visit_root(&mut self, e: &Root) -> Result<Final, ErrT>;
 
     fn handle_error(&mut self, state: &mut State, e: &Err) -> Result<Res, ErrT>;
@@ -322,5 +325,11 @@ pub trait Visitor<State, Res, Final, ErrT> {
             UnOpNode(n) => self.visit_un_op(state, n),
             BinOpNode(n) => self.visit_bin_op(state, n),
         }
+    }
+
+    fn process(root: &Root, opts: &Options) -> Result<Final, ErrT>
+        where Self: Sized {
+        let mut visitor = Self::new(opts);
+        visitor.visit_root(root)
     }
 }

@@ -1,4 +1,5 @@
 use super::ast::*;
+use super::cli_options::Options;
 use std::fmt::Write;
 
 #[derive(Debug, PartialEq)]
@@ -9,16 +10,14 @@ pub enum PrettyPrintError {
 // Walks the AST interpreting it.
 pub struct PrettyPrint {}
 
-impl Default for PrettyPrint {
-    fn default() -> PrettyPrint {
-        PrettyPrint {}
-    }
-}
-
 // TODO: Return nodes.
 type Res = Result<(), PrettyPrintError>;
 type State = String;
 impl Visitor<State, (), String, PrettyPrintError> for PrettyPrint {
+    fn new(_opts: &Options) -> PrettyPrint {
+        PrettyPrint {}
+    }
+
     fn visit_root(&mut self, expr: &Root) -> Result<String, PrettyPrintError> {
         let mut state: String = "".to_string();
         self.visit(&mut state, &expr.ast)?;

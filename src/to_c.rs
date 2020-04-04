@@ -1,5 +1,7 @@
 use super::ast::*;
 use super::tree::*;
+use super::cli_options::Options;
+
 use std::collections::HashSet;
 
 #[derive(Debug, PartialEq)]
@@ -37,16 +39,6 @@ impl Code {
     }
 }
 
-impl Default for Compiler {
-    fn default() -> Compiler {
-        Compiler {
-            functions: vec![],
-            includes: HashSet::new(),
-            flags: HashSet::new(),
-        }
-    }
-}
-
 pub fn make_name(def: Vec<ScopeName>) -> String {
     let def_n: Vec<String> = def[1..].iter().map(|n| n.clone().to_name()).collect();
     def_n.join("_")
@@ -73,8 +65,17 @@ fn pretty_print_block(src: Tree<Code>, indent: &str) -> String {
 
 type Res = Result<Tree<Code>, CompilerError>;
 type State = ();
-impl Visitor<State, Tree<Code>, String, CompilerError> for Compiler {
-    fn visit_root(&mut self, root: &Root) -> Result<String, CompilerError> {
+type Out = (String, HashSet<String>);
+impl Visitor<State, Tree<Code>, Out, CompilerError> for Compiler {
+    fn new(_opts: &Options) -> Compiler {
+        Compiler {
+            functions: vec![],
+            includes: HashSet::new(),
+            flags: HashSet::new(),
+        }
+    }
+
+    fn visit_root(&mut self, root: &Root) -> Result<Out, CompilerError> {
         let child = self.visit(&mut (), &root.ast)?;
 
         // TODO(cypher1): Use a writer.
@@ -110,7 +111,7 @@ impl Visitor<State, Tree<Code>, String, CompilerError> for Compiler {
             code = format!("{}{}", code, function);
         }
 
-        Ok(code)
+        Ok((code, self.flags.clone()))
     }
 
     fn visit_sym(&mut self, _state: &mut State, expr: &Sym) -> Res {

@@ -8,7 +8,7 @@ use super::cli_options::Options;
 pub enum TestResult {
     Panic,
     Success, // With an unspecified value
-             // ReturnValue(i32),
+             // TODO: ReturnValue(i32),
 }
 
 impl FromStr for TestResult {

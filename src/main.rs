@@ -53,9 +53,7 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
 
     let program = parser::parse_file(filename.to_string(), contents);
 
-    let mut scoper = ReScoper::default();
-    scoper.debug = opts.debug;
-    let scoped = scoper.visit_root(&program).expect("failed scoping");
+    let scoped = ReScoper::process(&program, opts).expect("failed scoping");
 
     if opts.show_full_ast {
         eprintln!("debug ast: {:#?}", scoped);
@@ -65,27 +63,15 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
     }
 
     if opts.interactive {
-        let mut interp = Interpreter::default();
-        interp.debug = opts.debug;
-        let res = interp
-            .visit_root(&scoped)
+        let res = Interpreter::process(&scoped, opts)
             .expect("could not interpret program");
-        let mut ppr = PrettyPrint::default();
         use ast::ToNode;
-        match ppr.visit_root(&res.to_node().to_root()) {
-            Ok(res) => {
-                eprintln!(">> {}", res);
-            }
-            Err(err) => {
-                eprintln!("{:#?}", err);
-            }
-        }
+        let res = PrettyPrint::process(&res.to_node().to_root(), opts);
+        eprintln!(">> {:#?}", res);
         return Ok(());
     }
 
-    let mut comp = to_c::Compiler::default();
-    let res = comp.visit_root(&scoped).expect("could not compile program");
-    // println!("{}", res);
+    let (res, flags) = to_c::Compiler::process(&scoped, opts).expect("could not compile program");
 
     let start_of_name = filename.rfind('/').unwrap_or(0);
     let dir = &filename[..start_of_name];
@@ -100,7 +86,7 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
     writeln!(f, "{}", res)?;
 
     let mut cmd = Command::new("gcc");
-    for arg in comp.flags.iter() {
+    for arg in flags.iter() {
         cmd.arg(arg);
     }
     let output = cmd
