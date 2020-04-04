@@ -3,7 +3,6 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 
 use super::cli_options::Options;
-use super::cli_options::Options;
 use super::errors::TError;
 use super::location::*;
 use super::tree::*;
