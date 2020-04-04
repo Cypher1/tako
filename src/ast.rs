@@ -147,6 +147,18 @@ pub struct Info {
     pub loc: Option<Loc>,
     pub ty: Option<TypeInfo>,
     pub defined_at: Option<Vec<ScopeName>>,
+    pub callable: bool,
+}
+
+impl Default for Info {
+    fn default() -> Info {
+        Info {
+            loc: None,
+            ty: None,
+            defined_at: None,
+            callable: false,
+        }
+    }
 }
 
 impl std::fmt::Debug for Info {
@@ -172,16 +184,6 @@ impl PartialEq for Info {
 
 impl Hash for Info {
     fn hash<H: Hasher>(&self, _state: &mut H) {}
-}
-
-impl Default for Info {
-    fn default() -> Info {
-        Info {
-            loc: None,
-            ty: None,
-            defined_at: None,
-        }
-    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
