@@ -1,8 +1,9 @@
+use std::fmt;
+use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
+
 use super::location::*;
 use super::types::*;
-use std::collections::HashMap;
-use std::fmt;
-use std::hash::{Hash, Hasher};
 use super::cli_options::Options;
 
 #[derive(Debug, PartialEq, Clone)]
