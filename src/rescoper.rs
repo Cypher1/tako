@@ -254,10 +254,7 @@ impl Visitor<State, Node, Root> for ReScoper {
     }
 
     fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {
-        Err(TError::FailedParse(
-            expr.msg.to_string(),
-            expr.get_info(),
-        ))
+        Err(TError::FailedParse(expr.msg.to_string(), expr.get_info()))
     }
 }
 

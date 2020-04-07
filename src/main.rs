@@ -13,8 +13,8 @@ mod tokens;
 mod tree;
 mod types;
 
-mod errors;
 mod cli_options;
+mod errors;
 mod interpreter;
 mod pretty_print;
 mod rescoper;
@@ -64,8 +64,7 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
     }
 
     if opts.interactive {
-        let res = Interpreter::process(&scoped, opts)
-            .expect("could not interpret program");
+        let res = Interpreter::process(&scoped, opts).expect("could not interpret program");
         use ast::ToNode;
         let res = PrettyPrint::process(&res.to_node().to_root(), opts);
         eprintln!(">> {:#?}", res);

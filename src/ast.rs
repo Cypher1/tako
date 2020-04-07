@@ -1,11 +1,11 @@
-use std::fmt;
 use std::collections::HashMap;
+use std::fmt;
 use std::hash::{Hash, Hasher};
 
-use super::location::*;
-use super::types::*;
 use super::cli_options::Options;
 use super::errors::TError;
+use super::location::*;
+use super::types::*;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Err {
@@ -330,7 +330,9 @@ pub trait Visitor<State, Res, Final> {
     }
 
     fn process(root: &Root, opts: &Options) -> Result<Final, TError>
-        where Self: Sized {
+    where
+        Self: Sized,
+    {
         let mut visitor = Self::new(opts);
         visitor.visit_root(root)
     }

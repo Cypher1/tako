@@ -1,6 +1,6 @@
 use super::ast::*;
-use super::errors::TError;
 use super::cli_options::Options;
+use super::errors::TError;
 use std::fmt::Write;
 
 // Walks the AST interpreting it.
@@ -104,10 +104,7 @@ impl Visitor<State, (), String> for PrettyPrint {
     }
 
     fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {
-        Err(TError::FailedParse(
-            expr.msg.to_string(),
-            expr.get_info(),
-        ))
+        Err(TError::FailedParse(expr.msg.to_string(), expr.get_info()))
     }
 }
 

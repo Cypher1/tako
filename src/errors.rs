@@ -14,4 +14,3 @@ pub enum TError {
     TypeMismatch2(String, Prim, Prim, Info),
     RequirementFailure(Info),
 }
-

@@ -1,7 +1,7 @@
 use super::ast::*;
-use super::tree::*;
 use super::cli_options::Options;
 use super::errors::TError;
+use super::tree::*;
 
 use std::collections::HashSet;
 
@@ -235,9 +235,6 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
     }
 
     fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {
-        Err(TError::FailedParse(
-            expr.msg.clone(),
-            expr.get_info(),
-        ))
+        Err(TError::FailedParse(expr.msg.clone(), expr.get_info()))
     }
 }

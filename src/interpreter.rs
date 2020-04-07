@@ -1,7 +1,7 @@
-use std::collections::HashMap;
 use super::ast::*;
 use super::cli_options::Options;
 use super::errors::TError;
+use std::collections::HashMap;
 
 type Frame = HashMap<String, Node>;
 
@@ -207,9 +207,7 @@ type Res = Result<Prim, TError>;
 type State = Vec<Frame>;
 impl Visitor<State, Prim, Prim> for Interpreter {
     fn new(opts: &Options) -> Interpreter {
-        Interpreter {
-            debug: opts.debug
-        }
+        Interpreter { debug: opts.debug }
     }
 
     fn visit_root(&mut self, root: &Root) -> Res {
@@ -241,10 +239,7 @@ impl Visitor<State, Prim, Prim> for Interpreter {
                 }
                 Ok(result)
             } // This is the variable
-            None => Err(TError::UnknownSymbol(
-                name.to_string(),
-                expr.info.clone(),
-            )),
+            None => Err(TError::UnknownSymbol(name.to_string(), expr.info.clone())),
         }
     }
 
@@ -312,10 +307,7 @@ impl Visitor<State, Prim, Prim> for Interpreter {
                 Lambda(_) => Ok(Lambda(Box::new(expr.clone().to_node()))),
                 _ => Err(TError::TypeMismatch("-".to_string(), i, info)),
             },
-            op => Err(TError::UnknownPrefixOperator(
-                op.to_string(),
-                info,
-            )),
+            op => Err(TError::UnknownPrefixOperator(op.to_string(), info)),
         }
     }
 
@@ -392,18 +384,15 @@ impl Visitor<State, Prim, Prim> for Interpreter {
     }
 
     fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {
-        Err(TError::FailedParse(
-            expr.msg.to_string(),
-            expr.get_info(),
-        ))
+        Err(TError::FailedParse(expr.msg.to_string(), expr.get_info()))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::super::ast::*;
-    use super::super::parser;
     use super::super::cli_options::Options;
+    use super::super::parser;
     use super::Interpreter;
     use super::Res;
     use Node::*;
