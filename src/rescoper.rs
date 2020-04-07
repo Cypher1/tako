@@ -1,11 +1,7 @@
 use super::ast::*;
+use super::cli_options::Options;
+use super::errors::TError;
 use std::collections::HashMap;
-
-#[derive(Debug, PartialEq)]
-pub enum ReScoperError {
-    FailedParse(String, Info),
-    FailedSymbolLookup(String, Info),
-}
 
 // Walks the AST interpreting it.
 pub struct ReScoper {
@@ -13,17 +9,8 @@ pub struct ReScoper {
     pub graph: CallGraph,
 }
 
-impl Default for ReScoper {
-    fn default() -> ReScoper {
-        ReScoper {
-            debug: 0,
-            graph: HashMap::new(),
-        }
-    }
-}
-
 // TODO: Return nodes.
-type Res = Result<Node, ReScoperError>;
+type Res = Result<Node, TError>;
 
 #[derive(Debug, Clone)]
 pub struct Namespace {
@@ -49,8 +36,15 @@ pub struct State {
     counter: i32, // used for ensuring uniqueness in new variables and scope names
 }
 
-impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
-    fn visit_root(&mut self, expr: &Root) -> Result<Root, ReScoperError> {
+impl Visitor<State, Node, Root> for ReScoper {
+    fn new(opts: &Options) -> ReScoper {
+        ReScoper {
+            debug: opts.debug,
+            graph: HashMap::new(),
+        }
+    }
+
+    fn visit_root(&mut self, expr: &Root) -> Result<Root, TError> {
         let mut state = State {
             stack: vec![globals()],
             requires: vec![],
@@ -61,7 +55,7 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
         res.graph = self.graph.clone();
         // Check requires
         if !state.requires.is_empty() {
-            return Err(ReScoperError::FailedSymbolLookup(
+            return Err(TError::FailedSymbolLookup(
                 format!("{:?} not declared", state.requires),
                 expr.ast.get_info(),
             ));
@@ -260,7 +254,7 @@ impl Visitor<State, Node, Root, ReScoperError> for ReScoper {
     }
 
     fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {
-        Err(ReScoperError::FailedParse(
+        Err(TError::FailedParse(
             expr.msg.to_string(),
             expr.get_info(),
         ))
