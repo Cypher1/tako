@@ -1,24 +1,20 @@
 use super::ast::*;
+use super::errors::TError;
 use super::cli_options::Options;
 use std::fmt::Write;
-
-#[derive(Debug, PartialEq)]
-pub enum PrettyPrintError {
-    FailedParse(String, Info),
-}
 
 // Walks the AST interpreting it.
 pub struct PrettyPrint {}
 
 // TODO: Return nodes.
-type Res = Result<(), PrettyPrintError>;
+type Res = Result<(), TError>;
 type State = String;
-impl Visitor<State, (), String, PrettyPrintError> for PrettyPrint {
+impl Visitor<State, (), String> for PrettyPrint {
     fn new(_opts: &Options) -> PrettyPrint {
         PrettyPrint {}
     }
 
-    fn visit_root(&mut self, expr: &Root) -> Result<String, PrettyPrintError> {
+    fn visit_root(&mut self, expr: &Root) -> Result<String, TError> {
         let mut state: String = "".to_string();
         self.visit(&mut state, &expr.ast)?;
         Ok(state)
@@ -108,7 +104,7 @@ impl Visitor<State, (), String, PrettyPrintError> for PrettyPrint {
     }
 
     fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {
-        Err(PrettyPrintError::FailedParse(
+        Err(TError::FailedParse(
             expr.msg.to_string(),
             expr.get_info(),
         ))

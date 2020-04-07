@@ -13,6 +13,7 @@ mod tokens;
 mod tree;
 mod types;
 
+mod errors;
 mod cli_options;
 mod interpreter;
 mod pretty_print;

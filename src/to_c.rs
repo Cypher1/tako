@@ -1,15 +1,9 @@
 use super::ast::*;
 use super::tree::*;
 use super::cli_options::Options;
+use super::errors::TError;
 
 use std::collections::HashSet;
-
-#[derive(Debug, PartialEq)]
-pub enum CompilerError {
-    UnknownInfixOperator(String, Info),
-    UnknownPrefixOperator(String, Info),
-    FailedParse(String, Info),
-}
 
 // Walks the AST compiling it to wasm.
 pub struct Compiler {
@@ -63,10 +57,10 @@ fn pretty_print_block(src: Tree<Code>, indent: &str) -> String {
     format!("{}{}", header, body)
 }
 
-type Res = Result<Tree<Code>, CompilerError>;
+type Res = Result<Tree<Code>, TError>;
 type State = ();
 type Out = (String, HashSet<String>);
-impl Visitor<State, Tree<Code>, Out, CompilerError> for Compiler {
+impl Visitor<State, Tree<Code>, Out> for Compiler {
     fn new(_opts: &Options) -> Compiler {
         Compiler {
             functions: vec![],
@@ -75,7 +69,7 @@ impl Visitor<State, Tree<Code>, Out, CompilerError> for Compiler {
         }
     }
 
-    fn visit_root(&mut self, root: &Root) -> Result<Out, CompilerError> {
+    fn visit_root(&mut self, root: &Root) -> Result<Out, TError> {
         let child = self.visit(&mut (), &root.ast)?;
 
         // TODO(cypher1): Use a writer.
@@ -182,7 +176,7 @@ impl Visitor<State, Tree<Code>, Out, CompilerError> for Compiler {
             "+" => code.value.expr,
             "-" => format!("-({})", code.value.expr),
             "!" => format!("!({})", code.value.expr),
-            op => return Err(CompilerError::UnknownPrefixOperator(op.to_string(), info)),
+            op => return Err(TError::UnknownPrefixOperator(op.to_string(), info)),
         };
         Ok(Tree {
             value: Code::new(res),
@@ -230,7 +224,7 @@ impl Visitor<State, Tree<Code>, Out, CompilerError> for Compiler {
                     value: right.value,
                 });
             }
-            op => return Err(CompilerError::UnknownInfixOperator(op.to_string(), info)),
+            op => return Err(TError::UnknownInfixOperator(op.to_string(), info)),
         };
         // TODO: Short circuiting of deps.
         children.extend(right.children);
@@ -241,7 +235,7 @@ impl Visitor<State, Tree<Code>, Out, CompilerError> for Compiler {
     }
 
     fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {
-        Err(CompilerError::FailedParse(
+        Err(TError::FailedParse(
             expr.msg.clone(),
             expr.get_info(),
         ))

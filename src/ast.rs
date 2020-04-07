@@ -5,6 +5,7 @@ use std::hash::{Hash, Hasher};
 use super::location::*;
 use super::types::*;
 use super::cli_options::Options;
+use super::errors::TError;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Err {
@@ -301,20 +302,20 @@ pub struct Root {
     pub graph: CallGraph,
 }
 
-pub trait Visitor<State, Res, Final, ErrT> {
+pub trait Visitor<State, Res, Final> {
     fn new(opts: &Options) -> Self;
 
-    fn visit_root(&mut self, e: &Root) -> Result<Final, ErrT>;
+    fn visit_root(&mut self, e: &Root) -> Result<Final, TError>;
 
-    fn handle_error(&mut self, state: &mut State, e: &Err) -> Result<Res, ErrT>;
-    fn visit_sym(&mut self, state: &mut State, e: &Sym) -> Result<Res, ErrT>;
-    fn visit_prim(&mut self, state: &mut State, e: &Prim) -> Result<Res, ErrT>;
-    fn visit_apply(&mut self, state: &mut State, e: &Apply) -> Result<Res, ErrT>;
-    fn visit_let(&mut self, state: &mut State, e: &Let) -> Result<Res, ErrT>;
-    fn visit_un_op(&mut self, state: &mut State, e: &UnOp) -> Result<Res, ErrT>;
-    fn visit_bin_op(&mut self, state: &mut State, e: &BinOp) -> Result<Res, ErrT>;
+    fn handle_error(&mut self, state: &mut State, e: &Err) -> Result<Res, TError>;
+    fn visit_sym(&mut self, state: &mut State, e: &Sym) -> Result<Res, TError>;
+    fn visit_prim(&mut self, state: &mut State, e: &Prim) -> Result<Res, TError>;
+    fn visit_apply(&mut self, state: &mut State, e: &Apply) -> Result<Res, TError>;
+    fn visit_let(&mut self, state: &mut State, e: &Let) -> Result<Res, TError>;
+    fn visit_un_op(&mut self, state: &mut State, e: &UnOp) -> Result<Res, TError>;
+    fn visit_bin_op(&mut self, state: &mut State, e: &BinOp) -> Result<Res, TError>;
 
-    fn visit(&mut self, state: &mut State, e: &Node) -> Result<Res, ErrT> {
+    fn visit(&mut self, state: &mut State, e: &Node) -> Result<Res, TError> {
         // eprintln!("{:?}", e);
         use Node::*;
         match e {
@@ -328,7 +329,7 @@ pub trait Visitor<State, Res, Final, ErrT> {
         }
     }
 
-    fn process(root: &Root, opts: &Options) -> Result<Final, ErrT>
+    fn process(root: &Root, opts: &Options) -> Result<Final, TError>
         where Self: Sized {
         let mut visitor = Self::new(opts);
         visitor.visit_root(root)
