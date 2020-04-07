@@ -1,12 +1,7 @@
 use super::ast::*;
 use super::cli_options::Options;
+use super::errors::TError;
 use super::symbol_table_builder::State;
-
-#[derive(Debug, PartialEq)]
-pub enum DefinitionFinderError {
-    FailedParse(String, Info),
-    FailedSymbolLookup(String, Info),
-}
 
 // Walks the AST interpreting it.
 pub struct DefinitionFinder {
@@ -14,7 +9,7 @@ pub struct DefinitionFinder {
 }
 
 // TODO: Return nodes.
-type Res = Result<Node, DefinitionFinderError>;
+type Res = Result<Node, TError>;
 
 #[derive(Debug, Clone)]
 pub struct Namespace {
@@ -22,12 +17,12 @@ pub struct Namespace {
     info: Entry,
 }
 
-impl Visitor<State, Node, Root, DefinitionFinderError> for DefinitionFinder {
+impl Visitor<State, Node, Root> for DefinitionFinder {
     fn new(opts: &Options) -> DefinitionFinder {
         DefinitionFinder { debug: opts.debug }
     }
 
-    fn visit_root(&mut self, expr: &Root) -> Result<Root, DefinitionFinderError> {
+    fn visit_root(&mut self, expr: &Root) -> Result<Root, TError> {
         let mut state = State {
             path: vec![],
             table: expr
@@ -63,10 +58,7 @@ impl Visitor<State, Node, Root, DefinitionFinderError> for DefinitionFinder {
                 }
                 None => {
                     if search.is_empty() {
-                        return Err(DefinitionFinderError::FailedSymbolLookup(
-                            expr.name.clone(),
-                            res.info,
-                        ));
+                        return Err(TError::FailedSymbolLookup(expr.name.clone(), res.info));
                     }
                     search.pop(); // Up one, go again.
                 }
@@ -142,10 +134,7 @@ impl Visitor<State, Node, Root, DefinitionFinderError> for DefinitionFinder {
     }
 
     fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {
-        Err(DefinitionFinderError::FailedParse(
-            expr.msg.to_string(),
-            expr.get_info(),
-        ))
+        Err(TError::FailedParse(expr.msg.to_string(), expr.get_info()))
     }
 }
 
