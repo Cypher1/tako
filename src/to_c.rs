@@ -1,13 +1,9 @@
 use super::ast::*;
+use super::cli_options::Options;
+use super::errors::TError;
 use super::tree::*;
-use std::collections::HashSet;
 
-#[derive(Debug, PartialEq)]
-pub enum CompilerError {
-    UnknownInfixOperator(String, Info),
-    UnknownPrefixOperator(String, Info),
-    FailedParse(String, Info),
-}
+use std::collections::HashSet;
 
 // Walks the AST compiling it to wasm.
 pub struct Compiler {
@@ -37,16 +33,6 @@ impl Code {
     }
 }
 
-impl Default for Compiler {
-    fn default() -> Compiler {
-        Compiler {
-            functions: vec![],
-            includes: HashSet::new(),
-            flags: HashSet::new(),
-        }
-    }
-}
-
 pub fn make_name(def: Vec<ScopeName>) -> String {
     let def_n: Vec<String> = def[1..].iter().map(|n| n.clone().to_name()).collect();
     def_n.join("_")
@@ -71,10 +57,19 @@ fn pretty_print_block(src: Tree<Code>, indent: &str) -> String {
     format!("{}{}", header, body)
 }
 
-type Res = Result<Tree<Code>, CompilerError>;
+type Res = Result<Tree<Code>, TError>;
 type State = ();
-impl Visitor<State, Tree<Code>, String, CompilerError> for Compiler {
-    fn visit_root(&mut self, root: &Root) -> Result<String, CompilerError> {
+type Out = (String, HashSet<String>);
+impl Visitor<State, Tree<Code>, Out> for Compiler {
+    fn new(_opts: &Options) -> Compiler {
+        Compiler {
+            functions: vec![],
+            includes: HashSet::new(),
+            flags: HashSet::new(),
+        }
+    }
+
+    fn visit_root(&mut self, root: &Root) -> Result<Out, TError> {
         let child = self.visit(&mut (), &root.ast)?;
 
         // TODO(cypher1): Use a writer.
@@ -110,7 +105,7 @@ impl Visitor<State, Tree<Code>, String, CompilerError> for Compiler {
             code = format!("{}{}", code, function);
         }
 
-        Ok(code)
+        Ok((code, self.flags.clone()))
     }
 
     fn visit_sym(&mut self, _state: &mut State, expr: &Sym) -> Res {
@@ -122,8 +117,8 @@ impl Visitor<State, Tree<Code>, String, CompilerError> for Compiler {
         use Prim::*;
         match expr {
             I32(n, _) => Ok(to_root(Code::new(n.to_string()).clone())),
-            Bool(true, _) => Ok(to_root(Code::new("1".to_string()).clone())),
-            Bool(false, _) => Ok(to_root(Code::new("0".to_string()).clone())),
+            Bool(true, _) => Ok(to_root(Code::new(1.to_string()).clone())),
+            Bool(false, _) => Ok(to_root(Code::new(0.to_string()).clone())),
             _ => unimplemented!(),
         }
     }
@@ -181,7 +176,7 @@ impl Visitor<State, Tree<Code>, String, CompilerError> for Compiler {
             "+" => code.value.expr,
             "-" => format!("-({})", code.value.expr),
             "!" => format!("!({})", code.value.expr),
-            op => return Err(CompilerError::UnknownPrefixOperator(op.to_string(), info)),
+            op => return Err(TError::UnknownPrefixOperator(op.to_string(), info)),
         };
         Ok(Tree {
             value: Code::new(res),
@@ -229,7 +224,7 @@ impl Visitor<State, Tree<Code>, String, CompilerError> for Compiler {
                     value: right.value,
                 });
             }
-            op => return Err(CompilerError::UnknownInfixOperator(op.to_string(), info)),
+            op => return Err(TError::UnknownInfixOperator(op.to_string(), info)),
         };
         // TODO: Short circuiting of deps.
         children.extend(right.children);
@@ -240,9 +235,6 @@ impl Visitor<State, Tree<Code>, String, CompilerError> for Compiler {
     }
 
     fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {
-        Err(CompilerError::FailedParse(
-            expr.msg.clone(),
-            expr.get_info(),
-        ))
+        Err(TError::FailedParse(expr.msg.clone(), expr.get_info()))
     }
 }

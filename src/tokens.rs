@@ -70,6 +70,7 @@ pub fn lex_head(mut contents: VecDeque<char>, pos: &mut Loc) -> (Token, VecDeque
     let mut quote: Option<char> = None;
     let start = pos.clone();
 
+    // TODO: This should be simplified (make tight loops).
     while let Some(chr) = contents.front() {
         let chr_type = classify_char(*chr);
         tok_type = match (tok_type.clone(), chr_type.clone()) {

@@ -1,8 +1,11 @@
-use super::location::*;
-use super::types::*;
 use std::collections::HashMap;
 use std::fmt;
 use std::hash::{Hash, Hasher};
+
+use super::cli_options::Options;
+use super::errors::TError;
+use super::location::*;
+use super::types::*;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Err {
@@ -147,6 +150,18 @@ pub struct Info {
     pub loc: Option<Loc>,
     pub ty: Option<TypeInfo>,
     pub defined_at: Option<Vec<ScopeName>>,
+    pub callable: bool,
+}
+
+impl Default for Info {
+    fn default() -> Info {
+        Info {
+            loc: None,
+            ty: None,
+            defined_at: None,
+            callable: false,
+        }
+    }
 }
 
 impl std::fmt::Debug for Info {
@@ -172,16 +187,6 @@ impl PartialEq for Info {
 
 impl Hash for Info {
     fn hash<H: Hasher>(&self, _state: &mut H) {}
-}
-
-impl Default for Info {
-    fn default() -> Info {
-        Info {
-            loc: None,
-            ty: None,
-            defined_at: None,
-        }
-    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -220,7 +225,7 @@ impl std::fmt::Debug for Node {
 impl fmt::Display for Node {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use super::PrettyPrint;
-        let mut ppr = PrettyPrint::default();
+        let mut ppr = PrettyPrint::new(&Options::default());
         match ppr.visit_root(&self.clone().to_root()) {
             Ok(res) => write!(f, "{}", res),
             Err(err) => write!(f, "{:#?}", err),
@@ -297,18 +302,20 @@ pub struct Root {
     pub graph: CallGraph,
 }
 
-pub trait Visitor<State, Res, Final, ErrT> {
-    fn visit_root(&mut self, e: &Root) -> Result<Final, ErrT>;
+pub trait Visitor<State, Res, Final> {
+    fn new(opts: &Options) -> Self;
 
-    fn handle_error(&mut self, state: &mut State, e: &Err) -> Result<Res, ErrT>;
-    fn visit_sym(&mut self, state: &mut State, e: &Sym) -> Result<Res, ErrT>;
-    fn visit_prim(&mut self, state: &mut State, e: &Prim) -> Result<Res, ErrT>;
-    fn visit_apply(&mut self, state: &mut State, e: &Apply) -> Result<Res, ErrT>;
-    fn visit_let(&mut self, state: &mut State, e: &Let) -> Result<Res, ErrT>;
-    fn visit_un_op(&mut self, state: &mut State, e: &UnOp) -> Result<Res, ErrT>;
-    fn visit_bin_op(&mut self, state: &mut State, e: &BinOp) -> Result<Res, ErrT>;
+    fn visit_root(&mut self, e: &Root) -> Result<Final, TError>;
 
-    fn visit(&mut self, state: &mut State, e: &Node) -> Result<Res, ErrT> {
+    fn handle_error(&mut self, state: &mut State, e: &Err) -> Result<Res, TError>;
+    fn visit_sym(&mut self, state: &mut State, e: &Sym) -> Result<Res, TError>;
+    fn visit_prim(&mut self, state: &mut State, e: &Prim) -> Result<Res, TError>;
+    fn visit_apply(&mut self, state: &mut State, e: &Apply) -> Result<Res, TError>;
+    fn visit_let(&mut self, state: &mut State, e: &Let) -> Result<Res, TError>;
+    fn visit_un_op(&mut self, state: &mut State, e: &UnOp) -> Result<Res, TError>;
+    fn visit_bin_op(&mut self, state: &mut State, e: &BinOp) -> Result<Res, TError>;
+
+    fn visit(&mut self, state: &mut State, e: &Node) -> Result<Res, TError> {
         // eprintln!("{:?}", e);
         use Node::*;
         match e {
@@ -320,5 +327,13 @@ pub trait Visitor<State, Res, Final, ErrT> {
             UnOpNode(n) => self.visit_un_op(state, n),
             BinOpNode(n) => self.visit_bin_op(state, n),
         }
+    }
+
+    fn process(root: &Root, opts: &Options) -> Result<Final, TError>
+    where
+        Self: Sized,
+    {
+        let mut visitor = Self::new(opts);
+        visitor.visit_root(root)
     }
 }

@@ -1,28 +1,13 @@
 use super::ast::*;
+use super::cli_options::Options;
+use super::errors::TError;
 use std::collections::HashMap;
-
-#[derive(Debug, PartialEq)]
-pub enum InterpreterError {
-    UnknownInfixOperator(String, Info),
-    UnknownPrefixOperator(String, Info),
-    UnknownSymbol(String, Info),
-    FailedParse(String, Info),
-    TypeMismatch(String, Prim, Info),
-    TypeMismatch2(String, Prim, Prim, Info),
-    RequirementFailure(Info),
-}
 
 type Frame = HashMap<String, Node>;
 
 // Walks the AST interpreting it.
 pub struct Interpreter {
     pub debug: i32,
-}
-
-impl Default for Interpreter {
-    fn default() -> Interpreter {
-        Interpreter { debug: 0 }
-    }
 }
 
 fn globals() -> Frame {
@@ -51,7 +36,7 @@ fn prim_add(l: &Prim, r: &Prim, info: Info) -> Res {
         (Str(l, _), Bool(r, _)) => Ok(Str(l.to_string() + &r.to_string(), info)),
         (Str(l, _), I32(r, _)) => Ok(Str(l.to_string() + &r.to_string(), info)),
         (Str(l, _), Str(r, _)) => Ok(Str(l.to_string() + &r.to_string(), info)),
-        (l, r) => Err(InterpreterError::TypeMismatch2(
+        (l, r) => Err(TError::TypeMismatch2(
             "+".to_string(),
             (*l).clone(),
             (*r).clone(),
@@ -66,7 +51,7 @@ fn prim_eq(l: &Prim, r: &Prim, info: Info) -> Res {
         (Bool(l, _), Bool(r, _)) => Ok(Bool(*l == *r, info)),
         (I32(l, _), I32(r, _)) => Ok(Bool(l == r, info)),
         (Str(l, _), Str(r, _)) => Ok(Bool(l == r, info)),
-        (l, r) => Err(InterpreterError::TypeMismatch2(
+        (l, r) => Err(TError::TypeMismatch2(
             "==".to_string(),
             (*l).clone(),
             (*r).clone(),
@@ -81,7 +66,7 @@ fn prim_neq(l: &Prim, r: &Prim, info: Info) -> Res {
         (Bool(l, _), Bool(r, _)) => Ok(Bool(*l != *r, info)),
         (I32(l, _), I32(r, _)) => Ok(Bool(l != r, info)),
         (Str(l, _), Str(r, _)) => Ok(Bool(l != r, info)),
-        (l, r) => Err(InterpreterError::TypeMismatch2(
+        (l, r) => Err(TError::TypeMismatch2(
             "!=".to_string(),
             (*l).clone(),
             (*r).clone(),
@@ -96,7 +81,7 @@ fn prim_gt(l: &Prim, r: &Prim, info: Info) -> Res {
         (Bool(l, _), Bool(r, _)) => Ok(Bool(*l & !(*r), info)),
         (I32(l, _), I32(r, _)) => Ok(Bool(l > r, info)),
         (Str(l, _), Str(r, _)) => Ok(Bool(l > r, info)),
-        (l, r) => Err(InterpreterError::TypeMismatch2(
+        (l, r) => Err(TError::TypeMismatch2(
             ">".to_string(),
             (*l).clone(),
             (*r).clone(),
@@ -111,7 +96,7 @@ fn prim_gte(l: &Prim, r: &Prim, info: Info) -> Res {
         (Bool(l, _), Bool(r, _)) => Ok(Bool(*l >= *r, info)),
         (I32(l, _), I32(r, _)) => Ok(Bool(l >= r, info)),
         (Str(l, _), Str(r, _)) => Ok(Bool(l >= r, info)),
-        (l, r) => Err(InterpreterError::TypeMismatch2(
+        (l, r) => Err(TError::TypeMismatch2(
             ">=".to_string(),
             (*l).clone(),
             (*r).clone(),
@@ -125,7 +110,7 @@ fn prim_sub(l: &Prim, r: &Prim, info: Info) -> Res {
     match (l, r) {
         (I32(l, _), Bool(r, _)) => Ok(I32(l - if *r { 1 } else { 0 }, info)),
         (I32(l, _), I32(r, _)) => Ok(I32(l - r, info)),
-        (l, r) => Err(InterpreterError::TypeMismatch2(
+        (l, r) => Err(TError::TypeMismatch2(
             "-".to_string(),
             (*l).clone(),
             (*r).clone(),
@@ -142,7 +127,7 @@ fn prim_mul(l: &Prim, r: &Prim, info: Info) -> Res {
         (I32(l, _), Bool(r, _)) => Ok(I32(if *r { *l } else { 0 }, info)),
         (I32(l, _), I32(r, _)) => Ok(I32(l * r, info)),
         (Str(l, _), Bool(r, _)) => Ok(Str(if *r { l.to_string() } else { "".to_string() }, info)),
-        (l, r) => Err(InterpreterError::TypeMismatch2(
+        (l, r) => Err(TError::TypeMismatch2(
             "*".to_string(),
             (*l).clone(),
             (*r).clone(),
@@ -155,7 +140,7 @@ fn prim_div(l: &Prim, r: &Prim, info: Info) -> Res {
     use Prim::*;
     match (l, r) {
         (I32(l, _), I32(r, _)) => Ok(I32(l / r, info)),
-        (l, r) => Err(InterpreterError::TypeMismatch2(
+        (l, r) => Err(TError::TypeMismatch2(
             "/".to_string(),
             (*l).clone(),
             (*r).clone(),
@@ -168,7 +153,7 @@ fn prim_mod(l: &Prim, r: &Prim, info: Info) -> Res {
     use Prim::*;
     match (l, r) {
         (I32(l, _), I32(r, _)) => Ok(I32(l % r, info)),
-        (l, r) => Err(InterpreterError::TypeMismatch2(
+        (l, r) => Err(TError::TypeMismatch2(
             "%".to_string(),
             (*l).clone(),
             (*r).clone(),
@@ -181,7 +166,7 @@ fn prim_and(l: &Prim, r: &Prim, info: Info) -> Res {
     use Prim::*;
     match (l, r) {
         (Bool(l, _), Bool(r, _)) => Ok(Bool(*l && *r, info)),
-        (l, r) => Err(InterpreterError::TypeMismatch2(
+        (l, r) => Err(TError::TypeMismatch2(
             "&&".to_string(),
             (*l).clone(),
             (*r).clone(),
@@ -194,7 +179,7 @@ fn prim_or(l: &Prim, r: &Prim, info: Info) -> Res {
     use Prim::*;
     match (l, r) {
         (Bool(l, _), Bool(r, _)) => Ok(Bool(*l || *r, info)),
-        (l, r) => Err(InterpreterError::TypeMismatch2(
+        (l, r) => Err(TError::TypeMismatch2(
             "||".to_string(),
             (*l).clone(),
             (*r).clone(),
@@ -208,7 +193,7 @@ fn prim_pow(l: &Prim, r: &Prim, info: Info) -> Res {
     match (l, r) {
         (I32(l, _), Bool(r, _)) => Ok(I32(if *r { *l } else { 1 }, info)),
         (I32(l, _), I32(r, _)) => Ok(I32(i32::pow(*l, *r as u32), info)), // TODO: require pos pow
-        (l, r) => Err(InterpreterError::TypeMismatch2(
+        (l, r) => Err(TError::TypeMismatch2(
             "^".to_string(),
             (*l).clone(),
             (*r).clone(),
@@ -218,9 +203,13 @@ fn prim_pow(l: &Prim, r: &Prim, info: Info) -> Res {
 }
 
 // TODO: Return nodes.
-type Res = Result<Prim, InterpreterError>;
+type Res = Result<Prim, TError>;
 type State = Vec<Frame>;
-impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
+impl Visitor<State, Prim, Prim> for Interpreter {
+    fn new(opts: &Options) -> Interpreter {
+        Interpreter { debug: opts.debug }
+    }
+
     fn visit_root(&mut self, root: &Root) -> Res {
         let mut state = vec![globals()];
         self.visit(&mut state, &root.ast)
@@ -250,10 +239,7 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
                 }
                 Ok(result)
             } // This is the variable
-            None => Err(InterpreterError::UnknownSymbol(
-                name.to_string(),
-                expr.info.clone(),
-            )),
+            None => Err(TError::UnknownSymbol(name.to_string(), expr.info.clone())),
         }
     }
 
@@ -309,22 +295,19 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
             "!" => match i {
                 Bool(n, _) => Ok(Bool(!n, info)),
                 Lambda(_) => Ok(Lambda(Box::new(expr.clone().to_node()))),
-                _ => Err(InterpreterError::TypeMismatch("!".to_string(), i, info)),
+                _ => Err(TError::TypeMismatch("!".to_string(), i, info)),
             },
             "+" => match i {
                 I32(n, _) => Ok(I32(n, info)),
                 Lambda(_) => Ok(Lambda(Box::new(expr.clone().to_node()))),
-                _ => Err(InterpreterError::TypeMismatch("+".to_string(), i, info)),
+                _ => Err(TError::TypeMismatch("+".to_string(), i, info)),
             },
             "-" => match i {
                 I32(n, _) => Ok(I32(-n, info)),
                 Lambda(_) => Ok(Lambda(Box::new(expr.clone().to_node()))),
-                _ => Err(InterpreterError::TypeMismatch("-".to_string(), i, info)),
+                _ => Err(TError::TypeMismatch("-".to_string(), i, info)),
             },
-            op => Err(InterpreterError::UnknownPrefixOperator(
-                op.to_string(),
-                info,
-            )),
+            op => Err(TError::UnknownPrefixOperator(op.to_string(), info)),
         }
     }
 
@@ -360,7 +343,7 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
             },
             "-|" => match l {
                 //TODO: Add pattern matching.
-                Ok(Bool(false, info)) => Err(InterpreterError::RequirementFailure(info)),
+                Ok(Bool(false, info)) => Err(TError::RequirementFailure(info)),
                 Ok(Lambda(_)) => Ok(Lambda(Box::new(expr.clone().to_node()))),
                 Ok(_) => r(),
                 l => l,
@@ -368,7 +351,7 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
             ":" => match (&l?, &r()?) {
                 (Bool(bool_val, inf), Str(ty, _)) => match ty.as_ref() {
                     "bool" => Ok(Bool(*bool_val, (*inf).clone())),
-                    t => Err(InterpreterError::TypeMismatch(
+                    t => Err(TError::TypeMismatch(
                         t.to_string(),
                         Bool(*bool_val, (*inf).clone()),
                         (*inf).clone(),
@@ -376,7 +359,7 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
                 },
                 (I32(int_val, inf), Str(ty, _)) => match ty.as_ref() {
                     "i32" => Ok(I32(*int_val, (*inf).clone())),
-                    t => Err(InterpreterError::TypeMismatch(
+                    t => Err(TError::TypeMismatch(
                         t.to_string(),
                         I32(*int_val, (*inf).clone()),
                         (*inf).clone(),
@@ -384,33 +367,31 @@ impl Visitor<State, Prim, Prim, InterpreterError> for Interpreter {
                 },
                 (Str(str_val, inf), Str(ty, _)) => match ty.as_ref() {
                     "string" => Ok(Str((*str_val).clone(), (*inf).clone())),
-                    t => Err(InterpreterError::TypeMismatch(
+                    t => Err(TError::TypeMismatch(
                         t.to_string(),
                         Str((*str_val).clone(), (*inf).clone()),
                         (*inf).clone(),
                     )),
                 },
-                (_, t) => Err(InterpreterError::TypeMismatch(
+                (_, t) => Err(TError::TypeMismatch(
                     "type".to_string(),
                     t.clone(),
                     t.get_info(),
                 )),
             },
-            op => Err(InterpreterError::UnknownInfixOperator(op.to_string(), info)),
+            op => Err(TError::UnknownInfixOperator(op.to_string(), info)),
         }
     }
 
     fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {
-        Err(InterpreterError::FailedParse(
-            expr.msg.to_string(),
-            expr.get_info(),
-        ))
+        Err(TError::FailedParse(expr.msg.to_string(), expr.get_info()))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::super::ast::*;
+    use super::super::cli_options::Options;
     use super::super::parser;
     use super::Interpreter;
     use super::Res;
@@ -419,14 +400,14 @@ mod tests {
 
     #[test]
     fn eval_num() {
-        let mut interp = Interpreter::default();
+        let mut interp = Interpreter::new(&Options::default());
         let tree = PrimNode(I32(12, Info::default())).to_root();
         assert_eq!(interp.visit_root(&tree), Ok(I32(12, Info::default())));
     }
 
     fn eval_str(s: String) -> Res {
         let ast = parser::parse_file("test".to_string(), s);
-        let mut interp = Interpreter::default();
+        let mut interp = Interpreter::new(&Options::default());
         interp.visit_root(&ast)
     }
 
