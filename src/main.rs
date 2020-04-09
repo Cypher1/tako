@@ -55,7 +55,6 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
     let program = parser::parse_file(filename.to_string(), contents);
 
     let scoped = ReScoper::process(&program, opts).expect("failed scoping");
-
     if opts.show_full_ast {
         eprintln!("debug ast: {:#?}", scoped);
     }
