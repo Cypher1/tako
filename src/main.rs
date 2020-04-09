@@ -15,7 +15,6 @@ mod types;
 
 mod cli_options;
 mod errors;
-mod errors;
 mod interpreter;
 mod pretty_print;
 mod rescoper;

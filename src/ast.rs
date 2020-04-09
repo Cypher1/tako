@@ -137,6 +137,12 @@ impl ToNode for BinOp {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct Definition {
+    pub requires: Vec<Sym>,
+    pub defines: HashMap<Sym, Vec<ScopeName>>,
+}
+
 #[derive(Clone)]
 pub struct Info {
     pub loc: Option<Loc>,
@@ -262,6 +268,7 @@ impl Node {
         Root {
             ast: self,
             table: None,
+            graph: HashMap::new(),
         }
     }
 }
@@ -322,10 +329,13 @@ impl fmt::Display for Symbol {
     }
 }
 
+pub type CallGraph = HashMap<Vec<ScopeName>, Definition>;
+
 #[derive(Debug, Clone)]
 pub struct Root {
     pub ast: Node,
     pub table: Option<Tree<Symbol>>,
+    pub graph: CallGraph,
 }
 
 pub trait Visitor<State, Res, Final> {
