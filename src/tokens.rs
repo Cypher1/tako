@@ -17,6 +17,7 @@ pub enum TokenType {
 #[derive(Clone)]
 pub struct Token {
     pub tok_type: TokenType,
+    // TODO: Use enum types to convert tokens to literals and symbols.
     pub value: String,
     pub pos: Loc,
 }
@@ -31,18 +32,15 @@ const OPERATORS: &str = "~!@#$%^&*-+=<>|\\/?.,:;";
 const OPENBRACKETS: &str = "([{";
 const CLOSEBRACKETS: &str = ")]}";
 const NUMBERS: &str = "0123456789";
-const SYMBOLS: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_";
 const WHITESPACE: &str = "\n\r\t ";
 const QUOTES: &str = "'\"`";
 const COMMENT: &str = "//";
 const MULTI_COMMENT: &str = "/*";
 
 fn classify_char(ch: char) -> TokenType {
+    // TODO: replace this with an array with a value for each character.
     if WHITESPACE.contains(ch) {
         return TokenType::Whitespace;
-    }
-    if SYMBOLS.contains(ch) {
-        return TokenType::Sym;
     }
     if OPERATORS.contains(ch) {
         return TokenType::Op;
@@ -59,11 +57,11 @@ fn classify_char(ch: char) -> TokenType {
     if QUOTES.contains(ch) {
         return TokenType::StringLit;
     }
-    TokenType::Unknown
+    TokenType::Sym
 }
 
 // Consumes a single token from a Deque of characters.
-pub fn lex_head(mut contents: VecDeque<char>, pos: &mut Loc) -> (Token, VecDeque<char>) {
+pub fn lex_head<'a>(mut contents: std::iter::Peekable<std::str::Chars<'a>>, pos: &mut Loc) -> (Token, std::iter::Peekable<std::str::Chars<'a>>) {
     let mut head: VecDeque<char> = VecDeque::new();
 
     let mut tok_type: TokenType = TokenType::Unknown;
@@ -71,7 +69,7 @@ pub fn lex_head(mut contents: VecDeque<char>, pos: &mut Loc) -> (Token, VecDeque
     let start = pos.clone();
 
     // TODO: This should be simplified (make tight loops).
-    while let Some(chr) = contents.front() {
+    while let Some(chr) = contents.peek() {
         let chr_type = classify_char(*chr);
         tok_type = match (tok_type.clone(), chr_type.clone()) {
             (TokenType::Unknown, TokenType::Whitespace) => TokenType::Unknown, // Ignore
@@ -106,28 +104,35 @@ pub fn lex_head(mut contents: VecDeque<char>, pos: &mut Loc) -> (Token, VecDeque
             head.push_back(chr.clone());
         }
         // Continue past the character.
-        pos.next(contents.front());
-        contents.pop_front();
+        pos.next(&mut contents);
     }
     if tok_type == TokenType::StringLit {
         // We hit a quote.
         loop {
-            pos.next(contents.front());
-            contents.pop_front();
+            pos.next(&mut contents);
             // Add the character.
-            match contents.front() {
-                Some(chr) => {
-                    if Some(*chr) == quote {
-                        break;
-                    }
-                    head.push_back(chr.clone());
+            if let Some(chr) = contents.peek() {
+                if Some(*chr) == quote {
+                    break;
                 }
-                _ => break,
+                let nxt = if chr == &'\\' {
+                    contents.next(); // Escape.
+                    let escape = contents.peek().expect("Escaped character").clone();
+                    match escape {
+                        'n' => '\n',
+                        'r' => '\r',
+                        't' => '\t',
+                        '0' => '\0',
+                        ch => ch
+                    }
+                } else {
+                    contents.peek().expect("Escaped character").clone()
+                };
+                head.push_back(nxt);
             }
         }
         // Drop the quote
-        pos.next(contents.front());
-        contents.pop_front();
+        pos.next(&mut contents);
     }
     let value = head.into_iter().collect();
     let comment = value == COMMENT;
@@ -146,25 +151,22 @@ pub fn lex_head(mut contents: VecDeque<char>, pos: &mut Loc) -> (Token, VecDeque
     let mut depth = 1;
     let mut last: Option<char> = None;
     loop {
-        pos.next(contents.front());
-        contents.pop_front();
+        pos.next(&mut contents);
         // Add the character.
-        match (last, &mut contents.front()) {
+        match (last, &mut contents.peek()) {
             (Some('/'), Some('*')) => {
                 depth += 1;
             }
             (Some('*'), Some('/')) => {
                 depth -= 1;
                 if multi_comment && depth == 0 {
-                    pos.next(contents.front());
-                    contents.pop_front();
+                    pos.next(&mut contents);
                     return lex_head(contents, pos);
                 }
             }
             (_, Some(chr)) => {
                 if comment && **chr == '\n' {
-                    pos.next(contents.front());
-                    contents.pop_front();
+                    pos.next(&mut contents);
                     return lex_head(contents, pos);
                 }
                 last = Some(**chr);
@@ -180,8 +182,6 @@ mod tests {
     use super::classify_char;
     use super::lex_head;
     use super::TokenType;
-    use std::collections::VecDeque;
-    use std::iter::FromIterator;
 
     #[test]
     fn classify_whitespace() {
@@ -209,7 +209,7 @@ mod tests {
 
     #[test]
     fn lex_number() {
-        let chars = VecDeque::from_iter("123".chars());
+        let chars = "123".chars().peekable();
         let mut pos = Loc::default();
         let (tok, _) = lex_head(chars, &mut pos);
         assert_eq!(tok.tok_type, TokenType::NumLit);
@@ -217,7 +217,7 @@ mod tests {
 
     #[test]
     fn lex_symbol() {
-        let chars = VecDeque::from_iter("a123".chars());
+        let chars = "a123".chars().peekable();
         let mut pos = Loc::default();
         let (tok, _) = lex_head(chars, &mut pos);
         assert_eq!(tok.tok_type, TokenType::Sym);
@@ -225,9 +225,46 @@ mod tests {
 
     #[test]
     fn lex_operator() {
-        let chars = VecDeque::from_iter("-a123".chars());
+        let chars = "-a123".chars().peekable();
         let mut pos = Loc::default();
         let (tok, _) = lex_head(chars, &mut pos);
         assert_eq!(tok.tok_type, TokenType::Op);
+    }
+
+    #[test]
+    fn lex_num_and_newline_linux() {
+        let chars = "\n12".chars().peekable();
+        let mut pos = Loc::default();
+        let (tok, _) = lex_head(chars, &mut pos);
+        assert_eq!(tok.tok_type, TokenType::NumLit);
+        assert_eq!(pos, Loc{filename:None, line: 2, col: 3});
+    }
+
+    #[test]
+    fn lex_num_and_newline_windows() {
+        let chars = "\r\n12".chars().peekable();
+        let mut pos = Loc::default();
+        let (tok, _) = lex_head(chars, &mut pos);
+        assert_eq!(tok.tok_type, TokenType::NumLit);
+        assert_eq!(pos, Loc{filename:None, line: 2, col: 3});
+    }
+
+    #[test]
+    fn lex_num_and_newline_old_mac() {
+        // For mac systems before OSX
+        let chars = "\r12".chars().peekable();
+        let mut pos = Loc::default();
+        let (tok, _) = lex_head(chars, &mut pos);
+        assert_eq!(tok.tok_type, TokenType::NumLit);
+        assert_eq!(pos, Loc{filename:None, line: 2, col: 3});
+    }
+
+    #[test]
+    fn lex_escaped_characters_in_string() {
+        let chars = "'\\n\\t2\\r\\\'\"'".chars().peekable();
+        let mut pos = Loc::default();
+        let (tok, _) = lex_head(chars, &mut pos);
+        assert_eq!(tok.tok_type, TokenType::StringLit);
+        assert_eq!(tok.value, "\n\t2\r\'\"");
     }
 }

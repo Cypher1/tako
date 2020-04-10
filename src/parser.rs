@@ -1,5 +1,4 @@
 use std::collections::VecDeque;
-use std::iter::FromIterator;
 
 use super::ast::*;
 use super::location::*;
@@ -410,7 +409,7 @@ fn parse_impl(filename: Option<String>, contents: String) -> Node {
         filename,
         ..Loc::default()
     };
-    let mut chars = VecDeque::from_iter(contents.chars());
+    let mut chars = contents.chars().peekable();
     loop {
         let (next, new_chars) = lex_head(chars, &mut pos);
 
