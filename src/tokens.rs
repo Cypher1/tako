@@ -17,6 +17,7 @@ pub enum TokenType {
 #[derive(Clone)]
 pub struct Token {
     pub tok_type: TokenType,
+    // TODO: Use enum types to convert tokens to literals and symbols.
     pub value: String,
     pub pos: Loc,
 }
@@ -110,14 +111,24 @@ pub fn lex_head<'a>(mut contents: std::iter::Peekable<std::str::Chars<'a>>, pos:
         loop {
             pos.next(&mut contents);
             // Add the character.
-            match contents.peek() {
-                Some(chr) => {
-                    if Some(*chr) == quote {
-                        break;
-                    }
-                    head.push_back(chr.clone());
+            if let Some(chr) = contents.peek() {
+                if Some(*chr) == quote {
+                    break;
                 }
-                _ => break,
+                let nxt = if chr == &'\\' {
+                    contents.next(); // Escape.
+                    let escape = contents.peek().expect("Escaped character").clone();
+                    match escape {
+                        'n' => '\n',
+                        'r' => '\r',
+                        't' => '\t',
+                        '0' => '\0',
+                        ch => ch
+                    }
+                } else {
+                    contents.peek().expect("Escaped character").clone()
+                };
+                head.push_back(nxt);
             }
         }
         // Drop the quote
@@ -248,4 +259,12 @@ mod tests {
         assert_eq!(pos, Loc{filename:None, line: 2, col: 3});
     }
 
+    #[test]
+    fn lex_escaped_characters_in_string() {
+        let chars = "'\\n\\t2\\r\\\'\"'".chars().peekable();
+        let mut pos = Loc::default();
+        let (tok, _) = lex_head(chars, &mut pos);
+        assert_eq!(tok.tok_type, TokenType::StringLit);
+        assert_eq!(tok.value, "\n\t2\r\'\"");
+    }
 }
