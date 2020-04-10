@@ -18,14 +18,15 @@ impl std::fmt::Debug for Loc {
 }
 
 impl Loc {
-    pub fn next(&mut self, ch: Option<&char>) {
-        if ch == None {
-        } else if ch == Some(&'\n') {
+    pub fn next(&mut self, mut chars: &mut std::iter::Peekable<std::str::Chars>) {
+        if chars.peek() == None {
+        } else if chars.peek() == Some(&'\n') {
             self.line += 1;
             self.col = 1;
         } else {
             self.col += 1;
         }
+        chars.next();
     }
 }
 

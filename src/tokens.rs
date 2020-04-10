@@ -106,14 +106,12 @@ pub fn lex_head<'a>(mut contents: std::iter::Peekable<std::str::Chars<'a>>, pos:
             head.push_back(chr.clone());
         }
         // Continue past the character.
-        pos.next(contents.peek());
-        contents.next();
+        pos.next(&mut contents);
     }
     if tok_type == TokenType::StringLit {
         // We hit a quote.
         loop {
-            pos.next(contents.peek());
-            contents.next();
+            pos.next(&mut contents);
             // Add the character.
             match contents.peek() {
                 Some(chr) => {
@@ -126,8 +124,7 @@ pub fn lex_head<'a>(mut contents: std::iter::Peekable<std::str::Chars<'a>>, pos:
             }
         }
         // Drop the quote
-        pos.next(contents.peek());
-        contents.next();
+        pos.next(&mut contents);
     }
     let value = head.into_iter().collect();
     let comment = value == COMMENT;
@@ -146,8 +143,7 @@ pub fn lex_head<'a>(mut contents: std::iter::Peekable<std::str::Chars<'a>>, pos:
     let mut depth = 1;
     let mut last: Option<char> = None;
     loop {
-        pos.next(contents.peek());
-        contents.next();
+        pos.next(&mut contents);
         // Add the character.
         match (last, &mut contents.peek()) {
             (Some('/'), Some('*')) => {
@@ -156,15 +152,13 @@ pub fn lex_head<'a>(mut contents: std::iter::Peekable<std::str::Chars<'a>>, pos:
             (Some('*'), Some('/')) => {
                 depth -= 1;
                 if multi_comment && depth == 0 {
-                    pos.next(contents.peek());
-                    contents.next();
+                    pos.next(&mut contents);
                     return lex_head(contents, pos);
                 }
             }
             (_, Some(chr)) => {
                 if comment && **chr == '\n' {
-                    pos.next(contents.peek());
-                    contents.next();
+                    pos.next(&mut contents);
                     return lex_head(contents, pos);
                 }
                 last = Some(**chr);
