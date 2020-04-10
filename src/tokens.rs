@@ -31,18 +31,15 @@ const OPERATORS: &str = "~!@#$%^&*-+=<>|\\/?.,:;";
 const OPENBRACKETS: &str = "([{";
 const CLOSEBRACKETS: &str = ")]}";
 const NUMBERS: &str = "0123456789";
-const SYMBOLS: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_";
 const WHITESPACE: &str = "\n\r\t ";
 const QUOTES: &str = "'\"`";
 const COMMENT: &str = "//";
 const MULTI_COMMENT: &str = "/*";
 
 fn classify_char(ch: char) -> TokenType {
+    // TODO: replace this with an array with a value for each character.
     if WHITESPACE.contains(ch) {
         return TokenType::Whitespace;
-    }
-    if SYMBOLS.contains(ch) {
-        return TokenType::Sym;
     }
     if OPERATORS.contains(ch) {
         return TokenType::Op;
@@ -59,7 +56,7 @@ fn classify_char(ch: char) -> TokenType {
     if QUOTES.contains(ch) {
         return TokenType::StringLit;
     }
-    TokenType::Unknown
+    TokenType::Sym
 }
 
 // Consumes a single token from a Deque of characters.
