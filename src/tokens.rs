@@ -71,13 +71,13 @@ pub fn lex_head<'a>(mut contents: std::iter::Peekable<std::str::Chars<'a>>, pos:
     // TODO: This should be simplified (make tight loops).
     while let Some(chr) = contents.peek() {
         let chr_type = classify_char(*chr);
-        tok_type = match (tok_type.clone(), chr_type.clone()) {
+        tok_type = match (&tok_type, &chr_type) {
             (TokenType::Unknown, TokenType::Whitespace) => TokenType::Unknown, // Ignore
             (TokenType::Unknown, TokenType::StringLit) => {
                 quote = Some(*chr);
                 TokenType::StringLit
             }
-            (TokenType::Unknown, new_tok_type) => new_tok_type,
+            (TokenType::Unknown, new_tok_type) => new_tok_type.clone(),
             (_, TokenType::Whitespace) => break, // Token finished.
             (TokenType::Op, TokenType::Op) => TokenType::Op,
             (TokenType::Op, _) => break, // Token finished.
