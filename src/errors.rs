@@ -3,14 +3,15 @@ use super::ast::Prim;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum TError {
-    FailedSymbolLookup(String, Info),
-
-    // Parse errors
+    // Undefined symbols
+    UnknownSymbol(String, Info),
     UnknownInfixOperator(String, Info),
     UnknownPrefixOperator(String, Info),
-    UnknownSymbol(String, Info),
+
+    // Type errors
+    TypeMismatch(String, Box<Prim>, Info), // Static type failure (impossible type)
+    TypeMismatch2(String, Box<Prim>, Box<Prim>, Info), // Static type failure (mismatched type)
+    RequirementFailure(Info), // Runtime requirement failure
+
     FailedParse(String, Info),
-    TypeMismatch(String, Box<Prim>, Info),
-    TypeMismatch2(String, Box<Prim>, Box<Prim>, Info),
-    RequirementFailure(Info),
 }

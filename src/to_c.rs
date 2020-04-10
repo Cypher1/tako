@@ -34,7 +34,7 @@ impl Code {
 }
 
 pub fn make_name(def: Vec<ScopeName>) -> String {
-    let def_n: Vec<String> = def[1..].iter().map(|n| n.clone().to_name()).collect();
+    let def_n: Vec<String> = def.iter().map(|n| n.clone().to_name()).collect();
     def_n.join("_")
 }
 
@@ -109,8 +109,12 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
     }
 
     fn visit_sym(&mut self, _state: &mut State, expr: &Sym) -> Res {
-        let name = make_name(expr.get_info().defined_at.unwrap());
-        Ok(to_root(Code::new(name)))
+        let name = make_name(
+            expr.get_info()
+                .defined_at
+                .expect("Could not find definition for symbol"),
+        );
+        Ok(to_root(Code::new(name).clone()))
     }
 
     fn visit_prim(&mut self, _state: &mut State, expr: &Prim) -> Res {
@@ -128,7 +132,10 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
         let args: Vec<Tree<Code>> = expr
             .args
             .iter()
-            .map(|s| self.visit(state, &s.value).unwrap())
+            .map(|s| {
+                self.visit(state, &s.value)
+                    .expect("Could not find definition for apply argument")
+            })
             .collect();
         let mut children = vec![];
         let mut arg_exprs = vec![];
@@ -146,7 +153,12 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
     }
 
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
-        let name = make_name(expr.get_info().defined_at.unwrap());
+        eprintln!("here: {:?}", expr.get_info().defined_at);
+        let name = make_name(
+            expr.get_info()
+                .defined_at
+                .expect("Could not find definition for let"),
+        );
         let code = self.visit(state, &expr.value)?;
         if expr.is_function {
             let args: Vec<String> = expr
@@ -154,7 +166,13 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
                 .as_ref()
                 .unwrap_or(&vec![])
                 .iter()
-                .map(|s| make_name(s.get_info().defined_at.unwrap()))
+                .map(|s| {
+                    make_name(
+                        s.get_info()
+                            .defined_at
+                            .expect("Could not find definition for let argument"),
+                    )
+                })
                 .collect();
             let label = format!("auto {} = [&] ", name);
             let node = Code::block(Some((label, args)), format!("return {};", code.value.expr));
