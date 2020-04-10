@@ -119,16 +119,8 @@ impl Loc {
 }
 
 fn nud(mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
-    match toks.pop_front() {
-        None => (
-            Err {
-                msg: "Unexpected eof, expected expr".to_string(),
-                info: Info::default(),
-            }
-            .to_node(),
-            toks,
-        ),
-        Some(head) => match head.tok_type {
+    if let Some(head) = toks.pop_front() {
+        match head.tok_type {
             TokenType::NumLit => (
                 Prim::I32(head.value.parse().unwrap(), head.get_info()).to_node(),
                 toks,
@@ -204,7 +196,16 @@ fn nud(mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
             TokenType::Unknown | TokenType::Whitespace => {
                 panic!("Lexer should not produce unknown or whitespace")
             }
-        },
+        }
+    } else {
+        (
+            Err {
+                msg: "Unexpected eof, expected expr".to_string(),
+                info: Info::default(),
+            }
+            .to_node(),
+            toks,
+        )
     }
 }
 

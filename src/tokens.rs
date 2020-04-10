@@ -61,7 +61,10 @@ fn classify_char(ch: char) -> TokenType {
 }
 
 // Consumes a single token from a Deque of characters.
-pub fn lex_head<'a>(mut contents: std::iter::Peekable<std::str::Chars<'a>>, pos: &mut Loc) -> (Token, std::iter::Peekable<std::str::Chars<'a>>) {
+pub fn lex_head<'a>(
+    mut contents: std::iter::Peekable<std::str::Chars<'a>>,
+    pos: &mut Loc,
+) -> (Token, std::iter::Peekable<std::str::Chars<'a>>) {
     let mut head: VecDeque<char> = VecDeque::new();
 
     let mut tok_type: TokenType = TokenType::Unknown;
@@ -71,13 +74,13 @@ pub fn lex_head<'a>(mut contents: std::iter::Peekable<std::str::Chars<'a>>, pos:
     // TODO: This should be simplified (make tight loops).
     while let Some(chr) = contents.peek() {
         let chr_type = classify_char(*chr);
-        tok_type = match (tok_type.clone(), chr_type.clone()) {
+        tok_type = match (&tok_type, &chr_type) {
             (TokenType::Unknown, TokenType::Whitespace) => TokenType::Unknown, // Ignore
             (TokenType::Unknown, TokenType::StringLit) => {
                 quote = Some(*chr);
                 TokenType::StringLit
             }
-            (TokenType::Unknown, new_tok_type) => new_tok_type,
+            (TokenType::Unknown, new_tok_type) => new_tok_type.clone(),
             (_, TokenType::Whitespace) => break, // Token finished.
             (TokenType::Op, TokenType::Op) => TokenType::Op,
             (TokenType::Op, _) => break, // Token finished.
@@ -123,7 +126,7 @@ pub fn lex_head<'a>(mut contents: std::iter::Peekable<std::str::Chars<'a>>, pos:
                         'r' => '\r',
                         't' => '\t',
                         '0' => '\0',
-                        ch => ch
+                        ch => ch,
                     }
                 } else {
                     contents.peek().expect("Escaped character").clone()
@@ -237,7 +240,14 @@ mod tests {
         let mut pos = Loc::default();
         let (tok, _) = lex_head(chars, &mut pos);
         assert_eq!(tok.tok_type, TokenType::NumLit);
-        assert_eq!(pos, Loc{filename:None, line: 2, col: 3});
+        assert_eq!(
+            pos,
+            Loc {
+                filename: None,
+                line: 2,
+                col: 3
+            }
+        );
     }
 
     #[test]
@@ -246,7 +256,14 @@ mod tests {
         let mut pos = Loc::default();
         let (tok, _) = lex_head(chars, &mut pos);
         assert_eq!(tok.tok_type, TokenType::NumLit);
-        assert_eq!(pos, Loc{filename:None, line: 2, col: 3});
+        assert_eq!(
+            pos,
+            Loc {
+                filename: None,
+                line: 2,
+                col: 3
+            }
+        );
     }
 
     #[test]
@@ -256,7 +273,14 @@ mod tests {
         let mut pos = Loc::default();
         let (tok, _) = lex_head(chars, &mut pos);
         assert_eq!(tok.tok_type, TokenType::NumLit);
-        assert_eq!(pos, Loc{filename:None, line: 2, col: 3});
+        assert_eq!(
+            pos,
+            Loc {
+                filename: None,
+                line: 2,
+                col: 3
+            }
+        );
     }
 
     #[test]
