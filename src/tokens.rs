@@ -63,7 +63,7 @@ fn classify_char(ch: char) -> TokenType {
 }
 
 // Consumes a single token from a Deque of characters.
-pub fn lex_head(mut contents: VecDeque<char>, pos: &mut Loc) -> (Token, VecDeque<char>) {
+pub fn lex_head<'a>(mut contents: std::iter::Peekable<std::str::Chars<'a>>, pos: &mut Loc) -> (Token, std::iter::Peekable<std::str::Chars<'a>>) {
     let mut head: VecDeque<char> = VecDeque::new();
 
     let mut tok_type: TokenType = TokenType::Unknown;
@@ -71,7 +71,7 @@ pub fn lex_head(mut contents: VecDeque<char>, pos: &mut Loc) -> (Token, VecDeque
     let start = pos.clone();
 
     // TODO: This should be simplified (make tight loops).
-    while let Some(chr) = contents.front() {
+    while let Some(chr) = contents.peek() {
         let chr_type = classify_char(*chr);
         tok_type = match (tok_type.clone(), chr_type.clone()) {
             (TokenType::Unknown, TokenType::Whitespace) => TokenType::Unknown, // Ignore
@@ -106,16 +106,16 @@ pub fn lex_head(mut contents: VecDeque<char>, pos: &mut Loc) -> (Token, VecDeque
             head.push_back(chr.clone());
         }
         // Continue past the character.
-        pos.next(contents.front());
-        contents.pop_front();
+        pos.next(contents.peek());
+        contents.next();
     }
     if tok_type == TokenType::StringLit {
         // We hit a quote.
         loop {
-            pos.next(contents.front());
-            contents.pop_front();
+            pos.next(contents.peek());
+            contents.next();
             // Add the character.
-            match contents.front() {
+            match contents.peek() {
                 Some(chr) => {
                     if Some(*chr) == quote {
                         break;
@@ -126,8 +126,8 @@ pub fn lex_head(mut contents: VecDeque<char>, pos: &mut Loc) -> (Token, VecDeque
             }
         }
         // Drop the quote
-        pos.next(contents.front());
-        contents.pop_front();
+        pos.next(contents.peek());
+        contents.next();
     }
     let value = head.into_iter().collect();
     let comment = value == COMMENT;
@@ -146,25 +146,25 @@ pub fn lex_head(mut contents: VecDeque<char>, pos: &mut Loc) -> (Token, VecDeque
     let mut depth = 1;
     let mut last: Option<char> = None;
     loop {
-        pos.next(contents.front());
-        contents.pop_front();
+        pos.next(contents.peek());
+        contents.next();
         // Add the character.
-        match (last, &mut contents.front()) {
+        match (last, &mut contents.peek()) {
             (Some('/'), Some('*')) => {
                 depth += 1;
             }
             (Some('*'), Some('/')) => {
                 depth -= 1;
                 if multi_comment && depth == 0 {
-                    pos.next(contents.front());
-                    contents.pop_front();
+                    pos.next(contents.peek());
+                    contents.next();
                     return lex_head(contents, pos);
                 }
             }
             (_, Some(chr)) => {
                 if comment && **chr == '\n' {
-                    pos.next(contents.front());
-                    contents.pop_front();
+                    pos.next(contents.peek());
+                    contents.next();
                     return lex_head(contents, pos);
                 }
                 last = Some(**chr);
@@ -180,8 +180,6 @@ mod tests {
     use super::classify_char;
     use super::lex_head;
     use super::TokenType;
-    use std::collections::VecDeque;
-    use std::iter::FromIterator;
 
     #[test]
     fn classify_whitespace() {
@@ -209,7 +207,7 @@ mod tests {
 
     #[test]
     fn lex_number() {
-        let chars = VecDeque::from_iter("123".chars());
+        let chars = "123".chars().peekable();
         let mut pos = Loc::default();
         let (tok, _) = lex_head(chars, &mut pos);
         assert_eq!(tok.tok_type, TokenType::NumLit);
@@ -217,7 +215,7 @@ mod tests {
 
     #[test]
     fn lex_symbol() {
-        let chars = VecDeque::from_iter("a123".chars());
+        let chars = "a123".chars().peekable();
         let mut pos = Loc::default();
         let (tok, _) = lex_head(chars, &mut pos);
         assert_eq!(tok.tok_type, TokenType::Sym);
@@ -225,7 +223,7 @@ mod tests {
 
     #[test]
     fn lex_operator() {
-        let chars = VecDeque::from_iter("-a123".chars());
+        let chars = "-a123".chars().peekable();
         let mut pos = Loc::default();
         let (tok, _) = lex_head(chars, &mut pos);
         assert_eq!(tok.tok_type, TokenType::Op);

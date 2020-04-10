@@ -410,7 +410,7 @@ fn parse_impl(filename: Option<String>, contents: String) -> Node {
         filename,
         ..Loc::default()
     };
-    let mut chars = VecDeque::from_iter(contents.chars());
+    let mut chars = contents.chars().peekable();
     loop {
         let (next, new_chars) = lex_head(chars, &mut pos);
 
