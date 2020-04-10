@@ -222,4 +222,33 @@ mod tests {
         let (tok, _) = lex_head(chars, &mut pos);
         assert_eq!(tok.tok_type, TokenType::Op);
     }
+
+    #[test]
+    fn lex_num_and_newline_linux() {
+        let chars = "\n12".chars().peekable();
+        let mut pos = Loc::default();
+        let (tok, _) = lex_head(chars, &mut pos);
+        assert_eq!(tok.tok_type, TokenType::NumLit);
+        assert_eq!(pos, Loc{filename:None, line: 2, col: 3});
+    }
+
+    #[test]
+    fn lex_num_and_newline_windows() {
+        let chars = "\r\n12".chars().peekable();
+        let mut pos = Loc::default();
+        let (tok, _) = lex_head(chars, &mut pos);
+        assert_eq!(tok.tok_type, TokenType::NumLit);
+        assert_eq!(pos, Loc{filename:None, line: 2, col: 3});
+    }
+
+    #[test]
+    fn lex_num_and_newline_old_mac() {
+        // For mac systems before OSX
+        let chars = "\r12".chars().peekable();
+        let mut pos = Loc::default();
+        let (tok, _) = lex_head(chars, &mut pos);
+        assert_eq!(tok.tok_type, TokenType::NumLit);
+        assert_eq!(pos, Loc{filename:None, line: 2, col: 3});
+    }
+
 }

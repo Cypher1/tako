@@ -18,15 +18,25 @@ impl std::fmt::Debug for Loc {
 }
 
 impl Loc {
-    pub fn next(&mut self, mut chars: &mut std::iter::Peekable<std::str::Chars>) {
+    pub fn next(&mut self, chars: &mut std::iter::Peekable<std::str::Chars>) {
+        // TODO: Consider just keeping the offsets and then recovering line
+        // info later.
         if chars.peek() == None {
-        } else if chars.peek() == Some(&'\n') {
+            return;
+        }
+
+        let nl = chars.peek() == Some(&'\n');
+        let lf = chars.peek() == Some(&'\r');
+        chars.next();
+        if nl || lf {
+            if lf && chars.peek() == Some(&'\n') {
+                chars.next();
+            }
             self.line += 1;
             self.col = 1;
         } else {
             self.col += 1;
         }
-        chars.next();
     }
 }
 
