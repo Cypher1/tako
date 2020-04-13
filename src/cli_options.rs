@@ -27,9 +27,7 @@ where
     let mut opts = Options::default();
     for f in args.into_iter().map(Into::into) {
         if f.is_empty() {
-        } else if !f.starts_with('-') {
-            opts.files.push(f.to_string());
-        } else {
+        } else if f.starts_with('-') {
             match f.as_str() {
                 "-i" | "--interactive" => {
                     opts.interactive = true;
@@ -51,6 +49,8 @@ where
                     return opts;
                 }
             }
+        } else {
+            opts.files.push(f.to_string());
         }
     }
     opts

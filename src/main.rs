@@ -1,3 +1,5 @@
+#![deny(clippy::all)]
+
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
@@ -63,9 +65,10 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
     }
 
     if opts.interactive {
-        let res = Interpreter::process(&scoped, opts).expect("could not interpret program");
+        use ast::Root;
         use ast::ToNode;
-        let res = PrettyPrint::process(&res.to_node().to_root(), opts);
+        let res = Interpreter::process(&scoped, opts).expect("could not interpret program");
+        let res = PrettyPrint::process(&Root::new(res.to_node()), opts);
         eprintln!(">> {:#?}", res);
         return Ok(());
     }
@@ -78,17 +81,18 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
 
     std::fs::create_dir_all(format!("build/{}", dir))?;
 
-    let outf = format!("build/{}.c", name);
+    let outf = format!("build/{}.cc", name);
     let execf = format!("build/{}", name);
     let destination = std::path::Path::new(&outf);
     let mut f = std::fs::File::create(&destination).expect("could not open output file");
     writeln!(f, "{}", res)?;
 
-    let mut cmd = Command::new("gcc");
+    let mut cmd = Command::new("g++");
     for arg in flags.iter() {
         cmd.arg(arg);
     }
     let output = cmd
+        .arg("-std=c++14")
         .arg("-Wall")
         .arg("-Werror")
         .arg("-O3")

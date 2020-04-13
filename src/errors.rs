@@ -10,7 +10,7 @@ pub enum TError {
     UnknownPrefixOperator(String, Info),
     UnknownSymbol(String, Info),
     FailedParse(String, Info),
-    TypeMismatch(String, Prim, Info),
-    TypeMismatch2(String, Prim, Prim, Info),
+    TypeMismatch(String, Box<Prim>, Info),
+    TypeMismatch2(String, Box<Prim>, Box<Prim>, Info),
     RequirementFailure(Info),
 }

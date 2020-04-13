@@ -225,7 +225,7 @@ impl fmt::Display for Node {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use super::PrettyPrint;
         let mut ppr = PrettyPrint::new(&Options::default());
-        match ppr.visit_root(&self.clone().to_root()) {
+        match ppr.visit_root(&Root::new(self.clone())) {
             Ok(res) => write!(f, "{}", res),
             Err(err) => write!(f, "{:#?}", err),
         }
@@ -261,16 +261,6 @@ impl ToNode for Node {
 pub trait ToNode {
     fn to_node(self: Self) -> Node;
     fn get_info(self: &Self) -> Info;
-}
-
-impl Node {
-    pub fn to_root(self: Self) -> Root {
-        Root {
-            ast: self,
-            table: None,
-            graph: HashMap::new(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -336,6 +326,16 @@ pub struct Root {
     pub ast: Node,
     pub table: Option<Tree<Symbol>>,
     pub graph: CallGraph,
+}
+
+impl Root {
+    pub fn new(ast: Node) -> Root {
+        Root {
+            ast,
+            table: None,
+            graph: HashMap::new(),
+        }
+    }
 }
 
 pub trait Visitor<State, Res, Final> {

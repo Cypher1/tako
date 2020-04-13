@@ -49,7 +49,7 @@ fn pretty_print_block(src: Tree<Code>, indent: &str) -> String {
     // TODO: Consider if it is dropped (should it be stored? is it a side effect?)
     body = format!("{}{}{}", body, &next_indent, src.value.expr);
     let header = if let Some((label, args)) = src.value.label {
-        body = format!("{{{}{}}}", body, indent);
+        body = format!("{{{}{}}};", body, indent);
         format!("{}{}({}) ", indent, label, args.join(", "))
     } else {
         indent.to_owned()
@@ -110,15 +110,15 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
 
     fn visit_sym(&mut self, _state: &mut State, expr: &Sym) -> Res {
         let name = make_name(expr.get_info().defined_at.unwrap());
-        Ok(to_root(Code::new(name).clone()))
+        Ok(to_root(Code::new(name)))
     }
 
     fn visit_prim(&mut self, _state: &mut State, expr: &Prim) -> Res {
         use Prim::*;
         match expr {
-            I32(n, _) => Ok(to_root(Code::new(n.to_string()).clone())),
-            Bool(true, _) => Ok(to_root(Code::new(1.to_string()).clone())),
-            Bool(false, _) => Ok(to_root(Code::new(0.to_string()).clone())),
+            I32(n, _) => Ok(to_root(Code::new(n.to_string()))),
+            Bool(true, _) => Ok(to_root(Code::new(1.to_string()))),
+            Bool(false, _) => Ok(to_root(Code::new(0.to_string()))),
             _ => unimplemented!(),
         }
     }
@@ -156,7 +156,7 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
                 .iter()
                 .map(|s| make_name(s.get_info().defined_at.unwrap()))
                 .collect();
-            let label = format!("int {}", name);
+            let label = format!("auto {} = [&] ", name);
             let node = Code::block(Some((label, args)), format!("return {};", code.value.expr));
             return Ok(Tree {
                 value: node,

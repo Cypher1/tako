@@ -399,8 +399,7 @@ fn expr(init_toks: VecDeque<Token>, init_lbp: i32) -> (Node, VecDeque<Token>) {
 }
 
 pub fn parse_file(filename: String, contents: String) -> Root {
-    let ast = parse_impl(Some(filename), contents);
-    ast.to_root()
+    Root::new(parse_impl(Some(filename), contents))
 }
 
 fn parse_impl(filename: Option<String>, contents: String) -> Node {

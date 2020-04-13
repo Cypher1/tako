@@ -38,8 +38,8 @@ fn prim_add(l: &Prim, r: &Prim, info: Info) -> Res {
         (Str(l, _), Str(r, _)) => Ok(Str(l.to_string() + &r.to_string(), info)),
         (l, r) => Err(TError::TypeMismatch2(
             "+".to_string(),
-            (*l).clone(),
-            (*r).clone(),
+            Box::new((*l).clone()),
+            Box::new((*r).clone()),
             info,
         )),
     }
@@ -53,8 +53,8 @@ fn prim_eq(l: &Prim, r: &Prim, info: Info) -> Res {
         (Str(l, _), Str(r, _)) => Ok(Bool(l == r, info)),
         (l, r) => Err(TError::TypeMismatch2(
             "==".to_string(),
-            (*l).clone(),
-            (*r).clone(),
+            Box::new((*l).clone()),
+            Box::new((*r).clone()),
             info,
         )),
     }
@@ -68,8 +68,8 @@ fn prim_neq(l: &Prim, r: &Prim, info: Info) -> Res {
         (Str(l, _), Str(r, _)) => Ok(Bool(l != r, info)),
         (l, r) => Err(TError::TypeMismatch2(
             "!=".to_string(),
-            (*l).clone(),
-            (*r).clone(),
+            Box::new((*l).clone()),
+            Box::new((*r).clone()),
             info,
         )),
     }
@@ -83,8 +83,8 @@ fn prim_gt(l: &Prim, r: &Prim, info: Info) -> Res {
         (Str(l, _), Str(r, _)) => Ok(Bool(l > r, info)),
         (l, r) => Err(TError::TypeMismatch2(
             ">".to_string(),
-            (*l).clone(),
-            (*r).clone(),
+            Box::new((*l).clone()),
+            Box::new((*r).clone()),
             info,
         )),
     }
@@ -98,8 +98,8 @@ fn prim_gte(l: &Prim, r: &Prim, info: Info) -> Res {
         (Str(l, _), Str(r, _)) => Ok(Bool(l >= r, info)),
         (l, r) => Err(TError::TypeMismatch2(
             ">=".to_string(),
-            (*l).clone(),
-            (*r).clone(),
+            Box::new((*l).clone()),
+            Box::new((*r).clone()),
             info,
         )),
     }
@@ -112,8 +112,8 @@ fn prim_sub(l: &Prim, r: &Prim, info: Info) -> Res {
         (I32(l, _), I32(r, _)) => Ok(I32(l - r, info)),
         (l, r) => Err(TError::TypeMismatch2(
             "-".to_string(),
-            (*l).clone(),
-            (*r).clone(),
+            Box::new((*l).clone()),
+            Box::new((*r).clone()),
             info,
         )),
     }
@@ -129,8 +129,8 @@ fn prim_mul(l: &Prim, r: &Prim, info: Info) -> Res {
         (Str(l, _), Bool(r, _)) => Ok(Str(if *r { l.to_string() } else { "".to_string() }, info)),
         (l, r) => Err(TError::TypeMismatch2(
             "*".to_string(),
-            (*l).clone(),
-            (*r).clone(),
+            Box::new((*l).clone()),
+            Box::new((*r).clone()),
             info,
         )),
     }
@@ -142,8 +142,8 @@ fn prim_div(l: &Prim, r: &Prim, info: Info) -> Res {
         (I32(l, _), I32(r, _)) => Ok(I32(l / r, info)),
         (l, r) => Err(TError::TypeMismatch2(
             "/".to_string(),
-            (*l).clone(),
-            (*r).clone(),
+            Box::new((*l).clone()),
+            Box::new((*r).clone()),
             info,
         )),
     }
@@ -155,8 +155,8 @@ fn prim_mod(l: &Prim, r: &Prim, info: Info) -> Res {
         (I32(l, _), I32(r, _)) => Ok(I32(l % r, info)),
         (l, r) => Err(TError::TypeMismatch2(
             "%".to_string(),
-            (*l).clone(),
-            (*r).clone(),
+            Box::new((*l).clone()),
+            Box::new((*r).clone()),
             info,
         )),
     }
@@ -168,8 +168,8 @@ fn prim_and(l: &Prim, r: &Prim, info: Info) -> Res {
         (Bool(l, _), Bool(r, _)) => Ok(Bool(*l && *r, info)),
         (l, r) => Err(TError::TypeMismatch2(
             "&&".to_string(),
-            (*l).clone(),
-            (*r).clone(),
+            Box::new((*l).clone()),
+            Box::new((*r).clone()),
             info,
         )),
     }
@@ -181,8 +181,8 @@ fn prim_or(l: &Prim, r: &Prim, info: Info) -> Res {
         (Bool(l, _), Bool(r, _)) => Ok(Bool(*l || *r, info)),
         (l, r) => Err(TError::TypeMismatch2(
             "||".to_string(),
-            (*l).clone(),
-            (*r).clone(),
+            Box::new((*l).clone()),
+            Box::new((*r).clone()),
             info,
         )),
     }
@@ -195,8 +195,8 @@ fn prim_pow(l: &Prim, r: &Prim, info: Info) -> Res {
         (I32(l, _), I32(r, _)) => Ok(I32(i32::pow(*l, *r as u32), info)), // TODO: require pos pow
         (l, r) => Err(TError::TypeMismatch2(
             "^".to_string(),
-            (*l).clone(),
-            (*r).clone(),
+            Box::new((*l).clone()),
+            Box::new((*r).clone()),
             info,
         )),
     }
@@ -285,37 +285,37 @@ impl Visitor<State, Prim, Prim> for Interpreter {
     }
 
     fn visit_un_op(&mut self, state: &mut State, expr: &UnOp) -> Res {
+        use Prim::*;
         if self.debug > 1 {
             eprintln!("evaluating unop {}", expr.clone().to_node());
         }
-        use Prim::*;
         let i = self.visit(state, &expr.inner)?;
         let info = expr.clone().get_info();
         match expr.name.as_str() {
             "!" => match i {
                 Bool(n, _) => Ok(Bool(!n, info)),
                 Lambda(_) => Ok(Lambda(Box::new(expr.clone().to_node()))),
-                _ => Err(TError::TypeMismatch("!".to_string(), i, info)),
+                _ => Err(TError::TypeMismatch("!".to_string(), Box::new(i), info)),
             },
             "+" => match i {
                 I32(n, _) => Ok(I32(n, info)),
                 Lambda(_) => Ok(Lambda(Box::new(expr.clone().to_node()))),
-                _ => Err(TError::TypeMismatch("+".to_string(), i, info)),
+                _ => Err(TError::TypeMismatch("+".to_string(), Box::new(i), info)),
             },
             "-" => match i {
                 I32(n, _) => Ok(I32(-n, info)),
                 Lambda(_) => Ok(Lambda(Box::new(expr.clone().to_node()))),
-                _ => Err(TError::TypeMismatch("-".to_string(), i, info)),
+                _ => Err(TError::TypeMismatch("-".to_string(), Box::new(i), info)),
             },
             op => Err(TError::UnknownPrefixOperator(op.to_string(), info)),
         }
     }
 
     fn visit_bin_op(&mut self, state: &mut State, expr: &BinOp) -> Res {
+        use Prim::*;
         if self.debug > 1 {
             eprintln!("evaluating binop {}", expr.clone().to_node());
         }
-        use Prim::*;
         let info = expr.clone().get_info();
         let l = self.visit(state, &expr.left);
         let mut r = || self.visit(state, &expr.right);
@@ -353,7 +353,7 @@ impl Visitor<State, Prim, Prim> for Interpreter {
                     "bool" => Ok(Bool(*bool_val, (*inf).clone())),
                     t => Err(TError::TypeMismatch(
                         t.to_string(),
-                        Bool(*bool_val, (*inf).clone()),
+                        Box::new(Bool(*bool_val, (*inf).clone())),
                         (*inf).clone(),
                     )),
                 },
@@ -361,7 +361,7 @@ impl Visitor<State, Prim, Prim> for Interpreter {
                     "i32" => Ok(I32(*int_val, (*inf).clone())),
                     t => Err(TError::TypeMismatch(
                         t.to_string(),
-                        I32(*int_val, (*inf).clone()),
+                        Box::new(I32(*int_val, (*inf).clone())),
                         (*inf).clone(),
                     )),
                 },
@@ -369,13 +369,13 @@ impl Visitor<State, Prim, Prim> for Interpreter {
                     "string" => Ok(Str((*str_val).clone(), (*inf).clone())),
                     t => Err(TError::TypeMismatch(
                         t.to_string(),
-                        Str((*str_val).clone(), (*inf).clone()),
+                        Box::new(Str((*str_val).clone(), (*inf).clone())),
                         (*inf).clone(),
                     )),
                 },
                 (_, t) => Err(TError::TypeMismatch(
                     "type".to_string(),
-                    t.clone(),
+                    Box::new(t.clone()),
                     t.get_info(),
                 )),
             },
@@ -401,7 +401,7 @@ mod tests {
     #[test]
     fn eval_num() {
         let mut interp = Interpreter::new(&Options::default());
-        let tree = PrimNode(I32(12, Info::default())).to_root();
+        let tree = Root::new(PrimNode(I32(12, Info::default())));
         assert_eq!(interp.visit_root(&tree), Ok(I32(12, Info::default())));
     }
 

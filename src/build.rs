@@ -64,7 +64,7 @@ fn files_from(path: &str) -> Vec<String> {
         match pth.to_str() {
             Some(s) => {
                 if !s.ends_with(".tk") && !s.ends_with(".c") {
-                    &mut params.push(s.to_string());
+                    params.push(s.to_string());
                 }
             }
             _ => panic!(),
@@ -83,7 +83,7 @@ fn main() -> std::io::Result<()> {
     writeln!(f, "use std::str::FromStr;")?;
 
     for p in files_from("examples") {
-        build_test(&mut f, p);
+        build_test(&f, p);
     }
 
     for p in files_from("counter_examples") {

@@ -120,16 +120,16 @@ pub fn lex_head<'a>(
                 }
                 let nxt = if chr == &'\\' {
                     contents.next(); // Escape.
-                    let escape = contents.peek().expect("Escaped character").clone();
+                    let escape = contents.peek().expect("Escaped character");
                     match escape {
                         'n' => '\n',
                         'r' => '\r',
                         't' => '\t',
                         '0' => '\0',
-                        ch => ch,
+                        ch => *ch,
                     }
                 } else {
-                    contents.peek().expect("Escaped character").clone()
+                    *contents.peek().expect("Escaped character")
                 };
                 head.push_back(nxt);
             }

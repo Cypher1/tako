@@ -50,7 +50,7 @@ impl Visitor<State, Node, Root> for ReScoper {
             requires: vec![],
             counter: 1,
         };
-        let mut res = self.visit(&mut state, &expr.ast)?.to_root();
+        let mut res = Root::new(self.visit(&mut state, &expr.ast)?);
         // TODO(cypher1): Avoid this copy (use swaps?)
         res.graph = self.graph.clone();
         // Check requires
