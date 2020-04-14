@@ -16,15 +16,12 @@ pub struct State {
     pub table: Table,
     pub path: Vec<ScopeName>,
     pub counter: i32, // used for ensuring uniqueness in new variables and scope names
-    // TODO: Store an hashmap/array of definitions by some id
-    // Each definition can then reference its children.
+                      // TODO: Store an hashmap/array of definitions by some id
+                      // Each definition can then reference its children.
 }
 
 impl Table {
-    pub fn find<'a>(
-        self: &'a mut Table,
-        path: &[ScopeName],
-    ) -> Option<&'a mut Table> {
+    pub fn find<'a>(self: &'a mut Table, path: &[ScopeName]) -> Option<&'a mut Table> {
         // eprintln!("find in {:?}", self.value);
         if path.is_empty() {
             return Some(self);
@@ -37,8 +34,9 @@ impl Table {
     }
 
     fn get_child<'a>(self: &'a mut Table, find: &ScopeName) -> &'a mut HashTree<ScopeName, Symbol> {
-        self.children.entry(find.clone()).or_insert(
-            to_hash_root(Symbol {
+        self.children
+            .entry(find.clone())
+            .or_insert(to_hash_root(Symbol {
                 name: find.clone(),
                 info: Entry::default(),
             }))
