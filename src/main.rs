@@ -16,10 +16,11 @@ mod tree;
 mod types;
 
 mod cli_options;
+mod definition_finder;
 mod errors;
 mod interpreter;
 mod pretty_print;
-mod rescoper;
+mod symbol_table_builder;
 mod to_c;
 
 // The following are only for tests
@@ -32,9 +33,10 @@ extern crate quickcheck;
 extern crate quickcheck_macros;
 
 use ast::Visitor;
+use definition_finder::DefinitionFinder;
 use interpreter::Interpreter;
 use pretty_print::PrettyPrint;
-use rescoper::ReScoper;
+use symbol_table_builder::SymbolTableBuilder;
 
 use cli_options::parse_args;
 use cli_options::Options;
@@ -56,10 +58,15 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
 
     let program = parser::parse_file(filename.to_string(), contents);
 
-    let scoped = ReScoper::process(&program, opts).expect("failed scoping");
+    let with_symbols =
+        SymbolTableBuilder::process(&program, opts).expect("failed building symbol table");
+
     if opts.show_full_ast {
-        eprintln!("debug ast: {:#?}", scoped);
+        eprintln!("debug ast: {:#?}", with_symbols);
     }
+    let scoped =
+        DefinitionFinder::process(&with_symbols, opts).expect("failed finding definitions");
+
     if opts.show_ast {
         eprintln!("ast: {}", scoped);
     }

@@ -80,4 +80,3 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 
 * **Billie Thompson** - *Readme Templates* - [PurpleBooth](https://github.com/PurpleBooth)
 * **Chris Hall** - *Design advice and instruction in programming language theory* - [Chrisosaurus](https://github.com/chrisosaurus)
-* **Iterait** - *Opensourced a CircleCI config that uses std=C++17* - [Hipipe](https://github.com/iterait/hipipe)

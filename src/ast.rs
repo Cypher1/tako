@@ -263,19 +263,26 @@ pub trait ToNode {
     fn get_info(self: &Self) -> Info;
 }
 
+impl Node {
+    pub fn to_root(self: Self) -> Root {
+        Root {
+            ast: self,
+            table: None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum ScopeName {
-    Unknown(i32),
     Anon(i32),
-    Named(String, i32),
+    Named(String),
 }
 
 impl fmt::Display for ScopeName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ScopeName::Unknown(n) => write!(f, "?#{}", n)?,
             ScopeName::Anon(n) => write!(f, "anonymous?#{}", n)?,
-            ScopeName::Named(name, n) => write!(f, "{}#{}", name, n)?,
+            ScopeName::Named(name) => write!(f, "{}", name)?,
         }
         Ok(())
     }
@@ -284,9 +291,8 @@ impl fmt::Display for ScopeName {
 impl ScopeName {
     pub fn to_name(self: &ScopeName) -> String {
         match self {
-            ScopeName::Unknown(n) => format!("{}", n),
             ScopeName::Anon(n) => format!("{}", n),
-            ScopeName::Named(name, n) => format!("{}{}", name, n),
+            ScopeName::Named(name) => name.to_owned(),
         }
     }
 }
@@ -319,13 +325,12 @@ impl fmt::Display for Symbol {
     }
 }
 
-pub type CallGraph = HashMap<Vec<ScopeName>, Definition>;
+pub type Table = HashTree<ScopeName, Symbol>;
 
 #[derive(Debug, Clone)]
 pub struct Root {
     pub ast: Node,
-    pub table: Option<Tree<Symbol>>,
-    pub graph: CallGraph,
+    pub table: Option<Table>,
 }
 
 impl Root {
@@ -333,7 +338,6 @@ impl Root {
         Root {
             ast,
             table: None,
-            graph: HashMap::new(),
         }
     }
 }
