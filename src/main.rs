@@ -61,14 +61,16 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
     let with_symbols =
         SymbolTableBuilder::process(&program, opts).expect("failed building symbol table");
 
+    eprintln!("table {:?}", with_symbols.table.clone());
+
     if opts.show_full_ast {
-        eprintln!("debug ast: {:#?}", with_symbols);
+        eprintln!("debug ast: {:#?}", with_symbols.ast);
     }
     let scoped =
         DefinitionFinder::process(&with_symbols, opts).expect("failed finding definitions");
 
     if opts.show_ast {
-        eprintln!("ast: {}", scoped);
+        eprintln!("ast: {}", scoped.ast);
     }
 
     if opts.interactive {

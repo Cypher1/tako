@@ -9,6 +9,7 @@ pub struct PrettyPrint {}
 // TODO: Return nodes.
 type Res = Result<(), TError>;
 type State = String;
+
 impl Visitor<State, (), String> for PrettyPrint {
     fn new(_opts: &Options) -> PrettyPrint {
         PrettyPrint {}
@@ -21,7 +22,12 @@ impl Visitor<State, (), String> for PrettyPrint {
     }
 
     fn visit_sym(&mut self, state: &mut State, expr: &Sym) -> Res {
-        write!(state, "{}", expr.name).unwrap();
+        if let Some(def_at) = expr.get_info().defined_at {
+            let path: Vec<String> = def_at[1..].iter().map(|p| format!("{}", p)).collect();
+            write!(state, "{}#{}", expr.name, path.join("/")).unwrap();
+        } else {
+            write!(state, "{}", expr.name).unwrap();
+        }
         Ok(())
     }
 

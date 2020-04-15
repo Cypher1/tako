@@ -32,7 +32,6 @@ impl Visitor<State, Node, Root> for DefinitionFinder {
             counter: 1,
         };
         let ast = self.visit(&mut state, &expr.ast)?;
-        eprintln!("table {:?}", state.table.clone());
         Ok(Root {
             ast,
             table: Some(state.table),
@@ -40,25 +39,25 @@ impl Visitor<State, Node, Root> for DefinitionFinder {
     }
 
     fn visit_sym(&mut self, state: &mut State, expr: &Sym) -> Res {
+        let path: Vec<String> = state.path.iter().map(|p| format!("{}", p)).collect();
+        eprintln!("\nSYM {:?} in {:?}", expr.name.clone(), path.join("/"));
         let mut search = state.path.clone();
         let mut res = expr.clone();
         loop {
             // TODO(cypher1): Matching with non-id'd data
             search.push(ScopeName::Named(expr.name.clone()));
-            eprintln!("---------search: {:?}---------", search);
             let node = state.table.find(&search);
-            eprintln!("---------found: {:?}---------", node);
             search.pop(); // Strip the name off, then replace it.
             match node {
                 Some(node) => {
                     // The name is in scope.
                     search.push(node.value.name.clone());
-                    eprintln!("found {} at {:?}", expr.name.clone(), search.clone());
+                    eprintln!("FOUND {} at {:?}", expr.name.clone(), search.clone());
                     res.info.defined_at = Some(search);
-                    break;
+                    return Ok(res.to_node());
                 }
                 None => {
-                    eprintln!("not found {} at {:?}", expr.name.clone(), search.clone());
+                    eprintln!("   not found {} at {:?}", expr.name.clone(), search.clone());
                     if search.is_empty() {
                         return Err(TError::UnknownSymbol(expr.name.clone(), res.info));
                     }
@@ -66,7 +65,6 @@ impl Visitor<State, Node, Root> for DefinitionFinder {
                 }
             }
         }
-        Ok(res.to_node())
     }
 
     fn visit_prim(&mut self, _state: &mut State, expr: &Prim) -> Res {
@@ -91,21 +89,28 @@ impl Visitor<State, Node, Root> for DefinitionFinder {
     }
 
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
-        let mut info = expr.get_info();
         let path_name = ScopeName::Named(expr.name.clone());
-        let mut path = state.path.clone();
-        path.push(path_name.clone());
-        eprintln!("defining {} at {:?}", expr.name.clone(), path.clone());
-        info.defined_at = Some(path);
         state.path.push(path_name);
+        let mut expr_args = None;
+        if let Some(e_args) = &expr.args {
+            let mut args = vec![];
+            for arg in e_args.iter() {
+                let mut arg_path = state.path.clone();
+                arg_path.push(ScopeName::Named(arg.name.clone()));
+                let sym = arg.clone();
+                sym.get_info().defined_at = Some(arg_path);
+                args.push(sym);
+            }
+            expr_args = Some(args);
+        }
         let value = Box::new(self.visit(state, &expr.value)?);
         state.path.pop();
         Ok(Let {
             name: expr.name.clone(),
-            args: expr.args.clone(),
+            args: expr_args,
             value,
             is_function: expr.is_function,
-            info,
+            info: expr.get_info(),
         }
         .to_node())
     }

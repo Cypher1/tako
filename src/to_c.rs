@@ -109,6 +109,7 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
     }
 
     fn visit_sym(&mut self, _state: &mut State, expr: &Sym) -> Res {
+        eprintln!("to_c: visit {}, {:?}", expr.name, expr.get_info().defined_at);
         let name = make_name(
             expr.get_info()
                 .defined_at
@@ -154,6 +155,7 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
 
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
         eprintln!("here: {:?}", expr.get_info().defined_at);
+        eprintln!("value: {}", expr.value);
         let name = make_name(
             expr.get_info()
                 .defined_at

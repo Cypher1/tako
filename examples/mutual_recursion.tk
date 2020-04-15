@@ -1,9 +1,9 @@
 is_even(x)=
   x==0-|true
-  ?(!is_odd(x=x-1))
+  ?(!is_odd(y=x-1))
 
-is_odd(x)=
-  x==0-|false
-  ?(!is_even(x=x-1))
+is_odd(y)=
+  y==0-|false
+  ?(!is_even(x=y-1))
 
 is_even(x=260) // Current maximum seems to be 288
