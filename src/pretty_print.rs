@@ -23,8 +23,8 @@ impl Visitor<State, (), String> for PrettyPrint {
 
     fn visit_sym(&mut self, state: &mut State, expr: &Sym) -> Res {
         if let Some(def_at) = expr.get_info().defined_at {
-            let path: Vec<String> = def_at[1..].iter().map(|p| format!("{}", p)).collect();
-            write!(state, "{}#{}", expr.name, path.join("/")).unwrap();
+            let path: Vec<String> = def_at.iter().map(|p| format!("{}", p)).collect();
+            write!(state, "::{}", path.join("::")).unwrap();
         } else {
             write!(state, "{}", expr.name).unwrap();
         }
