@@ -69,7 +69,12 @@ impl Visitor<State, (), String> for PrettyPrint {
     }
 
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
-        write!(state, "{}", expr.name).unwrap();
+        if let Some(def_at) = expr.get_info().defined_at {
+            let path: Vec<String> = def_at.iter().map(|p| format!("{}", p)).collect();
+            write!(state, "::{}", path.join("::")).unwrap();
+        } else {
+            write!(state, "{}", expr.name).unwrap();
+        }
         match &expr.args {
             Some(reqs) => {
                 if !reqs.is_empty() {
