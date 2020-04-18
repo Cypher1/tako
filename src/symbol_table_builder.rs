@@ -132,12 +132,12 @@ impl Visitor<State, Node, Root> for SymbolTableBuilder {
             state.table.get(&arg_path);
         }
 
-        self.visit(state, &expr.value)?;
+        let value = Box::new(self.visit(state, &expr.value)?);
         state.path.pop();
 
         Ok(Let {
             name: expr.name.clone(),
-            value: expr.value.clone(),
+            value,
             args: expr.args.clone(),
             is_function: expr.is_function,
             info,
