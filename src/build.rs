@@ -63,7 +63,7 @@ fn files_from(path: &str) -> Vec<String> {
         let pth = filename.path();
         match pth.to_str() {
             Some(s) => {
-                if !s.ends_with(".tk") && !s.ends_with(".c") {
+                if !s.ends_with(".tk") && !s.ends_with(".c") && !s.ends_with(".sh") {
                     params.push(s.to_string());
                 }
             }
