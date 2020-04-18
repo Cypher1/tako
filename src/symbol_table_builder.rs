@@ -9,15 +9,16 @@ pub struct SymbolTableBuilder {
 }
 
 // TODO: Return nodes.
-type Res = Result<(), TError>;
+type Res = Result<Node, TError>;
 
 #[derive(Debug, Clone)]
 pub struct State {
     pub table: Table,
     pub path: Vec<ScopeName>,
-    pub counter: i32, // used for ensuring uniqueness in new variables and scope names
-                      // TODO: Store an hashmap/array of definitions by some id
-                      // Each definition can then reference its children.
+    pub counter: i32,
+    // used for ensuring uniqueness in new variables and scope names
+    // TODO: Store an hashmap/array of definitions by some id
+    // Each definition can then reference its children.
 }
 
 impl Table {
@@ -58,7 +59,7 @@ impl State {
     }
 }
 
-impl Visitor<State, (), Root> for SymbolTableBuilder {
+impl Visitor<State, Node, Root> for SymbolTableBuilder {
     fn new(opts: &Options) -> SymbolTableBuilder {
         SymbolTableBuilder { debug: opts.debug }
     }
@@ -72,38 +73,44 @@ impl Visitor<State, (), Root> for SymbolTableBuilder {
             path: vec![],
             counter: 1,
         };
-        self.visit(&mut state, &expr.ast)?;
-        if self.debug > 3 {
-            eprintln!("graph {:?}", Some(state.table.clone()));
-        }
-
-        eprintln!("table: {:?}", state.table.clone());
 
         Ok(Root {
-            ast: expr.ast.clone(),
+            ast: self.visit(&mut state, &expr.ast)?,
             table: Some(state.table),
         })
     }
 
-    fn visit_sym(&mut self, _state: &mut State, _expr: &Sym) -> Res {
-        Ok(())
+    fn visit_sym(&mut self, _state: &mut State, expr: &Sym) -> Res {
+        Ok(expr.clone().to_node())
     }
 
-    fn visit_prim(&mut self, _state: &mut State, _expr: &Prim) -> Res {
-        Ok(())
+    fn visit_prim(&mut self, _state: &mut State, expr: &Prim) -> Res {
+        Ok(expr.clone().to_node())
     }
 
     fn visit_apply(&mut self, state: &mut State, expr: &Apply) -> Res {
         let arg_scope_name = ScopeName::Anon(state.get_unique_id());
 
         state.path.push(arg_scope_name);
+        let mut args = Vec::new();
         for arg in expr.args.iter() {
-            self.visit_let(state, arg)?;
+            args.push(match self.visit_let(state, arg)? {
+                Node::LetNode(let_node) => Ok(let_node),
+                node => Err(TError::InternalError(
+                    "Symbol table builder converted let into non let".to_owned(),
+                    node,
+                )),
+            }?);
         }
-        self.visit(state, &*expr.inner)?;
+        let inner = Box::new(self.visit(state, &*expr.inner)?);
         state.path.pop();
 
-        Ok(())
+        Ok(Apply {
+            inner,
+            args,
+            info: expr.get_info(),
+        }
+        .to_node())
     }
 
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
@@ -113,7 +120,9 @@ impl Visitor<State, (), Root> for SymbolTableBuilder {
         }
 
         // Visit definition.
+        let mut info = expr.get_info();
         state.path.push(let_name);
+        info.defined_at = Some(state.path.clone());
         state.table.get(&state.path);
 
         // Consider the function arguments defined in this scope.
@@ -123,19 +132,39 @@ impl Visitor<State, (), Root> for SymbolTableBuilder {
             state.table.get(&arg_path);
         }
 
-        self.visit(state, &expr.value)?;
+        let value = Box::new(self.visit(state, &expr.value)?);
         state.path.pop();
 
-        Ok(())
+        Ok(Let {
+            name: expr.name.clone(),
+            value,
+            args: expr.args.clone(),
+            is_function: expr.is_function,
+            info,
+        }
+        .to_node())
     }
 
     fn visit_un_op(&mut self, state: &mut State, expr: &UnOp) -> Res {
-        self.visit(state, &expr.inner)
+        let inner = Box::new(self.visit(state, &expr.inner)?);
+        Ok(UnOp {
+            name: expr.name.clone(),
+            inner,
+            info: expr.get_info(),
+        }
+        .to_node())
     }
 
     fn visit_bin_op(&mut self, state: &mut State, expr: &BinOp) -> Res {
-        self.visit(state, &expr.left)?;
-        self.visit(state, &expr.right)
+        let left = Box::new(self.visit(state, &expr.left)?);
+        let right = Box::new(self.visit(state, &expr.right)?);
+        Ok(BinOp {
+            name: expr.name.clone(),
+            left,
+            right,
+            info: expr.get_info(),
+        }
+        .to_node())
     }
 
     fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {

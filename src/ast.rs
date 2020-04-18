@@ -299,15 +299,15 @@ impl ScopeName {
 
 #[derive(Debug, Clone)]
 pub struct Entry {
-    pub requires: Vec<Sym>,
-    pub defines: HashMap<Sym, Vec<ScopeName>>,
+    // pub requires: Vec<Sym>,
+// pub defines: HashMap<Sym, Vec<ScopeName>>,
 }
 
 impl Default for Entry {
     fn default() -> Entry {
         Entry {
-            requires: vec![],
-            defines: HashMap::new(),
+            // requires: vec![],
+            // defines: HashMap::new(),
         }
     }
 }
@@ -335,10 +335,7 @@ pub struct Root {
 
 impl Root {
     pub fn new(ast: Node) -> Root {
-        Root {
-            ast,
-            table: None,
-        }
+        Root { ast, table: None }
     }
 }
 
