@@ -94,7 +94,7 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<String> {
     let execf = format!("build/{}", name);
     let destination = std::path::Path::new(&outf);
     let mut f = std::fs::File::create(&destination).expect("could not open output file");
-    writeln!(f, "{}", res)?;
+    write!(f, "{}", res)?;
 
     let mut cmd = Command::new("g++");
     for arg in flags.iter() {
