@@ -32,10 +32,15 @@ fn build_test(mut f: &std::fs::File, path: String) {
 
     eprintln!("Building test '{}'", path);
     let opts = TestOptions::from_str(&test).expect("Couldn't read test options");
-    let test_type = if opts.expected == TestResult::Panic {
-        "\n#[should_panic]"
+    let (test_type, result) = if opts.expected == TestResult::Panic {
+        ("\n#[should_panic]", "".to_owned()) // No result checking needed.
+    } else if let TestResult::Output(gold) = opts.expected {
+        let mut goldfile = std::fs::File::open(gold.to_string()).unwrap();
+        let mut golden = String::new();
+        goldfile.read_to_string(&mut golden).unwrap();
+        ("", format!("eprintln!(\"Checking output file against {gold}\");\n", gold = gold, golden = golden))
     } else {
-        ""
+        ("", "".to_owned())
     };
 
     let fn_name = path.replace("/", "_").replace("\\", "_").replace("._", "");
@@ -49,10 +54,12 @@ fn {fn_name}() {{
     for f in opts.files.iter() {{
         super::work(&f, &opts).expect(\"failed\");
     }}
+    {result}
 }}",
         fn_name = fn_name,
         test_type = test_type,
         opts = test,
+        result = result
     )
     .unwrap();
 }
@@ -63,7 +70,10 @@ fn files_from(path: &str) -> Vec<String> {
         let pth = filename.path();
         match pth.to_str() {
             Some(s) => {
-                if !s.ends_with(".tk") && !s.ends_with(".c") && !s.ends_with(".sh") {
+                if !s.ends_with(".tk")
+                    && !s.ends_with(".sh")
+                    && !s.ends_with(".cc")
+                    && !s.ends_with(".c") {
                     params.push(s.to_string());
                 }
             }
