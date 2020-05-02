@@ -40,21 +40,18 @@ pub fn make_name(def: Vec<ScopeName>) -> String {
 
 fn pretty_print_block(src: Tree<Code>, indent: &str) -> String {
     let mut body = "".to_string();
-    let next_indent = indent.to_string() + &"  ".to_string();
+    let new_indent = indent.to_string() + "  ";
     for child in src.children.iter() {
-        let contents = pretty_print_block(child.to_owned(), &next_indent);
+        let contents = pretty_print_block(child.to_owned(), &new_indent);
         body = format!("{}{}", body, contents);
     }
     // Calculate the expression as well...
     // TODO: Consider if it is dropped (should it be stored? is it a side effect?)
-    body = format!("{}{}{}", body, &next_indent, src.value.expr);
-    let header = if let Some((label, args)) = src.value.label {
-        body = format!("{{{}{}}};", body, indent);
-        format!("{}{}({}) ", indent, label, args.join(", "))
+    if let Some((label, args)) = src.value.label {
+        format!("\n{}{}({}) {{{}\n{}{}\n{}}};", indent, label, args.join(", "), body, new_indent, src.value.expr, indent)
     } else {
-        indent.to_owned()
-    };
-    format!("{}{}\n", header, body)
+        format!("{}\n{}{}", body, indent, src.value.expr)
+    }
 }
 
 type Res = Result<Tree<Code>, TError>;
@@ -101,11 +98,11 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
 
         // Definitions
         for func in self.functions.iter().clone() {
-            let function = pretty_print_block(func.to_owned(), &"\n");
+            let function = pretty_print_block(func.to_owned(), "");
             code = format!("{}{}", code, function);
         }
 
-        Ok((code, self.flags.clone()))
+        Ok((code+"\n", self.flags.clone()))
     }
 
     fn visit_sym(&mut self, _state: &mut State, expr: &Sym) -> Res {
@@ -176,7 +173,7 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
                     )
                 })
                 .collect();
-            let label = format!("auto {} = [&] ", name);
+            let label = format!("const auto {} = [&] ", name);
             let node = Code::block(Some((label, args)), format!("return {};", code.value.expr));
             return Ok(Tree {
                 value: node,
