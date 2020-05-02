@@ -38,7 +38,7 @@ fn build_test(mut f: &std::fs::File, path: String) {
         let mut goldfile = std::fs::File::open(gold.to_string()).unwrap();
         let mut golden = String::new();
         goldfile.read_to_string(&mut golden).unwrap();
-        ("", format!("let mut goldfile=std::fs::File::open(\"{gold}\").unwrap();\n    let mut golden = String::new();\n    goldfile.read_to_string(&mut golden).unwrap();\n    assert_eq!(golden, result);", gold = gold))
+        ("", format!("let mut goldfile=std::fs::File::open(\"{gold}\").unwrap();\n    let mut golden = String::new();\n    goldfile.read_to_string(&mut golden).unwrap();\n    assert_eq!(golden.replace(\"\\r\n\", \"\n\"), result);", gold = gold))
     } else {
         ("", "".to_owned())
     };
