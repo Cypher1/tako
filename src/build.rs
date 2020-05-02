@@ -35,9 +35,6 @@ fn build_test(mut f: &std::fs::File, path: String) {
     let (test_type, result) = if opts.expected == TestResult::Panic {
         ("\n#[should_panic]", "".to_owned()) // No result checking needed.
     } else if let TestResult::Output(gold) = opts.expected {
-        let mut goldfile = std::fs::File::open(gold.to_string()).unwrap();
-        let mut golden = String::new();
-        goldfile.read_to_string(&mut golden).unwrap();
         ("", format!("let mut goldfile=std::fs::File::open(\"{gold}\").unwrap();\n    let mut golden = String::new();\n    goldfile.read_to_string(&mut golden).unwrap();\n    assert_eq!(golden.replace(\"\\r\n\", \"\n\"), result);", gold = gold))
     } else {
         ("", "".to_owned())
