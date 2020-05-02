@@ -7,20 +7,24 @@ use super::cli_options::Options;
 #[derive(Debug, PartialEq)]
 pub enum TestResult {
     Panic,
-    Success, // With an unspecified value
-             // TODO: ReturnValue(i32),
+    Success,        // With an unspecified value
+    Output(String), // With an expected value
+    // TODO: ReturnValue(i32),
 }
 
 impl FromStr for TestResult {
     type Err = ParseIntError;
 
     fn from_str(res_: &str) -> Result<Self, Self::Err> {
-        let res = res_.trim_matches(')');
-        if res == "Panic" {
+        let res: Vec<&str> = res_.trim_matches(')').split('(').collect();
+        if res[0] == "Panic" {
             return Ok(TestResult::Panic);
         }
-        if res == "Success" {
+        if res[0] == "Success" {
             return Ok(TestResult::Success);
+        }
+        if res[0] == "Output" {
+            return Ok(TestResult::Output(res[1].to_owned()));
         }
         panic!(
             "Unexpected value in test configuration for expected test result: \"{}\".",

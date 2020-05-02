@@ -45,12 +45,13 @@ fn main() -> std::io::Result<()> {
     let args: Vec<String> = env::args().collect();
     let opts = parse_args(&args[1..]);
     for f in opts.files.iter() {
-        work(&f, &opts)?
+        let result = work(&f, &opts)?; // discard the result (used for testing).
+        eprintln!("{:?}", result);
     }
     Ok(())
 }
 
-fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
+fn work(filename: &str, opts: &Options) -> std::io::Result<String> {
     let mut contents = String::new();
     let mut file = File::open(filename.to_string())?;
 
@@ -78,8 +79,7 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
         use ast::ToNode;
         let res = Interpreter::process(&scoped, opts).expect("could not interpret program");
         let res = PrettyPrint::process(&Root::new(res.to_node()), opts);
-        eprintln!(">> {:#?}", res);
-        return Ok(());
+        return Ok(format!("{:#?}", res));
     }
 
     let (res, flags) = to_c::Compiler::process(&scoped, opts).expect("could not compile program");
@@ -116,7 +116,7 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<()> {
     }
     let s = String::from_utf8(output.stdout).unwrap();
     eprintln!("{}", s);
-    Ok(())
+    Ok(res)
 }
 
 #[cfg(test)]

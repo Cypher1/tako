@@ -1,6 +1,6 @@
 use std::fs::{self, DirEntry};
 use std::io;
-use std::io::prelude::*;
+use std::io::prelude::{Read, Write};
 use std::path::Path;
 use std::str::FromStr;
 
@@ -32,10 +32,15 @@ fn build_test(mut f: &std::fs::File, path: String) {
 
     eprintln!("Building test '{}'", path);
     let opts = TestOptions::from_str(&test).expect("Couldn't read test options");
-    let test_type = if opts.expected == TestResult::Panic {
-        "\n#[should_panic]"
+    let (test_type, result) = if opts.expected == TestResult::Panic {
+        ("\n#[should_panic]", "".to_owned()) // No result checking needed.
+    } else if let TestResult::Output(gold) = opts.expected {
+        let mut goldfile = std::fs::File::open(gold.to_string()).unwrap();
+        let mut golden = String::new();
+        goldfile.read_to_string(&mut golden).unwrap();
+        ("", format!("let mut goldfile=std::fs::File::open(\"{gold}\").unwrap();\n    let mut golden = String::new();\n    goldfile.read_to_string(&mut golden).unwrap();\n    assert_eq!(golden.replace(\"\\r\n\", \"\n\"), result);", gold = gold))
     } else {
-        ""
+        ("", "".to_owned())
     };
 
     let fn_name = path.replace("/", "_").replace("\\", "_").replace("._", "");
@@ -44,15 +49,19 @@ fn build_test(mut f: &std::fs::File, path: String) {
         "
 #[test]{test_type}
 fn {fn_name}() {{
-    let  topts = TestOptions::from_str(\"{opts}\").expect(\"Couldn't read test options\");
-    let  opts = topts.opts;
+    let topts = TestOptions::from_str(\"{opts}\").expect(\"Couldn't read test options\");
+    let opts = topts.opts;
     for f in opts.files.iter() {{
-        super::work(&f, &opts).expect(\"failed\");
+        let result = super::work(&f, &opts).expect(\"failed\");
+        // Check the result!
+        eprintln!(\"Result{{:?}}\", result);
+        {result}
     }}
 }}",
         fn_name = fn_name,
         test_type = test_type,
         opts = test,
+        result = result
     )
     .unwrap();
 }
@@ -63,7 +72,10 @@ fn files_from(path: &str) -> Vec<String> {
         let pth = filename.path();
         match pth.to_str() {
             Some(s) => {
-                if !s.ends_with(".tk") && !s.ends_with(".c") && !s.ends_with(".sh") {
+                if !s.ends_with(".tk")
+                    && !s.ends_with(".sh")
+                    && !s.ends_with(".cc")
+                    && !s.ends_with(".c") {
                     params.push(s.to_string());
                 }
             }
@@ -79,8 +91,9 @@ fn main() -> std::io::Result<()> {
     let destination = std::path::Path::new(&out_dir).join("test.rs");
     let mut f = std::fs::File::create(&destination).unwrap();
 
-    writeln!(f, "use super::test_options::TestOptions;")?;
+    writeln!(f, "use std::io::prelude::Read;")?;
     writeln!(f, "use std::str::FromStr;")?;
+    writeln!(f, "use super::test_options::TestOptions;")?;
 
     for p in files_from("examples") {
         build_test(&f, p);
