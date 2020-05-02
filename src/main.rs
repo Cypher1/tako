@@ -114,8 +114,9 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<String> {
         eprintln!("{}", s);
         panic!("Command executed with failing error code");
     }
-    let res = String::from_utf8(output.stdout).unwrap();
-    Ok(format!("{:#?}", res))
+    let s = String::from_utf8(output.stdout).unwrap();
+    eprintln!("{}", s);
+    Ok(res)
 }
 
 #[cfg(test)]

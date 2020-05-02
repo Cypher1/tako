@@ -54,7 +54,7 @@ fn pretty_print_block(src: Tree<Code>, indent: &str) -> String {
     } else {
         indent.to_owned()
     };
-    format!("{}{}", header, body)
+    format!("{}{}\n", header, body)
 }
 
 type Res = Result<Tree<Code>, TError>;

@@ -54,6 +54,7 @@ fn {fn_name}() {{
     for f in opts.files.iter() {{
         let result = super::work(&f, &opts).expect(\"failed\");
         // Check the result!
+        eprintln!(\"Result{{:?}}\", result);
         {result}
     }}
 }}",
