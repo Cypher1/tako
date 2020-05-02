@@ -1,6 +1,6 @@
 use std::fs::{self, DirEntry};
 use std::io;
-use std::io::prelude::*;
+use std::io::prelude::{Read, Write};
 use std::path::Path;
 use std::str::FromStr;
 
@@ -38,7 +38,7 @@ fn build_test(mut f: &std::fs::File, path: String) {
         let mut goldfile = std::fs::File::open(gold.to_string()).unwrap();
         let mut golden = String::new();
         goldfile.read_to_string(&mut golden).unwrap();
-        ("", format!("eprintln!(\"Checking output file against {gold}\");\n", gold = gold, golden = golden))
+        ("", format!("let mut goldfile=std::fs::File::open(\"{gold}\").unwrap();\n    let mut golden = String::new();\n    goldfile.read_to_string(&mut golden).unwrap();\n    assert_eq!(golden, result);", gold = gold))
     } else {
         ("", "".to_owned())
     };
@@ -49,12 +49,13 @@ fn build_test(mut f: &std::fs::File, path: String) {
         "
 #[test]{test_type}
 fn {fn_name}() {{
-    let  topts = TestOptions::from_str(\"{opts}\").expect(\"Couldn't read test options\");
-    let  opts = topts.opts;
+    let topts = TestOptions::from_str(\"{opts}\").expect(\"Couldn't read test options\");
+    let opts = topts.opts;
     for f in opts.files.iter() {{
-        super::work(&f, &opts).expect(\"failed\");
+        let result = super::work(&f, &opts).expect(\"failed\");
+        // Check the result!
+        {result}
     }}
-    {result}
 }}",
         fn_name = fn_name,
         test_type = test_type,
@@ -89,8 +90,9 @@ fn main() -> std::io::Result<()> {
     let destination = std::path::Path::new(&out_dir).join("test.rs");
     let mut f = std::fs::File::create(&destination).unwrap();
 
-    writeln!(f, "use super::test_options::TestOptions;")?;
+    writeln!(f, "use std::io::prelude::Read;")?;
     writeln!(f, "use std::str::FromStr;")?;
+    writeln!(f, "use super::test_options::TestOptions;")?;
 
     for p in files_from("examples") {
         build_test(&f, p);
