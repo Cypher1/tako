@@ -81,7 +81,15 @@ impl Visitor<State, Node, Root> for DefinitionFinder {
         let mut args = vec![];
         for arg in expr.args.iter() {
             match self.visit_let(state, arg)? {
-                Node::LetNode(let_node) => args.push(let_node),
+                Node::LetNode(let_node) => {
+                    let mut defined_arg = let_node.clone();
+                    let mut path = state.path.clone();
+                    // Inject the value into the 'anon' stack frame.
+                    path.push(ScopeName::Named(let_node.name));
+                    eprintln!("defining arg at {:?}", path.clone());
+                    defined_arg.info.defined_at = Some(path);
+                    args.push(defined_arg)
+                }
                 _ => panic!("InternalError: definition_finder converted let node to other node."),
             }
         }
@@ -96,28 +104,33 @@ impl Visitor<State, Node, Root> for DefinitionFinder {
     }
 
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
-        if self.debug > 1 {
+        if self.debug > -1 {
             eprintln!("visiting {:?} {}", state.path.clone(), &expr.name);
         }
         let path_name = ScopeName::Named(expr.name.clone());
         state.path.push(path_name);
-        let mut expr_args = None;
+        let mut args = None;
         if let Some(e_args) = &expr.args {
-            let mut args = vec![];
+            let mut arg_vec = vec![];
             for arg in e_args.iter() {
                 let mut arg_path = state.path.clone();
                 arg_path.push(ScopeName::Named(arg.name.clone()));
-                let sym = arg.clone();
-                sym.get_info().defined_at = Some(arg_path);
-                args.push(sym);
+                let mut sym = arg.clone();
+                eprintln!(
+                    "visiting let arg {:?} {}",
+                    arg_path.clone(),
+                    &sym.name.clone()
+                );
+                sym.info.defined_at = Some(arg_path);
+                arg_vec.push(sym);
             }
-            expr_args = Some(args);
+            args = Some(arg_vec);
         }
         let value = Box::new(self.visit(state, &expr.value)?);
         state.path.pop();
         Ok(Let {
             name: expr.name.clone(),
-            args: expr_args,
+            args,
             value,
             is_function: expr.is_function,
             info: expr.get_info(),

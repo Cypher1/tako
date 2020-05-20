@@ -13,23 +13,26 @@ pub struct Compiler {
 }
 
 #[derive(Clone)]
-pub struct Code {
-    // e.g. Some("int main", vec!["int argc", "char* argv[]"])
-    label: Option<(String, Vec<String>)>,
-    expr: String, // e.g. 3;
-                  // Should print as
-                  // int main(int argc, char* argv[]) {
-                  //   ... // Lines from this nodes children
-                  //   return 3;
-                  // }
+pub enum Code {
+    Line(String),
+    Block {
+        // e.g. Some("int main", vec!["int argc", "char* argv[]"])
+        label: Option<(String, Vec<String>)>,
+        body: Box<Tree<Code>>, // e.g. 3;
+        // Should print as
+        // int main(int argc, char* argv[]) {
+        //   ... // Lines from this nodes children
+        //   return 3;
+        // }
+    }
 }
 
 impl Code {
     fn new(expr: String) -> Code {
-        Code { label: None, expr }
+        Code::Line(expr)
     }
-    fn block(label: Option<(String, Vec<String>)>, expr: String) -> Code {
-        Code { label, expr }
+    fn block(label: Option<(String, Vec<String>)>, expr: Code) -> Code {
+        Code::Block { label, body: Box::new(Tree { value: expr, children: vec![]})}
     }
 }
 
@@ -39,24 +42,52 @@ pub fn make_name(def: Vec<ScopeName>) -> String {
 }
 
 fn pretty_print_block(src: Tree<Code>, indent: &str) -> String {
-    let mut body = "".to_string();
+    let mut block = "".to_string();
     let new_indent = indent.to_string() + "  ";
     for child in src.children.iter() {
         let contents = pretty_print_block(child.to_owned(), &new_indent);
-        body = format!("{}{}", body, contents);
+        block = format!("{}{}", block, contents);
     }
     // Calculate the expression as well...
     // TODO: Consider if it is dropped (should it be stored? is it a side effect?)
-    if let Some((label, args)) = src.value.label {
-        format!("\n{}{}({}) {{{}\n{}{}\n{}}};", indent, label, args.join(", "), body, new_indent, src.value.expr, indent)
-    } else {
-        format!("{}\n{}{}", body, indent, src.value.expr)
+    match src.value {
+        Code::Block {label, body } => {
+            let inner = pretty_print_block(*body, &new_indent);
+            let rest = format!("{{{}{}\n{}}};", block, inner, indent);
+            match label {
+                Some((label, args)) => format!("\n{}{}({}) {}", indent, label, args.join(", "), rest),
+                None => format!("\n{}{}", indent, rest),
+            }
+        },
+        Code::Line(expr) => format!("{}\n{}{}", block, indent, expr),
     }
 }
 
 type Res = Result<Tree<Code>, TError>;
 type State = ();
 type Out = (String, HashSet<String>);
+
+impl Compiler {
+    fn build_call1(&mut self, before: &str, inner: Code) -> String {
+        let inner_str = match inner {
+            Code::Line(expr) => expr,
+            Code::Block{ label: _, body: _ } => panic!("Cannot apply operator to block"),
+        };
+        format!("{}({})", before, inner_str)
+    }
+    fn build_call2(&mut self, before: &str, mid: &str, left: Code, right: Code) -> String {
+        let left_str = match left {
+            Code::Line(expr) => expr,
+            Code::Block{ label: _, body: _ } => panic!("Cannot apply operator to block"),
+        };
+        let right_str = match right {
+            Code::Line(expr) => expr,
+            Code::Block{ label: _, body: _ } => panic!("Cannot apply operator to block"),
+        };
+        format!("{}({}{}{})", before, left_str, mid, right_str)
+    }
+}
+
 impl Visitor<State, Tree<Code>, Out> for Compiler {
     fn new(_opts: &Options) -> Compiler {
         Compiler {
@@ -67,7 +98,24 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
     }
 
     fn visit_root(&mut self, root: &Root) -> Result<Out, TError> {
-        let child = self.visit(&mut (), &root.ast)?;
+        let mut main_info = root.ast.get_info();
+        main_info.defined_at = Some(vec![]);
+        let main_let = Let {
+            info: main_info,
+            name: "main".to_string(),
+            value: Box::new(root.ast.clone()),
+            args: Some(vec![]),
+            is_function: true,
+        };
+        let main = match self.visit_let(&mut (), &main_let)? {
+            Tree { value: Code::Block { label: _, body }, children } => {
+                Tree { value: Code::Block { label: Some((
+                    "int main".to_string(),
+                    vec!["int argc".to_string(), "char* argv[]".to_string()],
+                )), body }, children }
+            },
+            _ => panic!("main must be a block"),
+        };
 
         // TODO(cypher1): Use a writer.
         let mut code = "".to_string();
@@ -79,22 +127,16 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
 
         // Forward declarations
         for func in self.functions.clone().iter() {
-            if let Some(decl) = func.value.label.clone() {
-                code = format!("{}{}({});\n", code, decl.0, decl.1.join(", "));
+            match &func.value {
+                Code::Block {label: None, body: _ } => panic!("Cannot create function without 'label'"),
+                Code::Line(_) => panic!("Cannot create function without 'block'"),
+                Code::Block {label: Some((label, args)), .. } => {
+                    code = format!("{}{}({});\n", code, label, args.join(", "));
+                }
             }
         }
 
-        let main_body = Tree {
-            value: Code {
-                expr: format!("return {};", child.value.expr),
-                label: Some((
-                    "int main".to_string(),
-                    vec!["int argc".to_string(), "char* argv[]".to_string()],
-                )),
-            },
-            children: child.children,
-        };
-        self.functions.push(main_body);
+        self.functions.push(main);
 
         // Definitions
         for func in self.functions.iter().clone() {
@@ -126,6 +168,7 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
     }
 
     fn visit_apply(&mut self, state: &mut State, expr: &Apply) -> Res {
+        eprintln!("apply here: {:?}", expr);
         let val = self.visit(state, &expr.inner)?;
         let args: Vec<Tree<Code>> = expr
             .args
@@ -138,20 +181,32 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
         let mut children = vec![];
         let mut arg_exprs = vec![];
         for arg in args.iter() {
-            arg_exprs.push(arg.value.expr.clone());
+            match &arg.value {
+                Code::Line(arg_expr) => arg_exprs.push(arg_expr.clone()),
+                Code::Block { .. } => panic!("Unexpected block used as apply argument"),
+            }
             children.extend(arg.children.clone());
         }
         // TODO: require label is none.
         let arg_str = arg_exprs.join(", ");
-        let with_args = format!("{}({})", val.value.expr, arg_str);
-        Ok(Tree {
-            value: Code::new(with_args),
-            children,
-        })
+        match val.value {
+            Code::Line(expr) => {
+                let with_args = format!("{}({})", expr, arg_str);
+                Ok(Tree {
+                    value: Code::Line(with_args),
+                    children,
+                })
+            },
+            Code::Block { .. } => panic!("Don't know how to apply arguments to a block"),
+        }
     }
 
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
-        eprintln!("here: {:?}", expr.get_info().defined_at);
+        eprintln!("let here: {:?}", expr.get_info().defined_at);
+        eprintln!("args: {:?}", expr.args);
+        for arg in (&expr.args).as_ref().unwrap_or(&vec![]) {
+            eprintln!("  arg: {:?} {:?}", arg.name, arg.get_info().defined_at);
+        }
         eprintln!("value: {}", expr.value);
         let name = make_name(
             expr.get_info()
@@ -159,6 +214,10 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
                 .expect("Could not find definition for let"),
         );
         let code = self.visit(state, &expr.value)?;
+        let ret = match code.value {
+            Code::Line(expr) => expr,
+            Code::Block{ label: _, body: _ } => panic!("Don't know how to return a block"),
+        };
         if expr.is_function {
             let args: Vec<String> = expr
                 .args
@@ -166,22 +225,24 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
                 .unwrap_or(&vec![])
                 .iter()
                 .map(|s| {
-                    make_name(
+                    format!("const int {}", make_name(
                         s.get_info()
                             .defined_at
                             .expect("Could not find definition for let argument"),
-                    )
+                    ))
                 })
                 .collect();
+
             let label = format!("const auto {} = [&] ", name);
-            let node = Code::block(Some((label, args)), format!("return {};", code.value.expr));
+            let node = Code::block(Some((label, args)), Code::new(format!("return {};", ret)));
+
             return Ok(Tree {
                 value: node,
                 children: code.children,
             });
         }
         Ok(Tree {
-            value: Code::new(format!("const int {} = {};", name, code.value.expr)),
+            value: Code::new(format!("const int {} = {};", name, ret)),
             children: code.children,
         })
     }
@@ -190,9 +251,9 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
         let code = self.visit(state, &expr.inner)?;
         let info = expr.get_info();
         let res = match expr.name.as_str() {
-            "+" => code.value.expr,
-            "-" => format!("-({})", code.value.expr),
-            "!" => format!("!({})", code.value.expr),
+            "+" => self.build_call1("", code.value),
+            "-" => self.build_call1("-", code.value),
+            "!" => self.build_call1("!", code.value),
             op => return Err(TError::UnknownPrefixOperator(op.to_string(), info)),
         };
         Ok(Tree {
@@ -200,6 +261,7 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
             children: code.children,
         })
     }
+
     fn visit_bin_op(&mut self, state: &mut State, expr: &BinOp) -> Res {
         let info = expr.get_info();
         let left = self.visit(state, &expr.left.clone())?;
@@ -208,20 +270,20 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
         children.extend(left.children);
         // TODO: require 2 children
         let s = match expr.name.as_str() {
-            "*" => format!("({}*{})", left.value.expr, right.value.expr),
-            "+" => format!("({}+{})", left.value.expr, right.value.expr),
-            "/" => format!("({}/{})", left.value.expr, right.value.expr), // TODO: require divisibility
-            "-" => format!("({}-{})", left.value.expr, right.value.expr),
-            "==" => format!("({}=={})", left.value.expr, right.value.expr),
-            "!=" => format!("({}!={})", left.value.expr, right.value.expr),
-            ">" => format!("({}>{})", left.value.expr, right.value.expr),
-            "<" => format!("({}<{})", left.value.expr, right.value.expr),
-            ">=" => format!("({}>={})", left.value.expr, right.value.expr),
-            "<=" => format!("({}<={})", left.value.expr, right.value.expr),
+            "*" => self.build_call2("", "*", left.value, right.value),
+            "+" => self.build_call2("", "+", left.value, right.value),
+            "/" => self.build_call2("", "/", left.value, right.value), // TODO: require divisibility
+            "-" => self.build_call2("", "-", left.value, right.value),
+            "==" => self.build_call2("", "==", left.value, right.value),
+            "!=" => self.build_call2("", "!=", left.value, right.value),
+            ">" => self.build_call2("", ">", left.value, right.value),
+            "<" => self.build_call2("", "<", left.value, right.value),
+            ">=" => self.build_call2("", ">=", left.value, right.value),
+            "<=" => self.build_call2("", "<=", left.value, right.value),
             "^" => {
                 self.includes.insert("#include <math.h>".to_string());
                 self.flags.insert("-lm".to_string());
-                format!("pow({}, {})", left.value.expr, right.value.expr)
+                self.build_call2("pow", ", ", left.value, right.value)
             } // TODO: require pos pow
             "-|" => {
                 // TODO: handle 'error' values more widly.
