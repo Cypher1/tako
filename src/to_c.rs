@@ -182,6 +182,7 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
             I32(n, _) => Ok(to_root(Code::new(n.to_string()))),
             Bool(true, _) => Ok(to_root(Code::new(1.to_string()))),
             Bool(false, _) => Ok(to_root(Code::new(0.to_string()))),
+            Str(s, _) => Ok(to_root(Code::new(format!("{:?}", s)))),
             _ => unimplemented!(),
         }
     }
