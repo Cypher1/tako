@@ -237,15 +237,7 @@ fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
             toks,
         ),
         Some(head) => match head.tok_type {
-            TokenType::NumLit => (
-                Prim::I32(head.value.parse().unwrap(), head.get_info()).to_node(),
-                toks,
-            ),
-            TokenType::StringLit => (
-                Prim::Str(head.value.clone(), head.get_info()).to_node(),
-                toks,
-            ),
-            TokenType::Sym => {
+            TokenType::NumLit | TokenType::StringLit | TokenType::Sym => {
                 let pos = head.pos.clone();
                 toks.push_front(head);
                 toks.push_front(Token {
@@ -581,6 +573,50 @@ mod tests {
                 name: "+".to_string(),
                 left: str_lit("hello".to_string()),
                 right: str_lit(" world".to_string()),
+                info: Info::default()
+            }
+            .to_node()
+        );
+    }
+
+    #[test]
+    fn parse_strings_followed_by_raw_values() {
+        assert_eq!(
+            parse("\"hello world\"\n7".to_string()),
+            BinOp {
+                name: ";".to_string(),
+                left: Box::new(str_lit("hello world".to_string()).to_node()),
+                right: num_lit(7),
+                info: Info::default()
+            }
+            .to_node()
+        );
+    }
+
+    #[test]
+    fn parse_strings_with_operators_and_trailing_values_in_let() {
+        assert_eq!(
+            parse("x()= !\"hello world\"\n7".to_string()),
+            BinOp {
+                name: ";".to_string(),
+                left: Box::new(
+                    Let {
+                        name: "x".to_string(),
+                        args: Some(vec![]),
+                        value: Box::new(
+                            UnOp {
+                                name: "!".to_string(),
+                                inner: str_lit("hello world".to_string()),
+                                info: Info::default(),
+                            }
+                            .to_node()
+                        ),
+                        info: Info::default(),
+                        is_function: true
+                    }
+                    .to_node()
+                ),
+                right: num_lit(7),
                 info: Info::default()
             }
             .to_node()
