@@ -55,7 +55,10 @@ pub fn make_name(def: Vec<ScopeName>) -> String {
 
 fn pretty_print_block(src: Tree<Code>, indent: &str) -> String {
     let mut block = "".to_string();
-    let new_indent = indent.to_string() + "  ";
+    let new_indent = match src.value {
+        Code::Block { .. } => indent.to_string() + "  ",
+        Code::Line(_) => indent.to_string(),
+    };
     for child in src.children.iter() {
         let contents = pretty_print_block(child.to_owned(), &new_indent);
         block = format!("{}{}", block, contents);
@@ -254,11 +257,18 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
                 .collect();
 
             let label = format!("const auto {} = [&] ", name);
-            let node = Code::block(Some((label, args)), Code::new(format!("return {};", ret)));
+
+            let node = Code::Block {
+                label: Some((label, args)),
+                body: Box::new(Tree {
+                    value: Code::Line(format!("return {};", ret)),
+                    children: code.children,
+                }),
+            };
 
             return Ok(Tree {
                 value: node,
-                children: code.children,
+                children: vec![],
             });
         }
         Ok(Tree {
