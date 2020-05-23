@@ -12,7 +12,7 @@ pub struct Compiler {
     pub flags: HashSet<String>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Code {
     Line(String),
     Block {
@@ -31,19 +31,16 @@ impl Code {
     fn new(expr: String) -> Code {
         Code::Line(expr)
     }
-    fn block(label: Option<(String, Vec<String>)>, expr: Code) -> Code {
-        Code::Block {
-            label,
-            body: Box::new(Tree {
-                value: expr,
-                children: vec![],
-            }),
-        }
-    }
     fn get_expr(self: &Code) -> &String {
         match self {
             Code::Line(expr) => expr,
             Code::Block { label: _, body } => body.value.get_expr(),
+        }
+    }
+    fn with_expr(self: &Code, fun: &dyn Fn(&String) -> String) -> Code {
+        match self {
+            Code::Line(expr) => Code::Line(fun(expr)),
+            Code::Block { label, body } => Code::Block { label: label.clone(), body: Box::new(Tree {value: (*body).value.with_expr(fun), children: body.children.clone() }) },
         }
     }
 }
@@ -237,7 +234,6 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
                 .expect("Could not find definition for let"),
         );
         let code = self.visit(state, &expr.value)?;
-        let ret = code.value.get_expr(); // TODO: Handle body.children?
         if expr.is_function {
             let args: Vec<String> = expr
                 .args
@@ -258,12 +254,10 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
 
             let label = format!("const auto {} = [&] ", name);
 
+            let ret = Tree{value: code.value.with_expr(&|x| format!("return {};", x)), children: code.children};
             let node = Code::Block {
                 label: Some((label, args)),
-                body: Box::new(Tree {
-                    value: Code::Line(format!("return {};", ret)),
-                    children: code.children,
-                }),
+                body: Box::new(ret)
             };
 
             return Ok(Tree {
@@ -272,7 +266,7 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
             });
         }
         Ok(Tree {
-            value: Code::new(format!("const int {} = {};", name, ret)),
+            value: code.value.with_expr(&|x| format!("const int {} = {};", name, x)),
             children: code.children,
         })
     }
@@ -317,21 +311,24 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
             } // TODO: require pos pow
             "-|" => {
                 // TODO: handle 'error' values more widly.
-                children.push(to_root(left.value.clone()));
-                children.extend(right.children);
-                return Ok(Tree {
+                let done = Ok(Tree {
                     children,
-                    value: right.value,
+                    value: Code::Block {
+                        label: Some(("if".to_string(), vec![left.value.get_expr().to_owned()])),
+                        body: Box::new(right),
+                    }
                 });
+                return done;
             }
             ";" => {
                 // TODO: handle 'error' values more widly.
                 children.push(to_root(left.value.clone()));
                 children.extend(right.children);
-                return Ok(Tree {
+                let done = Ok(Tree {
                     children,
                     value: right.value,
                 });
+                return done;
             }
             op => return Err(TError::UnknownInfixOperator(op.to_string(), info)),
         };
