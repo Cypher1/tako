@@ -13,18 +13,23 @@ pub struct Compiler {
 }
 
 #[derive(Clone, Debug)]
+pub struct BlockInfo {
+    label: Option<(String, Vec<String>)>,
+    // e.g. Some("int main", vec!["int argc", "char* argv[]"])
+    body: Box<Tree<Code>>,
+    // e.g. 3;
+    // Should print as
+    // int main(int argc, char* argv[]) {
+    //   ... // Lines from this nodes children
+    //   return 3;
+    // }
+    following: Option<Box<BlockInfo>>
+}
+
+#[derive(Clone, Debug)]
 pub enum Code {
     Line(String),
-    Block {
-        // e.g. Some("int main", vec!["int argc", "char* argv[]"])
-        label: Option<(String, Vec<String>)>,
-        body: Box<Tree<Code>>, // e.g. 3;
-                               // Should print as
-                               // int main(int argc, char* argv[]) {
-                               //   ... // Lines from this nodes children
-                               //   return 3;
-                               // }
-    },
+    Block(BlockInfo),
 }
 
 impl Code {
@@ -34,13 +39,13 @@ impl Code {
     fn get_expr(self: &Code) -> &String {
         match self {
             Code::Line(expr) => expr,
-            Code::Block { label: _, body } => body.value.get_expr(),
+            Code::Block( BlockInfo { label: _, body, following: _ }) => body.value.get_expr(),
         }
     }
     fn with_expr(self: &Code, fun: &dyn Fn(&String) -> String) -> Code {
         match self {
             Code::Line(expr) => Code::Line(fun(expr)),
-            Code::Block { label, body } => Code::Block { label: label.clone(), body: Box::new(Tree {value: (*body).value.with_expr(fun), children: body.children.clone() }) },
+            Code::Block( BlockInfo { label, body, following }) => Code::Block( BlockInfo { label: label.clone(), body: Box::new(Tree {value: (*body).value.with_expr(fun), children: body.children.clone() }), following: following.clone() }),
         }
     }
 }
@@ -63,9 +68,13 @@ fn pretty_print_block(src: Tree<Code>, indent: &str) -> String {
     // Calculate the expression as well...
     // TODO: Consider if it is dropped (should it be stored? is it a side effect?)
     match src.value {
-        Code::Block { label, body } => {
+        Code::Block( BlockInfo { label, body, following }) => {
             let inner = pretty_print_block(*body, &new_indent);
-            let rest = format!("{{{}{}\n{}}};", block, inner, indent);
+            let following_block = following.map_or(
+                "".to_string(),
+                |following| pretty_print_block(Tree{value: Code::Block(*following), children:vec![]}, &indent)
+            );
+            let rest = format!("{{{}{}{}\n{}}};", block, inner, following_block, indent);
             match label {
                 Some((label, args)) => {
                     format!("\n{}{}({}) {}", indent, label, args.join(", "), rest)
@@ -111,16 +120,17 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
         };
         let main = match self.visit_let(&mut (), &main_let)? {
             Tree {
-                value: Code::Block { label: _, body },
+                value: Code::Block( BlockInfo { label: _, body, following: None }),
                 children,
             } => Tree {
-                value: Code::Block {
+                value: Code::Block( BlockInfo {
                     label: Some((
                         "int main".to_string(),
                         vec!["int argc".to_string(), "char* argv[]".to_string()],
                     )),
                     body,
-                },
+                    following: None
+                }),
                 children,
             },
             _ => panic!("main must be a block"),
@@ -137,15 +147,16 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
         // Forward declarations
         for func in self.functions.clone().iter() {
             match &func.value {
-                Code::Block {
+                Code::Block( BlockInfo {
                     label: None,
                     body: _,
-                } => panic!("Cannot create function without 'label'"),
+                    following: _
+                }) => panic!("Cannot create function without 'label'"),
                 Code::Line(_) => panic!("Cannot create function without 'block'"),
-                Code::Block {
+                Code::Block( BlockInfo {
                     label: Some((label, args)),
                     ..
-                } => {
+                }) => {
                     code = format!("{}{}({});\n", code, label, args.join(", "));
                 }
             }
@@ -255,10 +266,11 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
             let label = format!("const auto {} = [&] ", name);
 
             let ret = Tree{value: code.value.with_expr(&|x| format!("return {};", x)), children: code.children};
-            let node = Code::Block {
+            let node = Code::Block( BlockInfo {
                 label: Some((label, args)),
-                body: Box::new(ret)
-            };
+                body: Box::new(ret),
+                following: None,
+            });
 
             return Ok(Tree {
                 value: node,
@@ -313,10 +325,15 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
                 // TODO: handle 'error' values more widly.
                 let done = Ok(Tree {
                     children,
-                    value: Code::Block {
+                    value: Code::Block( BlockInfo {
                         label: Some(("if".to_string(), vec![left.value.get_expr().to_owned()])),
                         body: Box::new(right),
-                    }
+                        following: Some(Box::new(BlockInfo{
+                            label: Some(("} else".to_string(), vec![])),
+                            body: Box::new(Tree{value: Code::Line("throw 101;".to_string()), children: vec![]}),
+                            following: None,
+                        })),
+                    })
                 });
                 return done;
             }
