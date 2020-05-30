@@ -4,4 +4,4 @@ int main(int argc, char* argv[]) {
     return (x_y+1);
   };
   return x(3);
-};
+}

@@ -7,4 +7,4 @@ int main(int argc, char* argv[]) {
     return add(add5_1_x, 5);
   };
   return add5(2);
-};
+}

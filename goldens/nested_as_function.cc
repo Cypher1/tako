@@ -5,4 +5,4 @@ int main(int argc, char* argv[]) {
     return (x_y*2);
   };
   return (x()*5);
-};
+}
