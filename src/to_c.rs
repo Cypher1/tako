@@ -1,51 +1,44 @@
 use super::ast::*;
 use super::cli_options::Options;
 use super::errors::TError;
-use super::tree::*;
 
 use std::collections::HashSet;
 
 // Walks the AST compiling it to wasm.
 pub struct Compiler {
-    functions: Vec<Tree<Code>>,
+    functions: Vec<Code>,
     includes: HashSet<String>,
     pub flags: HashSet<String>,
 }
 
 #[derive(Clone, Debug)]
-pub struct BlockInfo {
-    label: Option<(String, Vec<String>)>,
-    // e.g. Some("int main", vec!["int argc", "char* argv[]"])
-    body: Box<Tree<Code>>,
-    // e.g. 3;
-    // Should print as
-    // int main(int argc, char* argv[]) {
-    //   ... // Lines from this nodes children
-    //   return 3;
-    // }
-    following: Option<Box<BlockInfo>>
-}
-
-#[derive(Clone, Debug)]
 pub enum Code {
     Line(String),
-    Block(BlockInfo),
+    If {
+        condition: Box<Code>,
+        then: Vec<Code>,
+        then_else: Vec<Code>,
+    },
+    Func {
+        name: String,
+        args: Vec<String>,
+        body: Vec<Code>,
+    },
+    Lambda {
+        name: String,
+        args: Vec<String>,
+        body: Vec<Code>,
+    },
 }
 
 impl Code {
     fn new(expr: String) -> Code {
         Code::Line(expr)
     }
-    fn get_expr(self: &Code) -> &String {
+    fn with_expr(self: Code, f: &dyn Fn(String) -> Code) -> Code {
         match self {
-            Code::Line(expr) => expr,
-            Code::Block( BlockInfo { label: _, body, following: _ }) => body.value.get_expr(),
-        }
-    }
-    fn with_expr(self: &Code, fun: &dyn Fn(&String) -> String) -> Code {
-        match self {
-            Code::Line(expr) => Code::Line(fun(expr)),
-            Code::Block( BlockInfo { label, body, following }) => Code::Block( BlockInfo { label: label.clone(), body: Box::new(Tree {value: (*body).value.with_expr(fun), children: body.children.clone() }), following: following.clone() }),
+            Code::Line(expr) => f(expr.to_owned()),
+            _ => panic!("Can't get expression from non-line"),
         }
     }
 }
@@ -55,51 +48,90 @@ pub fn make_name(def: Vec<ScopeName>) -> String {
     def_n.join("_")
 }
 
-fn pretty_print_block(src: Tree<Code>, indent: &str) -> String {
-    let mut block = "".to_string();
-    let new_indent = match src.value {
-        Code::Block { .. } => indent.to_string() + "  ",
-        Code::Line(_) => indent.to_string(),
-    };
-    for child in src.children.iter() {
-        let contents = pretty_print_block(child.to_owned(), &new_indent);
-        block = format!("{}{}", block, contents);
-    }
+fn pretty_print_block(src: Code, indent: &str) -> String {
+    let new_indent = indent.to_string() + "  ";
+    let newline = format!("\n{}", indent);
     // Calculate the expression as well...
     // TODO: Consider if it is dropped (should it be stored? is it a side effect?)
-    match src.value {
-        Code::Block( BlockInfo { label, body, following }) => {
-            let inner = pretty_print_block(*body, &new_indent);
-            let following_block = following.map_or(
-                "".to_string(),
-                |following| pretty_print_block(Tree{value: Code::Block(*following), children:vec![]}, &indent)
-            );
-            let rest = format!("{{{}{}{}\n{}}};", block, inner, following_block, indent);
-            match label {
-                Some((label, args)) => {
-                    format!("\n{}{}({}) {}", indent, label, args.join(", "), rest)
-                }
-                None => format!("\n{}{}", indent, rest),
-            }
+    match src {
+        Code::Line(expr) => expr,
+        Code::If {
+            condition,
+            then,
+            then_else,
+        } => {
+            let cond = pretty_print_block(*condition, &new_indent);
+            let body: Vec<String> = then
+                .iter()
+                .map(|x| pretty_print_block(x.clone(), &new_indent))
+                .collect();
+            let then_else: Vec<String> = then_else
+                .iter()
+                .map(|x| pretty_print_block(x.clone(), &new_indent))
+                .collect();
+            format!(
+                "{newline}if({}) {{{newline}{}{newline}}} else {{{newline}{}{newline}}}",
+                cond,
+                body.join(&newline),
+                then_else.join(&newline),
+                newline = newline
+            )
         }
-        Code::Line(expr) => format!("{}\n{}{}", block, indent, expr),
+        Code::Lambda {
+            name,
+            args,
+            body: inner,
+        } => {
+            let body: Vec<String> = inner
+                .iter()
+                .map(|x| pretty_print_block(x.clone(), &new_indent))
+                .collect();
+            format!(
+                "{newline}const auto {} = [&] ({}) {{{newline}{}{newline}}};",
+                name,
+                args.join(", "),
+                body.join(&newline),
+                newline = newline
+            )
+        }
+        Code::Func {
+            name,
+            args,
+            body: inner,
+        } => {
+            let body: Vec<String> = inner
+                .iter()
+                .map(|x| pretty_print_block(x.clone(), &new_indent))
+                .collect();
+            format!(
+                "{newline}{}({}) {{{newline}{}{newline}}}",
+                name,
+                args.join(", "),
+                body.join(&newline),
+                newline = newline
+            )
+        }
     }
 }
 
-type Res = Result<Tree<Code>, TError>;
+type Res = Result<Code, TError>;
 type State = ();
 type Out = (String, HashSet<String>);
 
 impl Compiler {
-    fn build_call1(&mut self, before: &str, inner: Code) -> String {
-        format!("{}({})", before, inner.get_expr())
+    fn build_call1(&mut self, before: &str, inner: Code) -> Code {
+        inner.with_expr(&|exp| Code::Line(format!("{}({})", before, exp)))
     }
-    fn build_call2(&mut self, before: &str, mid: &str, left: Code, right: Code) -> String {
-        format!("{}({}{}{})", before, left.get_expr(), mid, right.get_expr())
+    fn build_call2(&mut self, before: &str, mid: &str, left: Code, right: Code) -> Code {
+        left.with_expr(
+            &|left_expr| right.clone().with_expr(
+                &|right_expr| Code::Line(format!("{}({}{}{})", before, left_expr, mid, right_expr))
+            )
+        )
     }
 }
 
-impl Visitor<State, Tree<Code>, Out> for Compiler {
+impl Visitor<State, Code, Out> for Compiler {
     fn new(_opts: &Options) -> Compiler {
         Compiler {
             functions: vec![],
@@ -119,21 +151,16 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
             is_function: true,
         };
         let main = match self.visit_let(&mut (), &main_let)? {
-            Tree {
-                value: Code::Block( BlockInfo { label: _, body, following: None }),
-                children,
-            } => Tree {
-                value: Code::Block( BlockInfo {
-                    label: Some((
-                        "int main".to_string(),
-                        vec!["int argc".to_string(), "char* argv[]".to_string()],
-                    )),
-                    body,
-                    following: None
-                }),
-                children,
+            Code::Func {
+                name: _,
+                args: _,
+                body,
+            } => Code::Func {
+                name: "int main".to_string(),
+                args: vec!["int argc".to_string(), "char* argv[]".to_string()],
+                body,
             },
-            _ => panic!("main must be a block"),
+            _ => panic!("main must be a Func"),
         };
 
         // TODO(cypher1): Use a writer.
@@ -146,19 +173,11 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
 
         // Forward declarations
         for func in self.functions.clone().iter() {
-            match &func.value {
-                Code::Block( BlockInfo {
-                    label: None,
-                    body: _,
-                    following: _
-                }) => panic!("Cannot create function without 'label'"),
-                Code::Line(_) => panic!("Cannot create function without 'block'"),
-                Code::Block( BlockInfo {
-                    label: Some((label, args)),
-                    ..
-                }) => {
-                    code = format!("{}{}({});\n", code, label, args.join(", "));
+            match &func {
+                Code::Func { name, args, .. } => {
+                    code = format!("{}{}({});\n", code, name, args.join(", "))
                 }
+                _ => panic!("Cannot create function from non-function"),
             }
         }
 
@@ -184,16 +203,16 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
                 .defined_at
                 .expect("Could not find definition for symbol"),
         );
-        Ok(to_root(Code::new(name).clone()))
+        Ok(Code::new(name).clone())
     }
 
     fn visit_prim(&mut self, _state: &mut State, expr: &Prim) -> Res {
         use Prim::*;
         match expr {
-            I32(n, _) => Ok(to_root(Code::new(n.to_string()))),
-            Bool(true, _) => Ok(to_root(Code::new(1.to_string()))),
-            Bool(false, _) => Ok(to_root(Code::new(0.to_string()))),
-            Str(s, _) => Ok(to_root(Code::new(format!("{:?}", s)))),
+            I32(n, _) => Ok(Code::new(n.to_string())),
+            Bool(true, _) => Ok(Code::new(1.to_string())),
+            Bool(false, _) => Ok(Code::new(0.to_string())),
+            Str(s, _) => Ok(Code::new(format!("{:?}", s))),
             _ => unimplemented!(),
         }
     }
@@ -201,7 +220,7 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
     fn visit_apply(&mut self, state: &mut State, expr: &Apply) -> Res {
         eprintln!("apply here: {:?}", expr);
         let val = self.visit(state, &expr.inner)?;
-        let args: Vec<Tree<Code>> = expr
+        let args: Vec<Code> = expr
             .args
             .iter()
             .map(|s| {
@@ -209,26 +228,21 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
                     .expect("Could not find definition for apply argument")
             })
             .collect();
-        let mut children = vec![];
         let mut arg_exprs = vec![];
         for arg in args.iter() {
-            match &arg.value {
+            match &arg {
                 Code::Line(arg_expr) => arg_exprs.push(arg_expr.clone()),
-                Code::Block { .. } => panic!("Unexpected block used as apply argument"),
+                _ => panic!("Unexpected block used as apply argument"),
             }
-            children.extend(arg.children.clone());
         }
         // TODO: require label is none.
         let arg_str = arg_exprs.join(", ");
-        match val.value {
+        match val {
             Code::Line(expr) => {
                 let with_args = format!("{}({})", expr, arg_str);
-                Ok(Tree {
-                    value: Code::Line(with_args),
-                    children,
-                })
+                Ok(Code::Line(with_args))
             }
-            Code::Block { .. } => panic!("Don't know how to apply arguments to a block"),
+            _ => panic!("Don't know how to apply arguments to a block"),
         }
     }
 
@@ -263,98 +277,68 @@ impl Visitor<State, Tree<Code>, Out> for Compiler {
                 })
                 .collect();
 
-            let label = format!("const auto {} = [&] ", name);
+            let node = Code::Lambda {
+                name,
+                args,
+                body: vec![code],
+            };
 
-            let ret = Tree{value: code.value.with_expr(&|x| format!("return {};", x)), children: code.children};
-            let node = Code::Block( BlockInfo {
-                label: Some((label, args)),
-                body: Box::new(ret),
-                following: None,
-            });
-
-            return Ok(Tree {
-                value: node,
-                children: vec![],
-            });
+            return Ok(node);
         }
-        Ok(Tree {
-            value: code.value.with_expr(&|x| format!("const int {} = {};", name, x)),
-            children: code.children,
-        })
+        Ok(code.with_expr(&|x| Code::new(format!("const int {} = {};", name, x))))
     }
 
     fn visit_un_op(&mut self, state: &mut State, expr: &UnOp) -> Res {
         let code = self.visit(state, &expr.inner)?;
         let info = expr.get_info();
         let res = match expr.name.as_str() {
-            "+" => self.build_call1("", code.value),
-            "-" => self.build_call1("-", code.value),
-            "!" => self.build_call1("!", code.value),
+            "+" => self.build_call1("", code),
+            "-" => self.build_call1("-", code),
+            "!" => self.build_call1("!", code),
             op => return Err(TError::UnknownPrefixOperator(op.to_string(), info)),
         };
-        Ok(Tree {
-            value: Code::new(res),
-            children: code.children,
-        })
+        Ok(res)
     }
 
     fn visit_bin_op(&mut self, state: &mut State, expr: &BinOp) -> Res {
         let info = expr.get_info();
         let left = self.visit(state, &expr.left.clone())?;
         let right = self.visit(state, &expr.right.clone())?;
-        let mut children = vec![];
-        children.extend(left.children);
         // TODO: require 2 children
-        let s = match expr.name.as_str() {
-            "*" => self.build_call2("", "*", left.value, right.value),
-            "+" => self.build_call2("", "+", left.value, right.value),
-            "/" => self.build_call2("", "/", left.value, right.value), // TODO: require divisibility
-            "-" => self.build_call2("", "-", left.value, right.value),
-            "==" => self.build_call2("", "==", left.value, right.value),
-            "!=" => self.build_call2("", "!=", left.value, right.value),
-            ">" => self.build_call2("", ">", left.value, right.value),
-            "<" => self.build_call2("", "<", left.value, right.value),
-            ">=" => self.build_call2("", ">=", left.value, right.value),
-            "<=" => self.build_call2("", "<=", left.value, right.value),
+        let res = match expr.name.as_str() {
+            "*" => self.build_call2("", "*", left, right),
+            "+" => self.build_call2("", "+", left, right),
+            "/" => self.build_call2("", "/", left, right), // TODO: require divisibility
+            "-" => self.build_call2("", "-", left, right),
+            "==" => self.build_call2("", "==", left, right),
+            "!=" => self.build_call2("", "!=", left, right),
+            ">" => self.build_call2("", ">", left, right),
+            "<" => self.build_call2("", "<", left, right),
+            ">=" => self.build_call2("", ">=", left, right),
+            "<=" => self.build_call2("", "<=", left, right),
             "^" => {
                 self.includes.insert("#include <math.h>".to_string());
                 self.flags.insert("-lm".to_string());
-                self.build_call2("pow", ", ", left.value, right.value)
+                self.build_call2("pow", ", ", left, right)
             } // TODO: require pos pow
             "-|" => {
                 // TODO: handle 'error' values more widly.
-                let done = Ok(Tree {
-                    children,
-                    value: Code::Block( BlockInfo {
-                        label: Some(("if".to_string(), vec![left.value.get_expr().to_owned()])),
-                        body: Box::new(right),
-                        following: Some(Box::new(BlockInfo{
-                            label: Some(("} else".to_string(), vec![])),
-                            body: Box::new(Tree{value: Code::Line("throw 101;".to_string()), children: vec![]}),
-                            following: None,
-                        })),
-                    })
-                });
-                return done;
+                let done = Code::If {
+                    condition: Box::new(left),
+                    then: vec![right],
+                    then_else: vec![Code::Line("throw 101;".to_string())],
+                };
+                return Ok(done);
             }
             ";" => {
                 // TODO: handle 'error' values more widly.
-                children.push(to_root(left.value.clone()));
-                children.extend(right.children);
-                let done = Ok(Tree {
-                    children,
-                    value: right.value,
-                });
-                return done;
+                // TODO: ORDERING
+                return Ok(right);
             }
             op => return Err(TError::UnknownInfixOperator(op.to_string(), info)),
         };
         // TODO: Short circuiting of deps.
-        children.extend(right.children);
-        Ok(Tree {
-            value: Code::new(s),
-            children,
-        })
+        Ok(res)
     }
 
     fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {
