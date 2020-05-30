@@ -38,7 +38,44 @@ impl Code {
     fn with_expr(self: Code, f: &dyn Fn(String) -> Code) -> Code {
         match self {
             Code::Line(expr) => f(expr.to_owned()),
-            _ => panic!("Can't get expression from non-line"),
+            Code::If {
+                condition,
+                then,
+                then_else
+            } => {
+
+                Code::If {
+                    condition,
+                    then,
+                    then_else
+                }
+            },
+            Code::Func {
+                name,
+                args,
+                mut body
+            } => {
+                let last = body.last_mut().unwrap();
+                *last = last.clone().with_expr(f);
+                Code::Func {
+                    name,
+                    args,
+                    body
+                }
+            },
+            Code::Lambda {
+                name,
+                args,
+                mut body
+            } => {
+                let last = body.last_mut().unwrap();
+                *last = last.clone().with_expr(f);
+                Code::Lambda {
+                    name,
+                    args,
+                    body
+                }
+            },
         }
     }
 }
@@ -50,7 +87,6 @@ pub fn make_name(def: Vec<ScopeName>) -> String {
 
 fn pretty_print_block(src: Code, indent: &str) -> String {
     let new_indent = indent.to_string() + "  ";
-    let newline = format!("\n{}", indent);
     // Calculate the expression as well...
     // TODO: Consider if it is dropped (should it be stored? is it a side effect?)
     match src {
@@ -70,11 +106,12 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
                 .map(|x| pretty_print_block(x.clone(), &new_indent))
                 .collect();
             format!(
-                "{newline}if({}) {{{newline}{}{newline}}} else {{{newline}{}{newline}}}",
+                "{indent}if({}) {{{new_indent}{}{indent}}} else {{{new_indent}{}{indent}}}",
                 cond,
-                body.join(&newline),
-                then_else.join(&newline),
-                newline = newline
+                body.join(&new_indent),
+                then_else.join(&new_indent),
+                indent = indent,
+                new_indent = new_indent
             )
         }
         Code::Lambda {
@@ -87,11 +124,12 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
                 .map(|x| pretty_print_block(x.clone(), &new_indent))
                 .collect();
             format!(
-                "{newline}const auto {} = [&] ({}) {{{newline}{}{newline}}};",
+                "{indent}const auto {} = [&] ({}) {{{new_indent}{}{indent}}};",
                 name,
                 args.join(", "),
-                body.join(&newline),
-                newline = newline
+                body.join(&new_indent),
+                indent = indent,
+                new_indent = new_indent
             )
         }
         Code::Func {
@@ -104,11 +142,12 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
                 .map(|x| pretty_print_block(x.clone(), &new_indent))
                 .collect();
             format!(
-                "{newline}{}({}) {{{newline}{}{newline}}}",
+                "{indent}{}({}) {{{new_indent}{}{indent}}}",
                 name,
                 args.join(", "),
-                body.join(&newline),
-                newline = newline
+                body.join(&new_indent),
+                indent = indent,
+                new_indent = new_indent
             )
         }
     }
@@ -185,7 +224,7 @@ impl Visitor<State, Code, Out> for Compiler {
 
         // Definitions
         for func in self.functions.iter().clone() {
-            let function = pretty_print_block(func.to_owned(), "");
+            let function = pretty_print_block(func.to_owned(), "\n");
             code = format!("{}{}", code, function);
         }
 
@@ -277,13 +316,13 @@ impl Visitor<State, Code, Out> for Compiler {
                 })
                 .collect();
 
-            let node = Code::Lambda {
+            let node = Code::Func {
                 name,
                 args,
                 body: vec![code],
             };
 
-            return Ok(node);
+            return Ok(node.with_expr(&|exp| Code::Line(format!("return {};", exp))));
         }
         Ok(code.with_expr(&|x| Code::new(format!("const int {} = {};", name, x))))
     }
