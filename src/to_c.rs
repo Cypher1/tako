@@ -13,31 +13,32 @@ pub struct Compiler {
 
 #[derive(Clone, Debug)]
 pub enum Code {
-    Line(String),
+    Block(Vec<Code>),
+    Expr(String),
+    Statement(String),
     If {
         condition: Box<Code>,
-        then: Vec<Code>,
-        then_else: Vec<Code>,
+        then: Box<Code>,
+        then_else: Box<Code>,
     },
     Func {
         name: String,
         args: Vec<String>,
-        body: Vec<Code>,
-    },
-    Lambda {
-        name: String,
-        args: Vec<String>,
-        body: Vec<Code>,
+        body: Box<Code>,
+        lambda: bool,
     },
 }
 
 impl Code {
-    fn new(expr: String) -> Code {
-        Code::Line(expr)
-    }
     fn with_expr(self: Code, f: &dyn Fn(String) -> Code) -> Code {
         match self {
-            Code::Line(expr) => f(expr.to_owned()),
+            Code::Expr(expr) => f(expr.to_owned()),
+            Code::Block(mut statements) => {
+                let last = statements.pop().unwrap();
+                statements.push(last.with_expr(f));
+                Code::Block(statements)
+            },
+            Code::Statement(line) => Code::Statement(line),
             Code::If {
                 condition,
                 then,
@@ -53,29 +54,35 @@ impl Code {
             Code::Func {
                 name,
                 args,
-                mut body
+                mut body,
+                lambda,
             } => {
-                let last = body.last_mut().unwrap();
-                *last = last.clone().with_expr(f);
+                body = Box::new(body.with_expr(f));
                 Code::Func {
                     name,
                     args,
-                    body
+                    body,
+                    lambda,
                 }
             },
-            Code::Lambda {
-                name,
-                args,
-                mut body
-            } => {
-                let last = body.last_mut().unwrap();
-                *last = last.clone().with_expr(f);
-                Code::Lambda {
-                    name,
-                    args,
-                    body
-                }
+        }
+    }
+
+    fn merge(self: Code, other: Code) -> Code {
+        match (self, other) {
+            (Code::Block(mut left), Code::Block(right)) => {
+                left.extend(right);
+                Code::Block(left)
             },
+            (left, Code::Block(mut right)) => {
+                right.insert(0, left);
+                Code::Block(right) // Backwards?
+            },
+            (Code::Block(mut left), right) => {
+                left.push(right);
+                Code::Block(left)
+            },
+            (left, right) => Code::Block(vec![left, right]),
         }
     }
 }
@@ -86,69 +93,68 @@ pub fn make_name(def: Vec<ScopeName>) -> String {
 }
 
 fn pretty_print_block(src: Code, indent: &str) -> String {
-    let new_indent = indent.to_string() + "  ";
     // Calculate the expression as well...
     // TODO: Consider if it is dropped (should it be stored? is it a side effect?)
     match src {
-        Code::Line(expr) => expr,
+        Code::Block(statements) => {
+            let new_indent = indent.to_string() + "  ";
+            let body: Vec<String> = statements
+                .iter()
+                .map(|x| pretty_print_block(x.clone(), &new_indent))
+                .collect();
+            format!(
+                "{{{}{indent}}}",
+                body.join(""),
+                indent = indent,
+            )
+        },
+        Code::Statement(line) => format!("{}{}", indent, line),
+        Code::Expr(line)=> line,
         Code::If {
             condition,
             then,
             then_else,
         } => {
-            let cond = pretty_print_block(*condition, &new_indent);
-            let body: Vec<String> = then
-                .iter()
-                .map(|x| pretty_print_block(x.clone(), &new_indent))
-                .collect();
-            let then_else: Vec<String> = then_else
-                .iter()
-                .map(|x| pretty_print_block(x.clone(), &new_indent))
-                .collect();
+            let cond = pretty_print_block(*condition, &indent);
+            let body = pretty_print_block(*then, &indent);
+            let then_else = pretty_print_block(*then_else, &indent);
             format!(
-                "{indent}if({}) {{{new_indent}{}{indent}}} else {{{new_indent}{}{indent}}}",
+                "{indent}if({}) {} else {}",
                 cond,
-                body.join(&new_indent),
-                then_else.join(&new_indent),
+                body,
+                then_else,
                 indent = indent,
-                new_indent = new_indent
             )
-        }
-        Code::Lambda {
-            name,
-            args,
-            body: inner,
-        } => {
-            let body: Vec<String> = inner
-                .iter()
-                .map(|x| pretty_print_block(x.clone(), &new_indent))
-                .collect();
-            format!(
-                "{indent}const auto {} = [&] ({}) {{{new_indent}{}{indent}}};",
-                name,
-                args.join(", "),
-                body.join(&new_indent),
-                indent = indent,
-                new_indent = new_indent
-            )
-        }
+        },
         Code::Func {
             name,
             args,
             body: inner,
+            lambda,
         } => {
-            let body: Vec<String> = inner
-                .iter()
-                .map(|x| pretty_print_block(x.clone(), &new_indent))
-                .collect();
-            format!(
-                "{indent}{}({}) {{{new_indent}{}{indent}}}",
-                name,
-                args.join(", "),
-                body.join(&new_indent),
-                indent = indent,
-                new_indent = new_indent
-            )
+            let body = if let Code::Block(_) = *inner {
+                pretty_print_block(*inner, &indent)
+            } else {
+                // Auto wrap statements in blocks.
+                pretty_print_block(Code::Block(vec![*inner]), &indent)
+            };
+            if lambda {
+                format!(
+                    "{indent}const auto {} = [&] ({}) {};",
+                    name,
+                    args.join(", "),
+                    body,
+                    indent = indent
+                )
+            } else {
+                format!(
+                    "{indent}{}({}) {}",
+                    name,
+                    args.join(", "),
+                    body,
+                    indent = indent
+                )
+            }
         }
     }
 }
@@ -159,12 +165,12 @@ type Out = (String, HashSet<String>);
 
 impl Compiler {
     fn build_call1(&mut self, before: &str, inner: Code) -> Code {
-        inner.with_expr(&|exp| Code::Line(format!("{}({})", before, exp)))
+        inner.with_expr(&|exp| Code::Expr(format!("{}({})", before, exp)))
     }
     fn build_call2(&mut self, before: &str, mid: &str, left: Code, right: Code) -> Code {
         left.with_expr(
             &|left_expr| right.clone().with_expr(
-                &|right_expr| Code::Line(format!("{}({}{}{})", before, left_expr, mid, right_expr))
+                &|right_expr| Code::Expr(format!("{}({}{}{})", before, left_expr, mid, right_expr))
             )
         )
     }
@@ -194,10 +200,12 @@ impl Visitor<State, Code, Out> for Compiler {
                 name: _,
                 args: _,
                 body,
+                lambda: _,
             } => Code::Func {
                 name: "int main".to_string(),
                 args: vec!["int argc".to_string(), "char* argv[]".to_string()],
                 body,
+                lambda: false,
             },
             _ => panic!("main must be a Func"),
         };
@@ -242,16 +250,16 @@ impl Visitor<State, Code, Out> for Compiler {
                 .defined_at
                 .expect("Could not find definition for symbol"),
         );
-        Ok(Code::new(name).clone())
+        Ok(Code::Expr(name).clone())
     }
 
     fn visit_prim(&mut self, _state: &mut State, expr: &Prim) -> Res {
         use Prim::*;
         match expr {
-            I32(n, _) => Ok(Code::new(n.to_string())),
-            Bool(true, _) => Ok(Code::new(1.to_string())),
-            Bool(false, _) => Ok(Code::new(0.to_string())),
-            Str(s, _) => Ok(Code::new(format!("{:?}", s))),
+            I32(n, _) => Ok(Code::Expr(n.to_string())),
+            Bool(true, _) => Ok(Code::Expr(1.to_string())),
+            Bool(false, _) => Ok(Code::Expr(0.to_string())),
+            Str(s, _) => Ok(Code::Expr(format!("{:?}", s))),
             _ => unimplemented!(),
         }
     }
@@ -270,16 +278,16 @@ impl Visitor<State, Code, Out> for Compiler {
         let mut arg_exprs = vec![];
         for arg in args.iter() {
             match &arg {
-                Code::Line(arg_expr) => arg_exprs.push(arg_expr.clone()),
+                Code::Expr(arg_expr) => arg_exprs.push(arg_expr.clone()),
                 _ => panic!("Unexpected block used as apply argument"),
             }
         }
         // TODO: require label is none.
         let arg_str = arg_exprs.join(", ");
         match val {
-            Code::Line(expr) => {
+            Code::Expr(expr) => {
                 let with_args = format!("{}({})", expr, arg_str);
-                Ok(Code::Line(with_args))
+                Ok(Code::Expr(with_args))
             }
             _ => panic!("Don't know how to apply arguments to a block"),
         }
@@ -297,7 +305,7 @@ impl Visitor<State, Code, Out> for Compiler {
                 .defined_at
                 .expect("Could not find definition for let"),
         );
-        let code = self.visit(state, &expr.value)?;
+        let body = Box::new(self.visit(state, &expr.value)?);
         if expr.is_function {
             let args: Vec<String> = expr
                 .args
@@ -317,14 +325,15 @@ impl Visitor<State, Code, Out> for Compiler {
                 .collect();
 
             let node = Code::Func {
-                name,
+                name: format!("{}", name),
                 args,
-                body: vec![code],
+                body,
+                lambda: true,
             };
 
-            return Ok(node.with_expr(&|exp| Code::Line(format!("return {};", exp))));
+            return Ok(node.with_expr(&|exp| Code::Statement(format!("return {};", exp))));
         }
-        Ok(code.with_expr(&|x| Code::new(format!("const int {} = {};", name, x))))
+        Ok(body.with_expr(&|x| Code::Statement(format!("const int {} = {};", name, x))))
     }
 
     fn visit_un_op(&mut self, state: &mut State, expr: &UnOp) -> Res {
@@ -364,15 +373,15 @@ impl Visitor<State, Code, Out> for Compiler {
                 // TODO: handle 'error' values more widly.
                 let done = Code::If {
                     condition: Box::new(left),
-                    then: vec![right],
-                    then_else: vec![Code::Line("throw 101;".to_string())],
+                    then: Box::new(right),
+                    then_else: Box::new(Code::Statement("throw 101;".to_string())),
                 };
                 return Ok(done);
             }
             ";" => {
                 // TODO: handle 'error' values more widly.
                 // TODO: ORDERING
-                return Ok(right);
+                return Ok(left.merge(right));
             }
             op => return Err(TError::UnknownInfixOperator(op.to_string(), info)),
         };
