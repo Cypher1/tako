@@ -24,6 +24,7 @@ pub enum Code {
     Func {
         name: String,
         args: Vec<String>,
+        return_type: String,
         body: Box<Code>,
         lambda: bool,
     },
@@ -56,6 +57,7 @@ impl Code {
                 args,
                 mut body,
                 lambda,
+                return_type,
             } => {
                 body = Box::new(body.with_expr(f));
                 Code::Func {
@@ -63,6 +65,7 @@ impl Code {
                     args,
                     body,
                     lambda,
+                    return_type,
                 }
             },
         }
@@ -129,6 +132,7 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
         Code::Func {
             name,
             args,
+            return_type,
             body: inner,
             lambda,
         } => {
@@ -148,7 +152,8 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
                 )
             } else {
                 format!(
-                    "{indent}{}({}) {}",
+                    "{indent}{} {}({}) {}",
+                    return_type,
                     name,
                     args.join(", "),
                     body,
@@ -201,11 +206,13 @@ impl Visitor<State, Code, Out> for Compiler {
                 args: _,
                 body,
                 lambda: _,
+                return_type: _,
             } => Code::Func {
-                name: "int main".to_string(),
+                name: "main".to_string(),
                 args: vec!["int argc".to_string(), "char* argv[]".to_string()],
                 body,
                 lambda: false,
+                return_type: "int".to_string(),
             },
             _ => panic!("main must be a Func"),
         };
@@ -327,6 +334,7 @@ impl Visitor<State, Code, Out> for Compiler {
             let node = Code::Func {
                 name: format!("{}", name),
                 args,
+                return_type: "int".to_string(),
                 body,
                 lambda: true,
             };
