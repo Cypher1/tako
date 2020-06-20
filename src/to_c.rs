@@ -38,19 +38,16 @@ impl Code {
                 let last = statements.pop().unwrap();
                 statements.push(last.with_expr(f));
                 Code::Block(statements)
-            },
+            }
             Code::Statement(line) => Code::Statement(line),
             Code::If {
                 condition,
                 then,
-                then_else
-            } => {
-
-                Code::If {
-                    condition,
-                    then,
-                    then_else
-                }
+                then_else,
+            } => Code::If {
+                condition,
+                then,
+                then_else,
             },
             Code::Func {
                 name,
@@ -67,7 +64,7 @@ impl Code {
                     lambda,
                     return_type,
                 }
-            },
+            }
         }
     }
 
@@ -76,15 +73,15 @@ impl Code {
             (Code::Block(mut left), Code::Block(right)) => {
                 left.extend(right);
                 Code::Block(left)
-            },
+            }
             (left, Code::Block(mut right)) => {
                 right.insert(0, left);
                 Code::Block(right) // Backwards?
-            },
+            }
             (Code::Block(mut left), right) => {
                 left.push(right);
                 Code::Block(left)
-            },
+            }
             (left, right) => Code::Block(vec![left, right]),
         }
     }
@@ -105,14 +102,10 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
                 .iter()
                 .map(|x| pretty_print_block(x.clone(), &new_indent))
                 .collect();
-            format!(
-                "{{{}{indent}}}",
-                body.join(""),
-                indent = indent,
-            )
-        },
+            format!("{{{}{indent}}}", body.join(""), indent = indent,)
+        }
         Code::Statement(line) => format!("{}{}", indent, line),
-        Code::Expr(line)=> line,
+        Code::Expr(line) => line,
         Code::If {
             condition,
             then,
@@ -128,7 +121,7 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
                 then_else,
                 indent = indent,
             )
-        },
+        }
         Code::Func {
             name,
             args,
@@ -173,11 +166,11 @@ impl Compiler {
         inner.with_expr(&|exp| Code::Expr(format!("{}({})", before, exp)))
     }
     fn build_call2(&mut self, before: &str, mid: &str, left: Code, right: Code) -> Code {
-        left.with_expr(
-            &|left_expr| right.clone().with_expr(
-                &|right_expr| Code::Expr(format!("{}({}{}{})", before, left_expr, mid, right_expr))
-            )
-        )
+        left.with_expr(&|left_expr| {
+            right.clone().with_expr(&|right_expr| {
+                Code::Expr(format!("{}({}{}{})", before, left_expr, mid, right_expr))
+            })
+        })
     }
 }
 
@@ -247,11 +240,11 @@ impl Visitor<State, Code, Out> for Compiler {
     }
 
     fn visit_sym(&mut self, _state: &mut State, expr: &Sym) -> Res {
-        eprintln!(
-            "to_c: visit {}, {:?}",
-            expr.name,
-            expr.get_info().defined_at
-        );
+        // eprintln!(
+        //   "to_c: visit {}, {:?}",
+        // expr.name,
+        //   expr.get_info().defined_at
+        // );
         let name = make_name(
             expr.get_info()
                 .defined_at
@@ -272,7 +265,7 @@ impl Visitor<State, Code, Out> for Compiler {
     }
 
     fn visit_apply(&mut self, state: &mut State, expr: &Apply) -> Res {
-        eprintln!("apply here: {:?}", expr);
+        // eprintln!("apply here: {:?}", expr);
         let val = self.visit(state, &expr.inner)?;
         let args: Vec<Code> = expr
             .args
@@ -301,12 +294,12 @@ impl Visitor<State, Code, Out> for Compiler {
     }
 
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
-        eprintln!("let here: {:?}", expr.get_info().defined_at);
-        eprintln!("args: {:?}", expr.args);
-        for arg in (&expr.args).as_ref().unwrap_or(&vec![]) {
-            eprintln!("  arg: {:?} {:?}", arg.name, arg.get_info().defined_at);
-        }
-        eprintln!("value: {}", expr.value);
+        // eprintln!("let here: {:?}", expr.get_info().defined_at);
+        // eprintln!("args: {:?}", expr.args);
+        // for arg in (&expr.args).as_ref().unwrap_or(&vec![]) {
+        // eprintln!("  arg: {:?} {:?}", arg.name, arg.get_info().defined_at);
+        // }
+        // eprintln!("value: {}", expr.value);
         let name = make_name(
             expr.get_info()
                 .defined_at

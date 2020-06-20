@@ -106,6 +106,7 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<String> {
         .arg("-Wall")
         .arg("-Werror")
         .arg("-Wno-unused-but-set-variable") // TODO: REMOVE THIS
+        .arg("-Wno-unused-variable") // TODO: REMOVE THIS
         .arg("-O3")
         .arg(outf)
         .arg("-o")

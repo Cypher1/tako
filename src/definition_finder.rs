@@ -39,15 +39,14 @@ impl Visitor<State, Node, Root> for DefinitionFinder {
     }
 
     fn visit_sym(&mut self, state: &mut State, expr: &Sym) -> Res {
-        if self.debug > 1 {
+        if self.debug > -1 {
             eprintln!("visiting sym {:?} {}", state.path.clone(), &expr.name);
         }
-        let mut search = state.path.clone();
-        if let Some(ScopeName::Anon(_)) = search.last() {
-            // Jump out of first anon to avoid args using value of other args.
-            search.pop();
-        }
+        let mut search: Vec<ScopeName> = state.path.clone();
         loop {
+            if let Some(ScopeName::Anon(_)) = search.last() {
+                search.pop(); // Cannot look inside an 'anon'.
+            }
             search.push(ScopeName::Named(expr.name.clone()));
             let node = state.table.find(&search);
             search.pop(); // Strip the name off, then replace it.

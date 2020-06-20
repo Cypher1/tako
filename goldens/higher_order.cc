@@ -1,7 +1,9 @@
+#include <iostream>
+#include <string>
 
 int main(int argc, char* argv[]) {
-  const auto apply = [&] (const int apply_x, const int apply_f) {
+  const auto apply = [&] (const auto apply_x, const auto apply_f) {
     return apply_f(apply_f(apply_x));
   };
-  return ((apply(3, (3_f_y*2))+"  ")+apply(1, !(4_f_y)));
+  std::cout << ((std::to_string(apply(3, [&] (const auto f_1_y) { return f_1_y*2; } ))+"  ")+std::to_string(apply(1, [&] (const auto f_2_y) { return !f_2_y; }))) << "\n";
 }

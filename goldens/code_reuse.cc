@@ -4,7 +4,7 @@ int main(int argc, char* argv[]) {
     return (add_x+add_y);
   };
   const auto add5 = [&] (const int add5_x) {
-    return add(add5_1_x, 5);
+    return add(add5_x, 5);
   };
   return add5(2);
 }

@@ -232,14 +232,6 @@ impl fmt::Display for Node {
     }
 }
 
-impl fmt::Display for Root {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.ast.fmt(f)?;
-        write!(f, "{:#?}", self.table)?;
-        Ok(())
-    }
-}
-
 impl ToNode for Node {
     fn to_node(self) -> Node {
         self
@@ -336,6 +328,14 @@ pub struct Root {
 impl Root {
     pub fn new(ast: Node) -> Root {
         Root { ast, table: None }
+    }
+}
+
+impl fmt::Display for Root {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.ast.fmt(f)?;
+        write!(f, "{:?}", self.table)?;
+        Ok(())
     }
 }
 
