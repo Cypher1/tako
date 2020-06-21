@@ -291,4 +291,34 @@ mod tests {
         assert_eq!(tok.tok_type, TokenType::StringLit);
         assert_eq!(tok.value, "\n\t2\r\'\"");
     }
+
+    #[test]
+    fn lex_call() {
+        let chars = "x()".chars().peekable();
+        let mut pos = Loc::default();
+        let (tok, chars2) = lex_head(chars, &mut pos);
+        assert_eq!(tok.tok_type, TokenType::Sym);
+        assert_eq!(tok.value, "x");
+        let (tok, chars3) = lex_head(chars2, &mut pos);
+        assert_eq!(tok.tok_type, TokenType::OpenBracket);
+        assert_eq!(tok.value, "(");
+        let (tok, _) = lex_head(chars3, &mut pos);
+        assert_eq!(tok.tok_type, TokenType::CloseBracket);
+        assert_eq!(tok.value, ")");
+    }
+
+    #[test]
+    fn lex_strings_with_operators() {
+        let chars = "!\"hello world\"\n7".chars().peekable();
+        let mut pos = Loc::default();
+        let (tok, chars2) = lex_head(chars, &mut pos);
+        assert_eq!(tok.tok_type, TokenType::Op);
+        assert_eq!(tok.value, "!");
+        let (tok, chars3) = lex_head(chars2, &mut pos);
+        assert_eq!(tok.tok_type, TokenType::StringLit);
+        assert_eq!(tok.value, "hello world");
+        let (tok, _) = lex_head(chars3, &mut pos);
+        assert_eq!(tok.tok_type, TokenType::NumLit);
+        assert_eq!(tok.value, "7");
+    }
 }

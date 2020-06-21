@@ -42,12 +42,11 @@ impl Visitor<State, Node, Root> for DefinitionFinder {
         if self.debug > 1 {
             eprintln!("visiting sym {:?} {}", state.path.clone(), &expr.name);
         }
-        let mut search = state.path.clone();
-        if let Some(ScopeName::Anon(_)) = search.last() {
-            // Jump out of first anon to avoid args using value of other args.
-            search.pop();
-        }
+        let mut search: Vec<ScopeName> = state.path.clone();
         loop {
+            if let Some(ScopeName::Anon(_)) = search.last() {
+                search.pop(); // Cannot look inside an 'anon'.
+            }
             search.push(ScopeName::Named(expr.name.clone()));
             let node = state.table.find(&search);
             search.pop(); // Strip the name off, then replace it.
@@ -55,13 +54,17 @@ impl Visitor<State, Node, Root> for DefinitionFinder {
                 Some(node) => {
                     // The name is in scope.
                     search.push(node.value.name.clone());
-                    eprintln!("FOUND {} at {:?}\n", expr.name.clone(), search.clone());
+                    if self.debug > 1 {
+                        eprintln!("FOUND {} at {:?}\n", expr.name.clone(), search.clone());
+                    }
                     let mut res = expr.clone();
                     res.info.defined_at = Some(search);
                     return Ok(res.to_node());
                 }
                 None => {
-                    eprintln!("   not found {} at {:?}", expr.name.clone(), search.clone());
+                    if self.debug > 1 {
+                        eprintln!("   not found {} at {:?}", expr.name.clone(), search.clone());
+                    }
                     if search.is_empty() {
                         return Err(TError::UnknownSymbol(expr.name.clone(), expr.get_info()));
                     }
@@ -81,7 +84,17 @@ impl Visitor<State, Node, Root> for DefinitionFinder {
         let mut args = vec![];
         for arg in expr.args.iter() {
             match self.visit_let(state, arg)? {
-                Node::LetNode(let_node) => args.push(let_node),
+                Node::LetNode(let_node) => {
+                    let mut defined_arg = let_node.clone();
+                    let mut path = state.path.clone();
+                    // Inject the value into the 'anon' stack frame.
+                    path.push(ScopeName::Named(let_node.name));
+                    if self.debug > 1 {
+                        eprintln!("defining arg at {:?}", path.clone());
+                    }
+                    defined_arg.info.defined_at = Some(path);
+                    args.push(defined_arg)
+                }
                 _ => panic!("InternalError: definition_finder converted let node to other node."),
             }
         }
@@ -101,23 +114,30 @@ impl Visitor<State, Node, Root> for DefinitionFinder {
         }
         let path_name = ScopeName::Named(expr.name.clone());
         state.path.push(path_name);
-        let mut expr_args = None;
+        let mut args = None;
         if let Some(e_args) = &expr.args {
-            let mut args = vec![];
+            let mut arg_vec = vec![];
             for arg in e_args.iter() {
                 let mut arg_path = state.path.clone();
                 arg_path.push(ScopeName::Named(arg.name.clone()));
-                let sym = arg.clone();
-                sym.get_info().defined_at = Some(arg_path);
-                args.push(sym);
+                let mut sym = arg.clone();
+                if self.debug > 1 {
+                    eprintln!(
+                        "visiting let arg {:?} {}",
+                        arg_path.clone(),
+                        &sym.name.clone()
+                    );
+                }
+                sym.info.defined_at = Some(arg_path);
+                arg_vec.push(sym);
             }
-            expr_args = Some(args);
+            args = Some(arg_vec);
         }
         let value = Box::new(self.visit(state, &expr.value)?);
         state.path.pop();
         Ok(Let {
             name: expr.name.clone(),
-            args: expr_args,
+            args,
             value,
             is_function: expr.is_function,
             info: expr.get_info(),
@@ -145,6 +165,10 @@ impl Visitor<State, Node, Root> for DefinitionFinder {
             info: expr.get_info(),
         }
         .to_node())
+    }
+
+    fn visit_built_in(&mut self, _state: &mut State, expr: &String) -> Res {
+        Ok(Node::BuiltIn(expr.clone()))
     }
 
     fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {

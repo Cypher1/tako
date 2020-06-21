@@ -74,6 +74,10 @@ impl Visitor<State, Node, Root> for SymbolTableBuilder {
             counter: 1,
         };
 
+        // TODO: Inject needs for bootstrapping here (e.g. import function).
+        let println_path = [ScopeName::Named("println".to_string())];
+        state.table.get(&println_path);
+
         Ok(Root {
             ast: self.visit(&mut state, &expr.ast)?,
             table: Some(state.table),
@@ -165,6 +169,10 @@ impl Visitor<State, Node, Root> for SymbolTableBuilder {
             info: expr.get_info(),
         }
         .to_node())
+    }
+
+    fn visit_built_in(&mut self, state: &mut State, expr: &String) -> Res {
+        Ok(Node::BuiltIn(expr.to_string()))
     }
 
     fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {

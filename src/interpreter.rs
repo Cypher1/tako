@@ -11,7 +11,9 @@ pub struct Interpreter {
 }
 
 fn globals() -> Frame {
-    HashMap::new()
+    map!(
+        "println".to_string() => Node::BuiltIn("println".to_string())
+    )
 }
 
 fn find_symbol<'a>(state: &'a [Frame], name: &str) -> Option<&'a Node> {
@@ -381,6 +383,21 @@ impl Visitor<State, Prim, Prim> for Interpreter {
             },
             op => Err(TError::UnknownInfixOperator(op.to_string(), info)),
         }
+    }
+
+    fn visit_built_in(&mut self, state: &mut State, expr: &String) -> Res {
+        let it_val = state.last().map_or_else(
+            || Prim::Str("".to_string(), Info::default()).to_node(),
+            |frame| frame.get("it").expect("println needs an argument").clone(),
+        );
+        match &expr[..] {
+            "println" => match it_val {
+                Node::PrimNode(Prim::Str(it_val, _)) => println!("{}", it_val),
+                it_val => println!("{}", it_val),
+            }
+            _ => unimplemented!("interpreter built in"),
+        }
+        Ok(Prim::I32(0, Info::default()))
     }
 
     fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {

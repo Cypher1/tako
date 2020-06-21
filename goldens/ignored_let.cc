@@ -1,4 +1,5 @@
 
 int main(int argc, char* argv[]) {
-  return (3*3);
+  const int x = 4;
+  return 1;
 }

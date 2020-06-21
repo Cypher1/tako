@@ -46,7 +46,7 @@ fn main() -> std::io::Result<()> {
     let opts = parse_args(&args[1..]);
     for f in opts.files.iter() {
         let result = work(&f, &opts)?; // discard the result (used for testing).
-        eprintln!("{:?}", result);
+        eprintln!("{}", result);
     }
     Ok(())
 }
@@ -62,7 +62,9 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<String> {
     let with_symbols =
         SymbolTableBuilder::process(&program, opts).expect("failed building symbol table");
 
-    eprintln!("table {:?}", with_symbols.table.clone());
+    if opts.show_ast {
+        eprintln!("table {:?}", with_symbols.table.clone());
+    }
 
     if opts.show_full_ast {
         eprintln!("debug ast: {:#?}", with_symbols.ast);
@@ -78,8 +80,9 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<String> {
         use ast::Root;
         use ast::ToNode;
         let res = Interpreter::process(&scoped, opts).expect("could not interpret program");
-        let res = PrettyPrint::process(&Root::new(res.to_node()), opts);
-        return Ok(format!("{:#?}", res));
+        let res = PrettyPrint::process(&Root::new(res.to_node()), opts)
+            .or_else(|_| panic!("Pretty print failed"));
+        return res;
     }
 
     let (res, flags) = to_c::Compiler::process(&scoped, opts).expect("could not compile program");
@@ -104,6 +107,8 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<String> {
         .arg("-std=c++14")
         .arg("-Wall")
         .arg("-Werror")
+        .arg("-Wno-unused-but-set-variable") // TODO: REMOVE THIS
+        .arg("-Wno-unused-variable") // TODO: REMOVE THIS
         .arg("-O3")
         .arg(outf)
         .arg("-o")

@@ -1,7 +1,7 @@
 
 int main(int argc, char* argv[]) {
   const auto x = [&] () {
-    return 3;
+    return !("Not evaluated ever");
   };
-  return x();
+  return (700+7);
 }

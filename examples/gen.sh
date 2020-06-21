@@ -1,4 +1,5 @@
 for i in *.tk; do
-  name=$(echo "$i" | sed "s/^\(.*\)\.tk/compile_\1/")
-  echo -e "Success\nexamples/$i" > "$name"
+  name=$(echo "$i" | sed "s/.tk//")
+  full_name=$(echo "$name" | sed "s/^/compile_/")
+  echo -e "Output(goldens/$name.cc)\nexamples/$i" > "$full_name"
 done

@@ -72,7 +72,8 @@ fn files_from(path: &str) -> Vec<String> {
                 if !s.ends_with(".tk")
                     && !s.ends_with(".sh")
                     && !s.ends_with(".cc")
-                    && !s.ends_with(".c") {
+                    && !s.ends_with(".c")
+                {
                     params.push(s.to_string());
                 }
             }

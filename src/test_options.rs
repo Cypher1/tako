@@ -7,9 +7,9 @@ use super::cli_options::Options;
 #[derive(Debug, PartialEq)]
 pub enum TestResult {
     Panic,
-    Success,        // With an unspecified value
+    Success, // With an unspecified value
     Output(String), // With an expected value
-    // TODO: ReturnValue(i32),
+             // TODO: ReturnValue(i32),
 }
 
 impl FromStr for TestResult {
