@@ -114,6 +114,11 @@ impl Visitor<State, (), String> for PrettyPrint {
         Ok(())
     }
 
+    fn visit_built_in(&mut self, state: &mut State, expr: &String) -> Res {
+        write!(state, "<built-in '{}'>", expr).unwrap();
+        Ok(())
+    }
+
     fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {
         Err(TError::FailedParse(expr.msg.to_string(), expr.get_info()))
     }

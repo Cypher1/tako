@@ -62,7 +62,9 @@ fn work(filename: &str, opts: &Options) -> std::io::Result<String> {
     let with_symbols =
         SymbolTableBuilder::process(&program, opts).expect("failed building symbol table");
 
-    eprintln!("table {:?}", with_symbols.table.clone());
+    if opts.show_ast {
+        eprintln!("table {:?}", with_symbols.table.clone());
+    }
 
     if opts.show_full_ast {
         eprintln!("debug ast: {:#?}", with_symbols.ast);

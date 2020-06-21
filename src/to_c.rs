@@ -253,14 +253,14 @@ impl Visitor<State, Code, Out> for Compiler {
         Ok(Code::Expr(name).clone())
     }
 
-    fn visit_prim(&mut self, _state: &mut State, expr: &Prim) -> Res {
+    fn visit_prim(&mut self, state: &mut State, expr: &Prim) -> Res {
         use Prim::*;
         match expr {
             I32(n, _) => Ok(Code::Expr(n.to_string())),
             Bool(true, _) => Ok(Code::Expr(1.to_string())),
             Bool(false, _) => Ok(Code::Expr(0.to_string())),
             Str(s, _) => Ok(Code::Expr(format!("{:?}", s))),
-            _ => unimplemented!(),
+            Lambda(node) => self.visit(state, node), // _ => unimplemented!("unimplemented primitive type in compilation to c"),
         }
     }
 
@@ -388,6 +388,10 @@ impl Visitor<State, Code, Out> for Compiler {
         };
         // TODO: Short circuiting of deps.
         Ok(res)
+    }
+
+    fn visit_built_in(&mut self, state: &mut State, expr: &String) -> Res {
+        Ok(Code::Expr(expr.to_owned()).clone())
     }
 
     fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {

@@ -204,6 +204,7 @@ pub enum Node {
     LetNode(Let),
     UnOpNode(UnOp),
     BinOpNode(BinOp),
+    BuiltIn(String),
 }
 
 impl std::fmt::Debug for Node {
@@ -217,6 +218,7 @@ impl std::fmt::Debug for Node {
             LetNode(n) => n.fmt(f),
             UnOpNode(n) => n.fmt(f),
             BinOpNode(n) => n.fmt(f),
+            BuiltIn(n) => n.fmt(f),
         }
     }
 }
@@ -246,6 +248,7 @@ impl ToNode for Node {
             LetNode(n) => n.get_info(),
             UnOpNode(n) => n.get_info(),
             BinOpNode(n) => n.get_info(),
+            BuiltIn(_) => Info::default(), // TODO: Add info about the built in.
         }
     }
 }
@@ -351,6 +354,7 @@ pub trait Visitor<State, Res, Final> {
     fn visit_let(&mut self, state: &mut State, e: &Let) -> Result<Res, TError>;
     fn visit_un_op(&mut self, state: &mut State, e: &UnOp) -> Result<Res, TError>;
     fn visit_bin_op(&mut self, state: &mut State, e: &BinOp) -> Result<Res, TError>;
+    fn visit_built_in(&mut self, state: &mut State, e: &String) -> Result<Res, TError>;
 
     fn visit(&mut self, state: &mut State, e: &Node) -> Result<Res, TError> {
         // eprintln!("{:?}", e);
@@ -363,6 +367,7 @@ pub trait Visitor<State, Res, Final> {
             LetNode(n) => self.visit_let(state, n),
             UnOpNode(n) => self.visit_un_op(state, n),
             BinOpNode(n) => self.visit_bin_op(state, n),
+            BuiltIn(n) => self.visit_built_in(state, n),
         }
     }
 
