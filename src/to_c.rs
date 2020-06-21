@@ -314,7 +314,7 @@ impl Visitor<State, Code, Out> for Compiler {
                 .iter()
                 .map(|s| {
                     format!(
-                        "const int {}",
+                        "const auto {}",
                         make_name(
                             s.get_info()
                                 .defined_at
