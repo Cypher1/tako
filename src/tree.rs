@@ -7,13 +7,6 @@ pub struct Tree<T> {
     pub children: Vec<Tree<T>>,
 }
 
-pub fn to_root<T>(t: T) -> Tree<T> {
-    Tree {
-        value: t,
-        children: vec![],
-    }
-}
-
 impl<T: fmt::Debug> fmt::Debug for Tree<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.children.is_empty() {

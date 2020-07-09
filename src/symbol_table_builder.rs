@@ -171,7 +171,7 @@ impl Visitor<State, Node, Root> for SymbolTableBuilder {
         .to_node())
     }
 
-    fn visit_built_in(&mut self, state: &mut State, expr: &String) -> Res {
+    fn visit_built_in(&mut self, _state: &mut State, expr: &String) -> Res {
         Ok(Node::BuiltIn(expr.to_string()))
     }
 

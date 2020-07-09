@@ -390,7 +390,7 @@ impl Visitor<State, Code, Out> for Compiler {
         Ok(res)
     }
 
-    fn visit_built_in(&mut self, state: &mut State, expr: &String) -> Res {
+    fn visit_built_in(&mut self, _state: &mut State, expr: &String) -> Res {
         Ok(Code::Expr(expr.to_owned()).clone())
     }
 
