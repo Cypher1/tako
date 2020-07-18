@@ -13,6 +13,7 @@ pub struct Compiler {
 
 #[derive(Clone, Debug)]
 pub enum Code {
+    Empty,
     Block(Vec<Code>),
     Expr(String),
     Statement(String),
@@ -33,6 +34,7 @@ pub enum Code {
 impl Code {
     fn with_expr(self: Code, f: &dyn Fn(String) -> Code) -> Code {
         match self {
+            Code::Empty => Code::Empty,
             Code::Expr(expr) => f(expr.to_owned()),
             Code::Block(mut statements) => {
                 let last = statements.pop().unwrap();
@@ -70,6 +72,8 @@ impl Code {
 
     fn merge(self: Code, other: Code) -> Code {
         match (self, other) {
+            (Code::Empty, right) => right,
+            (left, Code::Empty) => left,
             (Code::Block(mut left), Code::Block(right)) => {
                 left.extend(right);
                 Code::Block(left)
@@ -105,6 +109,7 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
             format!("{{{}{indent}}}", body.join(""), indent = indent,)
         }
         Code::Statement(line) => format!("{}{}", indent, line),
+        Code::Empty => "".to_string(),
         Code::Expr(line) => line,
         Code::If {
             condition,
@@ -158,7 +163,7 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
 }
 
 type Res = Result<Code, TError>;
-type State = ();
+type State = Table;
 type Out = (String, HashSet<String>);
 
 impl Compiler {
@@ -193,7 +198,10 @@ impl Visitor<State, Code, Out> for Compiler {
             args: Some(vec![]),
             is_function: true,
         };
-        let main = match self.visit_let(&mut (), &main_let)? {
+        let mut table = root.table.clone().expect("Requires symbol table");
+        let main_symb = table.find(&vec![]).expect("should exist");
+        main_symb.value.uses.push(vec![]);
+        let main = match self.visit_let(&mut table, &main_let)? {
             Code::Func {
                 name: _,
                 args: _,
@@ -294,7 +302,11 @@ impl Visitor<State, Code, Out> for Compiler {
     }
 
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
-        // eprintln!("let here: {:?}", expr.get_info().defined_at);
+        // eprintln!("let here: {:?}, {:?}", expr.get_info().defined_at, expr.name);
+        let symb = state.find(&expr.get_info().defined_at.expect("Undefined symbol")).expect("should exist");
+        if symb.value.uses.len() == 0 {
+            return Ok(Code::Empty);
+        }
         // eprintln!("args: {:?}", expr.args);
         // for arg in (&expr.args).as_ref().unwrap_or(&vec![]) {
         // eprintln!("  arg: {:?} {:?}", arg.name, arg.get_info().defined_at);

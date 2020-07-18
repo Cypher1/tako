@@ -301,6 +301,7 @@ impl Default for Entry {
 #[derive(Debug, Clone)]
 pub struct Symbol {
     pub name: ScopeName,
+    pub uses: Vec<Vec<ScopeName>>,
     pub info: Entry,
 }
 

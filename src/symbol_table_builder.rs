@@ -39,6 +39,7 @@ impl Table {
             .entry(find.clone())
             .or_insert(to_hash_root(Symbol {
                 name: find.clone(),
+                uses: vec![],
                 info: Entry::default(),
             }))
     }
@@ -68,6 +69,7 @@ impl Visitor<State, Node, Root> for SymbolTableBuilder {
         let mut state = State {
             table: to_hash_root(Symbol {
                 name: ScopeName::Named("project".to_string()), // TODO(cypher1): Pass around the project name.
+                uses: vec![],
                 info: Entry::default(),
             }),
             path: vec![],
