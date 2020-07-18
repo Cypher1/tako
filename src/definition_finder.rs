@@ -49,11 +49,9 @@ impl Visitor<State, Node, Root> for DefinitionFinder {
             }
             search.push(ScopeName::Named(expr.name.clone()));
             let node = state.table.find(&search);
-            search.pop(); // Strip the name off, then replace it.
             match node {
                 Some(node) => {
-                    // The name is in scope.
-                    search.push(node.value.name.clone());
+                    node.value.uses.push(state.path.clone());
                     if self.debug > 1 {
                         eprintln!("FOUND {} at {:?}\n", expr.name.clone(), search.clone());
                     }
@@ -62,6 +60,7 @@ impl Visitor<State, Node, Root> for DefinitionFinder {
                     return Ok(res.to_node());
                 }
                 None => {
+                    search.pop(); // Strip the name off.
                     if self.debug > 1 {
                         eprintln!("   not found {} at {:?}", expr.name.clone(), search.clone());
                     }

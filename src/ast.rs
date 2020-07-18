@@ -258,15 +258,6 @@ pub trait ToNode {
     fn get_info(self: &Self) -> Info;
 }
 
-impl Node {
-    pub fn to_root(self: Self) -> Root {
-        Root {
-            ast: self,
-            table: None,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum ScopeName {
     Anon(i32),
@@ -310,6 +301,7 @@ impl Default for Entry {
 #[derive(Debug, Clone)]
 pub struct Symbol {
     pub name: ScopeName,
+    pub uses: Vec<Vec<ScopeName>>,
     pub info: Entry,
 }
 
