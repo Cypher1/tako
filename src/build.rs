@@ -48,8 +48,9 @@ fn build_test(mut f: &std::fs::File, path: String) {
 fn {fn_name}() {{
     let topts = TestOptions::from_str(\"{opts}\").expect(\"Couldn't read test options\");
     let opts = topts.opts;
+    let mut db = DB::default();
     for f in opts.files.iter() {{
-        let result = super::work(&f, &opts).expect(\"failed\");
+        let result = super::work(&mut db, &f, &opts).expect(\"failed\");
         // Check the result!
         eprintln!(\"Result{{:?}}\", result);
         {result}
@@ -92,6 +93,7 @@ fn main() -> std::io::Result<()> {
     writeln!(f, "use std::io::prelude::Read;")?;
     writeln!(f, "use std::str::FromStr;")?;
     writeln!(f, "use super::test_options::TestOptions;")?;
+    writeln!(f, "use super::database::DB;")?;
 
     for p in files_from("examples") {
         build_test(&f, p);

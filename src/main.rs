@@ -22,7 +22,7 @@ mod interpreter;
 mod pretty_print;
 mod symbol_table_builder;
 mod to_c;
-mod test_salsa;
+mod database;
 
 // The following are only for tests
 #[cfg(test)]
@@ -41,25 +41,31 @@ use symbol_table_builder::SymbolTableBuilder;
 
 use cli_options::parse_args;
 use cli_options::Options;
+use database::{DB, Loader};
+
+use std::sync::Arc;
 
 fn main() -> std::io::Result<()> {
     let args: Vec<String> = env::args().collect();
     let opts = parse_args(&args[1..]);
+
+    let mut db = DB::default();
+
     for f in opts.files.iter() {
-        let result = work(&f, &opts)?; // discard the result (used for testing).
+        let result = work(&mut db, &f, &opts)?; // discard the result (used for testing).
         eprintln!("{}", result);
     }
     Ok(())
 }
 
-fn work(filename: &str, opts: &Options) -> std::io::Result<String> {
-    use test_salsa::test_salsa;
-    test_salsa();
-
+fn work(db: &mut DB, filename: &str, opts: &Options) -> std::io::Result<String> {
     let mut contents = String::new();
     let mut file = File::open(filename.to_string())?;
-
     file.read_to_string(&mut contents)?;
+
+    let contents = Arc::new(contents);
+
+    db.set_file(filename.to_string(), contents.clone());
 
     let program = parser::parse_file(filename.to_string(), contents);
 

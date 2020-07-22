@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use std::sync::Arc;
 
 use super::ast::*;
 use super::location::*;
@@ -390,11 +391,11 @@ fn expr(init_toks: VecDeque<Token>, init_lbp: i32) -> (Node, VecDeque<Token>) {
     (left, toks)
 }
 
-pub fn parse_file(filename: String, contents: String) -> Root {
+pub fn parse_file(filename: String, contents: Arc<String>) -> Root {
     Root::new(parse_impl(Some(filename), contents))
 }
 
-fn parse_impl(filename: Option<String>, contents: String) -> Node {
+fn parse_impl(filename: Option<String>, contents: Arc<String>) -> Node {
     let mut toks: VecDeque<Token> = VecDeque::new();
 
     let mut pos = Loc {
@@ -433,7 +434,7 @@ mod tests {
     use super::parse_impl;
     use Prim::*;
 
-    fn parse(contents: String) -> Node {
+    fn parse(contents: Arc<String>) -> Node {
         parse_impl(None, contents)
     }
 
