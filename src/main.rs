@@ -22,6 +22,7 @@ mod interpreter;
 mod pretty_print;
 mod symbol_table_builder;
 mod to_c;
+mod test_salsa;
 
 // The following are only for tests
 #[cfg(test)]
@@ -52,6 +53,9 @@ fn main() -> std::io::Result<()> {
 }
 
 fn work(filename: &str, opts: &Options) -> std::io::Result<String> {
+    use test_salsa::test_salsa;
+    test_salsa();
+
     let mut contents = String::new();
     let mut file = File::open(filename.to_string())?;
 
