@@ -16,13 +16,13 @@ mod tree;
 mod types;
 
 mod cli_options;
+mod database;
 mod definition_finder;
 mod errors;
 mod interpreter;
 mod pretty_print;
 mod symbol_table_builder;
 mod to_c;
-mod database;
 
 // The following are only for tests
 #[cfg(test)]
@@ -41,24 +41,24 @@ use symbol_table_builder::SymbolTableBuilder;
 
 use cli_options::parse_args;
 use cli_options::Options;
-use database::{DB, Loader};
+use database::{Compiler, DB};
 
 use std::sync::Arc;
 
 fn main() -> std::io::Result<()> {
     let args: Vec<String> = env::args().collect();
-    let opts = parse_args(&args[1..]);
 
     let mut db = DB::default();
+    db.set_options(Arc::new(parse_args(&args[1..])));
 
-    for f in opts.files.iter() {
-        let result = work(&mut db, &f, &opts)?; // discard the result (used for testing).
+    for f in db.options().files.iter() {
+        let result = work(&mut db, &f)?; // discard the result (used for testing).
         eprintln!("{}", result);
     }
     Ok(())
 }
 
-fn work(db: &mut DB, filename: &str, opts: &Options) -> std::io::Result<String> {
+fn work(db: &mut DB, filename: &str) -> std::io::Result<String> {
     let mut contents = String::new();
     let mut file = File::open(filename.to_string())?;
     file.read_to_string(&mut contents)?;
@@ -67,35 +67,18 @@ fn work(db: &mut DB, filename: &str, opts: &Options) -> std::io::Result<String> 
 
     db.set_file(filename.to_string(), contents.clone());
 
-    let program = parser::parse_file(filename.to_string(), contents);
+    if db.options().interactive {
+        let scoped = db.look_up_definitions(filename.to_string());
 
-    let with_symbols =
-        SymbolTableBuilder::process(&program, opts).expect("failed building symbol table");
-
-    if opts.show_ast {
-        eprintln!("table {:?}", with_symbols.table.clone());
-    }
-
-    if opts.show_full_ast {
-        eprintln!("debug ast: {:#?}", with_symbols.ast);
-    }
-    let scoped =
-        DefinitionFinder::process(&with_symbols, opts).expect("failed finding definitions");
-
-    if opts.show_ast {
-        eprintln!("ast: {}", scoped.ast);
-    }
-
-    if opts.interactive {
         use ast::Root;
         use ast::ToNode;
-        let res = Interpreter::process(&scoped, opts).expect("could not interpret program");
-        let res = PrettyPrint::process(&Root::new(res.to_node()), opts)
+        let res = Interpreter::process(&scoped, &db.options().clone()).expect("could not interpret program");
+        let res = PrettyPrint::process(&Root::new(res.to_node()), &db.options().clone())
             .or_else(|_| panic!("Pretty print failed"));
         return res;
     }
 
-    let (res, flags) = to_c::Compiler::process(&scoped, opts).expect("could not compile program");
+    let (res, flags) = db.compile_to_c(filename.to_string());
 
     let start_of_name = filename.rfind('/').unwrap_or(0);
     let dir = &filename[..start_of_name];

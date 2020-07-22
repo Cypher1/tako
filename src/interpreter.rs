@@ -394,7 +394,7 @@ impl Visitor<State, Prim, Prim> for Interpreter {
             "println" => match it_val {
                 Node::PrimNode(Prim::Str(it_val, _)) => println!("{}", it_val),
                 it_val => println!("{}", it_val),
-            }
+            },
             _ => unimplemented!("interpreter built in"),
         }
         Ok(Prim::I32(0, Info::default()))
@@ -423,7 +423,8 @@ mod tests {
     }
 
     fn eval_str(s: String) -> Res {
-        let ast = parser::parse_file("test".to_string(), s);
+        use std::sync::Arc;
+        let ast = parser::parse_file("test".to_string(), Arc::new(s));
         let mut interp = Interpreter::new(&Options::default());
         interp.visit_root(&ast)
     }

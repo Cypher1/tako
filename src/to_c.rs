@@ -303,7 +303,9 @@ impl Visitor<State, Code, Out> for Compiler {
 
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
         // eprintln!("let here: {:?}, {:?}", expr.get_info().defined_at, expr.name);
-        let symb = state.find(&expr.get_info().defined_at.expect("Undefined symbol")).expect("should exist");
+        let symb = state
+            .find(&expr.get_info().defined_at.expect("Undefined symbol"))
+            .expect("should exist");
         if symb.value.uses.len() == 0 {
             return Ok(Code::Empty);
         }

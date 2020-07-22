@@ -433,9 +433,10 @@ mod tests {
     use super::super::ast::*;
     use super::parse_impl;
     use Prim::*;
+    use std::sync::Arc;
 
-    fn parse(contents: Arc<String>) -> Node {
-        parse_impl(None, contents)
+    fn parse(contents: String) -> Node {
+        parse_impl(None, Arc::new(contents))
     }
 
     fn num_lit(x: i32) -> Box<Node> {

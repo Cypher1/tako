@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Options {
     pub files: Vec<String>,
     pub interactive: bool,

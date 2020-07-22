@@ -8,7 +8,7 @@ use super::location::*;
 use super::tree::*;
 use super::types::*;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Err {
     pub msg: String,
     pub info: Info,
@@ -23,7 +23,7 @@ impl ToNode for Err {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Apply {
     pub inner: Box<Node>,
     pub args: Vec<Let>,
@@ -54,7 +54,7 @@ impl ToNode for Sym {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Prim {
     Bool(bool, Info),
     I32(i32, Info),
@@ -77,7 +77,7 @@ impl ToNode for Prim {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Let {
     pub name: String,
     pub value: Box<Node>,
@@ -104,7 +104,7 @@ impl ToNode for Let {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct UnOp {
     pub name: String,
     pub inner: Box<Node>,
@@ -120,7 +120,7 @@ impl ToNode for UnOp {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct BinOp {
     pub name: String,
     pub left: Box<Node>,
@@ -195,7 +195,7 @@ pub struct TypeInfo {
 }
 
 // #[derive(Debug)]
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Eq, Clone)]
 pub enum Node {
     Error(Err),
     SymNode(Sym),
@@ -283,7 +283,7 @@ impl ScopeName {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Entry {
     // pub requires: Vec<Sym>,
 // pub defines: HashMap<Sym, Vec<ScopeName>>,
@@ -298,7 +298,7 @@ impl Default for Entry {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Symbol {
     pub name: ScopeName,
     pub uses: Vec<Vec<ScopeName>>,
@@ -314,7 +314,7 @@ impl fmt::Display for Symbol {
 
 pub type Table = HashTree<ScopeName, Symbol>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Root {
     pub ast: Node,
     pub table: Option<Table>,

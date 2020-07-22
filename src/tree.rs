@@ -17,8 +17,13 @@ impl<T: fmt::Debug> fmt::Debug for Tree<T> {
     }
 }
 
-#[derive(Clone)]
-pub struct HashTree<K, T> {
+#[derive(Clone, PartialEq, Eq)]
+pub struct HashTree<K, T>
+where
+    K: std::hash::Hash,
+    K: PartialEq,
+    K: Eq,
+{
     pub value: T,
     pub children: HashMap<K, HashTree<K, T>>,
 }
