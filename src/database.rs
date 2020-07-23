@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
+use crate::ast::Visitor;
 use crate::cli_options::Options;
 use std::collections::HashSet;
-use crate::ast::Visitor;
 
 use std::io::prelude::*;
 use std::process::Command;
@@ -36,7 +36,8 @@ fn parse_file(db: &dyn Compiler, filename: String) -> Root {
 fn build_symbol_table(db: &dyn Compiler, filename: String) -> Root {
     use crate::symbol_table_builder::SymbolTableBuilder;
     eprintln!("building symbol table for file... {}", &filename);
-    let with_symbols = SymbolTableBuilder::process(&db.parse_file(filename), &db.options()).expect("failed building symbol table");
+    let with_symbols = SymbolTableBuilder::process(&db.parse_file(filename), &db.options())
+        .expect("failed building symbol table");
 
     if db.options().show_ast {
         eprintln!("table {:?}", with_symbols.table.clone());
@@ -51,14 +52,15 @@ fn build_symbol_table(db: &dyn Compiler, filename: String) -> Root {
 fn look_up_definitions(db: &dyn Compiler, filename: String) -> Root {
     use crate::definition_finder::DefinitionFinder;
     eprintln!("looking up definitions in file... {}", &filename);
-    DefinitionFinder::process(&db.build_symbol_table(filename), &db.options()).expect("failed looking up symbols")
+    DefinitionFinder::process(&db.build_symbol_table(filename), &db.options())
+        .expect("failed looking up symbols")
 }
 
 fn compile_to_c(db: &dyn Compiler, filename: String) -> (String, HashSet<String>) {
-
     use crate::to_c::Compiler;
     eprintln!("generating code for file ... {}", &filename);
-    Compiler::process(&db.look_up_definitions(filename), &db.options().clone()).expect("could not compile program")
+    Compiler::process(&db.look_up_definitions(filename), &db.options())
+        .expect("could not compile program")
 }
 
 fn build_with_gpp(db: &dyn Compiler, filename: String) -> String {
@@ -88,7 +90,8 @@ fn build_with_gpp(db: &dyn Compiler, filename: String) -> String {
         .arg(outf)
         .arg("-o")
         .arg(execf)
-        .output().expect("could not run g++");
+        .output()
+        .expect("could not run g++");
     if !output.status.success() {
         let s = String::from_utf8(output.stderr).unwrap();
         eprintln!("{}", s);

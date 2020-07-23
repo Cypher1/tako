@@ -432,8 +432,8 @@ fn parse_impl(filename: Option<String>, contents: Arc<String>) -> Node {
 mod tests {
     use super::super::ast::*;
     use super::parse_impl;
-    use Prim::*;
     use std::sync::Arc;
+    use Prim::*;
 
     fn parse(contents: String) -> Node {
         parse_impl(None, Arc::new(contents))

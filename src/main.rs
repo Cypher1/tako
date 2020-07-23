@@ -31,18 +31,15 @@ extern crate quickcheck;
 extern crate quickcheck_macros;
 
 use ast::Visitor;
-use definition_finder::DefinitionFinder;
 use interpreter::Interpreter;
 use pretty_print::PrettyPrint;
-use symbol_table_builder::SymbolTableBuilder;
 
 use cli_options::parse_args;
-use cli_options::Options;
 use database::{Compiler, DB};
 
-use std::sync::Arc;
 use std::fs::File;
 use std::io::prelude::*;
+use std::sync::Arc;
 
 fn main() -> std::io::Result<()> {
     let args: Vec<String> = env::args().collect();
@@ -64,15 +61,14 @@ fn work(db: &mut DB, filename: &str) -> std::io::Result<String> {
 
     let contents = Arc::new(contents);
 
-    db.set_file(filename.to_string(), contents.clone());
+    db.set_file(filename.to_string(), contents);
 
     if db.options().interactive {
         let scoped = db.look_up_definitions(filename.to_string());
 
-        use ast::Root;
-        use ast::ToNode;
-        let res = Interpreter::process(&scoped, &db.options().clone()).expect("could not interpret program");
-        PrettyPrint::process(&Root::new(res.to_node()), &db.options().clone())
+        let res = Interpreter::process(&scoped, &db.options()).expect("could not interpret program");
+        use ast::{Root, ToNode};
+        PrettyPrint::process(&Root::new(res.to_node()), &db.options())
             .or_else(|_| panic!("Pretty print failed"))
     } else {
         Ok(db.build_with_gpp(filename.to_string()))
