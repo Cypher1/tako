@@ -1,9 +1,6 @@
 #![deny(clippy::all)]
 
 use std::env;
-use std::fs::File;
-use std::io::prelude::*;
-use std::process::Command;
 
 #[macro_use]
 mod map_macros;
@@ -44,6 +41,8 @@ use cli_options::Options;
 use database::{Compiler, DB};
 
 use std::sync::Arc;
+use std::fs::File;
+use std::io::prelude::*;
 
 fn main() -> std::io::Result<()> {
     let args: Vec<String> = env::args().collect();
@@ -73,46 +72,11 @@ fn work(db: &mut DB, filename: &str) -> std::io::Result<String> {
         use ast::Root;
         use ast::ToNode;
         let res = Interpreter::process(&scoped, &db.options().clone()).expect("could not interpret program");
-        let res = PrettyPrint::process(&Root::new(res.to_node()), &db.options().clone())
-            .or_else(|_| panic!("Pretty print failed"));
-        return res;
+        PrettyPrint::process(&Root::new(res.to_node()), &db.options().clone())
+            .or_else(|_| panic!("Pretty print failed"))
+    } else {
+        Ok(db.build_with_gpp(filename.to_string()))
     }
-
-    let (res, flags) = db.compile_to_c(filename.to_string());
-
-    let start_of_name = filename.rfind('/').unwrap_or(0);
-    let dir = &filename[..start_of_name];
-    let name = filename.trim_end_matches(".tk");
-
-    std::fs::create_dir_all(format!("build/{}", dir))?;
-
-    let outf = format!("build/{}.cc", name);
-    let execf = format!("build/{}", name);
-    let destination = std::path::Path::new(&outf);
-    let mut f = std::fs::File::create(&destination).expect("could not open output file");
-    write!(f, "{}", res)?;
-
-    let mut cmd = Command::new("g++");
-    for arg in flags.iter() {
-        cmd.arg(arg);
-    }
-    let output = cmd
-        .arg("-std=c++14")
-        .arg("-Wall")
-        .arg("-Werror")
-        .arg("-O3")
-        .arg(outf)
-        .arg("-o")
-        .arg(execf)
-        .output()?;
-    if !output.status.success() {
-        let s = String::from_utf8(output.stderr).unwrap();
-        eprintln!("{}", s);
-        panic!("Command executed with failing error code");
-    }
-    let s = String::from_utf8(output.stdout).unwrap();
-    eprintln!("{}", s);
-    Ok(res)
 }
 
 #[cfg(test)]

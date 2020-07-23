@@ -4,6 +4,9 @@ use crate::cli_options::Options;
 use std::collections::HashSet;
 use crate::ast::Visitor;
 
+use std::io::prelude::*;
+use std::process::Command;
+
 #[salsa::query_group(CompilerStorage)]
 pub trait Compiler: salsa::Database {
     #[salsa::input]
@@ -16,6 +19,7 @@ pub trait Compiler: salsa::Database {
     fn build_symbol_table(&self, filename: String) -> Root;
     fn look_up_definitions(&self, filename: String) -> Root;
     fn compile_to_c(&self, filename: String) -> (String, HashSet<String>);
+    fn build_with_gpp(&self, filename: String) -> String;
 }
 
 use crate::ast::Root;
@@ -55,6 +59,44 @@ fn compile_to_c(db: &dyn Compiler, filename: String) -> (String, HashSet<String>
     use crate::to_c::Compiler;
     eprintln!("generating code for file ... {}", &filename);
     Compiler::process(&db.look_up_definitions(filename), &db.options().clone()).expect("could not compile program")
+}
+
+fn build_with_gpp(db: &dyn Compiler, filename: String) -> String {
+    let (res, flags) = db.compile_to_c(filename.to_string());
+
+    let start_of_name = filename.rfind('/').unwrap_or(0);
+    let dir = &filename[..start_of_name];
+    let name = filename.trim_end_matches(".tk");
+
+    std::fs::create_dir_all(format!("build/{}", dir)).expect("could not create build directory");
+
+    let outf = format!("build/{}.cc", name);
+    let execf = format!("build/{}", name);
+    let destination = std::path::Path::new(&outf);
+    let mut f = std::fs::File::create(&destination).expect("could not open output file");
+    write!(f, "{}", res).expect("couldn't write to file");
+
+    let mut cmd = Command::new("g++");
+    for arg in flags.iter() {
+        cmd.arg(arg);
+    }
+    let output = cmd
+        .arg("-std=c++14")
+        .arg("-Wall")
+        .arg("-Werror")
+        .arg("-O3")
+        .arg(outf)
+        .arg("-o")
+        .arg(execf)
+        .output().expect("could not run g++");
+    if !output.status.success() {
+        let s = String::from_utf8(output.stderr).unwrap();
+        eprintln!("{}", s);
+        panic!("Command executed with failing error code");
+    }
+    let s = String::from_utf8(output.stdout).unwrap();
+    eprintln!("{}", s);
+    res
 }
 
 #[salsa::database(CompilerStorage)]
