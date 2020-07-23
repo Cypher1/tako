@@ -30,13 +30,17 @@ pub trait Compiler: salsa::Database {
 
 fn lex_file(db: &dyn Compiler, filename: String) -> VecDeque<Token> {
     use crate::parser;
-    eprintln!("lexing file... {}", &filename);
+    if db.options().debug > 0 {
+        eprintln!("lexing file... {}", &filename);
+    }
     parser::lex(Some(filename.to_string()), db.file(filename))
 }
 
 fn parse_file(db: &dyn Compiler, filename: String) -> Root {
     use crate::parser;
-    eprintln!("parsing file... {}", &filename);
+    if db.options().debug > 0 {
+        eprintln!("parsing file... {}", &filename);
+    }
     let ast = parser::parse(db.lex_file(filename));
     if db.options().show_ast {
         eprintln!("ast: {}", ast);
@@ -46,7 +50,9 @@ fn parse_file(db: &dyn Compiler, filename: String) -> Root {
 
 fn build_symbol_table(db: &dyn Compiler, filename: String) -> Root {
     use crate::symbol_table_builder::SymbolTableBuilder;
-    eprintln!("building symbol table for file... {}", &filename);
+    if db.options().debug > 0 {
+        eprintln!("building symbol table for file... {}", &filename);
+    }
     let with_symbols = SymbolTableBuilder::process(&db.parse_file(filename), &db.options())
         .expect("failed building symbol table");
 
@@ -62,19 +68,26 @@ fn build_symbol_table(db: &dyn Compiler, filename: String) -> Root {
 
 fn look_up_definitions(db: &dyn Compiler, filename: String) -> Root {
     use crate::definition_finder::DefinitionFinder;
-    eprintln!("looking up definitions in file... {}", &filename);
+    if db.options().debug > 0 {
+        eprintln!("looking up definitions in file... {}", &filename);
+    }
     DefinitionFinder::process(&db.build_symbol_table(filename), &db.options())
         .expect("failed looking up symbols")
 }
 
 fn compile_to_c(db: &dyn Compiler, filename: String) -> (String, HashSet<String>) {
     use crate::to_c::Compiler;
-    eprintln!("generating code for file ... {}", &filename);
+    if db.options().debug > 0 {
+        eprintln!("generating code for file ... {}", &filename);
+    }
     Compiler::process(&db.look_up_definitions(filename), &db.options())
         .expect("could not compile program")
 }
 
 fn build_with_gpp(db: &dyn Compiler, filename: String) -> String {
+    if db.options().debug > 0 {
+        eprintln!("building file with g++ ... {}", &filename);
+    }
     let (res, flags) = db.compile_to_c(filename.to_string());
 
     let start_of_name = filename.rfind('/').unwrap_or(0);
