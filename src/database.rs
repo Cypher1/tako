@@ -24,7 +24,7 @@ pub trait Compiler: salsa::Database {
     fn parse_file(&self, filename: String) -> Root;
     fn build_symbol_table(&self, filename: String) -> Root;
     fn look_up_definitions(&self, filename: String) -> Root;
-    fn compile_to_c(&self, filename: String) -> (String, HashSet<String>);
+    fn compile_to_cpp(&self, filename: String) -> (String, HashSet<String>);
     fn build_with_gpp(&self, filename: String) -> String;
 }
 
@@ -75,8 +75,8 @@ fn look_up_definitions(db: &dyn Compiler, filename: String) -> Root {
         .expect("failed looking up symbols")
 }
 
-fn compile_to_c(db: &dyn Compiler, filename: String) -> (String, HashSet<String>) {
-    use crate::to_c::Compiler;
+fn compile_to_cpp(db: &dyn Compiler, filename: String) -> (String, HashSet<String>) {
+    use crate::to_cpp::Compiler;
     if db.options().debug > 0 {
         eprintln!("generating code for file ... {}", &filename);
     }
@@ -88,7 +88,7 @@ fn build_with_gpp(db: &dyn Compiler, filename: String) -> String {
     if db.options().debug > 0 {
         eprintln!("building file with g++ ... {}", &filename);
     }
-    let (res, flags) = db.compile_to_c(filename.to_string());
+    let (res, flags) = db.compile_to_cpp(filename.to_string());
 
     let start_of_name = filename.rfind('/').unwrap_or(0);
     let dir = &filename[..start_of_name];

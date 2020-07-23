@@ -19,7 +19,7 @@ mod errors;
 mod interpreter;
 mod pretty_print;
 mod symbol_table_builder;
-mod to_c;
+mod to_cpp;
 
 // The following are only for tests
 #[cfg(test)]
