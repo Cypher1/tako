@@ -1,11 +1,15 @@
 use std::sync::Arc;
 
-use crate::ast::Visitor;
-use crate::cli_options::Options;
 use std::collections::HashSet;
+use std::collections::VecDeque;
 
 use std::io::prelude::*;
 use std::process::Command;
+
+use crate::ast::Root;
+use crate::ast::Visitor;
+use crate::cli_options::Options;
+use crate::tokens::Token;
 
 #[salsa::query_group(CompilerStorage)]
 pub trait Compiler: salsa::Database {
@@ -14,7 +18,9 @@ pub trait Compiler: salsa::Database {
 
     #[salsa::input]
     fn options(&self) -> Arc<Options>;
+    // TODO: Make each option an input.
 
+    fn lex_file(&self, filename: String) -> VecDeque<Token>;
     fn parse_file(&self, filename: String) -> Root;
     fn build_symbol_table(&self, filename: String) -> Root;
     fn look_up_definitions(&self, filename: String) -> Root;
@@ -22,15 +28,20 @@ pub trait Compiler: salsa::Database {
     fn build_with_gpp(&self, filename: String) -> String;
 }
 
-use crate::ast::Root;
+fn lex_file(db: &dyn Compiler, filename: String) -> VecDeque<Token> {
+    use crate::parser;
+    eprintln!("lexing file... {}", &filename);
+    parser::lex(Some(filename.to_string()), db.file(filename))
+}
+
 fn parse_file(db: &dyn Compiler, filename: String) -> Root {
     use crate::parser;
     eprintln!("parsing file... {}", &filename);
-    let ast = parser::parse_file(filename.to_string(), db.file(filename));
+    let ast = parser::parse(db.lex_file(filename));
     if db.options().show_ast {
         eprintln!("ast: {}", ast);
     }
-    ast
+    Root::new(ast)
 }
 
 fn build_symbol_table(db: &dyn Compiler, filename: String) -> Root {

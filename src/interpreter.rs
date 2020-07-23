@@ -409,7 +409,7 @@ impl Visitor<State, Prim, Prim> for Interpreter {
 mod tests {
     use super::super::ast::*;
     use super::super::cli_options::Options;
-    use super::super::parser;
+    use super::super::parser::{lex, parse};
     use super::Interpreter;
     use super::Res;
     use Node::*;
@@ -424,9 +424,9 @@ mod tests {
 
     fn eval_str(s: String) -> Res {
         use std::sync::Arc;
-        let ast = parser::parse_file("test".to_string(), Arc::new(s));
+        let ast = parse(lex(None, Arc::new(s)));
         let mut interp = Interpreter::new(&Options::default());
-        interp.visit_root(&ast)
+        interp.visit_root(&Root::new(ast))
     }
 
     #[test]

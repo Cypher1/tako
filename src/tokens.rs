@@ -14,7 +14,7 @@ pub enum TokenType {
     Whitespace,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Token {
     pub tok_type: TokenType,
     // TODO: Use enum types to convert tokens to literals and symbols.

@@ -391,11 +391,7 @@ fn expr(init_toks: VecDeque<Token>, init_lbp: i32) -> (Node, VecDeque<Token>) {
     (left, toks)
 }
 
-pub fn parse_file(filename: String, contents: Arc<String>) -> Root {
-    Root::new(parse_impl(Some(filename), contents))
-}
-
-fn parse_impl(filename: Option<String>, contents: Arc<String>) -> Node {
+pub fn lex(filename: Option<String>, contents: Arc<String>) -> VecDeque<Token> {
     let mut toks: VecDeque<Token> = VecDeque::new();
 
     let mut pos = Loc {
@@ -418,7 +414,10 @@ fn parse_impl(filename: Option<String>, contents: Arc<String>) -> Node {
     }
 
     // eprintln!("Toks: {:?}", toks);
+    toks
+}
 
+pub fn parse(toks: VecDeque<Token>) -> Node {
     let (root, left_over) = expr(toks, 0);
 
     if !left_over.is_empty() {
@@ -431,12 +430,12 @@ fn parse_impl(filename: Option<String>, contents: Arc<String>) -> Node {
 #[cfg(test)]
 mod tests {
     use super::super::ast::*;
-    use super::parse_impl;
+    use super::lex;
     use std::sync::Arc;
     use Prim::*;
 
     fn parse(contents: String) -> Node {
-        parse_impl(None, Arc::new(contents))
+        super::parse(lex(None, Arc::new(contents)))
     }
 
     fn num_lit(x: i32) -> Box<Node> {
