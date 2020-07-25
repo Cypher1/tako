@@ -45,7 +45,7 @@ fn main() -> std::io::Result<()> {
     let args: Vec<String> = env::args().collect();
 
     let mut db = DB::default();
-    db.set_options(Arc::new(parse_args(&args[1..])));
+    db.set_options(parse_args(&args[1..]));
 
     for f in db.options().files.iter() {
         let result = work(&mut db, &f)?; // discard the result (used for testing).
@@ -67,9 +67,9 @@ fn work(db: &mut DB, filename: &str) -> std::io::Result<String> {
         let scoped = db.look_up_definitions(filename.to_string());
 
         let res =
-            Interpreter::process(&scoped, &db.options()).expect("could not interpret program");
+            Interpreter::process(&scoped, db).expect("could not interpret program");
         use ast::{Root, ToNode};
-        PrettyPrint::process(&Root::new(res.to_node()), &db.options())
+        PrettyPrint::process(&Root::new(res.to_node()), db)
             .or_else(|_| panic!("Pretty print failed"))
     } else {
         Ok(db.build_with_gpp(filename.to_string()))

@@ -1,6 +1,6 @@
-use super::ast::*;
-use super::cli_options::Options;
-use super::errors::TError;
+use crate::ast::*;
+use crate::database::Compiler;
+use crate::errors::TError;
 use std::fmt::Write;
 
 // Walks the AST interpreting it.
@@ -11,7 +11,7 @@ type Res = Result<(), TError>;
 type State = String;
 
 impl Visitor<State, (), String> for PrettyPrint {
-    fn new(_opts: &Options) -> PrettyPrint {
+    fn new(_db: &dyn Compiler) -> PrettyPrint {
         PrettyPrint {}
     }
 

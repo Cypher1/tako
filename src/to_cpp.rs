@@ -1,11 +1,11 @@
-use super::ast::*;
-use super::cli_options::Options;
-use super::errors::TError;
+use crate::ast::*;
+use crate::database::Compiler;
+use crate::errors::TError;
 
 use std::collections::HashSet;
 
 // Walks the AST compiling it to wasm.
-pub struct Compiler {
+pub struct CodeGenerator {
     functions: Vec<Code>,
     includes: HashSet<String>,
     pub flags: HashSet<String>,
@@ -91,7 +91,7 @@ impl Code {
     }
 }
 
-pub fn make_name(def: Vec<ScopeName>) -> String {
+pub fn make_name(def: Vec<Symbol>) -> String {
     let def_n: Vec<String> = def.iter().map(|n| n.clone().to_name()).collect();
     def_n.join("_")
 }
@@ -166,7 +166,7 @@ type Res = Result<Code, TError>;
 type State = Table;
 type Out = (String, HashSet<String>);
 
-impl Compiler {
+impl CodeGenerator {
     fn build_call1(&mut self, before: &str, inner: Code) -> Code {
         inner.with_expr(&|exp| Code::Expr(format!("{}({})", before, exp)))
     }
@@ -179,9 +179,9 @@ impl Compiler {
     }
 }
 
-impl Visitor<State, Code, Out> for Compiler {
-    fn new(_opts: &Options) -> Compiler {
-        Compiler {
+impl Visitor<State, Code, Out> for CodeGenerator {
+    fn new(_db: &dyn Compiler) -> CodeGenerator {
+        CodeGenerator {
             functions: vec![],
             includes: HashSet::new(),
             flags: HashSet::new(),

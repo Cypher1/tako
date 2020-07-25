@@ -2,11 +2,12 @@ use std::collections::HashMap;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
-use super::cli_options::Options;
-use super::errors::TError;
-use super::location::*;
-use super::tree::*;
-use super::types::*;
+use crate::database::DB;
+use crate::errors::TError;
+use crate::location::*;
+use crate::tree::*;
+use crate::types::*;
+use crate::database::Compiler;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Err {
@@ -140,14 +141,14 @@ impl ToNode for BinOp {
 #[derive(Clone, Debug)]
 pub struct Definition {
     pub requires: Vec<Sym>,
-    pub defines: HashMap<Sym, Vec<ScopeName>>,
+    pub defines: HashMap<Sym, Vec<Symbol>>,
 }
 
 #[derive(Clone)]
 pub struct Info {
     pub loc: Option<Loc>,
     pub ty: Option<TypeInfo>,
-    pub defined_at: Option<Vec<ScopeName>>,
+    pub defined_at: Option<Vec<Symbol>>,
     pub callable: bool,
 }
 
@@ -226,7 +227,7 @@ impl std::fmt::Debug for Node {
 impl fmt::Display for Node {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use super::PrettyPrint;
-        let mut ppr = PrettyPrint::new(&Options::default());
+        let mut ppr = PrettyPrint::new(&DB::default());
         match ppr.visit_root(&Root::new(self.clone())) {
             Ok(res) => write!(f, "{}", res),
             Err(err) => write!(f, "{:#?}", err),
@@ -259,60 +260,48 @@ pub trait ToNode {
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub enum ScopeName {
-    Anon(i32),
+pub enum Symbol {
+    Anon(),
     Named(String),
 }
 
-impl fmt::Display for ScopeName {
+impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ScopeName::Anon(n) => write!(f, "anonymous?#{}", n)?,
-            ScopeName::Named(name) => write!(f, "{}", name)?,
+            Symbol::Anon() => write!(f, "?")?,
+            Symbol::Named(name) => write!(f, "{}", name)?,
         }
         Ok(())
     }
 }
 
-impl ScopeName {
-    pub fn to_name(self: &ScopeName) -> String {
+impl Symbol {
+    pub fn to_name(self: &Symbol) -> String {
         match self {
-            ScopeName::Anon(n) => format!("{}", n),
-            ScopeName::Named(name) => name.to_owned(),
+            Symbol::Anon() => "?".to_owned(),
+            Symbol::Named(name) => name.to_owned(),
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Entry {
+    pub uses: Vec<Vec<Symbol>>,
     // pub requires: Vec<Sym>,
-// pub defines: HashMap<Sym, Vec<ScopeName>>,
+    // pub defines: HashMap<Sym, Vec<Symbol>>,
 }
 
 impl Default for Entry {
     fn default() -> Entry {
         Entry {
+            uses: vec![],
             // requires: vec![],
             // defines: HashMap::new(),
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Symbol {
-    pub name: ScopeName,
-    pub uses: Vec<Vec<ScopeName>>,
-    pub info: Entry,
-}
-
-impl fmt::Display for Symbol {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.name)?;
-        Ok(())
-    }
-}
-
-pub type Table = HashTree<ScopeName, Symbol>;
+pub type Table = HashTree<Symbol, Entry>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Root {
@@ -335,7 +324,7 @@ impl fmt::Display for Root {
 }
 
 pub trait Visitor<State, Res, Final> {
-    fn new(opts: &Options) -> Self;
+    fn new(db: &dyn Compiler) -> Self;
 
     fn visit_root(&mut self, e: &Root) -> Result<Final, TError>;
 
@@ -363,11 +352,11 @@ pub trait Visitor<State, Res, Final> {
         }
     }
 
-    fn process(root: &Root, opts: &Options) -> Result<Final, TError>
+    fn process(root: &Root, db: &dyn Compiler) -> Result<Final, TError>
     where
         Self: Sized,
     {
-        let mut visitor = Self::new(opts);
+        let mut visitor = Self::new(db);
         visitor.visit_root(root)
     }
 }

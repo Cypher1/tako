@@ -1,7 +1,7 @@
-use super::ast::*;
-use super::cli_options::Options;
-use super::errors::TError;
-use super::symbol_table_builder::State;
+use crate::ast::*;
+use crate::errors::TError;
+use crate::symbol_table_builder::State;
+use crate::database::Compiler;
 
 // Walks the AST interpreting it.
 pub struct DefinitionFinder {
@@ -13,13 +13,13 @@ type Res = Result<Node, TError>;
 
 #[derive(Debug, Clone)]
 pub struct Namespace {
-    name: ScopeName,
+    name: Symbol,
     info: Entry,
 }
 
 impl Visitor<State, Node, Root> for DefinitionFinder {
-    fn new(opts: &Options) -> DefinitionFinder {
-        DefinitionFinder { debug: opts.debug }
+    fn new(db: &dyn Compiler) -> DefinitionFinder {
+        DefinitionFinder { debug: db.options().debug }
     }
 
     fn visit_root(&mut self, expr: &Root) -> Result<Root, TError> {
@@ -28,8 +28,7 @@ impl Visitor<State, Node, Root> for DefinitionFinder {
             table: expr
                 .table
                 .clone()
-                .expect("Definition finder requires an initialized symbol table"),
-            counter: 1,
+                .expect("Definition finder requires an initialized symbol table")
         };
         let ast = self.visit(&mut state, &expr.ast)?;
         Ok(Root {
@@ -42,12 +41,12 @@ impl Visitor<State, Node, Root> for DefinitionFinder {
         if self.debug > 1 {
             eprintln!("visiting sym {:?} {}", state.path.clone(), &expr.name);
         }
-        let mut search: Vec<ScopeName> = state.path.clone();
+        let mut search: Vec<Symbol> = state.path.clone();
         loop {
-            if let Some(ScopeName::Anon(_)) = search.last() {
+            if let Some(Symbol::Anon()) = search.last() {
                 search.pop(); // Cannot look inside an 'anon'.
             }
-            search.push(ScopeName::Named(expr.name.clone()));
+            search.push(Symbol::Named(expr.name.clone()));
             let node = state.table.find(&search);
             match node {
                 Some(node) => {
@@ -78,8 +77,7 @@ impl Visitor<State, Node, Root> for DefinitionFinder {
     }
 
     fn visit_apply(&mut self, state: &mut State, expr: &Apply) -> Res {
-        let id = state.get_unique_id();
-        state.path.push(ScopeName::Anon(id));
+        state.path.push(Symbol::Anon());
         let mut args = vec![];
         for arg in expr.args.iter() {
             match self.visit_let(state, arg)? {
@@ -87,7 +85,7 @@ impl Visitor<State, Node, Root> for DefinitionFinder {
                     let mut defined_arg = let_node.clone();
                     let mut path = state.path.clone();
                     // Inject the value into the 'anon' stack frame.
-                    path.push(ScopeName::Named(let_node.name));
+                    path.push(Symbol::Named(let_node.name));
                     if self.debug > 1 {
                         eprintln!("defining arg at {:?}", path.clone());
                     }
@@ -111,14 +109,14 @@ impl Visitor<State, Node, Root> for DefinitionFinder {
         if self.debug > 1 {
             eprintln!("visiting {:?} {}", state.path.clone(), &expr.name);
         }
-        let path_name = ScopeName::Named(expr.name.clone());
+        let path_name = Symbol::Named(expr.name.clone());
         state.path.push(path_name);
         let mut args = None;
         if let Some(e_args) = &expr.args {
             let mut arg_vec = vec![];
             for arg in e_args.iter() {
                 let mut arg_path = state.path.clone();
-                arg_path.push(ScopeName::Named(arg.name.clone()));
+                arg_path.push(Symbol::Named(arg.name.clone()));
                 let mut sym = arg.clone();
                 if self.debug > 1 {
                     eprintln!(

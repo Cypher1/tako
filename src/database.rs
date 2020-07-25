@@ -17,7 +17,7 @@ pub trait Compiler: salsa::Database {
     fn file(&self, filename: String) -> Arc<String>;
 
     #[salsa::input]
-    fn options(&self) -> Arc<Options>;
+    fn options(&self) -> Options;
     // TODO: Make each option an input.
 
     fn lex_file(&self, filename: String) -> VecDeque<Token>;
@@ -53,11 +53,11 @@ fn build_symbol_table(db: &dyn Compiler, filename: String) -> Root {
     if db.options().debug > 0 {
         eprintln!("building symbol table for file... {}", &filename);
     }
-    let with_symbols = SymbolTableBuilder::process(&db.parse_file(filename), &db.options())
+    let with_symbols = SymbolTableBuilder::process(&db.parse_file(filename), db)
         .expect("failed building symbol table");
 
-    if db.options().show_ast {
-        eprintln!("table {:?}", with_symbols.table.clone());
+    if db.options().show_table {
+        eprintln!("table: {:?}", with_symbols.table.clone());
     }
 
     if db.options().show_full_ast {
@@ -71,16 +71,16 @@ fn look_up_definitions(db: &dyn Compiler, filename: String) -> Root {
     if db.options().debug > 0 {
         eprintln!("looking up definitions in file... {}", &filename);
     }
-    DefinitionFinder::process(&db.build_symbol_table(filename), &db.options())
+    DefinitionFinder::process(&db.build_symbol_table(filename), db)
         .expect("failed looking up symbols")
 }
 
 fn compile_to_cpp(db: &dyn Compiler, filename: String) -> (String, HashSet<String>) {
-    use crate::to_cpp::Compiler;
+    use crate::to_cpp::CodeGenerator;
     if db.options().debug > 0 {
         eprintln!("generating code for file ... {}", &filename);
     }
-    Compiler::process(&db.look_up_definitions(filename), &db.options())
+    CodeGenerator::process(&db.look_up_definitions(filename), db)
         .expect("could not compile program")
 }
 

@@ -1,7 +1,8 @@
-use super::ast::*;
-use super::cli_options::Options;
-use super::errors::TError;
 use std::collections::HashMap;
+
+use crate::ast::*;
+use crate::database::Compiler;
+use crate::errors::TError;
 
 type Frame = HashMap<String, Node>;
 
@@ -208,8 +209,8 @@ fn prim_pow(l: &Prim, r: &Prim, info: Info) -> Res {
 type Res = Result<Prim, TError>;
 type State = Vec<Frame>;
 impl Visitor<State, Prim, Prim> for Interpreter {
-    fn new(opts: &Options) -> Interpreter {
-        Interpreter { debug: opts.debug }
+    fn new(db: &dyn Compiler) -> Interpreter {
+        Interpreter { debug: db.options().debug }
     }
 
     fn visit_root(&mut self, root: &Root) -> Res {
@@ -407,9 +408,10 @@ impl Visitor<State, Prim, Prim> for Interpreter {
 
 #[cfg(test)]
 mod tests {
-    use super::super::ast::*;
-    use super::super::cli_options::Options;
-    use super::super::parser::{lex, parse};
+    use crate::ast::*;
+    use crate::parser::{lex, parse};
+    use crate::database::{DB, Compiler};
+    use crate::cli_options::Options;
     use super::Interpreter;
     use super::Res;
     use Node::*;
@@ -417,7 +419,9 @@ mod tests {
 
     #[test]
     fn eval_num() {
-        let mut interp = Interpreter::new(&Options::default());
+        let mut db = DB::default();
+        db.set_options(Options::default());
+        let mut interp = Interpreter::new(&db);
         let tree = Root::new(PrimNode(I32(12, Info::default())));
         assert_eq!(interp.visit_root(&tree), Ok(I32(12, Info::default())));
     }
@@ -425,7 +429,9 @@ mod tests {
     fn eval_str(s: String) -> Res {
         use std::sync::Arc;
         let ast = parse(lex(None, Arc::new(s)));
-        let mut interp = Interpreter::new(&Options::default());
+        let mut db = DB::default();
+        db.set_options(Options::default());
+        let mut interp = Interpreter::new(&db);
         interp.visit_root(&Root::new(ast))
     }
 

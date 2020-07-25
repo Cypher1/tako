@@ -1,7 +1,7 @@
-use super::ast::*;
-use super::cli_options::Options;
-use super::errors::TError;
-use super::tree::{to_hash_root, HashTree};
+use crate::ast::*;
+use crate::errors::TError;
+use crate::tree::{to_hash_root, HashTree};
+use crate::database::Compiler;
 
 // Walks the AST interpreting it.
 pub struct SymbolTableBuilder {
@@ -14,15 +14,11 @@ type Res = Result<Node, TError>;
 #[derive(Debug, Clone)]
 pub struct State {
     pub table: Table,
-    pub path: Vec<ScopeName>,
-    pub counter: i32,
-    // used for ensuring uniqueness in new variables and scope names
-    // TODO: Store an hashmap/array of definitions by some id
-    // Each definition can then reference its children.
+    pub path: Vec<Symbol>
 }
 
 impl Table {
-    pub fn find<'a>(self: &'a mut Table, path: &[ScopeName]) -> Option<&'a mut Table> {
+    pub fn find<'a>(self: &'a mut Table, path: &[Symbol]) -> Option<&'a mut Table> {
         // eprintln!("find in {:?}", self.value);
         if path.is_empty() {
             return Some(self);
@@ -34,17 +30,15 @@ impl Table {
         }
     }
 
-    fn get_child<'a>(self: &'a mut Table, find: &ScopeName) -> &'a mut HashTree<ScopeName, Symbol> {
+    fn get_child<'a>(self: &'a mut Table, find: &Symbol) -> &'a mut HashTree<Symbol, Entry> {
         self.children
             .entry(find.clone())
-            .or_insert(to_hash_root(Symbol {
-                name: find.clone(),
+            .or_insert(to_hash_root(Entry {
                 uses: vec![],
-                info: Entry::default(),
             }))
     }
 
-    pub fn get<'a>(self: &'a mut Table, path: &[ScopeName]) -> &'a mut HashTree<ScopeName, Symbol> {
+    pub fn get<'a>(self: &'a mut Table, path: &[Symbol]) -> &'a mut HashTree<Symbol, Entry> {
         if path.is_empty() {
             return self;
         }
@@ -52,32 +46,21 @@ impl Table {
     }
 }
 
-impl State {
-    pub fn get_unique_id(self: &mut State) -> i32 {
-        let c = self.counter;
-        self.counter += 1;
-        c
-    }
-}
-
 impl Visitor<State, Node, Root> for SymbolTableBuilder {
-    fn new(opts: &Options) -> SymbolTableBuilder {
-        SymbolTableBuilder { debug: opts.debug }
+    fn new(db: &dyn Compiler) -> SymbolTableBuilder {
+        SymbolTableBuilder { debug: db.options().debug }
     }
 
     fn visit_root(&mut self, expr: &Root) -> Result<Root, TError> {
         let mut state = State {
-            table: to_hash_root(Symbol {
-                name: ScopeName::Named("project".to_string()), // TODO(cypher1): Pass around the project name.
+            table: to_hash_root(Entry {
                 uses: vec![],
-                info: Entry::default(),
             }),
-            path: vec![],
-            counter: 1,
+            path: vec![]
         };
 
         // TODO: Inject needs for bootstrapping here (e.g. import function).
-        let println_path = [ScopeName::Named("println".to_string())];
+        let println_path = [Symbol::Named("println".to_string())];
         state.table.get(&println_path);
 
         Ok(Root {
@@ -95,7 +78,7 @@ impl Visitor<State, Node, Root> for SymbolTableBuilder {
     }
 
     fn visit_apply(&mut self, state: &mut State, expr: &Apply) -> Res {
-        let arg_scope_name = ScopeName::Anon(state.get_unique_id());
+        let arg_scope_name = Symbol::Anon();
 
         state.path.push(arg_scope_name);
         let mut args = Vec::new();
@@ -120,7 +103,7 @@ impl Visitor<State, Node, Root> for SymbolTableBuilder {
     }
 
     fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
-        let let_name = ScopeName::Named(expr.name.clone());
+        let let_name = Symbol::Named(expr.name.clone());
         if self.debug > 1 {
             eprintln!("visiting {:?} {}", state.path.clone(), &let_name);
         }
@@ -134,7 +117,7 @@ impl Visitor<State, Node, Root> for SymbolTableBuilder {
         // Consider the function arguments defined in this scope.
         for arg in expr.args.clone().unwrap_or_else(|| vec![]) {
             let mut arg_path = state.path.clone();
-            arg_path.push(ScopeName::Named(arg.name));
+            arg_path.push(Symbol::Named(arg.name));
             state.table.get(&arg_path);
         }
 
