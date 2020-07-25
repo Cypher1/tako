@@ -1,7 +1,7 @@
 use crate::ast::*;
+use crate::database::Compiler;
 use crate::errors::TError;
 use crate::tree::{to_hash_root, HashTree};
-use crate::database::Compiler;
 
 // Walks the AST interpreting it.
 pub struct SymbolTableBuilder {
@@ -14,7 +14,7 @@ type Res = Result<Node, TError>;
 #[derive(Debug, Clone)]
 pub struct State {
     pub table: Table,
-    pub path: Vec<Symbol>
+    pub path: Vec<Symbol>,
 }
 
 impl Table {
@@ -33,9 +33,7 @@ impl Table {
     fn get_child<'a>(self: &'a mut Table, find: &Symbol) -> &'a mut HashTree<Symbol, Entry> {
         self.children
             .entry(find.clone())
-            .or_insert(to_hash_root(Entry {
-                uses: vec![],
-            }))
+            .or_insert(to_hash_root(Entry { uses: vec![] }))
     }
 
     pub fn get<'a>(self: &'a mut Table, path: &[Symbol]) -> &'a mut HashTree<Symbol, Entry> {
@@ -48,15 +46,15 @@ impl Table {
 
 impl Visitor<State, Node, Root> for SymbolTableBuilder {
     fn new(db: &dyn Compiler) -> SymbolTableBuilder {
-        SymbolTableBuilder { debug: db.options().debug }
+        SymbolTableBuilder {
+            debug: db.options().debug,
+        }
     }
 
     fn visit_root(&mut self, expr: &Root) -> Result<Root, TError> {
         let mut state = State {
-            table: to_hash_root(Entry {
-                uses: vec![],
-            }),
-            path: vec![]
+            table: to_hash_root(Entry { uses: vec![] }),
+            path: vec![],
         };
 
         // TODO: Inject needs for bootstrapping here (e.g. import function).

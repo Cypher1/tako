@@ -66,8 +66,7 @@ fn work(db: &mut DB, filename: &str) -> std::io::Result<String> {
     if db.options().interactive {
         let scoped = db.look_up_definitions(filename.to_string());
 
-        let res =
-            Interpreter::process(&scoped, db).expect("could not interpret program");
+        let res = Interpreter::process(&scoped, db).expect("could not interpret program");
         use ast::{Root, ToNode};
         PrettyPrint::process(&Root::new(res.to_node()), db)
             .or_else(|_| panic!("Pretty print failed"))

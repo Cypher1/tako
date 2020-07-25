@@ -1,7 +1,7 @@
 use crate::ast::*;
+use crate::database::Compiler;
 use crate::errors::TError;
 use crate::symbol_table_builder::State;
-use crate::database::Compiler;
 
 // Walks the AST interpreting it.
 pub struct DefinitionFinder {
@@ -19,7 +19,9 @@ pub struct Namespace {
 
 impl Visitor<State, Node, Root> for DefinitionFinder {
     fn new(db: &dyn Compiler) -> DefinitionFinder {
-        DefinitionFinder { debug: db.options().debug }
+        DefinitionFinder {
+            debug: db.options().debug,
+        }
     }
 
     fn visit_root(&mut self, expr: &Root) -> Result<Root, TError> {
@@ -28,7 +30,7 @@ impl Visitor<State, Node, Root> for DefinitionFinder {
             table: expr
                 .table
                 .clone()
-                .expect("Definition finder requires an initialized symbol table")
+                .expect("Definition finder requires an initialized symbol table"),
         };
         let ast = self.visit(&mut state, &expr.ast)?;
         Ok(Root {

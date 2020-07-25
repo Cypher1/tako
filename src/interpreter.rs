@@ -210,7 +210,9 @@ type Res = Result<Prim, TError>;
 type State = Vec<Frame>;
 impl Visitor<State, Prim, Prim> for Interpreter {
     fn new(db: &dyn Compiler) -> Interpreter {
-        Interpreter { debug: db.options().debug }
+        Interpreter {
+            debug: db.options().debug,
+        }
     }
 
     fn visit_root(&mut self, root: &Root) -> Res {
@@ -408,12 +410,12 @@ impl Visitor<State, Prim, Prim> for Interpreter {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::*;
-    use crate::parser::{lex, parse};
-    use crate::database::{DB, Compiler};
-    use crate::cli_options::Options;
     use super::Interpreter;
     use super::Res;
+    use crate::ast::*;
+    use crate::cli_options::Options;
+    use crate::database::{Compiler, DB};
+    use crate::parser::{lex, parse};
     use Node::*;
     use Prim::*;
 

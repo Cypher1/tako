@@ -2,12 +2,12 @@ use std::collections::HashMap;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
+use crate::database::Compiler;
 use crate::database::DB;
 use crate::errors::TError;
 use crate::location::*;
 use crate::tree::*;
 use crate::types::*;
-use crate::database::Compiler;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Err {
