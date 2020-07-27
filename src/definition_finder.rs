@@ -16,20 +16,16 @@ pub struct Namespace {
     info: Entry,
 }
 
-impl Visitor<State, Node, Root> for DefinitionFinder {
-    fn visit_root(&mut self, db: &dyn Compiler, expr: &Root) -> Result<Root, TError> {
+impl Visitor<State, Node, Table> for DefinitionFinder {
+    fn visit_root(&mut self, db: &dyn Compiler, expr: &Root) -> Result<Table, TError> {
         let mut state = State {
             path: vec![],
             table: expr
                 .table
-                .clone()
-                .expect("Definition finder requires an initialized symbol table"),
+                .clone(),
         };
-        let ast = self.visit(db, &mut state, &expr.ast)?;
-        Ok(Root {
-            ast,
-            table: Some(state.table),
-        })
+        self.visit(db, &mut state, &expr.ast)?;
+        Ok(state.table)
     }
 
     fn visit_sym(&mut self, db: &dyn Compiler, state: &mut State, expr: &Sym) -> Res {

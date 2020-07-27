@@ -228,7 +228,7 @@ impl fmt::Display for Node {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use super::PrettyPrint;
         let db = DB::default();
-        match PrettyPrint::default().visit_root(&db, &Root::new(self.clone())) {
+        match PrettyPrint::default().visit_root(&db, &Root{ast: self.clone(), table: Table::new()}) {
             Ok(res) => write!(f, "{}", res),
             Err(err) => write!(f, "{:#?}", err),
         }
@@ -306,13 +306,7 @@ pub type Table = HashTree<Symbol, Entry>;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Root {
     pub ast: Node,
-    pub table: Option<Table>,
-}
-
-impl Root {
-    pub fn new(ast: Node) -> Root {
-        Root { ast, table: None }
-    }
+    pub table: Table,
 }
 
 impl fmt::Display for Root {
@@ -323,8 +317,8 @@ impl fmt::Display for Root {
     }
 }
 
-pub trait Visitor<State, Res, Final> {
-    fn visit_root(&mut self, db: &dyn Compiler, e: &Root) -> Result<Final, TError>;
+pub trait Visitor<State, Res, Final, Start=Root> {
+    fn visit_root(&mut self, db: &dyn Compiler, e: &Start) -> Result<Final, TError>;
 
     fn handle_error(
         &mut self,
@@ -376,7 +370,7 @@ pub trait Visitor<State, Res, Final> {
         }
     }
 
-    fn process(root: &Root, db: &dyn Compiler) -> Result<Final, TError>
+    fn process(root: &Start, db: &dyn Compiler) -> Result<Final, TError>
     where
         Self: Sized,
         Self: Default,

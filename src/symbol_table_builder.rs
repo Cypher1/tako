@@ -17,6 +17,10 @@ pub struct State {
 }
 
 impl Table {
+    pub fn new() -> Table {
+       to_hash_root(Entry { uses: vec![] }) 
+    }
+    
     pub fn find<'a>(self: &'a mut Table, path: &[Symbol]) -> Option<&'a mut Table> {
         // eprintln!("find in {:?}", self.value);
         if path.is_empty() {
@@ -43,8 +47,8 @@ impl Table {
     }
 }
 
-impl Visitor<State, Node, Root> for SymbolTableBuilder {
-    fn visit_root(&mut self, db: &dyn Compiler, expr: &Root) -> Result<Root, TError> {
+impl Visitor<State, Node, Root, Node> for SymbolTableBuilder {
+    fn visit_root(&mut self, db: &dyn Compiler, expr: &Node) -> Result<Root, TError> {
         let mut state = State {
             table: to_hash_root(Entry { uses: vec![] }),
             path: vec![],
@@ -55,8 +59,8 @@ impl Visitor<State, Node, Root> for SymbolTableBuilder {
         state.table.get(&println_path);
 
         Ok(Root {
-            ast: self.visit(db, &mut state, &expr.ast)?,
-            table: Some(state.table),
+            ast: self.visit(db, &mut state, &expr)?,
+            table: state.table,
         })
     }
 

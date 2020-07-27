@@ -191,7 +191,7 @@ impl Visitor<State, Code, Out> for CodeGenerator {
             args: Some(vec![]),
             is_function: true,
         };
-        let mut table = root.table.clone().expect("Requires symbol table");
+        let mut table = root.table.clone();
         let main_symb = table.find(&vec![]).expect("should exist");
         main_symb.value.uses.push(vec![]);
         let main = match self.visit_let(db, &mut table, &main_let)? {

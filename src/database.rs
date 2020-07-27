@@ -6,8 +6,7 @@ use std::collections::VecDeque;
 use std::io::prelude::*;
 use std::process::Command;
 
-use crate::ast::Root;
-use crate::ast::Visitor;
+use crate::ast::{Visitor, Node, Root, Table};
 use crate::cli_options::Options;
 use crate::tokens::Token;
 
@@ -18,13 +17,14 @@ pub trait Compiler: salsa::Database {
 
     #[salsa::input]
     fn options(&self) -> Options;
+
     // TODO: Make each option an input.
 
     fn debug(&self) -> i32;
 
     fn lex_file(&self, filename: String) -> VecDeque<Token>;
-    fn parse_file(&self, filename: String) -> Root;
-    fn build_symbol_table(&self, filename: String) -> Root;
+    fn parse_file(&self, filename: String) -> Node;
+    fn build_symbol_table(&self, filename: String) -> Table;
     fn look_up_definitions(&self, filename: String) -> Root;
     fn compile_to_cpp(&self, filename: String) -> (String, HashSet<String>);
     fn build_with_gpp(&self, filename: String) -> String;
@@ -42,7 +42,7 @@ fn lex_file(db: &dyn Compiler, filename: String) -> VecDeque<Token> {
     parser::lex(Some(filename.to_string()), db.file(filename))
 }
 
-fn parse_file(db: &dyn Compiler, filename: String) -> Root {
+fn parse_file(db: &dyn Compiler, filename: String) -> Node {
     use crate::parser;
     if db.options().debug > 0 {
         eprintln!("parsing file... {}", &filename);
@@ -51,7 +51,7 @@ fn parse_file(db: &dyn Compiler, filename: String) -> Root {
     if db.options().show_ast {
         eprintln!("ast: {}", ast);
     }
-    Root::new(ast)
+    ast
 }
 
 fn build_symbol_table(db: &dyn Compiler, filename: String) -> Root {
@@ -72,12 +72,14 @@ fn build_symbol_table(db: &dyn Compiler, filename: String) -> Root {
     with_symbols
 }
 
-fn look_up_definitions(db: &dyn Compiler, filename: String) -> Root {
+fn look_up_definitions(db: &dyn Compiler, filename: String) -> Table {
     use crate::definition_finder::DefinitionFinder;
     if db.options().debug > 0 {
         eprintln!("looking up definitions in file... {}", &filename);
     }
-    DefinitionFinder::process(&db.build_symbol_table(filename), db)
+    let ast = db.parse_file(filename);
+    let table = db.build_symbol_table(filename);
+DefinitionFinder::process(&Root {ast, table}, db)
         .expect("failed looking up symbols")
 }
 
