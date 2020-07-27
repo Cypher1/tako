@@ -7,9 +7,8 @@ use crate::errors::TError;
 type Frame = HashMap<String, Node>;
 
 // Walks the AST interpreting it.
-pub struct Interpreter {
-    pub debug: i32,
-}
+#[derive(Default)]
+pub struct Interpreter {}
 
 fn globals() -> Frame {
     map!(
@@ -209,37 +208,31 @@ fn prim_pow(l: &Prim, r: &Prim, info: Info) -> Res {
 type Res = Result<Prim, TError>;
 type State = Vec<Frame>;
 impl Visitor<State, Prim, Prim> for Interpreter {
-    fn new(db: &dyn Compiler) -> Interpreter {
-        Interpreter {
-            debug: db.options().debug,
-        }
-    }
-
-    fn visit_root(&mut self, root: &Root) -> Res {
+    fn visit_root(&mut self, db: &dyn Compiler, root: &Root) -> Res {
         let mut state = vec![globals()];
-        self.visit(&mut state, &root.ast)
+        self.visit(db, &mut state, &root.ast)
     }
 
-    fn visit_sym(&mut self, state: &mut State, expr: &Sym) -> Res {
-        if self.debug > 0 {
+    fn visit_sym(&mut self, db: &dyn Compiler, state: &mut State, expr: &Sym) -> Res {
+        if db.debug() > 0 {
             eprintln!("evaluating {}", expr.clone().to_node());
         }
         let name = &expr.name;
         let value = find_symbol(&state, name);
         match value {
             Some(Node::PrimNode(prim)) => {
-                if self.debug > 0 {
+                if db.debug() > 0 {
                     eprintln!("from stack {}", prim.clone().to_node());
                 }
                 Ok(prim.clone())
             }
             Some(val) => {
-                if self.debug > 0 {
+                if db.debug() > 0 {
                     eprintln!("running lambda {}", val);
                 }
                 let mut next = state.clone();
-                let result = self.visit(&mut next, &val.clone())?;
-                if self.debug > 0 {
+                let result = self.visit(db, &mut next, &val.clone())?;
+                if db.debug() > 0 {
                     eprintln!("got {}", result.clone().to_node());
                 }
                 Ok(result)
@@ -248,23 +241,23 @@ impl Visitor<State, Prim, Prim> for Interpreter {
         }
     }
 
-    fn visit_prim(&mut self, _state: &mut State, expr: &Prim) -> Res {
+    fn visit_prim(&mut self, db: &dyn Compiler, _state: &mut State, expr: &Prim) -> Res {
         Ok(expr.clone())
     }
 
-    fn visit_apply(&mut self, state: &mut State, expr: &Apply) -> Res {
+    fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
         state.push(Frame::new());
         for arg in expr.args.iter() {
-            self.visit_let(state, arg)?;
+            self.visit_let(db, state, arg)?;
         }
         // Visit the expr.inner
-        let res = self.visit(state, &*expr.inner)?;
+        let res = self.visit(db, state, &*expr.inner)?;
         state.pop();
         Ok(res)
     }
 
-    fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
-        if self.debug > 0 {
+    fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
+        if db.debug() > 0 {
             eprintln!("evaluating let {}", expr.clone().to_node());
         }
 
@@ -277,7 +270,7 @@ impl Visitor<State, Prim, Prim> for Interpreter {
         }
         // Add a new scope
         state.push(Frame::new());
-        let result = self.visit(state, &expr.value)?;
+        let result = self.visit(db, state, &expr.value)?;
         // Drop the finished scope
         state.pop();
         match state.last_mut() {
@@ -289,12 +282,12 @@ impl Visitor<State, Prim, Prim> for Interpreter {
         }
     }
 
-    fn visit_un_op(&mut self, state: &mut State, expr: &UnOp) -> Res {
+    fn visit_un_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &UnOp) -> Res {
         use Prim::*;
-        if self.debug > 1 {
+        if db.debug() > 1 {
             eprintln!("evaluating unop {}", expr.clone().to_node());
         }
-        let i = self.visit(state, &expr.inner)?;
+        let i = self.visit(db, state, &expr.inner)?;
         let info = expr.clone().get_info();
         match expr.name.as_str() {
             "!" => match i {
@@ -316,14 +309,14 @@ impl Visitor<State, Prim, Prim> for Interpreter {
         }
     }
 
-    fn visit_bin_op(&mut self, state: &mut State, expr: &BinOp) -> Res {
+    fn visit_bin_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &BinOp) -> Res {
         use Prim::*;
-        if self.debug > 1 {
+        if db.debug() > 1 {
             eprintln!("evaluating binop {}", expr.clone().to_node());
         }
         let info = expr.clone().get_info();
-        let l = self.visit(state, &expr.left);
-        let mut r = || self.visit(state, &expr.right);
+        let l = self.visit(db, state, &expr.left);
+        let mut r = || self.visit(db, state, &expr.right);
         match expr.name.as_str() {
             "+" => prim_add(&l?, &r()?, info),
             "==" => prim_eq(&l?, &r()?, info),
@@ -388,7 +381,7 @@ impl Visitor<State, Prim, Prim> for Interpreter {
         }
     }
 
-    fn visit_built_in(&mut self, state: &mut State, expr: &String) -> Res {
+    fn visit_built_in(&mut self, db: &dyn Compiler, state: &mut State, expr: &String) -> Res {
         let it_val = state.last().map_or_else(
             || Prim::Str("".to_string(), Info::default()).to_node(),
             |frame| frame.get("it").expect("println needs an argument").clone(),
@@ -403,7 +396,7 @@ impl Visitor<State, Prim, Prim> for Interpreter {
         Ok(Prim::I32(0, Info::default()))
     }
 
-    fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {
+    fn handle_error(&mut self, db: &dyn Compiler, _state: &mut State, expr: &Err) -> Res {
         Err(TError::FailedParse(expr.msg.to_string(), expr.get_info()))
     }
 }
@@ -423,9 +416,11 @@ mod tests {
     fn eval_num() {
         let mut db = DB::default();
         db.set_options(Options::default());
-        let mut interp = Interpreter::new(&db);
         let tree = Root::new(PrimNode(I32(12, Info::default())));
-        assert_eq!(interp.visit_root(&tree), Ok(I32(12, Info::default())));
+        assert_eq!(
+            Interpreter::default().visit_root(&db, &tree),
+            Ok(I32(12, Info::default()))
+        );
     }
 
     fn eval_str(s: String) -> Res {
@@ -433,8 +428,7 @@ mod tests {
         let ast = parse(lex(None, Arc::new(s)));
         let mut db = DB::default();
         db.set_options(Options::default());
-        let mut interp = Interpreter::new(&db);
-        interp.visit_root(&Root::new(ast))
+        Interpreter::default().visit_root(&db, &Root::new(ast))
     }
 
     #[test]

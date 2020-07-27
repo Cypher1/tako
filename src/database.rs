@@ -20,12 +20,18 @@ pub trait Compiler: salsa::Database {
     fn options(&self) -> Options;
     // TODO: Make each option an input.
 
+    fn debug(&self) -> i32;
+
     fn lex_file(&self, filename: String) -> VecDeque<Token>;
     fn parse_file(&self, filename: String) -> Root;
     fn build_symbol_table(&self, filename: String) -> Root;
     fn look_up_definitions(&self, filename: String) -> Root;
     fn compile_to_cpp(&self, filename: String) -> (String, HashSet<String>);
     fn build_with_gpp(&self, filename: String) -> String;
+}
+
+fn debug(db: &dyn Compiler) -> i32 {
+    db.options().debug
 }
 
 fn lex_file(db: &dyn Compiler, filename: String) -> VecDeque<Token> {

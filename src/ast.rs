@@ -227,8 +227,8 @@ impl std::fmt::Debug for Node {
 impl fmt::Display for Node {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use super::PrettyPrint;
-        let mut ppr = PrettyPrint::new(&DB::default());
-        match ppr.visit_root(&Root::new(self.clone())) {
+        let db = DB::default();
+        match PrettyPrint::default().visit_root(&db, &Root::new(self.clone())) {
             Ok(res) => write!(f, "{}", res),
             Err(err) => write!(f, "{:#?}", err),
         }
@@ -324,39 +324,63 @@ impl fmt::Display for Root {
 }
 
 pub trait Visitor<State, Res, Final> {
-    fn new(db: &dyn Compiler) -> Self;
+    fn visit_root(&mut self, db: &dyn Compiler, e: &Root) -> Result<Final, TError>;
 
-    fn visit_root(&mut self, e: &Root) -> Result<Final, TError>;
+    fn handle_error(
+        &mut self,
+        db: &dyn Compiler,
+        state: &mut State,
+        e: &Err,
+    ) -> Result<Res, TError>;
+    fn visit_sym(&mut self, db: &dyn Compiler, state: &mut State, e: &Sym) -> Result<Res, TError>;
+    fn visit_prim(&mut self, db: &dyn Compiler, state: &mut State, e: &Prim)
+        -> Result<Res, TError>;
+    fn visit_apply(
+        &mut self,
+        db: &dyn Compiler,
+        state: &mut State,
+        e: &Apply,
+    ) -> Result<Res, TError>;
+    fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, e: &Let) -> Result<Res, TError>;
+    fn visit_un_op(
+        &mut self,
+        db: &dyn Compiler,
+        state: &mut State,
+        e: &UnOp,
+    ) -> Result<Res, TError>;
+    fn visit_bin_op(
+        &mut self,
+        db: &dyn Compiler,
+        state: &mut State,
+        e: &BinOp,
+    ) -> Result<Res, TError>;
+    fn visit_built_in(
+        &mut self,
+        db: &dyn Compiler,
+        state: &mut State,
+        e: &String,
+    ) -> Result<Res, TError>;
 
-    fn handle_error(&mut self, state: &mut State, e: &Err) -> Result<Res, TError>;
-    fn visit_sym(&mut self, state: &mut State, e: &Sym) -> Result<Res, TError>;
-    fn visit_prim(&mut self, state: &mut State, e: &Prim) -> Result<Res, TError>;
-    fn visit_apply(&mut self, state: &mut State, e: &Apply) -> Result<Res, TError>;
-    fn visit_let(&mut self, state: &mut State, e: &Let) -> Result<Res, TError>;
-    fn visit_un_op(&mut self, state: &mut State, e: &UnOp) -> Result<Res, TError>;
-    fn visit_bin_op(&mut self, state: &mut State, e: &BinOp) -> Result<Res, TError>;
-    fn visit_built_in(&mut self, state: &mut State, e: &String) -> Result<Res, TError>;
-
-    fn visit(&mut self, state: &mut State, e: &Node) -> Result<Res, TError> {
+    fn visit(&mut self, db: &dyn Compiler, state: &mut State, e: &Node) -> Result<Res, TError> {
         // eprintln!("{:?}", e);
         use Node::*;
         match e {
-            Error(n) => self.handle_error(state, n),
-            SymNode(n) => self.visit_sym(state, n),
-            PrimNode(n) => self.visit_prim(state, n),
-            ApplyNode(n) => self.visit_apply(state, n),
-            LetNode(n) => self.visit_let(state, n),
-            UnOpNode(n) => self.visit_un_op(state, n),
-            BinOpNode(n) => self.visit_bin_op(state, n),
-            BuiltIn(n) => self.visit_built_in(state, n),
+            Error(n) => self.handle_error(db, state, n),
+            SymNode(n) => self.visit_sym(db, state, n),
+            PrimNode(n) => self.visit_prim(db, state, n),
+            ApplyNode(n) => self.visit_apply(db, state, n),
+            LetNode(n) => self.visit_let(db, state, n),
+            UnOpNode(n) => self.visit_un_op(db, state, n),
+            BinOpNode(n) => self.visit_bin_op(db, state, n),
+            BuiltIn(n) => self.visit_built_in(db, state, n),
         }
     }
 
     fn process(root: &Root, db: &dyn Compiler) -> Result<Final, TError>
     where
         Self: Sized,
+        Self: Default,
     {
-        let mut visitor = Self::new(db);
-        visitor.visit_root(root)
+        Self::default().visit_root(db, root)
     }
 }

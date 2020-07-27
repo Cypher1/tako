@@ -4,9 +4,8 @@ use crate::errors::TError;
 use crate::tree::{to_hash_root, HashTree};
 
 // Walks the AST interpreting it.
-pub struct SymbolTableBuilder {
-    pub debug: i32,
-}
+#[derive(Default)]
+pub struct SymbolTableBuilder {}
 
 // TODO: Return nodes.
 type Res = Result<Node, TError>;
@@ -45,13 +44,7 @@ impl Table {
 }
 
 impl Visitor<State, Node, Root> for SymbolTableBuilder {
-    fn new(db: &dyn Compiler) -> SymbolTableBuilder {
-        SymbolTableBuilder {
-            debug: db.options().debug,
-        }
-    }
-
-    fn visit_root(&mut self, expr: &Root) -> Result<Root, TError> {
+    fn visit_root(&mut self, db: &dyn Compiler, expr: &Root) -> Result<Root, TError> {
         let mut state = State {
             table: to_hash_root(Entry { uses: vec![] }),
             path: vec![],
@@ -62,26 +55,26 @@ impl Visitor<State, Node, Root> for SymbolTableBuilder {
         state.table.get(&println_path);
 
         Ok(Root {
-            ast: self.visit(&mut state, &expr.ast)?,
+            ast: self.visit(db, &mut state, &expr.ast)?,
             table: Some(state.table),
         })
     }
 
-    fn visit_sym(&mut self, _state: &mut State, expr: &Sym) -> Res {
+    fn visit_sym(&mut self, db: &dyn Compiler, _state: &mut State, expr: &Sym) -> Res {
         Ok(expr.clone().to_node())
     }
 
-    fn visit_prim(&mut self, _state: &mut State, expr: &Prim) -> Res {
+    fn visit_prim(&mut self, db: &dyn Compiler, _state: &mut State, expr: &Prim) -> Res {
         Ok(expr.clone().to_node())
     }
 
-    fn visit_apply(&mut self, state: &mut State, expr: &Apply) -> Res {
+    fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
         let arg_scope_name = Symbol::Anon();
 
         state.path.push(arg_scope_name);
         let mut args = Vec::new();
         for arg in expr.args.iter() {
-            args.push(match self.visit_let(state, arg)? {
+            args.push(match self.visit_let(db, state, arg)? {
                 Node::LetNode(let_node) => Ok(let_node),
                 node => Err(TError::InternalError(
                     "Symbol table builder converted let into non let".to_owned(),
@@ -89,7 +82,7 @@ impl Visitor<State, Node, Root> for SymbolTableBuilder {
                 )),
             }?);
         }
-        let inner = Box::new(self.visit(state, &*expr.inner)?);
+        let inner = Box::new(self.visit(db, state, &*expr.inner)?);
         state.path.pop();
 
         Ok(Apply {
@@ -100,9 +93,9 @@ impl Visitor<State, Node, Root> for SymbolTableBuilder {
         .to_node())
     }
 
-    fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
+    fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
         let let_name = Symbol::Named(expr.name.clone());
-        if self.debug > 1 {
+        if db.debug() > 1 {
             eprintln!("visiting {:?} {}", state.path.clone(), &let_name);
         }
 
@@ -119,7 +112,7 @@ impl Visitor<State, Node, Root> for SymbolTableBuilder {
             state.table.get(&arg_path);
         }
 
-        let value = Box::new(self.visit(state, &expr.value)?);
+        let value = Box::new(self.visit(db, state, &expr.value)?);
         state.path.pop();
 
         Ok(Let {
@@ -132,8 +125,8 @@ impl Visitor<State, Node, Root> for SymbolTableBuilder {
         .to_node())
     }
 
-    fn visit_un_op(&mut self, state: &mut State, expr: &UnOp) -> Res {
-        let inner = Box::new(self.visit(state, &expr.inner)?);
+    fn visit_un_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &UnOp) -> Res {
+        let inner = Box::new(self.visit(db, state, &expr.inner)?);
         Ok(UnOp {
             name: expr.name.clone(),
             inner,
@@ -142,9 +135,9 @@ impl Visitor<State, Node, Root> for SymbolTableBuilder {
         .to_node())
     }
 
-    fn visit_bin_op(&mut self, state: &mut State, expr: &BinOp) -> Res {
-        let left = Box::new(self.visit(state, &expr.left)?);
-        let right = Box::new(self.visit(state, &expr.right)?);
+    fn visit_bin_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &BinOp) -> Res {
+        let left = Box::new(self.visit(db, state, &expr.left)?);
+        let right = Box::new(self.visit(db, state, &expr.right)?);
         Ok(BinOp {
             name: expr.name.clone(),
             left,
@@ -154,11 +147,11 @@ impl Visitor<State, Node, Root> for SymbolTableBuilder {
         .to_node())
     }
 
-    fn visit_built_in(&mut self, _state: &mut State, expr: &String) -> Res {
+    fn visit_built_in(&mut self, db: &dyn Compiler, _state: &mut State, expr: &String) -> Res {
         Ok(Node::BuiltIn(expr.to_string()))
     }
 
-    fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {
+    fn handle_error(&mut self, db: &dyn Compiler, _state: &mut State, expr: &Err) -> Res {
         Err(TError::FailedParse(expr.msg.to_string(), expr.get_info()))
     }
 }

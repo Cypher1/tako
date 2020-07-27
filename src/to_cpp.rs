@@ -5,6 +5,7 @@ use crate::errors::TError;
 use std::collections::HashSet;
 
 // Walks the AST compiling it to wasm.
+#[derive(Default)]
 pub struct CodeGenerator {
     functions: Vec<Code>,
     includes: HashSet<String>,
@@ -180,15 +181,7 @@ impl CodeGenerator {
 }
 
 impl Visitor<State, Code, Out> for CodeGenerator {
-    fn new(_db: &dyn Compiler) -> CodeGenerator {
-        CodeGenerator {
-            functions: vec![],
-            includes: HashSet::new(),
-            flags: HashSet::new(),
-        }
-    }
-
-    fn visit_root(&mut self, root: &Root) -> Result<Out, TError> {
+    fn visit_root(&mut self, db: &dyn Compiler, root: &Root) -> Result<Out, TError> {
         let mut main_info = root.ast.get_info();
         main_info.defined_at = Some(vec![]);
         let main_let = Let {
@@ -201,7 +194,7 @@ impl Visitor<State, Code, Out> for CodeGenerator {
         let mut table = root.table.clone().expect("Requires symbol table");
         let main_symb = table.find(&vec![]).expect("should exist");
         main_symb.value.uses.push(vec![]);
-        let main = match self.visit_let(&mut table, &main_let)? {
+        let main = match self.visit_let(db, &mut table, &main_let)? {
             Code::Func {
                 name: _,
                 args: _,
@@ -247,7 +240,7 @@ impl Visitor<State, Code, Out> for CodeGenerator {
         Ok((code + "\n", self.flags.clone()))
     }
 
-    fn visit_sym(&mut self, _state: &mut State, expr: &Sym) -> Res {
+    fn visit_sym(&mut self, db: &dyn Compiler, _state: &mut State, expr: &Sym) -> Res {
         // eprintln!(
         //   "to_c: visit {}, {:?}",
         // expr.name,
@@ -261,25 +254,25 @@ impl Visitor<State, Code, Out> for CodeGenerator {
         Ok(Code::Expr(name).clone())
     }
 
-    fn visit_prim(&mut self, state: &mut State, expr: &Prim) -> Res {
+    fn visit_prim(&mut self, db: &dyn Compiler, state: &mut State, expr: &Prim) -> Res {
         use Prim::*;
         match expr {
             I32(n, _) => Ok(Code::Expr(n.to_string())),
             Bool(true, _) => Ok(Code::Expr(1.to_string())),
             Bool(false, _) => Ok(Code::Expr(0.to_string())),
             Str(s, _) => Ok(Code::Expr(format!("{:?}", s))),
-            Lambda(node) => self.visit(state, node), // _ => unimplemented!("unimplemented primitive type in compilation to c"),
+            Lambda(node) => self.visit(db, state, node), // _ => unimplemented!("unimplemented primitive type in compilation to c"),
         }
     }
 
-    fn visit_apply(&mut self, state: &mut State, expr: &Apply) -> Res {
+    fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
         // eprintln!("apply here: {:?}", expr);
-        let val = self.visit(state, &expr.inner)?;
+        let val = self.visit(db, state, &expr.inner)?;
         let args: Vec<Code> = expr
             .args
             .iter()
             .map(|s| {
-                self.visit(state, &s.value)
+                self.visit(db, state, &s.value)
                     .expect("Could not find definition for apply argument")
             })
             .collect();
@@ -301,7 +294,7 @@ impl Visitor<State, Code, Out> for CodeGenerator {
         }
     }
 
-    fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
+    fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
         // eprintln!("let here: {:?}, {:?}", expr.get_info().defined_at, expr.name);
         let symb = state
             .find(&expr.get_info().defined_at.expect("Undefined symbol"))
@@ -319,7 +312,7 @@ impl Visitor<State, Code, Out> for CodeGenerator {
                 .defined_at
                 .expect("Could not find definition for let"),
         );
-        let body = Box::new(self.visit(state, &expr.value)?);
+        let body = Box::new(self.visit(db, state, &expr.value)?);
         if expr.is_function {
             let args: Vec<String> = expr
                 .args
@@ -351,8 +344,8 @@ impl Visitor<State, Code, Out> for CodeGenerator {
         Ok(body.with_expr(&|x| Code::Statement(format!("const int {} = {};", name, x))))
     }
 
-    fn visit_un_op(&mut self, state: &mut State, expr: &UnOp) -> Res {
-        let code = self.visit(state, &expr.inner)?;
+    fn visit_un_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &UnOp) -> Res {
+        let code = self.visit(db, state, &expr.inner)?;
         let info = expr.get_info();
         let res = match expr.name.as_str() {
             "+" => self.build_call1("", code),
@@ -363,10 +356,10 @@ impl Visitor<State, Code, Out> for CodeGenerator {
         Ok(res)
     }
 
-    fn visit_bin_op(&mut self, state: &mut State, expr: &BinOp) -> Res {
+    fn visit_bin_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &BinOp) -> Res {
         let info = expr.get_info();
-        let left = self.visit(state, &expr.left.clone())?;
-        let right = self.visit(state, &expr.right.clone())?;
+        let left = self.visit(db, state, &expr.left.clone())?;
+        let right = self.visit(db, state, &expr.right.clone())?;
         // TODO: require 2 children
         let res = match expr.name.as_str() {
             "*" => self.build_call2("", "*", left, right),
@@ -404,11 +397,11 @@ impl Visitor<State, Code, Out> for CodeGenerator {
         Ok(res)
     }
 
-    fn visit_built_in(&mut self, _state: &mut State, expr: &String) -> Res {
+    fn visit_built_in(&mut self, db: &dyn Compiler, _state: &mut State, expr: &String) -> Res {
         Ok(Code::Expr(expr.to_owned()).clone())
     }
 
-    fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {
+    fn handle_error(&mut self, db: &dyn Compiler, _state: &mut State, expr: &Err) -> Res {
         Err(TError::FailedParse(expr.msg.clone(), expr.get_info()))
     }
 }
