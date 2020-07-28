@@ -228,7 +228,7 @@ impl fmt::Display for Node {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use super::PrettyPrint;
         let db = DB::default();
-        match PrettyPrint::default().visit_root(&db, &Root{ast: self.clone(), table: Table::new()}) {
+        match PrettyPrint::default().visit_root(&db, &self) {
             Ok(res) => write!(f, "{}", res),
             Err(err) => write!(f, "{:#?}", err),
         }
@@ -317,7 +317,7 @@ impl fmt::Display for Root {
     }
 }
 
-pub trait Visitor<State, Res, Final, Start=Root> {
+pub trait Visitor<State, Res, Final, Start = Root> {
     fn visit_root(&mut self, db: &dyn Compiler, e: &Start) -> Result<Final, TError>;
 
     fn handle_error(

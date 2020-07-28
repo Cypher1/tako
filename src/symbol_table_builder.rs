@@ -18,9 +18,9 @@ pub struct State {
 
 impl Table {
     pub fn new() -> Table {
-       to_hash_root(Entry { uses: vec![] }) 
+        to_hash_root(Entry { uses: vec![] })
     }
-    
+
     pub fn find<'a>(self: &'a mut Table, path: &[Symbol]) -> Option<&'a mut Table> {
         // eprintln!("find in {:?}", self.value);
         if path.is_empty() {
@@ -47,8 +47,13 @@ impl Table {
     }
 }
 
-impl Visitor<State, Node, Root, Node> for SymbolTableBuilder {
-    fn visit_root(&mut self, db: &dyn Compiler, expr: &Node) -> Result<Root, TError> {
+impl Visitor<State, Node, Root, String> for SymbolTableBuilder {
+    fn visit_root(&mut self, db: &dyn Compiler, filename: &String) -> Result<Root, TError> {
+        let expr = &db.parse_file(filename.to_string());
+        if db.options().debug > 0 {
+            eprintln!("building symbol table for file... {}", &filename);
+        }
+
         let mut state = State {
             table: to_hash_root(Entry { uses: vec![] }),
             path: vec![],
@@ -57,6 +62,10 @@ impl Visitor<State, Node, Root, Node> for SymbolTableBuilder {
         // TODO: Inject needs for bootstrapping here (e.g. import function).
         let println_path = [Symbol::Named("println".to_string())];
         state.table.get(&println_path);
+
+        if db.options().show_table {
+            eprintln!("table: {:?}", state.table.clone());
+        }
 
         Ok(Root {
             ast: self.visit(db, &mut state, &expr)?,

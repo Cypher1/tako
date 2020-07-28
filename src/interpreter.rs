@@ -403,8 +403,7 @@ impl Visitor<State, Prim, Prim> for Interpreter {
 
 #[cfg(test)]
 mod tests {
-    use super::Interpreter;
-    use super::Res;
+    use super::{globals, Interpreter, Res};
     use crate::ast::*;
     use crate::cli_options::Options;
     use crate::database::{Compiler, DB};
@@ -416,19 +415,21 @@ mod tests {
     fn eval_num() {
         let mut db = DB::default();
         db.set_options(Options::default());
-        let tree = Root::new(PrimNode(I32(12, Info::default())));
+        let tree = PrimNode(I32(12, Info::default()));
         assert_eq!(
-            Interpreter::default().visit_root(&db, &tree),
+            Interpreter::default().visit(&db, &mut vec![], &tree),
             Ok(I32(12, Info::default()))
         );
     }
 
     fn eval_str(s: String) -> Res {
         use std::sync::Arc;
-        let ast = parse(lex(None, Arc::new(s)));
         let mut db = DB::default();
+        let filename = "test".to_string();
+        db.set_file(filename.to_owned(), Arc::new(s));
         db.set_options(Options::default());
-        Interpreter::default().visit_root(&db, &Root::new(ast))
+        let ast = parse(&filename, &db);
+        Interpreter::default().visit(&db, &mut vec![globals()], &ast)
     }
 
     #[test]

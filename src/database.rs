@@ -6,7 +6,7 @@ use std::collections::VecDeque;
 use std::io::prelude::*;
 use std::process::Command;
 
-use crate::ast::{Visitor, Node, Root, Table};
+use crate::ast::{Node, Root, Visitor};
 use crate::cli_options::Options;
 use crate::tokens::Token;
 
@@ -24,7 +24,7 @@ pub trait Compiler: salsa::Database {
 
     fn lex_file(&self, filename: String) -> VecDeque<Token>;
     fn parse_file(&self, filename: String) -> Node;
-    fn build_symbol_table(&self, filename: String) -> Table;
+    fn build_symbol_table(&self, filename: String) -> Root;
     fn look_up_definitions(&self, filename: String) -> Root;
     fn compile_to_cpp(&self, filename: String) -> (String, HashSet<String>);
     fn build_with_gpp(&self, filename: String) -> String;
@@ -44,43 +44,17 @@ fn lex_file(db: &dyn Compiler, filename: String) -> VecDeque<Token> {
 
 fn parse_file(db: &dyn Compiler, filename: String) -> Node {
     use crate::parser;
-    if db.options().debug > 0 {
-        eprintln!("parsing file... {}", &filename);
-    }
-    let ast = parser::parse(db.lex_file(filename));
-    if db.options().show_ast {
-        eprintln!("ast: {}", ast);
-    }
-    ast
+    parser::parse(&filename, db)
 }
 
 fn build_symbol_table(db: &dyn Compiler, filename: String) -> Root {
     use crate::symbol_table_builder::SymbolTableBuilder;
-    if db.options().debug > 0 {
-        eprintln!("building symbol table for file... {}", &filename);
-    }
-    let with_symbols = SymbolTableBuilder::process(&db.parse_file(filename), db)
-        .expect("failed building symbol table");
-
-    if db.options().show_table {
-        eprintln!("table: {:?}", with_symbols.table.clone());
-    }
-
-    if db.options().show_full_ast {
-        eprintln!("debug ast: {:#?}", with_symbols.ast);
-    }
-    with_symbols
+    SymbolTableBuilder::process(&filename, db).expect("failed building symbol table")
 }
 
-fn look_up_definitions(db: &dyn Compiler, filename: String) -> Table {
+fn look_up_definitions(db: &dyn Compiler, filename: String) -> Root {
     use crate::definition_finder::DefinitionFinder;
-    if db.options().debug > 0 {
-        eprintln!("looking up definitions in file... {}", &filename);
-    }
-    let ast = db.parse_file(filename);
-    let table = db.build_symbol_table(filename);
-DefinitionFinder::process(&Root {ast, table}, db)
-        .expect("failed looking up symbols")
+    DefinitionFinder::process(&filename, db).expect("failed looking up symbols")
 }
 
 fn compile_to_cpp(db: &dyn Compiler, filename: String) -> (String, HashSet<String>) {
@@ -88,8 +62,7 @@ fn compile_to_cpp(db: &dyn Compiler, filename: String) -> (String, HashSet<Strin
     if db.options().debug > 0 {
         eprintln!("generating code for file ... {}", &filename);
     }
-    CodeGenerator::process(&db.look_up_definitions(filename), db)
-        .expect("could not compile program")
+    CodeGenerator::process(&filename, db).expect("could not compile program")
 }
 
 fn build_with_gpp(db: &dyn Compiler, filename: String) -> String {

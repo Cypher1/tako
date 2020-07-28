@@ -4,6 +4,7 @@ use std::sync::Arc;
 use super::ast::*;
 use super::location::*;
 use super::tokens::*;
+use crate::database::Compiler;
 
 fn binding_power(tok: &Token) -> (i32, bool) {
     let bind = match &tok.tok_type {
@@ -417,11 +418,18 @@ pub fn lex(filename: Option<String>, contents: Arc<String>) -> VecDeque<Token> {
     toks
 }
 
-pub fn parse(toks: VecDeque<Token>) -> Node {
+pub fn parse(filename: &String, db: &dyn Compiler) -> Node {
+    let toks = db.lex_file(filename.to_owned());
+    if db.options().debug > 0 {
+        eprintln!("parsing file... {}", &filename);
+    }
     let (root, left_over) = expr(toks, 0);
 
     if !left_over.is_empty() {
         panic!("Oh no: Left over tokens {:?}", left_over);
+    }
+    if db.options().show_ast {
+        eprintln!("ast: {}", root);
     }
 
     root
@@ -430,12 +438,18 @@ pub fn parse(toks: VecDeque<Token>) -> Node {
 #[cfg(test)]
 mod tests {
     use super::super::ast::*;
-    use super::lex;
+    use crate::cli_options::Options;
+    use crate::database::{Compiler, DB};
     use std::sync::Arc;
     use Prim::*;
 
     fn parse(contents: String) -> Node {
-        super::parse(lex(None, Arc::new(contents)))
+        let mut db = DB::default();
+        let filename = "test".to_string();
+        db.set_file(filename.to_owned(), Arc::new(contents));
+        db.set_options(Options::default());
+
+        super::parse(&filename, &db)
     }
 
     fn num_lit(x: i32) -> Box<Node> {

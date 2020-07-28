@@ -180,8 +180,9 @@ impl CodeGenerator {
     }
 }
 
-impl Visitor<State, Code, Out> for CodeGenerator {
-    fn visit_root(&mut self, db: &dyn Compiler, root: &Root) -> Result<Out, TError> {
+impl Visitor<State, Code, Out, String> for CodeGenerator {
+    fn visit_root(&mut self, db: &dyn Compiler, filename: &String) -> Result<Out, TError> {
+        let root = db.look_up_definitions(filename.to_owned());
         let mut main_info = root.ast.get_info();
         main_info.defined_at = Some(vec![]);
         let main_let = Let {

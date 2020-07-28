@@ -11,10 +11,10 @@ pub struct PrettyPrint {}
 type Res = Result<(), TError>;
 type State = String;
 
-impl Visitor<State, (), String> for PrettyPrint {
-    fn visit_root(&mut self, db: &dyn Compiler, expr: &Root) -> Result<String, TError> {
+impl Visitor<State, (), String, Node> for PrettyPrint {
+    fn visit_root(&mut self, db: &dyn Compiler, expr: &Node) -> Result<String, TError> {
         let mut state: String = "".to_string();
-        self.visit(db, &mut state, &expr.ast)?;
+        self.visit(db, &mut state, &expr)?;
         Ok(state)
     }
 

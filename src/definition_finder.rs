@@ -16,16 +16,21 @@ pub struct Namespace {
     info: Entry,
 }
 
-impl Visitor<State, Node, Table> for DefinitionFinder {
-    fn visit_root(&mut self, db: &dyn Compiler, expr: &Root) -> Result<Table, TError> {
+impl Visitor<State, Node, Root, String> for DefinitionFinder {
+    fn visit_root(&mut self, db: &dyn Compiler, filename: &String) -> Result<Root, TError> {
+        let expr = db.build_symbol_table(filename.to_string());
+        if db.options().debug > 0 {
+            eprintln!("looking up definitions in file... {}", &filename);
+        }
         let mut state = State {
             path: vec![],
-            table: expr
-                .table
-                .clone(),
+            table: expr.table.clone(),
         };
-        self.visit(db, &mut state, &expr.ast)?;
-        Ok(state.table)
+        let ast = self.visit(db, &mut state, &expr.ast)?;
+        Ok(Root {
+            ast,
+            table: state.table,
+        })
     }
 
     fn visit_sym(&mut self, db: &dyn Compiler, state: &mut State, expr: &Sym) -> Res {
