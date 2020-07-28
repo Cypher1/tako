@@ -104,7 +104,7 @@ pub fn lex_head<'a>(
         }
         if chr_type != TokenType::Whitespace {
             // Add the character.
-            head.push_back(chr.clone());
+            head.push_back(*chr);
         }
         // Continue past the character.
         pos.next(&mut contents);

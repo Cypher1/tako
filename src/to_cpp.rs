@@ -36,7 +36,7 @@ impl Code {
     fn with_expr(self: Code, f: &dyn Fn(String) -> Code) -> Code {
         match self {
             Code::Empty => Code::Empty,
-            Code::Expr(expr) => f(expr.to_owned()),
+            Code::Expr(expr) => f(expr),
             Code::Block(mut statements) => {
                 let last = statements.pop().unwrap();
                 statements.push(last.with_expr(f));
@@ -192,8 +192,8 @@ impl Visitor<State, Code, Out, String> for CodeGenerator {
             args: Some(vec![]),
             is_function: true,
         };
-        let mut table = root.table.clone();
-        let main_symb = table.find(&vec![]).expect("should exist");
+        let mut table = root.table;
+        let main_symb = table.find(&[]).expect("should exist");
         main_symb.value.uses.push(vec![]);
         let main = match self.visit_let(db, &mut table, &main_let)? {
             Code::Func {
@@ -241,7 +241,7 @@ impl Visitor<State, Code, Out, String> for CodeGenerator {
         Ok((code + "\n", self.flags.clone()))
     }
 
-    fn visit_sym(&mut self, db: &dyn Compiler, _state: &mut State, expr: &Sym) -> Res {
+    fn visit_sym(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Sym) -> Res {
         // eprintln!(
         //   "to_c: visit {}, {:?}",
         // expr.name,
@@ -252,7 +252,7 @@ impl Visitor<State, Code, Out, String> for CodeGenerator {
                 .defined_at
                 .expect("Could not find definition for symbol"),
         );
-        Ok(Code::Expr(name).clone())
+        Ok(Code::Expr(name))
     }
 
     fn visit_prim(&mut self, db: &dyn Compiler, state: &mut State, expr: &Prim) -> Res {
@@ -300,7 +300,7 @@ impl Visitor<State, Code, Out, String> for CodeGenerator {
         let symb = state
             .find(&expr.get_info().defined_at.expect("Undefined symbol"))
             .expect("should exist");
-        if symb.value.uses.len() == 0 {
+        if symb.value.uses.is_empty() {
             return Ok(Code::Empty);
         }
         // eprintln!("args: {:?}", expr.args);
@@ -333,7 +333,7 @@ impl Visitor<State, Code, Out, String> for CodeGenerator {
                 .collect();
 
             let node = Code::Func {
-                name: format!("{}", name),
+                name,
                 args,
                 return_type: "int".to_string(),
                 body,
@@ -398,11 +398,11 @@ impl Visitor<State, Code, Out, String> for CodeGenerator {
         Ok(res)
     }
 
-    fn visit_built_in(&mut self, db: &dyn Compiler, _state: &mut State, expr: &String) -> Res {
-        Ok(Code::Expr(expr.to_owned()).clone())
+    fn visit_built_in(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &str) -> Res {
+        Ok(Code::Expr(expr.to_owned()))
     }
 
-    fn handle_error(&mut self, db: &dyn Compiler, _state: &mut State, expr: &Err) -> Res {
+    fn handle_error(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Err) -> Res {
         Err(TError::FailedParse(expr.msg.clone(), expr.get_info()))
     }
 }

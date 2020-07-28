@@ -241,7 +241,7 @@ impl Visitor<State, Prim, Prim> for Interpreter {
         }
     }
 
-    fn visit_prim(&mut self, db: &dyn Compiler, _state: &mut State, expr: &Prim) -> Res {
+    fn visit_prim(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Prim) -> Res {
         Ok(expr.clone())
     }
 
@@ -381,7 +381,7 @@ impl Visitor<State, Prim, Prim> for Interpreter {
         }
     }
 
-    fn visit_built_in(&mut self, db: &dyn Compiler, state: &mut State, expr: &String) -> Res {
+    fn visit_built_in(&mut self, _db: &dyn Compiler, state: &mut State, expr: &str) -> Res {
         let it_val = state.last().map_or_else(
             || Prim::Str("".to_string(), Info::default()).to_node(),
             |frame| frame.get("it").expect("println needs an argument").clone(),
@@ -396,7 +396,7 @@ impl Visitor<State, Prim, Prim> for Interpreter {
         Ok(Prim::I32(0, Info::default()))
     }
 
-    fn handle_error(&mut self, db: &dyn Compiler, _state: &mut State, expr: &Err) -> Res {
+    fn handle_error(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Err) -> Res {
         Err(TError::FailedParse(expr.msg.to_string(), expr.get_info()))
     }
 }
@@ -407,7 +407,7 @@ mod tests {
     use crate::ast::*;
     use crate::cli_options::Options;
     use crate::database::{Compiler, DB};
-    use crate::parser::{lex, parse};
+    use crate::parser::{parse};
     use Node::*;
     use Prim::*;
 

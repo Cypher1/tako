@@ -18,7 +18,7 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
         Ok(state)
     }
 
-    fn visit_sym(&mut self, db: &dyn Compiler, state: &mut State, expr: &Sym) -> Res {
+    fn visit_sym(&mut self, _db: &dyn Compiler, state: &mut State, expr: &Sym) -> Res {
         if let Some(def_at) = expr.get_info().defined_at {
             let path: Vec<String> = def_at.iter().map(|p| format!("{}", p)).collect();
             write!(state, "::{}", path.join("::")).unwrap();
@@ -111,12 +111,12 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
         Ok(())
     }
 
-    fn visit_built_in(&mut self, db: &dyn Compiler, state: &mut State, expr: &String) -> Res {
+    fn visit_built_in(&mut self, _db: &dyn Compiler, state: &mut State, expr: &str) -> Res {
         write!(state, "<built-in '{}'>", expr).unwrap();
         Ok(())
     }
 
-    fn handle_error(&mut self, db: &dyn Compiler, _state: &mut State, expr: &Err) -> Res {
+    fn handle_error(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Err) -> Res {
         Err(TError::FailedParse(expr.msg.to_string(), expr.get_info()))
     }
 }

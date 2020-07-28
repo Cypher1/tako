@@ -101,7 +101,7 @@ fn main() -> std::io::Result<()> {
     }
 
     for p in files_from("counter_examples") {
-        build_test(&mut f, p);
+        build_test(&f, p);
     }
     Ok(())
 }

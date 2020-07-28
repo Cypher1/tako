@@ -36,7 +36,7 @@ impl Table {
     fn get_child<'a>(self: &'a mut Table, find: &Symbol) -> &'a mut HashTree<Symbol, Entry> {
         self.children
             .entry(find.clone())
-            .or_insert(to_hash_root(Entry { uses: vec![] }))
+            .or_insert_with(Table::new)
     }
 
     pub fn get<'a>(self: &'a mut Table, path: &[Symbol]) -> &'a mut HashTree<Symbol, Entry> {
@@ -64,7 +64,7 @@ impl Visitor<State, Node, Root, String> for SymbolTableBuilder {
         state.table.get(&println_path);
 
         if db.options().show_table {
-            eprintln!("table: {:?}", state.table.clone());
+            eprintln!("table: {:?}", state.table);
         }
 
         Ok(Root {
@@ -73,11 +73,11 @@ impl Visitor<State, Node, Root, String> for SymbolTableBuilder {
         })
     }
 
-    fn visit_sym(&mut self, db: &dyn Compiler, _state: &mut State, expr: &Sym) -> Res {
+    fn visit_sym(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Sym) -> Res {
         Ok(expr.clone().to_node())
     }
 
-    fn visit_prim(&mut self, db: &dyn Compiler, _state: &mut State, expr: &Prim) -> Res {
+    fn visit_prim(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Prim) -> Res {
         Ok(expr.clone().to_node())
     }
 
@@ -119,7 +119,7 @@ impl Visitor<State, Node, Root, String> for SymbolTableBuilder {
         state.table.get(&state.path);
 
         // Consider the function arguments defined in this scope.
-        for arg in expr.args.clone().unwrap_or_else(|| vec![]) {
+        for arg in expr.args.clone().unwrap_or_else(Vec::new) {
             let mut arg_path = state.path.clone();
             arg_path.push(Symbol::Named(arg.name));
             state.table.get(&arg_path);
@@ -160,11 +160,11 @@ impl Visitor<State, Node, Root, String> for SymbolTableBuilder {
         .to_node())
     }
 
-    fn visit_built_in(&mut self, db: &dyn Compiler, _state: &mut State, expr: &String) -> Res {
+    fn visit_built_in(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &str) -> Res {
         Ok(Node::BuiltIn(expr.to_string()))
     }
 
-    fn handle_error(&mut self, db: &dyn Compiler, _state: &mut State, expr: &Err) -> Res {
+    fn handle_error(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Err) -> Res {
         Err(TError::FailedParse(expr.msg.to_string(), expr.get_info()))
     }
 }

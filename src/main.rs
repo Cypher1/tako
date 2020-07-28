@@ -30,7 +30,7 @@ extern crate quickcheck;
 #[macro_use(quickcheck)]
 extern crate quickcheck_macros;
 
-use ast::{Root, Visitor};
+use ast::{Visitor};
 use interpreter::Interpreter;
 use pretty_print::PrettyPrint;
 

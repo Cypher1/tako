@@ -352,7 +352,7 @@ pub trait Visitor<State, Res, Final, Start = Root> {
         &mut self,
         db: &dyn Compiler,
         state: &mut State,
-        e: &String,
+        e: &str,
     ) -> Result<Res, TError>;
 
     fn visit(&mut self, db: &dyn Compiler, state: &mut State, e: &Node) -> Result<Res, TError> {

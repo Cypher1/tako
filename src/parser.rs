@@ -273,7 +273,7 @@ fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
                                     Let {
                                         name: s.name,
                                         args: Some(
-                                            a.args.clone().iter().map(|l| l.to_sym()).collect(),
+                                            a.args.iter().map(|l| l.to_sym()).collect(),
                                         ),
                                         is_function: true,
                                         value: Box::new(right),
@@ -418,7 +418,7 @@ pub fn lex(filename: Option<String>, contents: Arc<String>) -> VecDeque<Token> {
     toks
 }
 
-pub fn parse(filename: &String, db: &dyn Compiler) -> Node {
+pub fn parse(filename: &str, db: &dyn Compiler) -> Node {
     let toks = db.lex_file(filename.to_owned());
     if db.options().debug > 0 {
         eprintln!("parsing file... {}", &filename);

@@ -68,7 +68,7 @@ impl Visitor<State, Node, Root, String> for DefinitionFinder {
         }
     }
 
-    fn visit_prim(&mut self, db: &dyn Compiler, _state: &mut State, expr: &Prim) -> Res {
+    fn visit_prim(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Prim) -> Res {
         Ok(expr.clone().to_node())
     }
 
@@ -160,11 +160,11 @@ impl Visitor<State, Node, Root, String> for DefinitionFinder {
         .to_node())
     }
 
-    fn visit_built_in(&mut self, db: &dyn Compiler, _state: &mut State, expr: &String) -> Res {
-        Ok(Node::BuiltIn(expr.clone()))
+    fn visit_built_in(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &str) -> Res {
+        Ok(Node::BuiltIn(expr.to_owned()))
     }
 
-    fn handle_error(&mut self, db: &dyn Compiler, _state: &mut State, expr: &Err) -> Res {
+    fn handle_error(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Err) -> Res {
         Err(TError::FailedParse(expr.msg.to_string(), expr.get_info()))
     }
 }
