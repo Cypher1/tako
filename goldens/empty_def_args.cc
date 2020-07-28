@@ -1,7 +1,7 @@
 
 int main(int argc, char* argv[]) {
-  const auto x = [&] () {
+  const auto examples_empty_def_args_x = [&] () {
     return 3;
   };
-  return x();
+  return examples_empty_def_args_x();
 }

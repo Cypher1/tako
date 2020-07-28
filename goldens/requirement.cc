@@ -1,6 +1,6 @@
 
 int main(int argc, char* argv[]) {
-  const auto x = [&] (const int x_y) {
+  const auto x = [&] (const auto x_y) {
     if(!(x_y)) x_y else 
     throw 101;
   };

@@ -56,14 +56,14 @@ impl Visitor<State, Node, Root, String> for SymbolTableBuilder {
 
         let mut state = State {
             table: to_hash_root(Entry { uses: vec![] }),
-            path: vec![],
+            path: vec![Symbol::Named(filename.to_owned().replace(".tk", "").replace("/", "_").replace("\\", "_"))],
         };
 
         // TODO: Inject needs for bootstrapping here (e.g. import function).
         let println_path = [Symbol::Named("println".to_string())];
         state.table.get(&println_path);
 
-        if db.debug() {
+        if db.debug() > 0 {
             eprintln!("table: {:?}", state.table);
         }
 

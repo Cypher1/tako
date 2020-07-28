@@ -1,5 +1,5 @@
 
 int main(int argc, char* argv[]) {
-  const int x = 3;
-  return (x+1);
+  const int examples_x_plus_1_x = 3;
+  return (examples_x_plus_1_x+1);
 }

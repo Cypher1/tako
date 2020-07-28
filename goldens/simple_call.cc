@@ -1,7 +1,7 @@
 
 int main(int argc, char* argv[]) {
-  const auto x = [&] (const auto x_y) {
-    return (x_y*3);
+  const auto examples_simple_call_x = [&] (const auto examples_simple_call_x_y) {
+    return (examples_simple_call_x_y*3);
   };
-  return x(2);
+  return examples_simple_call_x(2);
 }

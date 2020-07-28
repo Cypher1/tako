@@ -23,7 +23,7 @@ impl Visitor<State, Node, Root, String> for DefinitionFinder {
             eprintln!("looking up definitions in file... {}", &filename);
         }
         let mut state = State {
-            path: vec![],
+            path: vec![Symbol::Named(filename.to_owned().replace(".tk", "").replace("/", "_"))],
             table: expr.table.clone(),
         };
         let ast = self.visit(db, &mut state, &expr.ast)?;

@@ -1,8 +1,8 @@
 
 int main(int argc, char* argv[]) {
-  const auto x = [&] () {
-    const int x_y = 3;
-    return (x_y*2);
+  const auto examples_nested_as_function_x = [&] () {
+    const int examples_nested_as_function_x_y = 3;
+    return (examples_nested_as_function_x_y*2);
   };
-  return (x()*5);
+  return (examples_nested_as_function_x()*5);
 }
