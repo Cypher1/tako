@@ -6,7 +6,7 @@ use std::collections::VecDeque;
 use std::io::prelude::*;
 use std::process::Command;
 
-use crate::ast::{Node, Root, Visitor};
+use crate::ast::{Node, Root, Visitor, Symbol};
 use crate::cli_options::Options;
 use crate::tokens::Token;
 
@@ -22,7 +22,10 @@ pub trait Compiler: salsa::Database {
     fn lex_file(&self, filename: String) -> VecDeque<Token>;
     fn parse_file(&self, filename: String) -> Node;
     fn build_symbol_table(&self, filename: String) -> Root;
+
+    fn look_up_symbol(&self, filename: String, context: Vec<Symbol>, name: Vec<Symbol>) -> Option<Tree>;
     fn look_up_definitions(&self, filename: String) -> Root;
+
     fn compile_to_cpp(&self, filename: String) -> (String, HashSet<String>);
     fn build_with_gpp(&self, filename: String) -> String;
 }
@@ -47,6 +50,41 @@ fn parse_file(db: &dyn Compiler, filename: String) -> Node {
 fn build_symbol_table(db: &dyn Compiler, filename: String) -> Root {
     use crate::symbol_table_builder::SymbolTableBuilder;
     SymbolTableBuilder::process(&filename, db).expect("failed building symbol table")
+}
+
+fn look_up_symbol(db: &dyn Compiler, filename: String, mut context: Vec<Symbol>, name: Vec<Symbol>) -> Option<Tree> {
+    if db.debug() > 1 {
+        eprintln!("looking up sym {:?} {:?}", &context, &name);
+    }
+    let root = db.build_symbol_table(filename.to_string());
+    loop {
+        while let Some(Symbol::Anon()) = context.last() {
+            context.pop(); // Cannot look inside an 'anon'.
+        }
+        let mut search: Vec<Symbol> = context.clone();
+        search.extend(name.clone());
+        let node = root.table.find(&search);
+        match node {
+            Some(node) => {
+                node.value.uses.push(context.clone());
+                if db.debug() > 1 {
+                    eprintln!("FOUND {:?} at {:?}\n", &name, &search);
+                }
+                return Some(node);
+            }
+            None => {
+                if db.debug() > 1 {
+                    eprintln!("   not found {} at {:?}", expr.name.clone(), search.clone());
+                }
+                if search.is_empty() {
+                    return None;
+                }
+                context.pop(); // Up one, go again.
+            }
+        }
+    }
+
+
 }
 
 fn look_up_definitions(db: &dyn Compiler, filename: String) -> Root {
