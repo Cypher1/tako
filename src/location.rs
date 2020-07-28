@@ -1,6 +1,6 @@
 use std::fmt;
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct Loc {
     pub filename: Option<String>,
     pub line: i32,

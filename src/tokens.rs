@@ -14,7 +14,7 @@ pub enum TokenType {
     Whitespace,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Token {
     pub tok_type: TokenType,
     // TODO: Use enum types to convert tokens to literals and symbols.
@@ -104,7 +104,7 @@ pub fn lex_head<'a>(
         }
         if chr_type != TokenType::Whitespace {
             // Add the character.
-            head.push_back(chr.clone());
+            head.push_back(*chr);
         }
         // Continue past the character.
         pos.next(&mut contents);

@@ -123,7 +123,7 @@ mod tests {
     fn cardinality_pair_bool_ptrs() {
         let unit = Struct(vec![]);
         let boolt = Union(vec![(Box::new(unit.clone()), 0), (Box::new(unit), 0)]);
-        let bool_ptr = Pointer(64, Box::new(boolt.clone()));
+        let bool_ptr = Pointer(64, Box::new(boolt));
         let quad = Struct(vec![
             (Box::new(bool_ptr.clone()), 0),
             (Box::new(bool_ptr), 0),
@@ -185,7 +185,7 @@ mod tests {
     fn size_pair_bool_ptrs32() {
         let unit = Struct(vec![]);
         let boolt = Union(vec![(Box::new(unit.clone()), 0), (Box::new(unit), 0)]);
-        let bool_ptr = Pointer(32, Box::new(boolt.clone()));
+        let bool_ptr = Pointer(32, Box::new(boolt));
         let quad = Struct(vec![
             (Box::new(bool_ptr.clone()), 0),
             (Box::new(bool_ptr), 0),
@@ -197,7 +197,7 @@ mod tests {
     fn size_pair_bool_ptrs64() {
         let unit = Struct(vec![]);
         let boolt = Union(vec![(Box::new(unit.clone()), 0), (Box::new(unit), 0)]);
-        let bool_ptr = Pointer(64, Box::new(boolt.clone()));
+        let bool_ptr = Pointer(64, Box::new(boolt));
         let quad = Struct(vec![
             (Box::new(bool_ptr.clone()), 0),
             (Box::new(bool_ptr), 0),

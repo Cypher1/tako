@@ -1,58 +1,53 @@
-use super::ast::*;
-use super::cli_options::Options;
-use super::errors::TError;
-use super::symbol_table_builder::State;
+use crate::ast::*;
+use crate::database::Compiler;
+use crate::errors::TError;
+use crate::symbol_table_builder::State;
 
 // Walks the AST interpreting it.
-pub struct DefinitionFinder {
-    pub debug: i32,
-}
+#[derive(Default)]
+pub struct DefinitionFinder {}
 
 // TODO: Return nodes.
 type Res = Result<Node, TError>;
 
 #[derive(Debug, Clone)]
 pub struct Namespace {
-    name: ScopeName,
+    name: Symbol,
     info: Entry,
 }
 
-impl Visitor<State, Node, Root> for DefinitionFinder {
-    fn new(opts: &Options) -> DefinitionFinder {
-        DefinitionFinder { debug: opts.debug }
-    }
-
-    fn visit_root(&mut self, expr: &Root) -> Result<Root, TError> {
+impl Visitor<State, Node, Root, String> for DefinitionFinder {
+    fn visit_root(&mut self, db: &dyn Compiler, filename: &String) -> Result<Root, TError> {
+        let expr = db.build_symbol_table(filename.to_string());
+        if db.debug() > 0 {
+            eprintln!("looking up definitions in file... {}", &filename);
+        }
         let mut state = State {
-            path: vec![],
-            table: expr
-                .table
-                .clone()
-                .expect("Definition finder requires an initialized symbol table"),
-            counter: 1,
+            path: vec![Symbol::Named(filename.to_owned().replace(".tk", "").replace("/", "_"))],
+            table: expr.table.clone(),
         };
-        let ast = self.visit(&mut state, &expr.ast)?;
+        let ast = self.visit(db, &mut state, &expr.ast)?;
         Ok(Root {
             ast,
-            table: Some(state.table),
+            table: state.table,
         })
     }
 
-    fn visit_sym(&mut self, state: &mut State, expr: &Sym) -> Res {
-        if self.debug > 1 {
+    fn visit_sym(&mut self, db: &dyn Compiler, state: &mut State, expr: &Sym) -> Res {
+        if db.debug() > 1 {
             eprintln!("visiting sym {:?} {}", state.path.clone(), &expr.name);
         }
-        let mut search: Vec<ScopeName> = state.path.clone();
+        let mut search: Vec<Symbol> = state.path.clone();
         loop {
-            if let Some(ScopeName::Anon(_)) = search.last() {
+            if let Some(Symbol::Anon()) = search.last() {
                 search.pop(); // Cannot look inside an 'anon'.
             }
-            search.push(ScopeName::Named(expr.name.clone()));
+            search.push(Symbol::Named(expr.name.clone()));
             let node = state.table.find(&search);
             match node {
                 Some(node) => {
                     node.value.uses.push(state.path.clone());
-                    if self.debug > 1 {
+                    if db.debug() > 1 {
                         eprintln!("FOUND {} at {:?}\n", expr.name.clone(), search.clone());
                     }
                     let mut res = expr.clone();
@@ -61,7 +56,7 @@ impl Visitor<State, Node, Root> for DefinitionFinder {
                 }
                 None => {
                     search.pop(); // Strip the name off.
-                    if self.debug > 1 {
+                    if db.debug() > 1 {
                         eprintln!("   not found {} at {:?}", expr.name.clone(), search.clone());
                     }
                     if search.is_empty() {
@@ -73,22 +68,21 @@ impl Visitor<State, Node, Root> for DefinitionFinder {
         }
     }
 
-    fn visit_prim(&mut self, _state: &mut State, expr: &Prim) -> Res {
+    fn visit_prim(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Prim) -> Res {
         Ok(expr.clone().to_node())
     }
 
-    fn visit_apply(&mut self, state: &mut State, expr: &Apply) -> Res {
-        let id = state.get_unique_id();
-        state.path.push(ScopeName::Anon(id));
+    fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
+        state.path.push(Symbol::Anon());
         let mut args = vec![];
         for arg in expr.args.iter() {
-            match self.visit_let(state, arg)? {
+            match self.visit_let(db, state, arg)? {
                 Node::LetNode(let_node) => {
                     let mut defined_arg = let_node.clone();
                     let mut path = state.path.clone();
                     // Inject the value into the 'anon' stack frame.
-                    path.push(ScopeName::Named(let_node.name));
-                    if self.debug > 1 {
+                    path.push(Symbol::Named(let_node.name));
+                    if db.debug() > 1 {
                         eprintln!("defining arg at {:?}", path.clone());
                     }
                     defined_arg.info.defined_at = Some(path);
@@ -97,7 +91,7 @@ impl Visitor<State, Node, Root> for DefinitionFinder {
                 _ => panic!("InternalError: definition_finder converted let node to other node."),
             }
         }
-        let inner = Box::new(self.visit(state, &*expr.inner)?);
+        let inner = Box::new(self.visit(db, state, &*expr.inner)?);
         state.path.pop();
         Ok(Apply {
             inner,
@@ -107,20 +101,20 @@ impl Visitor<State, Node, Root> for DefinitionFinder {
         .to_node())
     }
 
-    fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
-        if self.debug > 1 {
+    fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
+        if db.debug() > 1 {
             eprintln!("visiting {:?} {}", state.path.clone(), &expr.name);
         }
-        let path_name = ScopeName::Named(expr.name.clone());
+        let path_name = Symbol::Named(expr.name.clone());
         state.path.push(path_name);
         let mut args = None;
         if let Some(e_args) = &expr.args {
             let mut arg_vec = vec![];
             for arg in e_args.iter() {
                 let mut arg_path = state.path.clone();
-                arg_path.push(ScopeName::Named(arg.name.clone()));
+                arg_path.push(Symbol::Named(arg.name.clone()));
                 let mut sym = arg.clone();
-                if self.debug > 1 {
+                if db.debug() > 1 {
                     eprintln!(
                         "visiting let arg {:?} {}",
                         arg_path.clone(),
@@ -132,7 +126,7 @@ impl Visitor<State, Node, Root> for DefinitionFinder {
             }
             args = Some(arg_vec);
         }
-        let value = Box::new(self.visit(state, &expr.value)?);
+        let value = Box::new(self.visit(db, state, &expr.value)?);
         state.path.pop();
         Ok(Let {
             name: expr.name.clone(),
@@ -144,8 +138,8 @@ impl Visitor<State, Node, Root> for DefinitionFinder {
         .to_node())
     }
 
-    fn visit_un_op(&mut self, state: &mut State, expr: &UnOp) -> Res {
-        let inner = Box::new(self.visit(state, &expr.inner)?);
+    fn visit_un_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &UnOp) -> Res {
+        let inner = Box::new(self.visit(db, state, &expr.inner)?);
         Ok(UnOp {
             name: expr.name.clone(),
             inner,
@@ -154,9 +148,9 @@ impl Visitor<State, Node, Root> for DefinitionFinder {
         .to_node())
     }
 
-    fn visit_bin_op(&mut self, state: &mut State, expr: &BinOp) -> Res {
-        let left = Box::new(self.visit(state, &expr.left)?);
-        let right = Box::new(self.visit(state, &expr.right)?);
+    fn visit_bin_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &BinOp) -> Res {
+        let left = Box::new(self.visit(db, state, &expr.left)?);
+        let right = Box::new(self.visit(db, state, &expr.right)?);
         Ok(BinOp {
             name: expr.name.clone(),
             left,
@@ -166,11 +160,11 @@ impl Visitor<State, Node, Root> for DefinitionFinder {
         .to_node())
     }
 
-    fn visit_built_in(&mut self, _state: &mut State, expr: &String) -> Res {
-        Ok(Node::BuiltIn(expr.clone()))
+    fn visit_built_in(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &str) -> Res {
+        Ok(Node::BuiltIn(expr.to_owned()))
     }
 
-    fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {
+    fn handle_error(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Err) -> Res {
         Err(TError::FailedParse(expr.msg.to_string(), expr.get_info()))
     }
 }

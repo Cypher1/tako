@@ -1,11 +1,12 @@
-use super::ast::*;
-use super::cli_options::Options;
-use super::errors::TError;
+use crate::ast::*;
+use crate::database::Compiler;
+use crate::errors::TError;
 
 use std::collections::HashSet;
 
 // Walks the AST compiling it to wasm.
-pub struct Compiler {
+#[derive(Default)]
+pub struct CodeGenerator {
     functions: Vec<Code>,
     includes: HashSet<String>,
     pub flags: HashSet<String>,
@@ -35,7 +36,7 @@ impl Code {
     fn with_expr(self: Code, f: &dyn Fn(String) -> Code) -> Code {
         match self {
             Code::Empty => Code::Empty,
-            Code::Expr(expr) => f(expr.to_owned()),
+            Code::Expr(expr) => f(expr),
             Code::Block(mut statements) => {
                 let last = statements.pop().unwrap();
                 statements.push(last.with_expr(f));
@@ -91,7 +92,7 @@ impl Code {
     }
 }
 
-pub fn make_name(def: Vec<ScopeName>) -> String {
+pub fn make_name(def: Vec<Symbol>) -> String {
     let def_n: Vec<String> = def.iter().map(|n| n.clone().to_name()).collect();
     def_n.join("_")
 }
@@ -166,7 +167,7 @@ type Res = Result<Code, TError>;
 type State = Table;
 type Out = (String, HashSet<String>);
 
-impl Compiler {
+impl CodeGenerator {
     fn build_call1(&mut self, before: &str, inner: Code) -> Code {
         inner.with_expr(&|exp| Code::Expr(format!("{}({})", before, exp)))
     }
@@ -179,16 +180,9 @@ impl Compiler {
     }
 }
 
-impl Visitor<State, Code, Out> for Compiler {
-    fn new(_opts: &Options) -> Compiler {
-        Compiler {
-            functions: vec![],
-            includes: HashSet::new(),
-            flags: HashSet::new(),
-        }
-    }
-
-    fn visit_root(&mut self, root: &Root) -> Result<Out, TError> {
+impl Visitor<State, Code, Out, String> for CodeGenerator {
+    fn visit_root(&mut self, db: &dyn Compiler, filename: &String) -> Result<Out, TError> {
+        let root = db.look_up_definitions(filename.to_owned());
         let mut main_info = root.ast.get_info();
         main_info.defined_at = Some(vec![]);
         let main_let = Let {
@@ -198,10 +192,10 @@ impl Visitor<State, Code, Out> for Compiler {
             args: Some(vec![]),
             is_function: true,
         };
-        let mut table = root.table.clone().expect("Requires symbol table");
-        let main_symb = table.find(&vec![]).expect("should exist");
+        let mut table = root.table;
+        let main_symb = table.find(&[]).expect("should exist");
         main_symb.value.uses.push(vec![]);
-        let main = match self.visit_let(&mut table, &main_let)? {
+        let main = match self.visit_let(db, &mut table, &main_let)? {
             Code::Func {
                 name: _,
                 args: _,
@@ -247,7 +241,7 @@ impl Visitor<State, Code, Out> for Compiler {
         Ok((code + "\n", self.flags.clone()))
     }
 
-    fn visit_sym(&mut self, _state: &mut State, expr: &Sym) -> Res {
+    fn visit_sym(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Sym) -> Res {
         // eprintln!(
         //   "to_c: visit {}, {:?}",
         // expr.name,
@@ -258,28 +252,28 @@ impl Visitor<State, Code, Out> for Compiler {
                 .defined_at
                 .expect("Could not find definition for symbol"),
         );
-        Ok(Code::Expr(name).clone())
+        Ok(Code::Expr(name))
     }
 
-    fn visit_prim(&mut self, state: &mut State, expr: &Prim) -> Res {
+    fn visit_prim(&mut self, db: &dyn Compiler, state: &mut State, expr: &Prim) -> Res {
         use Prim::*;
         match expr {
             I32(n, _) => Ok(Code::Expr(n.to_string())),
             Bool(true, _) => Ok(Code::Expr(1.to_string())),
             Bool(false, _) => Ok(Code::Expr(0.to_string())),
             Str(s, _) => Ok(Code::Expr(format!("{:?}", s))),
-            Lambda(node) => self.visit(state, node), // _ => unimplemented!("unimplemented primitive type in compilation to c"),
+            Lambda(node) => self.visit(db, state, node), // _ => unimplemented!("unimplemented primitive type in compilation to c"),
         }
     }
 
-    fn visit_apply(&mut self, state: &mut State, expr: &Apply) -> Res {
+    fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
         // eprintln!("apply here: {:?}", expr);
-        let val = self.visit(state, &expr.inner)?;
+        let val = self.visit(db, state, &expr.inner)?;
         let args: Vec<Code> = expr
             .args
             .iter()
             .map(|s| {
-                self.visit(state, &s.value)
+                self.visit(db, state, &s.value)
                     .expect("Could not find definition for apply argument")
             })
             .collect();
@@ -301,10 +295,12 @@ impl Visitor<State, Code, Out> for Compiler {
         }
     }
 
-    fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
+    fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
         // eprintln!("let here: {:?}, {:?}", expr.get_info().defined_at, expr.name);
-        let symb = state.find(&expr.get_info().defined_at.expect("Undefined symbol")).expect("should exist");
-        if symb.value.uses.len() == 0 {
+        let symb = state
+            .find(&expr.get_info().defined_at.expect("Undefined symbol"))
+            .expect("should exist");
+        if symb.value.uses.is_empty() {
             return Ok(Code::Empty);
         }
         // eprintln!("args: {:?}", expr.args);
@@ -317,7 +313,7 @@ impl Visitor<State, Code, Out> for Compiler {
                 .defined_at
                 .expect("Could not find definition for let"),
         );
-        let body = Box::new(self.visit(state, &expr.value)?);
+        let body = Box::new(self.visit(db, state, &expr.value)?);
         if expr.is_function {
             let args: Vec<String> = expr
                 .args
@@ -337,7 +333,7 @@ impl Visitor<State, Code, Out> for Compiler {
                 .collect();
 
             let node = Code::Func {
-                name: format!("{}", name),
+                name,
                 args,
                 return_type: "int".to_string(),
                 body,
@@ -349,8 +345,8 @@ impl Visitor<State, Code, Out> for Compiler {
         Ok(body.with_expr(&|x| Code::Statement(format!("const int {} = {};", name, x))))
     }
 
-    fn visit_un_op(&mut self, state: &mut State, expr: &UnOp) -> Res {
-        let code = self.visit(state, &expr.inner)?;
+    fn visit_un_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &UnOp) -> Res {
+        let code = self.visit(db, state, &expr.inner)?;
         let info = expr.get_info();
         let res = match expr.name.as_str() {
             "+" => self.build_call1("", code),
@@ -361,10 +357,10 @@ impl Visitor<State, Code, Out> for Compiler {
         Ok(res)
     }
 
-    fn visit_bin_op(&mut self, state: &mut State, expr: &BinOp) -> Res {
+    fn visit_bin_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &BinOp) -> Res {
         let info = expr.get_info();
-        let left = self.visit(state, &expr.left.clone())?;
-        let right = self.visit(state, &expr.right.clone())?;
+        let left = self.visit(db, state, &expr.left.clone())?;
+        let right = self.visit(db, state, &expr.right.clone())?;
         // TODO: require 2 children
         let res = match expr.name.as_str() {
             "*" => self.build_call2("", "*", left, right),
@@ -402,11 +398,11 @@ impl Visitor<State, Code, Out> for Compiler {
         Ok(res)
     }
 
-    fn visit_built_in(&mut self, _state: &mut State, expr: &String) -> Res {
-        Ok(Code::Expr(expr.to_owned()).clone())
+    fn visit_built_in(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &str) -> Res {
+        Ok(Code::Expr(expr.to_owned()))
     }
 
-    fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {
+    fn handle_error(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Err) -> Res {
         Err(TError::FailedParse(expr.msg.clone(), expr.get_info()))
     }
 }

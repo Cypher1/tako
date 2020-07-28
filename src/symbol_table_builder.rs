@@ -1,12 +1,11 @@
-use super::ast::*;
-use super::cli_options::Options;
-use super::errors::TError;
-use super::tree::{to_hash_root, HashTree};
+use crate::ast::*;
+use crate::database::Compiler;
+use crate::errors::TError;
+use crate::tree::{to_hash_root, HashTree};
 
 // Walks the AST interpreting it.
-pub struct SymbolTableBuilder {
-    pub debug: i32,
-}
+#[derive(Default)]
+pub struct SymbolTableBuilder {}
 
 // TODO: Return nodes.
 type Res = Result<Node, TError>;
@@ -14,15 +13,15 @@ type Res = Result<Node, TError>;
 #[derive(Debug, Clone)]
 pub struct State {
     pub table: Table,
-    pub path: Vec<ScopeName>,
-    pub counter: i32,
-    // used for ensuring uniqueness in new variables and scope names
-    // TODO: Store an hashmap/array of definitions by some id
-    // Each definition can then reference its children.
+    pub path: Vec<Symbol>,
 }
 
 impl Table {
-    pub fn find<'a>(self: &'a mut Table, path: &[ScopeName]) -> Option<&'a mut Table> {
+    pub fn new() -> Table {
+        to_hash_root(Entry { uses: vec![] })
+    }
+
+    pub fn find<'a>(self: &'a mut Table, path: &[Symbol]) -> Option<&'a mut Table> {
         // eprintln!("find in {:?}", self.value);
         if path.is_empty() {
             return Some(self);
@@ -34,17 +33,13 @@ impl Table {
         }
     }
 
-    fn get_child<'a>(self: &'a mut Table, find: &ScopeName) -> &'a mut HashTree<ScopeName, Symbol> {
+    fn get_child<'a>(self: &'a mut Table, find: &Symbol) -> &'a mut HashTree<Symbol, Entry> {
         self.children
             .entry(find.clone())
-            .or_insert(to_hash_root(Symbol {
-                name: find.clone(),
-                uses: vec![],
-                info: Entry::default(),
-            }))
+            .or_insert_with(Table::new)
     }
 
-    pub fn get<'a>(self: &'a mut Table, path: &[ScopeName]) -> &'a mut HashTree<ScopeName, Symbol> {
+    pub fn get<'a>(self: &'a mut Table, path: &[Symbol]) -> &'a mut HashTree<Symbol, Entry> {
         if path.is_empty() {
             return self;
         }
@@ -52,55 +47,47 @@ impl Table {
     }
 }
 
-impl State {
-    pub fn get_unique_id(self: &mut State) -> i32 {
-        let c = self.counter;
-        self.counter += 1;
-        c
-    }
-}
+impl Visitor<State, Node, Root, String> for SymbolTableBuilder {
+    fn visit_root(&mut self, db: &dyn Compiler, filename: &String) -> Result<Root, TError> {
+        let expr = &db.parse_file(filename.to_string());
+        if db.debug() > 0 {
+            eprintln!("building symbol table for file... {}", &filename);
+        }
 
-impl Visitor<State, Node, Root> for SymbolTableBuilder {
-    fn new(opts: &Options) -> SymbolTableBuilder {
-        SymbolTableBuilder { debug: opts.debug }
-    }
-
-    fn visit_root(&mut self, expr: &Root) -> Result<Root, TError> {
         let mut state = State {
-            table: to_hash_root(Symbol {
-                name: ScopeName::Named("project".to_string()), // TODO(cypher1): Pass around the project name.
-                uses: vec![],
-                info: Entry::default(),
-            }),
-            path: vec![],
-            counter: 1,
+            table: to_hash_root(Entry { uses: vec![] }),
+            path: vec![Symbol::Named(filename.to_owned().replace(".tk", "").replace("/", "_").replace("\\", "_"))],
         };
 
         // TODO: Inject needs for bootstrapping here (e.g. import function).
-        let println_path = [ScopeName::Named("println".to_string())];
+        let println_path = [Symbol::Named("println".to_string())];
         state.table.get(&println_path);
 
+        if db.debug() > 0 {
+            eprintln!("table: {:?}", state.table);
+        }
+
         Ok(Root {
-            ast: self.visit(&mut state, &expr.ast)?,
-            table: Some(state.table),
+            ast: self.visit(db, &mut state, &expr)?,
+            table: state.table,
         })
     }
 
-    fn visit_sym(&mut self, _state: &mut State, expr: &Sym) -> Res {
+    fn visit_sym(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Sym) -> Res {
         Ok(expr.clone().to_node())
     }
 
-    fn visit_prim(&mut self, _state: &mut State, expr: &Prim) -> Res {
+    fn visit_prim(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Prim) -> Res {
         Ok(expr.clone().to_node())
     }
 
-    fn visit_apply(&mut self, state: &mut State, expr: &Apply) -> Res {
-        let arg_scope_name = ScopeName::Anon(state.get_unique_id());
+    fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
+        let arg_scope_name = Symbol::Anon();
 
         state.path.push(arg_scope_name);
         let mut args = Vec::new();
         for arg in expr.args.iter() {
-            args.push(match self.visit_let(state, arg)? {
+            args.push(match self.visit_let(db, state, arg)? {
                 Node::LetNode(let_node) => Ok(let_node),
                 node => Err(TError::InternalError(
                     "Symbol table builder converted let into non let".to_owned(),
@@ -108,7 +95,7 @@ impl Visitor<State, Node, Root> for SymbolTableBuilder {
                 )),
             }?);
         }
-        let inner = Box::new(self.visit(state, &*expr.inner)?);
+        let inner = Box::new(self.visit(db, state, &*expr.inner)?);
         state.path.pop();
 
         Ok(Apply {
@@ -119,9 +106,9 @@ impl Visitor<State, Node, Root> for SymbolTableBuilder {
         .to_node())
     }
 
-    fn visit_let(&mut self, state: &mut State, expr: &Let) -> Res {
-        let let_name = ScopeName::Named(expr.name.clone());
-        if self.debug > 1 {
+    fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
+        let let_name = Symbol::Named(expr.name.clone());
+        if db.debug() > 1 {
             eprintln!("visiting {:?} {}", state.path.clone(), &let_name);
         }
 
@@ -132,13 +119,13 @@ impl Visitor<State, Node, Root> for SymbolTableBuilder {
         state.table.get(&state.path);
 
         // Consider the function arguments defined in this scope.
-        for arg in expr.args.clone().unwrap_or_else(|| vec![]) {
+        for arg in expr.args.clone().unwrap_or_else(Vec::new) {
             let mut arg_path = state.path.clone();
-            arg_path.push(ScopeName::Named(arg.name));
+            arg_path.push(Symbol::Named(arg.name));
             state.table.get(&arg_path);
         }
 
-        let value = Box::new(self.visit(state, &expr.value)?);
+        let value = Box::new(self.visit(db, state, &expr.value)?);
         state.path.pop();
 
         Ok(Let {
@@ -151,8 +138,8 @@ impl Visitor<State, Node, Root> for SymbolTableBuilder {
         .to_node())
     }
 
-    fn visit_un_op(&mut self, state: &mut State, expr: &UnOp) -> Res {
-        let inner = Box::new(self.visit(state, &expr.inner)?);
+    fn visit_un_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &UnOp) -> Res {
+        let inner = Box::new(self.visit(db, state, &expr.inner)?);
         Ok(UnOp {
             name: expr.name.clone(),
             inner,
@@ -161,9 +148,9 @@ impl Visitor<State, Node, Root> for SymbolTableBuilder {
         .to_node())
     }
 
-    fn visit_bin_op(&mut self, state: &mut State, expr: &BinOp) -> Res {
-        let left = Box::new(self.visit(state, &expr.left)?);
-        let right = Box::new(self.visit(state, &expr.right)?);
+    fn visit_bin_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &BinOp) -> Res {
+        let left = Box::new(self.visit(db, state, &expr.left)?);
+        let right = Box::new(self.visit(db, state, &expr.right)?);
         Ok(BinOp {
             name: expr.name.clone(),
             left,
@@ -173,11 +160,11 @@ impl Visitor<State, Node, Root> for SymbolTableBuilder {
         .to_node())
     }
 
-    fn visit_built_in(&mut self, _state: &mut State, expr: &String) -> Res {
+    fn visit_built_in(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &str) -> Res {
         Ok(Node::BuiltIn(expr.to_string()))
     }
 
-    fn handle_error(&mut self, _state: &mut State, expr: &Err) -> Res {
+    fn handle_error(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Err) -> Res {
         Err(TError::FailedParse(expr.msg.to_string(), expr.get_info()))
     }
 }

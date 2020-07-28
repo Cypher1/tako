@@ -2,13 +2,14 @@ use std::collections::HashMap;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
-use super::cli_options::Options;
-use super::errors::TError;
-use super::location::*;
-use super::tree::*;
-use super::types::*;
+use crate::database::Compiler;
+use crate::database::DB;
+use crate::errors::TError;
+use crate::location::*;
+use crate::tree::*;
+use crate::types::*;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Err {
     pub msg: String,
     pub info: Info,
@@ -23,7 +24,7 @@ impl ToNode for Err {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Apply {
     pub inner: Box<Node>,
     pub args: Vec<Let>,
@@ -54,7 +55,7 @@ impl ToNode for Sym {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Prim {
     Bool(bool, Info),
     I32(i32, Info),
@@ -77,7 +78,7 @@ impl ToNode for Prim {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Let {
     pub name: String,
     pub value: Box<Node>,
@@ -104,7 +105,7 @@ impl ToNode for Let {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct UnOp {
     pub name: String,
     pub inner: Box<Node>,
@@ -120,7 +121,7 @@ impl ToNode for UnOp {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct BinOp {
     pub name: String,
     pub left: Box<Node>,
@@ -140,14 +141,14 @@ impl ToNode for BinOp {
 #[derive(Clone, Debug)]
 pub struct Definition {
     pub requires: Vec<Sym>,
-    pub defines: HashMap<Sym, Vec<ScopeName>>,
+    pub defines: HashMap<Sym, Vec<Symbol>>,
 }
 
 #[derive(Clone)]
 pub struct Info {
     pub loc: Option<Loc>,
     pub ty: Option<TypeInfo>,
-    pub defined_at: Option<Vec<ScopeName>>,
+    pub defined_at: Option<Vec<Symbol>>,
     pub callable: bool,
 }
 
@@ -195,7 +196,7 @@ pub struct TypeInfo {
 }
 
 // #[derive(Debug)]
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Eq, Clone)]
 pub enum Node {
     Error(Err),
     SymNode(Sym),
@@ -226,8 +227,8 @@ impl std::fmt::Debug for Node {
 impl fmt::Display for Node {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use super::PrettyPrint;
-        let mut ppr = PrettyPrint::new(&Options::default());
-        match ppr.visit_root(&Root::new(self.clone())) {
+        let db = DB::default();
+        match PrettyPrint::default().visit_root(&db, &self) {
             Ok(res) => write!(f, "{}", res),
             Err(err) => write!(f, "{:#?}", err),
         }
@@ -259,71 +260,53 @@ pub trait ToNode {
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub enum ScopeName {
-    Anon(i32),
+pub enum Symbol {
+    Anon(),
     Named(String),
 }
 
-impl fmt::Display for ScopeName {
+impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ScopeName::Anon(n) => write!(f, "anonymous?#{}", n)?,
-            ScopeName::Named(name) => write!(f, "{}", name)?,
+            Symbol::Anon() => write!(f, "?")?,
+            Symbol::Named(name) => write!(f, "{}", name)?,
         }
         Ok(())
     }
 }
 
-impl ScopeName {
-    pub fn to_name(self: &ScopeName) -> String {
+impl Symbol {
+    pub fn to_name(self: &Symbol) -> String {
         match self {
-            ScopeName::Anon(n) => format!("{}", n),
-            ScopeName::Named(name) => name.to_owned(),
+            Symbol::Anon() => "?".to_owned(),
+            Symbol::Named(name) => name.to_owned(),
         }
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Entry {
+    pub uses: Vec<Vec<Symbol>>,
     // pub requires: Vec<Sym>,
-// pub defines: HashMap<Sym, Vec<ScopeName>>,
+    // pub defines: HashMap<Sym, Vec<Symbol>>,
 }
 
 impl Default for Entry {
     fn default() -> Entry {
         Entry {
+            uses: vec![],
             // requires: vec![],
             // defines: HashMap::new(),
         }
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct Symbol {
-    pub name: ScopeName,
-    pub uses: Vec<Vec<ScopeName>>,
-    pub info: Entry,
-}
+pub type Table = HashTree<Symbol, Entry>;
 
-impl fmt::Display for Symbol {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.name)?;
-        Ok(())
-    }
-}
-
-pub type Table = HashTree<ScopeName, Symbol>;
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Root {
     pub ast: Node,
-    pub table: Option<Table>,
-}
-
-impl Root {
-    pub fn new(ast: Node) -> Root {
-        Root { ast, table: None }
-    }
+    pub table: Table,
 }
 
 impl fmt::Display for Root {
@@ -334,40 +317,64 @@ impl fmt::Display for Root {
     }
 }
 
-pub trait Visitor<State, Res, Final> {
-    fn new(opts: &Options) -> Self;
+pub trait Visitor<State, Res, Final, Start = Root> {
+    fn visit_root(&mut self, db: &dyn Compiler, e: &Start) -> Result<Final, TError>;
 
-    fn visit_root(&mut self, e: &Root) -> Result<Final, TError>;
+    fn handle_error(
+        &mut self,
+        db: &dyn Compiler,
+        state: &mut State,
+        e: &Err,
+    ) -> Result<Res, TError>;
+    fn visit_sym(&mut self, db: &dyn Compiler, state: &mut State, e: &Sym) -> Result<Res, TError>;
+    fn visit_prim(&mut self, db: &dyn Compiler, state: &mut State, e: &Prim)
+        -> Result<Res, TError>;
+    fn visit_apply(
+        &mut self,
+        db: &dyn Compiler,
+        state: &mut State,
+        e: &Apply,
+    ) -> Result<Res, TError>;
+    fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, e: &Let) -> Result<Res, TError>;
+    fn visit_un_op(
+        &mut self,
+        db: &dyn Compiler,
+        state: &mut State,
+        e: &UnOp,
+    ) -> Result<Res, TError>;
+    fn visit_bin_op(
+        &mut self,
+        db: &dyn Compiler,
+        state: &mut State,
+        e: &BinOp,
+    ) -> Result<Res, TError>;
+    fn visit_built_in(
+        &mut self,
+        db: &dyn Compiler,
+        state: &mut State,
+        e: &str,
+    ) -> Result<Res, TError>;
 
-    fn handle_error(&mut self, state: &mut State, e: &Err) -> Result<Res, TError>;
-    fn visit_sym(&mut self, state: &mut State, e: &Sym) -> Result<Res, TError>;
-    fn visit_prim(&mut self, state: &mut State, e: &Prim) -> Result<Res, TError>;
-    fn visit_apply(&mut self, state: &mut State, e: &Apply) -> Result<Res, TError>;
-    fn visit_let(&mut self, state: &mut State, e: &Let) -> Result<Res, TError>;
-    fn visit_un_op(&mut self, state: &mut State, e: &UnOp) -> Result<Res, TError>;
-    fn visit_bin_op(&mut self, state: &mut State, e: &BinOp) -> Result<Res, TError>;
-    fn visit_built_in(&mut self, state: &mut State, e: &String) -> Result<Res, TError>;
-
-    fn visit(&mut self, state: &mut State, e: &Node) -> Result<Res, TError> {
+    fn visit(&mut self, db: &dyn Compiler, state: &mut State, e: &Node) -> Result<Res, TError> {
         // eprintln!("{:?}", e);
         use Node::*;
         match e {
-            Error(n) => self.handle_error(state, n),
-            SymNode(n) => self.visit_sym(state, n),
-            PrimNode(n) => self.visit_prim(state, n),
-            ApplyNode(n) => self.visit_apply(state, n),
-            LetNode(n) => self.visit_let(state, n),
-            UnOpNode(n) => self.visit_un_op(state, n),
-            BinOpNode(n) => self.visit_bin_op(state, n),
-            BuiltIn(n) => self.visit_built_in(state, n),
+            Error(n) => self.handle_error(db, state, n),
+            SymNode(n) => self.visit_sym(db, state, n),
+            PrimNode(n) => self.visit_prim(db, state, n),
+            ApplyNode(n) => self.visit_apply(db, state, n),
+            LetNode(n) => self.visit_let(db, state, n),
+            UnOpNode(n) => self.visit_un_op(db, state, n),
+            BinOpNode(n) => self.visit_bin_op(db, state, n),
+            BuiltIn(n) => self.visit_built_in(db, state, n),
         }
     }
 
-    fn process(root: &Root, opts: &Options) -> Result<Final, TError>
+    fn process(root: &Start, db: &dyn Compiler) -> Result<Final, TError>
     where
         Self: Sized,
+        Self: Default,
     {
-        let mut visitor = Self::new(opts);
-        visitor.visit_root(root)
+        Self::default().visit_root(db, root)
     }
 }
