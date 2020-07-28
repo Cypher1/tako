@@ -19,7 +19,7 @@ pub struct Namespace {
 impl Visitor<State, Node, Root, String> for DefinitionFinder {
     fn visit_root(&mut self, db: &dyn Compiler, filename: &String) -> Result<Root, TError> {
         let expr = db.build_symbol_table(filename.to_string());
-        if db.options().debug > 0 {
+        if db.debug() > 0 {
             eprintln!("looking up definitions in file... {}", &filename);
         }
         let mut state = State {

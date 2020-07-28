@@ -17,9 +17,6 @@ pub trait Compiler: salsa::Database {
 
     #[salsa::input]
     fn options(&self) -> Options;
-
-    // TODO: Make each option an input.
-
     fn debug(&self) -> i32;
 
     fn lex_file(&self, filename: String) -> VecDeque<Token>;
@@ -36,7 +33,7 @@ fn debug(db: &dyn Compiler) -> i32 {
 
 fn lex_file(db: &dyn Compiler, filename: String) -> VecDeque<Token> {
     use crate::parser;
-    if db.options().debug > 0 {
+    if db.debug() > 0 {
         eprintln!("lexing file... {}", &filename);
     }
     parser::lex(Some(filename.to_string()), db.file(filename))
@@ -59,14 +56,14 @@ fn look_up_definitions(db: &dyn Compiler, filename: String) -> Root {
 
 fn compile_to_cpp(db: &dyn Compiler, filename: String) -> (String, HashSet<String>) {
     use crate::to_cpp::CodeGenerator;
-    if db.options().debug > 0 {
+    if db.debug() > 0 {
         eprintln!("generating code for file ... {}", &filename);
     }
     CodeGenerator::process(&filename, db).expect("could not compile program")
 }
 
 fn build_with_gpp(db: &dyn Compiler, filename: String) -> String {
-    if db.options().debug > 0 {
+    if db.debug() > 0 {
         eprintln!("building file with g++ ... {}", &filename);
     }
     let (res, flags) = db.compile_to_cpp(filename.to_string());

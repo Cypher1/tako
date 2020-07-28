@@ -420,7 +420,7 @@ pub fn lex(filename: Option<String>, contents: Arc<String>) -> VecDeque<Token> {
 
 pub fn parse(filename: &str, db: &dyn Compiler) -> Node {
     let toks = db.lex_file(filename.to_owned());
-    if db.options().debug > 0 {
+    if db.debug() > 0 {
         eprintln!("parsing file... {}", &filename);
     }
     let (root, left_over) = expr(toks, 0);

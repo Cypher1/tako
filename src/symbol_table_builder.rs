@@ -50,7 +50,7 @@ impl Table {
 impl Visitor<State, Node, Root, String> for SymbolTableBuilder {
     fn visit_root(&mut self, db: &dyn Compiler, filename: &String) -> Result<Root, TError> {
         let expr = &db.parse_file(filename.to_string());
-        if db.options().debug > 0 {
+        if db.debug() > 0 {
             eprintln!("building symbol table for file... {}", &filename);
         }
 
@@ -63,7 +63,7 @@ impl Visitor<State, Node, Root, String> for SymbolTableBuilder {
         let println_path = [Symbol::Named("println".to_string())];
         state.table.get(&println_path);
 
-        if db.options().show_table {
+        if db.debug() {
             eprintln!("table: {:?}", state.table);
         }
 
