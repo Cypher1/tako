@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashSet, HashMap};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
@@ -140,15 +140,15 @@ impl ToNode for BinOp {
 
 #[derive(Clone, Debug)]
 pub struct Definition {
-    pub requires: Vec<Sym>,
-    pub defines: HashMap<Sym, Vec<Symbol>>,
+    pub requires: HashSet<Sym>,
+    pub defines: HashMap<Sym, Path>,
 }
 
 #[derive(Clone)]
 pub struct Info {
     pub loc: Option<Loc>,
     pub ty: Option<TypeInfo>,
-    pub defined_at: Option<Vec<Symbol>>,
+    pub defined_at: Option<Path>,
     pub callable: bool,
 }
 
@@ -205,7 +205,6 @@ pub enum Node {
     LetNode(Let),
     UnOpNode(UnOp),
     BinOpNode(BinOp),
-    BuiltIn(String),
 }
 
 impl std::fmt::Debug for Node {
@@ -219,7 +218,6 @@ impl std::fmt::Debug for Node {
             LetNode(n) => n.fmt(f),
             UnOpNode(n) => n.fmt(f),
             BinOpNode(n) => n.fmt(f),
-            BuiltIn(n) => n.fmt(f),
         }
     }
 }
@@ -249,7 +247,6 @@ impl ToNode for Node {
             LetNode(n) => n.get_info(),
             UnOpNode(n) => n.get_info(),
             BinOpNode(n) => n.get_info(),
-            BuiltIn(_) => Info::default(), // TODO: Add info about the built in.
         }
     }
 }
@@ -284,17 +281,21 @@ impl Symbol {
     }
 }
 
+pub type Path = Vec<Symbol>;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Entry {
-    pub uses: Vec<Vec<Symbol>>,
+    pub uses: HashSet<Path>,
+    pub defined_at: Path,
     // pub requires: Vec<Sym>,
-    // pub defines: HashMap<Sym, Vec<Symbol>>,
+    // pub defines: HashMap<Sym, Path>,
 }
 
 impl Default for Entry {
     fn default() -> Entry {
         Entry {
-            uses: vec![],
+            uses: HashSet::new(),
+            defined_at: vec![], //TODO: Remove the default instance.
             // requires: vec![],
             // defines: HashMap::new(),
         }
@@ -348,12 +349,6 @@ pub trait Visitor<State, Res, Final, Start = Root> {
         state: &mut State,
         e: &BinOp,
     ) -> Result<Res, TError>;
-    fn visit_built_in(
-        &mut self,
-        db: &dyn Compiler,
-        state: &mut State,
-        e: &str,
-    ) -> Result<Res, TError>;
 
     fn visit(&mut self, db: &dyn Compiler, state: &mut State, e: &Node) -> Result<Res, TError> {
         // eprintln!("{:?}", e);
@@ -366,7 +361,6 @@ pub trait Visitor<State, Res, Final, Start = Root> {
             LetNode(n) => self.visit_let(db, state, n),
             UnOpNode(n) => self.visit_un_op(db, state, n),
             BinOpNode(n) => self.visit_bin_op(db, state, n),
-            BuiltIn(n) => self.visit_built_in(db, state, n),
         }
     }
 

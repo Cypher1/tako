@@ -12,7 +12,7 @@ pub struct Interpreter {}
 
 fn globals() -> Frame {
     map!(
-        "println".to_string() => Node::BuiltIn("println".to_string())
+        "printf".to_string() => Sym{name: "printf".to_string(), info: Info::default()}.to_node()
     )
 }
 
@@ -218,6 +218,19 @@ impl Visitor<State, Prim, Prim> for Interpreter {
             eprintln!("evaluating {}", expr.clone().to_node());
         }
         let name = &expr.name;
+        match &name[..] {
+            "printf" => {
+                let it_val = state.last().map_or_else(
+                    || Prim::Str("".to_string(), Info::default()).to_node(),
+                    |frame| frame.get("it").expect("println needs an argument").clone(),
+                );
+                match it_val {
+                Node::PrimNode(Prim::Str(it_val, _)) => println!("{}", it_val),
+                it_val => println!("{}", it_val),
+                }
+            },
+            _ => unimplemented!("interpreter built in"),
+        }
         let value = find_symbol(&state, name);
         match value {
             Some(Node::PrimNode(prim)) => {
@@ -381,21 +394,6 @@ impl Visitor<State, Prim, Prim> for Interpreter {
         }
     }
 
-    fn visit_built_in(&mut self, _db: &dyn Compiler, state: &mut State, expr: &str) -> Res {
-        let it_val = state.last().map_or_else(
-            || Prim::Str("".to_string(), Info::default()).to_node(),
-            |frame| frame.get("it").expect("println needs an argument").clone(),
-        );
-        match &expr[..] {
-            "println" => match it_val {
-                Node::PrimNode(Prim::Str(it_val, _)) => println!("{}", it_val),
-                it_val => println!("{}", it_val),
-            },
-            _ => unimplemented!("interpreter built in"),
-        }
-        Ok(Prim::I32(0, Info::default()))
-    }
-
     fn handle_error(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Err) -> Res {
         Err(TError::FailedParse(expr.msg.to_string(), expr.get_info()))
     }
@@ -406,8 +404,7 @@ mod tests {
     use super::{globals, Interpreter, Res};
     use crate::ast::*;
     use crate::cli_options::Options;
-    use crate::database::{Compiler, DB};
-    use crate::parser::{parse};
+    use crate::{database::{Compiler, DB}};
     use Node::*;
     use Prim::*;
 
@@ -425,10 +422,11 @@ mod tests {
     fn eval_str(s: String) -> Res {
         use std::sync::Arc;
         let mut db = DB::default();
-        let filename = "test".to_string();
+        let filename = "test.tk";
+        let module = db.module_name(filename.to_owned());
         db.set_file(filename.to_owned(), Arc::new(s));
         db.set_options(Options::default());
-        let ast = parse(&filename, &db);
+        let ast = db.parse_file(module);
         Interpreter::default().visit(&db, &mut vec![globals()], &ast)
     }
 

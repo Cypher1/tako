@@ -1,7 +1,7 @@
 use crate::ast::*;
 use crate::database::Compiler;
 use crate::errors::TError;
-use crate::symbol_table_builder::State;
+use crate::symbol_table_builder::{State};
 
 // Walks the AST interpreting it.
 #[derive(Default)]
@@ -16,14 +16,14 @@ pub struct Namespace {
     info: Entry,
 }
 
-impl Visitor<State, Node, Root, String> for DefinitionFinder {
-    fn visit_root(&mut self, db: &dyn Compiler, filename: &String) -> Result<Root, TError> {
-        let expr = db.build_symbol_table(filename.to_string());
+impl Visitor<State, Node, Root, Path> for DefinitionFinder {
+    fn visit_root(&mut self, db: &dyn Compiler, module: &Path) -> Result<Root, TError> {
+        let expr = db.build_symbol_table(module.clone());
         if db.debug() > 0 {
-            eprintln!("looking up definitions in file... {}", &filename);
+            eprintln!("looking up definitions in file... {:?}", &module);
         }
         let mut state = State {
-            path: vec![Symbol::Named(filename.to_owned().replace(".tk", "").replace("/", "_"))],
+            path: module.clone(),
             table: expr.table.clone(),
         };
         let ast = self.visit(db, &mut state, &expr.ast)?;
@@ -43,10 +43,10 @@ impl Visitor<State, Node, Root, String> for DefinitionFinder {
                 search.pop(); // Cannot look inside an 'anon'.
             }
             search.push(Symbol::Named(expr.name.clone()));
-            let node = state.table.find(&search);
+            let node = state.table.find_mut(&search);
             match node {
                 Some(node) => {
-                    node.value.uses.push(state.path.clone());
+                    node.value.uses.insert(state.path.clone());
                     if db.debug() > 1 {
                         eprintln!("FOUND {} at {:?}\n", expr.name.clone(), search.clone());
                     }
@@ -55,7 +55,7 @@ impl Visitor<State, Node, Root, String> for DefinitionFinder {
                     return Ok(res.to_node());
                 }
                 None => {
-                    search.pop(); // Strip the name off.
+                    search.pop(); // Strip theF name off.
                     if db.debug() > 1 {
                         eprintln!("   not found {} at {:?}", expr.name.clone(), search.clone());
                     }
@@ -107,30 +107,11 @@ impl Visitor<State, Node, Root, String> for DefinitionFinder {
         }
         let path_name = Symbol::Named(expr.name.clone());
         state.path.push(path_name);
-        let mut args = None;
-        if let Some(e_args) = &expr.args {
-            let mut arg_vec = vec![];
-            for arg in e_args.iter() {
-                let mut arg_path = state.path.clone();
-                arg_path.push(Symbol::Named(arg.name.clone()));
-                let mut sym = arg.clone();
-                if db.debug() > 1 {
-                    eprintln!(
-                        "visiting let arg {:?} {}",
-                        arg_path.clone(),
-                        &sym.name.clone()
-                    );
-                }
-                sym.info.defined_at = Some(arg_path);
-                arg_vec.push(sym);
-            }
-            args = Some(arg_vec);
-        }
         let value = Box::new(self.visit(db, state, &expr.value)?);
         state.path.pop();
         Ok(Let {
             name: expr.name.clone(),
-            args,
+            args: expr.args.clone(),
             value,
             is_function: expr.is_function,
             info: expr.get_info(),
@@ -158,10 +139,6 @@ impl Visitor<State, Node, Root, String> for DefinitionFinder {
             info: expr.get_info(),
         }
         .to_node())
-    }
-
-    fn visit_built_in(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &str) -> Res {
-        Ok(Node::BuiltIn(expr.to_owned()))
     }
 
     fn handle_error(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Err) -> Res {

@@ -392,11 +392,11 @@ fn expr(init_toks: VecDeque<Token>, init_lbp: i32) -> (Node, VecDeque<Token>) {
     (left, toks)
 }
 
-pub fn lex(filename: Option<String>, contents: Arc<String>) -> VecDeque<Token> {
+pub fn lex(filename: Option<&str>, contents: Arc<String>) -> VecDeque<Token> {
     let mut toks: VecDeque<Token> = VecDeque::new();
 
     let mut pos = Loc {
-        filename,
+        filename: filename.map(|f|f.to_owned()),
         ..Loc::default()
     };
     let mut chars = contents.chars().peekable();
@@ -418,10 +418,10 @@ pub fn lex(filename: Option<String>, contents: Arc<String>) -> VecDeque<Token> {
     toks
 }
 
-pub fn parse(filename: &str, db: &dyn Compiler) -> Node {
-    let toks = db.lex_file(filename.to_owned());
+pub fn parse(module: &Path, db: &dyn Compiler) -> Node {
+    let toks = db.lex_file(db.filename(module.clone()), module.clone());
     if db.debug() > 0 {
-        eprintln!("parsing file... {}", &filename);
+        eprintln!("parsing file... {:?}", &module);
     }
     let (root, left_over) = expr(toks, 0);
 
@@ -439,17 +439,17 @@ pub fn parse(filename: &str, db: &dyn Compiler) -> Node {
 mod tests {
     use super::super::ast::*;
     use crate::cli_options::Options;
-    use crate::database::{Compiler, DB};
+    use crate::{database::{Compiler, DB}};
     use std::sync::Arc;
     use Prim::*;
 
     fn parse(contents: String) -> Node {
         let mut db = DB::default();
-        let filename = "test".to_string();
+        let filename = "test.tk";
+        let module = db.module_name(filename.to_owned());
         db.set_file(filename.to_owned(), Arc::new(contents));
         db.set_options(Options::default());
-
-        super::parse(&filename, &db)
+        db.parse_file(module)
     }
 
     fn num_lit(x: i32) -> Box<Node> {

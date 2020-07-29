@@ -6,7 +6,7 @@ use std::collections::VecDeque;
 use std::io::prelude::*;
 use std::process::Command;
 
-use crate::ast::{Node, Root, Visitor, Symbol};
+use crate::ast::{Node, Path, Root, Symbol, Table, Visitor};
 use crate::cli_options::Options;
 use crate::tokens::Token;
 
@@ -19,98 +19,118 @@ pub trait Compiler: salsa::Database {
     fn options(&self) -> Options;
     fn debug(&self) -> i32;
 
-    fn lex_file(&self, filename: String) -> VecDeque<Token>;
-    fn parse_file(&self, filename: String) -> Node;
-    fn build_symbol_table(&self, filename: String) -> Root;
+    fn module_name(&self, filename: String) -> Path;
+    fn filename(&self, module: Path) -> String;
 
-    fn look_up_symbol(&self, filename: String, context: Vec<Symbol>, name: Vec<Symbol>) -> Option<Tree>;
-    fn look_up_definitions(&self, filename: String) -> Root;
+    fn lex_file(&self, filename: String, module: Path) -> VecDeque<Token>;
+    fn parse_file(&self, module: Path) -> Node;
+    fn build_symbol_table(&self, module: Path) -> Root;
+    fn find_symbol(&self, mut context: Path, path: Path) -> Option<Table>;
+    fn find_symbol_uses(&self, mut context: Path, path: Path) -> Option<HashSet<Path>>;
 
-    fn compile_to_cpp(&self, filename: String) -> (String, HashSet<String>);
-    fn build_with_gpp(&self, filename: String) -> String;
+    fn look_up_definitions(&self, module: Path) -> Root;
+
+    fn compile_to_cpp(&self, module: Path) -> (String, HashSet<String>);
+    fn build_with_gpp(&self, module: Path) -> String;
 }
 
 fn debug(db: &dyn Compiler) -> i32 {
     db.options().debug
 }
 
-fn lex_file(db: &dyn Compiler, filename: String) -> VecDeque<Token> {
+pub fn module_name(_db: &dyn Compiler, filename: String) -> Path {
+    filename
+        .to_owned()
+        .replace(".tk", "")
+        .replace("\\", "/")
+        .split("/")
+        .map(|part| Symbol::Named(part.to_owned()))
+        .collect()
+}
+
+pub fn filename(_db: &dyn Compiler, module: Path) -> String {
+    let parts: Vec<&str> = module
+        .iter()
+        .map(|sym| match sym {
+            Symbol::Named(sym) => sym,
+            Symbol::Anon() => "?",
+        }).collect();
+    let file_name = format!("{}.tk", parts.join("/"));
+    eprintln!("Getting filename for {:?}, {:?}", module, file_name);
+    file_name
+}
+
+fn lex_file(db: &dyn Compiler, filename: String, module: Path) -> VecDeque<Token> {
     use crate::parser;
     if db.debug() > 0 {
-        eprintln!("lexing file... {}", &filename);
+        eprintln!("lexing file... {:?}", &module);
     }
-    parser::lex(Some(filename.to_string()), db.file(filename))
+    parser::lex(Some(&filename), db.file(db.filename(module)))
 }
 
-fn parse_file(db: &dyn Compiler, filename: String) -> Node {
+fn parse_file(db: &dyn Compiler, module: Path) -> Node {
     use crate::parser;
-    parser::parse(&filename, db)
+    parser::parse(&module, db)
 }
 
-fn build_symbol_table(db: &dyn Compiler, filename: String) -> Root {
+fn build_symbol_table(db: &dyn Compiler, module: Path) -> Root {
     use crate::symbol_table_builder::SymbolTableBuilder;
-    SymbolTableBuilder::process(&filename, db).expect("failed building symbol table")
+    SymbolTableBuilder::process(&module, db).expect("failed building symbol table")
 }
 
-fn look_up_symbol(db: &dyn Compiler, filename: String, mut context: Vec<Symbol>, name: Vec<Symbol>) -> Option<Tree> {
-    if db.debug() > 1 {
-        eprintln!("looking up sym {:?} {:?}", &context, &name);
-    }
-    let root = db.build_symbol_table(filename.to_string());
+fn find_symbol(db: &dyn Compiler, mut context: Path, path: Path) -> Option<Table> {
+    eprintln!(">>> looking for symbol in {:?}, {:?}", context.clone(), path.clone());
+    let table = db.look_up_definitions(context.clone()).table;
     loop {
-        while let Some(Symbol::Anon()) = context.last() {
+        if let Some(Symbol::Anon()) = context.last() {
             context.pop(); // Cannot look inside an 'anon'.
         }
         let mut search: Vec<Symbol> = context.clone();
-        search.extend(name.clone());
-        let node = root.table.find(&search);
-        match node {
-            Some(node) => {
-                node.value.uses.push(context.clone());
-                if db.debug() > 1 {
-                    eprintln!("FOUND {:?} at {:?}\n", &name, &search);
-                }
-                return Some(node);
-            }
-            None => {
-                if db.debug() > 1 {
-                    eprintln!("   not found {} at {:?}", expr.name.clone(), search.clone());
-                }
-                if search.is_empty() {
-                    return None;
-                }
-                context.pop(); // Up one, go again.
-            }
+        search.extend(path.clone());
+        if let Some(node) = table.find(&search) {
+            eprintln!("FOUND INSIDE {:?} {:?}", context, search);
+            return Some(node.clone());
         }
+        // if db.debug() > 1 {
+            eprintln!("   not found {:?} at {:?}", path.clone(), search.clone());
+        //}
+        if context.is_empty() {
+            eprintln!("   not found {:?} at {:?}", path.clone(), search.clone());
+            return None;
+        }
+        context.pop(); // Up one, go again.
     }
-
-
 }
 
-fn look_up_definitions(db: &dyn Compiler, filename: String) -> Root {
+fn find_symbol_uses(db: &dyn Compiler, context: Path, path: Path) -> Option<HashSet<Path>> {
+    db.find_symbol(context, path).map(|x| x.value.uses)
+}
+
+fn look_up_definitions(db: &dyn Compiler, module: Path) -> Root {
     use crate::definition_finder::DefinitionFinder;
-    DefinitionFinder::process(&filename, db).expect("failed looking up symbols")
+    eprintln!("look up definitions >> {:?}", module);
+    DefinitionFinder::process(&module, db).expect("failed looking up symbols")
 }
 
-fn compile_to_cpp(db: &dyn Compiler, filename: String) -> (String, HashSet<String>) {
+fn compile_to_cpp(db: &dyn Compiler, module: Path) -> (String, HashSet<String>) {
     use crate::to_cpp::CodeGenerator;
     if db.debug() > 0 {
-        eprintln!("generating code for file ... {}", &filename);
+        eprintln!("generating code for file ... {:?}", &module);
     }
-    CodeGenerator::process(&filename, db).expect("could not compile program")
+    CodeGenerator::process(&module, db).expect("could not compile program")
 }
 
-fn build_with_gpp(db: &dyn Compiler, filename: String) -> String {
+fn build_with_gpp(db: &dyn Compiler, module: Path) -> String {
+    let (res, flags) = db.compile_to_cpp(module.clone());
     if db.debug() > 0 {
-        eprintln!("building file with g++ ... {}", &filename);
+        eprintln!("building file with g++ ... {:?}", &module);
     }
-    let (res, flags) = db.compile_to_cpp(filename.to_string());
 
-    let start_of_name = filename.rfind('/').unwrap_or(0);
-    let dir = &filename[..start_of_name];
-    let name = filename.trim_end_matches(".tk");
-
-    std::fs::create_dir_all(format!("build/{}", dir)).expect("could not create build directory");
+    let name: String = module
+        .iter()
+        .map(|s| format!("{}", s))
+        .collect::<Vec<String>>()
+        .join("_");
 
     let outf = format!("build/{}.cc", name);
     let execf = format!("build/{}", name);
