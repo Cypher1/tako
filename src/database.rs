@@ -40,10 +40,9 @@ fn debug(db: &dyn Compiler) -> i32 {
 
 pub fn module_name(_db: &dyn Compiler, filename: String) -> Path {
     filename
-        .to_owned()
         .replace(".tk", "")
         .replace("\\", "/")
-        .split("/")
+        .split('/')
         .map(|part| Symbol::Named(part.to_owned()))
         .collect()
 }
@@ -80,11 +79,7 @@ fn build_symbol_table(db: &dyn Compiler, module: Path) -> Root {
 }
 
 fn find_symbol(db: &dyn Compiler, mut context: Path, path: Path) -> Option<Table> {
-    eprintln!(
-        ">>> looking for symbol in {:?}, {:?}",
-        context.clone(),
-        path.clone()
-    );
+    eprintln!(">>> looking for symbol in {:?}, {:?}", context, path);
     let table = db.look_up_definitions(context.clone()).table;
     loop {
         if let Some(Symbol::Anon()) = context.last() {
@@ -100,7 +95,7 @@ fn find_symbol(db: &dyn Compiler, mut context: Path, path: Path) -> Option<Table
         eprintln!("   not found {:?} at {:?}", path.clone(), search.clone());
         //}
         if context.is_empty() {
-            eprintln!("   not found {:?} at {:?}", path.clone(), search.clone());
+            eprintln!("   not found {:?} at {:?}", path, search);
             return None;
         }
         context.pop(); // Up one, go again.

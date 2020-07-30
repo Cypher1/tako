@@ -185,7 +185,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         let mut main_info = root.ast.get_info();
         let mut main_at = module.clone();
         main_at.push(Symbol::Named("main".to_string()));
-        main_info.defined_at = Some(main_at.clone());
+        main_info.defined_at = Some(main_at);
         let main_let = Let {
             info: main_info,
             name: "main".to_string(),
@@ -194,7 +194,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             is_function: true,
         };
         let mut table = root.table; // TODO: Shouldn't be mut
-        eprintln!("table {:?}", table.clone());
+        eprintln!("table {:?}", table);
         let main = match self.visit_let(db, &mut table, &main_let)? {
             Code::Func {
                 name: _,
@@ -321,11 +321,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
 
         let uses = db
             .find_symbol_uses(context.clone(), path.clone())
-            .expect(&format!(
-                "couldn't find {:?} {:?}",
-                context.clone(),
-                path.clone()
-            ));
+            .unwrap_or_else(|| panic!("couldn't find {:?} {:?}", context.clone(), path.clone()));
         eprintln!("uses: {:?}", uses);
         if uses.is_empty() {
             return Ok(Code::Empty);

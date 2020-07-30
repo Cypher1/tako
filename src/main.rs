@@ -66,12 +66,12 @@ fn work(db: &mut DB, filename: &str) -> std::io::Result<String> {
     db.set_file(filename.to_owned(), contents);
 
     if db.options().interactive {
-        let table = db.build_symbol_table(module_name.clone());
+        let table = db.build_symbol_table(module_name);
         let res = Interpreter::process(&table, db).expect("could not interpret program");
         use ast::ToNode;
         PrettyPrint::process(&res.to_node(), db).or_else(|_| panic!("Pretty print failed"))
     } else {
-        Ok(db.build_with_gpp(module_name.clone()))
+        Ok(db.build_with_gpp(module_name))
     }
 }
 

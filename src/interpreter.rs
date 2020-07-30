@@ -349,8 +349,9 @@ impl Visitor<State, Prim, Prim> for Interpreter {
             "^" => prim_pow(&l?, &r()?, info),
             "&&" => prim_and(&l?, &r()?, info),
             "||" => prim_or(&l?, &r()?, info),
-            ";" => match (&l?, &r()?) {
-                (_, r) => Ok(r.clone()),
+            ";" => {
+                l?;
+                Ok(r()?)
             },
             "?" => match l {
                 Err(_) => r(),
