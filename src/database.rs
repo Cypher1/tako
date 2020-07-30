@@ -4,7 +4,7 @@ use std::collections::HashSet;
 use std::collections::VecDeque;
 
 use std::io::prelude::*;
-use std::process::Command;
+use std::{path::MAIN_SEPARATOR, process::Command};
 
 use crate::ast::{Node, Path, Root, Symbol, Table, Visitor};
 use crate::cli_options::Options;
@@ -55,7 +55,7 @@ pub fn filename(_db: &dyn Compiler, module: Path) -> String {
             Symbol::Anon() => "?",
         })
         .collect();
-    let file_name = format!("{}.tk", parts.join("/"));
+    let file_name = format!("{}.tk", parts.join(&MAIN_SEPARATOR.to_string()));
     eprintln!("Getting filename for {:?}, {:?}", module, file_name);
     file_name
 }
