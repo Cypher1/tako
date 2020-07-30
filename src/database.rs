@@ -54,7 +54,8 @@ pub fn filename(_db: &dyn Compiler, module: Path) -> String {
         .map(|sym| match sym {
             Symbol::Named(sym) => sym,
             Symbol::Anon() => "?",
-        }).collect();
+        })
+        .collect();
     let file_name = format!("{}.tk", parts.join("/"));
     eprintln!("Getting filename for {:?}, {:?}", module, file_name);
     file_name
@@ -79,7 +80,11 @@ fn build_symbol_table(db: &dyn Compiler, module: Path) -> Root {
 }
 
 fn find_symbol(db: &dyn Compiler, mut context: Path, path: Path) -> Option<Table> {
-    eprintln!(">>> looking for symbol in {:?}, {:?}", context.clone(), path.clone());
+    eprintln!(
+        ">>> looking for symbol in {:?}, {:?}",
+        context.clone(),
+        path.clone()
+    );
     let table = db.look_up_definitions(context.clone()).table;
     loop {
         if let Some(Symbol::Anon()) = context.last() {
@@ -92,7 +97,7 @@ fn find_symbol(db: &dyn Compiler, mut context: Path, path: Path) -> Option<Table
             return Some(node.clone());
         }
         // if db.debug() > 1 {
-            eprintln!("   not found {:?} at {:?}", path.clone(), search.clone());
+        eprintln!("   not found {:?} at {:?}", path.clone(), search.clone());
         //}
         if context.is_empty() {
             eprintln!("   not found {:?} at {:?}", path.clone(), search.clone());

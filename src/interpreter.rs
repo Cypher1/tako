@@ -225,12 +225,12 @@ impl Visitor<State, Prim, Prim> for Interpreter {
                     |frame| frame.get("it").expect("println needs an argument").clone(),
                 );
                 match it_val {
-                Node::PrimNode(Prim::Str(it_val, _)) => println!("{}", it_val),
-                it_val => println!("{}", it_val),
+                    Node::PrimNode(Prim::Str(it_val, _)) => println!("{}", it_val),
+                    it_val => println!("{}", it_val),
                 }
                 return Ok(Prim::I32(0, Info::default()));
-            },
-            _ => {},
+            }
+            _ => {}
         }
         let value = find_symbol(&state, name);
         match value {
@@ -408,7 +408,7 @@ mod tests {
     use super::{globals, Interpreter, Res};
     use crate::ast::*;
     use crate::cli_options::Options;
-    use crate::{database::{Compiler, DB}};
+    use crate::database::{Compiler, DB};
     use Node::*;
     use Prim::*;
 

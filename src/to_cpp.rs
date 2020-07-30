@@ -257,7 +257,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         );
         if name == "printf" {
             self.includes.insert("#include <iostream>".to_string());
-            return Ok(Code::Expr("printf".to_owned()))
+            return Ok(Code::Expr("printf".to_owned()));
         }
         Ok(Code::Expr(name))
     }
@@ -321,7 +321,11 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
 
         let uses = db
             .find_symbol_uses(context.clone(), path.clone())
-            .expect(&format!("couldn't find {:?} {:?}", context.clone(), path.clone()));
+            .expect(&format!(
+                "couldn't find {:?} {:?}",
+                context.clone(),
+                path.clone()
+            ));
         eprintln!("uses: {:?}", uses);
         if uses.is_empty() {
             return Ok(Code::Empty);
