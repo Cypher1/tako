@@ -272,9 +272,7 @@ fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
                                 return (
                                     Let {
                                         name: s.name,
-                                        args: Some(
-                                            a.args.iter().map(|l| l.to_sym()).collect(),
-                                        ),
+                                        args: Some(a.args.iter().map(|l| l.to_sym()).collect()),
                                         is_function: true,
                                         value: Box::new(right),
                                         info: head.get_info(),
@@ -396,7 +394,7 @@ pub fn lex(filename: Option<&str>, contents: Arc<String>) -> VecDeque<Token> {
     let mut toks: VecDeque<Token> = VecDeque::new();
 
     let mut pos = Loc {
-        filename: filename.map(|f|f.to_owned()),
+        filename: filename.map(|f| f.to_owned()),
         ..Loc::default()
     };
     let mut chars = contents.chars().peekable();
@@ -439,7 +437,7 @@ pub fn parse(module: &Path, db: &dyn Compiler) -> Node {
 mod tests {
     use super::super::ast::*;
     use crate::cli_options::Options;
-    use crate::{database::{Compiler, DB}};
+    use crate::database::{Compiler, DB};
     use std::sync::Arc;
     use Prim::*;
 

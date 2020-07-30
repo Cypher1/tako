@@ -2,7 +2,6 @@ use super::ast::Info;
 use super::ast::Node;
 use super::ast::Prim;
 
-
 #[derive(Debug, PartialEq, Clone)]
 pub enum TError {
     // Undefined symbols

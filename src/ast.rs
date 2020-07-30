@@ -1,4 +1,4 @@
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
@@ -296,8 +296,8 @@ impl Default for Entry {
         Entry {
             uses: HashSet::new(),
             defined_at: vec![], //TODO: Remove the default instance.
-            // requires: vec![],
-            // defines: HashMap::new(),
+                                // requires: vec![],
+                                // defines: HashMap::new(),
         }
     }
 }
