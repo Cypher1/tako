@@ -49,7 +49,8 @@ fn main() -> std::io::Result<()> {
 
     for f in db.options().files.iter() {
         let result = work(&mut db, &f)?; // discard the result (used for testing).
-        eprintln!("{}", result);
+        eprintln!("---Result---");
+        eprintln!("{}", result)
     }
     Ok(())
 }

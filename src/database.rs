@@ -135,6 +135,7 @@ fn build_with_gpp(db: &dyn Compiler, module: Path) -> String {
     let outf = format!("build/{}.cc", name);
     let execf = format!("build/{}", name);
     let destination = std::path::Path::new(&outf);
+    std::fs::create_dir_all("build").expect("could not create build directory");
     let mut f = std::fs::File::create(&destination).expect("could not open output file");
     write!(f, "{}", res).expect("couldn't write to file");
 

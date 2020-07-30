@@ -215,7 +215,7 @@ impl Visitor<State, Prim, Prim> for Interpreter {
 
     fn visit_sym(&mut self, db: &dyn Compiler, state: &mut State, expr: &Sym) -> Res {
         if db.debug() > 0 {
-            eprintln!("evaluating {}", expr.clone().to_node());
+            eprintln!("evaluating let {}", expr.clone().to_node());
         }
         let name = &expr.name;
         match &name[..] {
@@ -228,8 +228,9 @@ impl Visitor<State, Prim, Prim> for Interpreter {
                 Node::PrimNode(Prim::Str(it_val, _)) => println!("{}", it_val),
                 it_val => println!("{}", it_val),
                 }
+                return Ok(Prim::I32(0, Info::default()));
             },
-            _ => unimplemented!("interpreter built in"),
+            _ => {},
         }
         let value = find_symbol(&state, name);
         match value {
@@ -259,6 +260,9 @@ impl Visitor<State, Prim, Prim> for Interpreter {
     }
 
     fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
+        if db.debug() > 0 {
+            eprintln!("evaluating apply {}", expr.clone().to_node());
+        }
         state.push(Frame::new());
         for arg in expr.args.iter() {
             self.visit_let(db, state, arg)?;

@@ -275,7 +275,7 @@ impl fmt::Display for Symbol {
 impl Symbol {
     pub fn to_name(self: &Symbol) -> String {
         match self {
-            Symbol::Anon() => "?".to_owned(),
+            Symbol::Anon() => "".to_owned(),
             Symbol::Named(name) => name.to_owned(),
         }
     }
