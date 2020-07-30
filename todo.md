@@ -1,7 +1,6 @@
 # TODOs
 
 ## Engineering
-- Build steps in rust (reduce dependencies where possible)
 - Standardize on cli arguments (copying, where possible from go, rustc, cargo)
   - tako help
   - tako build
@@ -16,7 +15,6 @@
   - Conversion to ssa
   - Conversion to stack
   - Tests for compilation
-  - Test using work from main.rs
   - Move globals / std into a file using low level ops
   - Type checking
 - Testing
@@ -30,7 +28,6 @@
 - Language documentation
 
 ## Pain points
-- Debug and format for ast, info and datatype types
 - No way to run machine or low level instructions
 - No way to hide local data from a child function (locals)
 - No type checking (requirements and exhuastiveness checking)

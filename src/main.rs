@@ -49,27 +49,29 @@ fn main() -> std::io::Result<()> {
 
     for f in db.options().files.iter() {
         let result = work(&mut db, &f)?; // discard the result (used for testing).
-        eprintln!("{}", result);
+        eprintln!("---Result---");
+        eprintln!("{}", result)
     }
     Ok(())
 }
 
 fn work(db: &mut DB, filename: &str) -> std::io::Result<String> {
     let mut contents = String::new();
-    let mut file = File::open(filename.to_string())?;
+    let mut file = File::open(filename.to_owned())?;
     file.read_to_string(&mut contents)?;
 
     let contents = Arc::new(contents);
+    let module_name = db.module_name(filename.to_owned());
 
-    db.set_file(filename.to_string(), contents);
+    db.set_file(filename.to_owned(), contents);
 
     if db.options().interactive {
-        let table = db.build_symbol_table(filename.to_string());
+        let table = db.build_symbol_table(module_name.clone());
         let res = Interpreter::process(&table, db).expect("could not interpret program");
         use ast::ToNode;
         PrettyPrint::process(&res.to_node(), db).or_else(|_| panic!("Pretty print failed"))
     } else {
-        Ok(db.build_with_gpp(filename.to_string()))
+        Ok(db.build_with_gpp(module_name.clone()))
     }
 }
 

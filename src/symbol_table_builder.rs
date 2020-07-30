@@ -18,50 +18,69 @@ pub struct State {
 
 impl Table {
     pub fn new() -> Table {
-        to_hash_root(Entry { uses: vec![] })
+        // TODO: This smells a bit?
+        to_hash_root(Entry::default())
     }
 
-    pub fn find<'a>(self: &'a mut Table, path: &[Symbol]) -> Option<&'a mut Table> {
+    pub fn find<'a>(self: &'a Table, path: &[Symbol]) -> Option<&'a Table> {
         // eprintln!("find in {:?}", self.value);
         if path.is_empty() {
             return Some(self);
         }
-        if let Some(child) = self.children.get_mut(&path[0]) {
+        if let Some(child) = self.children.get(&path[0]) {
             child.find(&path[1..])
         } else {
             None
         }
     }
 
-    fn get_child<'a>(self: &'a mut Table, find: &Symbol) -> &'a mut HashTree<Symbol, Entry> {
-        self.children
-            .entry(find.clone())
-            .or_insert_with(Table::new)
+    pub fn find_mut<'a>(self: &'a mut Table, path: &[Symbol]) -> Option<&'a mut Table> {
+        // eprintln!("find in {:?}", self.value);
+        if path.is_empty() {
+            return Some(self);
+        }
+        if let Some(child) = self.children.get_mut(&path[0]) {
+            child.find_mut(&path[1..])
+        } else {
+            None
+        }
     }
 
-    pub fn get<'a>(self: &'a mut Table, path: &[Symbol]) -> &'a mut HashTree<Symbol, Entry> {
+    fn get_child_mut<'a>(self: &'a mut Table, find: &Symbol) -> &'a mut HashTree<Symbol, Entry> {
+        self.children.entry(find.clone()).or_insert_with(Table::new)
+    }
+
+    pub fn get_mut<'a>(self: &'a mut Table, path: &[Symbol]) -> &'a mut HashTree<Symbol, Entry> {
         if path.is_empty() {
             return self;
         }
-        self.get_child(&path[0]).get(&path[1..])
+        self.get_child_mut(&path[0]).get_mut(&path[1..])
     }
 }
 
-impl Visitor<State, Node, Root, String> for SymbolTableBuilder {
-    fn visit_root(&mut self, db: &dyn Compiler, filename: &String) -> Result<Root, TError> {
-        let expr = &db.parse_file(filename.to_string());
+impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
+    fn visit_root(&mut self, db: &dyn Compiler, module: &Path) -> Result<Root, TError> {
+        let expr = &db.parse_file(module.clone());
         if db.debug() > 0 {
-            eprintln!("building symbol table for file... {}", &filename);
+            eprintln!("building symbol table for file... {:?}", &module);
         }
 
-        let mut state = State {
-            table: to_hash_root(Entry { uses: vec![] }),
-            path: vec![Symbol::Named(filename.to_owned().replace(".tk", "").replace("/", "_").replace("\\", "_"))],
-        };
+        let mut table = Table::new();
+        let mut main_at = module.clone();
+        main_at.push(Symbol::Named("main".to_string()));
 
+        let main_symb = table.get_mut(&main_at);
+        main_symb.value.uses.insert(module.clone());
+
+        // Add in the globals here!
         // TODO: Inject needs for bootstrapping here (e.g. import function).
-        let println_path = [Symbol::Named("println".to_string())];
-        state.table.get(&println_path);
+        let println_path = [Symbol::Named("printf".to_string())];
+        table.get_mut(&println_path);
+
+        let mut state = State {
+            table,
+            path: module.clone(),
+        };
 
         if db.debug() > 0 {
             eprintln!("table: {:?}", state.table);
@@ -116,14 +135,30 @@ impl Visitor<State, Node, Root, String> for SymbolTableBuilder {
         let mut info = expr.get_info();
         state.path.push(let_name);
         info.defined_at = Some(state.path.clone());
-        state.table.get(&state.path);
+        state.table.get_mut(&state.path);
 
         // Consider the function arguments defined in this scope.
-        for arg in expr.args.clone().unwrap_or_else(Vec::new) {
-            let mut arg_path = state.path.clone();
-            arg_path.push(Symbol::Named(arg.name));
-            state.table.get(&arg_path);
-        }
+        let args = if let Some(e_args) = &expr.args {
+            let mut args = vec![];
+            for arg in e_args.iter() {
+                let mut arg_path = state.path.clone();
+                arg_path.push(Symbol::Named(arg.name.clone()));
+                state.table.get_mut(&arg_path);
+                let mut sym = arg.clone();
+                if db.debug() > 1 {
+                    eprintln!(
+                        "visiting let arg {:?} {}",
+                        arg_path.clone(),
+                        &sym.name.clone()
+                    );
+                }
+                sym.info.defined_at = Some(arg_path);
+                args.push(sym);
+            }
+            Some(args)
+        } else {
+            None
+        };
 
         let value = Box::new(self.visit(db, state, &expr.value)?);
         state.path.pop();
@@ -131,7 +166,7 @@ impl Visitor<State, Node, Root, String> for SymbolTableBuilder {
         Ok(Let {
             name: expr.name.clone(),
             value,
-            args: expr.args.clone(),
+            args,
             is_function: expr.is_function,
             info,
         }
@@ -158,10 +193,6 @@ impl Visitor<State, Node, Root, String> for SymbolTableBuilder {
             info: expr.get_info(),
         }
         .to_node())
-    }
-
-    fn visit_built_in(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &str) -> Res {
-        Ok(Node::BuiltIn(expr.to_string()))
     }
 
     fn handle_error(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Err) -> Res {

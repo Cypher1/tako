@@ -1,7 +1,5 @@
 use crate::ast::*;
-use crate::database::Compiler;
-use crate::errors::TError;
-
+use crate::{database::Compiler, errors::TError};
 use std::collections::HashSet;
 
 // Walks the AST compiling it to wasm.
@@ -180,11 +178,14 @@ impl CodeGenerator {
     }
 }
 
-impl Visitor<State, Code, Out, String> for CodeGenerator {
-    fn visit_root(&mut self, db: &dyn Compiler, filename: &String) -> Result<Out, TError> {
-        let root = db.look_up_definitions(filename.to_owned());
+impl Visitor<State, Code, Out, Path> for CodeGenerator {
+    fn visit_root(&mut self, db: &dyn Compiler, module: &Path) -> Result<Out, TError> {
+        let root = db.look_up_definitions(module.clone());
+        eprintln!("got definitions for {:?}", module.clone());
         let mut main_info = root.ast.get_info();
-        main_info.defined_at = Some(vec![]);
+        let mut main_at = module.clone();
+        main_at.push(Symbol::Named("main".to_string()));
+        main_info.defined_at = Some(main_at.clone());
         let main_let = Let {
             info: main_info,
             name: "main".to_string(),
@@ -192,9 +193,8 @@ impl Visitor<State, Code, Out, String> for CodeGenerator {
             args: Some(vec![]),
             is_function: true,
         };
-        let mut table = root.table;
-        let main_symb = table.find(&[]).expect("should exist");
-        main_symb.value.uses.push(vec![]);
+        let mut table = root.table; // TODO: Shouldn't be mut
+        eprintln!("table {:?}", table.clone());
         let main = match self.visit_let(db, &mut table, &main_let)? {
             Code::Func {
                 name: _,
@@ -209,8 +209,9 @@ impl Visitor<State, Code, Out, String> for CodeGenerator {
                 lambda: false,
                 return_type: "int".to_string(),
             },
-            _ => panic!("main must be a Func"),
+            thing => panic!("main must be a Func {:?}", thing),
         };
+        eprintln!("generated ast for main");
 
         // TODO(cypher1): Use a writer.
         let mut code = "".to_string();
@@ -219,6 +220,7 @@ impl Visitor<State, Code, Out, String> for CodeGenerator {
         for inc in self.includes.iter() {
             code = format!("{}{}\n", code, inc);
         }
+        eprintln!("built includes");
 
         // Forward declarations
         for func in self.functions.clone().iter() {
@@ -237,6 +239,7 @@ impl Visitor<State, Code, Out, String> for CodeGenerator {
             let function = pretty_print_block(func.to_owned(), "\n");
             code = format!("{}{}", code, function);
         }
+        eprintln!("built functions");
 
         Ok((code + "\n", self.flags.clone()))
     }
@@ -252,6 +255,10 @@ impl Visitor<State, Code, Out, String> for CodeGenerator {
                 .defined_at
                 .expect("Could not find definition for symbol"),
         );
+        if name == "printf" {
+            self.includes.insert("#include <iostream>".to_string());
+            return Ok(Code::Expr("printf".to_owned()))
+        }
         Ok(Code::Expr(name))
     }
 
@@ -296,18 +303,29 @@ impl Visitor<State, Code, Out, String> for CodeGenerator {
     }
 
     fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
-        // eprintln!("let here: {:?}, {:?}", expr.get_info().defined_at, expr.name);
-        let symb = state
-            .find(&expr.get_info().defined_at.expect("Undefined symbol"))
-            .expect("should exist");
-        if symb.value.uses.is_empty() {
+        eprintln!(
+            "let here: {:?}, {:?}",
+            expr.get_info().defined_at,
+            expr.name
+        );
+        let filename = expr
+            .get_info()
+            .loc
+            .expect("cannot find symbol location")
+            .filename
+            .expect("cannot find symbol file location");
+
+        let context = db.module_name(filename);
+
+        let path = expr.get_info().defined_at.expect("Undefined symbol")[context.len()..].to_vec();
+
+        let uses = db
+            .find_symbol_uses(context.clone(), path.clone())
+            .expect(&format!("couldn't find {:?} {:?}", context.clone(), path.clone()));
+        eprintln!("uses: {:?}", uses);
+        if uses.is_empty() {
             return Ok(Code::Empty);
         }
-        // eprintln!("args: {:?}", expr.args);
-        // for arg in (&expr.args).as_ref().unwrap_or(&vec![]) {
-        // eprintln!("  arg: {:?} {:?}", arg.name, arg.get_info().defined_at);
-        // }
-        // eprintln!("value: {}", expr.value);
         let name = make_name(
             expr.get_info()
                 .defined_at
@@ -374,7 +392,7 @@ impl Visitor<State, Code, Out, String> for CodeGenerator {
             ">=" => self.build_call2("", ">=", left, right),
             "<=" => self.build_call2("", "<=", left, right),
             "^" => {
-                self.includes.insert("#include <math.h>".to_string());
+                self.includes.insert("#include <cmath>".to_string());
                 self.flags.insert("-lm".to_string());
                 self.build_call2("pow", ", ", left, right)
             } // TODO: require pos pow
@@ -396,10 +414,6 @@ impl Visitor<State, Code, Out, String> for CodeGenerator {
         };
         // TODO: Short circuiting of deps.
         Ok(res)
-    }
-
-    fn visit_built_in(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &str) -> Res {
-        Ok(Code::Expr(expr.to_owned()))
     }
 
     fn handle_error(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Err) -> Res {
