@@ -225,7 +225,7 @@ impl Visitor<State, Prim, Prim> for Interpreter {
                     |frame| frame.get("it").expect("println needs an argument").clone(),
                 );
                 match it_val {
-                    Node::PrimNode(Prim::Str(it_val, _)) => println!("{}", it_val),
+                    Node::PrimNode(Prim::Str(it_val, _)) => print!("{}", it_val),
                     it_val => println!("{}", it_val),
                 }
                 return Ok(Prim::I32(0, Info::default()));
