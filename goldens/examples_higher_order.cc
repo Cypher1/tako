@@ -11,5 +11,5 @@ int main(int argc, char *argv[]) {
   const auto examples_higher_order_f2 = [&](const auto examples_higher_order__it__f_y) {
     return !(examples_higher_order__it__f_y);
   };
-  return printf("%s", (std::to_string(examples_higher_order_apply(3, examples_higher_order_f1)) + std::string(" ") + (examples_higher_order_apply(1, examples_higher_order_f2) ? "true" : "false")).c_str());
+  return printf("%s\n", (std::to_string(examples_higher_order_apply(3, examples_higher_order_f1)) + std::string(" ") + (examples_higher_order_apply(1, examples_higher_order_f2) ? "true" : "false")).c_str());
 }

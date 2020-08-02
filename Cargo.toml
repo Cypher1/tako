@@ -7,6 +7,7 @@ build = "src/build.rs"
 
 [dependencies]
 salsa = "0.15.0"
+thiserror = "1.0.20"
 
 [dev-dependencies]
 quickcheck = "0.9"
