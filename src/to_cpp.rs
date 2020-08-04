@@ -403,6 +403,9 @@ string to_string(const T& t){
   out << t;
   return out.str();
 }
+string to_string(const bool& t){
+  return t ? \"true\" : \"false\";
+}
 }".to_string());
                 let left = self.build_call1("std::to_string", left);
                 let right = self.build_call1("std::to_string", right);
