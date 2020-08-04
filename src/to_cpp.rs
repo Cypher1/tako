@@ -154,7 +154,7 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
             };
             if lambda {
                 format!(
-                    "{indent}const auto {} = [&] ({}) {};",
+                    "{indent}const auto {} = [&]({}) {};",
                     name,
                     args.join(", "),
                     body,
@@ -298,7 +298,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                         pretty_print_block(self.visit_sym(db, state, lambda_arg)?, "")
                     ));
                 }
-                arg_exprs.push(format!("[&] ({}){{{}}}", arg_names.join(", "), arg_expr));
+                arg_exprs.push(format!("[&]({}){{{}}}", arg_names.join(", "), arg_expr));
                 continue;
             }
             let arg_expr = pretty_print_block(body, "");
@@ -370,7 +370,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
 
             return Ok(node);
         }
-        Ok(body.with_expr(&|x| Code::Statement(format!("const int {} = {};", name, x))))
+        Ok(body.with_expr(&|x| Code::Statement(format!("const int {} = {}", name, x))))
     }
 
     fn visit_un_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &UnOp) -> Res {
@@ -396,13 +396,13 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             "++" => {
                 self.includes.insert("#include <string>
 #include <sstream>
-namespace std {
-    template <typename T>
-    string to_string(const T& value){
-        stringstream out;
-        out << value;
-        return out.str();
-    }
+namespace std{
+template <typename T>
+string to_string(const T& t){
+  stringstream out;
+  out << t;
+  return out.str();
+}
 }".to_string());
                 let left = self.build_call1("std::to_string", left);
                 let right = self.build_call1("std::to_string", right);
@@ -426,7 +426,7 @@ namespace std {
                 let done = Code::If {
                     condition: Box::new(left),
                     then: Box::new(right),
-                    then_else: Box::new(Code::Statement("throw 101;".to_string())),
+                    then_else: Box::new(Code::Statement("throw 101".to_string())),
                 };
                 return Ok(done);
             }
