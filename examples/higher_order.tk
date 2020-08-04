@@ -1,3 +1,4 @@
 apply(x, f)=f(y=f(y=x))
 
-printf("%s\n", apply(x=3, f(y)=y*2)+"  "+apply(x=true, f(y)=(!y)))
+print(apply(x=3, f(y)=y*2)++"  "++apply(x=true, f(y)=(!y))++"\n");
+0

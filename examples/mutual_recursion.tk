@@ -6,4 +6,4 @@ is_odd(y)=
   y==0-|false
   ?(!is_even(x=y-1))
 
-is_even(x=260) // Current maximum seems to be 288
+is_even(x=20p0) // Current maximum seems to be 288

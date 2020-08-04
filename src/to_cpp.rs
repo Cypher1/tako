@@ -107,7 +107,7 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
                 .collect();
             format!("{{{}{indent}}}", body.join(""), indent = indent,)
         }
-        Code::Statement(line) => format!("{}{}", indent, line),
+        Code::Statement(line) => format!("{}{};", indent, line),
         Code::Empty => "".to_string(),
         Code::Expr(line) => line,
         Code::If {
@@ -191,10 +191,11 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             name: "main".to_string(),
             value: Box::new(root.ast.clone()),
             args: Some(vec![]),
-            is_function: true,
         };
         let mut table = root.table; // TODO: Shouldn't be mut
-        eprintln!("table {:?}", table);
+        if db.debug() > 1 {
+            eprintln!("table {:?}", table);
+        }
         let main = match self.visit_let(db, &mut table, &main_let)? {
             Code::Func {
                 name: _,
@@ -255,9 +256,9 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 .defined_at
                 .expect("Could not find definition for symbol"),
         );
-        if name == "printf" {
+        if name == "print" {
             self.includes.insert("#include <iostream>".to_string());
-            return Ok(Code::Expr("printf".to_owned()));
+            return Ok(Code::Expr("std::cout << ".to_owned()));
         }
         Ok(Code::Expr(name))
     }
@@ -276,20 +277,24 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
     fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
         // eprintln!("apply here: {:?}", expr);
         let val = self.visit(db, state, &expr.inner)?;
-        let args: Vec<Code> = expr
-            .args
-            .iter()
-            .map(|s| {
-                self.visit(db, state, &s.value)
-                    .expect("Could not find definition for apply argument")
-            })
-            .collect();
         let mut arg_exprs = vec![];
-        for arg in args.iter() {
-            match &arg {
-                Code::Expr(arg_expr) => arg_exprs.push(arg_expr.clone()),
-                _ => panic!("Unexpected block used as apply argument"),
+        for arg in expr.args.iter() {
+            let body = self.visit(db, state, &arg.value)?;
+            if let Some(args) = &arg.args {
+                let body = body.with_expr(&|exp| Code::Statement(format!("return {}", exp)));
+                let arg_expr = pretty_print_block(body, "");
+                let mut arg_names: Vec<String> = vec![];
+                for lambda_arg in args.iter() {
+                    arg_names.push(format!(
+                        "const auto {}",
+                        pretty_print_block(self.visit_sym(db, state, lambda_arg)?, "")
+                    ));
+                }
+                arg_exprs.push(format!("[&] ({}){{{}}}", arg_names.join(", "), arg_expr));
+                continue;
             }
+            let arg_expr = pretty_print_block(body, "");
+            arg_exprs.push(arg_expr.clone())
         }
         // TODO: require label is none.
         let arg_str = arg_exprs.join(", ");
@@ -331,12 +336,10 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 .defined_at
                 .expect("Could not find definition for let"),
         );
-        let body = Box::new(self.visit(db, state, &expr.value)?);
-        if expr.is_function {
-            let args: Vec<String> = expr
-                .args
-                .as_ref()
-                .unwrap_or(&vec![])
+        let body = self.visit(db, state, &expr.value)?;
+        if let Some(args) = &expr.args {
+            let body = body.with_expr(&|exp| Code::Statement(format!("return {}", exp)));
+            let args: Vec<String> = args
                 .iter()
                 .map(|s| {
                     format!(
@@ -354,11 +357,11 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 name,
                 args,
                 return_type: "int".to_string(),
-                body,
+                body: Box::new(body),
                 lambda: true,
             };
 
-            return Ok(node.with_expr(&|exp| Code::Statement(format!("return {};", exp))));
+            return Ok(node);
         }
         Ok(body.with_expr(&|x| Code::Statement(format!("const int {} = {};", name, x))))
     }
@@ -383,6 +386,12 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         let res = match expr.name.as_str() {
             "*" => self.build_call2("", "*", left, right),
             "+" => self.build_call2("", "+", left, right),
+            "++" => {
+                self.includes.insert("#include <string>\nnamespace std {\n\ntemplate <typename T>\nstring to_string(const T& value){\nreturn string(value);\n}\n}".to_string());
+                let left = self.build_call1("std::to_string", left);
+                let right = self.build_call1("std::to_string", right);
+                self.build_call2("", "+", left, right)
+            }
             "/" => self.build_call2("", "/", left, right), // TODO: require divisibility
             "-" => self.build_call2("", "-", left, right),
             "==" => self.build_call2("", "==", left, right),
