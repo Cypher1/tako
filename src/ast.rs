@@ -83,7 +83,6 @@ pub struct Let {
     pub name: String,
     pub value: Box<Node>,
     pub args: Option<Vec<Sym>>, // TODO(cypher1): Args should be let nodes.
-    pub is_function: bool,
     pub info: Info,
 }
 

@@ -113,7 +113,6 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
             name: expr.name.clone(),
             args: expr.args.clone(),
             value,
-            is_function: expr.is_function,
             info: expr.get_info(),
         }
         .to_node())

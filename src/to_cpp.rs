@@ -77,15 +77,28 @@ impl Code {
                 left.extend(right);
                 Code::Block(left)
             }
-            (left, Code::Block(mut right)) => {
+            (mut left, Code::Block(mut right)) => {
+                if let Code::Expr(expr) = left {
+                    left = Code::Statement(expr);
+                }
                 right.insert(0, left);
                 Code::Block(right) // Backwards?
             }
             (Code::Block(mut left), right) => {
+                for line in left.iter_mut() {
+                    if let Code::Expr(expr) = line {
+                        *line = Code::Statement(expr.to_owned());
+                    }
+                }
                 left.push(right);
                 Code::Block(left)
             }
-            (left, right) => Code::Block(vec![left, right]),
+            (mut left, right) => {
+                if let Code::Expr(expr) = left {
+                    left = Code::Statement(expr);
+                }
+                Code::Block(vec![left, right])
+            }
         }
     }
 }
@@ -107,9 +120,9 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
                 .collect();
             format!("{{{}{indent}}}", body.join(""), indent = indent,)
         }
-        Code::Statement(line) => format!("{}{}", indent, line),
-        Code::Empty => "".to_string(),
         Code::Expr(line) => line,
+        Code::Statement(line) => format!("{}{};", indent, line),
+        Code::Empty => "".to_string(),
         Code::If {
             condition,
             then,
@@ -141,7 +154,7 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
             };
             if lambda {
                 format!(
-                    "{indent}const auto {} = [&] ({}) {};",
+                    "{indent}const auto {} = [&]({}) {};",
                     name,
                     args.join(", "),
                     body,
@@ -181,7 +194,6 @@ impl CodeGenerator {
 impl Visitor<State, Code, Out, Path> for CodeGenerator {
     fn visit_root(&mut self, db: &dyn Compiler, module: &Path) -> Result<Out, TError> {
         let root = db.look_up_definitions(module.clone());
-        eprintln!("got definitions for {:?}", module.clone());
         let mut main_info = root.ast.get_info();
         let mut main_at = module.clone();
         main_at.push(Symbol::Named("main".to_string()));
@@ -191,10 +203,11 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             name: "main".to_string(),
             value: Box::new(root.ast.clone()),
             args: Some(vec![]),
-            is_function: true,
         };
         let mut table = root.table; // TODO: Shouldn't be mut
-        eprintln!("table {:?}", table);
+        if db.debug() > 1 {
+            eprintln!("table {:?}", table);
+        }
         let main = match self.visit_let(db, &mut table, &main_let)? {
             Code::Func {
                 name: _,
@@ -211,17 +224,15 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             },
             thing => panic!("main must be a Func {:?}", thing),
         };
-        eprintln!("generated ast for main");
-
         // TODO(cypher1): Use a writer.
         let mut code = "".to_string();
 
         // #includes
-        for inc in self.includes.iter() {
+        let mut includes: Vec<&String> = self.includes.iter().collect();
+        includes.sort();
+        for inc in includes.iter() {
             code = format!("{}{}\n", code, inc);
         }
-        eprintln!("built includes");
-
         // Forward declarations
         for func in self.functions.clone().iter() {
             match &func {
@@ -239,8 +250,6 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             let function = pretty_print_block(func.to_owned(), "\n");
             code = format!("{}{}", code, function);
         }
-        eprintln!("built functions");
-
         Ok((code + "\n", self.flags.clone()))
     }
 
@@ -255,9 +264,9 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 .defined_at
                 .expect("Could not find definition for symbol"),
         );
-        if name == "printf" {
+        if name == "print" {
             self.includes.insert("#include <iostream>".to_string());
-            return Ok(Code::Expr("printf".to_owned()));
+            return Ok(Code::Expr("std::cout << ".to_owned()));
         }
         Ok(Code::Expr(name))
     }
@@ -276,20 +285,24 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
     fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
         // eprintln!("apply here: {:?}", expr);
         let val = self.visit(db, state, &expr.inner)?;
-        let args: Vec<Code> = expr
-            .args
-            .iter()
-            .map(|s| {
-                self.visit(db, state, &s.value)
-                    .expect("Could not find definition for apply argument")
-            })
-            .collect();
         let mut arg_exprs = vec![];
-        for arg in args.iter() {
-            match &arg {
-                Code::Expr(arg_expr) => arg_exprs.push(arg_expr.clone()),
-                _ => panic!("Unexpected block used as apply argument"),
+        for arg in expr.args.iter() {
+            let body = self.visit(db, state, &arg.value)?;
+            if let Some(args) = &arg.args {
+                let body = body.with_expr(&|exp| Code::Statement(format!("return {}", exp)));
+                let arg_expr = pretty_print_block(body, "");
+                let mut arg_names: Vec<String> = vec![];
+                for lambda_arg in args.iter() {
+                    arg_names.push(format!(
+                        "const auto {}",
+                        pretty_print_block(self.visit_sym(db, state, lambda_arg)?, "")
+                    ));
+                }
+                arg_exprs.push(format!("[&]({}){{{}}}", arg_names.join(", "), arg_expr));
+                continue;
             }
+            let arg_expr = pretty_print_block(body, "");
+            arg_exprs.push(arg_expr.clone())
         }
         // TODO: require label is none.
         let arg_str = arg_exprs.join(", ");
@@ -303,11 +316,11 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
     }
 
     fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
-        eprintln!(
-            "let here: {:?}, {:?}",
-            expr.get_info().defined_at,
-            expr.name
-        );
+        // eprintln!(
+        //     "let here: {:?}, {:?}",
+        //     expr.get_info().defined_at,
+        //     expr.name
+        // );
         let filename = expr
             .get_info()
             .loc
@@ -322,7 +335,6 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         let uses = db
             .find_symbol_uses(context.clone(), path.clone())
             .unwrap_or_else(|| panic!("couldn't find {:?} {:?}", context.clone(), path.clone()));
-        eprintln!("uses: {:?}", uses);
         if uses.is_empty() {
             return Ok(Code::Empty);
         }
@@ -331,12 +343,10 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 .defined_at
                 .expect("Could not find definition for let"),
         );
-        let body = Box::new(self.visit(db, state, &expr.value)?);
-        if expr.is_function {
-            let args: Vec<String> = expr
-                .args
-                .as_ref()
-                .unwrap_or(&vec![])
+        let body = self.visit(db, state, &expr.value)?;
+        if let Some(args) = &expr.args {
+            let body = body.with_expr(&|exp| Code::Statement(format!("return {}", exp)));
+            let args: Vec<String> = args
                 .iter()
                 .map(|s| {
                     format!(
@@ -354,13 +364,13 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 name,
                 args,
                 return_type: "int".to_string(),
-                body,
+                body: Box::new(body),
                 lambda: true,
             };
 
-            return Ok(node.with_expr(&|exp| Code::Statement(format!("return {};", exp))));
+            return Ok(node);
         }
-        Ok(body.with_expr(&|x| Code::Statement(format!("const int {} = {};", name, x))))
+        Ok(body.with_expr(&|x| Code::Statement(format!("const int {} = {}", name, x))))
     }
 
     fn visit_un_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &UnOp) -> Res {
@@ -383,6 +393,24 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         let res = match expr.name.as_str() {
             "*" => self.build_call2("", "*", left, right),
             "+" => self.build_call2("", "+", left, right),
+            "++" => {
+                self.includes.insert("#include <string>
+#include <sstream>
+namespace std{
+template <typename T>
+string to_string(const T& t){
+  stringstream out;
+  out << t;
+  return out.str();
+}
+string to_string(const bool& t){
+  return t ? \"true\" : \"false\";
+}
+}".to_string());
+                let left = self.build_call1("std::to_string", left);
+                let right = self.build_call1("std::to_string", right);
+                self.build_call2("", "+", left, right)
+            }
             "/" => self.build_call2("", "/", left, right), // TODO: require divisibility
             "-" => self.build_call2("", "-", left, right),
             "==" => self.build_call2("", "==", left, right),
@@ -401,7 +429,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 let done = Code::If {
                     condition: Box::new(left),
                     then: Box::new(right),
-                    then_else: Box::new(Code::Statement("throw 101;".to_string())),
+                    then_else: Box::new(Code::Statement("throw 101".to_string())),
                 };
                 return Ok(done);
             }

@@ -74,7 +74,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
 
         // Add in the globals here!
         // TODO: Inject needs for bootstrapping here (e.g. import function).
-        let println_path = [Symbol::Named("printf".to_string())];
+        let println_path = [Symbol::Named("print".to_string())];
         table.get_mut(&println_path);
 
         let mut state = State {
@@ -167,7 +167,6 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
             name: expr.name.clone(),
             value,
             args,
-            is_function: expr.is_function,
             info,
         }
         .to_node())

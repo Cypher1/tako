@@ -15,6 +15,7 @@ fn binding_power(tok: &Token) -> (i32, bool) {
             ":" => 42,
             "?" => 45,
             "-|" => 47,
+            "++" => 48,
             "<" => 50,
             "<=" => 50,
             ">" => 50,
@@ -62,7 +63,6 @@ fn get_defs(root: Node) -> Vec<Let> {
         SymNode(n) => args.push(Let {
             name: n.name.clone(),
             args: None,
-            is_function: false,
             info: n.get_info(),
             value: Box::new(n.to_node()),
         }),
@@ -79,7 +79,6 @@ fn get_defs(root: Node) -> Vec<Let> {
                 args.push(Let {
                     name: "it".to_string(),
                     args: None,
-                    is_function: false,
                     value: Box::new(
                         BinOp {
                             name,
@@ -96,7 +95,6 @@ fn get_defs(root: Node) -> Vec<Let> {
         n => args.push(Let {
             name: "it".to_string(),
             args: None,
-            is_function: false,
             value: Box::new(n.clone()),
             info: n.get_info(),
         }),
@@ -259,7 +257,6 @@ fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
                                 Let {
                                     name: s.name,
                                     args: None,
-                                    is_function: false,
                                     value: Box::new(right),
                                     info: head.get_info(),
                                 }
@@ -273,7 +270,6 @@ fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
                                     Let {
                                         name: s.name,
                                         args: Some(a.args.iter().map(|l| l.to_sym()).collect()),
-                                        is_function: true,
                                         value: Box::new(right),
                                         info: head.get_info(),
                                     }
@@ -625,7 +621,6 @@ mod tests {
                             .to_node()
                         ),
                         info: Info::default(),
-                        is_function: true
                     }
                     .to_node()
                 ),

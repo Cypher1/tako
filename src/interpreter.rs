@@ -12,7 +12,7 @@ pub struct Interpreter {}
 
 fn globals() -> Frame {
     map!(
-        "printf".to_string() => Sym{name: "printf".to_string(), info: Info::default()}.to_node()
+        "print".to_string() => Sym{name: "print".to_string(), info: Info::default()}.to_node()
     )
 }
 
@@ -45,6 +45,23 @@ fn prim_add(l: &Prim, r: &Prim, info: Info) -> Res {
             info,
         )),
     }
+}
+
+fn prim_add_strs(l: &Prim, r: &Prim, info: Info) -> Res {
+    use Prim::*;
+    let l = match l {
+        Bool(v, _) => format!("{}", v),
+        I32(v, _) => format!("{}", v),
+        Str(v, _) => v.clone(),
+        Lambda(v) => format!("{}", v),
+    };
+    let r = match r {
+        Bool(v, _) => format!("{}", v),
+        I32(v, _) => format!("{}", v),
+        Str(v, _) => v.clone(),
+        Lambda(v) => format!("{}", v),
+    };
+    Ok(Str(l + &r, info))
 }
 
 fn prim_eq(l: &Prim, r: &Prim, info: Info) -> Res {
@@ -219,13 +236,13 @@ impl Visitor<State, Prim, Prim> for Interpreter {
         }
         let name = &expr.name;
         match &name[..] {
-            "printf" => {
+            "print" => {
                 let it_val = state.last().map_or_else(
                     || Prim::Str("".to_string(), Info::default()).to_node(),
                     |frame| frame.get("it").expect("println needs an argument").clone(),
                 );
                 match it_val {
-                    Node::PrimNode(Prim::Str(it_val, _)) => println!("{}", it_val),
+                    Node::PrimNode(Prim::Str(it_val, _)) => print!("{}", it_val),
                     it_val => println!("{}", it_val),
                 }
                 return Ok(Prim::I32(0, Info::default()));
@@ -278,7 +295,7 @@ impl Visitor<State, Prim, Prim> for Interpreter {
             eprintln!("evaluating let {}", expr.clone().to_node());
         }
 
-        if expr.is_function {
+        if let Some(_) = expr.args {
             state
                 .last_mut()
                 .unwrap()
@@ -336,6 +353,7 @@ impl Visitor<State, Prim, Prim> for Interpreter {
         let mut r = || self.visit(db, state, &expr.right);
         match expr.name.as_str() {
             "+" => prim_add(&l?, &r()?, info),
+            "++" => prim_add_strs(&l?, &r()?, info),
             "==" => prim_eq(&l?, &r()?, info),
             "!=" => prim_neq(&l?, &r()?, info),
             ">" => prim_gt(&l?, &r()?, info),
@@ -352,7 +370,7 @@ impl Visitor<State, Prim, Prim> for Interpreter {
             ";" => {
                 l?;
                 Ok(r()?)
-            },
+            }
             "?" => match l {
                 Err(_) => r(),
                 l => l,
