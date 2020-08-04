@@ -77,15 +77,28 @@ impl Code {
                 left.extend(right);
                 Code::Block(left)
             }
-            (left, Code::Block(mut right)) => {
+            (mut left, Code::Block(mut right)) => {
+                if let Code::Expr(expr) = left {
+                    left = Code::Statement(expr);
+                }
                 right.insert(0, left);
                 Code::Block(right) // Backwards?
             }
             (Code::Block(mut left), right) => {
+                for line in left.iter_mut() {
+                    if let Code::Expr(expr) = line {
+                        *line = Code::Statement(expr.to_owned());
+                    }
+                }
                 left.push(right);
                 Code::Block(left)
             }
-            (left, right) => Code::Block(vec![left, right]),
+            (mut left, right) => {
+                if let Code::Expr(expr) = left {
+                    left = Code::Statement(expr);
+                }
+                Code::Block(vec![left, right])
+            },
         }
     }
 }
@@ -107,9 +120,9 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
                 .collect();
             format!("{{{}{indent}}}", body.join(""), indent = indent,)
         }
+        Code::Expr(line) => line,
         Code::Statement(line) => format!("{}{};", indent, line),
         Code::Empty => "".to_string(),
-        Code::Expr(line) => line,
         Code::If {
             condition,
             then,
@@ -181,7 +194,6 @@ impl CodeGenerator {
 impl Visitor<State, Code, Out, Path> for CodeGenerator {
     fn visit_root(&mut self, db: &dyn Compiler, module: &Path) -> Result<Out, TError> {
         let root = db.look_up_definitions(module.clone());
-        eprintln!("got definitions for {:?}", module.clone());
         let mut main_info = root.ast.get_info();
         let mut main_at = module.clone();
         main_at.push(Symbol::Named("main".to_string()));
@@ -212,17 +224,15 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             },
             thing => panic!("main must be a Func {:?}", thing),
         };
-        eprintln!("generated ast for main");
-
         // TODO(cypher1): Use a writer.
         let mut code = "".to_string();
 
         // #includes
-        for inc in self.includes.iter() {
+        let mut includes: Vec<&String> = self.includes.iter().collect();
+        includes.sort();
+        for inc in includes.iter() {
             code = format!("{}{}\n", code, inc);
         }
-        eprintln!("built includes");
-
         // Forward declarations
         for func in self.functions.clone().iter() {
             match &func {
@@ -240,8 +250,6 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             let function = pretty_print_block(func.to_owned(), "\n");
             code = format!("{}{}", code, function);
         }
-        eprintln!("built functions");
-
         Ok((code + "\n", self.flags.clone()))
     }
 
@@ -308,11 +316,11 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
     }
 
     fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
-        eprintln!(
-            "let here: {:?}, {:?}",
-            expr.get_info().defined_at,
-            expr.name
-        );
+        // eprintln!(
+        //     "let here: {:?}, {:?}",
+        //     expr.get_info().defined_at,
+        //     expr.name
+        // );
         let filename = expr
             .get_info()
             .loc
@@ -327,7 +335,6 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         let uses = db
             .find_symbol_uses(context.clone(), path.clone())
             .unwrap_or_else(|| panic!("couldn't find {:?} {:?}", context.clone(), path.clone()));
-        eprintln!("uses: {:?}", uses);
         if uses.is_empty() {
             return Ok(Code::Empty);
         }
@@ -387,7 +394,16 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             "*" => self.build_call2("", "*", left, right),
             "+" => self.build_call2("", "+", left, right),
             "++" => {
-                self.includes.insert("#include <string>\nnamespace std {\n\ntemplate <typename T>\nstring to_string(const T& value){\nreturn string(value);\n}\n}".to_string());
+                self.includes.insert("#include <string>
+#include <sstream>
+namespace std {
+    template <typename T>
+    string to_string(const T& value){
+        stringstream out;
+        out << value;
+        return out.str();
+    }
+}".to_string());
                 let left = self.build_call1("std::to_string", left);
                 let right = self.build_call1("std::to_string", right);
                 self.build_call2("", "+", left, right)

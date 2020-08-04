@@ -79,7 +79,9 @@ fn build_symbol_table(db: &dyn Compiler, module: Path) -> Root {
 }
 
 fn find_symbol(db: &dyn Compiler, mut context: Path, path: Path) -> Option<Table> {
-    eprintln!(">>> looking for symbol in {:?}, {:?}", context, path);
+    if db.debug() > 1 {
+        eprintln!(">>> looking for symbol in {:?}, {:?}", context, path);
+    }
     let table = db.look_up_definitions(context.clone()).table;
     loop {
         if let Some(Symbol::Anon()) = context.last() {
@@ -88,12 +90,14 @@ fn find_symbol(db: &dyn Compiler, mut context: Path, path: Path) -> Option<Table
         let mut search: Vec<Symbol> = context.clone();
         search.extend(path.clone());
         if let Some(node) = table.find(&search) {
-            eprintln!("FOUND INSIDE {:?} {:?}", context, search);
+            if db.debug() > 1 {
+                eprintln!("FOUND INSIDE {:?} {:?}", context, search);
+            }
             return Some(node.clone());
         }
-        // if db.debug() > 1 {
-        eprintln!("   not found {:?} at {:?}", path.clone(), search.clone());
-        //}
+        if db.debug() > 1 {
+            eprintln!("   not found {:?} at {:?}", path.clone(), search.clone());
+        }
         if context.is_empty() {
             eprintln!("   not found {:?} at {:?}", path, search);
             return None;
@@ -108,7 +112,9 @@ fn find_symbol_uses(db: &dyn Compiler, context: Path, path: Path) -> Option<Hash
 
 fn look_up_definitions(db: &dyn Compiler, module: Path) -> Root {
     use crate::definition_finder::DefinitionFinder;
-    eprintln!("look up definitions >> {:?}", module);
+    if db.debug() > 0 {
+        eprintln!("look up definitions >> {:?}", module);
+    }
     DefinitionFinder::process(&module, db).expect("failed looking up symbols")
 }
 
