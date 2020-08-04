@@ -98,7 +98,7 @@ impl Code {
                     left = Code::Statement(expr);
                 }
                 Code::Block(vec![left, right])
-            },
+            }
         }
     }
 }
