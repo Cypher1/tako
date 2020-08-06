@@ -8,6 +8,9 @@ string to_string(const T& t){
   out << t;
   return out.str();
 }
+string to_string(const bool& t){
+  return t ? "true" : "false";
+}
 }
 
 int main(int argc, char* argv[]) {

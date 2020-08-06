@@ -32,21 +32,18 @@ fn build_test(mut f: &std::fs::File, path: String) {
 
     eprintln!("Building test '{}'", path);
     let opts = TestOptions::from_str(&test).expect("Couldn't read test options");
-    let (test_type, result) = if opts.expected == TestResult::Panic {
+    let (test_type, expectation) = if opts.expected == TestResult::Panic {
         ("\n#[should_panic]", "".to_owned()) // No result checking needed.
     } else if let TestResult::Output(gold) = opts.expected {
-        (
-            "",
-            format!(
-                "
+        ("", format!("
+    eprintln!(\"Loading golden file {{}}\", \"{gold}\");
     let mut goldfile=std::fs::File::open(\"{gold}\").unwrap();
     let mut golden = String::new();
     goldfile.read_to_string(&mut golden).unwrap();
+    eprintln!(\"DONE 3\");
     use pretty_assertions::assert_eq;
-    assert_eq!(golden.replace(\"\\r\n\", \"\n\"), result);",
-                gold = gold
-            ),
-        )
+    assert_eq!(golden.replace(\"\\r\n\", \"\n\"), format!(\"{{}}{{}}\", stdout.join(\"\"), result));",
+    gold = gold))
     } else {
         ("", "".to_owned())
     };
@@ -62,16 +59,21 @@ fn {fn_name}() {{
     let mut db = DB::default();
     db.set_options(opts);
     for f in db.options().files.iter() {{
-        let result = super::work(&mut db, &f).expect(\"failed\");
-        // Check the result!
+        let mut stdout: Vec<String> = vec![];
+        let result = {{
+            let mut print_impl = |string_v| -> () {{stdout.push(string_v)}};
+            let result = super::work(&mut db, &f, Some(&mut print_impl)).expect(\"failed\");
+            result
+        }};
         eprintln!(\"Result:\\n{{}}\", result);
-        {result}
+        {expectation}
+        eprintln!(\"DONE 4\");
     }}
 }}",
         fn_name = fn_name,
         test_type = test_type,
         opts = test,
-        result = result
+        expectation = expectation
     )
     .unwrap();
 }

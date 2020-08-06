@@ -7,8 +7,15 @@ use crate::errors::TError;
 type Frame = HashMap<String, Node>;
 
 // Walks the AST interpreting it.
-#[derive(Default)]
-pub struct Interpreter {}
+pub struct Interpreter<'a> {
+    pub print_impl: Option<&'a mut dyn FnMut(String)>,
+}
+
+impl<'a> Default for Interpreter<'a> {
+    fn default() -> Interpreter<'a> {
+        Interpreter { print_impl: None }
+    }
+}
 
 fn globals() -> Frame {
     map!(
@@ -224,7 +231,7 @@ fn prim_pow(l: &Prim, r: &Prim, info: Info) -> Res {
 // TODO: Return nodes.
 type Res = Result<Prim, TError>;
 type State = Vec<Frame>;
-impl Visitor<State, Prim, Prim> for Interpreter {
+impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
     fn visit_root(&mut self, db: &dyn Compiler, root: &Root) -> Res {
         let mut state = vec![globals()];
         self.visit(db, &mut state, &root.ast)
@@ -237,15 +244,40 @@ impl Visitor<State, Prim, Prim> for Interpreter {
         let name = &expr.name;
         match &name[..] {
             "print" => {
+                let default: &mut dyn FnMut(String) = &mut |it| print!("{}", it);
+                let mut print_impl = |it| self.print_impl.as_deref_mut().unwrap_or(default)(it);
                 let it_val = state.last().map_or_else(
                     || Prim::Str("".to_string(), Info::default()).to_node(),
                     |frame| frame.get("it").expect("println needs an argument").clone(),
                 );
                 match it_val {
-                    Node::PrimNode(Prim::Str(it_val, _)) => print!("{}", it_val),
-                    it_val => println!("{}", it_val),
+                    Node::PrimNode(Prim::Str(it_val, _)) => print_impl(it_val),
+                    it_val => print_impl(format!("{}", it_val)),
                 }
                 return Ok(Prim::I32(0, Info::default()));
+            }
+            "argc" => {
+                return Ok(Prim::I32(
+                    db.options().interpreter_args.len() as i32,
+                    Info::default(),
+                ));
+            }
+            "argv" => {
+                let it_val = state.last().map_or_else(
+                    || Prim::Str("".to_string(), Info::default()).to_node(),
+                    |frame| frame.get("it").expect("argv needs an argument").clone(),
+                );
+                if let Node::PrimNode(Prim::I32(it_val, _)) = it_val {
+                    return Ok(Prim::Str(
+                        db.options()
+                            .interpreter_args
+                            .get(it_val as usize)
+                            .unwrap_or(&"".to_owned())
+                            .clone(),
+                        Info::default(),
+                    ));
+                }
+                return Ok(Prim::Str("".to_string(), Info::default()));
             }
             _ => {}
         }

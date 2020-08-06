@@ -4,7 +4,7 @@ use std::collections::HashSet;
 use std::collections::VecDeque;
 
 use std::io::prelude::*;
-use std::process::Command;
+use std::{path::MAIN_SEPARATOR, process::Command};
 
 use crate::ast::{Node, Path, Root, Symbol, Table, Visitor};
 use crate::cli_options::Options;
@@ -47,7 +47,7 @@ pub fn module_name(_db: &dyn Compiler, filename: String) -> Path {
         .collect()
 }
 
-pub fn filename(_db: &dyn Compiler, module: Path) -> String {
+pub fn filename(db: &dyn Compiler, module: Path) -> String {
     let parts: Vec<&str> = module
         .iter()
         .map(|sym| match sym {
@@ -56,7 +56,9 @@ pub fn filename(_db: &dyn Compiler, module: Path) -> String {
         })
         .collect();
     let file_name = format!("{}.tk", parts.join("/"));
-    eprintln!("Getting filename for {:?}, {:?}", module, file_name);
+    if db.debug() > 0 {
+        eprintln!("Getting filename for {:?}, {:?}", module, file_name);
+    }
     file_name
 }
 
