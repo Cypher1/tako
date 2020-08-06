@@ -55,7 +55,7 @@ pub fn filename(db: &dyn Compiler, module: Path) -> String {
             Symbol::Anon() => "?",
         })
         .collect();
-    let file_name = format!("{}.tk", parts.join(&MAIN_SEPARATOR.to_string()));
+    let file_name = format!("{}.tk", parts.join("/"));
     if db.debug() > 0 {
         eprintln!("Getting filename for {:?}, {:?}", module, file_name);
     }
