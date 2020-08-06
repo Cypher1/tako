@@ -6,6 +6,7 @@ pub struct Options {
     pub show_table: bool,
     pub show_full_ast: bool,
     pub debug: i32,
+    pub interpreter_args: Vec<String>,
 }
 
 impl Default for Options {
@@ -17,6 +18,7 @@ impl Default for Options {
             show_table: false,
             show_full_ast: false,
             debug: 0,
+            interpreter_args: vec![],
         }
     }
 }
@@ -27,7 +29,12 @@ where
     T: Into<String>,
 {
     let mut opts = Options::default();
+    let mut got_dashdash = false;
     for f in args.into_iter().map(Into::into) {
+        if got_dashdash {
+            opts.interpreter_args.push(f.to_owned());
+            continue;
+        }
         if f.is_empty() {
         } else if f.starts_with('-') {
             match f.as_str() {
@@ -44,6 +51,7 @@ where
                     println!("{}{}", TITLE, VERSION);
                     return opts;
                 }
+                "--" => got_dashdash = true,
                 arg => {
                     if arg != "-h" && arg != "--help" {
                         eprintln!("unexpected flag '{}'", f);
@@ -53,6 +61,10 @@ where
                 }
             }
         } else {
+            if opts.files.is_empty() {
+                // This is the first argument, so it should be the 'main'.
+                opts.interpreter_args.push(f.to_owned());
+            }
             opts.files.push(f.to_string());
         }
     }

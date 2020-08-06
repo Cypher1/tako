@@ -48,14 +48,17 @@ fn main() -> std::io::Result<()> {
     db.set_options(parse_args(&args[1..]));
 
     for f in db.options().files.iter() {
-        let result = work(&mut db, &f)?; // discard the result (used for testing).
-        eprintln!("---Result---");
+        let result = work(&mut db, &f, None)?; // discard the result (used for testing).
         eprintln!("{}", result)
     }
     Ok(())
 }
 
-fn work(db: &mut DB, filename: &str) -> std::io::Result<String> {
+fn work(
+    db: &mut DB,
+    filename: &str,
+    print_impl: Option<&mut dyn FnMut(String)>,
+) -> std::io::Result<String> {
     let mut contents = String::new();
     let mut file = File::open(filename.to_owned())?;
     file.read_to_string(&mut contents)?;
@@ -67,7 +70,11 @@ fn work(db: &mut DB, filename: &str) -> std::io::Result<String> {
 
     if db.options().interactive {
         let table = db.build_symbol_table(module_name);
-        let res = Interpreter::process(&table, db).expect("could not interpret program");
+        let mut interp = Interpreter::default();
+        interp.print_impl = print_impl;
+        let res = interp
+            .visit_root(db, &table)
+            .expect("could not interpret program");
         use ast::ToNode;
         PrettyPrint::process(&res.to_node(), db).or_else(|_| panic!("Pretty print failed"))
     } else {

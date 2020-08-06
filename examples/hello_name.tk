@@ -1,0 +1,4 @@
+name=argv[1]
+print("Got "++argc++" arguments.\n")
+print("Hello, "++name++"!\n")
+0

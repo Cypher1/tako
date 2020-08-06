@@ -1,0 +1,3 @@
+Got 3 arguments.
+Hello, Peanut!
+0

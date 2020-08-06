@@ -74,8 +74,13 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
 
         // Add in the globals here!
         // TODO: Inject needs for bootstrapping here (e.g. import function).
-        let println_path = [Symbol::Named("print".to_string())];
-        table.get_mut(&println_path);
+        let globals: Vec<Path> = ["print", "argc", "argv"]
+            .iter()
+            .map(|x| vec![Symbol::Named(x.to_string())])
+            .collect();
+        for global in globals {
+            table.get_mut(&global);
+        }
 
         let mut state = State {
             table,

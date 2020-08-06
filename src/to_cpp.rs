@@ -268,6 +268,14 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             self.includes.insert("#include <iostream>".to_string());
             return Ok(Code::Expr("std::cout << ".to_owned()));
         }
+        if name == "argc" {
+            return Ok(Code::Expr("argc".to_owned()));
+        }
+        if name == "argv" {
+            return Ok(Code::Expr(
+                "([&argv](const int x){return argv[x];})".to_owned(),
+            ));
+        }
         Ok(Code::Expr(name))
     }
 
@@ -370,7 +378,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
 
             return Ok(node);
         }
-        Ok(body.with_expr(&|x| Code::Statement(format!("const int {} = {}", name, x))))
+        Ok(body.with_expr(&|x| Code::Statement(format!("const auto {} = {}", name, x))))
     }
 
     fn visit_un_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &UnOp) -> Res {
@@ -394,7 +402,8 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             "*" => self.build_call2("", "*", left, right),
             "+" => self.build_call2("", "+", left, right),
             "++" => {
-                self.includes.insert("#include <string>
+                self.includes.insert(
+                    "#include <string>
 #include <sstream>
 namespace std{
 template <typename T>
@@ -406,7 +415,9 @@ string to_string(const T& t){
 string to_string(const bool& t){
   return t ? \"true\" : \"false\";
 }
-}".to_string());
+}"
+                    .to_string(),
+                );
                 let left = self.build_call1("std::to_string", left);
                 let right = self.build_call1("std::to_string", right);
                 self.build_call2("", "+", left, right)
