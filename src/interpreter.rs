@@ -54,7 +54,7 @@ fn prim_add(l: &Prim, r: &Prim, info: Info) -> Res {
     }
 }
 
-fn prim_add_strs(l: &Prim, r: &Prim, info: Info) -> Res {
+pub fn prim_add_strs(l: &Prim, r: &Prim, info: Info) -> Res {
     use Prim::*;
     let l = match l {
         Bool(v, _) => format!("{}", v),
@@ -214,7 +214,7 @@ fn prim_or(l: &Prim, r: &Prim, info: Info) -> Res {
     }
 }
 
-fn prim_pow(l: &Prim, r: &Prim, info: Info) -> Res {
+pub fn prim_pow(l: &Prim, r: &Prim, info: Info) -> Res {
     use Prim::*;
     match (l, r) {
         (I32(l, _), Bool(r, _)) => Ok(I32(if *r { *l } else { 1 }, info)),
@@ -229,7 +229,7 @@ fn prim_pow(l: &Prim, r: &Prim, info: Info) -> Res {
 }
 
 // TODO: Return nodes.
-type Res = Result<Prim, TError>;
+pub type Res = Result<Prim, TError>;
 type State = Vec<Frame>;
 impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
     fn visit_root(&mut self, db: &dyn Compiler, root: &Root) -> Res {

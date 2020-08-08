@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
-use std::collections::HashSet;
-use std::collections::VecDeque;
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use std::io::prelude::*;
 use std::process::Command;
 
 use crate::ast::{Node, Path, Root, Symbol, Table, Visitor};
 use crate::cli_options::Options;
+use crate::externs::Extern;
 use crate::tokens::Token;
 
 #[salsa::query_group(CompilerStorage)]
@@ -18,6 +18,8 @@ pub trait Compiler: salsa::Database {
     #[salsa::input]
     fn options(&self) -> Options;
     fn debug(&self) -> i32;
+
+    fn get_externs(&self) -> HashMap<String, Extern>;
 
     fn module_name(&self, filename: String) -> Path;
     fn filename(&self, module: Path) -> String;
@@ -60,6 +62,11 @@ pub fn filename(db: &dyn Compiler, module: Path) -> String {
         eprintln!("Getting filename for {:?}, {:?}", module, file_name);
     }
     file_name
+}
+
+fn get_externs(db: &dyn Compiler) -> HashMap<String, Extern> {
+    use crate::externs::get_externs;
+    get_externs()
 }
 
 fn lex_file(db: &dyn Compiler, filename: String, module: Path) -> VecDeque<Token> {
