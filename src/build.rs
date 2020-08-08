@@ -62,8 +62,7 @@ fn {fn_name}() {{
         let mut stdout: Vec<String> = vec![];
         let result = {{
             let mut print_impl = |string_v| -> () {{stdout.push(string_v)}};
-            let result = super::work(&mut db, &f, Some(&mut print_impl)).expect(\"failed\");
-            result
+            super::work(&mut db, &f, Some(&mut print_impl)).expect(\"failed\")
         }};
         eprintln!(\"Result:\\n{{}}\", result);
         {expectation}
