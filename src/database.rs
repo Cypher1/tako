@@ -4,7 +4,7 @@ use std::collections::HashSet;
 use std::collections::VecDeque;
 
 use std::io::prelude::*;
-use std::{path::MAIN_SEPARATOR, process::Command};
+use std::process::Command;
 
 use crate::ast::{Node, Path, Root, Symbol, Table, Visitor};
 use crate::cli_options::Options;

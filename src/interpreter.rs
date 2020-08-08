@@ -327,7 +327,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             eprintln!("evaluating let {}", expr.clone().to_node());
         }
 
-        if let Some(_) = expr.args {
+        if expr.args.is_some() {
             state
                 .last_mut()
                 .unwrap()
