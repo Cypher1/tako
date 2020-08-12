@@ -71,7 +71,7 @@ fn get_externs(_db: &dyn Compiler) -> HashMap<String, Extern> {
 }
 
 fn get_extern(db: &dyn Compiler, name: String) -> Option<Extern> {
-    db.get_externs().get(&name).map(|x|x.clone())
+    db.get_externs().get(&name).cloned()
 }
 
 fn get_extern_operator(db: &dyn Compiler, name: String) -> Option<(i32, bool)> {

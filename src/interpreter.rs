@@ -8,12 +8,15 @@ type Frame = HashMap<String, Node>;
 
 // Walks the AST interpreting it.
 pub struct Interpreter<'a> {
-    pub impls: HashMap<String, &'a mut dyn FnMut(&dyn Compiler, Vec<&dyn Fn() -> Res>, Info)->Res>,
+    pub impls:
+        HashMap<String, &'a mut dyn FnMut(&dyn Compiler, Vec<&dyn Fn() -> Res>, Info) -> Res>,
 }
 
 impl<'a> Default for Interpreter<'a> {
     fn default() -> Interpreter<'a> {
-        Interpreter { impls: HashMap::new() }
+        Interpreter {
+            impls: HashMap::new(),
+        }
     }
 }
 
@@ -244,13 +247,19 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             eprintln!("evaluating let {}", expr.clone().to_node());
         }
         let name = &expr.name;
-        let it_val = || state.last().map(
-            |frame| match frame.get("it").expect(format!("{} needs an argument", expr.name).as_str()).clone() {
-                crate::ast::Node::PrimNode(prim) => prim,
-                node => panic!("{:?}", node)
-            },
-        );
-        let it_arg = ||Ok(it_val().unwrap());
+        let it_val = || {
+            state.last().map(|frame| {
+                match frame
+                    .get("it")
+                    .unwrap_or_else(|| panic!("{} needs an argument", expr.name))
+                    .clone()
+                {
+                    crate::ast::Node::PrimNode(prim) => prim,
+                    node => panic!("{:?}", node),
+                }
+            })
+        };
+        let it_arg = || Ok(it_val().unwrap());
         let value = find_symbol(&state, name);
         match value {
             Some(Node::PrimNode(prim)) => {
@@ -270,7 +279,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
                 }
                 return Ok(result);
             } // This is the variable
-            None => {},
+            None => {}
         }
         if db.debug() > 2 {
             eprintln!("checking for interpreter impl {}", expr.name.clone());

@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use derivative::Derivative;
+use std::collections::HashMap;
 
 use crate::ast::Info;
 use crate::ast::Prim::*;
@@ -14,19 +14,26 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
             let val = args[0]()?;
             match val {
                 Str(s, _) => print!("{}", s),
-                s => print!("{:?}", s)
+                s => print!("{:?}", s),
             };
-            Ok(I32(0, info.clone()))
+            Ok(I32(0, info))
         })),
-        "++" => Some(Box::new(|_, args, info| prim_add_strs(&args[0]()?, &args[1]()?, info))),
-        "^" => Some(Box::new(|_, args, info| prim_pow(&args[0]()?, &args[1]()?, info))),
+        "++" => Some(Box::new(|_, args, info| {
+            prim_add_strs(&args[0]()?, &args[1]()?, info)
+        })),
+        "^" => Some(Box::new(|_, args, info| {
+            prim_pow(&args[0]()?, &args[1]()?, info)
+        })),
         "argc" => Some(Box::new(|db, _, info| {
             Ok(I32(db.options().interpreter_args.len() as i32, info))
         })),
         "argv" => Some(Box::new(|db, args, info| {
             use crate::errors::TError;
             match args[0]()? {
-                I32(ind, _) => Ok(Str(db.options().interpreter_args[ind as usize].clone(), info)),
+                I32(ind, _) => Ok(Str(
+                    db.options().interpreter_args[ind as usize].clone(),
+                    info,
+                )),
                 value => Err(TError::TypeMismatch(
                     "Expected index to be of type i32".to_string(),
                     Box::new(value),
@@ -34,7 +41,7 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
                 )),
             }
         })),
-        _ => None
+        _ => None,
     }
 }
 

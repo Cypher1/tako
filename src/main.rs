@@ -16,11 +16,11 @@ mod cli_options;
 mod database;
 mod definition_finder;
 mod errors;
+mod externs;
 mod interpreter;
 mod pretty_print;
 mod symbol_table_builder;
 mod to_cpp;
-mod externs;
 
 // The following are only for tests
 #[cfg(test)]
@@ -58,7 +58,13 @@ fn main() -> std::io::Result<()> {
 fn work(
     db: &mut DB,
     filename: &str,
-    print_impl: Option<&mut dyn FnMut(&dyn Compiler, Vec<&dyn Fn() -> crate::interpreter::Res>, crate::ast::Info) -> crate::interpreter::Res>,
+    print_impl: Option<
+        &mut dyn FnMut(
+            &dyn Compiler,
+            Vec<&dyn Fn() -> crate::interpreter::Res>,
+            crate::ast::Info,
+        ) -> crate::interpreter::Res,
+    >,
 ) -> std::io::Result<String> {
     let mut contents = String::new();
     let mut file = File::open(filename.to_owned())?;
