@@ -6,17 +6,47 @@ use crate::ast::Prim::*;
 use crate::database::Compiler;
 use crate::interpreter::{prim_add_strs, prim_pow, Res};
 
+pub type FuncImpl = Box<dyn Fn(&dyn Compiler, Vec<&dyn Fn() -> Res>, Info) -> Res>;
+
+pub fn get_implementation(name: String) -> Option<FuncImpl> {
+    match name.as_str() {
+        "print" => Some(Box::new(|_, args, info| {
+            let val = args[0]()?;
+            match val {
+                Str(s, _) => print!("{}", s),
+                s => print!("{:?}", s)
+            };
+            Ok(I32(0, info.clone()))
+        })),
+        "++" => Some(Box::new(|_, args, info| prim_add_strs(&args[0]()?, &args[1]()?, info))),
+        "^" => Some(Box::new(|_, args, info| prim_pow(&args[0]()?, &args[1]()?, info))),
+        "argc" => Some(Box::new(|db, _, info| {
+            Ok(I32(db.options().interpreter_args.len() as i32, info))
+        })),
+        "argv" => Some(Box::new(|db, args, info| {
+            use crate::errors::TError;
+            match args[0]()? {
+                I32(ind, _) => Ok(Str(db.options().interpreter_args[ind as usize].clone(), info)),
+                value => Err(TError::TypeMismatch(
+                    "Expected index to be of type i32".to_string(),
+                    Box::new(value),
+                    info,
+                )),
+            }
+        })),
+        _ => None
+    }
+}
+
 #[derive(Derivative)]
 #[derivative(PartialEq, Eq, Clone, Debug)]
 pub struct Extern {
-    name: String,
-    operator: Option<(i32, bool)>, // (binding power, is_right_assoc) if the extern is an operator
-    #[derivative(PartialEq = "ignore", Debug = "ignore")]
-    implementation: Box<dyn FnMut(&dyn Compiler, Vec<&dyn Fn() -> Res>, Info) -> Res>, // for the interpreter
-    cpp_includes: String,
-    cpp_code: String,
-    cpp_arg_processor: String,
-    cpp_flags: String,
+    pub name: String,
+    pub operator: Option<(i32, bool)>, // (binding power, is_right_assoc) if the extern is an operator
+    pub cpp_includes: String,
+    pub cpp_code: String,
+    pub cpp_arg_processor: String,
+    pub cpp_flags: String,
 }
 
 pub fn get_externs() -> HashMap<String, Extern> {
@@ -24,10 +54,6 @@ pub fn get_externs() -> HashMap<String, Extern> {
         Extern {
             name: "print".to_string(),
             operator: None,
-            implementation: Box::new(|_, args, info| {
-                print!("{:?}", args[0]()?);
-                Ok(I32(0, info.clone()))
-            }),
             cpp_includes: "#include <iostream>".to_string(),
             cpp_code: "std::cout << ".to_string(),
             cpp_arg_processor: "".to_string(),
@@ -36,7 +62,6 @@ pub fn get_externs() -> HashMap<String, Extern> {
         Extern {
             name: "++".to_string(),
             operator: Some((48, false)),
-            implementation: Box::new(|_, args, info| prim_add_strs(&args[0]()?, &args[1]()?, info)),
             cpp_includes: "#include <string>
 #include <sstream>
 namespace std{
@@ -57,8 +82,7 @@ string to_string(const bool& t){
         },
         Extern {
             name: "^".to_string(),
-            operator: None,
-            implementation: Box::new(|_, args, info| prim_pow(&args[0]()?, &args[1]()?, info)),
+            operator: Some((90, true)),
             cpp_includes: "#include <cmath>".to_string(),
             cpp_code: "pow".to_string(),
             cpp_arg_processor: "".to_string(),
@@ -67,9 +91,6 @@ string to_string(const bool& t){
         Extern {
             name: "argc".to_string(),
             operator: None,
-            implementation: Box::new(|db, _, info| {
-                Ok(I32(db.options().interpreter_args.len() as i32, info))
-            }),
             cpp_includes: "".to_string(),
             cpp_code: "argc".to_string(),
             cpp_arg_processor: "".to_string(),
@@ -78,17 +99,6 @@ string to_string(const bool& t){
         Extern {
             name: "argv".to_string(),
             operator: None,
-            implementation: Box::new(|db, args, info| {
-                use crate::errors::TError;
-                match args[0]()? {
-                    I32(ind, _) => Ok(Str(db.options().interpreter_args[ind as usize].clone(), info)),
-                    value => Err(TError::TypeMismatch(
-                        "Expected index to be of type i32".to_string(),
-                        Box::new(value),
-                        info,
-                    )),
-                }
-            }),
             cpp_includes: "".to_string(),
             cpp_code: "([&argv](const int x){return argv[x];})".to_string(),
             cpp_arg_processor: "".to_string(),

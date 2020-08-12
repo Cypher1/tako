@@ -8,19 +8,21 @@ type Frame = HashMap<String, Node>;
 
 // Walks the AST interpreting it.
 pub struct Interpreter<'a> {
-    pub print_impl: Option<&'a mut dyn FnMut(String)>,
+    pub impls: HashMap<String, &'a mut dyn FnMut(&dyn Compiler, Vec<&dyn Fn() -> Res>, Info)->Res>,
 }
 
 impl<'a> Default for Interpreter<'a> {
     fn default() -> Interpreter<'a> {
-        Interpreter { print_impl: None }
+        Interpreter { impls: HashMap::new() }
     }
 }
 
-fn globals() -> Frame {
-    map!(
-        "print".to_string() => Sym{name: "print".to_string(), info: Info::default()}.to_node()
-    )
+fn globals(_db: &dyn Compiler) -> Frame {
+    let globals = HashMap::new();
+    // for (name, _) in db.get_externs() {
+    //     globals.insert(name.clone(), Sym{name, info: Info::default()}.to_node());
+    // }
+    globals
 }
 
 fn find_symbol<'a>(state: &'a [Frame], name: &str) -> Option<&'a Node> {
@@ -233,7 +235,7 @@ pub type Res = Result<Prim, TError>;
 type State = Vec<Frame>;
 impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
     fn visit_root(&mut self, db: &dyn Compiler, root: &Root) -> Res {
-        let mut state = vec![globals()];
+        let mut state = vec![globals(db)];
         self.visit(db, &mut state, &root.ast)
     }
 
@@ -242,66 +244,47 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             eprintln!("evaluating let {}", expr.clone().to_node());
         }
         let name = &expr.name;
-        match &name[..] {
-            "print" => {
-                let default: &mut dyn FnMut(String) = &mut |it| print!("{}", it);
-                let mut print_impl = |it| self.print_impl.as_deref_mut().unwrap_or(default)(it);
-                let it_val = state.last().map_or_else(
-                    || Prim::Str("".to_string(), Info::default()).to_node(),
-                    |frame| frame.get("it").expect("println needs an argument").clone(),
-                );
-                match it_val {
-                    Node::PrimNode(Prim::Str(it_val, _)) => print_impl(it_val),
-                    it_val => print_impl(format!("{}", it_val)),
-                }
-                return Ok(Prim::I32(0, Info::default()));
-            }
-            "argc" => {
-                return Ok(Prim::I32(
-                    db.options().interpreter_args.len() as i32,
-                    Info::default(),
-                ));
-            }
-            "argv" => {
-                let it_val = state.last().map_or_else(
-                    || Prim::Str("".to_string(), Info::default()).to_node(),
-                    |frame| frame.get("it").expect("argv needs an argument").clone(),
-                );
-                if let Node::PrimNode(Prim::I32(it_val, _)) = it_val {
-                    return Ok(Prim::Str(
-                        db.options()
-                            .interpreter_args
-                            .get(it_val as usize)
-                            .unwrap_or(&"".to_owned())
-                            .clone(),
-                        Info::default(),
-                    ));
-                }
-                return Ok(Prim::Str("".to_string(), Info::default()));
-            }
-            _ => {}
-        }
+        let it_val = || state.last().map(
+            |frame| match frame.get("it").expect(format!("{} needs an argument", expr.name).as_str()).clone() {
+                crate::ast::Node::PrimNode(prim) => prim,
+                node => panic!("{:?}", node)
+            },
+        );
+        let it_arg = ||Ok(it_val().unwrap());
         let value = find_symbol(&state, name);
         match value {
             Some(Node::PrimNode(prim)) => {
                 if db.debug() > 0 {
                     eprintln!("from stack {}", prim.clone().to_node());
                 }
-                Ok(prim.clone())
+                return Ok(prim.clone());
             }
             Some(val) => {
                 if db.debug() > 0 {
-                    eprintln!("running lambda {}", val);
+                    eprintln!("running lambda {} -> {}", name, val);
                 }
                 let mut next = state.clone();
                 let result = self.visit(db, &mut next, &val.clone())?;
                 if db.debug() > 0 {
                     eprintln!("got {}", result.clone().to_node());
                 }
-                Ok(result)
+                return Ok(result);
             } // This is the variable
-            None => Err(TError::UnknownSymbol(name.to_string(), expr.info.clone())),
+            None => {},
         }
+        if db.debug() > 2 {
+            eprintln!("checking for interpreter impl {}", expr.name.clone());
+        }
+        if let Some(extern_impl) = &mut self.impls.get_mut(name) {
+            return extern_impl(db, vec![&it_arg], expr.get_info());
+        }
+        if db.debug() > 2 {
+            eprintln!("checking for default impl {}", expr.name.clone());
+        }
+        if let Some(default_impl) = crate::externs::get_implementation(name.to_owned()) {
+            return default_impl(db, vec![&it_arg], expr.get_info());
+        }
+        Err(TError::UnknownSymbol(name.to_string(), expr.info.clone()))
     }
 
     fn visit_prim(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Prim) -> Res {
@@ -482,7 +465,7 @@ mod tests {
         db.set_file(filename.to_owned(), Arc::new(s));
         db.set_options(Options::default());
         let ast = db.parse_file(module);
-        Interpreter::default().visit(&db, &mut vec![globals()], &ast)
+        Interpreter::default().visit(&db, &mut vec![globals(&db)], &ast)
     }
 
     #[test]

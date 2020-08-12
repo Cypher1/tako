@@ -1,0 +1,4 @@
+Output(goldens/override_print.txt)
+--run
+examples/override_print.tk
+--

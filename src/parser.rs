@@ -1,21 +1,25 @@
 use std::collections::VecDeque;
-use std::sync::Arc;
 
 use super::ast::*;
 use super::location::*;
 use super::tokens::*;
 use crate::database::Compiler;
 
-fn binding_power(tok: &Token) -> (i32, bool) {
+fn binding_power(db: &dyn Compiler, tok: &Token) -> (i32, bool) {
     let bind = match &tok.tok_type {
-        TokenType::Op => match tok.value.as_str() {
+        TokenType::Op => {
+            // Look up extern operators
+            let op_name = tok.value.as_str();
+            if let Some(operator_info) = db.get_extern_operator(op_name.to_owned()) {
+                return operator_info;
+            }
+            match op_name {
             ";" => 20,
             "," => 30,
             "=" => 40,
             ":" => 42,
             "?" => 45,
             "-|" => 47,
-            "++" => 48,
             "<" => 50,
             "<=" => 50,
             ">" => 50,
@@ -30,7 +34,6 @@ fn binding_power(tok: &Token) -> (i32, bool) {
             "*" => 80,
             "/" => 80,
             "%" => 80,
-            "^" => 90,
             "." => 100,
             "(" => 110,
             ")" => 110,
@@ -39,13 +42,13 @@ fn binding_power(tok: &Token) -> (i32, bool) {
             "{" => 110,
             "}" => 110,
             op => panic!(format!("Unknown operator {}", op)),
+            }
         },
         TokenType::NumLit => 1000,
         _ => 1000, // TODO impossible
     };
     let assoc_right = match &tok.tok_type {
         TokenType::Op => match tok.value.as_str() {
-            "^" => true,
             "=" => true,
             _ => false,
         },
@@ -118,7 +121,7 @@ impl Loc {
     }
 }
 
-fn nud(mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
+fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
     if let Some(head) = toks.pop_front() {
         match head.tok_type {
             TokenType::NumLit => (
@@ -130,8 +133,8 @@ fn nud(mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
                 toks,
             ),
             TokenType::Op => {
-                let (lbp, _) = binding_power(&head);
-                let (right, new_toks) = expr(toks, lbp);
+                let (lbp, _) = binding_power(db, &head);
+                let (right, new_toks) = expr(db, toks, lbp);
                 (
                     UnOp {
                         name: head.value.clone(),
@@ -146,7 +149,7 @@ fn nud(mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
                 panic!("Unexpected close bracket {}", head.value);
             }
             TokenType::OpenBracket => {
-                let (inner, mut new_toks) = expr(toks, 0);
+                let (inner, mut new_toks) = expr(db, toks, 0);
                 // TODO require close bracket.
                 let close = new_toks.front();
                 match (head.value.as_str(), close) {
@@ -178,6 +181,7 @@ fn nud(mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
                 (inner, new_toks)
             }
             TokenType::Sym => {
+                // TODO: Consider making these globals.
                 if head.value == "true" {
                     return (Prim::Bool(true, head.get_info()).to_node(), toks);
                 }
@@ -209,7 +213,7 @@ fn nud(mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
     }
 }
 
-fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
+fn led(db: &dyn Compiler, mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
     // eprintln!("here {:?} {:?}", toks, left);
     if let Some(Token {
         tok_type: TokenType::CloseBracket,
@@ -248,8 +252,8 @@ fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
                 (left, toks)
             }
             TokenType::Op => {
-                let (lbp, assoc_right) = binding_power(&head);
-                let (right, new_toks) = expr(toks, lbp - if assoc_right { 1 } else { 0 });
+                let (lbp, assoc_right) = binding_power(db, &head);
+                let (right, new_toks) = expr(db, toks, lbp - if assoc_right { 1 } else { 0 });
                 if head.value == "=" {
                     match left {
                         Node::SymNode(s) => {
@@ -312,7 +316,7 @@ fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
                         toks,
                     );
                 }
-                let (inner, mut new_toks) = expr(toks, 0);
+                let (inner, mut new_toks) = expr(db, toks, 0);
                 // TODO: Handle empty parens
                 let close = new_toks.front();
                 match (head.value.as_str(), close) {
@@ -360,22 +364,22 @@ fn led(mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
     }
 }
 
-fn expr(init_toks: VecDeque<Token>, init_lbp: i32) -> (Node, VecDeque<Token>) {
+fn expr(db: &dyn Compiler, init_toks: VecDeque<Token>, init_lbp: i32) -> (Node, VecDeque<Token>) {
     // TODO: Name updates fields, this is confusing (0 is tree, 1 is toks)
-    let init_update = nud(init_toks);
+    let init_update = nud(db, init_toks);
     let mut left: Node = init_update.0;
     let mut toks: VecDeque<Token> = init_update.1;
     loop {
         match toks.front() {
             None => break,
             Some(token) => {
-                let (lbp, _) = binding_power(token);
+                let (lbp, _) = binding_power(db, token);
                 if init_lbp >= lbp {
                     break;
                 }
             }
         }
-        let update = led(toks, left.clone());
+        let update = led(db, toks, left.clone());
         if let (Node::Error(_), new_toks) = update {
             return (left, new_toks);
         }
@@ -386,11 +390,13 @@ fn expr(init_toks: VecDeque<Token>, init_lbp: i32) -> (Node, VecDeque<Token>) {
     (left, toks)
 }
 
-pub fn lex(filename: Option<&str>, contents: Arc<String>) -> VecDeque<Token> {
+pub fn lex(db: &dyn Compiler, module: Path) -> VecDeque<Token> {
+    let filename = db.filename(module);
+    let contents = db.file(filename.clone());
     let mut toks: VecDeque<Token> = VecDeque::new();
 
     let mut pos = Loc {
-        filename: filename.map(|f| f.to_owned()),
+        filename: Some(filename),
         ..Loc::default()
     };
     let mut chars = contents.chars().peekable();
@@ -413,11 +419,11 @@ pub fn lex(filename: Option<&str>, contents: Arc<String>) -> VecDeque<Token> {
 }
 
 pub fn parse(module: &Path, db: &dyn Compiler) -> Node {
-    let toks = db.lex_file(db.filename(module.clone()), module.clone());
+    let toks = db.lex_file(module.clone());
     if db.debug() > 0 {
         eprintln!("parsing file... {:?}", &module);
     }
-    let (root, left_over) = expr(toks, 0);
+    let (root, left_over) = expr(db, toks, 0);
 
     if !left_over.is_empty() {
         panic!("Oh no: Left over tokens {:?}", left_over);

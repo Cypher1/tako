@@ -58,7 +58,7 @@ fn main() -> std::io::Result<()> {
 fn work(
     db: &mut DB,
     filename: &str,
-    print_impl: Option<&mut dyn FnMut(String)>,
+    print_impl: Option<&mut dyn FnMut(&dyn Compiler, Vec<&dyn Fn() -> crate::interpreter::Res>, crate::ast::Info) -> crate::interpreter::Res>,
 ) -> std::io::Result<String> {
     let mut contents = String::new();
     let mut file = File::open(filename.to_owned())?;
@@ -72,7 +72,9 @@ fn work(
     if db.options().interactive {
         let table = db.build_symbol_table(module_name);
         let mut interp = Interpreter::default();
-        interp.print_impl = print_impl;
+        if let Some(print_impl) = print_impl {
+            interp.impls.insert("print".to_string(), print_impl);
+        }
         let res = interp
             .visit_root(db, &table)
             .expect("could not interpret program");

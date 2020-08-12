@@ -20,11 +20,13 @@ pub trait Compiler: salsa::Database {
     fn debug(&self) -> i32;
 
     fn get_externs(&self) -> HashMap<String, Extern>;
+    fn get_extern(&self, name: String) -> Option<Extern>;
+    fn get_extern_operator(&self, name: String) -> Option<(i32, bool)>;
 
     fn module_name(&self, filename: String) -> Path;
     fn filename(&self, module: Path) -> String;
 
-    fn lex_file(&self, filename: String, module: Path) -> VecDeque<Token>;
+    fn lex_file(&self, module: Path) -> VecDeque<Token>;
     fn parse_file(&self, module: Path) -> Node;
     fn build_symbol_table(&self, module: Path) -> Root;
     fn find_symbol(&self, mut context: Path, path: Path) -> Option<Table>;
@@ -64,17 +66,24 @@ pub fn filename(db: &dyn Compiler, module: Path) -> String {
     file_name
 }
 
-fn get_externs(db: &dyn Compiler) -> HashMap<String, Extern> {
-    use crate::externs::get_externs;
-    get_externs()
+fn get_externs(_db: &dyn Compiler) -> HashMap<String, Extern> {
+    crate::externs::get_externs()
 }
 
-fn lex_file(db: &dyn Compiler, filename: String, module: Path) -> VecDeque<Token> {
+fn get_extern(db: &dyn Compiler, name: String) -> Option<Extern> {
+    db.get_externs().get(&name).map(|x|x.clone())
+}
+
+fn get_extern_operator(db: &dyn Compiler, name: String) -> Option<(i32, bool)> {
+    db.get_extern(name).map(|x| x.operator).unwrap_or_default()
+}
+
+fn lex_file(db: &dyn Compiler, module: Path) -> VecDeque<Token> {
     use crate::parser;
     if db.debug() > 0 {
         eprintln!("lexing file... {:?}", &module);
     }
-    parser::lex(Some(&filename), db.file(db.filename(module)))
+    parser::lex(db, module)
 }
 
 fn parse_file(db: &dyn Compiler, module: Path) -> Node {
