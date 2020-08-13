@@ -600,19 +600,29 @@ mod tests {
         );
     }
 
-    #[quickcheck]
-    fn tako_add_eq_rust_eq(num1: i32, num2: i32) -> bool {
-        let res = num1 + num2;
-        eprintln!("mul {:?} + {:?} = {:?}", num1, num2, res);
-        eval_str(format!("mul(x, y)=x+y;mul(x= {}, y= {})", num1, num2))
-            == Ok(I32(res, Info::default()))
+    #[test]
+    fn tako_add_eq_rust_eq() {
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        for _ in 0..100 {
+            let num1: i32 = rng.gen();
+            let num2: i32 = rng.gen();
+            let res = num1 + num2;
+            eprintln!("mul {:?} + {:?} = {:?}", num1, num2, res);
+            assert_eq!(eval_str(format!("mul(x, y)=x+y;mul(x= {}, y= {})", num1, num2)), Ok(I32(res, Info::default())));
+        }
     }
 
-    #[quickcheck]
-    fn tako_mul_eq_rust_eq(num1: i32, num2: i32) -> bool {
-        let res = num1 * num2;
-        eprintln!("mul {:?} * {:?} = {:?}", num1, num2, res);
-        eval_str(format!("mul(x, y)=x*y;mul(x= {}, y= {})", num1, num2))
-            == Ok(I32(res, Info::default()))
+    #[test]
+    fn tako_mul_eq_rust_eq() {
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        for _ in 0..100 {
+            let num1: i32 = rng.gen();
+            let num2: i32 = rng.gen();
+            let res = num1 * num2;
+            eprintln!("mul {:?} * {:?} = {:?}", num1, num2, res);
+            assert_eq!(eval_str(format!("mul(x, y)=x*y;mul(x= {}, y= {})", num1, num2)), Ok(I32(res, Info::default())));
+        }
     }
 }

@@ -25,11 +25,6 @@ mod to_cpp;
 // The following are only for tests
 #[cfg(test)]
 mod test_options;
-#[cfg(test)]
-extern crate quickcheck;
-#[cfg(test)]
-#[macro_use(quickcheck)]
-extern crate quickcheck_macros;
 
 use std::fs::File;
 use std::io::prelude::*;
