@@ -168,7 +168,7 @@ pub fn lex_head<'a>(
                 }
             }
             (_, Some(chr)) => {
-                if comment && **chr == '\n' {
+                if comment && (**chr == '\n' || **chr == '\r') {
                     pos.next(&mut contents);
                     return lex_head(contents, pos);
                 }
