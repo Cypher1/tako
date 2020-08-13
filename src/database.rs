@@ -45,22 +45,32 @@ fn debug(db: &dyn Compiler) -> i32 {
 
 pub fn module_name(_db: &dyn Compiler, filename: String) -> Path {
     filename
-        .replace(".tk", "")
         .replace("\\", "/")
         .split('/')
-        .map(|part| Symbol::Named(part.to_owned()))
+        .map(|part| {
+            let name: Vec<&str> = part.split(".").collect();
+            Symbol::Named(
+                name[0].to_owned(),
+                if name.len() > 1 {
+                    Some(name[1..].join("."))
+                } else {
+                    None
+                }
+            )
+        })
         .collect()
 }
 
 pub fn filename(db: &dyn Compiler, module: Path) -> String {
-    let parts: Vec<&str> = module
+    let parts: Vec<String> = module
         .iter()
         .map(|sym| match sym {
-            Symbol::Named(sym) => sym,
-            Symbol::Anon() => "?",
+            Symbol::Named(sym, None) => sym.to_owned(),
+            Symbol::Named(sym, Some(ext)) => format!("{}.{}", sym, ext),
+            Symbol::Anon() => "?".to_owned(),
         })
         .collect();
-    let file_name = format!("{}.tk", parts.join("/"));
+    let file_name = parts.join("/");
     if db.debug() > 0 {
         eprintln!("Getting filename for {:?}, {:?}", module, file_name);
     }

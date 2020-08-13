@@ -67,7 +67,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
 
         let mut table = Table::new();
         let mut main_at = module.clone();
-        main_at.push(Symbol::Named("main".to_string()));
+        main_at.push(Symbol::new("main".to_string()));
 
         let main_symb = table.get_mut(&main_at);
         main_symb.value.uses.insert(module.clone());
@@ -76,7 +76,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
         // TODO: Inject needs for bootstrapping here (e.g. import function).
         let globals: Vec<Path> = ["print", "argc", "argv"]
             .iter()
-            .map(|x| vec![Symbol::Named(x.to_string())])
+            .map(|x| vec![Symbol::new(x.to_string())])
             .collect();
         for global in globals {
             table.get_mut(&global);
@@ -131,7 +131,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
     }
 
     fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
-        let let_name = Symbol::Named(expr.name.clone());
+        let let_name = Symbol::new(expr.name.clone());
         if db.debug() > 1 {
             eprintln!("visiting {:?} {}", state.path.clone(), &let_name);
         }
@@ -147,7 +147,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
             let mut args = vec![];
             for arg in e_args.iter() {
                 let mut arg_path = state.path.clone();
-                arg_path.push(Symbol::Named(arg.name.clone()));
+                arg_path.push(Symbol::new(arg.name.clone()));
                 state.table.get_mut(&arg_path);
                 let mut sym = arg.clone();
                 if db.debug() > 1 {

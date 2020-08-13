@@ -196,7 +196,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         let root = db.look_up_definitions(module.clone())?;
         let mut main_info = root.ast.get_info();
         let mut main_at = module.clone();
-        main_at.push(Symbol::Named("main".to_string()));
+        main_at.push(Symbol::new("main".to_string()));
         main_info.defined_at = Some(main_at);
         let main_let = Let {
             info: main_info,
