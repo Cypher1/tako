@@ -42,10 +42,10 @@ fn prim_add(l: &Prim, r: &Prim, info: Info) -> Res {
     use Prim::*;
     match (l, r) {
         (Bool(l, _), Bool(r, _)) => Ok(I32(if *l { 1 } else { 0 } + if *r { 1 } else { 0 }, info)),
-        (Bool(l, _), I32(r, _)) => Ok(I32(if *l { 1 } else { 0 } + r, info)),
+        (Bool(l, _), I32(r, _)) => Ok(I32(r.wrapping_add(if *l { 1 } else { 0 }), info)),
         (Bool(l, _), Str(r, _)) => Ok(Str(l.to_string() + &r.to_string(), info)),
-        (I32(l, _), Bool(r, _)) => Ok(I32(l + if *r { 1 } else { 0 }, info)),
-        (I32(l, _), I32(r, _)) => Ok(I32(l + r, info)),
+        (I32(l, _), Bool(r, _)) => Ok(I32(l.wrapping_add(if *r { 1 } else { 0 }), info)),
+        (I32(l, _), I32(r, _)) => Ok(I32(l.wrapping_add(*r), info)),
         (I32(l, _), Str(r, _)) => Ok(Str(l.to_string() + &r.to_string(), info)),
         (Str(l, _), Bool(r, _)) => Ok(Str(l.to_string() + &r.to_string(), info)),
         (Str(l, _), I32(r, _)) => Ok(Str(l.to_string() + &r.to_string(), info)),
@@ -156,7 +156,7 @@ fn prim_mul(l: &Prim, r: &Prim, info: Info) -> Res {
         (Bool(l, _), I32(r, _)) => Ok(I32(if *l { *r } else { 0 }, info)),
         (Bool(l, _), Str(r, _)) => Ok(Str(if *l { r.to_string() } else { "".to_string() }, info)),
         (I32(l, _), Bool(r, _)) => Ok(I32(if *r { *l } else { 0 }, info)),
-        (I32(l, _), I32(r, _)) => Ok(I32(l * r, info)),
+        (I32(l, _), I32(r, _)) => Ok(I32(l.wrapping_mul(*r), info)),
         (Str(l, _), Bool(r, _)) => Ok(Str(if *r { l.to_string() } else { "".to_string() }, info)),
         (l, r) => Err(TError::TypeMismatch2(
             "*".to_string(),
@@ -607,7 +607,7 @@ mod tests {
         for _ in 0..100 {
             let num1: i32 = rng.gen();
             let num2: i32 = rng.gen();
-            let res = num1 + num2;
+            let res = num1.wrapping_add(num2);
             eprintln!("mul {:?} + {:?} = {:?}", num1, num2, res);
             assert_eq!(eval_str(format!("mul(x, y)=x+y;mul(x= {}, y= {})", num1, num2)), Ok(I32(res, Info::default())));
         }
@@ -620,7 +620,7 @@ mod tests {
         for _ in 0..100 {
             let num1: i32 = rng.gen();
             let num2: i32 = rng.gen();
-            let res = num1 * num2;
+            let res = num1.wrapping_mul(num2);
             eprintln!("mul {:?} * {:?} = {:?}", num1, num2, res);
             assert_eq!(eval_str(format!("mul(x, y)=x*y;mul(x= {}, y= {})", num1, num2)), Ok(I32(res, Info::default())));
         }
