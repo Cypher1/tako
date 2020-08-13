@@ -193,7 +193,7 @@ impl CodeGenerator {
 
 impl Visitor<State, Code, Out, Path> for CodeGenerator {
     fn visit_root(&mut self, db: &dyn Compiler, module: &Path) -> Result<Out, TError> {
-        let root = db.look_up_definitions(module.clone());
+        let root = db.look_up_definitions(module.clone())?;
         let mut main_info = root.ast.get_info();
         let mut main_at = module.clone();
         main_at.push(Symbol::Named("main".to_string()));
@@ -341,7 +341,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         let path = expr.get_info().defined_at.expect("Undefined symbol")[context.len()..].to_vec();
 
         let uses = db
-            .find_symbol_uses(context.clone(), path.clone())
+            .find_symbol_uses(context.clone(), path.clone())?
             .unwrap_or_else(|| panic!("couldn't find {:?} {:?}", context.clone(), path.clone()));
         if uses.is_empty() {
             return Ok(Code::Empty);

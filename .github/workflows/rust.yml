@@ -3,7 +3,7 @@ name: Rust
 on: [push]
 
 jobs:
-  build:
+  test:
     name: Test using ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -12,10 +12,33 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
-    - name: Build
-      run: cargo build --release --verbose
+    - uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     - name: Run tests
       run: cargo test --verbose
+  
+  build:
+    name: Build using ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+    - uses: actions/checkout@v1
+    - uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    - name: Build
+      run: cargo build --release --verbose
     - name: Upload executable Linux
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v1

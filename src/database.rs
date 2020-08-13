@@ -1,37 +1,42 @@
 use std::sync::Arc;
 
-use std::collections::HashSet;
-use std::collections::VecDeque;
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use std::io::prelude::*;
 use std::process::Command;
 
 use crate::ast::{Node, Path, Root, Symbol, Table, Visitor};
 use crate::cli_options::Options;
+use crate::externs::Extern;
 use crate::tokens::Token;
+use crate::errors::TError;
 
 #[salsa::query_group(CompilerStorage)]
 pub trait Compiler: salsa::Database {
     #[salsa::input]
-    fn file(&self, filename: String) -> Arc<String>;
+    fn file(&self, filename: String) -> Result<Arc<String>, TError>;
 
     #[salsa::input]
     fn options(&self) -> Options;
     fn debug(&self) -> i32;
 
+    fn get_externs(&self) -> HashMap<String, Extern>;
+    fn get_extern(&self, name: String) -> Option<Extern>;
+    fn get_extern_operator(&self, name: String) -> Option<(i32, bool)>;
+
     fn module_name(&self, filename: String) -> Path;
     fn filename(&self, module: Path) -> String;
 
-    fn lex_file(&self, filename: String, module: Path) -> VecDeque<Token>;
-    fn parse_file(&self, module: Path) -> Node;
-    fn build_symbol_table(&self, module: Path) -> Root;
-    fn find_symbol(&self, mut context: Path, path: Path) -> Option<Table>;
-    fn find_symbol_uses(&self, mut context: Path, path: Path) -> Option<HashSet<Path>>;
+    fn lex_file(&self, module: Path) -> Result<VecDeque<Token>, TError>;
+    fn parse_file(&self, module: Path) -> Result<Node, TError>;
+    fn build_symbol_table(&self, module: Path) -> Result<Root, TError>;
+    fn find_symbol(&self, mut context: Path, path: Path) -> Result<Option<Table>, TError>;
+    fn find_symbol_uses(&self, mut context: Path, path: Path) -> Result<Option<HashSet<Path>>, TError>;
 
-    fn look_up_definitions(&self, module: Path) -> Root;
+    fn look_up_definitions(&self, module: Path) -> Result<Root, TError>;
 
-    fn compile_to_cpp(&self, module: Path) -> (String, HashSet<String>);
-    fn build_with_gpp(&self, module: Path) -> String;
+    fn compile_to_cpp(&self, module: Path) -> Result<(String, HashSet<String>), TError>;
+    fn build_with_gpp(&self, module: Path) -> Result<String, TError>;
 }
 
 fn debug(db: &dyn Compiler) -> i32 {
@@ -62,29 +67,41 @@ pub fn filename(db: &dyn Compiler, module: Path) -> String {
     file_name
 }
 
-fn lex_file(db: &dyn Compiler, filename: String, module: Path) -> VecDeque<Token> {
+fn get_externs(_db: &dyn Compiler) -> HashMap<String, Extern> {
+    crate::externs::get_externs()
+}
+
+fn get_extern(db: &dyn Compiler, name: String) -> Option<Extern> {
+    db.get_externs().get(&name).cloned()
+}
+
+fn get_extern_operator(db: &dyn Compiler, name: String) -> Option<(i32, bool)> {
+    db.get_extern(name).map(|x| x.operator).unwrap_or_default()
+}
+
+fn lex_file(db: &dyn Compiler, module: Path) -> Result<VecDeque<Token>, TError> {
     use crate::parser;
     if db.debug() > 0 {
         eprintln!("lexing file... {:?}", &module);
     }
-    parser::lex(Some(&filename), db.file(db.filename(module)))
+    parser::lex(db, module)
 }
 
-fn parse_file(db: &dyn Compiler, module: Path) -> Node {
+fn parse_file(db: &dyn Compiler, module: Path) -> Result<Node, TError> {
     use crate::parser;
     parser::parse(&module, db)
 }
 
-fn build_symbol_table(db: &dyn Compiler, module: Path) -> Root {
+fn build_symbol_table(db: &dyn Compiler, module: Path) -> Result<Root, TError> {
     use crate::symbol_table_builder::SymbolTableBuilder;
-    SymbolTableBuilder::process(&module, db).expect("failed building symbol table")
+    SymbolTableBuilder::process(&module, db)
 }
 
-fn find_symbol(db: &dyn Compiler, mut context: Path, path: Path) -> Option<Table> {
+fn find_symbol(db: &dyn Compiler, mut context: Path, path: Path) -> Result<Option<Table>, TError> {
     if db.debug() > 1 {
         eprintln!(">>> looking for symbol in {:?}, {:?}", context, path);
     }
-    let table = db.look_up_definitions(context.clone()).table;
+    let table = db.look_up_definitions(context.clone())?.table;
     loop {
         if let Some(Symbol::Anon()) = context.last() {
             context.pop(); // Cannot look inside an 'anon'.
@@ -95,41 +112,41 @@ fn find_symbol(db: &dyn Compiler, mut context: Path, path: Path) -> Option<Table
             if db.debug() > 1 {
                 eprintln!("FOUND INSIDE {:?} {:?}", context, search);
             }
-            return Some(node.clone());
+            return Ok(Some(node.clone()));
         }
         if db.debug() > 1 {
             eprintln!("   not found {:?} at {:?}", path.clone(), search.clone());
         }
         if context.is_empty() {
             eprintln!("   not found {:?} at {:?}", path, search);
-            return None;
+            return Ok(None);
         }
         context.pop(); // Up one, go again.
     }
 }
 
-fn find_symbol_uses(db: &dyn Compiler, context: Path, path: Path) -> Option<HashSet<Path>> {
-    db.find_symbol(context, path).map(|x| x.value.uses)
+fn find_symbol_uses(db: &dyn Compiler, context: Path, path: Path) -> Result<Option<HashSet<Path>>, TError> {
+    Ok(db.find_symbol(context, path)?.map(|x| x.value.uses))
 }
 
-fn look_up_definitions(db: &dyn Compiler, module: Path) -> Root {
+fn look_up_definitions(db: &dyn Compiler, module: Path) -> Result<Root, TError> {
     use crate::definition_finder::DefinitionFinder;
     if db.debug() > 0 {
         eprintln!("look up definitions >> {:?}", module);
     }
-    DefinitionFinder::process(&module, db).expect("failed looking up symbols")
+    DefinitionFinder::process(&module, db)
 }
 
-fn compile_to_cpp(db: &dyn Compiler, module: Path) -> (String, HashSet<String>) {
+fn compile_to_cpp(db: &dyn Compiler, module: Path) -> Result<(String, HashSet<String>), TError> {
     use crate::to_cpp::CodeGenerator;
     if db.debug() > 0 {
         eprintln!("generating code for file ... {:?}", &module);
     }
-    CodeGenerator::process(&module, db).expect("could not compile program")
+    CodeGenerator::process(&module, db)
 }
 
-fn build_with_gpp(db: &dyn Compiler, module: Path) -> String {
-    let (res, flags) = db.compile_to_cpp(module.clone());
+fn build_with_gpp(db: &dyn Compiler, module: Path) -> Result<String, TError> {
+    let (res, flags) = db.compile_to_cpp(module.clone())?;
     if db.debug() > 0 {
         eprintln!("building file with g++ ... {:?}", &module);
     }
@@ -168,7 +185,7 @@ fn build_with_gpp(db: &dyn Compiler, module: Path) -> String {
     }
     let s = String::from_utf8(output.stdout).unwrap();
     eprintln!("{}", s);
-    res
+    Ok(res)
 }
 
 #[salsa::database(CompilerStorage)]

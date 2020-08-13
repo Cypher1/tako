@@ -8,12 +8,11 @@
   - Type checking
   - Locals (scope management + effects)
   - Main + command function argument parsing
+  - Effects, handlers
   - Conversion to ssa
   - Conversion to stack
 - Testing
-  - Tests for parser
-  - Tests for interpreter
-  - Explicit evaluation of funcs
+  - Tests for code generator
   - Tests for type checker
   - Tests for compiled programs (not just golden sources, but behaviour)
 

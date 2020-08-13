@@ -2,7 +2,7 @@ use super::ast::Info;
 use super::ast::Node;
 use super::ast::Prim;
 
-use std::{fmt, io};
+use std::fmt;
 use thiserror::Error;
 
 //impl<T: fmt::Debug> fmt::Debug for Tree<T> {
@@ -14,14 +14,16 @@ impl fmt::Display for Box<Prim> {
 
 use derivative::Derivative;
 #[derive(Error, Derivative)]
-#[derivative(Debug, PartialEq)]
+#[derivative(Debug, PartialEq, Eq, Clone)]
 pub enum TError {
+    /*
     #[error("failed while performing io")]
     IOFailure(
         #[derivative(PartialEq = "ignore")]
         #[from]
         io::Error,
     ),
+    */
 
     #[error("unknown symbol `{0}` at {1:?}")]
     UnknownSymbol(String, Info),
