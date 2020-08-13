@@ -60,7 +60,7 @@ impl Table {
 
 impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
     fn visit_root(&mut self, db: &dyn Compiler, module: &Path) -> Result<Root, TError> {
-        let expr = &db.parse_file(module.clone());
+        let expr = &db.parse_file(module.clone())?;
         if db.debug() > 0 {
             eprintln!("building symbol table for file... {:?}", &module);
         }

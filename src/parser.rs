@@ -1,9 +1,10 @@
 use std::collections::VecDeque;
 
-use super::ast::*;
-use super::location::*;
-use super::tokens::*;
+use crate::ast::*;
+use crate::location::*;
+use crate::tokens::*;
 use crate::database::Compiler;
+use crate::errors::TError;
 
 fn binding_power(db: &dyn Compiler, tok: &Token) -> (i32, bool) {
     let bind = match &tok.tok_type {
@@ -387,9 +388,9 @@ fn expr(db: &dyn Compiler, init_toks: VecDeque<Token>, init_lbp: i32) -> (Node, 
     (left, toks)
 }
 
-pub fn lex(db: &dyn Compiler, module: Path) -> VecDeque<Token> {
+pub fn lex(db: &dyn Compiler, module: Path) -> Result<VecDeque<Token>, TError> {
     let filename = db.filename(module);
-    let contents = db.file(filename.clone());
+    let contents = db.file(filename.clone())?;
     let mut toks: VecDeque<Token> = VecDeque::new();
 
     let mut pos = Loc {
@@ -412,11 +413,11 @@ pub fn lex(db: &dyn Compiler, module: Path) -> VecDeque<Token> {
     }
 
     // eprintln!("Toks: {:?}", toks);
-    toks
+    Ok(toks)
 }
 
-pub fn parse(module: &Path, db: &dyn Compiler) -> Node {
-    let toks = db.lex_file(module.clone());
+pub fn parse(module: &Path, db: &dyn Compiler) -> Result<Node, TError> {
+    let toks = db.lex_file(module.clone())?;
     if db.debug() > 0 {
         eprintln!("parsing file... {:?}", &module);
     }
@@ -428,8 +429,7 @@ pub fn parse(module: &Path, db: &dyn Compiler) -> Node {
     if db.options().show_ast {
         eprintln!("ast: {}", root);
     }
-
-    root
+    Ok(root)
 }
 
 #[cfg(test)]
@@ -444,9 +444,9 @@ mod tests {
         let mut db = DB::default();
         let filename = "test.tk";
         let module = db.module_name(filename.to_owned());
-        db.set_file(filename.to_owned(), Arc::new(contents));
+        db.set_file(filename.to_owned(), Ok(Arc::new(contents)));
         db.set_options(Options::default());
-        db.parse_file(module)
+        db.parse_file(module).expect("failed to parse file")
     }
 
     fn num_lit(x: i32) -> Box<Node> {

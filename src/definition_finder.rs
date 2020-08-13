@@ -18,7 +18,7 @@ pub struct Namespace {
 
 impl Visitor<State, Node, Root, Path> for DefinitionFinder {
     fn visit_root(&mut self, db: &dyn Compiler, module: &Path) -> Result<Root, TError> {
-        let expr = db.build_symbol_table(module.clone());
+        let expr = db.build_symbol_table(module.clone())?;
         if db.debug() > 0 {
             eprintln!("looking up definitions in file... {:?}", &module);
         }

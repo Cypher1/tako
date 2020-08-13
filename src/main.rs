@@ -31,6 +31,10 @@ extern crate quickcheck;
 #[macro_use(quickcheck)]
 extern crate quickcheck_macros;
 
+use std::fs::File;
+use std::io::prelude::*;
+use std::sync::Arc;
+
 use ast::Visitor;
 use interpreter::Interpreter;
 use pretty_print::PrettyPrint;
@@ -38,11 +42,9 @@ use pretty_print::PrettyPrint;
 use cli_options::parse_args;
 use database::{Compiler, DB};
 
-use std::fs::File;
-use std::io::prelude::*;
-use std::sync::Arc;
+use errors::TError;
 
-fn main() -> std::io::Result<()> {
+fn main() -> Result<(), TError> {
     let args: Vec<String> = env::args().collect();
 
     let mut db = DB::default();
@@ -65,18 +67,18 @@ fn work(
             crate::ast::Info,
         ) -> crate::interpreter::Res,
     >,
-) -> std::io::Result<String> {
+) -> Result<String, TError> {
     let mut contents = String::new();
-    let mut file = File::open(filename.to_owned())?;
-    file.read_to_string(&mut contents)?;
+    let mut file = File::open(filename.to_owned()).expect(format!("io error opening file {}", filename.to_owned()).as_str());
+    file.read_to_string(&mut contents).expect(format!("io error reading file {}", filename.to_owned()).as_str());
 
     let contents = Arc::new(contents);
     let module_name = db.module_name(filename.to_owned());
 
-    db.set_file(filename.to_owned(), contents);
+    db.set_file(filename.to_owned(), Ok(contents));
 
     if db.options().interactive {
-        let table = db.build_symbol_table(module_name);
+        let table = db.build_symbol_table(module_name)?;
         let mut interp = Interpreter::default();
         if let Some(print_impl) = print_impl {
             interp.impls.insert("print".to_string(), print_impl);
@@ -87,7 +89,7 @@ fn work(
         use ast::ToNode;
         PrettyPrint::process(&res.to_node(), db).or_else(|_| panic!("Pretty print failed"))
     } else {
-        Ok(db.build_with_gpp(module_name))
+        db.build_with_gpp(module_name)
     }
 }
 

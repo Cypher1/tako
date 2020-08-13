@@ -471,9 +471,9 @@ mod tests {
         let mut db = DB::default();
         let filename = "test.tk";
         let module = db.module_name(filename.to_owned());
-        db.set_file(filename.to_owned(), Arc::new(s));
+        db.set_file(filename.to_owned(), Ok(Arc::new(s)));
         db.set_options(Options::default());
-        let ast = db.parse_file(module);
+        let ast = db.parse_file(module)?;
         Interpreter::default().visit(&db, &mut vec![globals(&db)], &ast)
     }
 
