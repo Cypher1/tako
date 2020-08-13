@@ -63,7 +63,13 @@ fn {fn_name}() {{
         let result = {{
             use crate::ast::{{Prim::{{I32, Str}}, Info}};
             use crate::interpreter::Res;
-            let mut print_impl = |_: &dyn Compiler, args: Vec<&dyn Fn() -> crate::interpreter::Res>, _: crate::ast::Info| -> Res {{stdout.push(match args[0]()? {{Str(s,_)=>s,s=>format!(\"{{:?}}\", s)}}); return Ok(I32(0, Info::default()))}};
+            let mut print_impl = |_: &dyn Compiler, args: Vec<&dyn Fn() -> crate::interpreter::Res>, _: crate::ast::Info| -> Res {{
+                stdout.push(match args[0]()? {{
+                    Str(s,_)=>s,
+                    s=>format!(\"{{:?}}\", s)
+                }});
+                return Ok(I32(0, Info::default()))
+            }};
             super::work(&mut db, &f, Some(&mut print_impl)).expect(\"failed\")
         }};
         eprintln!(\"Result:\\n{{}}\", result);
