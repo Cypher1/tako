@@ -42,7 +42,7 @@ And interactive interpreter:
 And use the interpreter to run a tako file:
 
 ```bash
-./tako -r <file>
+./tako -r examples/hello_name.tk -- 'world'
 ```
 
 ## Running the tests
