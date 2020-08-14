@@ -9,7 +9,7 @@ use crate::location::*;
 use crate::tree::*;
 use crate::types::*;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Err {
     pub msg: String,
     pub info: Info,
@@ -24,7 +24,7 @@ impl ToNode for Err {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Apply {
     pub inner: Box<Node>,
     pub args: Vec<Let>,
@@ -55,7 +55,7 @@ impl ToNode for Sym {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Prim {
     Bool(bool, Info),
     I32(i32, Info),
@@ -78,7 +78,7 @@ impl ToNode for Prim {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Let {
     pub name: String,
     pub value: Box<Node>,
@@ -104,7 +104,7 @@ impl ToNode for Let {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct UnOp {
     pub name: String,
     pub inner: Box<Node>,
@@ -120,7 +120,7 @@ impl ToNode for UnOp {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct BinOp {
     pub name: String,
     pub left: Box<Node>,
@@ -189,7 +189,7 @@ pub struct TypeInfo {
 }
 
 // #[derive(Debug)]
-#[derive(PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone, Hash)]
 pub enum Node {
     Error(Err),
     SymNode(Sym),

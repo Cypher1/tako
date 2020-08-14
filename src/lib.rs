@@ -23,6 +23,7 @@ mod types;
 mod definition_finder;
 mod pretty_print;
 mod symbol_table_builder;
+mod type_checker;
 mod to_cpp;
 
 use ast::Visitor;

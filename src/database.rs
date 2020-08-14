@@ -40,6 +40,8 @@ pub trait Compiler: salsa::Database {
 
     fn look_up_definitions(&self, module: Path) -> Result<Root, TError>;
 
+    fn infer(&self, expr: Node) -> Result<Node, TError>;
+
     fn compile_to_cpp(&self, module: Path) -> Result<(String, HashSet<String>), TError>;
     fn build_with_gpp(&self, module: Path) -> Result<String, TError>;
 }
@@ -158,6 +160,14 @@ fn look_up_definitions(db: &dyn Compiler, module: Path) -> Result<Root, TError> 
         eprintln!("look up definitions >> {:?}", module);
     }
     DefinitionFinder::process(&module, db)
+}
+
+fn infer(db: &dyn Compiler, expr: Node) -> Result<Node, TError> {
+    use crate::type_checker::infer;
+    if db.debug() > 0 {
+        eprintln!("infering type for ... {:?}", &expr);
+    }
+    infer(db, expr)
 }
 
 fn compile_to_cpp(db: &dyn Compiler, module: Path) -> Result<(String, HashSet<String>), TError> {

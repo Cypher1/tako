@@ -440,13 +440,17 @@ pub mod tests {
     use std::sync::Arc;
     use Prim::*;
 
-    fn parse(contents: String) -> Node {
-        let mut db = DB::default();
+    pub fn parse_with_db(db: &mut dyn Compiler, contents: String) -> Node {
         let filename = "test.tk";
         let module = db.module_name(filename.to_owned());
         db.set_file(filename.to_owned(), Ok(Arc::new(contents)));
         db.set_options(Options::default());
         db.parse_file(module).expect("failed to parse file")
+    }
+
+    fn parse(contents: String) -> Node {
+        let mut db = DB::default();
+        parse_with_db(&mut db, contents)
     }
 
     fn num_lit(x: i32) -> Box<Node> {

@@ -6,7 +6,6 @@
 
 An experimental programming language for ergonomic software verification using [Hoare Logic](https://en.wikipedia.org/wiki/Hoare_logic).
 
-
 ## Getting Started
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
@@ -25,7 +24,7 @@ Building is a single step,
 cargo build --release -Z unstable-options --out-dir .
 ```
 
-Actually, only `cargo build` is needed, but this gives us an optimised build and copies the result into the current directory. 
+Actually, only `cargo build` is needed, but this gives us an optimised build and copies the result into the current directory.
 
 This allows us to run the compiler.
 

@@ -5,7 +5,6 @@ use std::env;
 use takolib::cli_options::Options;
 use takolib::database::{DB, Compiler};
 use takolib::work;
-
 use takolib::errors::TError;
 
 fn main() -> Result<(), TError> {
