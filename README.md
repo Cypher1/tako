@@ -15,52 +15,62 @@ These instructions will get you a copy of the project up and running on your loc
 
 Tako currently uses `cargo` for builds and running tests and git submodules for dependency management.
 
-Installation instructions can be found at https://rustup.rs/
-Non-rust dependencies can be installed via
-```
-git submodule update --init --recursive
-```
+Installation instructions can be found at <https://rustup.rs/>
 
 ### Building
 
-Building requires a single step,
+Building is a single step,
+
+```bash
+cargo build --release -Z unstable-options --out-dir .
 ```
-cargo build --release
-```
+
+Actually, only `cargo build` is needed, but this gives us an optimised build and copies the result into the current directory. 
 
 This allows us to run the compiler.
 
-```
-./target/release/tako <file>
-```
-
-And the interpreter:
-```
-./target/release/tako -r <file>
+```bash
+./tako examples/hello_name.tk
+./build/examples_hello_name 'world'
 ```
 
-And interactive interpreter / repl:
+And interactive interpreter:
+
+```bash
+./tako -i
 ```
-./target/release/tako -i
+
+And use the interpreter to run a tako file:
+
+```bash
+./tako -r examples/hello_name.tk -- 'world'
 ```
 
 ## Running the tests
 
-Running the tests should also be fairly simple, but relies on some dependencies which we will fetch using git.
+Running the tests is also a single step.
 
-```
-cargo test --release
+```bash
+cargo test
 ```
 
-Note: Currently `--release` is needed as some of the tests rely on rust optimisations that decrease stack usage. Tracking bug: https://github.com/Cypher1/tako/issues/179
+Note: Currently this tests using an optimised build as some of the tests rely on rust optimisations that decrease stack usage. Tracking bug: <https://github.com/Cypher1/tako/issues/179>
 
 ## Installation
 
-tako is a standalone single file. It can be installed simply by building and copy/moving ./release/tako into your /usr/bin directory.
+> **Warning:** Don't use tako. Use some other language & compiler.
+>
+> I recommend rust, haskell or idris.
+>
+> tako is not stable, reliable, or efficient.
+>
+> You have been warned.
+
+tako is a standalone single file. It can be installed simply by building and copy/moving ./tako into your /usr/bin directory.
 
 ## Contributing
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests.
 
 ## Versioning
 
