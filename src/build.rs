@@ -92,6 +92,7 @@ fn files_from(path: &str) -> Vec<String> {
         match pth.to_str() {
             Some(s) => {
                 if !s.ends_with(".tk")
+                    && !s.ends_with(".weird")
                     && !s.ends_with(".sh")
                     && !s.ends_with(".cc")
                     && !s.ends_with(".c")

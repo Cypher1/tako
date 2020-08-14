@@ -258,24 +258,28 @@ pub trait ToNode {
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum Symbol {
     Anon(),
-    Named(String),
+    Named(String, Option<String>), // name, (and for files) an optional extension
 }
 
 impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Symbol::Anon() => write!(f, "?")?,
-            Symbol::Named(name) => write!(f, "{}", name)?,
+            Symbol::Named(name, None) => write!(f, "{}", name)?,
+            Symbol::Named(name, Some(ext)) => write!(f, "{}.{}", name, ext)?,
         }
         Ok(())
     }
 }
 
 impl Symbol {
+    pub fn new(name: String) -> Symbol {
+        Symbol::Named(name, None)
+    }
     pub fn to_name(self: &Symbol) -> String {
         match self {
             Symbol::Anon() => "".to_owned(),
-            Symbol::Named(name) => name.to_owned(),
+            Symbol::Named(name, _) => name.to_owned(),
         }
     }
 }
