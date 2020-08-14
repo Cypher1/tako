@@ -21,6 +21,8 @@ jobs:
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     - name: Run tests
       run: cargo test --verbose
+    - name: Run ignored tests
+      run: cargo test --verbose -- --ignored
   
   build:
     name: Build using ${{ matrix.os }}
