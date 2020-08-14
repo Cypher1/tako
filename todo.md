@@ -1,20 +1,31 @@
 # TODOs
 
-## Engineering
+## Features
 
-- Features:
-  - Imports & Externs
-  - Move globals / std into a file using low level ops
-  - Type checking
-  - Locals (scope management + effects)
-  - Main + command function argument parsing
-  - Effects, handlers
-  - Conversion to ssa
-  - Conversion to stack
-- Testing
-  - Tests for code generator
-  - Tests for type checker
-  - Tests for compiled programs (not just golden sources, but behaviour)
+- Imports
+- Externs (started)
+- Move globals / std into a file using low level ops (started)
+- Type checking
+  - Effects system (e.g. type & Effect)
+    - Handlers (i.e. continuations)
+  - Mutability (via effects)
+  - Containers (Vec, Set, HashMap)
+  - Products / Anonymous + Named Tuples / Records
+  - Unions / Enums / GADTs
+  - Monads?
+- Locals (scope management)
+- Main + command function argument parsing
+- Conversion to ssa (after parsing)
+- Conversion to stack?
+- Move source locations out of errors and ast nodes in favour of symbol 'paths'
+- Provide a mapping between symbol 'paths' and source locations
+- Look up source locations only when displaying info / errors to the user
+
+## Testing
+
+- Tests for code generator
+- Tests for type checker
+- Tests for compiled programs (not just golden sources, but behaviour)
 
 - Standardize on cli arguments (copying, where possible from go, rustc, cargo) e.g.:
   - tako help
@@ -22,6 +33,22 @@
   - tako run
   - tako doc
   - tako clean
+
+## User code optimisations
+
+- [Conversion between Arrays of Structs and Structs of Arrays](https://en.wikipedia.org/wiki/AoS_and_SoA)
+- Function fusion / code inlining
+- Struct fusion (i.e. inlining / flattening of data)
+- Constant propagation
+- Rewrite rules +/ symbolic execution
+- [Super compilaton](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/07/supercomp-by-eval.pdf)
+
+### Compiler optimisations
+
+- Store ast as map of ssa nodes by id, map from 'symbol paths' to ids
+- Perform passes over the ssa map values without having to perform ast traversal
+- Deduplicate ssa nodes (i.e. duplicate nodes are only stored once, start with constants and then bubble it up)
+- Intern strings
 
 ## Communication
 
