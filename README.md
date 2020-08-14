@@ -15,44 +15,45 @@ These instructions will get you a copy of the project up and running on your loc
 
 Tako currently uses `cargo` for builds and running tests and git submodules for dependency management.
 
-Installation instructions can be found at https://rustup.rs/
-Non-rust dependencies can be installed via
-```
-git submodule update --init --recursive
-```
+Installation instructions can be found at <https://rustup.rs/>
 
 ### Building
 
-Building requires a single step,
+Building is a single step,
+
+```bash
+cargo build --release -Z unstable-options --out-dir .
 ```
-cargo build --release
-```
+
+Actually, only `cargo build` is needed, but this gives us an optimised build and copies the result into the current directory. 
 
 This allows us to run the compiler.
 
-```
-./target/release/tako <file>
-```
-
-And the interpreter:
-```
-./target/release/tako -r <file>
+```bash
+./tako <file>
 ```
 
-And interactive interpreter / repl:
+And interactive interpreter:
+
+```bash
+./tako -i
 ```
-./target/release/tako -i
+
+And use the interpreter to run a tako file:
+
+```bash
+./tako -r <file>
 ```
 
 ## Running the tests
 
 Running the tests should also be fairly simple, but relies on some dependencies which we will fetch using git.
 
-```
-cargo test --release
+```bash
+cargo test
 ```
 
-Note: Currently `--release` is needed as some of the tests rely on rust optimisations that decrease stack usage. Tracking bug: https://github.com/Cypher1/tako/issues/179
+Note: Currently this tests using an optimised build as some of the tests rely on rust optimisations that decrease stack usage. Tracking bug: <https://github.com/Cypher1/tako/issues/179>
 
 ## Installation
 
