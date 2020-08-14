@@ -30,7 +30,8 @@ Actually, only `cargo build` is needed, but this gives us an optimised build and
 This allows us to run the compiler.
 
 ```bash
-./tako <file>
+./tako examples/hello_name.tk
+./build/examples_hello_name 'world'
 ```
 
 And interactive interpreter:
@@ -47,7 +48,7 @@ And use the interpreter to run a tako file:
 
 ## Running the tests
 
-Running the tests should also be fairly simple, but relies on some dependencies which we will fetch using git.
+Running the tests is also a single step.
 
 ```bash
 cargo test
@@ -57,11 +58,19 @@ Note: Currently this tests using an optimised build as some of the tests rely on
 
 ## Installation
 
-tako is a standalone single file. It can be installed simply by building and copy/moving ./release/tako into your /usr/bin directory.
+> **Warning:** Don't use tako. Use some other language & compiler.
+>
+> I recommend rust, haskell or idris.
+>
+> tako is not stable, reliable, or efficient.
+>
+> You have been warned.
+
+tako is a standalone single file. It can be installed simply by building and copy/moving ./tako into your /usr/bin directory.
 
 ## Contributing
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests.
 
 ## Versioning
 

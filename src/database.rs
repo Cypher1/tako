@@ -163,7 +163,7 @@ fn build_with_gpp(db: &dyn Compiler, module: Path) -> Result<String, TError> {
 
     let name: String = module
         .iter()
-        .map(|s| format!("{}", s))
+        .map(|s| s.to_name())
         .collect::<Vec<String>>()
         .join("_");
 
