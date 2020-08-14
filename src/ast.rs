@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
@@ -135,12 +135,6 @@ impl ToNode for BinOp {
     fn get_info(&self) -> Info {
         self.info.clone()
     }
-}
-
-#[derive(Clone, Debug)]
-pub struct Definition {
-    pub requires: HashSet<Sym>,
-    pub defines: HashMap<Sym, Path>,
 }
 
 #[derive(Clone)]

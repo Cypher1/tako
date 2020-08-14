@@ -1,10 +1,10 @@
 use std::collections::VecDeque;
 
-use crate::ast::*;
-use crate::location::*;
-use crate::tokens::*;
-use crate::database::Compiler;
-use crate::errors::TError;
+use super::ast::*;
+use super::location::*;
+use super::tokens::*;
+use super::database::Compiler;
+use super::errors::TError;
 
 fn binding_power(db: &dyn Compiler, tok: &Token) -> (i32, bool) {
     let bind = match &tok.tok_type {
@@ -433,8 +433,8 @@ pub fn parse(module: &Path, db: &dyn Compiler) -> Result<Node, TError> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::super::ast::*;
+pub mod tests {
+    use crate::ast::*;
     use crate::cli_options::Options;
     use crate::database::{Compiler, DB};
     use std::sync::Arc;

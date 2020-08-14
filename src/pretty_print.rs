@@ -1,6 +1,6 @@
-use crate::ast::*;
-use crate::database::Compiler;
-use crate::errors::TError;
+use super::ast::*;
+use super::database::Compiler;
+use super::errors::TError;
 use std::fmt::Write;
 
 // Walks the AST interpreting it.

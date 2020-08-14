@@ -1,6 +1,6 @@
-use super::ast::Info;
-use super::ast::Node;
-use super::ast::Prim;
+use crate::ast::Info;
+use crate::ast::Node;
+use crate::ast::Prim;
 
 use std::fmt;
 use thiserror::Error;
