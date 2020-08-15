@@ -1,6 +1,0 @@
-Output(goldens/examples_hello_name.txt)
---run
-examples/hello_name.tk
---
-Peanut
-Josh
