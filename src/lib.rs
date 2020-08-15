@@ -7,24 +7,24 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::sync::Arc;
 
+pub mod ast;
 pub mod cli_options;
 pub mod database;
 pub mod errors;
 pub mod interpreter;
-pub mod ast;
 
+mod externs;
 mod location;
 mod parser;
 mod tokens;
 mod tree;
 mod types;
-mod externs;
 
-mod type_checker;
 mod definition_finder;
 mod pretty_print;
 mod symbol_table_builder;
 mod to_cpp;
+mod type_checker;
 
 use ast::Visitor;
 use interpreter::Interpreter;
@@ -45,8 +45,10 @@ pub fn work(
     >,
 ) -> Result<String, TError> {
     let mut contents = String::new();
-    let mut file = File::open(filename.to_owned()).expect(format!("io error opening file {}", filename.to_owned()).as_str());
-    file.read_to_string(&mut contents).expect(format!("io error reading file {}", filename.to_owned()).as_str());
+    let mut file = File::open(filename.to_owned())
+        .expect(format!("io error opening file {}", filename.to_owned()).as_str());
+    file.read_to_string(&mut contents)
+        .expect(format!("io error reading file {}", filename.to_owned()).as_str());
 
     let contents = Arc::new(contents);
     let module_name = db.module_name(filename.to_owned());
@@ -59,9 +61,7 @@ pub fn work(
         if let Some(print_impl) = print_impl {
             interp.impls.insert("print".to_string(), print_impl);
         }
-        let res = interp
-            .visit_root(db, &table)
-            .expect("could not interpret program");
+        let res = interp.visit_root(db, &table)?;
         use ast::ToNode;
         PrettyPrint::process(&res.to_node(), db).or_else(|_| panic!("Pretty print failed"))
     } else {

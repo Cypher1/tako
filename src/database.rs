@@ -203,8 +203,7 @@ fn build_with_gpp(db: &dyn Compiler, module: Path) -> Result<String, TError> {
         .expect("could not run g++");
     if !output.status.success() {
         let s = String::from_utf8(output.stderr).unwrap();
-        eprintln!("{}", s);
-        panic!("Command executed with failing error code");
+        return Err(TError::CppCompilerError(s, output.status.code()));
     }
     let s = String::from_utf8(output.stdout).unwrap();
     eprintln!("{}", s);

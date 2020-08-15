@@ -24,6 +24,8 @@ pub enum TError {
         io::Error,
     ),
     */
+    #[error("call to C++ compiler failed with error code {1:?}. {0}")]
+    CppCompilerError(String, Option<i32>),
 
     #[error("unknown symbol `{0}` at {1:?}")]
     UnknownSymbol(String, Info),
