@@ -57,7 +57,7 @@ fn test_with_expectation(expected: TestResult, options: Vec<&str>) {
         (Ok(result), OutputFile(gold)) => {
             eprintln!("Loading golden file {}", gold);
             let read = read_to_string(&gold);
-            let golden = read.expect(format!("golden file {} could not be read", gold).as_str());
+            let golden = read.expect(format!("golden file {} could not be read", gold).as_str()).replace("\r", "");
             assert_eq!(
                 golden,
                 format!("{}{}", stdout.join(""), result)
