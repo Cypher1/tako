@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use crate::ast::*;
-use crate::database::Compiler;
-use crate::errors::TError;
+use super::ast::*;
+use super::database::Compiler;
+use super::errors::TError;
 
 type Frame = HashMap<String, Node>;
 
@@ -449,9 +449,9 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
 #[cfg(test)]
 mod tests {
     use super::{globals, Interpreter, Res};
-    use crate::ast::*;
-    use crate::cli_options::Options;
-    use crate::database::{Compiler, DB};
+    use super::super::ast::*;
+    use super::super::cli_options::Options;
+    use super::super::database::{Compiler, DB};
     use Node::*;
     use Prim::*;
 

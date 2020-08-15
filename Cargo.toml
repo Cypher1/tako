@@ -3,7 +3,14 @@ name = "tako"
 version = "0.1.0"
 authors = ["Joshua Pratt <jp10010101010000@gmail.com>"]
 edition = "2018"
-build = "src/build.rs"
+
+[lib]
+name = "takolib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "tako"
+path = "src/main.rs"
 
 [dependencies]
 salsa = "0.15.0"

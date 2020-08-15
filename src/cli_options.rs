@@ -23,52 +23,54 @@ impl Default for Options {
     }
 }
 
-pub fn parse_args<I, T>(args: I) -> Options
-where
-    I: IntoIterator<Item = T>,
-    T: Into<String>,
-{
-    let mut opts = Options::default();
-    let mut got_dashdash = false;
-    for f in args.into_iter().map(Into::into) {
-        if got_dashdash {
-            opts.interpreter_args.push(f.to_owned());
-            continue;
-        }
-        if f.is_empty() {
-        } else if f.starts_with('-') {
-            match f.as_str() {
-                "-i" | "--interactive" => {
-                    opts.interactive = true;
-                    opts.files.push("/dev/stdin".to_string());
-                }
-                "-r" | "--run" => opts.interactive = true,
-                "-d" => opts.debug += 1,
-                "--ast" => opts.show_ast = true,
-                "--table" => opts.show_table = true,
-                "--full-ast" => opts.show_full_ast = true,
-                "--version" => {
-                    println!("{}{}", TITLE, VERSION);
-                    return opts;
-                }
-                "--" => got_dashdash = true,
-                arg => {
-                    if arg != "-h" && arg != "--help" {
-                        eprintln!("unexpected flag '{}'", f);
-                    }
-                    eprintln!("{}{}\n{}", TITLE, VERSION, USAGE);
-                    return opts;
-                }
-            }
-        } else {
-            if opts.files.is_empty() {
-                // This is the first argument, so it should be the 'main'.
+impl Options {
+    pub fn new<I, T>(args: I) -> Options
+        where
+        I: IntoIterator<Item = T>,
+        T: Into<String>,
+    {
+        let mut opts = Options::default();
+        let mut got_dashdash = false;
+        for f in args.into_iter().map(Into::into) {
+            if got_dashdash {
                 opts.interpreter_args.push(f.to_owned());
+                continue;
             }
-            opts.files.push(f.to_string());
+            if f.is_empty() {
+            } else if f.starts_with('-') {
+                match f.as_str() {
+                    "-i" | "--interactive" => {
+                        opts.interactive = true;
+                        opts.files.push("/dev/stdin".to_string());
+                    }
+                    "-r" | "--run" => opts.interactive = true,
+                    "-d" => opts.debug += 1,
+                    "--ast" => opts.show_ast = true,
+                    "--table" => opts.show_table = true,
+                    "--full-ast" => opts.show_full_ast = true,
+                    "--version" => {
+                        println!("{}{}", TITLE, VERSION);
+                        return opts;
+                    }
+                    "--" => got_dashdash = true,
+                    arg => {
+                        if arg != "-h" && arg != "--help" {
+                            eprintln!("unexpected flag '{}'", f);
+                        }
+                        eprintln!("{}{}\n{}", TITLE, VERSION, USAGE);
+                        return opts;
+                    }
+                }
+            } else {
+                if opts.files.is_empty() {
+                    // This is the first argument, so it should be the 'main'.
+                    opts.interpreter_args.push(f.to_owned());
+                }
+                opts.files.push(f.to_string());
+            }
         }
+        opts
     }
-    opts
 }
 
 pub const TITLE: &str = "tako v";

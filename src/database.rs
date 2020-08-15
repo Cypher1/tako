@@ -5,11 +5,11 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::io::prelude::*;
 use std::process::Command;
 
-use crate::ast::{Node, Path, Root, Symbol, Table, Visitor};
-use crate::cli_options::Options;
-use crate::externs::Extern;
-use crate::tokens::Token;
-use crate::errors::TError;
+use super::ast::{Node, Path, Root, Symbol, Table, Visitor};
+use super::cli_options::Options;
+use super::errors::TError;
+use super::externs::Extern;
+use super::tokens::Token;
 
 #[salsa::query_group(CompilerStorage)]
 pub trait Compiler: salsa::Database {
@@ -19,6 +19,7 @@ pub trait Compiler: salsa::Database {
     #[salsa::input]
     fn options(&self) -> Options;
     fn debug(&self) -> i32;
+    fn files(&self) -> Vec<String>;
 
     fn get_externs(&self) -> HashMap<String, Extern>;
     fn get_extern(&self, name: String) -> Option<Extern>;
@@ -31,7 +32,11 @@ pub trait Compiler: salsa::Database {
     fn parse_file(&self, module: Path) -> Result<Node, TError>;
     fn build_symbol_table(&self, module: Path) -> Result<Root, TError>;
     fn find_symbol(&self, mut context: Path, path: Path) -> Result<Option<Table>, TError>;
-    fn find_symbol_uses(&self, mut context: Path, path: Path) -> Result<Option<HashSet<Path>>, TError>;
+    fn find_symbol_uses(
+        &self,
+        mut context: Path,
+        path: Path,
+    ) -> Result<Option<HashSet<Path>>, TError>;
 
     fn look_up_definitions(&self, module: Path) -> Result<Root, TError>;
 
@@ -41,6 +46,10 @@ pub trait Compiler: salsa::Database {
 
 fn debug(db: &dyn Compiler) -> i32 {
     db.options().debug
+}
+
+fn files(db: &dyn Compiler) -> Vec<String> {
+    db.options().files
 }
 
 pub fn module_name(_db: &dyn Compiler, filename: String) -> Path {
@@ -55,7 +64,7 @@ pub fn module_name(_db: &dyn Compiler, filename: String) -> Path {
                     Some(name[1..].join("."))
                 } else {
                     None
-                }
+                },
             )
         })
         .collect()
@@ -135,7 +144,11 @@ fn find_symbol(db: &dyn Compiler, mut context: Path, path: Path) -> Result<Optio
     }
 }
 
-fn find_symbol_uses(db: &dyn Compiler, context: Path, path: Path) -> Result<Option<HashSet<Path>>, TError> {
+fn find_symbol_uses(
+    db: &dyn Compiler,
+    context: Path,
+    path: Path,
+) -> Result<Option<HashSet<Path>>, TError> {
     Ok(db.find_symbol(context, path)?.map(|x| x.value.uses))
 }
 
@@ -190,8 +203,7 @@ fn build_with_gpp(db: &dyn Compiler, module: Path) -> Result<String, TError> {
         .expect("could not run g++");
     if !output.status.success() {
         let s = String::from_utf8(output.stderr).unwrap();
-        eprintln!("{}", s);
-        panic!("Command executed with failing error code");
+        return Err(TError::CppCompilerError(s, output.status.code()));
     }
     let s = String::from_utf8(output.stdout).unwrap();
     eprintln!("{}", s);

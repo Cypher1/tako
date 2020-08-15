@@ -1,3 +1,0 @@
-Panic
---run
-counter_examples/nested_explicit_side_effect.tk
