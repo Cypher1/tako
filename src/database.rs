@@ -167,7 +167,7 @@ fn infer(db: &dyn Compiler, expr: Node) -> Result<Node, TError> {
     if db.debug() > 0 {
         eprintln!("infering type for ... {:?}", &expr);
     }
-    infer(db, expr)
+    infer(db, &expr)
 }
 
 fn compile_to_cpp(db: &dyn Compiler, module: Path) -> Result<(String, HashSet<String>), TError> {
