@@ -1,7 +1,5 @@
 #![deny(clippy::all)]
-
-#[macro_use]
-mod map_macros;
+#![feature(test)]
 
 use std::fs::File;
 use std::io::prelude::*;
