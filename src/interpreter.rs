@@ -448,10 +448,10 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::{globals, Interpreter, Res};
     use super::super::ast::*;
     use super::super::cli_options::Options;
     use super::super::database::{Compiler, DB};
+    use super::{globals, Interpreter, Res};
     use Node::*;
     use Prim::*;
 
@@ -609,7 +609,10 @@ mod tests {
             let num2: i32 = rng.gen();
             let res = num1.wrapping_add(num2);
             eprintln!("mul {:?} + {:?} = {:?}", num1, num2, res);
-            assert_eq!(eval_str(format!("mul(x, y)=x+y;mul(x= {}, y= {})", num1, num2)), Ok(I32(res, Info::default())));
+            assert_eq!(
+                eval_str(format!("mul(x, y)=x+y;mul(x= {}, y= {})", num1, num2)),
+                Ok(I32(res, Info::default()))
+            );
         }
     }
 
@@ -622,7 +625,10 @@ mod tests {
             let num2: i32 = rng.gen();
             let res = num1.wrapping_mul(num2);
             eprintln!("mul {:?} * {:?} = {:?}", num1, num2, res);
-            assert_eq!(eval_str(format!("mul(x, y)=x*y;mul(x= {}, y= {})", num1, num2)), Ok(I32(res, Info::default())));
+            assert_eq!(
+                eval_str(format!("mul(x, y)=x*y;mul(x= {}, y= {})", num1, num2)),
+                Ok(I32(res, Info::default()))
+            );
         }
     }
 }

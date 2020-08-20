@@ -3,9 +3,9 @@
 use std::env;
 
 use takolib::cli_options::Options;
-use takolib::database::{DB, Compiler};
-use takolib::work;
+use takolib::database::{Compiler, DB};
 use takolib::errors::TError;
+use takolib::work;
 
 fn main() -> Result<(), TError> {
     let args: Vec<String> = env::args().collect();

@@ -1,10 +1,10 @@
 use std::collections::VecDeque;
 
 use super::ast::*;
-use super::location::*;
-use super::tokens::*;
 use super::database::Compiler;
 use super::errors::TError;
+use super::location::*;
+use super::tokens::*;
 
 fn binding_power(db: &dyn Compiler, tok: &Token) -> (i32, bool) {
     let bind = match &tok.tok_type {

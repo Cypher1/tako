@@ -26,24 +26,30 @@ pub fn infer(db: &dyn Compiler, expr: &Node) -> Result<Node, TError> {
             .to_node()),
             Lambda(node) => infer(db, node.as_ref()), // TODO: abstraction
         },
-        UnOpNode(UnOp{name: _, inner: _, info: _}) => {
-            panic!("TODO Impl type checking for UnOp")
-        }
-        BinOpNode(BinOp{name: _, left: _, right: _, info: _}) => {
-            panic!("TODO Impl type checking for BinOp")
-        }
-        SymNode(Sym{name: _, info: _}) => {
-            panic!("TODO Impl type checking for Sym")
-        }
-        ApplyNode(Apply{inner: _, args: _, info: _}) => {
-            panic!("TODO Impl type checking for Apply")
-        }
-        LetNode(Let{name: _, value: _, args: _, info: _}) => {
-            panic!("TODO Impl type checking for Let")
-        }
-        Error(Err{msg: _, info: _}) => {
-            panic!("TODO Impl type checking for Let")
-        }
+        UnOpNode(UnOp {
+            name: _,
+            inner: _,
+            info: _,
+        }) => panic!("TODO Impl type checking for UnOp"),
+        BinOpNode(BinOp {
+            name: _,
+            left: _,
+            right: _,
+            info: _,
+        }) => panic!("TODO Impl type checking for BinOp"),
+        SymNode(Sym { name: _, info: _ }) => panic!("TODO Impl type checking for Sym"),
+        ApplyNode(Apply {
+            inner: _,
+            args: _,
+            info: _,
+        }) => panic!("TODO Impl type checking for Apply"),
+        LetNode(Let {
+            name: _,
+            value: _,
+            args: _,
+            info: _,
+        }) => panic!("TODO Impl type checking for Let"),
+        Error(Err { msg: _, info: _ }) => panic!("TODO Impl type checking for Let"),
     }
 }
 
@@ -66,7 +72,14 @@ mod tests {
     fn infer_type_of_i32() {
         let mut db = DB::default();
         let num = I32(23, Info::default()).to_node();
-        assert_eq!(infer(&mut db, &num), Ok(Sym{name: "I32".to_owned(), info: Info::default()}.to_node()));
+        assert_eq!(
+            infer(&mut db, &num),
+            Ok(Sym {
+                name: "I32".to_owned(),
+                info: Info::default()
+            }
+            .to_node())
+        );
         assert_type("23", "I32");
     }
 
@@ -107,17 +120,13 @@ mod tests {
     fn microbench_type_of_i32(b: &mut Bencher) {
         let mut db = DB::default();
         let prog = test::black_box(parse_with_db(&mut db, "12".to_string()));
-        b.iter(|| {
-            infer(&mut db, &prog)
-        });
+        b.iter(|| infer(&mut db, &prog));
     }
 
     #[bench]
     fn microbench_type_of_plus_expr(b: &mut Bencher) {
         let mut db = DB::default();
         let prog = test::black_box(parse_with_db(&mut db, "12+32".to_string()));
-        b.iter(|| {
-            infer(&mut db, &prog)
-        });
+        b.iter(|| infer(&mut db, &prog));
     }
 }

@@ -1,10 +1,10 @@
 use derivative::Derivative;
 use std::collections::HashMap;
 
-use crate::ast::Info;
-use crate::ast::Prim::*;
+use crate::ast::{Info, Prim::*};
 use crate::database::Compiler;
 use crate::interpreter::{prim_add_strs, prim_pow, Res};
+use crate::types::{DataType, DataType::*};
 
 pub type FuncImpl = Box<dyn Fn(&dyn Compiler, Vec<&dyn Fn() -> Res>, Info) -> Res>;
 
@@ -54,6 +54,7 @@ pub struct Extern {
     pub cpp_code: String,
     pub cpp_arg_processor: String,
     pub cpp_flags: String,
+    pub ty: DataType,
 }
 
 pub fn get_externs() -> HashMap<String, Extern> {
@@ -65,6 +66,7 @@ pub fn get_externs() -> HashMap<String, Extern> {
             cpp_code: "std::cout << ".to_string(),
             cpp_arg_processor: "".to_string(),
             cpp_flags: "".to_string(),
+            ty: Eff("stdio".to_string()),
         },
         Extern {
             name: "++".to_string(),
@@ -86,6 +88,7 @@ string to_string(const bool& t){
             cpp_code: "+".to_string(),
             cpp_arg_processor: "std::to_string".to_string(),
             cpp_flags: "".to_string(),
+            ty: Eff("stdio".to_string()),
         },
         Extern {
             name: "^".to_string(),
@@ -94,6 +97,7 @@ string to_string(const bool& t){
             cpp_code: "pow".to_string(),
             cpp_arg_processor: "".to_string(),
             cpp_flags: "-lm".to_string(),
+            ty: Static,
         },
         Extern {
             name: "argc".to_string(),
@@ -102,6 +106,7 @@ string to_string(const bool& t){
             cpp_code: "argc".to_string(),
             cpp_arg_processor: "".to_string(),
             cpp_flags: "".to_string(),
+            ty: Static,
         },
         Extern {
             name: "argv".to_string(),
@@ -110,6 +115,7 @@ string to_string(const bool& t){
             cpp_code: "([&argv](const int x){return argv[x];})".to_string(),
             cpp_arg_processor: "".to_string(),
             cpp_flags: "".to_string(),
+            ty: Static,
         },
     ];
     let mut extern_map: HashMap<String, Extern> = HashMap::new();
