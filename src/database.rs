@@ -59,7 +59,7 @@ pub fn module_name(_db: &dyn Compiler, filename: String) -> Path {
         .replace("\\", "/")
         .split('/')
         .map(|part| {
-            let name: Vec<&str> = part.split(".").collect();
+            let name: Vec<&str> = part.split('.').collect();
             Symbol::Named(
                 name[0].to_owned(),
                 if name.len() > 1 {

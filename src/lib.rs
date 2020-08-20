@@ -44,9 +44,9 @@ pub fn work(
 ) -> Result<String, TError> {
     let mut contents = String::new();
     let mut file = File::open(filename.to_owned())
-        .expect(format!("io error opening file {}", filename.to_owned()).as_str());
+        .unwrap_or_else(|_| panic!("io error opening file {}", filename.to_owned()));
     file.read_to_string(&mut contents)
-        .expect(format!("io error reading file {}", filename.to_owned()).as_str());
+        .unwrap_or_else(|_| panic!("io error reading file {}", filename.to_owned()));
 
     let contents = Arc::new(contents);
     let module_name = db.module_name(filename.to_owned());

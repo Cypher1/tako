@@ -34,7 +34,7 @@ fn test_with_expectation(expected: TestResult, options: Vec<&str>) {
                 Str(s,_)=>s,
                 s=>format!("{:?}", s)
             });
-            return Ok(I32(0, Info::default()))
+            Ok(I32(0, Info::default()))
         };
         let files = db.files();
         if files.len() != 1 {
@@ -57,7 +57,7 @@ fn test_with_expectation(expected: TestResult, options: Vec<&str>) {
         (Ok(result), OutputFile(gold)) => {
             eprintln!("Loading golden file {}", gold);
             let read = read_to_string(&gold);
-            let golden = read.expect(format!("golden file {} could not be read", gold).as_str()).replace("\r", "");
+            let golden = read.unwrap_or_else(|_| panic!("golden file {} could not be read", gold)).replace("\r", "");
             assert_eq!(
                 golden,
                 format!("{}{}", stdout.join(""), result)
