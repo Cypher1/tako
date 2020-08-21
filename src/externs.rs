@@ -4,7 +4,9 @@ use std::collections::HashMap;
 use crate::ast::{Info, Prim::*};
 use crate::database::Compiler;
 use crate::interpreter::{prim_add_strs, prim_pow, Res};
-use crate::types::{DataType, DataType::*};
+use crate::types::{unit, Type, Type::*, str_type, number_type};
+
+use crate::{map, str_map};
 
 pub type FuncImpl = Box<dyn Fn(&dyn Compiler, Vec<&dyn Fn() -> Res>, Info) -> Res>;
 
@@ -54,7 +56,7 @@ pub struct Extern {
     pub cpp_code: String,
     pub cpp_arg_processor: String,
     pub cpp_flags: String,
-    pub ty: DataType,
+    pub ty: Type,
 }
 
 pub fn get_externs() -> HashMap<String, Extern> {
@@ -66,7 +68,12 @@ pub fn get_externs() -> HashMap<String, Extern> {
             cpp_code: "std::cout << ".to_string(),
             cpp_arg_processor: "".to_string(),
             cpp_flags: "".to_string(),
-            ty: Eff("stdio".to_string()),
+            ty: Function {
+                results: map!{"it".to_string() => Value(unit())},
+                arguments: map!{"it" => str_type()},
+                intros: map!(),
+                effects: vec!["stdio".to_string()],
+            },
         },
         Extern {
             name: "++".to_string(),
@@ -88,7 +95,12 @@ string to_string(const bool& t){
             cpp_code: "+".to_string(),
             cpp_arg_processor: "std::to_string".to_string(),
             cpp_flags: "".to_string(),
-            ty: Eff("stdio".to_string()),
+            ty: Function {
+                intros: str_map!("a" => Variable("Display".to_string()), "b" => Variable("Display".to_string())),
+zsxc            results: str_map!("it" => Value(str_type())),
+                arguments: str_map!("left" => Variable("a".to_string()), "right" => Variable("b".to_string())),
+                effects: vec![],
+            },
         },
         Extern {
             name: "^".to_string(),
@@ -97,7 +109,12 @@ string to_string(const bool& t){
             cpp_code: "pow".to_string(),
             cpp_arg_processor: "".to_string(),
             cpp_flags: "-lm".to_string(),
-            ty: Static,
+            ty: Function {
+                intros: str_map!("a" => Variable("Number".to_string()), "b" => Variable("Number".to_string())),
+                results: str_map!("it" => Variable("a".to_string())),
+                arguments: str_map!("left" => Variable("a".to_string()), "right" => Variable("b".to_string())),
+                effects: vec![],
+            },
         },
         Extern {
             name: "argc".to_string(),
@@ -106,7 +123,7 @@ string to_string(const bool& t){
             cpp_code: "argc".to_string(),
             cpp_arg_processor: "".to_string(),
             cpp_flags: "".to_string(),
-            ty: Static,
+            ty: Value(number_type()),
         },
         Extern {
             name: "argv".to_string(),
@@ -115,10 +132,15 @@ string to_string(const bool& t){
             cpp_code: "([&argv](const int x){return argv[x];})".to_string(),
             cpp_arg_processor: "".to_string(),
             cpp_flags: "".to_string(),
-            ty: Static,
+            ty: Function {
+                results: str_map!("it" => Value(str_type())),
+                intros: map!(),
+                arguments: map!("it".to_string() => Value(number_type())),
+                effects: vec![],
+            },
         },
     ];
-    let mut extern_map: HashMap<String, Extern> = HashMap::new();
+    let mut extern_map: HashMap<String, Extern> = map!();
     while let Some(extern_def) = externs.pop() {
         extern_map.insert(extern_def.name.clone(), extern_def);
     }

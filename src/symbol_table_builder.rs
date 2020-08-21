@@ -16,12 +16,13 @@ pub struct State {
     pub path: Vec<Symbol>,
 }
 
-impl Table {
-    pub fn new() -> Table {
-        // TODO: This smells a bit?
+impl Default for Table {
+    fn default() -> Table {
         to_hash_root(Entry::default())
     }
+}
 
+impl Table {
     pub fn find<'a>(self: &'a Table, path: &[Symbol]) -> Option<&'a Table> {
         // eprintln!("find in {:?}", self.value);
         if path.is_empty() {
@@ -47,7 +48,7 @@ impl Table {
     }
 
     fn get_child_mut<'a>(self: &'a mut Table, find: &Symbol) -> &'a mut HashTree<Symbol, Entry> {
-        self.children.entry(find.clone()).or_insert_with(Table::new)
+        self.children.entry(find.clone()).or_insert_with(Table::default)
     }
 
     pub fn get_mut<'a>(self: &'a mut Table, path: &[Symbol]) -> &'a mut HashTree<Symbol, Entry> {
@@ -65,7 +66,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
             eprintln!("building symbol table for file... {:?}", &module);
         }
 
-        let mut table = Table::new();
+        let mut table = Table::default();
         let mut main_at = module.clone();
         main_at.push(Symbol::new("main".to_string()));
 

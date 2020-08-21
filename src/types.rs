@@ -1,13 +1,24 @@
+use std::collections::HashMap;
+
 // A list of types with an offset to get to the first bit (used for padding, frequently 0).
 type Layout = Vec<(DataType, usize)>;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(PartialEq, Eq, Clone, Debug, Hash)]
 pub enum DataType {
     Union(Layout),
     Struct(Layout),
     Static,
     Pointer(usize, Box<DataType>),
-    Eff(String), // Size 0, is required for being able to call related functions.
+}
+
+type Pack = HashMap<String, Type>;
+
+#[derive(PartialEq, Eq, Clone, Debug)]
+pub enum Type {
+    Value(DataType),
+    Variable(String),
+    Function{results: Pack, intros: Pack, arguments: Pack, effects: Vec<String>},
+    Apply{inner: DataType, arguments: Pack},
 }
 
 use DataType::*;
@@ -58,6 +69,10 @@ pub fn str_type() -> DataType {
     Pointer(machine_ptr_size(), Box::new(char_type()))
 }
 
+pub fn number_type() -> DataType {
+    Struct(vec![(byte_type(), 0),(byte_type(), 8),(byte_type(), 16),(byte_type(), 24)])
+}
+
 pub fn card(ty: &DataType) -> usize {
     use DataType::*;
     match ty {
@@ -65,7 +80,6 @@ pub fn card(ty: &DataType) -> usize {
         Struct(s) => s.iter().fold(1, |res, sty| res * card(&sty.0)),
         Pointer(_ptr_size, t) => card(&t),
         Static => panic!("Functions shouldnt be treated as cardinality"),
-        Eff(_) => 0,
     }
 }
 
@@ -105,7 +119,6 @@ pub fn size(ty: &DataType) -> usize {
         }
         Pointer(ptr_size, _t) => *ptr_size,
         Static => 0,
-        Eff(_) => 0,
     }
 }
 
@@ -114,15 +127,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn cardinality_void() {
+    fn void_type() {
         assert_eq!(card(&void()), 0);
+        assert_eq!(size(&void()), 0);
     }
-    #[test]
-    fn cardinality_unit() {
+   #[test]
+    fn unit_type() {
         assert_eq!(card(&unit()), 1);
+        assert_eq!(size(&unit()), 0);
     }
     #[test]
-    fn cardinality_bool() {
+    fn bit_type() {
         let bitt = bit();
         let boolt = Union(vec![(unit(), 0), (unit(), 0)]);
         assert_eq!(boolt, bitt);
@@ -130,18 +145,19 @@ mod tests {
         assert_eq!(card(&boolt), 2);
     }
     #[test]
-    fn cardinality_trit() {
+    fn trit_type() {
         let trit = Union(vec![(unit(), 0), (unit(), 0), (unit(), 0)]);
         assert_eq!(card(&trit), 3);
+        assert_eq!(size(&trit), 2);
     }
     #[test]
-    fn quad() {
+    fn quad_type() {
         let quad = Struct(vec![((bit()), 0), (bit(), 0)]);
         assert_eq!(card(&quad), 4);
         assert_eq!(size(&quad), 2);
     }
     #[test]
-    fn pent() {
+    fn pent_type() {
         let pent = Union(vec![
             (unit(), 0),
             (unit(), 0),
@@ -156,60 +172,21 @@ mod tests {
     fn pair_bool_ptrs() {
         let bool_ptr = Pointer(64, Box::new(bit()));
         let quad = Struct(vec![(bool_ptr.clone(), 0), (bool_ptr, 0)]);
-        assert_eq!(size(&quad), 2 * 64);
         assert_eq!(card(&quad), 4);
-    }
-
-    #[test]
-    fn size_void() {
-        let void = Union(vec![]);
-        assert_eq!(size(&void), 0);
+        assert_eq!(size(&quad), 2 * 64);
     }
     #[test]
-    fn size_unit() {
-        let unit = Struct(vec![]);
-        assert_eq!(size(&unit), 0);
-    }
-    #[test]
-    fn size_bool() {
-        let unit = Struct(vec![]);
-        let boolt = Union(vec![((unit.clone()), 0), ((unit), 0)]);
-
-        assert_eq!(size(&boolt), 1);
-    }
-    #[test]
-    fn size_trit() {
-        let unit = Struct(vec![]);
-        let trit = Union(vec![((unit.clone()), 0), ((unit.clone()), 0), ((unit), 0)]);
-
-        assert_eq!(size(&trit), 2);
-    }
-    #[test]
-    fn size_quad() {
-        let unit = Struct(vec![]);
-        let boolt = Union(vec![((unit.clone()), 0), ((unit), 0)]);
-        let quad = Struct(vec![((boolt.clone()), 0), ((boolt), 0)]);
-
-        assert_eq!(size(&quad), 2);
-    }
-
-    #[test]
-    fn size_padded_nibble() {
-        let unit = Struct(vec![]);
-        let boolt = Union(vec![((unit.clone()), 0), ((unit), 0)]);
-        let quad = Struct(vec![((boolt.clone()), 0), ((boolt), 0)]);
-        let nibble = Struct(vec![((quad.clone()), 2), ((quad), 2)]);
-
+    fn padded_nibble() {
+        let quad = Struct(vec![(bit(), 0), (bit(), 0)]);
+        let nibble = Struct(vec![(quad.clone(), 2), (quad, 2)]);
+        assert_eq!(card(&nibble), 16);
         assert_eq!(size(&nibble), 8);
     }
 
     #[test]
-    fn size_bool_and_fn() {
-        let unit = Struct(vec![]);
-        let boolt = Union(vec![((unit.clone()), 0), ((unit), 0)]);
+    fn bool_and_fn() {
         let fn_ptr = Pointer(64, Box::new(Static));
-        let closure = Struct(vec![((boolt), 7), ((fn_ptr), 0)]);
-
+        let closure = Struct(vec![(bit(), 7), (fn_ptr, 0)]);
         assert_eq!(size(&closure), 72);
     }
 }
