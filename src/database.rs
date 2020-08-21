@@ -22,6 +22,7 @@ pub trait Compiler: salsa::Database {
     fn files(&self) -> Vec<String>;
 
     fn get_externs(&self) -> HashMap<String, Extern>;
+    fn get_extern_names(&self) -> Vec<String>;
     fn get_extern(&self, name: String) -> Option<Extern>;
     fn get_extern_operator(&self, name: String) -> Option<(i32, bool)>;
 
@@ -90,6 +91,10 @@ pub fn filename(db: &dyn Compiler, module: Path) -> String {
 
 fn get_externs(_db: &dyn Compiler) -> HashMap<String, Extern> {
     crate::externs::get_externs()
+}
+
+fn get_extern_names(db: &dyn Compiler) -> Vec<String> {
+    db.get_externs().keys().map(|x|x.clone()).collect()
 }
 
 fn get_extern(db: &dyn Compiler, name: String) -> Option<Extern> {

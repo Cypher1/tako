@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use crate::ast::{Info, Prim::*};
 use crate::database::Compiler;
 use crate::interpreter::{prim_add_strs, prim_pow, Res};
-use crate::types::{unit, Type, Type::*, str_type, number_type};
+use crate::types::{void, Type, Type::*, str_type, number_type};
 
 use crate::{map, dict};
 
@@ -19,6 +19,22 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
                 s => print!("{:?}", s),
             };
             Ok(I32(0, info))
+        })),
+        "eprint" => Some(Box::new(|_, args, info| {
+            let val = args[0]()?;
+            match val {
+                Str(s, _) => eprint!("{}", s),
+                s => eprint!("{:?}", s),
+            };
+            Ok(I32(0, info))
+        })),
+        "exit" => Some(Box::new(|_, args, _| {
+            let val = args[0]()?;
+            let code = match val {
+                I32(n, _) => n,
+                s => {eprint!("{:?}", s); 1},
+            };
+            std::process::exit(code);
         })),
         "++" => Some(Box::new(|_, args, info| {
             prim_add_strs(&args[0]()?, &args[1]()?, info)
@@ -54,8 +70,9 @@ pub struct Extern {
     pub operator: Option<(i32, bool)>, // (binding power, is_right_assoc) if the extern is an operator
     pub cpp_includes: String,
     pub cpp_code: String,
+    pub cpp_arg_joiner: String,
     pub cpp_arg_processor: String,
-    pub cpp_flags: String,
+    pub cpp_flags: Vec<String>,
     pub ty: Type,
 }
 
@@ -66,13 +83,44 @@ pub fn get_externs() -> HashMap<String, Extern> {
             operator: None,
             cpp_includes: "#include <iostream>".to_string(),
             cpp_code: "std::cout << ".to_string(),
+            cpp_arg_joiner: " << ".to_string(),
             cpp_arg_processor: "".to_string(),
-            cpp_flags: "".to_string(),
+            cpp_flags: vec![],
             ty: Function {
-                results: dict!{"it" => Value(unit())},
+                results: dict!{},
                 arguments: dict!{"it" => Value(str_type())},
                 intros: map!(),
-                effects: vec!["stdio".to_string()],
+                effects: vec!["stdout".to_string()],
+            },
+        },
+        Extern {
+            name: "eprint".to_string(),
+            operator: None,
+            cpp_includes: "#include <iostream>".to_string(),
+            cpp_code: "std::cerr << ".to_string(),
+            cpp_arg_joiner: " << ".to_string(),
+            cpp_arg_processor: "".to_string(),
+            cpp_flags: vec![],
+            ty: Function {
+                results: dict!{},
+                arguments: dict!{"it" => Value(str_type())},
+                intros: map!(),
+                effects: vec!["stderr".to_string()],
+            },
+        },
+        Extern {
+            name: "exit".to_string(),
+            operator: None,
+            cpp_includes: "#include <stdlib.h>".to_string(),
+            cpp_code: "[](int code){exit(code);}".to_string(),
+            cpp_arg_joiner: ", ".to_string(),
+            cpp_arg_processor: "".to_string(),
+            cpp_flags: vec![],
+            ty: Function {
+                results: dict!{"it" => Value(void())},
+                arguments: dict!{"it" => Value(number_type())},
+                intros: map!(),
+                effects: vec!["stderr".to_string()],
             },
         },
         Extern {
@@ -92,9 +140,10 @@ string to_string(const bool& t){
 }
 }"
             .to_string(),
-            cpp_code: "+".to_string(),
+            cpp_code: "".to_string(),
+            cpp_arg_joiner: "+".to_string(),
             cpp_arg_processor: "std::to_string".to_string(),
-            cpp_flags: "".to_string(),
+            cpp_flags: vec![],
             ty: Function {
                 intros: dict!("a" => Variable("Display".to_string()), "b" => Variable("Display".to_string())),
                 results: dict!("it" => Value(str_type())),
@@ -107,8 +156,9 @@ string to_string(const bool& t){
             operator: Some((90, true)),
             cpp_includes: "#include <cmath>".to_string(),
             cpp_code: "pow".to_string(),
+            cpp_arg_joiner: ", ".to_string(),
             cpp_arg_processor: "".to_string(),
-            cpp_flags: "-lm".to_string(),
+            cpp_flags: vec!["-lm".to_string()],
             ty: Function {
                 intros: dict!("a" => Variable("Number".to_string()), "b" => Variable("Number".to_string())),
                 results: dict!("it" => Variable("a".to_string())),
@@ -121,8 +171,9 @@ string to_string(const bool& t){
             operator: None,
             cpp_includes: "".to_string(),
             cpp_code: "argc".to_string(),
+            cpp_arg_joiner: ", ".to_string(),
             cpp_arg_processor: "".to_string(),
-            cpp_flags: "".to_string(),
+            cpp_flags: vec![],
             ty: Value(number_type()),
         },
         Extern {
@@ -130,8 +181,9 @@ string to_string(const bool& t){
             operator: None,
             cpp_includes: "".to_string(),
             cpp_code: "([&argv](const int x){return argv[x];})".to_string(),
+            cpp_arg_joiner: ", ".to_string(),
             cpp_arg_processor: "".to_string(),
-            cpp_flags: "".to_string(),
+            cpp_flags: vec![],
             ty: Function {
                 results: dict!("it" => Value(str_type())),
                 intros: dict!(),

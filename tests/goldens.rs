@@ -462,6 +462,11 @@ fn printing() {
 }
 
 #[test]
+fn error_printing() {
+    compile_with_success("examples/error_printing.tk");
+}
+
+#[test]
 fn requirement() {
   test_with_expectation(Error, vec!["--run", "counter_examples/requirement.tk"]);
 }
