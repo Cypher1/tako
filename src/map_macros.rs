@@ -13,7 +13,7 @@ macro_rules! map(
 );
 
 #[macro_export]
-macro_rules! str_map(
+macro_rules! dict(
     {} => {::std::collections::HashMap::new()};
     { $($key:expr => $value:expr),* } => {
         {
