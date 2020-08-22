@@ -231,7 +231,9 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         let mut includes: Vec<&String> = self.includes.iter().collect();
         includes.sort();
         for inc in includes.iter() {
-            code = format!("{}{}\n", code, inc);
+            if inc.as_str() != "" {
+                code = format!("{}{}\n", code, inc);
+            }
         }
         // Forward declarations
         for func in self.functions.clone().iter() {
@@ -395,14 +397,14 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         if let Some(info) = db.get_extern(expr.name.clone()) {
             self.includes.insert(info.cpp_includes);
             self.flags.extend(info.cpp_flags);
-            let left = self.build_call1(info.cpp_arg_processor.as_str(), left);
-            let right = self.build_call1(info.cpp_arg_processor.as_str(), right);
+            let (left, right) = if info.cpp_arg_processor.as_str() == "" {
+                (left, right)
+            } else {
+                (self.build_call1(info.cpp_arg_processor.as_str(), left), self.build_call1(info.cpp_arg_processor.as_str(), right))
+            };
             return Ok(self.build_call2(info.cpp_code.as_str(), info.cpp_arg_joiner.as_str(), left, right));
         }
         let res = match expr.name.as_str() {
-            "*" => self.build_call2("", "*", left, right),
-            "+" => self.build_call2("", "+", left, right),
-            "/" => self.build_call2("", "/", left, right), // TODO: require divisibility
             "-" => self.build_call2("", "-", left, right),
             "==" => self.build_call2("", "==", left, right),
             "!=" => self.build_call2("", "!=", left, right),

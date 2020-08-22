@@ -112,7 +112,7 @@ pub fn get_externs() -> HashMap<String, Extern> {
             name: "exit".to_string(),
             operator: None,
             cpp_includes: "#include <stdlib.h>".to_string(),
-            cpp_code: "[](int code){exit(code);}".to_string(),
+            cpp_code: "[](const int code){exit(code);}".to_string(),
             cpp_arg_joiner: ", ".to_string(),
             cpp_arg_processor: "".to_string(),
             cpp_flags: vec![],
@@ -131,12 +131,12 @@ pub fn get_externs() -> HashMap<String, Extern> {
 namespace std{
 template <typename T>
 string to_string(const T& t){
-    stringstream out;
-    out << t;
-    return out.str();
+  stringstream out;
+  out << t;
+  return out.str();
 }
 string to_string(const bool& t){
-    return t ? \"true\" : \"false\";
+  return t ? \"true\" : \"false\";
 }
 }"
             .to_string(),
@@ -159,6 +159,66 @@ string to_string(const bool& t){
             cpp_arg_joiner: ", ".to_string(),
             cpp_arg_processor: "".to_string(),
             cpp_flags: vec!["-lm".to_string()],
+            ty: Function {
+                intros: dict!("a" => Variable("Number".to_string()), "b" => Variable("Number".to_string())),
+                results: dict!("it" => Variable("a".to_string())),
+                arguments: dict!("left" => Variable("a".to_string()), "right" => Variable("b".to_string())),
+                effects: vec![],
+            },
+        },
+        Extern {
+            name: "*".to_string(),
+            operator: Some((80, false)),
+            cpp_includes: "".to_string(),
+            cpp_code: "".to_string(),
+            cpp_arg_joiner: "*".to_string(),
+            cpp_arg_processor: "".to_string(),
+            cpp_flags: vec![],
+            ty: Function {
+                intros: dict!("a" => Variable("Number".to_string()), "b" => Variable("Number".to_string())),
+                results: dict!("it" => Variable("a".to_string())),
+                arguments: dict!("left" => Variable("a".to_string()), "right" => Variable("b".to_string())),
+                effects: vec![],
+            },
+        },
+        Extern {
+            name: "%".to_string(),
+            operator: Some((80, false)),
+            cpp_includes: "".to_string(),
+            cpp_code: "".to_string(),
+            cpp_arg_joiner: "%".to_string(),
+            cpp_arg_processor: "".to_string(),
+            cpp_flags: vec![],
+            ty: Function {
+                intros: dict!("a" => Variable("Number".to_string()), "b" => Variable("Number".to_string())),
+                results: dict!("it" => Variable("a".to_string())),
+                arguments: dict!("left" => Variable("a".to_string()), "right" => Variable("b".to_string())),
+                effects: vec![],
+            },
+        },
+        Extern {
+            name: "+".to_string(),
+            operator: Some((70, false)),
+            cpp_includes: "".to_string(),
+            cpp_code: "".to_string(),
+            cpp_arg_joiner: "+".to_string(),
+            cpp_arg_processor: "".to_string(),
+            cpp_flags: vec![],
+            ty: Function {
+                intros: dict!("a" => Variable("Number".to_string()), "b" => Variable("Number".to_string())),
+                results: dict!("it" => Variable("a".to_string())),
+                arguments: dict!("left" => Variable("a".to_string()), "right" => Variable("b".to_string())),
+                effects: vec![],
+            },
+        },
+        Extern {
+            name: "/".to_string(),
+            operator: Some((80, false)),
+            cpp_includes: "".to_string(),
+            cpp_code: "".to_string(),
+            cpp_arg_joiner: "/".to_string(),
+            cpp_arg_processor: "".to_string(),
+            cpp_flags: vec![],
             ty: Function {
                 intros: dict!("a" => Variable("Number".to_string()), "b" => Variable("Number".to_string())),
                 results: dict!("it" => Variable("a".to_string())),
