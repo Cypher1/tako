@@ -22,6 +22,7 @@ pub trait Compiler: salsa::Database {
     fn files(&self) -> Vec<String>;
 
     fn get_externs(&self) -> HashMap<String, Extern>;
+    fn get_extern_names(&self) -> Vec<String>;
     fn get_extern(&self, name: String) -> Option<Extern>;
     fn get_extern_operator(&self, name: String) -> Option<(i32, bool)>;
 
@@ -40,6 +41,8 @@ pub trait Compiler: salsa::Database {
 
     fn look_up_definitions(&self, module: Path) -> Result<Root, TError>;
 
+    fn infer(&self, expr: Node) -> Result<Node, TError>;
+
     fn compile_to_cpp(&self, module: Path) -> Result<(String, HashSet<String>), TError>;
     fn build_with_gpp(&self, module: Path) -> Result<String, TError>;
 }
@@ -57,7 +60,7 @@ pub fn module_name(_db: &dyn Compiler, filename: String) -> Path {
         .replace("\\", "/")
         .split('/')
         .map(|part| {
-            let name: Vec<&str> = part.split(".").collect();
+            let name: Vec<&str> = part.split('.').collect();
             Symbol::Named(
                 name[0].to_owned(),
                 if name.len() > 1 {
@@ -88,6 +91,10 @@ pub fn filename(db: &dyn Compiler, module: Path) -> String {
 
 fn get_externs(_db: &dyn Compiler) -> HashMap<String, Extern> {
     crate::externs::get_externs()
+}
+
+fn get_extern_names(db: &dyn Compiler) -> Vec<String> {
+    db.get_externs().keys().map(|x|x.clone()).collect()
 }
 
 fn get_extern(db: &dyn Compiler, name: String) -> Option<Extern> {
@@ -158,6 +165,14 @@ fn look_up_definitions(db: &dyn Compiler, module: Path) -> Result<Root, TError> 
         eprintln!("look up definitions >> {:?}", module);
     }
     DefinitionFinder::process(&module, db)
+}
+
+fn infer(db: &dyn Compiler, expr: Node) -> Result<Node, TError> {
+    use crate::type_checker::infer;
+    if db.debug() > 0 {
+        eprintln!("infering type for ... {:?}", &expr);
+    }
+    infer(db, &expr)
 }
 
 fn compile_to_cpp(db: &dyn Compiler, module: Path) -> Result<(String, HashSet<String>), TError> {

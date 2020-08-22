@@ -231,7 +231,9 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         let mut includes: Vec<&String> = self.includes.iter().collect();
         includes.sort();
         for inc in includes.iter() {
-            code = format!("{}{}\n", code, inc);
+            if inc.as_str() != "" {
+                code = format!("{}{}\n", code, inc);
+            }
         }
         // Forward declarations
         for func in self.functions.clone().iter() {
@@ -253,7 +255,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         Ok((code + "\n", self.flags.clone()))
     }
 
-    fn visit_sym(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Sym) -> Res {
+    fn visit_sym(&mut self, db: &dyn Compiler, _state: &mut State, expr: &Sym) -> Res {
         // eprintln!(
         //   "to_c: visit {}, {:?}",
         // expr.name,
@@ -264,17 +266,11 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 .defined_at
                 .expect("Could not find definition for symbol"),
         );
-        if name == "print" {
-            self.includes.insert("#include <iostream>".to_string());
-            return Ok(Code::Expr("std::cout << ".to_owned()));
-        }
-        if name == "argc" {
-            return Ok(Code::Expr("argc".to_owned()));
-        }
-        if name == "argv" {
-            return Ok(Code::Expr(
-                "([&argv](const int x){return argv[x];})".to_owned(),
-            ));
+        if let Some(info) = db.get_extern(name.clone()) {
+            self.includes.insert(info.cpp_includes);
+            self.flags.extend(info.cpp_flags);
+            // arg_processor
+            return Ok(Code::Expr(info.cpp_code));
         }
         Ok(Code::Expr(name))
     }
@@ -398,31 +394,17 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         let left = self.visit(db, state, &expr.left.clone())?;
         let right = self.visit(db, state, &expr.right.clone())?;
         // TODO: require 2 children
+        if let Some(info) = db.get_extern(expr.name.clone()) {
+            self.includes.insert(info.cpp_includes);
+            self.flags.extend(info.cpp_flags);
+            let (left, right) = if info.cpp_arg_processor.as_str() == "" {
+                (left, right)
+            } else {
+                (self.build_call1(info.cpp_arg_processor.as_str(), left), self.build_call1(info.cpp_arg_processor.as_str(), right))
+            };
+            return Ok(self.build_call2(info.cpp_code.as_str(), info.cpp_arg_joiner.as_str(), left, right));
+        }
         let res = match expr.name.as_str() {
-            "*" => self.build_call2("", "*", left, right),
-            "+" => self.build_call2("", "+", left, right),
-            "++" => {
-                self.includes.insert(
-                    "#include <string>
-#include <sstream>
-namespace std{
-template <typename T>
-string to_string(const T& t){
-  stringstream out;
-  out << t;
-  return out.str();
-}
-string to_string(const bool& t){
-  return t ? \"true\" : \"false\";
-}
-}"
-                    .to_string(),
-                );
-                let left = self.build_call1("std::to_string", left);
-                let right = self.build_call1("std::to_string", right);
-                self.build_call2("", "+", left, right)
-            }
-            "/" => self.build_call2("", "/", left, right), // TODO: require divisibility
             "-" => self.build_call2("", "-", left, right),
             "==" => self.build_call2("", "==", left, right),
             "!=" => self.build_call2("", "!=", left, right),
@@ -430,11 +412,6 @@ string to_string(const bool& t){
             "<" => self.build_call2("", "<", left, right),
             ">=" => self.build_call2("", ">=", left, right),
             "<=" => self.build_call2("", "<=", left, right),
-            "^" => {
-                self.includes.insert("#include <cmath>".to_string());
-                self.flags.insert("-lm".to_string());
-                self.build_call2("pow", ", ", left, right)
-            } // TODO: require pos pow
             "-|" => {
                 // TODO: handle 'error' values more widly.
                 let done = Code::If {

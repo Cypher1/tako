@@ -25,7 +25,7 @@ impl Default for Options {
 
 impl Options {
     pub fn new<I, T>(args: I) -> Options
-        where
+    where
         I: IntoIterator<Item = T>,
         T: Into<String>,
     {
