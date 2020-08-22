@@ -428,25 +428,27 @@ pub fn parse(module: &Path, db: &dyn Compiler) -> Result<Node, TError> {
     Ok(root)
 }
 
+pub fn parse_string_for_test(db: &mut dyn Compiler, contents: String) -> Node {
+    use crate::cli_options::Options;
+    use std::sync::Arc;
+    let filename = "test.tk";
+    let module = db.module_name(filename.to_owned());
+    db.set_file(filename.to_owned(), Ok(Arc::new(contents)));
+    db.set_options(Options::default());
+    db.parse_file(module).expect("failed to parse file")
+}
+
 #[cfg(test)]
 pub mod tests {
     use crate::ast::*;
     use crate::cli_options::Options;
     use crate::database::{Compiler, DB};
-    use std::sync::Arc;
     use Prim::*;
-
-    pub fn parse_with_db(db: &mut dyn Compiler, contents: String) -> Node {
-        let filename = "test.tk";
-        let module = db.module_name(filename.to_owned());
-        db.set_file(filename.to_owned(), Ok(Arc::new(contents)));
-        db.set_options(Options::default());
-        db.parse_file(module).expect("failed to parse file")
-    }
+    use super::parse_string_for_test;
 
     fn parse(contents: String) -> Node {
         let mut db = DB::default();
-        parse_with_db(&mut db, contents)
+        parse_string_for_test(&mut db, contents)
     }
 
     fn num_lit(x: i32) -> Box<Node> {

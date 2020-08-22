@@ -1,5 +1,4 @@
 #![deny(clippy::all)]
-#![feature(test)]
 
 #[macro_use]
 mod map_macros;
@@ -13,10 +12,11 @@ pub mod cli_options;
 pub mod database;
 pub mod errors;
 pub mod interpreter;
+pub mod parser;
+pub mod type_checker;
 
 mod externs;
 mod location;
-mod parser;
 mod tokens;
 mod tree;
 mod types;
@@ -24,7 +24,6 @@ mod types;
 mod definition_finder;
 mod pretty_print;
 mod symbol_table_builder;
-mod type_checker;
 mod to_cpp;
 
 use ast::Visitor;

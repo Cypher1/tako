@@ -58,13 +58,13 @@ mod tests {
     use super::*;
     use crate::ast::{Info, Sym, ToNode};
     use crate::database::DB;
-    use crate::parser::tests::parse_with_db;
+    use crate::parser::parse_string_for_test;
 
     fn assert_type(prog: &str, ty: &str) {
         let mut db = DB::default();
-        let prog = parse_with_db(&mut db, prog.to_string());
+        let prog = parse_string_for_test(&mut db, prog.to_string());
         let prog = infer(&mut db, &prog);
-        let ty = parse_with_db(&mut db, ty.to_string());
+        let ty = parse_string_for_test(&mut db, ty.to_string());
         assert_eq!(prog, Ok(ty));
     }
 
@@ -111,22 +111,5 @@ mod tests {
     // #[test]
     fn infer_type_of_plus_expr() {
         assert_type("12+32", "I32");
-    }
-
-    extern crate test;
-    use test::Bencher;
-
-    #[bench]
-    fn microbench_type_of_i32(b: &mut Bencher) {
-        let mut db = DB::default();
-        let prog = test::black_box(parse_with_db(&mut db, "12".to_string()));
-        b.iter(|| infer(&mut db, &prog));
-    }
-
-    // #[bench]
-    fn microbench_type_of_plus_expr(b: &mut Bencher) {
-        let mut db = DB::default();
-        let prog = test::black_box(parse_with_db(&mut db, "12+32".to_string()));
-        b.iter(|| infer(&mut db, &prog));
     }
 }
