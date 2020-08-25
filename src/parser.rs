@@ -441,8 +441,7 @@ pub fn parse_string_for_test(db: &mut dyn Compiler, contents: String) -> Node {
 #[cfg(test)]
 pub mod tests {
     use crate::ast::*;
-    use crate::cli_options::Options;
-    use crate::database::{Compiler, DB};
+    use crate::database::DB;
     use Prim::*;
     use super::parse_string_for_test;
 

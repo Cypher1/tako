@@ -15,12 +15,24 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     );
 
     c.bench_function(
-        "microbench_type_of_i32_raw",
+        "microbench_parse_and_type_of_i32_pre_cache",
         |b| {
             let mut db = DB::default();
-            parse_string_for_test(&mut db, "12".to_string());
+            let prog = parse_string_for_test(&mut db, "12".to_string());
+            infer(&mut db, &prog);
             b.iter(|| {
                 let prog = black_box(parse_string_for_test(&mut db, "12".to_string()));
+                infer(&mut db, &prog)
+            });
+        }
+    );
+
+    c.bench_function(
+        "microbench_parse_and_type_of_i32",
+        |b| {
+            let mut db = DB::default();
+            let prog = black_box(parse_string_for_test(&mut db, "12".to_string()));
+            b.iter(|| {
                 infer(&mut db, &prog)
             });
         }

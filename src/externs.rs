@@ -68,12 +68,12 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
 pub struct Extern {
     pub name: String,
     pub operator: Option<(i32, bool)>, // (binding power, is_right_assoc) if the extern is an operator
+    pub ty: Type,
     pub cpp_includes: String,
     pub cpp_code: String,
     pub cpp_arg_joiner: String,
     pub cpp_arg_processor: String,
     pub cpp_flags: Vec<String>,
-    pub ty: Type,
 }
 
 pub fn get_externs() -> HashMap<String, Extern> {
