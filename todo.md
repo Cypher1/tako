@@ -5,6 +5,9 @@
 - Imports
 - Externs (started)
 - Move globals / std into a file using low level ops (started)
+- Convenient Conditionals / Ifs / Matches
+  - i.e. Shouldn't have to use operators
+  - Should mirror if-then-else, loop, while, for(each)
 - Type checking
   - Effects system (e.g. type & Effect)
     - Handlers (i.e. continuations)
