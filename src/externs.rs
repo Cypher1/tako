@@ -6,7 +6,7 @@ use crate::database::Compiler;
 use crate::interpreter::{prim_add_strs, prim_pow, Res};
 use crate::types::{void, Type, Type::*, str_type, number_type};
 
-use crate::{map, dict};
+use crate::dict;
 
 pub type FuncImpl = Box<dyn Fn(&dyn Compiler, Vec<&dyn Fn() -> Res>, Info) -> Res>;
 
@@ -88,8 +88,8 @@ pub fn get_externs() -> HashMap<String, Extern> {
             cpp_flags: vec![],
             ty: Function {
                 results: dict!{},
-                arguments: dict!{"it" => Value(str_type())},
-                intros: map!(),
+                arguments: dict!{"it" => str_type()},
+                intros: dict!(),
                 effects: vec!["stdout".to_string()],
             },
         },
@@ -103,8 +103,8 @@ pub fn get_externs() -> HashMap<String, Extern> {
             cpp_flags: vec![],
             ty: Function {
                 results: dict!{},
-                arguments: dict!{"it" => Value(str_type())},
-                intros: map!(),
+                arguments: dict!{"it" => str_type()},
+                intros: dict!(),
                 effects: vec!["stderr".to_string()],
             },
         },
@@ -117,9 +117,9 @@ pub fn get_externs() -> HashMap<String, Extern> {
             cpp_arg_processor: "".to_string(),
             cpp_flags: vec![],
             ty: Function {
-                results: dict!{"it" => Value(void())},
-                arguments: dict!{"it" => Value(number_type())},
-                intros: map!(),
+                results: dict!{"it" => void()},
+                arguments: dict!{"it" => number_type()},
+                intros: dict!(),
                 effects: vec!["stderr".to_string()],
             },
         },
@@ -146,7 +146,7 @@ string to_string(const bool& t){
             cpp_flags: vec![],
             ty: Function {
                 intros: dict!("a" => Variable("Display".to_string()), "b" => Variable("Display".to_string())),
-                results: dict!("it" => Value(str_type())),
+                results: dict!("it" => str_type()),
                 arguments: dict!("left" => Variable("a".to_string()), "right" => Variable("b".to_string())),
                 effects: vec![],
             },
@@ -234,7 +234,7 @@ string to_string(const bool& t){
             cpp_arg_joiner: ", ".to_string(),
             cpp_arg_processor: "".to_string(),
             cpp_flags: vec![],
-            ty: Value(number_type()),
+            ty: number_type(),
         },
         Extern {
             name: "argv".to_string(),
@@ -245,14 +245,14 @@ string to_string(const bool& t){
             cpp_arg_processor: "".to_string(),
             cpp_flags: vec![],
             ty: Function {
-                results: dict!("it" => Value(str_type())),
+                results: dict!("it" => str_type()),
                 intros: dict!(),
-                arguments: dict!("it" => Value(number_type())),
+                arguments: dict!("it" => number_type()),
                 effects: vec![],
             },
         },
     ];
-    let mut extern_map: HashMap<String, Extern> = dict!();
+    let mut extern_map: HashMap<String, Extern> = HashMap::new();
     while let Some(extern_def) = externs.pop() {
         extern_map.insert(extern_def.name.clone(), extern_def);
     }

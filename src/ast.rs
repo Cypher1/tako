@@ -140,7 +140,7 @@ impl ToNode for BinOp {
 #[derive(Clone)]
 pub struct Info {
     pub loc: Option<Loc>,
-    pub ty: Option<TypeInfo>,
+    pub ty: Option<Type>,
     pub defined_at: Option<Path>,
     pub callable: bool,
 }
@@ -180,12 +180,6 @@ impl PartialEq for Info {
 
 impl Hash for Info {
     fn hash<H: Hasher>(&self, _state: &mut H) {}
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct TypeInfo {
-    reqs: Vec<Node>,
-    structure: DataType,
 }
 
 // #[derive(Debug)]
