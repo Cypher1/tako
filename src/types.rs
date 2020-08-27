@@ -7,7 +7,7 @@ type Layout = Vec<(DataType, usize)>;
 pub enum DataType {
     Union(Layout),
     Struct(Layout),
-    Static,
+    StaticPointer(usize),
     Pointer(usize, Box<DataType>),
 }
 
@@ -79,7 +79,7 @@ pub fn card(ty: &DataType) -> usize {
         Union(s) => s.iter().fold(0, |res, sty| res + card(&sty.0)),
         Struct(s) => s.iter().fold(1, |res, sty| res * card(&sty.0)),
         Pointer(_ptr_size, t) => card(&t),
-        Static => panic!("Functions shouldnt be treated as cardinality"),
+        StaticPointer(_ptr_size) => panic!("Pointers into static memory have effectively infinite cardinality"),
     }
 }
 
@@ -118,7 +118,7 @@ pub fn size(ty: &DataType) -> usize {
             res
         }
         Pointer(ptr_size, _t) => *ptr_size,
-        Static => 0,
+        StaticPointer(ptr_size) => *ptr_size,
     }
 }
 
@@ -185,7 +185,7 @@ mod tests {
 
     #[test]
     fn bool_and_fn() {
-        let fn_ptr = Pointer(64, Box::new(Static));
+        let fn_ptr = StaticPointer(64);
         let closure = Struct(vec![(bit(), 7), (fn_ptr, 0)]);
         assert_eq!(size(&closure), 72);
     }
