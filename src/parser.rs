@@ -17,7 +17,6 @@ fn binding_power(db: &dyn Compiler, tok: &Token) -> (i32, bool) {
             match op_name {
                 ";" => 20,
                 "," => 30,
-                "=" => 40,
                 ":" => 42,
                 "?" => 45,
                 "-|" => 47,
@@ -32,23 +31,13 @@ fn binding_power(db: &dyn Compiler, tok: &Token) -> (i32, bool) {
                 "-" => 70,
                 "!" => 70,
                 "." => 100,
-                "(" => 110,
-                ")" => 110,
-                "[" => 110,
-                "]" => 110,
-                "{" => 110,
-                "}" => 110,
                 op => panic!(format!("Unknown operator {}", op)),
             }
         }
         TokenType::NumLit => 1000,
         _ => 1000, // TODO impossible
     };
-    let assoc_right = match &tok.tok_type {
-        TokenType::Op => matches!(tok.value.as_str(), "="),
-        _ => false,
-    };
-    (bind, assoc_right)
+    (bind, false)
 }
 
 fn get_defs(root: Node) -> Vec<Let> {
@@ -248,53 +237,46 @@ fn led(db: &dyn Compiler, mut toks: VecDeque<Token>, left: Node) -> (Node, VecDe
             TokenType::Op => {
                 let (lbp, assoc_right) = binding_power(db, &head);
                 let (right, new_toks) = expr(db, toks, lbp - if assoc_right { 1 } else { 0 });
-                if head.value == "=" {
-                    match left {
-                        Node::SymNode(s) => {
-                            return (
-                                Let {
-                                    name: s.name,
-                                    args: None,
-                                    value: Box::new(right),
-                                    info: head.get_info(),
-                                }
-                                .to_node(),
-                                new_toks,
-                            );
+                if head.value != "=" {
+                    return (
+                        BinOp {
+                            info: head.get_info(),
+                            name: head.value,
+                            left: Box::new(left),
+                            right: Box::new(right),
                         }
-                        Node::ApplyNode(a) => match *a.inner {
-                            Node::SymNode(s) => {
-                                return (
-                                    Let {
-                                        name: s.name,
-                                        args: Some(a.args.iter().map(|l| l.to_sym()).collect()),
-                                        value: Box::new(right),
-                                        info: head.get_info(),
-                                    }
-                                    .to_node(),
-                                    new_toks,
-                                );
-                            }
-                            _ => panic!(format!("Cannot assign to {}", a.to_node())),
-                        },
-                        _ => panic!(format!("Cannot assign to {}", left)),
-                    }
+                        .to_node(),
+                        new_toks,
+                    );
                 }
-                let info = head.get_info();
-                (
-                    BinOp {
-                        name: head.value,
-                        left: Box::new(left),
-                        right: Box::new(right),
-                        info,
-                    }
-                    .to_node(),
-                    new_toks,
-                )
+                match left {
+                    Node::SymNode(s) => (
+                        Let {
+                            name: s.name,
+                            args: None,
+                            value: Box::new(right),
+                            info: head.get_info(),
+                        }
+                        .to_node(),
+                        new_toks,
+                    ),
+                    Node::ApplyNode(a) => match *a.inner {
+                        Node::SymNode(s) => (
+                            Let {
+                                name: s.name,
+                                args: Some(a.args.iter().map(|l| l.to_sym()).collect()),
+                                value: Box::new(right),
+                                info: head.get_info(),
+                            }
+                            .to_node(),
+                            new_toks
+                        ),
+                        _ => panic!(format!("Cannot assign to {}", a.to_node())),
+                    },
+                    _ => panic!(format!("Cannot assign to {}", left)),
+                }
             }
-            TokenType::CloseBracket => {
-                panic!("Unexpected close bracket");
-            }
+            TokenType::CloseBracket => panic!("Unexpected close bracket"),
             TokenType::OpenBracket => {
                 if head.value.as_str() == "("
                     && toks.front().map(|t| &t.value) == Some(&")".to_string())
@@ -440,10 +422,10 @@ pub fn parse_string_for_test(db: &mut dyn Compiler, contents: String) -> Node {
 
 #[cfg(test)]
 pub mod tests {
+    use super::parse_string_for_test;
     use crate::ast::*;
     use crate::database::DB;
     use Prim::*;
-    use super::parse_string_for_test;
 
     fn parse(contents: String) -> Node {
         let mut db = DB::default();

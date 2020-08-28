@@ -152,6 +152,21 @@ string to_string(const bool& t){
             },
         },
         Extern {
+            name: "=".to_string(),
+            operator: Some((40, true)),
+            cpp_includes: "".to_string(),
+            cpp_code: "".to_string(),
+            cpp_arg_joiner: " = ".to_string(),
+            cpp_arg_processor: "".to_string(),
+            cpp_flags: vec![],
+            ty: Function {
+                intros: dict!("a" => Variable("Identifier".to_string()), "b" => Variable("Type".to_string())),
+                results: dict!("it" => Variable("b".to_string())),
+                arguments: dict!("left" => Variable("a".to_string()), "right" => Variable("b".to_string())),
+                effects: vec![],
+            },
+        },
+        Extern {
             name: "^".to_string(),
             operator: Some((90, true)),
             cpp_includes: "#include <cmath>".to_string(),
