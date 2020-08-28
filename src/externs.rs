@@ -63,17 +63,53 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
     }
 }
 
-#[derive(Derivative)]
-#[derivative(PartialEq, Eq, Clone, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Extern {
     pub name: String,
     pub operator: Option<(i32, bool)>, // (binding power, is_right_assoc) if the extern is an operator
     pub ty: Type,
-    pub cpp_includes: String,
-    pub cpp_code: String,
-    pub cpp_arg_joiner: String,
-    pub cpp_arg_processor: String,
-    pub cpp_flags: Vec<String>,
+    pub cpp: LangImpl,
+}
+
+#[derive(PartialEq, Eq, Clone, Debug)]
+pub struct LangImpl {
+    pub code: String,
+    pub arg_joiner: String,
+    pub arg_processor: String,
+    pub includes: String,
+    pub flags: Vec<String>,
+}
+
+impl LangImpl {
+    fn new(code: &str) -> LangImpl {
+        LangImpl {
+            code: code.to_string(),
+            arg_joiner: "".to_string(),
+            arg_processor: "".to_string(),
+            includes: "".to_string(),
+            flags: vec![],
+        }
+    }
+
+    fn with_arg_joiner(mut self, arg_joiner: &str) -> LangImpl {
+        self.arg_joiner = arg_joiner;
+        self
+    }
+
+    fn with_arg_processor(mut self, arg_processor: &str) -> LangImpl {
+        self.arg_processor = arg_processor;
+        self
+    }
+
+    fn with_includes(mut self, includes: &str) -> LangImpl {
+        self.includes = includes;
+        self
+    }
+
+    fn with_flag(mut self, flag: &str) -> LangImpl {
+        self.flags.push(flag.to_string());
+        self
+    }
 }
 
 pub fn get_externs() -> HashMap<String, Extern> {
@@ -81,32 +117,26 @@ pub fn get_externs() -> HashMap<String, Extern> {
         Extern {
             name: "print".to_string(),
             operator: None,
-            cpp_includes: "#include <iostream>".to_string(),
-            cpp_code: "std::cout << ".to_string(),
-            cpp_arg_joiner: " << ".to_string(),
-            cpp_arg_processor: "".to_string(),
-            cpp_flags: vec![],
             ty: Function {
                 results: dict!{},
                 arguments: dict!{"it" => str_type()},
                 intros: dict!(),
                 effects: vec!["stdout".to_string()],
             },
+            cpp: LangImpl::new("std::cout < ")
+                .with_includes("#include <iostream>")
         },
         Extern {
             name: "eprint".to_string(),
             operator: None,
-            cpp_includes: "#include <iostream>".to_string(),
-            cpp_code: "std::cerr << ".to_string(),
-            cpp_arg_joiner: " << ".to_string(),
-            cpp_arg_processor: "".to_string(),
-            cpp_flags: vec![],
             ty: Function {
                 results: dict!{},
                 arguments: dict!{"it" => str_type()},
                 intros: dict!(),
                 effects: vec!["stderr".to_string()],
             },
+            cpp: LangImpl::new("std::cerr < ")
+                .with_includes("#include <iostream>")
         },
         Extern {
             name: "exit".to_string(),

@@ -78,6 +78,7 @@ impl ToNode for Prim {
     }
 }
 
+// Consider finding way to turn lets into binary operators.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Let {
     pub name: String,
