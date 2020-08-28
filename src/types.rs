@@ -38,72 +38,6 @@ impl Type {
     }
 }
 
-fn product(values: Vec<Type>) -> Result<Type, TError> {
-    let mut layout = set![];
-    let mut off = 0;
-    for val in values {
-        let val_size = size(&val)?;
-        layout.insert((val, off));
-        off += val_size;
-    }
-    Ok(Struct(layout))
-}
-
-fn sum(values: Vec<Type>) -> Result<Type, TError> {
-    let mut layout = set![];
-    let mut count = 0;
-    for val in values {
-        let mut tagged = Tag(count);
-        if val != unit() {
-            tagged = product(vec![tagged, val])?;
-        }
-        layout.insert((tagged, 0));
-        count += 1;
-    }
-    Ok(Union(layout))
-}
-
-pub fn void() -> Type {
-    Union(set![])
-}
-
-pub fn unit() -> Type {
-    Struct(set![])
-}
-
-pub fn bit() -> Type {
-    sum(vec![unit(), unit()]).expect("bit should be safe")
-}
-
-pub fn byte_type() -> Type {
-    product(vec![
-        bit(),
-        bit(),
-        bit(),
-        bit(),
-        bit(),
-        bit(),
-        bit(),
-        bit(),
-    ]).expect("byte should be safe")
-}
-
-pub fn byte_size() -> Offset {
-    8
-}
-
-pub fn char_type() -> Type {
-    sum(vec![byte_type(), byte_type(), byte_type(), byte_type()]).expect("char should be safe")
-}
-
-pub fn str_type() -> Type {
-    char_type().ptr()
-}
-
-pub fn number_type() -> Type {
-    product(vec![byte_type(), byte_type(), byte_type(), byte_type()]).expect("number should be safe")
-}
-
 pub fn simplify(ty: &Type) -> Type {
     use Type::*;
     match ty {
@@ -172,18 +106,6 @@ pub fn card(ty: &Type) -> Result<Offset, TError> {
     }
 }
 
-fn num_bits(n: usize) -> usize {
-    let mut k = 0;
-    let mut p = 1;
-    loop {
-        if n <= p {
-            return k;
-        }
-        k += 1;
-        p *= 2;
-    }
-}
-
 // Calculates the memory needed for a new instance in bits.
 pub fn size(ty: &Type) -> Result<Offset, TError> {
     use Type::*;
@@ -215,6 +137,84 @@ pub fn size(ty: &Type) -> Result<Offset, TError> {
         Variable(name) => Err(TError::UnknownSizeOfVariableType(name.clone(), Info::default())),
         x => panic!(format!("unhandled: size of {:#?}", x))
     }
+}
+
+fn num_bits(n: usize) -> usize {
+    let mut k = 0;
+    let mut p = 1;
+    loop {
+        if n <= p {
+            return k;
+        }
+        k += 1;
+        p *= 2;
+    }
+}
+
+fn product(values: Vec<Type>) -> Result<Type, TError> {
+    let mut layout = set![];
+    let mut off = 0;
+    for val in values {
+        let val_size = size(&val)?;
+        layout.insert((val, off));
+        off += val_size;
+    }
+    Ok(Struct(layout))
+}
+
+fn sum(values: Vec<Type>) -> Result<Type, TError> {
+    let mut layout = set![];
+    let mut count = 0;
+    for val in values {
+        let mut tagged = Tag(count);
+        if val != unit() {
+            tagged = product(vec![tagged, val])?;
+        }
+        layout.insert((tagged, 0));
+        count += 1;
+    }
+    Ok(Union(layout))
+}
+
+pub fn void() -> Type {
+    Union(set![])
+}
+
+pub fn unit() -> Type {
+    Struct(set![])
+}
+
+pub fn bit() -> Type {
+    sum(vec![unit(), unit()]).expect("bit should be safe")
+}
+
+pub fn byte_type() -> Type {
+    product(vec![
+        bit(),
+        bit(),
+        bit(),
+        bit(),
+        bit(),
+        bit(),
+        bit(),
+        bit(),
+    ]).expect("byte should be safe")
+}
+
+pub fn byte_size() -> Offset {
+    8
+}
+
+pub fn char_type() -> Type {
+    sum(vec![byte_type(), byte_type(), byte_type(), byte_type()]).expect("char should be safe")
+}
+
+pub fn str_type() -> Type {
+    char_type().ptr()
+}
+
+pub fn number_type() -> Type {
+    product(vec![byte_type(), byte_type(), byte_type(), byte_type()]).expect("number should be safe")
 }
 
 #[cfg(test)]
