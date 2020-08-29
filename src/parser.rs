@@ -7,48 +7,15 @@ use super::location::*;
 use super::tokens::*;
 
 fn binding_power(db: &dyn Compiler, tok: &Token) -> (i32, bool) {
-    let bind = match &tok.tok_type {
-        TokenType::Op => {
-            // Look up extern operators
-            let op_name = tok.value.as_str();
-            if let Some(operator_info) = db.get_extern_operator(op_name.to_owned()) {
-                return operator_info;
-            }
-            match op_name {
-                ";" => 20,
-                "," => 30,
-                "=" => 40,
-                ":" => 42,
-                "?" => 45,
-                "-|" => 47,
-                "<" => 50,
-                "<=" => 50,
-                ">" => 50,
-                ">=" => 50,
-                "!=" => 50,
-                "==" => 50,
-                "&&" => 60,
-                "||" => 60,
-                "-" => 70,
-                "!" => 70,
-                "." => 100,
-                "(" => 110,
-                ")" => 110,
-                "[" => 110,
-                "]" => 110,
-                "{" => 110,
-                "}" => 110,
-                op => panic!(format!("Unknown operator {}", op)),
-            }
+    if tok.tok_type == TokenType::Op {
+        // Look up extern operators
+        let op = tok.value.as_str();
+        if let Some(operator_info) = db.get_extern_operator(op.to_owned()) {
+            return operator_info;
         }
-        TokenType::NumLit => 1000,
-        _ => 1000, // TODO impossible
-    };
-    let assoc_right = match &tok.tok_type {
-        TokenType::Op => matches!(tok.value.as_str(), "="),
-        _ => false,
-    };
-    (bind, assoc_right)
+        panic!(format!("Unknown operator {}", op))
+    }
+    (1000, false)
 }
 
 fn get_defs(root: Node) -> Vec<Let> {
@@ -96,7 +63,6 @@ fn get_defs(root: Node) -> Vec<Let> {
             info: n.get_info(),
         }),
     }
-
     args
 }
 
@@ -248,53 +214,46 @@ fn led(db: &dyn Compiler, mut toks: VecDeque<Token>, left: Node) -> (Node, VecDe
             TokenType::Op => {
                 let (lbp, assoc_right) = binding_power(db, &head);
                 let (right, new_toks) = expr(db, toks, lbp - if assoc_right { 1 } else { 0 });
-                if head.value == "=" {
-                    match left {
-                        Node::SymNode(s) => {
-                            return (
-                                Let {
-                                    name: s.name,
-                                    args: None,
-                                    value: Box::new(right),
-                                    info: head.get_info(),
-                                }
-                                .to_node(),
-                                new_toks,
-                            );
+                if head.value != "=" {
+                    return (
+                        BinOp {
+                            info: head.get_info(),
+                            name: head.value,
+                            left: Box::new(left),
+                            right: Box::new(right),
                         }
-                        Node::ApplyNode(a) => match *a.inner {
-                            Node::SymNode(s) => {
-                                return (
-                                    Let {
-                                        name: s.name,
-                                        args: Some(a.args.iter().map(|l| l.to_sym()).collect()),
-                                        value: Box::new(right),
-                                        info: head.get_info(),
-                                    }
-                                    .to_node(),
-                                    new_toks,
-                                );
-                            }
-                            _ => panic!(format!("Cannot assign to {}", a.to_node())),
-                        },
-                        _ => panic!(format!("Cannot assign to {}", left)),
-                    }
+                        .to_node(),
+                        new_toks,
+                    );
                 }
-                let info = head.get_info();
-                (
-                    BinOp {
-                        name: head.value,
-                        left: Box::new(left),
-                        right: Box::new(right),
-                        info,
-                    }
-                    .to_node(),
-                    new_toks,
-                )
+                match left {
+                    Node::SymNode(s) => (
+                        Let {
+                            name: s.name,
+                            args: None,
+                            value: Box::new(right),
+                            info: head.get_info(),
+                        }
+                        .to_node(),
+                        new_toks,
+                    ),
+                    Node::ApplyNode(a) => match *a.inner {
+                        Node::SymNode(s) => (
+                            Let {
+                                name: s.name,
+                                args: Some(a.args.iter().map(|l| l.to_sym()).collect()),
+                                value: Box::new(right),
+                                info: head.get_info(),
+                            }
+                            .to_node(),
+                            new_toks
+                        ),
+                        _ => panic!(format!("Cannot assign to {}", a.to_node())),
+                    },
+                    _ => panic!(format!("Cannot assign to {}", left)),
+                }
             }
-            TokenType::CloseBracket => {
-                panic!("Unexpected close bracket");
-            }
+            TokenType::CloseBracket => panic!("Unexpected close bracket"),
             TokenType::OpenBracket => {
                 if head.value.as_str() == "("
                     && toks.front().map(|t| &t.value) == Some(&")".to_string())
@@ -367,8 +326,7 @@ fn expr(db: &dyn Compiler, init_toks: VecDeque<Token>, init_lbp: i32) -> (Node, 
         match toks.front() {
             None => break,
             Some(token) => {
-                let (lbp, _) = binding_power(db, token);
-                if init_lbp >= lbp {
+                if init_lbp >= binding_power(db, token).0 {
                     break;
                 }
             }
@@ -380,7 +338,6 @@ fn expr(db: &dyn Compiler, init_toks: VecDeque<Token>, init_lbp: i32) -> (Node, 
         left = update.0;
         toks = update.1;
     }
-
     (left, toks)
 }
 
@@ -396,18 +353,13 @@ pub fn lex(db: &dyn Compiler, module: Path) -> Result<VecDeque<Token>, TError> {
     let mut chars = contents.chars().peekable();
     loop {
         let (next, new_chars) = lex_head(chars, &mut pos);
-
-        // eprintln!("LEXING {:?}", next);
-
         if next.tok_type == TokenType::Unknown {
             break; // TODO done / skip?
         }
-
         // If valid, take the token and move on.
         toks.push_back(next);
         chars = new_chars;
     }
-
     // eprintln!("Toks: {:?}", toks);
     Ok(toks)
 }
@@ -440,11 +392,10 @@ pub fn parse_string_for_test(db: &mut dyn Compiler, contents: String) -> Node {
 
 #[cfg(test)]
 pub mod tests {
-    use crate::ast::*;
-    use crate::cli_options::Options;
-    use crate::database::{Compiler, DB};
-    use Prim::*;
     use super::parse_string_for_test;
+    use crate::ast::*;
+    use crate::database::DB;
+    use Prim::*;
 
     fn parse(contents: String) -> Node {
         let mut db = DB::default();

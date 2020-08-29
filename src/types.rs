@@ -1,85 +1,141 @@
-use std::collections::HashMap;
+use std::collections::BTreeSet;
+use crate::errors::TError;
+use crate::ast::Info;
+
+// i32 here are sizes in bits, not bytes.
+// This means that we don't need to have a separate systems for bit&byte layouts.
+type Offset = i32;
 
 // A list of types with an offset to get to the first bit (used for padding, frequently 0).
-type Layout = Vec<(DataType, usize)>;
+type Layout = BTreeSet<(Type, Offset)>;
+type Pack = BTreeSet<(String, Type)>;
 
-#[derive(PartialEq, Eq, Clone, Debug, Hash)]
-pub enum DataType {
+#[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Debug, Hash)]
+pub enum Type {
     Union(Layout),
     Struct(Layout),
-    Static,
-    Pointer(usize, Box<DataType>),
-}
-
-type Pack = HashMap<String, Type>;
-
-#[derive(PartialEq, Eq, Clone, Debug)]
-pub enum Type {
-    Value(DataType),
+    StaticPointer(Offset),
+    Tag(Offset), // A locally unique id, should be replaced with a bit pattern at compile time.
+    Pointer(Offset, Box<Type>), // Defaults to 8 bytes (64 bit)
     Variable(String),
-    Function{results: Pack, intros: Pack, arguments: Pack, effects: Vec<String>},
-    Apply{inner: DataType, arguments: Pack},
+    Function {
+        results: Pack,
+        intros: Pack,
+        arguments: Pack,
+        effects: Vec<String>,
+    },
+    Apply {
+        inner: Box<Type>,
+        arguments: Pack,
+    },
 }
 
-use DataType::*;
+use Type::*;
 
-pub fn void() -> DataType {
-    Union(vec![])
+impl Type {
+    pub fn ptr(self: Type) -> Type {
+        Pointer(8 * byte_size(), Box::new(self))
+    }
 }
 
-pub fn unit() -> DataType {
-    Struct(vec![])
-}
-
-pub fn bit() -> DataType {
-    Union(vec![(unit(), 0), (unit(), 0)])
-}
-
-pub fn byte_type() -> DataType {
-    Struct(vec![
-        (bit(), 0),
-        (bit(), 1),
-        (bit(), 2),
-        (bit(), 3),
-        (bit(), 4),
-        (bit(), 5),
-        (bit(), 6),
-        (bit(), 7),
-    ])
-}
-
-pub fn byte_size() -> usize {
-    8
-}
-
-pub fn machine_ptr_size() -> usize {
-    8 * byte_size()
-}
-
-pub fn char_type() -> DataType {
-    Struct(vec![
-        (byte_type(), 0),
-        (byte_type(), 8),
-        (byte_type(), 16),
-        (byte_type(), 24),
-    ])
-}
-
-pub fn str_type() -> DataType {
-    Pointer(machine_ptr_size(), Box::new(char_type()))
-}
-
-pub fn number_type() -> DataType {
-    Struct(vec![(byte_type(), 0),(byte_type(), 8),(byte_type(), 16),(byte_type(), 24)])
-}
-
-pub fn card(ty: &DataType) -> usize {
-    use DataType::*;
+pub fn simplify(ty: &Type) -> Type {
+    use Type::*;
     match ty {
-        Union(s) => s.iter().fold(0, |res, sty| res + card(&sty.0)),
-        Struct(s) => s.iter().fold(1, |res, sty| res * card(&sty.0)),
+        Union(values) => {
+            if values.is_empty() {
+                return void();
+            }
+            if values.len() == 1 {
+                return values
+                    .iter()
+                    .next()
+                    .expect("Expected single element set to have an element")
+                    .0.clone();
+            }
+            let mut vals = set![];
+            for (ty, off) in values {
+                vals.insert((simplify(ty), *off));
+            }
+            return Union(vals);
+        }
+        Struct(values) => {
+            if values.is_empty() {
+                return unit();
+            }
+            if values.len() == 1 {
+                return values
+                    .iter()
+                    .next()
+                    .expect("Expected single element set to have an element")
+                    .0.clone();
+            }
+            let mut vals = set![];
+            for (ty, off) in values {
+                vals.insert((simplify(&ty), *off));
+            }
+            return Struct(vals);
+        }
+        Pointer(ptr_size, t) => Pointer(*ptr_size, Box::new(simplify(t))),
+        Tag(tag) => Tag(*tag),
+        StaticPointer(ptr_size) => StaticPointer(*ptr_size),
+        x => panic!(format!("unhandled: simplfy {:#?}", x))
+    }
+}
+
+pub fn card(ty: &Type) -> Result<Offset, TError> {
+    use Type::*;
+    match ty {
+        Union(s) => {
+            let mut sum = 0;
+            for sty in s {
+                sum += card(&sty.0)?;
+            }
+            Ok(sum)
+        }
+        Struct(s) => {
+            let mut prod = 1;
+            for sty in s {
+                prod *= card(&sty.0)?;
+            }
+            Ok(prod)
+        }
         Pointer(_ptr_size, t) => card(&t),
-        Static => panic!("Functions shouldnt be treated as cardinality"),
+        Tag(_tag) => Ok(1),
+        StaticPointer(_ptr_size) => Err(TError::StaticPointerCardinality(Info::default())),
+        x => panic!(format!("unhandled: card of {:#?}", x))
+    }
+}
+
+// Calculates the memory needed for a new instance in bits.
+pub fn size(ty: &Type) -> Result<Offset, TError> {
+    use Type::*;
+    match ty {
+        Union(s) => {
+            let mut res = 0;
+            for sty in s.iter() {
+                // This includes padding in size.
+                let c = sty.1 + size(&sty.0)?;
+                if res <= c {
+                    res = c;
+                }
+            }
+            Ok(res)
+        }
+        Struct(s) => {
+            let mut res = 0;
+            for sty in s.iter() {
+                let c = sty.1 + size(&sty.0)?;
+                if res <= c {
+                    res = c;
+                }
+            }
+            Ok(res)
+        }
+        Pointer(ptr_size, _t) => Ok(*ptr_size),
+        Tag(tag) => Ok(num_bits(1+(*tag as usize)) as Offset),
+        StaticPointer(ptr_size) => Ok(*ptr_size),
+        Variable(name) => Err(TError::UnknownSizeOfVariableType(name.clone(), Info::default())),
+        x => panic!(format!("unhandled: size of {:#?}", x))
     }
 }
 
@@ -95,31 +151,74 @@ fn num_bits(n: usize) -> usize {
     }
 }
 
-// Calculates the memory needed for a new instance in bits.
-pub fn size(ty: &DataType) -> usize {
-    use DataType::*;
-    match ty {
-        Union(s) => {
-            let mut res = 0;
-            for sty in s.iter() {
-                // This includes padding in size.
-                let c = sty.1 + size(&sty.0);
-                if res <= c {
-                    res = c;
-                }
-            }
-            num_bits(s.len()) + res
-        }
-        Struct(s) => {
-            let mut res = 0;
-            for sty in s.iter() {
-                res += sty.1 + size(&sty.0);
-            }
-            res
-        }
-        Pointer(ptr_size, _t) => *ptr_size,
-        Static => 0,
+pub fn product(values: Vec<Type>) -> Result<Type, TError> {
+    let mut layout = set![];
+    let mut off = 0;
+    for val in values {
+        let val_size = size(&val)?;
+        layout.insert((val, off));
+        off += val_size;
     }
+    Ok(Struct(layout))
+}
+
+pub fn sum(values: Vec<Type>) -> Result<Type, TError> {
+    let mut layout = set![];
+    let mut count = 0;
+    for val in values {
+        let mut tagged = Tag(count);
+        if val != unit() {
+            tagged = product(vec![tagged, val])?;
+        }
+        layout.insert((tagged, 0));
+        count += 1;
+    }
+    Ok(Union(layout))
+}
+
+pub fn void() -> Type {
+    Union(set![])
+}
+
+pub fn unit() -> Type {
+    Struct(set![])
+}
+
+pub fn bit() -> Type {
+    sum(vec![unit(), unit()]).expect("bit should be safe")
+}
+
+pub fn byte_type() -> Type {
+    product(vec![
+        bit(),
+        bit(),
+        bit(),
+        bit(),
+        bit(),
+        bit(),
+        bit(),
+        bit(),
+    ]).expect("byte should be safe")
+}
+
+pub fn byte_size() -> Offset {
+    8
+}
+
+pub fn char_type() -> Type {
+    sum(vec![byte_type(), byte_type(), byte_type(), byte_type()]).expect("char should be safe")
+}
+
+pub fn str_type() -> Type {
+    char_type().ptr()
+}
+
+pub fn number_type() -> Type {
+    product(vec![byte_type(), byte_type(), byte_type(), byte_type()]).expect("number should be safe")
+}
+
+pub fn variable(name: &str) -> Type {
+    Variable(name.to_string())
 }
 
 #[cfg(test)]
@@ -128,65 +227,99 @@ mod tests {
 
     #[test]
     fn void_type() {
-        assert_eq!(card(&void()), 0);
-        assert_eq!(size(&void()), 0);
+        assert_eq!(card(&void()), Ok(0));
+        assert_eq!(size(&void()), Ok(0));
     }
-   #[test]
+    #[test]
     fn unit_type() {
-        assert_eq!(card(&unit()), 1);
-        assert_eq!(size(&unit()), 0);
+        assert_eq!(card(&unit()), Ok(1));
+        assert_eq!(size(&unit()), Ok(0));
+    }
+    #[test]
+    fn tag1_type() {
+        assert_eq!(card(&Tag(1)), Ok(1));
+        assert_eq!(size(&Tag(1)), Ok(1));
+    }
+    #[test]
+    fn tag2_type() {
+        assert_eq!(card(&Tag(2)), Ok(1));
+        assert_eq!(size(&Tag(2)), Ok(2));
+    }
+    #[test]
+    fn tag4_type() {
+        assert_eq!(card(&Tag(4)), Ok(1));
+        assert_eq!(size(&Tag(4)), Ok(3));
+    }
+
+    #[test]
+    fn union2_type() {
+        let union2 = Union(set![(unit(), 0), (unit(), 0)]);
+        assert_eq!(card(&union2), Ok(1));
+        assert_eq!(size(&union2), Ok(0));
     }
     #[test]
     fn bit_type() {
         let bitt = bit();
-        let boolt = Union(vec![(unit(), 0), (unit(), 0)]);
-        assert_eq!(boolt, bitt);
-        assert_eq!(card(&bitt), 2);
-        assert_eq!(card(&boolt), 2);
+        eprintln!(">> {:?}", bitt);
+        assert_eq!(card(&bitt), Ok(2));
+        assert_eq!(size(&bitt), Ok(1));
+    }
+    #[test]
+    fn union3_type() {
+        let union3 = Union(set![(unit(), 0), (unit(), 0), (unit(), 0)]);
+        assert_eq!(card(&union3), Ok(1));
+        assert_eq!(size(&union3), Ok(0));
     }
     #[test]
     fn trit_type() {
-        let trit = Union(vec![(unit(), 0), (unit(), 0), (unit(), 0)]);
-        assert_eq!(card(&trit), 3);
-        assert_eq!(size(&trit), 2);
+        let trit = sum(vec![unit(), unit(), unit()]).unwrap();
+        assert_eq!(card(&trit), Ok(3));
+        assert_eq!(size(&trit), Ok(2));
+    }
+    #[test]
+    fn nested_quad_type() {
+        let quad = product(vec![bit(), bit()]).unwrap();
+        assert_eq!(card(&quad), Ok(4));
+        assert_eq!(size(&quad), Ok(2));
     }
     #[test]
     fn quad_type() {
-        let quad = Struct(vec![((bit()), 0), (bit(), 0)]);
-        assert_eq!(card(&quad), 4);
-        assert_eq!(size(&quad), 2);
+        let quad = sum(vec![unit(), unit(), unit(), unit()]).unwrap();
+        assert_eq!(card(&quad), Ok(4));
+        assert_eq!(size(&quad), Ok(2));
     }
     #[test]
     fn pent_type() {
-        let pent = Union(vec![
-            (unit(), 0),
-            (unit(), 0),
-            (unit(), 0),
-            (unit(), 0),
-            (unit(), 0),
-        ]);
-        assert_eq!(card(&pent), 5);
-        assert_eq!(size(&pent), 3);
+        let pent = sum(vec![unit(), unit(), unit(), unit(), unit()]).unwrap();
+        assert_eq!(card(&pent), Ok(5));
+        assert_eq!(size(&pent), Ok(3));
     }
     #[test]
     fn pair_bool_ptrs() {
         let bool_ptr = Pointer(64, Box::new(bit()));
-        let quad = Struct(vec![(bool_ptr.clone(), 0), (bool_ptr, 0)]);
-        assert_eq!(card(&quad), 4);
-        assert_eq!(size(&quad), 2 * 64);
+        let quad = product(vec![bool_ptr.clone(), bool_ptr]).unwrap();
+        assert_eq!(card(&quad), Ok(4));
+        assert_eq!(size(&quad), Ok(2 * 64));
     }
     #[test]
     fn padded_nibble() {
-        let quad = Struct(vec![(bit(), 0), (bit(), 0)]);
-        let nibble = Struct(vec![(quad.clone(), 2), (quad, 2)]);
-        assert_eq!(card(&nibble), 16);
-        assert_eq!(size(&nibble), 8);
+        let quad = product(vec![bit(), bit()]).unwrap();
+        let nibble = product(vec![quad.clone(), quad]).unwrap();
+        assert_eq!(card(&nibble), Ok(16));
+        assert_eq!(size(&nibble), Ok(4));
     }
 
     #[test]
     fn bool_and_fn() {
-        let fn_ptr = Pointer(64, Box::new(Static));
-        let closure = Struct(vec![(bit(), 7), (fn_ptr, 0)]);
-        assert_eq!(size(&closure), 72);
+        let fn_ptr = StaticPointer(64);
+        let closure = product(vec![bit(), fn_ptr]).unwrap();
+        assert_eq!(size(&closure), Ok(65));
+    }
+
+    #[test]
+    fn bool_or_fn() {
+        let fn_ptr = StaticPointer(64);
+        let closure = sum(vec![bit(), fn_ptr]).unwrap();
+        assert_eq!(size(&closure), Ok(65));
     }
 }

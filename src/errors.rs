@@ -33,6 +33,11 @@ pub enum TError {
     UnknownInfixOperator(String, Info),
     #[error("unknown prefix operator `{0}` at {1:?}")]
     UnknownPrefixOperator(String, Info),
+    #[error("unknown size of variable type (i.e. type variables could have any size) `{0}` at {1:?}")]
+    UnknownSizeOfVariableType(String, Info),
+
+    #[error("unknown cardinality of static pointers (i.e. static pointers could point at anything) at {0:?}")]
+    StaticPointerCardinality(Info),
 
     #[error("impossible type, {0} at {1}")]
     TypeMismatch(String, Box<Prim>, Info),

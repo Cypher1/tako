@@ -13,13 +13,27 @@ macro_rules! map(
 );
 
 #[macro_export]
+macro_rules! set(
+    {} => {::std::collections::BTreeSet::new()};
+    { $($value:expr),* } => {
+        {
+            let mut m = ::std::collections::BTreeSet::new();
+            $(
+                m.insert($value);
+            )*
+            m
+        }
+     };
+);
+
+#[macro_export]
 macro_rules! dict(
-    {} => {::std::collections::HashMap::new()};
+    {} => {::std::collections::BTreeSet::new()};
     { $($key:expr => $value:expr),* } => {
         {
-            let mut m = ::std::collections::HashMap::new();
+            let mut m = ::std::collections::BTreeSet::new();
             $(
-                m.insert($key.to_string(), $value);
+                m.insert(($key.to_string(), $value));
             )*
             m
         }

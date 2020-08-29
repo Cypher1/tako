@@ -267,10 +267,10 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 .expect("Could not find definition for symbol"),
         );
         if let Some(info) = db.get_extern(name.clone()) {
-            self.includes.insert(info.cpp_includes);
-            self.flags.extend(info.cpp_flags);
+            self.includes.insert(info.cpp.includes);
+            self.flags.extend(info.cpp.flags);
             // arg_processor
-            return Ok(Code::Expr(info.cpp_code));
+            return Ok(Code::Expr(info.cpp.code));
         }
         Ok(Code::Expr(name))
     }
@@ -380,13 +380,18 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
     fn visit_un_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &UnOp) -> Res {
         let code = self.visit(db, state, &expr.inner)?;
         let info = expr.get_info();
-        let res = match expr.name.as_str() {
-            "+" => self.build_call1("", code),
-            "-" => self.build_call1("-", code),
-            "!" => self.build_call1("!", code),
-            op => return Err(TError::UnknownPrefixOperator(op.to_string(), info)),
-        };
-        Ok(res)
+        let op = expr.name.as_str();
+        if let Some(info) = db.get_extern(op.to_string()) {
+            self.includes.insert(info.cpp.includes);
+            self.flags.extend(info.cpp.flags);
+            let code = if info.cpp.arg_processor.as_str() == "" {
+                code
+            } else {
+                self.build_call1(info.cpp.arg_processor.as_str(), code)
+            };
+            return Ok(self.build_call1(info.cpp.arg_joiner.as_str(), code));
+        }
+        Err(TError::UnknownPrefixOperator(op.to_string(), info))
     }
 
     fn visit_bin_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &BinOp) -> Res {
@@ -394,24 +399,9 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         let left = self.visit(db, state, &expr.left.clone())?;
         let right = self.visit(db, state, &expr.right.clone())?;
         // TODO: require 2 children
-        if let Some(info) = db.get_extern(expr.name.clone()) {
-            self.includes.insert(info.cpp_includes);
-            self.flags.extend(info.cpp_flags);
-            let (left, right) = if info.cpp_arg_processor.as_str() == "" {
-                (left, right)
-            } else {
-                (self.build_call1(info.cpp_arg_processor.as_str(), left), self.build_call1(info.cpp_arg_processor.as_str(), right))
-            };
-            return Ok(self.build_call2(info.cpp_code.as_str(), info.cpp_arg_joiner.as_str(), left, right));
-        }
-        let res = match expr.name.as_str() {
-            "-" => self.build_call2("", "-", left, right),
-            "==" => self.build_call2("", "==", left, right),
-            "!=" => self.build_call2("", "!=", left, right),
-            ">" => self.build_call2("", ">", left, right),
-            "<" => self.build_call2("", "<", left, right),
-            ">=" => self.build_call2("", ">=", left, right),
-            "<=" => self.build_call2("", "<=", left, right),
+        // TODO: Short circuiting of deps.
+        let op = expr.name.as_str();
+        match op {
             "-|" => {
                 // TODO: handle 'error' values more widly.
                 let done = Code::If {
@@ -426,10 +416,19 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 // TODO: ORDERING
                 return Ok(left.merge(right));
             }
-            op => return Err(TError::UnknownInfixOperator(op.to_string(), info)),
-        };
-        // TODO: Short circuiting of deps.
-        Ok(res)
+            _ => {}
+        }
+        if let Some(info) = db.get_extern(op.to_string()) {
+            self.includes.insert(info.cpp.includes);
+            self.flags.extend(info.cpp.flags);
+            let (left, right) = if info.cpp.arg_processor.as_str() == "" {
+                (left, right)
+            } else {
+                (self.build_call1(info.cpp.arg_processor.as_str(), left), self.build_call1(info.cpp.arg_processor.as_str(), right))
+            };
+            return Ok(self.build_call2(info.cpp.code.as_str(), info.cpp.arg_joiner.as_str(), left, right));
+        }
+        Err(TError::UnknownInfixOperator(op.to_string(), info))
     }
 
     fn handle_error(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Err) -> Res {
