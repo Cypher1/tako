@@ -267,10 +267,10 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 .expect("Could not find definition for symbol"),
         );
         if let Some(info) = db.get_extern(name.clone()) {
-            self.includes.insert(info.cpp_includes);
-            self.flags.extend(info.cpp_flags);
+            self.includes.insert(info.cpp.includes);
+            self.flags.extend(info.cpp.flags);
             // arg_processor
-            return Ok(Code::Expr(info.cpp_code));
+            return Ok(Code::Expr(info.cpp.code));
         }
         Ok(Code::Expr(name))
     }
@@ -395,14 +395,14 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         let right = self.visit(db, state, &expr.right.clone())?;
         // TODO: require 2 children
         if let Some(info) = db.get_extern(expr.name.clone()) {
-            self.includes.insert(info.cpp_includes);
-            self.flags.extend(info.cpp_flags);
-            let (left, right) = if info.cpp_arg_processor.as_str() == "" {
+            self.includes.insert(info.cpp.includes);
+            self.flags.extend(info.cpp.flags);
+            let (left, right) = if info.cpp.arg_processor.as_str() == "" {
                 (left, right)
             } else {
-                (self.build_call1(info.cpp_arg_processor.as_str(), left), self.build_call1(info.cpp_arg_processor.as_str(), right))
+                (self.build_call1(info.cpp.arg_processor.as_str(), left), self.build_call1(info.cpp.arg_processor.as_str(), right))
             };
-            return Ok(self.build_call2(info.cpp_code.as_str(), info.cpp_arg_joiner.as_str(), left, right));
+            return Ok(self.build_call2(info.cpp.code.as_str(), info.cpp.arg_joiner.as_str(), left, right));
         }
         let res = match expr.name.as_str() {
             "-" => self.build_call2("", "-", left, right),

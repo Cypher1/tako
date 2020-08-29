@@ -217,6 +217,10 @@ pub fn number_type() -> Type {
     product(vec![byte_type(), byte_type(), byte_type(), byte_type()]).expect("number should be safe")
 }
 
+pub fn variable(name: &str) -> Type {
+    Variable(name.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
