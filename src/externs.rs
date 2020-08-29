@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::ast::{Info, Prim::*};
 use crate::database::Compiler;
 use crate::interpreter::{prim_add_strs, prim_pow, Res};
-use crate::types::{void, Type, Type::*, str_type, number_type, variable};
+use crate::types::{void, Type, Type::*, str_type, number_type, variable, bit};
 
 use crate::dict;
 
@@ -219,6 +219,50 @@ string to_string(const bool& t){
                 effects: vec![],
             },
             cpp: LangImpl::operator("*")
+        },
+        Extern {
+            name: "!".to_string(),
+            operator: Some((70, false)),
+            ty: Function {
+                intros: dict!(),
+                results: dict!("it" => bit()),
+                arguments: dict!("it" => bit()),
+                effects: vec![],
+            },
+            cpp: LangImpl::operator("!")
+        },
+        Extern {
+            name: "-".to_string(),
+            operator: Some((70, false)),
+            ty: Function {
+                intros: dict!("a" => variable("Number")),
+                results: dict!("it" => variable("a")),
+                arguments: dict!("it" => variable("a")),
+                effects: vec![],
+            },
+            cpp: LangImpl::operator("-")
+        },
+        Extern {
+            name: "||".to_string(),
+            operator: Some((60, false)),
+            ty: Function {
+                intros: dict!(),
+                results: dict!("it" => bit()),
+                arguments: dict!("left" => bit(), "right" => bit()),
+                effects: vec![],
+            },
+            cpp: LangImpl::operator("||")
+        },
+        Extern {
+            name: "&&".to_string(),
+            operator: Some((60, false)),
+            ty: Function {
+                intros: dict!(),
+                results: dict!("it" => bit()),
+                arguments: dict!("left" => bit(), "right" => bit()),
+                effects: vec![],
+            },
+            cpp: LangImpl::operator("&&")
         },
         Extern {
             name: "%".to_string(),

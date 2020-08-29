@@ -26,10 +26,6 @@ fn binding_power(db: &dyn Compiler, tok: &Token) -> (i32, bool) {
                 ">=" => 50,
                 "!=" => 50,
                 "==" => 50,
-                "&&" => 60,
-                "||" => 60,
-                "-" => 70,
-                "!" => 70,
                 "." => 100,
                 op => panic!(format!("Unknown operator {}", op)),
             }
