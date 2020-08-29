@@ -33,7 +33,7 @@ pub enum Type {
 use Type::*;
 
 impl Type {
-    fn ptr(self: Type) -> Type {
+    pub fn ptr(self: Type) -> Type {
         Pointer(8 * byte_size(), Box::new(self))
     }
 }
@@ -151,7 +151,7 @@ fn num_bits(n: usize) -> usize {
     }
 }
 
-fn product(values: Vec<Type>) -> Result<Type, TError> {
+pub fn product(values: Vec<Type>) -> Result<Type, TError> {
     let mut layout = set![];
     let mut off = 0;
     for val in values {
@@ -162,7 +162,7 @@ fn product(values: Vec<Type>) -> Result<Type, TError> {
     Ok(Struct(layout))
 }
 
-fn sum(values: Vec<Type>) -> Result<Type, TError> {
+pub fn sum(values: Vec<Type>) -> Result<Type, TError> {
     let mut layout = set![];
     let mut count = 0;
     for val in values {

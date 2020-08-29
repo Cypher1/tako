@@ -185,6 +185,17 @@ string to_string(const bool& t){
 }")
         },
         Extern {
+            name: ",".to_string(),
+            operator: Some((30, false)),
+            ty: Function {
+                intros: dict!("a" => variable("Type"), "b" => variable("Type"), "c" => variable("Type")),
+                results: dict!("it" => variable("c")),
+                arguments: dict!("left" => variable("a"), "right" => variable("b")),
+                effects: vec![],
+            },
+            cpp: LangImpl::operator(", "),
+        },
+        Extern {
             name: "=".to_string(),
             operator: Some((40, true)),
             ty: Function {
@@ -265,6 +276,72 @@ string to_string(const bool& t){
             cpp: LangImpl::operator("&&")
         },
         Extern {
+            name: "<".to_string(),
+            operator: Some((50, false)),
+            ty: Function {
+                intros: dict!("a" => variable("Number"), "b" => variable("Number")),
+                results: dict!("it" => bit()),
+                arguments: dict!("left" => variable("a"), "right" => variable("b")),
+                effects: vec![],
+            },
+            cpp: LangImpl::operator("<")
+        },
+        Extern {
+            name: "<=".to_string(),
+            operator: Some((50, false)),
+            ty: Function {
+                intros: dict!("a" => variable("Number"), "b" => variable("Number")),
+                results: dict!("it" => bit()),
+                arguments: dict!("left" => variable("a"), "right" => variable("b")),
+                effects: vec![],
+            },
+            cpp: LangImpl::operator("<=")
+        },
+        Extern {
+            name: ">".to_string(),
+            operator: Some((50, false)),
+            ty: Function {
+                intros: dict!("a" => variable("Number"), "b" => variable("Number")),
+                results: dict!("it" => bit()),
+                arguments: dict!("left" => variable("a"), "right" => variable("b")),
+                effects: vec![],
+            },
+            cpp: LangImpl::operator(">")
+        },
+        Extern {
+            name: ">=".to_string(),
+            operator: Some((50, false)),
+            ty: Function {
+                intros: dict!("a" => variable("Number"), "b" => variable("Number")),
+                results: dict!("it" => bit()),
+                arguments: dict!("left" => variable("a"), "right" => variable("b")),
+                effects: vec![],
+            },
+            cpp: LangImpl::operator(">=")
+        },
+        Extern {
+            name: "!=".to_string(),
+            operator: Some((50, false)),
+            ty: Function {
+                intros: dict!("a" => variable("Type"), "b" => variable("Type")),
+                results: dict!("it" => bit()),
+                arguments: dict!("left" => variable("a"), "right" => variable("b")),
+                effects: vec![],
+            },
+            cpp: LangImpl::operator("!=")
+        },
+        Extern {
+            name: "==".to_string(),
+            operator: Some((50, false)),
+            ty: Function {
+                intros: dict!("a" => variable("Type"), "b" => variable("Type")),
+                results: dict!("it" => bit()),
+                arguments: dict!("left" => variable("a"), "right" => variable("b")),
+                effects: vec![],
+            },
+            cpp: LangImpl::operator("==")
+        },
+        Extern {
             name: "%".to_string(),
             operator: Some((80, false)),
             ty: Function {
@@ -296,6 +373,54 @@ string to_string(const bool& t){
                 effects: vec![],
             },
             cpp: LangImpl::operator("/")
+        },
+        Extern {
+            name: ";".to_string(),
+            operator: Some((20, false)),
+            ty: Function {
+                intros: dict!("a" => variable("Type"), "b" => variable("Type")),
+                results: dict!("it" => variable("b")),
+                arguments: dict!("left" => variable("a"), "right" => variable("b")),
+                effects: vec![],
+            },
+            cpp: LangImpl::operator(";")
+        },
+        Extern {
+            name: ":".to_string(),
+            operator: Some((42, false)),
+            ty: Function {
+                intros: dict!("a" => variable("Type")),
+                results: dict!("it" => variable("a")),
+                arguments: dict!("left" => variable("a"), "right" => variable("Type")),
+                effects: vec![],
+            },
+            cpp: LangImpl::operator(":")
+        },
+        Extern {
+            name: "-|".to_string(),
+            operator: Some((47, false)),
+            ty: Function {
+                intros: dict!("a" => variable("Type")),
+                results: dict!("it" => variable("a")),
+                arguments: dict!("left" => variable("Type"), "right" => variable("a")),
+                effects: vec![],
+            },
+            cpp: LangImpl::operator("-|")
+        },
+        Extern {
+            name: "?".to_string(),
+            operator: Some((45, false)),
+            ty: Function {
+                intros: dict!("a" => variable("Type"), "b" => variable("Type")),
+                results: dict!("it" => Union(set!(
+                            (variable("a"), 0),
+                            (variable("b"), 0)
+                    ))
+                ),
+                arguments: dict!("left" => variable("a"), "right" => variable("b")),
+                effects: vec![],
+            },
+            cpp: LangImpl::operator("?")
         },
         Extern {
             name: "argc".to_string(),

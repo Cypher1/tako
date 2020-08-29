@@ -7,33 +7,15 @@ use super::location::*;
 use super::tokens::*;
 
 fn binding_power(db: &dyn Compiler, tok: &Token) -> (i32, bool) {
-    let bind = match &tok.tok_type {
-        TokenType::Op => {
-            // Look up extern operators
-            let op_name = tok.value.as_str();
-            if let Some(operator_info) = db.get_extern_operator(op_name.to_owned()) {
-                return operator_info;
-            }
-            match op_name {
-                ";" => 20,
-                "," => 30,
-                ":" => 42,
-                "?" => 45,
-                "-|" => 47,
-                "<" => 50,
-                "<=" => 50,
-                ">" => 50,
-                ">=" => 50,
-                "!=" => 50,
-                "==" => 50,
-                "." => 100,
-                op => panic!(format!("Unknown operator {}", op)),
-            }
+    if tok.tok_type == TokenType::Op {
+        // Look up extern operators
+        let op = tok.value.as_str();
+        if let Some(operator_info) = db.get_extern_operator(op.to_owned()) {
+            return operator_info;
         }
-        TokenType::NumLit => 1000,
-        _ => 1000, // TODO impossible
-    };
-    (bind, false)
+        panic!(format!("Unknown operator {}", op))
+    }
+    (1000, false)
 }
 
 fn get_defs(root: Node) -> Vec<Let> {
@@ -81,7 +63,6 @@ fn get_defs(root: Node) -> Vec<Let> {
             info: n.get_info(),
         }),
     }
-
     args
 }
 
@@ -345,8 +326,7 @@ fn expr(db: &dyn Compiler, init_toks: VecDeque<Token>, init_lbp: i32) -> (Node, 
         match toks.front() {
             None => break,
             Some(token) => {
-                let (lbp, _) = binding_power(db, token);
-                if init_lbp >= lbp {
+                if init_lbp >= binding_power(db, token).0 {
                     break;
                 }
             }
@@ -358,7 +338,6 @@ fn expr(db: &dyn Compiler, init_toks: VecDeque<Token>, init_lbp: i32) -> (Node, 
         left = update.0;
         toks = update.1;
     }
-
     (left, toks)
 }
 
@@ -374,18 +353,13 @@ pub fn lex(db: &dyn Compiler, module: Path) -> Result<VecDeque<Token>, TError> {
     let mut chars = contents.chars().peekable();
     loop {
         let (next, new_chars) = lex_head(chars, &mut pos);
-
-        // eprintln!("LEXING {:?}", next);
-
         if next.tok_type == TokenType::Unknown {
             break; // TODO done / skip?
         }
-
         // If valid, take the token and move on.
         toks.push_back(next);
         chars = new_chars;
     }
-
     // eprintln!("Toks: {:?}", toks);
     Ok(toks)
 }
