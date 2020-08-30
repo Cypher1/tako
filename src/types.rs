@@ -14,7 +14,7 @@ type Pack = BTreeSet<(String, Type)>;
 #[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Debug, Hash)]
 pub enum Type {
     Union(TypeSet),
-    Struct(Layout),
+    Product(TypeSet),
     StaticPointer(Offset),
     Tag(Offset, Offset), // A locally unique id and the number of bits needed for it, should be replaced with a bit pattern at compile time.
     Pointer(Offset, Box<Type>), // Defaults to 8 bytes (64 bit)
@@ -39,50 +39,6 @@ impl Type {
     }
 }
 
-pub fn simplify(ty: &Type) -> Type {
-    use Type::*;
-    match ty {
-        Union(values) => {
-            if values.is_empty() {
-                return void();
-            }
-            if values.len() == 1 {
-                return values
-                    .iter()
-                    .next()
-                    .expect("Expected single element set to have an element")
-                    .clone();
-            }
-            let mut vals = set![];
-            for ty in values {
-                vals.insert(simplify(ty));
-            }
-            return Union(vals);
-        }
-        Struct(values) => {
-            if values.is_empty() {
-                return unit();
-            }
-            if values.len() == 1 {
-                return values
-                    .iter()
-                    .next()
-                    .expect("Expected single element set to have an element")
-                    .clone();
-            }
-            let mut vals = vec![];
-            for ty in values {
-                vals.push(simplify(&ty));
-            }
-            return Struct(vals);
-        }
-        Pointer(ptr_size, t) => Pointer(*ptr_size, Box::new(simplify(t))),
-        Tag(tag, bits) => Tag(*tag, *bits),
-        StaticPointer(ptr_size) => StaticPointer(*ptr_size),
-        x => panic!(format!("unhandled: simplfy {:#?}", x))
-    }
-}
-
 pub fn card(ty: &Type) -> Result<Offset, TError> {
     use Type::*;
     match ty {
@@ -93,7 +49,7 @@ pub fn card(ty: &Type) -> Result<Offset, TError> {
             }
             Ok(sum)
         }
-        Struct(s) => {
+        Product(s) => {
             let mut prod = 1;
             for sty in s {
                 prod *= card(&sty)?;
@@ -122,7 +78,7 @@ pub fn size(ty: &Type) -> Result<Offset, TError> {
             }
             Ok(res)
         }
-        Struct(s) => {
+        Product(s) => {
             let mut res = 0;
             for sty in s.iter() {
                 res += size(&sty)?;
@@ -149,12 +105,13 @@ fn num_bits(n: Offset) -> Offset {
     }
 }
 
-pub fn product(values: Vec<Type>) -> Result<Type, TError> {
-    let mut layout = vec![];
+pub fn struct(values: Layout) -> Result<Type, TError> {
+    let mut layout = set![];
     for val in values {
-        layout.push(val);
+        // Work out the padding here
+        layout.insert(val);
     }
-    Ok(Struct(layout))
+    Ok(Product(layout))
 }
 
 pub fn sum(values: Vec<Type>) -> Result<Type, TError> {
@@ -164,7 +121,7 @@ pub fn sum(values: Vec<Type>) -> Result<Type, TError> {
     for val in values {
         let mut tagged = Tag(count, tag_bits);
         if val != unit() {
-            tagged = product(vec![tagged, val])?;
+            tagged = struct(vec![tagged, val])?;
         }
         layout.insert(tagged);
         count += 1;
@@ -177,7 +134,7 @@ pub fn void() -> Type {
 }
 
 pub fn unit() -> Type {
-    Struct(vec![])
+    Product(vec![])
 }
 
 pub fn padding(size: Offset) -> Type {
@@ -189,7 +146,7 @@ pub fn bit() -> Type {
 }
 
 pub fn byte_type() -> Type {
-    product(vec![
+    struct(vec![
         bit(),
         bit(),
         bit(),
@@ -214,7 +171,7 @@ pub fn str_type() -> Type {
 }
 
 pub fn number_type() -> Type {
-    product(vec![byte_type(), byte_type(), byte_type(), byte_type()]).expect("number should be safe")
+    struct(vec![byte_type(), byte_type(), byte_type(), byte_type()]).expect("number should be safe")
 }
 
 pub fn variable(name: &str) -> Type {
@@ -280,7 +237,7 @@ mod tests {
     }
     #[test]
     fn nested_quad_type() {
-        let quad = product(vec![bit(), bit()]).unwrap();
+        let quad = struct(vec![bit(), bit()]).unwrap();
         assert_eq!(card(&quad), Ok(4));
         assert_eq!(size(&quad), Ok(2));
     }
@@ -299,21 +256,21 @@ mod tests {
     #[test]
     fn pair_bool_ptrs() {
         let bool_ptr = Pointer(64, Box::new(bit()));
-        let quad = product(vec![bool_ptr.clone(), bool_ptr]).unwrap();
+        let quad = struct(vec![bool_ptr.clone(), bool_ptr]).unwrap();
         assert_eq!(card(&quad), Ok(4));
         assert_eq!(size(&quad), Ok(2 * 64));
     }
     #[test]
     fn nested_nibble() {
-        let quad = product(vec![bit(), bit()]).unwrap();
-        let nibble = product(vec![quad.clone(), quad]).unwrap();
+        let quad = struct(vec![bit(), bit()]).unwrap();
+        let nibble = struct(vec![quad.clone(), quad]).unwrap();
         assert_eq!(card(&nibble), Ok(16));
         assert_eq!(size(&nibble), Ok(4));
     }
     #[test]
     fn padded_nibble() {
-        let quad = product(vec![padding(2), bit(), bit()]).unwrap();
-        let nibble = product(vec![quad.clone(), quad]).unwrap();
+        let quad = struct(vec![padding(2), bit(), bit()]).unwrap();
+        let nibble = struct(vec![quad.clone(), quad]).unwrap();
         assert_eq!(card(&nibble), Ok(16));
         assert_eq!(size(&nibble), Ok(8));
     }
@@ -321,7 +278,7 @@ mod tests {
     #[test]
     fn bool_and_fn() {
         let fn_ptr = StaticPointer(64);
-        let closure = product(vec![bit(), fn_ptr]).unwrap();
+        let closure = struct(vec![bit(), fn_ptr]).unwrap();
         assert_eq!(size(&closure), Ok(65));
     }
 
