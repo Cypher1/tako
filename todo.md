@@ -27,6 +27,7 @@
 ## Testing
 
 - Tests for code generator
+- Testing for error generation (i.e. source locations, file names)
 - Tests for type checker
 - Tests for compiled programs (not just golden sources, but behaviour)
 

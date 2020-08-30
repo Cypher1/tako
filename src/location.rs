@@ -21,21 +21,21 @@ impl Loc {
     pub fn next(&mut self, chars: &mut std::iter::Peekable<std::str::Chars>) {
         // TODO: Consider just keeping the offsets and then recovering line
         // info later.
-        if chars.peek() == None {
+        let ch = chars.peek();
+        if ch == None {
             return;
         }
 
-        let nl = chars.peek() == Some(&'\n');
-        let lf = chars.peek() == Some(&'\r');
+        let nl = ch == Some(&'\n');
+        let lf = ch == Some(&'\r');
         chars.next();
+        self.col += 1;
         if nl || lf {
             if lf && chars.peek() == Some(&'\n') {
                 chars.next();
             }
             self.line += 1;
             self.col = 1;
-        } else {
-            self.col += 1;
         }
     }
 }
