@@ -413,8 +413,8 @@ string to_string(const bool& t){
             ty: Function {
                 intros: dict!("a" => variable("Type"), "b" => variable("Type")),
                 results: dict!("it" => Union(set!(
-                            (variable("a"), 0),
-                            (variable("b"), 0)
+                            variable("a"),
+                            variable("b")
                     ))
                 ),
                 arguments: dict!("left" => variable("a"), "right" => variable("b")),
