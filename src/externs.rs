@@ -248,7 +248,7 @@ pub fn get_externs() -> HashMap<String, Extern> {
         },
         Extern {
             name: "|".to_string(),
-            operator: Some((60, false)),
+            operator: Some((48, false)),
             ty: Function {
                 intros: dict!("a" => variable("Type"), "b" => variable("Type")),
                 results: dict!("it" => Union(set!(variable("a"), variable("b")))),
@@ -259,7 +259,7 @@ pub fn get_externs() -> HashMap<String, Extern> {
         },
         Extern {
             name: "&".to_string(),
-            operator: Some((60, false)),
+            operator: Some((48, false)),
             ty: Function {
                 intros: dict!("a" => variable("Type"), "b" => variable("Type")),
                 results: dict!("it" => Product(set!(variable("a"), variable("b")))),
@@ -270,7 +270,7 @@ pub fn get_externs() -> HashMap<String, Extern> {
         },
         Extern {
             name: "++".to_string(),
-            operator: Some((48, false)),
+            operator: Some((49, false)),
             ty: Function {
                 intros: dict!("a" => variable("Display"), "b" => variable("Display")),
                 results: dict!("it" => str_type()),
