@@ -16,6 +16,7 @@ pub enum Type {
     Union(TypeSet),
     Product(TypeSet),
     StaticPointer(Offset),
+    Padded(Offset, Box<Type>),
     Tag(Offset, Offset), // A locally unique id and the number of bits needed for it, should be replaced with a bit pattern at compile time.
     Pointer(Offset, Box<Type>), // Defaults to 8 bytes (64 bit)
     Variable(String),
@@ -36,6 +37,9 @@ use Type::*;
 impl Type {
     pub fn ptr(self: Type) -> Type {
         Pointer(8 * byte_size(), Box::new(self))
+    }
+    pub fn padded(self: Type, size: Offset) -> Type {
+        Padded(size, Box::new(self))
     }
 }
 
@@ -58,6 +62,7 @@ pub fn card(ty: &Type) -> Result<Offset, TError> {
         }
         Pointer(_ptr_size, t) => card(&t),
         Tag(_tag, _bits) => Ok(1),
+        Padded(_size, t) => card(&t),
         StaticPointer(_ptr_size) => Err(TError::StaticPointerCardinality(Info::default())),
         x => panic!(format!("unhandled: card of {:#?}", x))
     }
@@ -81,13 +86,17 @@ pub fn size(ty: &Type) -> Result<Offset, TError> {
         Product(s) => {
             let mut res = 0;
             for sty in s.iter() {
-                res += size(&sty)?;
+                let c = size(&sty)?;
+                if res <= c {
+                    res = c;
+                }
             }
             Ok(res)
         }
         Pointer(ptr_size, _t) => Ok(*ptr_size),
         Tag(_tag, bits) => Ok(*bits),
         StaticPointer(ptr_size) => Ok(*ptr_size),
+        Padded(bits, t) => Ok(bits+size(t)?),
         Variable(name) => Err(TError::UnknownSizeOfVariableType(name.clone(), Info::default())),
         x => panic!(format!("unhandled: size of {:#?}", x))
     }
@@ -105,11 +114,14 @@ fn num_bits(n: Offset) -> Offset {
     }
 }
 
-pub fn struct(values: Layout) -> Result<Type, TError> {
+pub fn record(values: Layout) -> Result<Type, TError> {
     let mut layout = set![];
+    let mut off = 0;
     for val in values {
         // Work out the padding here
-        layout.insert(val);
+        let size = size(&val)?;
+        layout.insert(val.padded(off));
+        off += size;
     }
     Ok(Product(layout))
 }
@@ -121,7 +133,7 @@ pub fn sum(values: Vec<Type>) -> Result<Type, TError> {
     for val in values {
         let mut tagged = Tag(count, tag_bits);
         if val != unit() {
-            tagged = struct(vec![tagged, val])?;
+            tagged = record(vec![tagged, val])?;
         }
         layout.insert(tagged);
         count += 1;
@@ -134,11 +146,7 @@ pub fn void() -> Type {
 }
 
 pub fn unit() -> Type {
-    Product(vec![])
-}
-
-pub fn padding(size: Offset) -> Type {
-    Tag(0, size)
+    Product(set![])
 }
 
 pub fn bit() -> Type {
@@ -146,7 +154,7 @@ pub fn bit() -> Type {
 }
 
 pub fn byte_type() -> Type {
-    struct(vec![
+    record(vec![
         bit(),
         bit(),
         bit(),
@@ -171,7 +179,7 @@ pub fn str_type() -> Type {
 }
 
 pub fn number_type() -> Type {
-    struct(vec![byte_type(), byte_type(), byte_type(), byte_type()]).expect("number should be safe")
+    record(vec![byte_type(), byte_type(), byte_type(), byte_type()]).expect("number should be safe")
 }
 
 pub fn variable(name: &str) -> Type {
@@ -237,7 +245,7 @@ mod tests {
     }
     #[test]
     fn nested_quad_type() {
-        let quad = struct(vec![bit(), bit()]).unwrap();
+        let quad = record(vec![bit(), bit()]).unwrap();
         assert_eq!(card(&quad), Ok(4));
         assert_eq!(size(&quad), Ok(2));
     }
@@ -256,21 +264,21 @@ mod tests {
     #[test]
     fn pair_bool_ptrs() {
         let bool_ptr = Pointer(64, Box::new(bit()));
-        let quad = struct(vec![bool_ptr.clone(), bool_ptr]).unwrap();
+        let quad = record(vec![bool_ptr.clone(), bool_ptr]).unwrap();
         assert_eq!(card(&quad), Ok(4));
         assert_eq!(size(&quad), Ok(2 * 64));
     }
     #[test]
     fn nested_nibble() {
-        let quad = struct(vec![bit(), bit()]).unwrap();
-        let nibble = struct(vec![quad.clone(), quad]).unwrap();
+        let quad = record(vec![bit(), bit()]).unwrap();
+        let nibble = record(vec![quad.clone(), quad]).unwrap();
         assert_eq!(card(&nibble), Ok(16));
         assert_eq!(size(&nibble), Ok(4));
     }
     #[test]
     fn padded_nibble() {
-        let quad = struct(vec![padding(2), bit(), bit()]).unwrap();
-        let nibble = struct(vec![quad.clone(), quad]).unwrap();
+        let quad = record(vec![bit().padded(2), bit()]).unwrap();
+        let nibble = record(vec![quad.clone(), quad]).unwrap();
         assert_eq!(card(&nibble), Ok(16));
         assert_eq!(size(&nibble), Ok(8));
     }
@@ -278,7 +286,7 @@ mod tests {
     #[test]
     fn bool_and_fn() {
         let fn_ptr = StaticPointer(64);
-        let closure = struct(vec![bit(), fn_ptr]).unwrap();
+        let closure = record(vec![bit(), fn_ptr]).unwrap();
         assert_eq!(size(&closure), Ok(65));
     }
 
