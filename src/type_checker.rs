@@ -83,22 +83,37 @@ mod tests {
         assert_type("23", "I32");
     }
 
-    //#[test]
+    #[test]
+    fn infer_type_of_str() {
+        assert_type("\"23\"", "String");
+    }
+
+    #[test]
     fn infer_type_of_sym_i32() {
         assert_type("x=12;x", "I32");
     }
 
-    //#[test]
+    #[test]
+    fn infer_type_of_sym_str() {
+        assert_type("x=\"12\";x", "String");
+    }
+
+    #[test]
+    fn infer_type_of_pair_str_i32() {
+        assert_type("(\"12\",23)", "(String, I32)");
+    }
+
+    #[test]
     fn infer_type_of_sym_with_extra_lets_i32() {
         assert_type("x=12;y=4;x", "I32");
     }
 
-    // #[test]
+    #[test]
     fn infer_type_of_id() {
         assert_type("{x}", ",(x: X): X");
     }
 
-    // #[test]
+    #[test]
     fn infer_type_of_id_apply() {
         assert_type("{x}(x=12)", "I32");
     }
