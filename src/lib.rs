@@ -19,7 +19,7 @@ mod externs;
 mod location;
 mod tokens;
 mod tree;
-mod types;
+mod proto_types;
 
 mod definition_finder;
 mod pretty_print;

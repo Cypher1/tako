@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::ast::{Info, Prim::*};
 use crate::database::Compiler;
 use crate::interpreter::{prim_add_strs, prim_pow, Res};
-use crate::types::{void, Type, Type::*, str_type, number_type, variable, bit};
+use crate::proto_types::{void, Type, Type::*, str_type, number_type, variable, bit};
 
 use crate::dict;
 

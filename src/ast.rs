@@ -7,7 +7,6 @@ use crate::database::DB;
 use crate::errors::TError;
 use crate::location::*;
 use crate::tree::*;
-use crate::types::*;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Err {
@@ -141,7 +140,7 @@ impl ToNode for BinOp {
 #[derive(Clone)]
 pub struct Info {
     pub loc: Option<Loc>,
-    pub ty: Option<Type>,
+    pub ty: Option<Box<Node>>,
     pub defined_at: Option<Path>,
     pub callable: bool,
 }
