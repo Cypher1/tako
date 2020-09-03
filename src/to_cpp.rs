@@ -266,7 +266,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 .defined_at
                 .expect("Could not find definition for symbol"),
         );
-        if let Some(info) = db.get_extern(name.clone()) {
+        if let Some(info) = db.get_extern(name.clone())? {
             self.includes.insert(info.cpp.includes);
             self.flags.extend(info.cpp.flags);
             // arg_processor
@@ -381,7 +381,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         let code = self.visit(db, state, &expr.inner)?;
         let info = expr.get_info();
         let op = expr.name.as_str();
-        if let Some(info) = db.get_extern(op.to_string()) {
+        if let Some(info) = db.get_extern(op.to_string())? {
             self.includes.insert(info.cpp.includes);
             self.flags.extend(info.cpp.flags);
             let code = if info.cpp.arg_processor.as_str() == "" {
@@ -418,7 +418,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             }
             _ => {}
         }
-        if let Some(info) = db.get_extern(op.to_string()) {
+        if let Some(info) = db.get_extern(op.to_string())? {
             self.includes.insert(info.cpp.includes);
             self.flags.extend(info.cpp.flags);
             let (left, right) = if info.cpp.arg_processor.as_str() == "" {

@@ -55,16 +55,20 @@ pub fn infer(db: &dyn Compiler, expr: &Node) -> Result<Node, TError> {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
     use super::*;
     use crate::ast::{Info, Sym, ToNode};
     use crate::database::DB;
-    use crate::parser::parse_string_for_test;
+    use crate::database::parse_str;
 
     fn assert_type(prog: &str, ty: &str) {
         let mut db = DB::default();
-        let prog = parse_string_for_test(&mut db, prog.to_string());
+        use crate::cli_options::Options;
+        db.set_options(Options::default());
+        let module = vec![];
+        let prog = parse_str(&mut db, module.clone(), prog).unwrap();
         let prog = infer(&mut db, &prog);
-        let ty = parse_string_for_test(&mut db, ty.to_string());
+        let ty = parse_str(&mut db, module, ty).unwrap();
         assert_eq!(prog, Ok(ty));
     }
 

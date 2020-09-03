@@ -1,6 +1,5 @@
 use std::collections::BTreeSet;
 use std::fmt;
-use std::fmt::Write;
 use crate::errors::TError;
 use crate::ast::Info;
 

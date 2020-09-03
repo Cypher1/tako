@@ -1,11 +1,10 @@
 use std::collections::HashMap;
 
 use crate::ast::{Info, Prim::*};
-use crate::database::Compiler;
+use crate::database::{Compiler, parse_str};
 use crate::interpreter::{prim_add_strs, prim_pow, Res};
-use crate::proto_types::{void, Type, Type::*, str_type, number_type, variable, bit};
-
-use crate::dict;
+use crate::proto_types::{Type, Type::*, void, variable, number_type, str_type, bit};
+use crate::errors::TError;
 
 pub type FuncImpl = Box<dyn Fn(&dyn Compiler, Vec<&dyn Fn() -> Res>, Info) -> Res>;
 
@@ -45,7 +44,6 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
             Ok(I32(db.options().interpreter_args.len() as i32, info))
         })),
         "argv" => Some(Box::new(|db, args, info| {
-            use crate::errors::TError;
             match args[0]()? {
                 I32(ind, _) => Ok(Str(
                     db.options().interpreter_args[ind as usize].clone(),
@@ -121,7 +119,11 @@ impl LangImpl {
     }
 }
 
-pub fn get_externs() -> HashMap<String, Extern> {
+pub fn get_externs(db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError> {
+    let module = vec![];
+
+    let node = parse_str(db, module, "x");
+
     let mut externs = vec![
         Extern {
             name: "argc".to_string(),
@@ -466,5 +468,5 @@ string to_string(const bool& t){
     while let Some(extern_def) = externs.pop() {
         extern_map.insert(extern_def.name.clone(), extern_def);
     }
-    extern_map
+    Ok(extern_map)
 }
