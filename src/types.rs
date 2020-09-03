@@ -1,4 +1,6 @@
 use std::collections::BTreeSet;
+use std::fmt;
+use std::fmt::Write;
 use crate::errors::TError;
 use crate::ast::Info;
 
@@ -32,6 +34,42 @@ pub enum Type {
     },
 }
 
+impl fmt::Display for Type {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Union(s) => {
+                write!(f, "Union(")?;
+                let mut first = true;
+                for sty in s {
+                    if !first {
+                        write!(f, ", ")?;
+                    }
+                    first = false;
+                    write!(f, "{}", sty)?;
+                }
+                write!(f, ")")
+            }
+            Product(s) => {
+                write!(f, "Product(")?;
+                let mut first = true;
+                for sty in s {
+                    if !first {
+                        write!(f, ", ")?;
+                    }
+                    first = false;
+                    write!(f, "{}", sty)?;
+                }
+                write!(f, ")")
+            }
+            Pointer(ptr_size, t) => write!(f, "*<{}b>{}", ptr_size, t),
+            Tag(tag, bits) => write!(f, "Tag<{}b>{}", bits, tag),
+            Padded(size, t) => write!(f, "Pad<{}b>{}", size, t),
+            StaticPointer(ptr_size) => write!(f, "*<{}b>Code", ptr_size),
+            x => write!(f, "({:?})", x),
+        }
+    }
+}
+
 use Type::*;
 
 impl Type {
@@ -39,6 +77,12 @@ impl Type {
         Pointer(8 * byte_size(), Box::new(self))
     }
     pub fn padded(self: Type, size: Offset) -> Type {
+        if size == 0 {
+            return self;
+        }
+        if let Padded(n, t) = self {
+            return Padded(n+size, t)
+        }
         Padded(size, Box::new(self))
     }
 }
