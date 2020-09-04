@@ -20,14 +20,6 @@ impl<'a> Default for Interpreter<'a> {
     }
 }
 
-fn globals(_db: &dyn Compiler) -> Frame {
-    let globals = HashMap::new();
-    // for (name, _) in db.get_externs() {
-    //     globals.insert(name.clone(), Sym{name, info: Info::default()}.to_node());
-    // }
-    globals
-}
-
 fn find_symbol<'a>(state: &'a [Frame], name: &str) -> Option<&'a Node> {
     for frame in state.iter().rev() {
         if let Some(val) = frame.get(name) {
@@ -233,7 +225,7 @@ pub type Res = Result<Prim, TError>;
 type State = Vec<Frame>;
 impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
     fn visit_root(&mut self, db: &dyn Compiler, root: &Root) -> Res {
-        let mut state = vec![globals(db)];
+        let mut state = vec![HashMap::new()];
         self.visit(db, &mut state, &root.ast)
     }
 
@@ -430,7 +422,7 @@ mod tests {
     use super::super::ast::*;
     use super::super::cli_options::Options;
     use super::super::database::{Compiler, DB};
-    use super::{globals, Interpreter, Res};
+    use super::{Interpreter, Res};
     use Node::*;
     use Prim::*;
 
@@ -453,7 +445,8 @@ mod tests {
         db.set_file(filename.to_owned(), Ok(Arc::new(s)));
         db.set_options(Options::default());
         let ast = db.parse_file(module)?;
-        Interpreter::default().visit(&db, &mut vec![globals(&db)], &ast)
+        let mut state = vec![HashMap::new()];
+        Interpreter::default().visit(&db, &mut state, &ast)
     }
 
     #[test]
