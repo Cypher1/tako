@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::ast::{Info, Prim::*};
-use crate::database::{Compiler, parse_str};
+use crate::database::Compiler;
 use crate::interpreter::{prim_add_strs, prim_pow, Res};
 use crate::proto_types::{Type, Type::*, void, variable, number_type, str_type, bit};
 use crate::errors::TError;
@@ -122,7 +122,13 @@ impl LangImpl {
 pub fn get_externs(db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError> {
     let module = vec![];
 
-    let node = parse_str(db, module, "x");
+    let number_constraint = db.parse_str(module.clone(), "Number")?;
+    let string_constraint = db.parse_str(module.clone(), "String")?;
+    let unit_type = db.parse_str(module, "product()")?;
+
+    eprintln!("num {}", number_constraint);
+    eprintln!("str {}", string_constraint);
+    eprintln!("unit {}", unit_type);
 
     let mut externs = vec![
         Extern {

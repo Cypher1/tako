@@ -32,6 +32,7 @@ pub trait Compiler: salsa::Database {
     fn lex_string(&self, module: Path, contents: Arc<String>) -> Result<VecDeque<Token>, TError>;
     fn lex_file(&self, module: Path) -> Result<VecDeque<Token>, TError>;
     fn parse_string(&self, module: Path, contents: Arc<String>) -> Result<Node, TError>;
+    fn parse_str(&self, module: Path, contents: &'static str) -> Result<Node, TError>;
     fn parse_file(&self, module: Path) -> Result<Node, TError>;
     fn build_symbol_table(&self, module: Path) -> Result<Root, TError>;
     fn find_symbol(&self, mut context: Path, path: Path) -> Result<Option<Table>, TError>;
@@ -128,7 +129,7 @@ fn parse_string(db: &dyn Compiler, module: Path, contents: Arc<String>) -> Resul
     parser::parse_string(db, &module, &contents)
 }
 
-pub fn parse_str(db: &dyn Compiler, module: Path, contents: &str) -> Result<Node, TError> {
+fn parse_str(db: &dyn Compiler, module: Path, contents: &'static str) -> Result<Node, TError> {
     db.parse_string(module, Arc::new(contents.to_string()))
 }
 
