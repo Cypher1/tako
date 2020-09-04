@@ -61,19 +61,14 @@ fn prim_add(l: &Prim, r: &Prim, info: Info) -> Res {
 
 pub fn prim_add_strs(l: &Prim, r: &Prim, info: Info) -> Res {
     use Prim::*;
-    let l = match l {
+    let to_str = |val: &Prim| match val {
         Bool(v, _) => format!("{}", v),
         I32(v, _) => format!("{}", v),
         Str(v, _) => v.clone(),
         Lambda(v) => format!("{}", v),
+        TypeValue(v, _) => format!("{}", v),
     };
-    let r = match r {
-        Bool(v, _) => format!("{}", v),
-        I32(v, _) => format!("{}", v),
-        Str(v, _) => v.clone(),
-        Lambda(v) => format!("{}", v),
-    };
-    Ok(Str(l + &r, info))
+    Ok(Str(to_str(l) + &to_str(r), info))
 }
 
 fn prim_eq(l: &Prim, r: &Prim, info: Info) -> Res {

@@ -7,6 +7,7 @@ use crate::database::DB;
 use crate::errors::TError;
 use crate::location::*;
 use crate::tree::*;
+use crate::types::Type;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Err {
@@ -74,6 +75,7 @@ impl ToNode for Prim {
             I32(_, info) => info.clone(),
             Str(_, info) => info.clone(),
             Lambda(node) => (*node).get_info(),
+            TypeValue(_, info) => info.clone(),
         }
     }
 }

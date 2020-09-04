@@ -282,7 +282,8 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             Bool(true, _) => Ok(Code::Expr(1.to_string())),
             Bool(false, _) => Ok(Code::Expr(0.to_string())),
             Str(s, _) => Ok(Code::Expr(format!("{:?}", s))),
-            Lambda(node) => self.visit(db, state, node), // _ => unimplemented!("unimplemented primitive type in compilation to c"),
+            Lambda(node) => self.visit(db, state, node),
+            TypeValue(_ty, _) => unimplemented!("unimplemented primitive type in compilation to c"),
         }
     }
 

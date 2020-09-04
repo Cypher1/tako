@@ -1,5 +1,5 @@
 use crate::ast::Node;
-use crate::ast::{Node::*, Prim::*};
+use crate::ast::{Node::*, Prim::*, Symbol::Named};
 use crate::database::Compiler;
 use crate::errors::TError;
 
@@ -25,6 +25,7 @@ pub fn infer(db: &dyn Compiler, expr: &Node) -> Result<Node, TError> {
             }
             .to_node()),
             Lambda(node) => infer(db, node.as_ref()), // TODO: abstraction
+            TypeValue(_ty, _) => db.parse_str(vec![Symbol::Named("stdlib".to_string(), Some(".tk".to_string()))], "Type"),
         },
         UnOpNode(UnOp {
             name: _,
