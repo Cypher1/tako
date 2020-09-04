@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::ast::{Info, Prim::*};
 use crate::database::Compiler;
 use crate::interpreter::{prim_add_strs, prim_pow, Res};
-use crate::proto_types::{Type, Type::*, void, variable, number_type, str_type, bit};
+use crate::types::{Type, Type::*, void, variable, number_type, str_type, bit};
 use crate::errors::TError;
 
 pub type FuncImpl = Box<dyn Fn(&dyn Compiler, Vec<&dyn Fn() -> Res>, Info) -> Res>;

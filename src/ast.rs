@@ -60,6 +60,7 @@ pub enum Prim {
     I32(i32, Info),
     Str(String, Info),
     Lambda(Box<Node>),
+    TypeValue(Type, Info),
 }
 
 impl ToNode for Prim {
