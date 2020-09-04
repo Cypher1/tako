@@ -1,0 +1,7 @@
+hello_world(): ()&Print = print("Hello World!\n" : String)
+
+
+main(): IO {
+  hello_world();
+  return 0
+}
