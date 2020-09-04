@@ -401,36 +401,20 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
                 Ok(_) => r(),
                 l => l,
             },
-            ":" => match (&l?, &r()?) {
-                (Bool(bool_val, inf), Str(ty, _)) => match ty.as_ref() {
-                    "bool" => Ok(Bool(*bool_val, (*inf).clone())),
-                    t => Err(TError::TypeMismatch(
-                        t.to_string(),
-                        Box::new(Bool(*bool_val, (*inf).clone())),
-                        (*inf).clone(),
-                    )),
-                },
-                (I32(int_val, inf), Str(ty, _)) => match ty.as_ref() {
-                    "i32" => Ok(I32(*int_val, (*inf).clone())),
-                    t => Err(TError::TypeMismatch(
-                        t.to_string(),
-                        Box::new(I32(*int_val, (*inf).clone())),
-                        (*inf).clone(),
-                    )),
-                },
-                (Str(str_val, inf), Str(ty, _)) => match ty.as_ref() {
-                    "string" => Ok(Str((*str_val).clone(), (*inf).clone())),
-                    t => Err(TError::TypeMismatch(
-                        t.to_string(),
-                        Box::new(Str((*str_val).clone(), (*inf).clone())),
-                        (*inf).clone(),
-                    )),
-                },
-                (_, t) => Err(TError::TypeMismatch(
-                    "type".to_string(),
-                    Box::new(t.clone()),
-                    t.get_info(),
-                )),
+            ":" => {
+                let value = l?;
+                let type = r()?;
+                let type_of_value = infer(db, l);
+                // Check subtyping relationship of type_of_value and type.
+                let sub_type = true;
+                if sub_type {
+                    return Ok(value);
+                }
+                Err(TError::TypeMismatch(
+                        "Failure assertion of type annotation at runtime".to_string(),
+                        Box::new(value),
+                        type.clone(),
+                ))
             },
             op => Err(TError::UnknownInfixOperator(op.to_string(), info)),
         }
