@@ -1,5 +1,5 @@
 use crate::ast::Node;
-use crate::ast::{Node::*, Prim::*, Symbol::Named};
+use crate::ast::{Node::*, Prim::*};
 use crate::database::Compiler;
 use crate::errors::TError;
 

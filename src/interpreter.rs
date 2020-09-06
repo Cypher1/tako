@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use super::ast::*;
 use super::database::Compiler;
 use super::errors::TError;
+use super::type_checker::infer;
 
 type Frame = HashMap<String, Node>;
 
@@ -378,7 +379,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
                 Lambda(_) => Ok(Lambda(Box::new(expr.clone().to_node()))),
                 _ => Err(TError::TypeMismatch("-".to_string(), Box::new(i), info)),
             },
-            "*" => prim_type_ptr(&l, info),
+            "*" => prim_type_ptr(&0, info),
             op => Err(TError::UnknownPrefixOperator(op.to_string(), info)),
         }
     }
@@ -433,10 +434,11 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
                 if sub_type {
                     return Ok(value);
                 }
-                Err(TError::TypeMismatch(
+                Err(TError::TypeMismatch2(
                         "Failure assertion of type annotation at runtime".to_string(),
                         Box::new(value),
-                        type.clone(),
+                        Box::new(ty.clone()),
+                        ty.get_info().clone(),
                 ))
             },
             op => Err(TError::UnknownInfixOperator(op.to_string(), info)),
