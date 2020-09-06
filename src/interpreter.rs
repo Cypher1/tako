@@ -206,6 +206,34 @@ fn prim_or(l: &Prim, r: &Prim, info: Info) -> Res {
     }
 }
 
+fn prim_type_and(l: Prim, r: Prim, info: Info) -> Res {
+    use Prim::*;
+    use crate::types::Type;
+    match (l, r) {
+        (TypeValue(l, _), TypeValue(r, _)) => Ok(TypeValue(Type::Product(set!(l, r)), info)),
+        (l, r) => Err(TError::TypeMismatch2(
+            "&".to_string(),
+            Box::new(l),
+            Box::new(r),
+            info,
+        )),
+    }
+}
+
+fn prim_type_or(l: Prim, r: Prim, info: Info) -> Res {
+    use Prim::*;
+    use crate::types::Type;
+    match (l, r) {
+        (TypeValue(l, _), TypeValue(r, _)) => Ok(TypeValue(Type::Union(set!(l, r)), info)),
+        (l, r) => Err(TError::TypeMismatch2(
+            "|".to_string(),
+            Box::new(l),
+            Box::new(r),
+            info,
+        )),
+    }
+}
+
 pub fn prim_pow(l: &Prim, r: &Prim, info: Info) -> Res {
     use Prim::*;
     match (l, r) {
@@ -379,8 +407,8 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             "^" => prim_pow(&l?, &r()?, info),
             "&&" => prim_and(&l?, &r()?, info),
             "||" => prim_or(&l?, &r()?, info),
-            "&" => prim_type_and(&l?, &r()?, info),
-            "|" => prim_type_or(&l?, &r()?, info),
+            "&" => prim_type_and(l?, r()?, info),
+            "|" => prim_type_or(l?, r()?, info),
             ";" => {
                 l?;
                 Ok(r()?)
@@ -398,9 +426,9 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             },
             ":" => {
                 let value = l?;
-                let type = r()?;
-                let type_of_value = infer(db, l);
-                // Check subtyping relationship of type_of_value and type.
+                let ty = r()?;
+                let type_of_value = infer(db, &value.clone().to_node());
+                // Check subtyping relationship of type_of_value and ty.
                 let sub_type = true;
                 if sub_type {
                     return Ok(value);
@@ -422,6 +450,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
     use super::super::ast::*;
     use super::super::cli_options::Options;
     use super::super::database::{Compiler, DB};
