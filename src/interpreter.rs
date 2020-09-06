@@ -216,9 +216,6 @@ fn prim_type_and(l: Prim, r: Prim, info: Info) -> Res {
             "&".to_string(),
             Box::new(l),
             Box::new(r),
-            info,
-        )),
-    }
 }
 
 fn prim_type_or(l: Prim, r: Prim, info: Info) -> Res {
@@ -379,7 +376,6 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
                 Lambda(_) => Ok(Lambda(Box::new(expr.clone().to_node()))),
                 _ => Err(TError::TypeMismatch("-".to_string(), Box::new(i), info)),
             },
-            "*" => prim_type_ptr(&0, info),
             op => Err(TError::UnknownPrefixOperator(op.to_string(), info)),
         }
     }

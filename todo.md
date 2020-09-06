@@ -5,6 +5,7 @@
 - Imports
 - Externs (started)
 - Move globals / std into a file using low level ops (started)
+- Check for associativity errors (e.g. a&&b||c)
 - Convenient Conditionals / Ifs / Matches
   - i.e. Shouldn't have to use operators
   - Should mirror if-then-else, loop, while, for(each)
@@ -16,6 +17,8 @@
   - Products / Anonymous + Named Tuples / Records
   - Unions / Enums / GADTs
   - Monads?
+- pointer(ty)
+- Functions that take just one argument can skip "()" parens
 - Locals (scope management)
 - Main + command function argument parsing
 - Conversion to ssa (after parsing)

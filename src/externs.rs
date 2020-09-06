@@ -185,6 +185,18 @@ pub fn get_externs(db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError>
                 .with_includes("#include <iostream>")
         },
         Extern {
+            name: "pointer".to_string(),
+            operator: None,
+            ty: Function {
+                results: dict!{"it" => variable("a")},
+                arguments: dict!{"it" => variable("Type")},
+                intros: dict!("a" => variable("Type")),
+                effects: vec![],
+            },
+            cpp: LangImpl::new("std::cout << ")
+                .with_includes("#include <iostream>")
+        },
+        Extern {
             name: ";".to_string(),
             operator: Some((20, false)),
             ty: Function {
@@ -468,6 +480,19 @@ string to_string(const bool& t){
                 .with_includes("#include <cmath>")
                 .with_arg_joiner(", ")
                 .with_flag("-lm")
+        },
+        Extern {
+            name: "Number".to_string(),
+            operator: None,
+            ty: variable("Number"),
+            cpp: LangImpl::new("usize")
+        },
+        Extern {
+            name: "String".to_string(),
+            operator: None,
+            ty: variable("String"),
+            cpp: LangImpl::new("std::string")
+                .with_includes("#include <string>")
         },
     ];
     let mut extern_map: HashMap<String, Extern> = HashMap::new();
