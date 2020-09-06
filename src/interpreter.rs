@@ -350,6 +350,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
                 Lambda(_) => Ok(Lambda(Box::new(expr.clone().to_node()))),
                 _ => Err(TError::TypeMismatch("-".to_string(), Box::new(i), info)),
             },
+            "*" => prim_type_ptr(&l, info),
             op => Err(TError::UnknownPrefixOperator(op.to_string(), info)),
         }
     }
@@ -378,6 +379,8 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             "^" => prim_pow(&l?, &r()?, info),
             "&&" => prim_and(&l?, &r()?, info),
             "||" => prim_or(&l?, &r()?, info),
+            "&" => prim_type_and(&l?, &r()?, info),
+            "|" => prim_type_or(&l?, &r()?, info),
             ";" => {
                 l?;
                 Ok(r()?)
