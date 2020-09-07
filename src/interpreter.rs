@@ -6,11 +6,11 @@ use super::errors::TError;
 use super::type_checker::infer;
 
 type Frame = HashMap<String, Node>;
+type ImplFn = dyn FnMut(&dyn Compiler, Vec<&dyn Fn() -> Res>, Info) -> Res;
 
 // Walks the AST interpreting it.
 pub struct Interpreter<'a> {
-    pub impls:
-        HashMap<String, &'a mut dyn FnMut(&dyn Compiler, Vec<&dyn Fn() -> Res>, Info) -> Res>,
+    pub impls: HashMap<String, &'a mut ImplFn>,
 }
 
 impl<'a> Default for Interpreter<'a> {
@@ -32,8 +32,8 @@ fn find_symbol<'a>(state: &'a [Frame], name: &str) -> Option<&'a Node> {
 }
 
 fn prim_add(l: &Prim, r: &Prim, info: Info) -> Res {
-    use Prim::*;
     use crate::types::sum;
+    use Prim::*;
     match (l, r) {
         (Bool(l, _), Bool(r, _)) => Ok(I32(if *l { 1 } else { 0 } + if *r { 1 } else { 0 }, info)),
         (Bool(l, _), I32(r, _)) => Ok(I32(r.wrapping_add(if *l { 1 } else { 0 }), info)),
@@ -44,8 +44,8 @@ fn prim_add(l: &Prim, r: &Prim, info: Info) -> Res {
         (Str(l, _), Bool(r, _)) => Ok(Str(l.to_string() + &r.to_string(), info)),
         (Str(l, _), I32(r, _)) => Ok(Str(l.to_string() + &r.to_string(), info)),
         (Str(l, _), Str(r, _)) => Ok(Str(l.to_string() + &r.to_string(), info)),
-        (TypeValue(l, _), TypeValue(r, _)) => Ok(TypeValue(sum(vec!(l.clone(), r.clone()))?, info)),
-            (l, r) => Err(TError::TypeMismatch2(
+        (TypeValue(l, _), TypeValue(r, _)) => Ok(TypeValue(sum(vec![l.clone(), r.clone()])?, info)),
+        (l, r) => Err(TError::TypeMismatch2(
             "+".to_string(),
             Box::new((*l).clone()),
             Box::new((*r).clone()),
@@ -141,15 +141,17 @@ fn prim_sub(l: &Prim, r: &Prim, info: Info) -> Res {
 }
 
 fn prim_mul(l: &Prim, r: &Prim, info: Info) -> Res {
-    use Prim::*;
     use crate::types::record;
+    use Prim::*;
     match (l, r) {
         (Bool(l, _), I32(r, _)) => Ok(I32(if *l { *r } else { 0 }, info)),
         (Bool(l, _), Str(r, _)) => Ok(Str(if *l { r.to_string() } else { "".to_string() }, info)),
         (I32(l, _), Bool(r, _)) => Ok(I32(if *r { *l } else { 0 }, info)),
         (I32(l, _), I32(r, _)) => Ok(I32(l.wrapping_mul(*r), info)),
         (Str(l, _), Bool(r, _)) => Ok(Str(if *r { l.to_string() } else { "".to_string() }, info)),
-        (TypeValue(l, _), TypeValue(r, _)) => Ok(TypeValue(record(vec!(l.clone(), r.clone()))?, info)),
+        (TypeValue(l, _), TypeValue(r, _)) => {
+            Ok(TypeValue(record(vec![l.clone(), r.clone()])?, info))
+        }
         (l, r) => Err(TError::TypeMismatch2(
             "*".to_string(),
             Box::new((*l).clone()),
@@ -212,22 +214,22 @@ fn prim_or(l: &Prim, r: &Prim, info: Info) -> Res {
 }
 
 fn prim_type_and(l: Prim, r: Prim, info: Info) -> Res {
-    use Prim::*;
     use crate::types::Type;
+    use Prim::*;
     match (l, r) {
         (TypeValue(l, _), TypeValue(r, _)) => Ok(TypeValue(Type::Product(set!(l, r)), info)),
         (l, r) => Err(TError::TypeMismatch2(
             "&".to_string(),
             Box::new(l),
             Box::new(r),
-            info
+            info,
         )),
     }
 }
 
 fn prim_type_or(l: Prim, r: Prim, info: Info) -> Res {
-    use Prim::*;
     use crate::types::Type;
+    use Prim::*;
     match (l, r) {
         (TypeValue(l, _), TypeValue(r, _)) => Ok(TypeValue(Type::Union(set!(l, r)), info)),
         (l, r) => Err(TError::TypeMismatch2(
@@ -431,19 +433,19 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             ":" => {
                 let value = l?;
                 let ty = r()?;
-                let type_of_value = infer(db, &value.clone().to_node());
+                let _type_of_value = infer(db, &value.clone().to_node());
                 // Check subtyping relationship of type_of_value and ty.
                 let sub_type = true;
                 if sub_type {
                     return Ok(value);
                 }
                 Err(TError::TypeMismatch2(
-                        "Failure assertion of type annotation at runtime".to_string(),
-                        Box::new(value),
-                        Box::new(ty.clone()),
-                        ty.get_info().clone(),
+                    "Failure assertion of type annotation at runtime".to_string(),
+                    Box::new(value),
+                    Box::new(ty.clone()),
+                    ty.get_info(),
                 ))
-            },
+            }
             op => Err(TError::UnknownInfixOperator(op.to_string(), info)),
         }
     }
@@ -455,11 +457,11 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
     use super::super::ast::*;
     use super::super::cli_options::Options;
     use super::super::database::{Compiler, DB};
     use super::{Interpreter, Res};
+    use std::collections::HashMap;
     use Node::*;
     use Prim::*;
 
@@ -489,7 +491,7 @@ mod tests {
     fn trace<T: std::fmt::Display, E>(t: Result<T, E>) -> Result<T, E> {
         match &t {
             Ok(t) => eprintln!(">> {}", &t),
-            Err(_) => {eprintln!(">> #error")}
+            Err(_) => eprintln!(">> #error"),
         }
         t
     }
@@ -643,19 +645,25 @@ mod tests {
 
     #[test]
     fn parse_and_eval_string_or_number_type() {
-        use crate::types::{*, Type::*};
+        use crate::types::{Type::*, *};
         assert_eq!(
             eval_str("String | Number".to_string()),
-            Ok(TypeValue(Union(set![number_type(), string_type()]), Info::default()))
+            Ok(TypeValue(
+                Union(set![number_type(), string_type()]),
+                Info::default()
+            ))
         );
     }
 
     #[test]
     fn parse_and_eval_string_and_number_type() {
-        use crate::types::{*, Type::*};
+        use crate::types::{Type::*, *};
         assert_eq!(
             eval_str("String & Number".to_string()),
-            Ok(TypeValue(Product(set![number_type(), string_type()]), Info::default()))
+            Ok(TypeValue(
+                Product(set![number_type(), string_type()]),
+                Info::default()
+            ))
         );
     }
 
@@ -664,7 +672,10 @@ mod tests {
         use crate::types::*;
         assert_eq!(
             eval_str("String + I32".to_string()),
-            Ok(TypeValue(sum(vec![string_type(), i32_type()]).unwrap(), Info::default()))
+            Ok(TypeValue(
+                sum(vec![string_type(), i32_type()]).unwrap(),
+                Info::default()
+            ))
         );
     }
 
@@ -673,7 +684,10 @@ mod tests {
         use crate::types::*;
         assert_eq!(
             eval_str("String * I32".to_string()),
-            Ok(TypeValue(record(vec![string_type(), i32_type()]).unwrap(), Info::default()))
+            Ok(TypeValue(
+                record(vec![string_type(), i32_type()]).unwrap(),
+                Info::default()
+            ))
         );
     }
 

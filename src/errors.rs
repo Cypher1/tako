@@ -2,7 +2,6 @@ use crate::ast::Info;
 use crate::ast::Node;
 use crate::ast::Prim;
 
-use std::fmt;
 use thiserror::Error;
 
 use derivative::Derivative;
@@ -26,7 +25,9 @@ pub enum TError {
     UnknownInfixOperator(String, Info),
     #[error("unknown prefix operator `{0}` at {1:?}")]
     UnknownPrefixOperator(String, Info),
-    #[error("unknown size of variable type (i.e. type variables could have any size) `{0}` at {1:?}")]
+    #[error(
+        "unknown size of variable type (i.e. type variables could have any size) `{0}` at {1:?}"
+    )]
     UnknownSizeOfVariableType(String, Info),
 
     #[error("unknown cardinality of static pointers (i.e. static pointers could point at anything) at {0:?}")]

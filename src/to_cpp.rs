@@ -283,7 +283,9 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             Bool(false, _) => Ok(Code::Expr(0.to_string())),
             Str(s, _) => Ok(Code::Expr(format!("{:?}", s))),
             Lambda(node) => self.visit(db, state, node),
-            TypeValue(_ty, _) => unimplemented!("unimplemented primitive type in compilation to cpp"),
+            TypeValue(_ty, _) => {
+                unimplemented!("unimplemented primitive type in compilation to cpp")
+            }
         }
     }
 
@@ -425,9 +427,17 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             let (left, right) = if info.cpp.arg_processor.as_str() == "" {
                 (left, right)
             } else {
-                (self.build_call1(info.cpp.arg_processor.as_str(), left), self.build_call1(info.cpp.arg_processor.as_str(), right))
+                (
+                    self.build_call1(info.cpp.arg_processor.as_str(), left),
+                    self.build_call1(info.cpp.arg_processor.as_str(), right),
+                )
             };
-            return Ok(self.build_call2(info.cpp.code.as_str(), info.cpp.arg_joiner.as_str(), left, right));
+            return Ok(self.build_call2(
+                info.cpp.code.as_str(),
+                info.cpp.arg_joiner.as_str(),
+                left,
+                right,
+            ));
         }
         Err(TError::UnknownInfixOperator(op.to_string(), info))
     }

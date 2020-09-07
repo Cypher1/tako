@@ -25,7 +25,10 @@ pub fn infer(db: &dyn Compiler, expr: &Node) -> Result<Node, TError> {
             }
             .to_node()),
             Lambda(node) => infer(db, node.as_ref()), // TODO: abstraction
-            TypeValue(_ty, _) => db.parse_str(vec![Symbol::Named("stdlib".to_string(), Some(".tk".to_string()))], "Type"),
+            TypeValue(_ty, _) => db.parse_str(
+                vec![Symbol::Named("stdlib".to_string(), Some(".tk".to_string()))],
+                "Type",
+            ),
         },
         UnOpNode(UnOp {
             name: _,

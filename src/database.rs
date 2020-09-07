@@ -97,7 +97,7 @@ fn get_externs(db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError> {
 }
 
 fn get_extern_names(db: &dyn Compiler) -> Result<Vec<String>, TError> {
-    Ok(db.get_externs()?.keys().map(|x|x.clone()).collect())
+    Ok(db.get_externs()?.keys().cloned().collect())
 }
 
 fn get_extern(db: &dyn Compiler, name: String) -> Result<Option<Extern>, TError> {
@@ -108,7 +108,11 @@ fn get_extern_operator(db: &dyn Compiler, name: String) -> Result<Option<(i32, b
     Ok(db.get_extern(name)?.map(|x| x.operator).unwrap_or_default())
 }
 
-fn lex_string(db: &dyn Compiler, module: Path, contents: Arc<String>) -> Result<VecDeque<Token>, TError> {
+fn lex_string(
+    db: &dyn Compiler,
+    module: Path,
+    contents: Arc<String>,
+) -> Result<VecDeque<Token>, TError> {
     use crate::parser;
     if db.debug() > 0 {
         eprintln!("lexing file... {:?}", &module);

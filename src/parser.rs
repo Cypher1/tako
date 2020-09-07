@@ -174,7 +174,11 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
     }
 }
 
-fn led(db: &dyn Compiler, mut toks: VecDeque<Token>, left: Node) -> Result<(Node, VecDeque<Token>), TError> {
+fn led(
+    db: &dyn Compiler,
+    mut toks: VecDeque<Token>,
+    left: Node,
+) -> Result<(Node, VecDeque<Token>), TError> {
     // eprintln!("here {:?} {:?}", toks, left);
     if let Some(Token {
         tok_type: TokenType::CloseBracket,
@@ -247,7 +251,7 @@ fn led(db: &dyn Compiler, mut toks: VecDeque<Token>, left: Node) -> Result<(Node
                                 info: head.get_info(),
                             }
                             .to_node(),
-                            new_toks
+                            new_toks,
                         )),
                         _ => panic!(format!("Cannot assign to {}", a.to_node())),
                     },
@@ -318,7 +322,11 @@ fn led(db: &dyn Compiler, mut toks: VecDeque<Token>, left: Node) -> Result<(Node
     }
 }
 
-fn expr(db: &dyn Compiler, init_toks: VecDeque<Token>, init_lbp: i32) -> Result<(Node, VecDeque<Token>), TError> {
+fn expr(
+    db: &dyn Compiler,
+    init_toks: VecDeque<Token>,
+    init_lbp: i32,
+) -> Result<(Node, VecDeque<Token>), TError> {
     // TODO: Name updates fields, this is confusing (0 is tree, 1 is toks)
     let init_update = nud(db, init_toks)?;
     let mut left: Node = init_update.0;
@@ -344,10 +352,14 @@ fn expr(db: &dyn Compiler, init_toks: VecDeque<Token>, init_lbp: i32) -> Result<
 
 pub fn lex(db: &dyn Compiler, module: &Path) -> Result<VecDeque<Token>, TError> {
     let filename = db.filename(module.clone());
-    lex_string(db, module, &db.file(filename.clone())?.to_string())
+    lex_string(db, module, &db.file(filename)?.to_string())
 }
 
-pub fn lex_string(db: &dyn Compiler, module: &Path, contents: &String) -> Result<VecDeque<Token>, TError> {
+pub fn lex_string(
+    db: &dyn Compiler,
+    module: &Path,
+    contents: &String,
+) -> Result<VecDeque<Token>, TError> {
     let filename = db.filename(module.clone());
     let mut toks: VecDeque<Token> = VecDeque::new();
 
@@ -405,13 +417,13 @@ pub fn parse(db: &dyn Compiler, module: &Path) -> Result<Node, TError> {
 pub mod tests {
     use super::parse_string;
     use crate::ast::*;
-    use crate::database::DB;
     use crate::database::Compiler;
+    use crate::database::DB;
     use Prim::*;
 
     fn parse(contents: String) -> Node {
-        use std::sync::Arc;
         use crate::cli_options::Options;
+        use std::sync::Arc;
         let mut db = DB::default();
         let filename = "test.tk";
         db.set_options(Options::default());
