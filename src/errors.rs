@@ -5,13 +5,6 @@ use crate::ast::Prim;
 use std::fmt;
 use thiserror::Error;
 
-//impl<T: fmt::Debug> fmt::Debug for Tree<T> {
-impl fmt::Display for Box<Prim> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", *self)
-    }
-}
-
 use derivative::Derivative;
 #[derive(Error, Derivative)]
 #[derivative(Debug, PartialEq, Eq, Clone)]

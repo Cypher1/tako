@@ -1,7 +1,7 @@
+use crate::ast::Info;
+use crate::errors::TError;
 use std::collections::BTreeSet;
 use std::fmt;
-use crate::errors::TError;
-use crate::ast::Info;
 
 // i32 here are sizes in bits, not bytes.
 // This means that we don't need to have a separate systems for bit&byte layouts.
@@ -35,14 +35,17 @@ pub enum Type {
 
 impl fmt::Display for Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self == &string_type() {
-            return write!(f, "String");
-        }
-        if self == &number_type() {
-            return write!(f, "Number");
-        }
-        if self == &bit_type() {
-            return write!(f, "Bit");
+        let types = vec![
+            (string_type(), "String"),
+            (number_type(), "Number"),
+            (i32_type(), "I32"),
+            (byte_type(), "Byte"),
+            (bit_type(), "Bit"),
+        ];
+        for (ty, name) in types.iter() {
+            if self == ty {
+                return write!(f, "{}", name);
+            }
         }
         match self {
             Union(s) => {
@@ -89,7 +92,7 @@ impl Type {
             return self;
         }
         if let Padded(n, t) = self {
-            return Padded(n+size, t)
+            return Padded(n + size, t);
         }
         Padded(size, Box::new(self))
     }
@@ -116,7 +119,7 @@ pub fn card(ty: &Type) -> Result<Offset, TError> {
         Tag(_tag, _bits) => Ok(1),
         Padded(_size, t) => card(&t),
         StaticPointer(_ptr_size) => Err(TError::StaticPointerCardinality(Info::default())),
-        x => panic!(format!("unhandled: card of {:#?}", x))
+        x => panic!(format!("unhandled: card of {:#?}", x)),
     }
 }
 
@@ -148,9 +151,12 @@ pub fn size(ty: &Type) -> Result<Offset, TError> {
         Pointer(ptr_size, _t) => Ok(*ptr_size),
         Tag(_tag, bits) => Ok(*bits),
         StaticPointer(ptr_size) => Ok(*ptr_size),
-        Padded(bits, t) => Ok(bits+size(t)?),
-        Variable(name) => Err(TError::UnknownSizeOfVariableType(name.clone(), Info::default())),
-        x => panic!(format!("unhandled: size of {:#?}", x))
+        Padded(bits, t) => Ok(bits + size(t)?),
+        Variable(name) => Err(TError::UnknownSizeOfVariableType(
+            name.clone(),
+            Info::default(),
+        )),
+        x => panic!(format!("unhandled: size of {:#?}", x)),
     }
 }
 
@@ -215,7 +221,8 @@ pub fn byte_type() -> Type {
         bit_type(),
         bit_type(),
         bit_type(),
-    ]).expect("byte should be safe")
+    ])
+    .expect("byte should be safe")
 }
 
 pub fn byte_size() -> Offset {
@@ -317,7 +324,14 @@ mod tests {
     }
     #[test]
     fn pent_type() {
-        let pent = sum(vec![unit_type(), unit_type(), unit_type(), unit_type(), unit_type()]).unwrap();
+        let pent = sum(vec![
+            unit_type(),
+            unit_type(),
+            unit_type(),
+            unit_type(),
+            unit_type(),
+        ])
+        .unwrap();
         assert_eq!(card(&pent), Ok(5));
         assert_eq!(size(&pent), Ok(3));
     }

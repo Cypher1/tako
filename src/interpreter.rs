@@ -486,6 +486,14 @@ mod tests {
         Interpreter::default().visit(&db, &mut state, &ast)
     }
 
+    fn trace<T: std::fmt::Display, E>(t: Result<T, E>) -> Result<T, E> {
+        match &t {
+            Ok(t) => eprintln!(">> {}", &t),
+            Err(_) => {eprintln!(">> #error")}
+        }
+        t
+    }
+
     #[test]
     fn parse_and_eval_bool() {
         assert_eq!(
