@@ -56,6 +56,24 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
                 )),
             }
         })),
+        "Number" => Some(Box::new(|db, _, info| {
+            Ok(TypeValue(number_type()), info)
+        })),
+        "String" => Some(Box::new(|db, _, info| {
+            Ok(TypeValue(string_type()), info)
+        })),
+        "Bit" => Some(Box::new(|db, _, info| {
+            Ok(TypeValue(bit_type()), info)
+        })),
+        "Unit" => Some(Box::new(|db, _, info| {
+            Ok(TypeValue(unit_type()), info)
+        })),
+        "Void" => Some(Box::new(|db, _, info| {
+            Ok(TypeValue(void_type()), info)
+        })),
+        "Type" => Some(Box::new(|db, _, info| {
+            Ok(TypeValue(type_type()), info)
+        })),
         _ => None,
     }
 }
@@ -484,15 +502,39 @@ string to_string(const bool& t){
         Extern {
             name: "Number".to_string(),
             operator: None,
-            ty: variable("Number"),
+            ty: variable("Type"),
             cpp: LangImpl::new("usize")
         },
         Extern {
             name: "String".to_string(),
             operator: None,
-            ty: variable("String"),
+            ty: variable("Type"),
             cpp: LangImpl::new("std::string")
                 .with_includes("#include <string>")
+        },
+        Extern {
+            name: "Bit".to_string(),
+            operator: None,
+            ty: variable("Type"),
+            cpp: LangImpl::new("short")
+        },
+        Extern {
+            name: "Unit".to_string(),
+            operator: None,
+            ty: variable("Type"),
+            cpp: LangImpl::new("void")
+        },
+        Extern {
+            name: "Void".to_string(),
+            operator: None,
+            ty: variable("Void"),
+            cpp: LangImpl::new("/*void: should never happen*/ auto")
+        },
+        Extern {
+            name: "Type".to_string(),
+            operator: None,
+            ty: variable("Type"),
+            cpp: LangImpl::new("auto")
         },
     ];
     let mut extern_map: HashMap<String, Extern> = HashMap::new();

@@ -175,7 +175,7 @@ pub fn sum(values: Vec<Type>) -> Result<Type, TError> {
     let tag_bits = num_bits(values.len() as Offset);
     for val in values {
         let mut tagged = Tag(count, tag_bits);
-        if val != unit() {
+        if val != unit_type() {
             tagged = record(vec![tagged, val])?;
         }
         layout.insert(tagged);
@@ -184,16 +184,16 @@ pub fn sum(values: Vec<Type>) -> Result<Type, TError> {
     Ok(Union(layout))
 }
 
-pub fn void() -> Type {
+pub fn void_type() -> Type {
     Union(set![])
 }
 
-pub fn unit() -> Type {
+pub fn unit_type() -> Type {
     Product(set![])
 }
 
 pub fn bit() -> Type {
-    sum(vec![unit(), unit()]).expect("bit should be safe")
+    sum(vec![unit_type(), unit_type()]).expect("bit should be safe")
 }
 
 pub fn byte_type() -> Type {
@@ -225,6 +225,11 @@ pub fn number_type() -> Type {
     record(vec![byte_type(), byte_type(), byte_type(), byte_type()]).expect("number should be safe")
 }
 
+pub fn type_type() -> Type {
+    variable("Type")
+}
+
+pub fn variable(name: &str) -> Type {
 pub fn variable(name: &str) -> Type {
     Variable(name.to_string())
 }
@@ -234,14 +239,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn void_type() {
-        assert_eq!(card(&void()), Ok(0));
-        assert_eq!(size(&void()), Ok(0));
+    fn void() {
+        assert_eq!(card(&void_type()), Ok(0));
+        assert_eq!(size(&void_type()), Ok(0));
     }
     #[test]
-    fn unit_type() {
-        assert_eq!(card(&unit()), Ok(1));
-        assert_eq!(size(&unit()), Ok(0));
+    fn unit() {
+        assert_eq!(card(&unit_type()), Ok(1));
+        assert_eq!(size(&unit_type()), Ok(0));
     }
     #[test]
     fn tag1_type() {
@@ -267,10 +272,10 @@ mod tests {
 
     #[test]
     fn union_n_type() {
-        let union2 = Union(set![unit(), unit()]);
+        let union2 = Union(set![unit_type(), unit_type()]);
         assert_eq!(card(&union2), Ok(1));
         assert_eq!(size(&union2), Ok(0));
-        let union3 = Union(set![unit(), unit(), unit()]);
+        let union3 = Union(set![unit_type(), unit_type(), unit_type()]);
         assert_eq!(card(&union3), Ok(1));
         assert_eq!(size(&union3), Ok(0));
     }
@@ -282,7 +287,7 @@ mod tests {
     }
     #[test]
     fn trit_type() {
-        let trit = sum(vec![unit(), unit(), unit()]).unwrap();
+        let trit = sum(vec![unit_type(), unit_type(), unit_type()]).unwrap();
         assert_eq!(card(&trit), Ok(3));
         assert_eq!(size(&trit), Ok(2));
     }
@@ -294,13 +299,13 @@ mod tests {
     }
     #[test]
     fn quad_type() {
-        let quad = sum(vec![unit(), unit(), unit(), unit()]).unwrap();
+        let quad = sum(vec![unit_type(), unit_type(), unit_type(), unit_type()]).unwrap();
         assert_eq!(card(&quad), Ok(4));
         assert_eq!(size(&quad), Ok(2));
     }
     #[test]
     fn pent_type() {
-        let pent = sum(vec![unit(), unit(), unit(), unit(), unit()]).unwrap();
+        let pent = sum(vec![unit_type(), unit_type(), unit_type(), unit_type(), unit_type()]).unwrap();
         assert_eq!(card(&pent), Ok(5));
         assert_eq!(size(&pent), Ok(3));
     }
