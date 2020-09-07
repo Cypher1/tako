@@ -6,11 +6,13 @@ use super::errors::TError;
 use super::type_checker::infer;
 
 type Frame = HashMap<String, Node>;
-type ImplFn = dyn FnMut(&dyn Compiler, Vec<&dyn Fn() -> Res>, Info) -> Res;
+
+pub type ImplFn<'a> = &'a mut dyn FnMut(&dyn Compiler, Vec<&dyn Fn() -> Res>, Info) -> Res;
 
 // Walks the AST interpreting it.
 pub struct Interpreter<'a> {
-    pub impls: HashMap<String, &'a mut ImplFn>,
+    pub impls:
+        HashMap<String, ImplFn<'a>>,
 }
 
 impl<'a> Default for Interpreter<'a> {

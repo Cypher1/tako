@@ -29,7 +29,7 @@ fn test_with_expectation(expected: TestResult, options: Vec<&str>) {
     let result = {
         use takolib::ast::{Prim::{I32, Str}, Info};
         use takolib::interpreter::Res;
-        let mut print_impl = |_: &dyn Compiler, args: Vec<&dyn Fn() -> takolib::interpreter::Res>, _: takolib::ast::Info| -> Res {
+        let mut print_impl = &mut |_: &dyn Compiler, args: Vec<&dyn Fn() -> takolib::interpreter::Res>, _: takolib::ast::Info| -> Res {
             stdout.push(match args[0]()? {
                 Str(s,_)=>s,
                 s=>format!("{:?}", s)
