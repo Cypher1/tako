@@ -216,6 +216,9 @@ fn prim_type_and(l: Prim, r: Prim, info: Info) -> Res {
             "&".to_string(),
             Box::new(l),
             Box::new(r),
+            info
+        )),
+    }
 }
 
 fn prim_type_or(l: Prim, r: Prim, info: Info) -> Res {

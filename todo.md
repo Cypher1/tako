@@ -17,8 +17,11 @@
   - Products / Anonymous + Named Tuples / Records
   - Unions / Enums / GADTs
   - Monads?
-- pointer(ty)
-- Functions that take just one argument can skip "()" parens
+- Sugar
+  - pointer(ty)
+  - x?.y (mapped .get and .set)
+  - x?:y (sugar for if x then x else y)
+  - Functions that take just one argument can skip "()" parens(e.g. func(y) == func y)
 - Locals (scope management)
 - Main + command function argument parsing
 - Conversion to ssa (after parsing)

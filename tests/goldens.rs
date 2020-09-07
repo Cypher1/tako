@@ -92,6 +92,11 @@ fn one_plus_2() {
 }
 
 #[test]
+fn plus_123() {
+  test_with_expectation(Output("6".to_string()), vec!["--run", "examples/plus_123.tk"]);
+}
+
+#[test]
 fn alt() {
   interpret_with_success("examples/alt.tk")
 }
