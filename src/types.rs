@@ -186,15 +186,13 @@ pub fn record(values: Layout) -> Result<Type, TError> {
 
 pub fn sum(values: Vec<Type>) -> Result<Type, TError> {
     let mut layout = set![];
-    let mut count = 0;
     let tag_bits = num_bits(values.len() as Offset);
-    for val in values {
-        let mut tagged = Tag(count, tag_bits);
+    for (count, val) in values.into_iter().enumerate() {
+        let mut tagged = Tag(count as i32, tag_bits);
         if val != unit_type() {
             tagged = record(vec![tagged, val])?;
         }
         layout.insert(tagged);
-        count += 1;
     }
     Ok(Union(layout))
 }

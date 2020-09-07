@@ -13,9 +13,9 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         "microbench_type_of_i32",
         |b| {
             let code = Arc::new("12".to_string());
-            let mut db = DB::default();
-            let prog = black_box(parse_string(&mut db, &module, &code).unwrap());
-            b.iter(|| infer(&mut db, &prog));
+            let db = DB::default();
+            let prog = black_box(parse_string(&db, &module, &code).unwrap());
+            b.iter(|| infer(&db, &prog));
         }
     );
 
@@ -23,12 +23,12 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         "microbench_parse_and_type_of_i32_pre_cache",
         |b| {
             let code = Arc::new("12".to_string());
-            let mut db = DB::default();
-            let prog = parse_string(&mut db, &module, &code).unwrap();
-            infer(&mut db, &prog);
+            let db = DB::default();
+            let prog = parse_string(&db, &module, &code).unwrap();
+            infer(&db, &prog);
             b.iter(|| {
-                let prog = black_box(parse_string(&mut db, &module, &code).unwrap());
-                infer(&mut db, &prog)
+                let prog = black_box(parse_string(&db, &module, &code).unwrap());
+                infer(&db, &prog)
             });
         }
     );
@@ -37,10 +37,10 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         "microbench_parse_and_type_of_i32",
         |b| {
             let code = Arc::new("12".to_string());
-            let mut db = DB::default();
-            let prog = black_box(parse_string(&mut db, &module, &code).unwrap());
+            let db = DB::default();
+            let prog = black_box(parse_string(&db, &module, &code).unwrap());
             b.iter(|| {
-                infer(&mut db, &prog)
+                infer(&db, &prog)
             });
         }
     );
@@ -50,7 +50,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         |b| {
             let mut db = DB::default();
             let prog = black_box(parse_string(&mut db, "12+32".to_string()));
-            b.iter(|| infer(&mut db, &prog));
+            b.iter(|| infer(&db, &prog));
         }
     );*/
 }

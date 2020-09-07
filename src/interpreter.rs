@@ -11,8 +11,7 @@ pub type ImplFn<'a> = &'a mut dyn FnMut(&dyn Compiler, Vec<&dyn Fn() -> Res>, In
 
 // Walks the AST interpreting it.
 pub struct Interpreter<'a> {
-    pub impls:
-        HashMap<String, ImplFn<'a>>,
+    pub impls: HashMap<String, ImplFn<'a>>,
 }
 
 impl<'a> Default for Interpreter<'a> {

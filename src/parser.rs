@@ -358,7 +358,7 @@ pub fn lex(db: &dyn Compiler, module: &Path) -> Result<VecDeque<Token>, TError> 
 pub fn lex_string(
     db: &dyn Compiler,
     module: &Path,
-    contents: &String,
+    contents: &str,
 ) -> Result<VecDeque<Token>, TError> {
     let filename = db.filename(module.clone());
     let mut toks: VecDeque<Token> = VecDeque::new();
@@ -428,7 +428,7 @@ pub mod tests {
         let filename = "test.tk";
         db.set_options(Options::default());
         let module = db.module_name(filename.to_owned());
-        parse_string(&mut db, &module, &Arc::new(contents)).expect("failed to parse string")
+        parse_string(&db, &module, &Arc::new(contents)).expect("failed to parse string")
     }
 
     fn num_lit(x: i32) -> Box<Node> {

@@ -69,17 +69,17 @@ mod tests {
         db.set_options(Options::default());
         let module = vec![];
         let prog = db.parse_str(module.clone(), prog).unwrap();
-        let prog = infer(&mut db, &prog);
+        let prog = infer(&db, &prog);
         let ty = db.parse_str(module, ty).unwrap();
         assert_eq!(prog, Ok(ty));
     }
 
     #[test]
     fn infer_type_of_i32() {
-        let mut db = DB::default();
+        let db = DB::default();
         let num = I32(23, Info::default()).to_node();
         assert_eq!(
-            infer(&mut db, &num),
+            infer(&db, &num),
             Ok(Sym {
                 name: "I32".to_owned(),
                 info: Info::default()
