@@ -35,6 +35,15 @@ pub enum Type {
 
 impl fmt::Display for Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self == &string_type() {
+            return write!(f, "String");
+        }
+        if self == &number_type() {
+            return write!(f, "Number");
+        }
+        if self == &bit_type() {
+            return write!(f, "Bit");
+        }
         match self {
             Union(s) => {
                 write!(f, "Union(")?;
@@ -214,15 +223,19 @@ pub fn byte_size() -> Offset {
 }
 
 pub fn char_type() -> Type {
-    sum(vec![byte_type(), byte_type(), byte_type(), byte_type()]).expect("char should be safe")
+    byte_type()
 }
 
 pub fn string_type() -> Type {
     char_type().ptr()
 }
 
+pub fn i32_type() -> Type {
+    record(vec![byte_type(), byte_type(), byte_type(), byte_type()]).expect("i32 should be safe")
+}
+
 pub fn number_type() -> Type {
-    record(vec![byte_type(), byte_type(), byte_type(), byte_type()]).expect("number should be safe")
+    variable("Number")
 }
 
 pub fn type_type() -> Type {

@@ -5,7 +5,7 @@ use crate::database::Compiler;
 use crate::errors::TError;
 use crate::interpreter::{prim_add_strs, prim_pow, Res};
 use crate::types::{
-    bit_type, number_type, string_type, type_type, unit_type, variable, void_type, Type, Type::*,
+    bit_type, i32_type, number_type, string_type, type_type, unit_type, variable, void_type, Type, Type::*,
 };
 
 pub type FuncImpl = Box<dyn Fn(&dyn Compiler, Vec<&dyn Fn() -> Res>, Info) -> Res>;
@@ -45,6 +45,7 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
         "^" => Some(Box::new(|_, args, info| {
             prim_pow(&args[0]()?, &args[1]()?, info)
         })),
+
         "argc" => Some(Box::new(|db, _, info| {
             Ok(I32(db.options().interpreter_args.len() as i32, info))
         })),
@@ -59,9 +60,10 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
                 info,
             )),
         })),
+        "I32" => Some(Box::new(|_db, _, info| Ok(TypeValue(i32_type(), info)))),
         "Number" => Some(Box::new(|_db, _, info| Ok(TypeValue(number_type(), info)))),
         "String" => Some(Box::new(|_db, _, info| Ok(TypeValue(string_type(), info)))),
-        "bit_type()" => Some(Box::new(|_db, _, info| Ok(TypeValue(bit_type(), info)))),
+        "Bit" => Some(Box::new(|_db, _, info| Ok(TypeValue(bit_type(), info)))),
         "Unit" => Some(Box::new(|_db, _, info| Ok(TypeValue(unit_type(), info)))),
         "Void" => Some(Box::new(|_db, _, info| Ok(TypeValue(void_type(), info)))),
         "Type" => Some(Box::new(|_db, _, info| Ok(TypeValue(type_type(), info)))),
@@ -143,7 +145,7 @@ pub fn get_externs(db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError>
         Extern {
             name: "argc".to_string(),
             operator: None,
-            ty: number_type(),
+            ty: i32_type(),
             cpp: LangImpl::new("argc"),
         },
         Extern {
@@ -152,7 +154,7 @@ pub fn get_externs(db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError>
             ty: Function {
                 results: dict!("it" => string_type()),
                 intros: dict!(),
-                arguments: dict!("it" => number_type()),
+                arguments: dict!("it" => i32_type()),
                 effects: vec![],
             },
             cpp: LangImpl::new("([&argv](const int x){return argv[x];})"),
@@ -173,7 +175,7 @@ pub fn get_externs(db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError>
             operator: None,
             ty: Function {
                 results: dict! {"it" => void_type()},
-                arguments: dict! {"it" => number_type()},
+                arguments: dict! {"it" => i32_type()},
                 intros: dict!(),
                 effects: vec!["stderr".to_string()],
             },
