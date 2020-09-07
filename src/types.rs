@@ -192,20 +192,20 @@ pub fn unit_type() -> Type {
     Product(set![])
 }
 
-pub fn bit() -> Type {
+pub fn bit_type() -> Type {
     sum(vec![unit_type(), unit_type()]).expect("bit should be safe")
 }
 
 pub fn byte_type() -> Type {
     record(vec![
-        bit(),
-        bit(),
-        bit(),
-        bit(),
-        bit(),
-        bit(),
-        bit(),
-        bit(),
+        bit_type(),
+        bit_type(),
+        bit_type(),
+        bit_type(),
+        bit_type(),
+        bit_type(),
+        bit_type(),
+        bit_type(),
     ]).expect("byte should be safe")
 }
 
@@ -217,7 +217,7 @@ pub fn char_type() -> Type {
     sum(vec![byte_type(), byte_type(), byte_type(), byte_type()]).expect("char should be safe")
 }
 
-pub fn str_type() -> Type {
+pub fn string_type() -> Type {
     char_type().ptr()
 }
 
@@ -229,7 +229,6 @@ pub fn type_type() -> Type {
     variable("Type")
 }
 
-pub fn variable(name: &str) -> Type {
 pub fn variable(name: &str) -> Type {
     Variable(name.to_string())
 }
@@ -280,8 +279,8 @@ mod tests {
         assert_eq!(size(&union3), Ok(0));
     }
     #[test]
-    fn bit_type() {
-        let bitt = bit();
+    fn bit() {
+        let bitt = bit_type();
         assert_eq!(card(&bitt), Ok(2));
         assert_eq!(size(&bitt), Ok(1));
     }
@@ -293,7 +292,7 @@ mod tests {
     }
     #[test]
     fn nested_quad_type() {
-        let quad = record(vec![bit(), bit()]).unwrap();
+        let quad = record(vec![bit_type(), bit_type()]).unwrap();
         assert_eq!(card(&quad), Ok(4));
         assert_eq!(size(&quad), Ok(2));
     }
@@ -311,21 +310,21 @@ mod tests {
     }
     #[test]
     fn pair_bool_ptrs() {
-        let bool_ptr = Pointer(64, Box::new(bit()));
+        let bool_ptr = Pointer(64, Box::new(bit_type()));
         let quad = record(vec![bool_ptr.clone(), bool_ptr]).unwrap();
         assert_eq!(card(&quad), Ok(4));
         assert_eq!(size(&quad), Ok(2 * 64));
     }
     #[test]
     fn nested_nibble() {
-        let quad = record(vec![bit(), bit()]).unwrap();
+        let quad = record(vec![bit_type(), bit_type()]).unwrap();
         let nibble = record(vec![quad.clone(), quad]).unwrap();
         assert_eq!(card(&nibble), Ok(16));
         assert_eq!(size(&nibble), Ok(4));
     }
     #[test]
     fn padded_nibble() {
-        let quad = record(vec![bit().padded(2), bit()]).unwrap();
+        let quad = record(vec![bit_type().padded(2), bit_type()]).unwrap();
         let nibble = record(vec![quad.clone(), quad]).unwrap();
         assert_eq!(card(&nibble), Ok(16));
         assert_eq!(size(&nibble), Ok(8));
@@ -334,14 +333,14 @@ mod tests {
     #[test]
     fn bool_and_fn() {
         let fn_ptr = StaticPointer(64);
-        let closure = record(vec![bit(), fn_ptr]).unwrap();
+        let closure = record(vec![bit_type(), fn_ptr]).unwrap();
         assert_eq!(size(&closure), Ok(65));
     }
 
     #[test]
     fn bool_or_fn() {
         let fn_ptr = StaticPointer(64);
-        let closure = sum(vec![bit(), fn_ptr]).unwrap();
+        let closure = sum(vec![bit_type(), fn_ptr]).unwrap();
         assert_eq!(size(&closure), Ok(65));
     }
 }
