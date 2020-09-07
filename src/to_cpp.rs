@@ -266,7 +266,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 .defined_at
                 .expect("Could not find definition for symbol"),
         );
-        if let Some(info) = db.get_extern(name.clone()) {
+        if let Some(info) = db.get_extern(name.clone())? {
             self.includes.insert(info.cpp.includes);
             self.flags.extend(info.cpp.flags);
             // arg_processor
@@ -282,7 +282,10 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             Bool(true, _) => Ok(Code::Expr(1.to_string())),
             Bool(false, _) => Ok(Code::Expr(0.to_string())),
             Str(s, _) => Ok(Code::Expr(format!("{:?}", s))),
-            Lambda(node) => self.visit(db, state, node), // _ => unimplemented!("unimplemented primitive type in compilation to c"),
+            Lambda(node) => self.visit(db, state, node),
+            TypeValue(_ty, _) => {
+                unimplemented!("unimplemented primitive type in compilation to cpp")
+            }
         }
     }
 
@@ -381,7 +384,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         let code = self.visit(db, state, &expr.inner)?;
         let info = expr.get_info();
         let op = expr.name.as_str();
-        if let Some(info) = db.get_extern(op.to_string()) {
+        if let Some(info) = db.get_extern(op.to_string())? {
             self.includes.insert(info.cpp.includes);
             self.flags.extend(info.cpp.flags);
             let code = if info.cpp.arg_processor.as_str() == "" {
@@ -418,15 +421,23 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             }
             _ => {}
         }
-        if let Some(info) = db.get_extern(op.to_string()) {
+        if let Some(info) = db.get_extern(op.to_string())? {
             self.includes.insert(info.cpp.includes);
             self.flags.extend(info.cpp.flags);
             let (left, right) = if info.cpp.arg_processor.as_str() == "" {
                 (left, right)
             } else {
-                (self.build_call1(info.cpp.arg_processor.as_str(), left), self.build_call1(info.cpp.arg_processor.as_str(), right))
+                (
+                    self.build_call1(info.cpp.arg_processor.as_str(), left),
+                    self.build_call1(info.cpp.arg_processor.as_str(), right),
+                )
             };
-            return Ok(self.build_call2(info.cpp.code.as_str(), info.cpp.arg_joiner.as_str(), left, right));
+            return Ok(self.build_call2(
+                info.cpp.code.as_str(),
+                info.cpp.arg_joiner.as_str(),
+                left,
+                right,
+            ));
         }
         Err(TError::UnknownInfixOperator(op.to_string(), info))
     }

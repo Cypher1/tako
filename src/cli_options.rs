@@ -80,7 +80,7 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const USAGE: &str = "An experimental programming language for ergonomic software verification.
 
 Usage:
-  tako [-i|-r] [-d <level>] [--ast] [--full-ast] [--show_table] <files>...
+  tako [-i|-r] [-d <level>] [--ast] [--full-ast] [--table] <files>...
   tako (-h | --help)
   tako --version
 
@@ -89,7 +89,7 @@ Options:
   -r --run            Run files in interpreter.
   -d --debug=<level>  Level of debug logging to use [default: 0].
   --ast               Pretty print an abstract syntax tree of the code.
-  --full_ast          Debug print an abstract syntax tree of the code.
+  --full-ast          Debug print an abstract syntax tree of the code.
   --table             Pretty print the symbol table of the code.
   -h --help           Show this screen.
   --version           Show compiler version.

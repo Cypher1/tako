@@ -25,6 +25,10 @@ pub fn infer(db: &dyn Compiler, expr: &Node) -> Result<Node, TError> {
             }
             .to_node()),
             Lambda(node) => infer(db, node.as_ref()), // TODO: abstraction
+            TypeValue(_ty, _) => db.parse_str(
+                vec![Symbol::Named("stdlib".to_string(), Some(".tk".to_string()))],
+                "Type",
+            ),
         },
         UnOpNode(UnOp {
             name: _,
@@ -58,22 +62,24 @@ mod tests {
     use super::*;
     use crate::ast::{Info, Sym, ToNode};
     use crate::database::DB;
-    use crate::parser::parse_string_for_test;
 
-    fn assert_type(prog: &str, ty: &str) {
+    fn assert_type(prog: &'static str, ty: &'static str) {
         let mut db = DB::default();
-        let prog = parse_string_for_test(&mut db, prog.to_string());
-        let prog = infer(&mut db, &prog);
-        let ty = parse_string_for_test(&mut db, ty.to_string());
+        use crate::cli_options::Options;
+        db.set_options(Options::default());
+        let module = vec![];
+        let prog = db.parse_str(module.clone(), prog).unwrap();
+        let prog = infer(&db, &prog);
+        let ty = db.parse_str(module, ty).unwrap();
         assert_eq!(prog, Ok(ty));
     }
 
     #[test]
     fn infer_type_of_i32() {
-        let mut db = DB::default();
+        let db = DB::default();
         let num = I32(23, Info::default()).to_node();
         assert_eq!(
-            infer(&mut db, &num),
+            infer(&db, &num),
             Ok(Sym {
                 name: "I32".to_owned(),
                 info: Info::default()
@@ -83,12 +89,27 @@ mod tests {
         assert_type("23", "I32");
     }
 
-    //#[test]
+    #[test]
+    fn infer_type_of_str() {
+        assert_type("\"23\"", "String");
+    }
+
+    // #[test]
     fn infer_type_of_sym_i32() {
         assert_type("x=12;x", "I32");
     }
 
-    //#[test]
+    // #[test]
+    fn infer_type_of_sym_str() {
+        assert_type("x=\"12\";x", "String");
+    }
+
+    // #[test]
+    fn infer_type_of_pair_str_i32() {
+        assert_type("(\"12\",23)", "(String, I32)");
+    }
+
+    // #[test]
     fn infer_type_of_sym_with_extra_lets_i32() {
         assert_type("x=12;y=4;x", "I32");
     }

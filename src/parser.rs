@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use std::sync::Arc;
 
 use super::ast::*;
 use super::database::Compiler;
@@ -6,16 +7,16 @@ use super::errors::TError;
 use super::location::*;
 use super::tokens::*;
 
-fn binding_power(db: &dyn Compiler, tok: &Token) -> (i32, bool) {
+fn binding_power(db: &dyn Compiler, tok: &Token) -> Result<(i32, bool), TError> {
     if tok.tok_type == TokenType::Op {
         // Look up extern operators
         let op = tok.value.as_str();
-        if let Some(operator_info) = db.get_extern_operator(op.to_owned()) {
-            return operator_info;
+        if let Some(operator_info) = db.get_extern_operator(op.to_owned())? {
+            return Ok(operator_info);
         }
         panic!(format!("Unknown operator {}", op))
     }
-    (1000, false)
+    Ok((1000, false))
 }
 
 fn get_defs(root: Node) -> Vec<Let> {
@@ -81,21 +82,21 @@ impl Loc {
     }
 }
 
-fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) {
+fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<Token>), TError> {
     if let Some(head) = toks.pop_front() {
         match head.tok_type {
-            TokenType::NumLit => (
+            TokenType::NumLit => Ok((
                 Prim::I32(head.value.parse().unwrap(), head.get_info()).to_node(),
                 toks,
-            ),
-            TokenType::StringLit => (
+            )),
+            TokenType::StringLit => Ok((
                 Prim::Str(head.value.clone(), head.get_info()).to_node(),
                 toks,
-            ),
+            )),
             TokenType::Op => {
-                let (lbp, _) = binding_power(db, &head);
-                let (right, new_toks) = expr(db, toks, lbp);
-                (
+                let (lbp, _) = binding_power(db, &head)?;
+                let (right, new_toks) = expr(db, toks, lbp)?;
+                Ok((
                     UnOp {
                         name: head.value.clone(),
                         inner: Box::new(right),
@@ -103,13 +104,13 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) 
                     }
                     .to_node(),
                     new_toks,
-                )
+                ))
             }
             TokenType::CloseBracket => {
                 panic!("Unexpected close bracket {}", head.value);
             }
             TokenType::OpenBracket => {
-                let (inner, mut new_toks) = expr(db, toks, 0);
+                let (inner, mut new_toks) = expr(db, toks, 0)?;
                 // TODO require close bracket.
                 let close = new_toks.front();
                 match (head.value.as_str(), close) {
@@ -138,42 +139,46 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> (Node, VecDeque<Token>) 
                     }
                 }
                 new_toks.pop_front();
-                (inner, new_toks)
+                Ok((inner, new_toks))
             }
             TokenType::Sym => {
                 // TODO: Consider making these globals.
                 if head.value == "true" {
-                    return (Prim::Bool(true, head.get_info()).to_node(), toks);
+                    return Ok((Prim::Bool(true, head.get_info()).to_node(), toks));
                 }
                 if head.value == "false" {
-                    return (Prim::Bool(false, head.get_info()).to_node(), toks);
+                    return Ok((Prim::Bool(false, head.get_info()).to_node(), toks));
                 }
-                (
+                Ok((
                     Sym {
                         name: head.value.clone(),
                         info: head.get_info(),
                     }
                     .to_node(),
                     toks,
-                )
+                ))
             }
             TokenType::Unknown | TokenType::Whitespace => {
                 panic!("Lexer should not produce unknown or whitespace")
             }
         }
     } else {
-        (
+        Ok((
             Err {
                 msg: "Unexpected eof, expected expr".to_string(),
                 info: Info::default(),
             }
             .to_node(),
             toks,
-        )
+        ))
     }
 }
 
-fn led(db: &dyn Compiler, mut toks: VecDeque<Token>, left: Node) -> (Node, VecDeque<Token>) {
+fn led(
+    db: &dyn Compiler,
+    mut toks: VecDeque<Token>,
+    left: Node,
+) -> Result<(Node, VecDeque<Token>), TError> {
     // eprintln!("here {:?} {:?}", toks, left);
     if let Some(Token {
         tok_type: TokenType::CloseBracket,
@@ -181,25 +186,25 @@ fn led(db: &dyn Compiler, mut toks: VecDeque<Token>, left: Node) -> (Node, VecDe
         ..
     }) = toks.front()
     {
-        return (
+        return Ok((
             Err {
                 msg: "Close bracket".to_string(),
                 info: pos.clone().get_info(),
             }
             .to_node(),
             toks,
-        );
+        ));
     }
 
     match toks.pop_front() {
-        None => (
+        None => Ok((
             Err {
                 msg: "Unexpected eof, expected expr tail".to_string(),
                 info: left.get_info(),
             }
             .to_node(),
             toks,
-        ),
+        )),
         Some(head) => match head.tok_type {
             TokenType::NumLit | TokenType::StringLit | TokenType::Sym => {
                 let pos = head.pos.clone();
@@ -209,13 +214,13 @@ fn led(db: &dyn Compiler, mut toks: VecDeque<Token>, left: Node) -> (Node, VecDe
                     value: ";".to_string(),
                     pos,
                 });
-                (left, toks)
+                Ok((left, toks))
             }
             TokenType::Op => {
-                let (lbp, assoc_right) = binding_power(db, &head);
-                let (right, new_toks) = expr(db, toks, lbp - if assoc_right { 1 } else { 0 });
+                let (lbp, assoc_right) = binding_power(db, &head)?;
+                let (right, new_toks) = expr(db, toks, lbp - if assoc_right { 1 } else { 0 })?;
                 if head.value != "=" {
-                    return (
+                    return Ok((
                         BinOp {
                             info: head.get_info(),
                             name: head.value,
@@ -224,10 +229,10 @@ fn led(db: &dyn Compiler, mut toks: VecDeque<Token>, left: Node) -> (Node, VecDe
                         }
                         .to_node(),
                         new_toks,
-                    );
+                    ));
                 }
                 match left {
-                    Node::SymNode(s) => (
+                    Node::SymNode(s) => Ok((
                         Let {
                             name: s.name,
                             args: None,
@@ -236,9 +241,9 @@ fn led(db: &dyn Compiler, mut toks: VecDeque<Token>, left: Node) -> (Node, VecDe
                         }
                         .to_node(),
                         new_toks,
-                    ),
+                    )),
                     Node::ApplyNode(a) => match *a.inner {
-                        Node::SymNode(s) => (
+                        Node::SymNode(s) => Ok((
                             Let {
                                 name: s.name,
                                 args: Some(a.args.iter().map(|l| l.to_sym()).collect()),
@@ -246,8 +251,8 @@ fn led(db: &dyn Compiler, mut toks: VecDeque<Token>, left: Node) -> (Node, VecDe
                                 info: head.get_info(),
                             }
                             .to_node(),
-                            new_toks
-                        ),
+                            new_toks,
+                        )),
                         _ => panic!(format!("Cannot assign to {}", a.to_node())),
                     },
                     _ => panic!(format!("Cannot assign to {}", left)),
@@ -259,7 +264,7 @@ fn led(db: &dyn Compiler, mut toks: VecDeque<Token>, left: Node) -> (Node, VecDe
                     && toks.front().map(|t| &t.value) == Some(&")".to_string())
                 {
                     toks.pop_front();
-                    return (
+                    return Ok((
                         Apply {
                             inner: Box::new(left),
                             args: vec![],
@@ -267,9 +272,9 @@ fn led(db: &dyn Compiler, mut toks: VecDeque<Token>, left: Node) -> (Node, VecDe
                         }
                         .to_node(),
                         toks,
-                    );
+                    ));
                 }
-                let (inner, mut new_toks) = expr(db, toks, 0);
+                let (inner, mut new_toks) = expr(db, toks, 0)?;
                 // TODO: Handle empty parens
                 let close = new_toks.front();
                 match (head.value.as_str(), close) {
@@ -300,7 +305,7 @@ fn led(db: &dyn Compiler, mut toks: VecDeque<Token>, left: Node) -> (Node, VecDe
                 new_toks.pop_front();
                 // Introduce arguments
                 let args = get_defs(inner);
-                (
+                Ok((
                     Apply {
                         inner: Box::new(left),
                         args,
@@ -308,7 +313,7 @@ fn led(db: &dyn Compiler, mut toks: VecDeque<Token>, left: Node) -> (Node, VecDe
                     }
                     .to_node(),
                     new_toks,
-                )
+                ))
             }
             TokenType::Unknown | TokenType::Whitespace => {
                 panic!("Lexer should not produce unknown or whitespace")
@@ -317,33 +322,45 @@ fn led(db: &dyn Compiler, mut toks: VecDeque<Token>, left: Node) -> (Node, VecDe
     }
 }
 
-fn expr(db: &dyn Compiler, init_toks: VecDeque<Token>, init_lbp: i32) -> (Node, VecDeque<Token>) {
+fn expr(
+    db: &dyn Compiler,
+    init_toks: VecDeque<Token>,
+    init_lbp: i32,
+) -> Result<(Node, VecDeque<Token>), TError> {
     // TODO: Name updates fields, this is confusing (0 is tree, 1 is toks)
-    let init_update = nud(db, init_toks);
+    let init_update = nud(db, init_toks)?;
     let mut left: Node = init_update.0;
     let mut toks: VecDeque<Token> = init_update.1;
     loop {
         match toks.front() {
             None => break,
             Some(token) => {
-                if init_lbp >= binding_power(db, token).0 {
+                if init_lbp >= binding_power(db, token)?.0 {
                     break;
                 }
             }
         }
-        let update = led(db, toks, left.clone());
+        let update = led(db, toks, left.clone())?;
         if let (Node::Error(_), new_toks) = update {
-            return (left, new_toks);
+            return Ok((left, new_toks));
         }
         left = update.0;
         toks = update.1;
     }
-    (left, toks)
+    Ok((left, toks))
 }
 
-pub fn lex(db: &dyn Compiler, module: Path) -> Result<VecDeque<Token>, TError> {
-    let filename = db.filename(module);
-    let contents = db.file(filename.clone())?;
+pub fn lex(db: &dyn Compiler, module: &Path) -> Result<VecDeque<Token>, TError> {
+    let filename = db.filename(module.clone());
+    lex_string(db, module, &db.file(filename)?.to_string())
+}
+
+pub fn lex_string(
+    db: &dyn Compiler,
+    module: &Path,
+    contents: &str,
+) -> Result<VecDeque<Token>, TError> {
+    let filename = db.filename(module.clone());
     let mut toks: VecDeque<Token> = VecDeque::new();
 
     let mut pos = Loc {
@@ -364,12 +381,12 @@ pub fn lex(db: &dyn Compiler, module: Path) -> Result<VecDeque<Token>, TError> {
     Ok(toks)
 }
 
-pub fn parse(module: &Path, db: &dyn Compiler) -> Result<Node, TError> {
-    let toks = db.lex_file(module.clone())?;
+pub fn parse_string(db: &dyn Compiler, module: &Path, text: &Arc<String>) -> Result<Node, TError> {
+    let toks = db.lex_string(module.to_vec(), text.clone())?;
     if db.debug() > 0 {
-        eprintln!("parsing file... {:?}", &module);
+        eprintln!("parsing str... {:?}", &module);
     }
-    let (root, left_over) = expr(db, toks, 0);
+    let (root, left_over) = expr(db, toks, 0)?;
 
     if !left_over.is_empty() {
         panic!("Oh no: Left over tokens {:?}", left_over);
@@ -380,26 +397,38 @@ pub fn parse(module: &Path, db: &dyn Compiler) -> Result<Node, TError> {
     Ok(root)
 }
 
-pub fn parse_string_for_test(db: &mut dyn Compiler, contents: String) -> Node {
-    use crate::cli_options::Options;
-    use std::sync::Arc;
-    let filename = "test.tk";
-    let module = db.module_name(filename.to_owned());
-    db.set_file(filename.to_owned(), Ok(Arc::new(contents)));
-    db.set_options(Options::default());
-    db.parse_file(module).expect("failed to parse file")
+pub fn parse(db: &dyn Compiler, module: &Path) -> Result<Node, TError> {
+    let toks = db.lex_file(module.clone())?;
+    if db.debug() > 0 {
+        eprintln!("parsing file... {:?}", &module);
+    }
+    let (root, left_over) = expr(db, toks, 0)?;
+
+    if !left_over.is_empty() {
+        panic!("Oh no: Left over tokens {:?}", left_over);
+    }
+    if db.options().show_ast {
+        eprintln!("ast: {}", root);
+    }
+    Ok(root)
 }
 
 #[cfg(test)]
 pub mod tests {
-    use super::parse_string_for_test;
+    use super::parse_string;
     use crate::ast::*;
+    use crate::database::Compiler;
     use crate::database::DB;
     use Prim::*;
 
     fn parse(contents: String) -> Node {
+        use crate::cli_options::Options;
+        use std::sync::Arc;
         let mut db = DB::default();
-        parse_string_for_test(&mut db, contents)
+        let filename = "test.tk";
+        db.set_options(Options::default());
+        let module = db.module_name(filename.to_owned());
+        parse_string(&db, &module, &Arc::new(contents)).expect("failed to parse string")
     }
 
     fn num_lit(x: i32) -> Box<Node> {
