@@ -14,14 +14,14 @@ fn binding(db: &dyn Compiler, tok: &Token) -> Result<Semantic, TError> {
 
 fn binding_dir(db: &dyn Compiler, tok: &Token) -> Result<Direction, TError> {
     Ok(match binding(db, tok)? {
-        Semantic::Operator(_, dir) => dir,
+        Semantic::Operator{assoc, ..} => assoc,
         Semantic::Func => Direction::Left,
     })
 }
 
 fn binding_power(db: &dyn Compiler, tok: &Token) -> Result<i32, TError> {
     Ok(match binding(db, tok)? {
-        Semantic::Operator(bp, _) => bp,
+        Semantic::Operator{binding, ..} => binding,
         Semantic::Func => 1000,
     })
 }

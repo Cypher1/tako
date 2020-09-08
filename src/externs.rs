@@ -81,12 +81,12 @@ pub enum Direction {
 
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub enum Semantic {
-    Operator(i32, Direction),
+    Operator{ binding: i32, assoc: Direction},
     Func,
 }
 
-fn operator(binding: i32, dir: Direction) -> Semantic {
-    Semantic::Operator(binding, dir)
+fn operator(binding: i32, assoc: Direction) -> Semantic {
+    Semantic::Operator{binding, assoc}
 }
 
 #[derive(PartialEq, Eq, Clone, Debug)]
