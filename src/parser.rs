@@ -6,17 +6,24 @@ use super::database::Compiler;
 use super::errors::TError;
 use super::location::*;
 use super::tokens::*;
+use super::externs::{Semantic, Direction};
 
-fn binding_power(db: &dyn Compiler, tok: &Token) -> Result<(i32, bool), TError> {
-    if tok.tok_type == TokenType::Op {
-        // Look up extern operators
-        let op = tok.value.as_str();
-        if let Some(operator_info) = db.get_extern_operator(op.to_owned())? {
-            return Ok(operator_info);
-        }
-        panic!(format!("Unknown operator {}", op))
-    }
-    Ok((1000, false))
+fn binding(db: &dyn Compiler, tok: &Token) -> Result<Semantic, TError> {
+    db.get_extern_operator(tok.value.to_owned())
+}
+
+fn binding_dir(db: &dyn Compiler, tok: &Token) -> Result<Direction, TError> {
+    Ok(match binding(db, tok)? {
+        Semantic::Operator(_, dir) => dir,
+        Semantic::Func => Direction::Left,
+    })
+}
+
+fn binding_power(db: &dyn Compiler, tok: &Token) -> Result<i32, TError> {
+    Ok(match binding(db, tok)? {
+        Semantic::Operator(bp, _) => bp,
+        Semantic::Func => 1000,
+    })
 }
 
 fn get_defs(root: Node) -> Vec<Let> {
@@ -94,7 +101,7 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
                 toks,
             )),
             TokenType::Op => {
-                let (lbp, _) = binding_power(db, &head)?;
+                let lbp = binding_power(db, &head)?;
                 let (right, new_toks) = expr(db, toks, lbp)?;
                 Ok((
                     UnOp {
@@ -217,8 +224,9 @@ fn led(
                 Ok((left, toks))
             }
             TokenType::Op => {
-                let (lbp, assoc_right) = binding_power(db, &head)?;
-                let (right, new_toks) = expr(db, toks, lbp - if assoc_right { 1 } else { 0 })?;
+                let lbp = binding_power(db, &head)?;
+                let assoc = binding_dir(db, &head)?;
+                let (right, new_toks) = expr(db, toks, lbp - match assoc { Direction::Left => 0, Direction::Right => 1})?;
                 if head.value != "=" {
                     return Ok((
                         BinOp {
@@ -335,7 +343,7 @@ fn expr(
         match toks.front() {
             None => break,
             Some(token) => {
-                if init_lbp >= binding_power(db, token)?.0 {
+                if init_lbp >= binding_power(db, token)? {
                     break;
                 }
             }

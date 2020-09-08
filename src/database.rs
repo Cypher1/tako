@@ -8,7 +8,7 @@ use std::process::Command;
 use super::ast::{Node, Path, Root, Symbol, Table, Visitor};
 use super::cli_options::Options;
 use super::errors::TError;
-use super::externs::Extern;
+use super::externs::{Extern, Semantic};
 use super::tokens::Token;
 
 #[salsa::query_group(CompilerStorage)]
@@ -24,7 +24,7 @@ pub trait Compiler: salsa::Database {
     fn get_externs(&self) -> Result<HashMap<String, Extern>, TError>;
     fn get_extern_names(&self) -> Result<Vec<String>, TError>;
     fn get_extern(&self, name: String) -> Result<Option<Extern>, TError>;
-    fn get_extern_operator(&self, name: String) -> Result<Option<(i32, bool)>, TError>;
+    fn get_extern_operator(&self, name: String) -> Result<Semantic, TError>;
 
     fn module_name(&self, filename: String) -> Path;
     fn filename(&self, module: Path) -> String;
@@ -104,8 +104,8 @@ fn get_extern(db: &dyn Compiler, name: String) -> Result<Option<Extern>, TError>
     Ok(db.get_externs()?.get(&name).cloned())
 }
 
-fn get_extern_operator(db: &dyn Compiler, name: String) -> Result<Option<(i32, bool)>, TError> {
-    Ok(db.get_extern(name)?.map(|x| x.operator).unwrap_or_default())
+fn get_extern_operator(db: &dyn Compiler, name: String) -> Result<Semantic, TError> {
+    Ok(db.get_extern(name)?.map(|x| x.operator).unwrap_or(Semantic::Func))
 }
 
 fn lex_string(
