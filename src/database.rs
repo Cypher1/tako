@@ -105,7 +105,7 @@ fn get_extern(db: &dyn Compiler, name: String) -> Result<Option<Extern>, TError>
 }
 
 fn get_extern_operator(db: &dyn Compiler, name: String) -> Result<Semantic, TError> {
-    Ok(db.get_extern(name)?.map(|x| x.operator).unwrap_or(Semantic::Func))
+    Ok(db.get_extern(name)?.map(|x| x.semantic).unwrap_or(Semantic::Func))
 }
 
 fn lex_string(
