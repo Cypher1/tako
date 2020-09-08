@@ -72,7 +72,6 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
     }
 }
 
-
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub enum Direction {
     Left,
@@ -81,12 +80,12 @@ pub enum Direction {
 
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub enum Semantic {
-    Operator{ binding: i32, assoc: Direction},
+    Operator { binding: i32, assoc: Direction },
     Func,
 }
 
 fn operator(binding: i32, assoc: Direction) -> Semantic {
-    Semantic::Operator{binding, assoc}
+    Semantic::Operator { binding, assoc }
 }
 
 #[derive(PartialEq, Eq, Clone, Debug)]

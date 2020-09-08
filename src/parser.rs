@@ -4,9 +4,9 @@ use std::sync::Arc;
 use super::ast::*;
 use super::database::Compiler;
 use super::errors::TError;
+use super::externs::{Direction, Semantic};
 use super::location::*;
 use super::tokens::*;
-use super::externs::{Semantic, Direction};
 
 fn binding(db: &dyn Compiler, tok: &Token) -> Result<Semantic, TError> {
     db.get_extern_operator(tok.value.to_owned())
@@ -14,14 +14,14 @@ fn binding(db: &dyn Compiler, tok: &Token) -> Result<Semantic, TError> {
 
 fn binding_dir(db: &dyn Compiler, tok: &Token) -> Result<Direction, TError> {
     Ok(match binding(db, tok)? {
-        Semantic::Operator{assoc, ..} => assoc,
+        Semantic::Operator { assoc, .. } => assoc,
         Semantic::Func => Direction::Left,
     })
 }
 
 fn binding_power(db: &dyn Compiler, tok: &Token) -> Result<i32, TError> {
     Ok(match binding(db, tok)? {
-        Semantic::Operator{binding, ..} => binding,
+        Semantic::Operator { binding, .. } => binding,
         Semantic::Func => 1000,
     })
 }
@@ -226,7 +226,14 @@ fn led(
             TokenType::Op => {
                 let lbp = binding_power(db, &head)?;
                 let assoc = binding_dir(db, &head)?;
-                let (right, new_toks) = expr(db, toks, lbp - match assoc { Direction::Left => 0, Direction::Right => 1})?;
+                let (right, new_toks) = expr(
+                    db,
+                    toks,
+                    lbp - match assoc {
+                        Direction::Left => 0,
+                        Direction::Right => 1,
+                    },
+                )?;
                 if head.value != "=" {
                     return Ok((
                         BinOp {
