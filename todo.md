@@ -6,6 +6,13 @@
 - Externs (started)
 - Move globals / std into a file using low level ops (started)
 - Check for associativity errors (e.g. a&&b||c)
+- Allow operator declaration (with semantics on evaluation order [i.e. which sides are auto converted to lambdas before being sent to the operator])
+  - Ops need:
+    - Precedence (maybe a set of allowed inner operators rather than a number)
+    - left or right associativity
+    - a bin/un op form (possibly both)
+- Convert bin and un op to calls to the operator functions
+- Introduce "." notation for identifiers.
 - Convenient Conditionals / Ifs / Matches
   - i.e. Shouldn't have to use operators
   - Should mirror if-then-else, loop, while, for(each)
