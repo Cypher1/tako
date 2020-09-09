@@ -32,17 +32,12 @@ use pretty_print::PrettyPrint;
 
 use database::{Compiler, DB};
 use errors::TError;
+use interpreter::ImplFn;
 
-pub fn work(
+pub fn work<'a>(
     db: &mut DB,
     filename: &str,
-    print_impl: Option<
-        &mut dyn FnMut(
-            &dyn Compiler,
-            Vec<&dyn Fn() -> crate::interpreter::Res>,
-            crate::ast::Info,
-        ) -> crate::interpreter::Res,
-    >,
+    print_impl: Option<ImplFn<'a>>,
 ) -> Result<String, TError> {
     let mut contents = String::new();
     let mut file = File::open(filename.to_owned())

@@ -16,7 +16,9 @@ fn main() -> Result<(), TError> {
 
     for f in db.options().files.iter() {
         match work(&mut db, &f, None) {
-            Ok(res) => {eprintln!("{}", res);}
+            Ok(res) => {
+                eprintln!("{}", res);
+            }
             Err(err) => {
                 println!("Error: {}", err);
                 println!("Caused by: {}", err.source().unwrap());

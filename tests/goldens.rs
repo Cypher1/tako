@@ -29,7 +29,7 @@ fn test_with_expectation(expected: TestResult, options: Vec<&str>) {
     let result = {
         use takolib::ast::{Prim::{I32, Str}, Info};
         use takolib::interpreter::Res;
-        let mut print_impl = |_: &dyn Compiler, args: Vec<&dyn Fn() -> takolib::interpreter::Res>, _: takolib::ast::Info| -> Res {
+        let mut print_impl = &mut |_: &dyn Compiler, args: Vec<&dyn Fn() -> takolib::interpreter::Res>, _: takolib::ast::Info| -> Res {
             stdout.push(match args[0]()? {
                 Str(s,_)=>s,
                 s=>format!("{:?}", s)
@@ -68,8 +68,7 @@ fn test_with_expectation(expected: TestResult, options: Vec<&str>) {
             eprintln!("Received error:\n{:?}", err);
         },
         (result, expectation) => {
-            eprintln!("Got:\n{:?}\nExpected:\n{:?}", result, expectation);
-            panic!(result);
+            panic!(format!("\n-----Got-----\n{:?}\n---Expected--\n{:?}\n", result, expectation));
         }
     }
 }
@@ -92,6 +91,11 @@ fn one_plus_2() {
 }
 
 #[test]
+fn plus_123() {
+  test_with_expectation(Output("6".to_string()), vec!["--run", "examples/plus_123.tk"]);
+}
+
+#[test]
 fn alt() {
   interpret_with_success("examples/alt.tk")
 }
@@ -101,8 +105,8 @@ fn arguments() {
   interpret_with_success("examples/arguments.tk")
 }
 
-#[test]
-fn assignment_returns() {
+//#[test] // Re-enable when type checking works
+fn assignment_returns_unit() {
   interpret_with_error("counter_examples/assignment_returns.tk");
 }
 

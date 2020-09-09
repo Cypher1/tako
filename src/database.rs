@@ -8,7 +8,7 @@ use std::process::Command;
 use super::ast::{Node, Path, Root, Symbol, Table, Visitor};
 use super::cli_options::Options;
 use super::errors::TError;
-use super::externs::Extern;
+use super::externs::{Extern, Semantic};
 use super::tokens::Token;
 
 #[salsa::query_group(CompilerStorage)]
@@ -21,15 +21,18 @@ pub trait Compiler: salsa::Database {
     fn debug(&self) -> i32;
     fn files(&self) -> Vec<String>;
 
-    fn get_externs(&self) -> HashMap<String, Extern>;
-    fn get_extern_names(&self) -> Vec<String>;
-    fn get_extern(&self, name: String) -> Option<Extern>;
-    fn get_extern_operator(&self, name: String) -> Option<(i32, bool)>;
+    fn get_externs(&self) -> Result<HashMap<String, Extern>, TError>;
+    fn get_extern_names(&self) -> Result<Vec<String>, TError>;
+    fn get_extern(&self, name: String) -> Result<Option<Extern>, TError>;
+    fn get_extern_operator(&self, name: String) -> Result<Semantic, TError>;
 
     fn module_name(&self, filename: String) -> Path;
     fn filename(&self, module: Path) -> String;
 
+    fn lex_string(&self, module: Path, contents: Arc<String>) -> Result<VecDeque<Token>, TError>;
     fn lex_file(&self, module: Path) -> Result<VecDeque<Token>, TError>;
+    fn parse_string(&self, module: Path, contents: Arc<String>) -> Result<Node, TError>;
+    fn parse_str(&self, module: Path, contents: &'static str) -> Result<Node, TError>;
     fn parse_file(&self, module: Path) -> Result<Node, TError>;
     fn build_symbol_table(&self, module: Path) -> Result<Root, TError>;
     fn find_symbol(&self, mut context: Path, path: Path) -> Result<Option<Table>, TError>;
@@ -89,20 +92,35 @@ pub fn filename(db: &dyn Compiler, module: Path) -> String {
     file_name
 }
 
-fn get_externs(_db: &dyn Compiler) -> HashMap<String, Extern> {
-    crate::externs::get_externs()
+fn get_externs(db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError> {
+    crate::externs::get_externs(db)
 }
 
-fn get_extern_names(db: &dyn Compiler) -> Vec<String> {
-    db.get_externs().keys().map(|x|x.clone()).collect()
+fn get_extern_names(db: &dyn Compiler) -> Result<Vec<String>, TError> {
+    Ok(db.get_externs()?.keys().cloned().collect())
 }
 
-fn get_extern(db: &dyn Compiler, name: String) -> Option<Extern> {
-    db.get_externs().get(&name).cloned()
+fn get_extern(db: &dyn Compiler, name: String) -> Result<Option<Extern>, TError> {
+    Ok(db.get_externs()?.get(&name).cloned())
 }
 
-fn get_extern_operator(db: &dyn Compiler, name: String) -> Option<(i32, bool)> {
-    db.get_extern(name).map(|x| x.operator).unwrap_or_default()
+fn get_extern_operator(db: &dyn Compiler, name: String) -> Result<Semantic, TError> {
+    Ok(db
+        .get_extern(name)?
+        .map(|x| x.semantic)
+        .unwrap_or(Semantic::Func))
+}
+
+fn lex_string(
+    db: &dyn Compiler,
+    module: Path,
+    contents: Arc<String>,
+) -> Result<VecDeque<Token>, TError> {
+    use crate::parser;
+    if db.debug() > 0 {
+        eprintln!("lexing file... {:?}", &module);
+    }
+    parser::lex_string(db, &module, &contents)
 }
 
 fn lex_file(db: &dyn Compiler, module: Path) -> Result<VecDeque<Token>, TError> {
@@ -110,12 +128,21 @@ fn lex_file(db: &dyn Compiler, module: Path) -> Result<VecDeque<Token>, TError> 
     if db.debug() > 0 {
         eprintln!("lexing file... {:?}", &module);
     }
-    parser::lex(db, module)
+    parser::lex(db, &module)
+}
+
+fn parse_string(db: &dyn Compiler, module: Path, contents: Arc<String>) -> Result<Node, TError> {
+    use crate::parser;
+    parser::parse_string(db, &module, &contents)
+}
+
+fn parse_str(db: &dyn Compiler, module: Path, contents: &'static str) -> Result<Node, TError> {
+    db.parse_string(module, Arc::new(contents.to_string()))
 }
 
 fn parse_file(db: &dyn Compiler, module: Path) -> Result<Node, TError> {
     use crate::parser;
-    parser::parse(&module, db)
+    parser::parse(db, &module)
 }
 
 fn build_symbol_table(db: &dyn Compiler, module: Path) -> Result<Root, TError> {

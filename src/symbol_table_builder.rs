@@ -48,7 +48,9 @@ impl Table {
     }
 
     fn get_child_mut<'a>(self: &'a mut Table, find: &Symbol) -> &'a mut HashTree<Symbol, Entry> {
-        self.children.entry(find.clone()).or_insert_with(Table::default)
+        self.children
+            .entry(find.clone())
+            .or_insert_with(Table::default)
     }
 
     pub fn get_mut<'a>(self: &'a mut Table, path: &[Symbol]) -> &'a mut HashTree<Symbol, Entry> {
@@ -75,7 +77,8 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
 
         // Add in the globals here!
         // TODO: Inject needs for bootstrapping here (e.g. import function).
-        let globals: Vec<Path> = db.get_extern_names()
+        let globals: Vec<Path> = db
+            .get_extern_names()?
             .iter()
             .map(|x| vec![Symbol::new(x.to_string())])
             .collect();

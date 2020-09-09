@@ -1,21 +1,24 @@
-use std::collections::BTreeSet;
-use crate::errors::TError;
 use crate::ast::Info;
+use crate::errors::TError;
+use std::collections::BTreeSet;
+use std::fmt;
 
 // i32 here are sizes in bits, not bytes.
 // This means that we don't need to have a separate systems for bit&byte layouts.
 type Offset = i32;
 
 // A list of types with an offset to get to the first bit (used for padding, frequently 0).
-type Layout = BTreeSet<(Type, Offset)>;
+type Layout = Vec<Type>;
+type TypeSet = BTreeSet<Type>;
 type Pack = BTreeSet<(String, Type)>;
 
 #[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Debug, Hash)]
 pub enum Type {
-    Union(Layout),
-    Struct(Layout),
+    Union(TypeSet),
+    Product(TypeSet),
     StaticPointer(Offset),
-    Tag(Offset), // A locally unique id, should be replaced with a bit pattern at compile time.
+    Padded(Offset, Box<Type>),
+    Tag(Offset, Offset), // A locally unique id and the number of bits needed for it, should be replaced with a bit pattern at compile time.
     Pointer(Offset, Box<Type>), // Defaults to 8 bytes (64 bit)
     Variable(String),
     Function {
@@ -30,55 +33,68 @@ pub enum Type {
     },
 }
 
+impl fmt::Display for Type {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let types = vec![
+            (string_type(), "String"),
+            (number_type(), "Number"),
+            (i32_type(), "I32"),
+            (byte_type(), "Byte"),
+            (bit_type(), "Bit"),
+        ];
+        for (ty, name) in types.iter() {
+            if self == ty {
+                return write!(f, "{}", name);
+            }
+        }
+        match self {
+            Union(s) => {
+                write!(f, "Union(")?;
+                let mut first = true;
+                for sty in s {
+                    if !first {
+                        write!(f, ", ")?;
+                    }
+                    first = false;
+                    write!(f, "{}", sty)?;
+                }
+                write!(f, ")")
+            }
+            Product(s) => {
+                write!(f, "Product(")?;
+                let mut first = true;
+                for sty in s {
+                    if !first {
+                        write!(f, ", ")?;
+                    }
+                    first = false;
+                    write!(f, "{}", sty)?;
+                }
+                write!(f, ")")
+            }
+            Pointer(ptr_size, t) => write!(f, "*<{}b>{}", ptr_size, t),
+            Tag(tag, bits) => write!(f, "Tag<{}b>{}", bits, tag),
+            Padded(size, t) => write!(f, "Pad<{}b>{}", size, t),
+            StaticPointer(ptr_size) => write!(f, "*<{}b>Code", ptr_size),
+            x => write!(f, "({:?})", x),
+        }
+    }
+}
+
 use Type::*;
 
 impl Type {
     pub fn ptr(self: Type) -> Type {
         Pointer(8 * byte_size(), Box::new(self))
     }
-}
-
-pub fn simplify(ty: &Type) -> Type {
-    use Type::*;
-    match ty {
-        Union(values) => {
-            if values.is_empty() {
-                return void();
-            }
-            if values.len() == 1 {
-                return values
-                    .iter()
-                    .next()
-                    .expect("Expected single element set to have an element")
-                    .0.clone();
-            }
-            let mut vals = set![];
-            for (ty, off) in values {
-                vals.insert((simplify(ty), *off));
-            }
-            return Union(vals);
+    pub fn padded(self: Type, size: Offset) -> Type {
+        if size == 0 {
+            return self;
         }
-        Struct(values) => {
-            if values.is_empty() {
-                return unit();
-            }
-            if values.len() == 1 {
-                return values
-                    .iter()
-                    .next()
-                    .expect("Expected single element set to have an element")
-                    .0.clone();
-            }
-            let mut vals = set![];
-            for (ty, off) in values {
-                vals.insert((simplify(&ty), *off));
-            }
-            return Struct(vals);
+        if let Padded(n, t) = self {
+            return Padded(n + size, t);
         }
-        Pointer(ptr_size, t) => Pointer(*ptr_size, Box::new(simplify(t))),
-        Tag(tag) => Tag(*tag),
-        StaticPointer(ptr_size) => StaticPointer(*ptr_size),
-        x => panic!(format!("unhandled: simplfy {:#?}", x))
+        Padded(size, Box::new(self))
     }
 }
 
@@ -88,21 +104,22 @@ pub fn card(ty: &Type) -> Result<Offset, TError> {
         Union(s) => {
             let mut sum = 0;
             for sty in s {
-                sum += card(&sty.0)?;
+                sum += card(&sty)?;
             }
             Ok(sum)
         }
-        Struct(s) => {
+        Product(s) => {
             let mut prod = 1;
             for sty in s {
-                prod *= card(&sty.0)?;
+                prod *= card(&sty)?;
             }
             Ok(prod)
         }
         Pointer(_ptr_size, t) => card(&t),
-        Tag(_tag) => Ok(1),
+        Tag(_tag, _bits) => Ok(1),
+        Padded(_size, t) => card(&t),
         StaticPointer(_ptr_size) => Err(TError::StaticPointerCardinality(Info::default())),
-        x => panic!(format!("unhandled: card of {:#?}", x))
+        x => panic!(format!("unhandled: card of {:#?}", x)),
     }
 }
 
@@ -114,17 +131,17 @@ pub fn size(ty: &Type) -> Result<Offset, TError> {
             let mut res = 0;
             for sty in s.iter() {
                 // This includes padding in size.
-                let c = sty.1 + size(&sty.0)?;
+                let c = size(&sty)?;
                 if res <= c {
                     res = c;
                 }
             }
             Ok(res)
         }
-        Struct(s) => {
+        Product(s) => {
             let mut res = 0;
             for sty in s.iter() {
-                let c = sty.1 + size(&sty.0)?;
+                let c = size(&sty)?;
                 if res <= c {
                     res = c;
                 }
@@ -132,14 +149,18 @@ pub fn size(ty: &Type) -> Result<Offset, TError> {
             Ok(res)
         }
         Pointer(ptr_size, _t) => Ok(*ptr_size),
-        Tag(tag) => Ok(num_bits(1+(*tag as usize)) as Offset),
+        Tag(_tag, bits) => Ok(*bits),
         StaticPointer(ptr_size) => Ok(*ptr_size),
-        Variable(name) => Err(TError::UnknownSizeOfVariableType(name.clone(), Info::default())),
-        x => panic!(format!("unhandled: size of {:#?}", x))
+        Padded(bits, t) => Ok(bits + size(t)?),
+        Variable(name) => Err(TError::UnknownSizeOfVariableType(
+            name.clone(),
+            Info::default(),
+        )),
+        x => panic!(format!("unhandled: size of {:#?}", x)),
     }
 }
 
-fn num_bits(n: usize) -> usize {
+fn num_bits(n: Offset) -> Offset {
     let mut k = 0;
     let mut p = 1;
     loop {
@@ -151,54 +172,55 @@ fn num_bits(n: usize) -> usize {
     }
 }
 
-pub fn product(values: Vec<Type>) -> Result<Type, TError> {
+pub fn record(values: Layout) -> Result<Type, TError> {
     let mut layout = set![];
     let mut off = 0;
     for val in values {
-        let val_size = size(&val)?;
-        layout.insert((val, off));
-        off += val_size;
+        // Work out the padding here
+        let size = size(&val)?;
+        layout.insert(val.padded(off));
+        off += size;
     }
-    Ok(Struct(layout))
+    Ok(Product(layout))
 }
 
 pub fn sum(values: Vec<Type>) -> Result<Type, TError> {
     let mut layout = set![];
-    let mut count = 0;
-    for val in values {
-        let mut tagged = Tag(count);
-        if val != unit() {
-            tagged = product(vec![tagged, val])?;
+    let tag_bits = num_bits(values.len() as Offset);
+    for (count, val) in values.into_iter().enumerate() {
+        let mut tagged = Tag(count as i32, tag_bits);
+        if val != unit_type() {
+            tagged = record(vec![tagged, val])?;
         }
-        layout.insert((tagged, 0));
-        count += 1;
+        layout.insert(tagged);
     }
     Ok(Union(layout))
 }
 
-pub fn void() -> Type {
+pub fn void_type() -> Type {
     Union(set![])
 }
 
-pub fn unit() -> Type {
-    Struct(set![])
+pub fn unit_type() -> Type {
+    Product(set![])
 }
 
-pub fn bit() -> Type {
-    sum(vec![unit(), unit()]).expect("bit should be safe")
+pub fn bit_type() -> Type {
+    sum(vec![unit_type(), unit_type()]).expect("bit should be safe")
 }
 
 pub fn byte_type() -> Type {
-    product(vec![
-        bit(),
-        bit(),
-        bit(),
-        bit(),
-        bit(),
-        bit(),
-        bit(),
-        bit(),
-    ]).expect("byte should be safe")
+    record(vec![
+        bit_type(),
+        bit_type(),
+        bit_type(),
+        bit_type(),
+        bit_type(),
+        bit_type(),
+        bit_type(),
+        bit_type(),
+    ])
+    .expect("byte should be safe")
 }
 
 pub fn byte_size() -> Offset {
@@ -206,15 +228,23 @@ pub fn byte_size() -> Offset {
 }
 
 pub fn char_type() -> Type {
-    sum(vec![byte_type(), byte_type(), byte_type(), byte_type()]).expect("char should be safe")
+    byte_type()
 }
 
-pub fn str_type() -> Type {
+pub fn string_type() -> Type {
     char_type().ptr()
 }
 
+pub fn i32_type() -> Type {
+    record(vec![byte_type(), byte_type(), byte_type(), byte_type()]).expect("i32 should be safe")
+}
+
 pub fn number_type() -> Type {
-    product(vec![byte_type(), byte_type(), byte_type(), byte_type()]).expect("number should be safe")
+    variable("Number")
+}
+
+pub fn type_type() -> Type {
+    variable("Type")
 }
 
 pub fn variable(name: &str) -> Type {
@@ -226,100 +256,116 @@ mod tests {
     use super::*;
 
     #[test]
-    fn void_type() {
-        assert_eq!(card(&void()), Ok(0));
-        assert_eq!(size(&void()), Ok(0));
+    fn void() {
+        assert_eq!(card(&void_type()), Ok(0));
+        assert_eq!(size(&void_type()), Ok(0));
     }
     #[test]
-    fn unit_type() {
-        assert_eq!(card(&unit()), Ok(1));
-        assert_eq!(size(&unit()), Ok(0));
+    fn unit() {
+        assert_eq!(card(&unit_type()), Ok(1));
+        assert_eq!(size(&unit_type()), Ok(0));
     }
     #[test]
     fn tag1_type() {
-        assert_eq!(card(&Tag(1)), Ok(1));
-        assert_eq!(size(&Tag(1)), Ok(1));
+        assert_eq!(card(&Tag(1, 1)), Ok(1));
+        assert_eq!(size(&Tag(1, 1)), Ok(1));
     }
     #[test]
     fn tag2_type() {
-        assert_eq!(card(&Tag(2)), Ok(1));
-        assert_eq!(size(&Tag(2)), Ok(2));
+        assert_eq!(card(&Tag(0, 2)), Ok(1));
+        assert_eq!(size(&Tag(0, 2)), Ok(2));
+        assert_eq!(card(&Tag(1, 2)), Ok(1));
+        assert_eq!(size(&Tag(1, 2)), Ok(2));
+        assert_eq!(card(&Tag(2, 2)), Ok(1));
+        assert_eq!(size(&Tag(2, 2)), Ok(2));
+        assert_eq!(card(&Tag(3, 2)), Ok(1));
+        assert_eq!(size(&Tag(3, 2)), Ok(2));
     }
     #[test]
     fn tag4_type() {
-        assert_eq!(card(&Tag(4)), Ok(1));
-        assert_eq!(size(&Tag(4)), Ok(3));
+        assert_eq!(card(&Tag(4, 3)), Ok(1));
+        assert_eq!(size(&Tag(4, 3)), Ok(3));
     }
 
     #[test]
-    fn union2_type() {
-        let union2 = Union(set![(unit(), 0), (unit(), 0)]);
+    fn union_n_type() {
+        let union2 = Union(set![unit_type(), unit_type()]);
         assert_eq!(card(&union2), Ok(1));
         assert_eq!(size(&union2), Ok(0));
-    }
-    #[test]
-    fn bit_type() {
-        let bitt = bit();
-        eprintln!(">> {:?}", bitt);
-        assert_eq!(card(&bitt), Ok(2));
-        assert_eq!(size(&bitt), Ok(1));
-    }
-    #[test]
-    fn union3_type() {
-        let union3 = Union(set![(unit(), 0), (unit(), 0), (unit(), 0)]);
+        let union3 = Union(set![unit_type(), unit_type(), unit_type()]);
         assert_eq!(card(&union3), Ok(1));
         assert_eq!(size(&union3), Ok(0));
     }
     #[test]
+    fn bit() {
+        let bitt = bit_type();
+        assert_eq!(card(&bitt), Ok(2));
+        assert_eq!(size(&bitt), Ok(1));
+    }
+    #[test]
     fn trit_type() {
-        let trit = sum(vec![unit(), unit(), unit()]).unwrap();
+        let trit = sum(vec![unit_type(), unit_type(), unit_type()]).unwrap();
         assert_eq!(card(&trit), Ok(3));
         assert_eq!(size(&trit), Ok(2));
     }
     #[test]
     fn nested_quad_type() {
-        let quad = product(vec![bit(), bit()]).unwrap();
+        let quad = record(vec![bit_type(), bit_type()]).unwrap();
         assert_eq!(card(&quad), Ok(4));
         assert_eq!(size(&quad), Ok(2));
     }
     #[test]
     fn quad_type() {
-        let quad = sum(vec![unit(), unit(), unit(), unit()]).unwrap();
+        let quad = sum(vec![unit_type(), unit_type(), unit_type(), unit_type()]).unwrap();
         assert_eq!(card(&quad), Ok(4));
         assert_eq!(size(&quad), Ok(2));
     }
     #[test]
     fn pent_type() {
-        let pent = sum(vec![unit(), unit(), unit(), unit(), unit()]).unwrap();
+        let pent = sum(vec![
+            unit_type(),
+            unit_type(),
+            unit_type(),
+            unit_type(),
+            unit_type(),
+        ])
+        .unwrap();
         assert_eq!(card(&pent), Ok(5));
         assert_eq!(size(&pent), Ok(3));
     }
     #[test]
     fn pair_bool_ptrs() {
-        let bool_ptr = Pointer(64, Box::new(bit()));
-        let quad = product(vec![bool_ptr.clone(), bool_ptr]).unwrap();
+        let bool_ptr = Pointer(64, Box::new(bit_type()));
+        let quad = record(vec![bool_ptr.clone(), bool_ptr]).unwrap();
         assert_eq!(card(&quad), Ok(4));
         assert_eq!(size(&quad), Ok(2 * 64));
     }
     #[test]
-    fn padded_nibble() {
-        let quad = product(vec![bit(), bit()]).unwrap();
-        let nibble = product(vec![quad.clone(), quad]).unwrap();
+    fn nested_nibble() {
+        let quad = record(vec![bit_type(), bit_type()]).unwrap();
+        let nibble = record(vec![quad.clone(), quad]).unwrap();
         assert_eq!(card(&nibble), Ok(16));
         assert_eq!(size(&nibble), Ok(4));
+    }
+    #[test]
+    fn padded_nibble() {
+        let quad = record(vec![bit_type().padded(2), bit_type()]).unwrap();
+        let nibble = record(vec![quad.clone(), quad]).unwrap();
+        assert_eq!(card(&nibble), Ok(16));
+        assert_eq!(size(&nibble), Ok(8));
     }
 
     #[test]
     fn bool_and_fn() {
         let fn_ptr = StaticPointer(64);
-        let closure = product(vec![bit(), fn_ptr]).unwrap();
+        let closure = record(vec![bit_type(), fn_ptr]).unwrap();
         assert_eq!(size(&closure), Ok(65));
     }
 
     #[test]
     fn bool_or_fn() {
         let fn_ptr = StaticPointer(64);
-        let closure = sum(vec![bit(), fn_ptr]).unwrap();
+        let closure = sum(vec![bit_type(), fn_ptr]).unwrap();
         assert_eq!(size(&closure), Ok(65));
     }
 }
