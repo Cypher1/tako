@@ -40,7 +40,7 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
                 Ok(())
             }
             Str(val, _) => {
-                write!(state, "'{}'", val).unwrap();
+                write!(state, "{:?}", val).unwrap();
                 Ok(())
             }
             Lambda(val) => {
