@@ -45,10 +45,18 @@ pub fn work<'a>(
     file.read_to_string(&mut contents)
         .unwrap_or_else(|_| panic!("io error reading file {}", filename.to_owned()));
 
-    let contents = Arc::new(contents);
-    let module_name = db.module_name(filename.to_owned());
+    work_on_string(db, contents, filename, print_impl)
+}
 
-    db.set_file(filename.to_owned(), Ok(contents));
+pub fn work_on_string<'a>(
+    db: &mut DB,
+    contents: String,
+    filename: &str,
+    print_impl: Option<ImplFn<'a>>,
+) -> Result<String, TError> {
+
+    let module_name = db.module_name(filename.to_owned());
+    db.set_file(filename.to_owned(), Ok(Arc::new(contents)));
 
     if db.options().interactive {
         let table = db.build_symbol_table(module_name)?;
