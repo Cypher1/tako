@@ -4,6 +4,9 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 use std::io::prelude::*;
 use std::process::Command;
+use std::path::PathBuf;
+
+use directories::ProjectDirs;
 
 use super::ast::{Node, Path, Root, Symbol, Table, Visitor};
 use super::cli_options::Options;
@@ -18,8 +21,13 @@ pub trait Compiler: salsa::Database {
 
     #[salsa::input]
     fn options(&self) -> Options;
+    #[salsa::input]
+    fn project_dirs(&self) -> Option<ProjectDirs>;
+
     fn debug(&self) -> i32;
     fn files(&self) -> Vec<String>;
+    fn history_file(&self) -> PathBuf;
+    fn config_dir(&self) -> PathBuf;
 
     fn get_externs(&self) -> Result<HashMap<String, Extern>, TError>;
     fn get_extern_names(&self) -> Result<Vec<String>, TError>;
@@ -48,6 +56,19 @@ pub trait Compiler: salsa::Database {
 
     fn compile_to_cpp(&self, module: Path) -> Result<(String, HashSet<String>), TError>;
     fn build_with_gpp(&self, module: Path) -> Result<String, TError>;
+}
+
+fn config_dir(db: &dyn Compiler) -> PathBuf {
+    let project_dirs = db.project_dirs();
+    if let Some(project_dirs) = project_dirs {
+        project_dirs.config_dir().to_path_buf()
+    } else {
+        PathBuf::new()
+    }
+}
+
+fn history_file(db: &dyn Compiler) -> PathBuf {
+    db.config_dir().join("tako_history")
 }
 
 fn debug(db: &dyn Compiler) -> i32 {
