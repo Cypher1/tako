@@ -41,7 +41,6 @@ impl Options {
                 match f.as_str() {
                     "-i" | "--interactive" => {
                         opts.interactive = true;
-                        opts.files.push("/dev/stdin".to_string());
                     }
                     "-r" | "--run" => opts.interactive = true,
                     "-d" => opts.debug += 1,
