@@ -56,7 +56,7 @@ impl Options {
                         if arg != "-h" && arg != "--help" {
                             eprintln!("unexpected flag '{}'", f);
                         }
-                        eprintln!("{}{}\n{}", TITLE, VERSION, USAGE);
+                        print_cli_help();
                         return opts;
                     }
                 }
@@ -70,6 +70,15 @@ impl Options {
         }
         opts
     }
+}
+
+pub fn print_cli_info() {
+    eprintln!("{}{}", TITLE, VERSION);
+}
+
+pub fn print_cli_help() {
+    print_cli_info();
+    eprintln!("{}", USAGE);
 }
 
 pub const TITLE: &str = "tako v";
