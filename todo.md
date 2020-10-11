@@ -2,6 +2,10 @@
 
 ## Features
 
+- Shift+enter in REPL stops continues without execution
+- REPL remembers variables from previous executions
+- REPL completion from std::lib and imported files
+- Load, unload, reload and display loaded modules in REPL
 - Imports
 - Externs (started)
 - Move globals / std into a file using low level ops (started)
