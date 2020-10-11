@@ -63,8 +63,10 @@ fn repl(db: &mut DB) -> Result<(), TError> {
         let mut cmd_was_interrupt = false;
         match readline {
             Ok(line) => {
-                rl.add_history_entry(line.as_str());
-                handle(work_on_string(db, line, "repl", None));
+                if !line.is_empty() {
+                    rl.add_history_entry(line.as_str());
+                    handle(work_on_string(db, line, "repl", None));
+                }
             },
             Err(ReadlineError::Interrupted) => {
                 if last_cmd_was_interrupt {
