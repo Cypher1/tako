@@ -18,8 +18,8 @@ fn handle(res: Result<String, TError>) {
             eprintln!("{}", res);
         }
         Err(err) => {
-            println!("Error: {}", err);
-            println!("Caused by: {}", err.source().unwrap());
+            eprintln!("Error: {}", err);
+            eprintln!("Caused by: {}", err.source().unwrap());
         }
     }
 }
@@ -54,8 +54,8 @@ fn repl(db: &mut DB) -> Result<(), TError> {
         .build();
 
     let mut rl = Editor::<()>::with_config(rl_config);
-    if rl.load_history(&db.history_file()).is_err() {
-        println!("No previous history.");
+    if let Err(err) = rl.load_history(&db.history_file()) {
+        eprintln!("{:?}", err);
     }
     let mut last_cmd_was_interrupt = false;
     loop {
@@ -72,14 +72,14 @@ fn repl(db: &mut DB) -> Result<(), TError> {
                 if last_cmd_was_interrupt {
                     break;
                 }
-                println!("(To exit, press ^C again or type .exit)");
+                eprintln!("(To exit, press ^C again or type .exit)");
                 cmd_was_interrupt = true;
             },
             Err(ReadlineError::Eof) => {
                 break
             },
             Err(err) => {
-                println!("Readline Error: {:?}", err);
+                eprintln!("Readline Error: {:?}", err);
                 break
             }
         }

@@ -98,6 +98,7 @@ impl Type {
     }
 }
 
+#[allow(dead_code)]
 pub fn card(ty: &Type) -> Result<Offset, TError> {
     use Type::*;
     match ty {
