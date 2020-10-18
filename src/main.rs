@@ -3,9 +3,10 @@
 use std::env;
 use std::error::Error;
 
+use directories::ProjectDirs;
 use rustyline::error::ReadlineError;
 use rustyline::{Editor, config::Config};
-use directories::ProjectDirs;
+use termcolor::{StandardStream, Color, ColorChoice, ColorSpec, WriteColor};
 
 use takolib::cli_options::{Options, print_cli_info};
 use takolib::database::{Compiler, DB};
@@ -18,8 +19,14 @@ fn handle(res: Result<String, TError>) {
             eprintln!("{}", res);
         }
         Err(err) => {
+            let mut stderr = StandardStream::stderr(ColorChoice::Auto);
+            stderr.set_color(ColorSpec::new().set_fg(Some(Color::Yellow))).unwrap();
             eprintln!("Error: {}", err);
-            eprintln!("Caused by: {}", err.source().unwrap());
+            if let Some(source) = err.source() {
+                eprintln!("Caused by: {}", source);
+            }
+
+            stderr.set_color(&ColorSpec::new()).unwrap();
         }
     }
 }
