@@ -1,7 +1,15 @@
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Command {
+    Build,
+    Interpret,
+    Repl,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Options {
     pub files: Vec<String>,
-    pub interactive: bool,
+    pub cmd: Command,
     pub show_ast: bool,
     pub show_table: bool,
     pub show_full_ast: bool,
@@ -13,7 +21,7 @@ impl Default for Options {
     fn default() -> Options {
         Options {
             files: vec![],
-            interactive: false,
+            cmd: Command::Build,
             show_ast: false,
             show_table: false,
             show_full_ast: false,
@@ -39,10 +47,8 @@ impl Options {
             if f.is_empty() {
             } else if f.starts_with('-') {
                 match f.as_str() {
-                    "-i" | "--interactive" => {
-                        opts.interactive = true;
-                    }
-                    "-r" | "--run" => opts.interactive = true,
+                    "-i" | "--interactive" => opts.cmd = Command::Repl,
+                    "-r" | "--run" => opts.cmd = Command::Interpret,
                     "-d" => opts.debug += 1,
                     "--ast" => opts.show_ast = true,
                     "--table" => opts.show_table = true,

@@ -46,7 +46,8 @@ fn main() -> Result<(), TError> {
         handle(work(&mut db, &f, None));
     }
 
-    if db.options().interactive {
+    use takolib::cli_options::Command;
+    if db.options().cmd == Command::Repl {
         repl(&mut db)
     } else {
         Ok(())
