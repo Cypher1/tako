@@ -3,9 +3,10 @@
 use std::env;
 use std::error::Error;
 
+use directories::ProjectDirs;
 use rustyline::error::ReadlineError;
 use rustyline::{Editor, config::Config};
-use directories::ProjectDirs;
+use termcolor::{StandardStream, Color, ColorChoice, ColorSpec, WriteColor};
 
 use takolib::cli_options::{Options, print_cli_info};
 use takolib::database::{Compiler, DB};
@@ -18,8 +19,14 @@ fn handle(res: Result<String, TError>) {
             eprintln!("{}", res);
         }
         Err(err) => {
-            println!("Error: {}", err);
-            println!("Caused by: {}", err.source().unwrap());
+            let mut stderr = StandardStream::stderr(ColorChoice::Auto);
+            stderr.set_color(ColorSpec::new().set_fg(Some(Color::Yellow))).unwrap();
+            eprintln!("Error: {}", err);
+            if let Some(source) = err.source() {
+                eprintln!("Caused by: {}", source);
+            }
+
+            stderr.set_color(&ColorSpec::new()).unwrap();
         }
     }
 }
@@ -54,8 +61,8 @@ fn repl(db: &mut DB) -> Result<(), TError> {
         .build();
 
     let mut rl = Editor::<()>::with_config(rl_config);
-    if rl.load_history(&db.history_file()).is_err() {
-        println!("No previous history.");
+    if let Err(err) = rl.load_history(&db.history_file()) {
+        eprintln!("{:?}", err);
     }
     let mut last_cmd_was_interrupt = false;
     loop {
@@ -72,14 +79,14 @@ fn repl(db: &mut DB) -> Result<(), TError> {
                 if last_cmd_was_interrupt {
                     break;
                 }
-                println!("(To exit, press ^C again or type .exit)");
+                eprintln!("(To exit, press ^C again or type .exit)");
                 cmd_was_interrupt = true;
             },
             Err(ReadlineError::Eof) => {
                 break
             },
             Err(err) => {
-                println!("Readline Error: {:?}", err);
+                eprintln!("Readline Error: {:?}", err);
                 break
             }
         }

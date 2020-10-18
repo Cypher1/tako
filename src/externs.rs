@@ -147,7 +147,7 @@ impl LangImpl {
     }
 }
 
-pub fn get_externs(db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError> {
+pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError> {
     use Direction::*;
     use Semantic::Func;
     let mut externs = vec![
