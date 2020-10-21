@@ -58,7 +58,10 @@ pub fn work_on_string<'a>(
     let module_name = db.module_name(filename.to_owned());
     db.set_file(filename.to_owned(), Ok(Arc::new(contents)));
 
-    if db.options().interactive {
+    use cli_options::Command;
+    if db.options().cmd == Command::Build {
+        db.build_with_gpp(module_name)
+    } else {
         let table = db.build_symbol_table(module_name)?;
         let mut interp = Interpreter::default();
         if let Some(print_impl) = print_impl {
@@ -67,7 +70,5 @@ pub fn work_on_string<'a>(
         let res = interp.visit_root(db, &table)?;
         use ast::ToNode;
         PrettyPrint::process(&res.to_node(), db).or_else(|_| panic!("Pretty print failed"))
-    } else {
-        db.build_with_gpp(module_name)
     }
 }
