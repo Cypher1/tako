@@ -72,6 +72,9 @@ fn repl(db: &mut DB) -> Result<(), TError> {
         match readline {
             Ok(line) => {
                 if !line.is_empty() {
+                    if line == ":exit" {
+                        break;
+                    }
                     rl.add_history_entry(line.as_str());
                     handle(work_on_string(db, line, "repl", None));
                 }
@@ -80,7 +83,7 @@ fn repl(db: &mut DB) -> Result<(), TError> {
                 if last_cmd_was_interrupt {
                     break;
                 }
-                eprintln!("(To exit, press ^C again or type .exit)");
+                eprintln!("(To exit, press ^C again or type :exit)");
                 cmd_was_interrupt = true;
             },
             Err(ReadlineError::Eof) => {
