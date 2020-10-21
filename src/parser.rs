@@ -432,13 +432,13 @@ pub fn parse(db: &dyn Compiler, module: &Path) -> Result<Node, TError> {
 pub mod tests {
     use super::parse_string;
     use crate::ast::*;
+    use crate::cli_options::Options;
     use crate::database::Compiler;
     use crate::database::DB;
+    use std::sync::Arc;
     use Prim::*;
 
     fn parse(contents: String) -> Node {
-        use crate::cli_options::Options;
-        use std::sync::Arc;
         let mut db = DB::default();
         let filename = "test.tk";
         db.set_options(Options::default());
@@ -629,5 +629,45 @@ pub mod tests {
             }
             .to_node()
         );
+    }
+
+    extern crate test;
+    use test::Bencher;
+
+    #[bench]
+    fn microbench_parse_i32_fresh_db(b: &mut Bencher) {
+        let filename = "test.tk";
+        let contents = test::black_box(Arc::new("12".to_string()));
+        b.iter(|| {
+            let mut db = DB::default();
+            let module = db.module_name(filename.to_owned());
+            db.set_file(filename.to_owned(), Ok(contents.clone()));
+            db.set_options(Options::default());
+            db.parse_file(module.clone()).expect("failed to parse file")
+        });
+    }
+
+    #[bench]
+    fn microbench_parse_i32_basic(b: &mut Bencher) {
+        let mut db = DB::default();
+        let filename = "test.tk";
+        let module = db.module_name(filename.to_owned());
+        let contents = test::black_box("12".to_string());
+        db.set_file(filename.to_owned(), Ok(Arc::new(contents)));
+        db.set_options(Options::default());
+
+        b.iter(|| db.parse_file(module.clone()).expect("failed to parse file"));
+    }
+
+    #[bench]
+    fn microbench_parse_i32(b: &mut Bencher) {
+        let mut db = DB::default();
+        let filename = "test.tk";
+        let module = db.module_name(filename.to_owned());
+        let contents = test::black_box("12".to_string());
+        db.set_file(filename.to_owned(), Ok(Arc::new(contents)));
+        db.set_options(Options::default());
+
+        b.iter(|| super::parse(&db, &module).expect("failed to parse file"));
     }
 }

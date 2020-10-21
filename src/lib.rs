@@ -1,4 +1,5 @@
 #![deny(clippy::all)]
+#![feature(test)]
 
 #[macro_use]
 mod map_macros;
