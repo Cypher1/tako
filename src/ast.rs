@@ -248,8 +248,8 @@ impl ToNode for Node {
 }
 
 pub trait ToNode {
-    fn to_node(self: Self) -> Node;
-    fn get_info(self: &Self) -> Info;
+    fn to_node(self) -> Node;
+    fn get_info(&self) -> Info;
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]

@@ -3,8 +3,8 @@ use std::sync::Arc;
 use std::collections::{HashMap, HashSet, VecDeque};
 
 use std::io::prelude::*;
-use std::process::Command;
 use std::path::PathBuf;
+use std::process::Command;
 
 use directories::ProjectDirs;
 

@@ -54,7 +54,6 @@ pub fn work_on_string<'a>(
     filename: &str,
     print_impl: Option<ImplFn<'a>>,
 ) -> Result<String, TError> {
-
     let module_name = db.module_name(filename.to_owned());
     db.set_file(filename.to_owned(), Ok(Arc::new(contents)));
 

@@ -5,10 +5,10 @@ use std::error::Error;
 
 use directories::ProjectDirs;
 use rustyline::error::ReadlineError;
-use rustyline::{Editor, config::Config};
-use termcolor::{StandardStream, Color, ColorChoice, ColorSpec, WriteColor};
+use rustyline::{config::Config, Editor};
+use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
-use takolib::cli_options::{Options, print_cli_info};
+use takolib::cli_options::{print_cli_info, Options};
 use takolib::database::{Compiler, DB};
 use takolib::errors::TError;
 use takolib::{work, work_on_string};
@@ -20,7 +20,9 @@ fn handle(res: Result<String, TError>) {
         }
         Err(err) => {
             let mut stderr = StandardStream::stderr(ColorChoice::Auto);
-            stderr.set_color(ColorSpec::new().set_fg(Some(Color::Yellow))).unwrap();
+            stderr
+                .set_color(ColorSpec::new().set_fg(Some(Color::Yellow)))
+                .unwrap();
             eprintln!("Error: {}", err);
             if let Some(source) = err.source() {
                 eprintln!("Caused by: {}", source);
@@ -57,9 +59,7 @@ fn main() -> Result<(), TError> {
 fn repl(db: &mut DB) -> Result<(), TError> {
     print_cli_info();
     // `()` can be used when no completer is required
-    let rl_config = Config::builder()
-        .tab_stop(2)
-        .build();
+    let rl_config = Config::builder().tab_stop(2).build();
 
     let mut rl = Editor::<()>::with_config(rl_config);
     if let Err(err) = rl.load_history(&db.history_file()) {
@@ -78,20 +78,18 @@ fn repl(db: &mut DB) -> Result<(), TError> {
                     rl.add_history_entry(line.as_str());
                     handle(work_on_string(db, line, "repl", None));
                 }
-            },
+            }
             Err(ReadlineError::Interrupted) => {
                 if last_cmd_was_interrupt {
                     break;
                 }
                 eprintln!("(To exit, press ^C again or type :exit)");
                 cmd_was_interrupt = true;
-            },
-            Err(ReadlineError::Eof) => {
-                break
-            },
+            }
+            Err(ReadlineError::Eof) => break,
             Err(err) => {
                 eprintln!("Readline Error: {:?}", err);
-                break
+                break;
             }
         }
         last_cmd_was_interrupt = cmd_was_interrupt;
