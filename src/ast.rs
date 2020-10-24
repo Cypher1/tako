@@ -27,7 +27,7 @@ impl ToNode for Err {
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Apply {
     pub inner: Box<Node>,
-    pub args: Vec<Let>,
+    pub args: Box<Node>, // Accept packed args
     pub info: Info,
 }
 
