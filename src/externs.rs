@@ -432,6 +432,17 @@ string to_string(const bool& t){
             cpp: LangImpl::operator("!"),
         },
         Extern {
+            name: "...".to_string(),
+            semantic: operator(70, Left),
+            ty: Function {
+                intros: dict!("a" => variable("Type")), // TODO: This should unpack a type with a set of named values and put them into scope.
+                results: dict!("it" => variable("a")),
+                arguments: dict!("it" => variable("a")),
+                effects: vec![],
+            },
+            cpp: LangImpl::operator("..."), // TODO: Implement
+        },
+        Extern {
             name: "-".to_string(),
             semantic: operator(70, Left),
             ty: Function {

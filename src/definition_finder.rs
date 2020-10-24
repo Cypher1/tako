@@ -74,23 +74,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
 
     fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
         state.path.push(Symbol::Anon());
-        let mut args = vec![];
-        for arg in expr.args.iter() {
-            match self.visit_let(db, state, arg)? {
-                Node::LetNode(let_node) => {
-                    let mut defined_arg = let_node.clone();
-                    let mut path = state.path.clone();
-                    // Inject the value into the 'anon' stack frame.
-                    path.push(Symbol::new(let_node.name));
-                    if db.debug() > 1 {
-                        eprintln!("defining arg at {:?}", path.clone());
-                    }
-                    defined_arg.info.defined_at = Some(path);
-                    args.push(defined_arg)
-                }
-                _ => panic!("InternalError: definition_finder converted let node to other node."),
-            }
-        }
+        let args = Box::new(self.visit(db, state, &*expr.args)?);
         let inner = Box::new(self.visit(db, state, &*expr.inner)?);
         state.path.pop();
         Ok(Apply {
@@ -102,6 +86,17 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
     }
 
     fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
+        /*
+
+                    let mut path = state.path.clone();
+                    // Inject the value into the 'anon' stack frame.
+                    path.push(Symbol::new(let_node.name));
+                    if db.debug() > 1 {
+                        eprintln!("defining arg at {:?}", path.clone());
+                    }
+                    defined_arg.info.defined_at = Some(path);
+
+        */
         if db.debug() > 1 {
             eprintln!("visiting {:?} {}", state.path.clone(), &expr.name);
         }

@@ -110,19 +110,9 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
     }
 
     fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
-        let arg_scope_name = Symbol::Anon();
-
-        state.path.push(arg_scope_name);
-        let mut args = Vec::new();
-        for arg in expr.args.iter() {
-            args.push(match self.visit_let(db, state, arg)? {
-                Node::LetNode(let_node) => Ok(let_node),
-                node => Err(TError::InternalError(
-                    "Symbol table builder converted let into non let".to_owned(),
-                    node,
-                )),
-            }?);
-        }
+        state.path.push(Symbol::Anon());
+        let args = Box::new(self.visit(db, state, &*expr.args)?);
+        // TODO: These should be separate...
         let inner = Box::new(self.visit(db, state, &*expr.inner)?);
         state.path.pop();
 

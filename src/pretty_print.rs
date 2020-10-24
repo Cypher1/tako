@@ -30,41 +30,22 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
 
     fn visit_prim(&mut self, db: &dyn Compiler, state: &mut State, expr: &Prim) -> Res {
         use Prim::*;
-        match expr {
-            Bool(val, _) => {
-                write!(state, "{}", val).unwrap();
-                Ok(())
-            }
-            I32(val, _) => {
-                write!(state, "{}", val).unwrap();
-                Ok(())
-            }
-            Str(val, _) => {
-                write!(state, "'{}'", val).unwrap();
-                Ok(())
-            }
-            Lambda(val) => {
-                self.visit(db, state, val)?;
-                Ok(())
-            }
-            TypeValue(val, _) => {
-                write!(state, "{}", val).unwrap();
-                Ok(())
-            }
-        }
+        let res = match expr {
+            Unit(_) => write!(state, "()"),
+            Bool(val, _) => write!(state, "{}", val),
+            I32(val, _) => write!(state, "{}", val),
+            Str(val, _) => write!(state, "'{}'", val),
+            Lambda(val) => Ok(self.visit(db, state, val)?),
+            TypeValue(val, _) => write!(state, "{}", val),
+        };
+        res.unwrap();
+        Ok(())
     }
 
     fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
         self.visit(db, state, &*expr.inner)?;
         write!(state, "(").unwrap();
-        let mut is_first = true;
-        for arg in expr.args.iter() {
-            if !is_first {
-                write!(state, ", ").unwrap();
-            }
-            self.visit_let(db, state, &arg)?;
-            is_first = false;
-        }
+        self.visit(db, state, &expr.args)?;
         write!(state, ")").unwrap();
         Ok(())
     }

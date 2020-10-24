@@ -57,6 +57,7 @@ impl ToNode for Sym {
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Prim {
+    Unit(Info),
     Bool(bool, Info),
     I32(i32, Info),
     Str(String, Info),
@@ -71,6 +72,7 @@ impl ToNode for Prim {
     fn get_info(&self) -> Info {
         use Prim::*;
         match self {
+            Unit(info) => info.clone(),
             Bool(_, info) => info.clone(),
             I32(_, info) => info.clone(),
             Str(_, info) => info.clone(),

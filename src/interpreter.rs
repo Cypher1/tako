@@ -58,6 +58,7 @@ fn prim_add(l: &Prim, r: &Prim, info: Info) -> Res {
 pub fn prim_add_strs(l: &Prim, r: &Prim, info: Info) -> Res {
     use Prim::*;
     let to_str = |val: &Prim| match val {
+        Unit(_) => "()".to_string(),
         Bool(v, _) => format!("{}", v),
         I32(v, _) => format!("{}", v),
         Str(v, _) => v.clone(),
@@ -328,9 +329,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             eprintln!("evaluating apply {}", expr.clone().to_node());
         }
         state.push(Frame::new());
-        for arg in expr.args.iter() {
-            self.visit_let(db, state, arg)?;
-        }
+        self.visit(db, state, &expr.args)?;
         // Visit the expr.inner
         let res = self.visit(db, state, &*expr.inner)?;
         state.pop();

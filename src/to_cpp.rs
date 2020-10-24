@@ -278,6 +278,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
     fn visit_prim(&mut self, db: &dyn Compiler, state: &mut State, expr: &Prim) -> Res {
         use Prim::*;
         match expr {
+            Unit(_) => Ok(Code::Expr("nullptr".to_string())),
             I32(n, _) => Ok(Code::Expr(n.to_string())),
             Bool(true, _) => Ok(Code::Expr(1.to_string())),
             Bool(false, _) => Ok(Code::Expr(0.to_string())),
@@ -291,28 +292,13 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
 
     fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
         // eprintln!("apply here: {:?}", expr);
+        // Build the 'struct' of args
+        let args = self.visit(db, state, &expr.args)?;
+        let arg_str = match args {
+            Code::Expr(arg_str) => arg_str,
+            _ => panic!("Don't know how to apply arguments that aren't an expr"),
+        };
         let val = self.visit(db, state, &expr.inner)?;
-        let mut arg_exprs = vec![];
-        for arg in expr.args.iter() {
-            let body = self.visit(db, state, &arg.value)?;
-            if let Some(args) = &arg.args {
-                let body = body.with_expr(&|exp| Code::Statement(format!("return {}", exp)));
-                let arg_expr = pretty_print_block(body, "");
-                let mut arg_names: Vec<String> = vec![];
-                for lambda_arg in args.iter() {
-                    arg_names.push(format!(
-                        "const auto {}",
-                        pretty_print_block(self.visit_sym(db, state, lambda_arg)?, "")
-                    ));
-                }
-                arg_exprs.push(format!("[&]({}){{{}}}", arg_names.join(", "), arg_expr));
-                continue;
-            }
-            let arg_expr = pretty_print_block(body, "");
-            arg_exprs.push(arg_expr.clone())
-        }
-        // TODO: require label is none.
-        let arg_str = arg_exprs.join(", ");
         match val {
             Code::Expr(expr) => {
                 let with_args = format!("{}({})", expr, arg_str);

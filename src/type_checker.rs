@@ -9,6 +9,11 @@ pub fn infer(db: &dyn Compiler, expr: &Node) -> Result<Node, TError> {
     use crate::ast::*;
     match expr {
         PrimNode(prim) => match prim {
+            Unit(_) => Ok(Sym { // TODO: Use actual types here.
+                name: "Unit".to_owned(),
+                info: Info::default(),
+            }
+            .to_node()),
             I32(_, _) => Ok(Sym {
                 name: "I32".to_owned(),
                 info: Info::default(),

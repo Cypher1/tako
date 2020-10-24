@@ -261,7 +261,7 @@ fn led(
                         Node::SymNode(s) => Ok((
                             Let {
                                 name: s.name,
-                                args: Some(a.args.iter().map(|l| l.to_sym()).collect()),
+                                args: Some(get_defs(*a.args).iter().map(|l| l.to_sym()).collect()),
                                 value: Box::new(right),
                                 info: head.get_info(),
                             }
@@ -282,7 +282,7 @@ fn led(
                     return Ok((
                         Apply {
                             inner: Box::new(left),
-                            args: vec![],
+                            args: Box::new(Prim::Unit(head.get_info()).to_node()),
                             info: head.get_info(),
                         }
                         .to_node(),
@@ -319,7 +319,7 @@ fn led(
                 }
                 new_toks.pop_front();
                 // Introduce arguments
-                let args = get_defs(inner);
+                let args = Box::new(inner); // get_defs(inner);
                 Ok((
                     Apply {
                         inner: Box::new(left),
