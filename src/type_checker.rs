@@ -9,7 +9,8 @@ pub fn infer(db: &dyn Compiler, expr: &Node) -> Result<Node, TError> {
     use crate::ast::*;
     match expr {
         PrimNode(prim) => match prim {
-            Unit(_) => Ok(Sym { // TODO: Use actual types here.
+            Unit(_) => Ok(Sym {
+                // TODO: Use actual types here.
                 name: "Unit".to_owned(),
                 info: Info::default(),
             }
@@ -30,6 +31,13 @@ pub fn infer(db: &dyn Compiler, expr: &Node) -> Result<Node, TError> {
             }
             .to_node()),
             Lambda(node) => infer(db, node.as_ref()), // TODO: abstraction
+            Struct(vals, info) => {
+                let mut tys = vec![];
+                for val in vals.iter() {
+                    tys.push((val.0.to_string(), infer(db, &val.1)?));
+                }
+                Ok(Struct(tys, info.clone()).to_node())
+            }
             TypeValue(_ty, _) => db.parse_str(
                 vec![Symbol::Named("stdlib".to_string(), Some(".tk".to_string()))],
                 "Type",

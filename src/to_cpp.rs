@@ -14,6 +14,7 @@ pub struct CodeGenerator {
 pub enum Code {
     Empty,
     Block(Vec<Code>),
+    Struct(Vec<Code>),
     Expr(String),
     Statement(String),
     If {
@@ -35,6 +36,7 @@ impl Code {
         match self {
             Code::Empty => Code::Empty,
             Code::Expr(expr) => f(expr),
+            Code::Struct(values) => Code::Struct(values),
             Code::Block(mut statements) => {
                 let last = statements.pop().unwrap();
                 statements.push(last.with_expr(f));
@@ -119,6 +121,14 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
                 .map(|x| pretty_print_block(x.clone(), &new_indent))
                 .collect();
             format!("{{{}{indent}}}", body.join(""), indent = indent,)
+        }
+        Code::Struct(vals) => {
+            let new_indent = indent.to_string() + "  ";
+            let body: Vec<String> = vals
+                .iter()
+                .map(|x| pretty_print_block(x.clone(), &new_indent))
+                .collect();
+            format!("{{{}{indent}}}", body.join(", "), indent = indent,)
         }
         Code::Expr(line) => line,
         Code::Statement(line) => format!("{}{};", indent, line),
@@ -284,6 +294,14 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             Bool(false, _) => Ok(Code::Expr(0.to_string())),
             Str(s, _) => Ok(Code::Expr(format!("{:?}", s))),
             Lambda(node) => self.visit(db, state, node),
+            Struct(vals, _) => {
+                // TODO: Struct C++
+                let mut val_code = vec![];
+                for val in vals.iter() {
+                    val_code.push(self.visit(db, state, &val.1)?);
+                }
+                Ok(Code::Struct(val_code))
+            },
             TypeValue(_ty, _) => {
                 unimplemented!("unimplemented primitive type in compilation to cpp")
             }

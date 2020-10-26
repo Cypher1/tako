@@ -62,6 +62,7 @@ pub enum Prim {
     I32(i32, Info),
     Str(String, Info),
     Lambda(Box<Node>),
+    Struct(Vec<(String, Node)>, Info), // Should really just store values, but we can't do that yet.
     TypeValue(Type, Info),
 }
 
@@ -77,6 +78,7 @@ impl ToNode for Prim {
             I32(_, info) => info.clone(),
             Str(_, info) => info.clone(),
             Lambda(node) => (*node).get_info(),
+            Struct(_, info) => info.clone(),
             TypeValue(_, info) => info.clone(),
         }
     }
@@ -284,6 +286,7 @@ impl Symbol {
 }
 
 pub type Path = Vec<Symbol>;
+pub type PathRef<'a> = &'a[Symbol];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Entry {

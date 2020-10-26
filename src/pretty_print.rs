@@ -36,6 +36,20 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
             I32(val, _) => write!(state, "{}", val),
             Str(val, _) => write!(state, "'{}'", val),
             Lambda(val) => Ok(self.visit(db, state, val)?),
+            Struct(vals, _) => {
+                write!(state, "{{").unwrap();
+                let mut is_first = true;
+                for val in vals.iter() {
+                    if !is_first {
+                        write!(state, ", ").unwrap();
+                    }
+                    write!(state, "{} = ", val.0).unwrap();
+                    self.visit(db, state, &val.1)?;
+                    is_first = false;
+
+                }
+                write!(state, "}}")
+            }
             TypeValue(val, _) => write!(state, "{}", val),
         };
         res.unwrap();

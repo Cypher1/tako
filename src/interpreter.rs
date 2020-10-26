@@ -62,6 +62,7 @@ pub fn prim_add_strs(l: &Prim, r: &Prim, info: Info) -> Res {
         Bool(v, _) => format!("{}", v),
         I32(v, _) => format!("{}", v),
         Str(v, _) => v.clone(),
+        Struct(v, info) => format!("{:?}", Struct(v.to_vec(), info.clone())),
         Lambda(v) => format!("{}", v),
         TypeValue(v, _) => format!("{}", v),
     };
@@ -415,6 +416,14 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             "||" => prim_or(&l?, &r()?, info),
             "&" => prim_type_and(l?, r()?, info),
             "|" => prim_type_or(l?, r()?, info),
+            "," => {
+                let left = l?;
+                let right = r()?;
+                Ok(Struct(
+                    vec![("left".to_string(), left.to_node()), ("right".to_string(), right.to_node())],
+                    info
+                ))
+            }
             ";" => {
                 l?;
                 Ok(r()?)
@@ -488,6 +497,7 @@ mod tests {
         Interpreter::default().visit(&db, &mut state, &ast)
     }
 
+    #[allow(dead_code)]
     fn trace<T: std::fmt::Display, E>(t: Result<T, E>) -> Result<T, E> {
         match &t {
             Ok(t) => eprintln!(">> {}", &t),
