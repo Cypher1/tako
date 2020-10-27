@@ -23,7 +23,7 @@ pub enum Type {
     Variable(String),
     Function {
         results: Pack,
-        intros: Pack,
+        intros: Pack, // TODO: Replace pack with some kind of struct and push the effects into the results.
         arguments: Pack,
         effects: Vec<String>,
     },

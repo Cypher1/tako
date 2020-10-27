@@ -44,7 +44,7 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
                         write!(state, ", ").unwrap();
                     }
                     write!(state, "{} = ", val.0).unwrap();
-                    self.visit(db, state, &val.1)?;
+                    self.visit_prim(db, state, &val.1)?;
                     is_first = false;
 
                 }

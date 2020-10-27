@@ -27,7 +27,7 @@ impl ToNode for Err {
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Apply {
     pub inner: Box<Node>,
-    pub args: Box<Node>, // Accept packed args
+    pub args: Box<Vec<Let>>,
     pub info: Info,
 }
 
@@ -46,6 +46,17 @@ pub struct Sym {
     pub info: Info,
 }
 
+impl Sym {
+    pub fn to_let(self: &Sym) -> Let {
+        Let {
+            name: self.name.clone(),
+            value: Box::new(self.to_node()),
+            args: Some(vec![]),
+            info: self.get_info(),
+        }
+    }
+}
+
 impl ToNode for Sym {
     fn to_node(self) -> Node {
         Node::SymNode(self)
@@ -62,7 +73,7 @@ pub enum Prim {
     I32(i32, Info),
     Str(String, Info),
     Lambda(Box<Node>),
-    Struct(Vec<(String, Node)>, Info), // Should really just store values, but we can't do that yet.
+    Struct(Vec<(String, Prim)>, Info), // Should really just store values, but we can't do that yet.
     TypeValue(Type, Info),
 }
 
@@ -95,8 +106,9 @@ impl fmt::Display for Prim {
 pub struct Let {
     pub name: String,
     pub value: Box<Node>,
-    pub args: Option<Vec<Sym>>, // TODO(cypher1): Args should be let nodes.
+    pub args: Option<Vec<Let>>, // None implies a variable.
     pub info: Info,
+    // TODO; support captures
 }
 
 impl Let {

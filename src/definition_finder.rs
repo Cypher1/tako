@@ -86,20 +86,11 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
     }
 
     fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
-        /*
-
-                    let mut path = state.path.clone();
-                    // Inject the value into the 'anon' stack frame.
-                    path.push(Symbol::new(let_node.name));
-                    if db.debug() > 1 {
-                        eprintln!("defining arg at {:?}", path.clone());
-                    }
-                    defined_arg.info.defined_at = Some(path);
-
-        */
         if db.debug() > 1 {
             eprintln!("visiting {:?} {}", state.path.clone(), &expr.name);
         }
+        let mut info = expr.info.clone();
+        info.defined_at = Some(state.path.clone());
         let path_name = Symbol::new(expr.name.clone());
         state.path.push(path_name);
         let value = Box::new(self.visit(db, state, &expr.value)?);
@@ -108,7 +99,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
             name: expr.name.clone(),
             args: expr.args.clone(),
             value,
-            info: expr.get_info(),
+            info,
         }
         .to_node())
     }

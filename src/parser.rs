@@ -30,14 +30,11 @@ fn get_defs(root: Node) -> Vec<Let> {
     use Node::*;
     let mut args = vec![];
 
+    dbg!(&root);
+
     match root {
         LetNode(n) => args.push(n),
-        SymNode(n) => args.push(Let {
-            name: n.name.clone(),
-            args: None,
-            info: n.get_info(),
-            value: Box::new(n.to_node()),
-        }),
+        SymNode(n) => args.push(n.to_let()),
         BinOpNode(BinOp {
             name,
             left,
@@ -282,7 +279,7 @@ fn led(
                     return Ok((
                         Apply {
                             inner: Box::new(left),
-                            args: Box::new(Prim::Unit(head.get_info()).to_node()),
+                            args: Box::new(vec![]),
                             info: head.get_info(),
                         }
                         .to_node(),
@@ -290,7 +287,6 @@ fn led(
                     ));
                 }
                 let (inner, mut new_toks) = expr(db, toks, 0)?;
-                // TODO: Handle empty parens
                 let close = new_toks.front();
                 match (head.value.as_str(), close) {
                     (
@@ -342,7 +338,7 @@ fn expr(
     init_toks: VecDeque<Token>,
     init_lbp: i32,
 ) -> Result<(Node, VecDeque<Token>), TError> {
-    // TODO: Name updates fields, this is confusing (0 is tree, 1 is toks)
+    // TODO: Name update's fields, this is confusing (0 is tree, 1 is toks)
     let init_update = nud(db, init_toks)?;
     let mut left: Node = init_update.0;
     let mut toks: VecDeque<Token> = init_update.1;

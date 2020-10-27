@@ -298,7 +298,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 // TODO: Struct C++
                 let mut val_code = vec![];
                 for val in vals.iter() {
-                    val_code.push(self.visit(db, state, &val.1)?);
+                    val_code.push(self.visit_prim(db, state, &val.1)?);
                 }
                 Ok(Code::Struct(val_code))
             },

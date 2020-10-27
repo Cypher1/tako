@@ -1,47 +1,28 @@
-use crate::ast::Node;
-use crate::ast::{Node::*, Prim::*};
+use crate::ast::{Node, Node::*, Prim::*};
 use crate::database::Compiler;
 use crate::errors::TError;
 
-pub fn infer(db: &dyn Compiler, expr: &Node) -> Result<Node, TError> {
+use crate::types::{Type, void_type, unit_type, i32_type, bit_type, string_type, record};
+
+pub fn infer(db: &dyn Compiler, expr: &Node) -> Result<Type, TError> {
     // Infer that expression t has type A, t => A
     // See https://ncatlab.org/nlab/show/bidirectional+typechecking
     use crate::ast::*;
     match expr {
         PrimNode(prim) => match prim {
-            Unit(_) => Ok(Sym {
-                // TODO: Use actual types here.
-                name: "Unit".to_owned(),
-                info: Info::default(),
-            }
-            .to_node()),
-            I32(_, _) => Ok(Sym {
-                name: "I32".to_owned(),
-                info: Info::default(),
-            }
-            .to_node()),
-            Bool(_, _) => Ok(Sym {
-                name: "Bool".to_owned(),
-                info: Info::default(),
-            }
-            .to_node()),
-            Str(_, _) => Ok(Sym {
-                name: "String".to_owned(),
-                info: Info::default(),
-            }
-            .to_node()),
+            Unit(_) => Ok(unit_type()),
+            I32(_, _) => Ok(i32_type()),
+            Bool(_, _) => Ok(bit_type()),
+            Str(_, _) => Ok(string_type()),
             Lambda(node) => infer(db, node.as_ref()), // TODO: abstraction
-            Struct(vals, info) => {
-                let mut tys = vec![];
+            Struct(vals, _) => {
+                let mut tys: Vec<Type> = vec![];
                 for val in vals.iter() {
-                    tys.push((val.0.to_string(), infer(db, &val.1)?));
+                    tys.push(infer(db, &val.1.clone().to_node())?);
                 }
-                Ok(Struct(tys, info.clone()).to_node())
+                Ok(record(tys)?)
             }
-            TypeValue(_ty, _) => db.parse_str(
-                vec![Symbol::Named("stdlib".to_string(), Some(".tk".to_string()))],
-                "Type",
-            ),
+            TypeValue(_ty, _) => Ok(Type::Variable("Type".to_string())),
         },
         UnOpNode(UnOp {
             name: _,
@@ -73,18 +54,25 @@ pub fn infer(db: &dyn Compiler, expr: &Node) -> Result<Node, TError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::{Info, Sym, ToNode};
+    use crate::ast::{Info, ToNode};
     use crate::database::DB;
 
     fn assert_type(prog: &'static str, ty: &'static str) {
-        let mut db = DB::default();
         use crate::cli_options::Options;
+        use std::collections::HashMap;
+        use crate::interpreter::Interpreter;
+        use crate::ast::Visitor;
+        let mut db = DB::default();
         db.set_options(Options::default());
         let module = vec![];
-        let prog = db.parse_str(module.clone(), prog).unwrap();
-        let prog = infer(&db, &prog);
+        let prog_str = db.parse_str(module.clone(), prog).unwrap();
+        dbg!(&prog_str);
+        let prog = TypeValue(infer(&db, &prog_str).unwrap(), Info::default());
         let ty = db.parse_str(module, ty).unwrap();
-        assert_eq!(prog, Ok(ty));
+        dbg!(&ty);
+        let mut state = vec![HashMap::new()];
+        let result_type = Interpreter::default().visit(&db, &mut state, &ty);
+        assert_eq!(Ok(prog), result_type);
     }
 
     #[test]
@@ -93,11 +81,7 @@ mod tests {
         let num = I32(23, Info::default()).to_node();
         assert_eq!(
             infer(&db, &num),
-            Ok(Sym {
-                name: "I32".to_owned(),
-                info: Info::default()
-            }
-            .to_node())
+            Ok(i32_type())
         );
         assert_type("23", "I32");
     }

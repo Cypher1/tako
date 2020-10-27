@@ -420,7 +420,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
                 let left = l?;
                 let right = r()?;
                 Ok(Struct(
-                    vec![("left".to_string(), left.to_node()), ("right".to_string(), right.to_node())],
+                    vec![("left".to_string(), left), ("right".to_string(), right)],
                     info
                 ))
             }
@@ -493,6 +493,8 @@ mod tests {
         db.set_file(filename.to_owned(), Ok(Arc::new(s)));
         db.set_options(Options::default());
         let ast = db.parse_file(module)?;
+        dbg!(&ast);
+        dbg!(format!("{}", &ast));
         let mut state = vec![HashMap::new()];
         Interpreter::default().visit(&db, &mut state, &ast)
     }
