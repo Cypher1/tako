@@ -55,7 +55,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
                     return Ok(res.to_node());
                 }
                 None => {
-                    search.pop(); // Strip theF name off.
+                    search.pop(); // Strip the name off.
                     if db.debug() > 1 {
                         eprintln!("   not found {} at {:?}", expr.name.clone(), search.clone());
                     }
