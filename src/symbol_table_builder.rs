@@ -111,7 +111,13 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
 
     fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
         state.path.push(Symbol::Anon());
-        let args = Box::new(self.visit(db, state, &*expr.args)?);
+        let mut args: Vec<Let> = vec![];
+        for arg in expr.args.iter() {
+            args.push(match self.visit_let(db, state, &arg)? {
+                Node::LetNode(arg) => arg,
+                arg => panic!("Symbol table builder converted a let node to a {:?}", arg),
+            });
+        }
         // TODO: These should be separate...
         let inner = Box::new(self.visit(db, state, &*expr.inner)?);
         state.path.pop();
@@ -125,14 +131,13 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
     }
 
     fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
-        let let_name = Symbol::new(expr.name.clone());
         if db.debug() > 1 {
-            eprintln!("visiting {:?} {}", state.path.clone(), &let_name);
+            eprintln!("visiting {:?} {}", state.path.clone(), &expr.name);
         }
 
         // Visit definition.
         let mut info = expr.get_info();
-        state.path.push(let_name);
+        state.path.push(Symbol::new(expr.name.clone()));
         info.defined_at = Some(state.path.clone());
         state.table.get_mut(&state.path);
 

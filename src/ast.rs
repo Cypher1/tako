@@ -27,7 +27,7 @@ impl ToNode for Err {
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Apply {
     pub inner: Box<Node>,
-    pub args: Box<Vec<Let>>,
+    pub args: Vec<Let>,
     pub info: Info,
 }
 
@@ -50,7 +50,7 @@ impl Sym {
     pub fn to_let(self: &Sym) -> Let {
         Let {
             name: self.name.clone(),
-            value: Box::new(self.to_node()),
+            value: Box::new(self.clone().to_node()),
             args: Some(vec![]),
             info: self.get_info(),
         }

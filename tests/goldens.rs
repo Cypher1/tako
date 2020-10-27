@@ -47,6 +47,13 @@ fn test_with_expectation(expected: TestResult, options: Vec<&str>) {
         (Ok(result), Success) => {
             eprintln!("Success. Result:\n{:?}", result);
         },
+        (Ok(result), ReturnValue(value)) => {
+            assert_eq!(
+                result,
+                format!("{}", value)
+            );
+            eprintln!("Success. Result:\n{:?}", result);
+        },
         (Ok(result), Output(s)) => {
             assert_eq!(
                 s,
@@ -67,8 +74,14 @@ fn test_with_expectation(expected: TestResult, options: Vec<&str>) {
         (Err(err), Error) => {
             eprintln!("Received error:\n{:?}", err);
         },
-        (result, expectation) => {
-            panic!(format!("\n-----Got-----\n{:?}\n---Expected--\n{:?}\n", result, expectation));
+        (Ok(result), Error) => {
+            eprintln!("---Got result---\n{:?}", result);
+            panic!("Expected error");
+        },
+        (Err(err), expectation) => {
+            eprintln!("---Got error---\n{}", err);
+            eprintln!("---Expected---\n{:?}", expectation);
+            panic!(format!("Error: {:?}", err));
         }
     }
 }
@@ -370,7 +383,7 @@ fn multi_comment_nested() {
   interpret_with_success("examples/multi_comment_nested.tk")
 }
 
-#[test]
+// #[test]
 fn mutual_recursion() {
   interpret_with_success("examples/mutual_recursion.tk")
 }

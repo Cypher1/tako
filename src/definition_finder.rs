@@ -74,7 +74,13 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
 
     fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
         state.path.push(Symbol::Anon());
-        let args = Box::new(self.visit(db, state, &*expr.args)?);
+        let mut args = vec![];
+        for arg in expr.args.iter() {
+            args.push(match self.visit_let(db, state, &arg)? {
+                Node::LetNode(arg) => arg,
+                arg => panic!("Definition finder converted let node to {:?}", arg),
+            });
+        }
         let inner = Box::new(self.visit(db, state, &*expr.inner)?);
         state.path.pop();
         Ok(Apply {

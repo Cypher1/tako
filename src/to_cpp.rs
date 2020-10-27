@@ -311,14 +311,19 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
     fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
         // eprintln!("apply here: {:?}", expr);
         // Build the 'struct' of args
-        let args = self.visit(db, state, &expr.args)?;
-        let arg_str = match args {
-            Code::Expr(arg_str) => arg_str,
-            _ => panic!("Don't know how to apply arguments that aren't an expr"),
-        };
+        let mut arg_strs = vec![];
+        for arg in expr.args.iter() {
+            arg_strs.push(
+                match self.visit_let(db, state, arg)? {
+                    Code::Expr(arg_str) => arg_str,
+                    Code::Empty => "".to_string(),
+                    arg => panic!("Don't know how to apply arguments that aren't an expr\n{:?}", arg),
+                });
+        }
         let val = self.visit(db, state, &expr.inner)?;
         match val {
             Code::Expr(expr) => {
+                let arg_str = arg_strs.join(", ");
                 let with_args = format!("{}({})", expr, arg_str);
                 Ok(Code::Expr(with_args))
             }
@@ -332,23 +337,23 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         //     expr.get_info().defined_at,
         //     expr.name
         // );
-        let filename = expr
-            .get_info()
-            .loc
-            .expect("cannot find symbol location")
-            .filename
-            .expect("cannot find symbol file location");
+        // let filename = expr
+            // .get_info()
+            // .loc
+            // .expect("cannot find symbol location")
+            // .filename
+            // .expect("cannot find symbol file location");
 
-        let context = db.module_name(filename);
+        // let context = db.module_name(filename);
 
-        let path = expr.get_info().defined_at.expect("Undefined symbol")[context.len()..].to_vec();
+        // let path = expr.get_info().defined_at.expect("Undefined symbol")[context.len()..].to_vec();
 
-        let uses = db
-            .find_symbol_uses(context.clone(), path.clone())?
-            .unwrap_or_else(|| panic!("couldn't find {:?} {:?}", context.clone(), path.clone()));
-        if uses.is_empty() {
-            return Ok(Code::Empty);
-        }
+        // let uses = db
+            // .find_symbol_uses(context.clone(), path.clone())?
+            // .unwrap_or_else(|| panic!("couldn't find {:?} {:?}", context.clone(), path.clone()));
+        // if uses.is_empty() {
+            // return Ok(Code::Empty);
+        // }
         let name = make_name(
             expr.get_info()
                 .defined_at

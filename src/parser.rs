@@ -30,8 +30,6 @@ fn get_defs(root: Node) -> Vec<Let> {
     use Node::*;
     let mut args = vec![];
 
-    dbg!(&root);
-
     match root {
         LetNode(n) => args.push(n),
         SymNode(n) => args.push(n.to_let()),
@@ -258,7 +256,7 @@ fn led(
                         Node::SymNode(s) => Ok((
                             Let {
                                 name: s.name,
-                                args: Some(get_defs(*a.args).iter().map(|l| l.to_sym()).collect()),
+                                args: Some(a.args),
                                 value: Box::new(right),
                                 info: head.get_info(),
                             }
@@ -279,7 +277,7 @@ fn led(
                     return Ok((
                         Apply {
                             inner: Box::new(left),
-                            args: Box::new(vec![]),
+                            args: vec![],
                             info: head.get_info(),
                         }
                         .to_node(),
@@ -315,7 +313,7 @@ fn led(
                 }
                 new_toks.pop_front();
                 // Introduce arguments
-                let args = Box::new(inner); // get_defs(inner);
+                let args = get_defs(inner);
                 Ok((
                     Apply {
                         inner: Box::new(left),

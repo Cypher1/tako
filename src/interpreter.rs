@@ -330,7 +330,9 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             eprintln!("evaluating apply {}", expr.clone().to_node());
         }
         state.push(Frame::new());
-        self.visit(db, state, &expr.args)?;
+        for arg in expr.args.iter() {
+            self.visit_let(db, state, &arg)?;
+        }
         // Visit the expr.inner
         let res = self.visit(db, state, &*expr.inner)?;
         state.pop();
