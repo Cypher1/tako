@@ -115,7 +115,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
         for arg in expr.args.iter() {
             args.push(match self.visit_let(db, state, &arg)? {
                 Node::LetNode(arg) => arg,
-                arg => panic!("Symbol table builder converted a let node to a {:?}", arg),
+                arg => panic!("SymbolTableBuilder converted a let node to a {:?}", arg),
             });
         }
         // TODO: These should be separate...
@@ -145,19 +145,10 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
         let args = if let Some(e_args) = &expr.args {
             let mut args = vec![];
             for arg in e_args.iter() {
-                let mut arg_path = state.path.clone();
-                arg_path.push(Symbol::new(arg.name.clone()));
-                state.table.get_mut(&arg_path);
-                let mut sym = arg.clone();
-                if db.debug() > 1 {
-                    eprintln!(
-                        "visiting let arg {:?} {}",
-                        arg_path.clone(),
-                        &sym.name.clone()
-                    );
-                }
-                sym.info.defined_at = Some(arg_path);
-                args.push(sym);
+                args.push(match self.visit_let(db, state, arg)? {
+                    Node::LetNode(arg) => arg,
+                    arg => panic!("SymbolTableBuilder converted a let node into a {:?}", arg),
+                });
             }
             Some(args)
         } else {
@@ -171,7 +162,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
             name: expr.name.clone(),
             value,
             args,
-            info,
+            info: info.clone(),
         }
         .to_node())
     }

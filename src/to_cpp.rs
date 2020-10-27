@@ -205,8 +205,8 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
     fn visit_root(&mut self, db: &dyn Compiler, module: &Path) -> Result<Out, TError> {
         let root = db.look_up_definitions(module.clone())?;
         let mut main_info = root.ast.get_info();
-        let mut main_at = module.clone();
-        main_at.push(Symbol::new("main".to_string()));
+        let main_at = module.clone();
+        //main_at.push(Symbol::new("main".to_string()));
         main_info.defined_at = Some(main_at);
         let main_let = Let {
             info: main_info,
@@ -314,9 +314,8 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         let mut arg_strs = vec![];
         for arg in expr.args.iter() {
             arg_strs.push(
-                match self.visit_let(db, state, arg)? {
+                match self.visit(db, state, &*arg.value)? { // TODO: Use struct building pattern here.
                     Code::Expr(arg_str) => arg_str,
-                    Code::Empty => "".to_string(),
                     arg => panic!("Don't know how to apply arguments that aren't an expr\n{:?}", arg),
                 });
         }
@@ -337,28 +336,27 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         //     expr.get_info().defined_at,
         //     expr.name
         // );
-        // let filename = expr
-            // .get_info()
-            // .loc
-            // .expect("cannot find symbol location")
-            // .filename
-            // .expect("cannot find symbol file location");
+        let filename = expr
+            .get_info()
+            .loc
+            .expect("cannot find symbol location")
+            .filename
+            .expect("cannot find symbol file location");
 
-        // let context = db.module_name(filename);
+        let context = db.module_name(filename);
 
-        // let path = expr.get_info().defined_at.expect("Undefined symbol")[context.len()..].to_vec();
-
-        // let uses = db
-            // .find_symbol_uses(context.clone(), path.clone())?
-            // .unwrap_or_else(|| panic!("couldn't find {:?} {:?}", context.clone(), path.clone()));
-        // if uses.is_empty() {
-            // return Ok(Code::Empty);
-        // }
-        let name = make_name(
-            expr.get_info()
-                .defined_at
-                .expect("Could not find definition for let"),
-        );
+        let mut path = expr.get_info().defined_at.expect("Could not find definition for let").clone();
+        path.push(Symbol::new(expr.name.clone())); // TODO: Why is this necessary?
+        let relative_path = path[context.len()..].to_vec();
+        let uses = db
+            .find_symbol_uses(context.clone(), relative_path.clone())?
+            .unwrap_or_else(|| panic!("couldn't find {:?} {:?}", context.clone(), relative_path.clone()));
+        if uses.is_empty() {
+            dbg!("Culling", &expr.get_info().defined_at);
+            dbg!(&relative_path);
+            return Ok(Code::Empty);
+        }
+        let name = make_name(path);
         let body = self.visit(db, state, &expr.value)?;
         if let Some(args) = &expr.args {
             let body = body.with_expr(&|exp| Code::Statement(format!("return {}", exp)));

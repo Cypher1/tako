@@ -292,13 +292,14 @@ impl Symbol {
     pub fn to_name(self: &Symbol) -> String {
         match self {
             Symbol::Anon() => "".to_owned(),
+            // TODO: Edge case exists here if two files with different extensions are used together
             Symbol::Named(name, _) => name.to_owned(),
         }
     }
 }
 
 pub type Path = Vec<Symbol>;
-pub type PathRef<'a> = &'a[Symbol];
+pub type PathRef<'a> = &'a [Symbol];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Entry {
