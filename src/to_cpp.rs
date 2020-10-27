@@ -311,18 +311,30 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
     fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
         // eprintln!("apply here: {:?}", expr);
         // Build the 'struct' of args
-        let mut arg_strs = vec![];
+        let mut arg_exprs = vec![];
         for arg in expr.args.iter() {
-            arg_strs.push(
-                match self.visit(db, state, &*arg.value)? { // TODO: Use struct building pattern here.
-                    Code::Expr(arg_str) => arg_str,
-                    arg => panic!("Don't know how to apply arguments that aren't an expr\n{:?}", arg),
-                });
+            let body = self.visit(db, state, &arg.value)?;
+            if let Some(args) = &arg.args {
+                let body = body.with_expr(&|exp| Code::Statement(format!("return {}", exp)));
+                let arg_expr = pretty_print_block(body, "");
+                let mut arg_names: Vec<String> = vec![];
+                for lambda_arg in args.iter() {
+                    // TODO: This is wrong, doesn't handle functions that take functions?
+                    arg_names.push(format!(
+                        "const auto {}",
+                        pretty_print_block(self.visit_let(db, state, lambda_arg)?, "")
+                    ));
+                }
+                arg_exprs.push(format!("[&]({}){{{}}}", arg_names.join(", "), arg_expr));
+                continue;
+            }
+            let arg_expr = pretty_print_block(body, "");
+            arg_exprs.push(arg_expr.clone());
         }
         let val = self.visit(db, state, &expr.inner)?;
         match val {
             Code::Expr(expr) => {
-                let arg_str = arg_strs.join(", ");
+                let arg_str = arg_exprs.join(", ");
                 let with_args = format!("{}({})", expr, arg_str);
                 Ok(Code::Expr(with_args))
             }
