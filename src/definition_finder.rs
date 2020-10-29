@@ -60,7 +60,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
                         eprintln!("   not found {} at {:?}", expr.name.clone(), search.clone());
                     }
                     if search.is_empty() {
-                        return Err(TError::UnknownSymbol(expr.name.clone(), expr.get_info()));
+                        return Err(TError::UnknownSymbol(expr.name.clone(), expr.get_info(), state.path.clone()));
                     }
                     search.pop(); // Up one, go again.
                 }

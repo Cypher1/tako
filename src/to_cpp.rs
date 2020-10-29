@@ -362,7 +362,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         let relative_path = path[context.len()..].to_vec();
         let uses = db
             .find_symbol_uses(context.clone(), relative_path.clone())?
-            .unwrap_or_else(|| panic!("couldn't find {:?} {:?}", context.clone(), relative_path.clone()));
+            .unwrap_or_else(|| panic!("couldn't find uses for {:?} {:?}", context.clone(), relative_path.clone()));
         if uses.is_empty() {
             dbg!("Culling", &expr.get_info().defined_at);
             dbg!(&relative_path);
