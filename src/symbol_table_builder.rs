@@ -143,7 +143,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
             name: expr.name.clone(),
             value,
             args,
-            info: info.clone(),
+            info,
         }
         .to_node())
     }

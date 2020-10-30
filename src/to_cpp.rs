@@ -248,7 +248,12 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         for func in self.functions.clone().iter() {
             match &func {
                 Code::Func { name, args, .. } => {
-                    code = format!("{}{}({});\n", code, name, pretty_print_block((**args).clone(), ""))
+                    code = format!(
+                        "{}{}({});\n",
+                        code,
+                        name,
+                        pretty_print_block((**args).clone(), "")
+                    )
                 }
                 _ => panic!("Cannot create function from non-function"),
             }
@@ -301,7 +306,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                     val_code.push(self.visit_prim(db, state, &val.1)?);
                 }
                 Ok(Code::Struct(val_code))
-            },
+            }
             TypeValue(_ty, _) => {
                 unimplemented!("unimplemented primitive type in compilation to cpp")
             }
@@ -337,12 +342,21 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
 
         let context = db.module_name(filename);
 
-        let mut path = expr.get_info().defined_at.expect("Could not find definition for let").clone();
+        let mut path = expr
+            .get_info()
+            .defined_at
+            .expect("Could not find definition for let");
         path.push(Symbol::new(expr.name.clone())); // TODO: Why is this necessary?
         let relative_path = path[context.len()..].to_vec();
         let uses = db
             .find_symbol_uses(context.clone(), relative_path.clone())?
-            .unwrap_or_else(|| panic!("couldn't find uses for {:?} {:?}", context.clone(), relative_path.clone()));
+            .unwrap_or_else(|| {
+                panic!(
+                    "couldn't find uses for {:?} {:?}",
+                    context.clone(),
+                    relative_path.clone()
+                )
+            });
         if uses.is_empty() {
             dbg!("Culling", &expr.get_info().defined_at);
             dbg!(&relative_path);
@@ -364,7 +378,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             lambda: true,
         };
 
-        return Ok(node);
+        Ok(node)
     }
 
     fn visit_un_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &UnOp) -> Res {

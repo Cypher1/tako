@@ -1,7 +1,7 @@
 use crate::ast::Info;
 use crate::ast::Node;
-use crate::ast::Prim;
 use crate::ast::Path;
+use crate::ast::Prim;
 
 use thiserror::Error;
 

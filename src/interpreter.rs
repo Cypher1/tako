@@ -319,7 +319,11 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
         if let Some(default_impl) = crate::externs::get_implementation(name.to_owned()) {
             return default_impl(db, vec![&it_arg], expr.get_info());
         }
-        Err(TError::UnknownSymbol(name.to_string(), expr.info.clone(), vec![]))
+        Err(TError::UnknownSymbol(
+            name.to_string(),
+            expr.info.clone(),
+            vec![],
+        ))
     }
 
     fn visit_prim(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Prim) -> Res {
@@ -422,7 +426,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
                 let right = r()?;
                 Ok(Struct(
                     vec![("left".to_string(), left), ("right".to_string(), right)],
-                    info
+                    info,
                 ))
             }
             ";" => {

@@ -9,11 +9,11 @@ use std::process::Command;
 use directories::ProjectDirs;
 
 use super::ast::{Node, Path, Root, Symbol, Table, Visitor};
-use super::types::Type;
 use super::cli_options::Options;
 use super::errors::TError;
 use super::externs::{Extern, Semantic};
 use super::tokens::Token;
+use super::types::Type;
 
 #[salsa::query_group(CompilerStorage)]
 pub trait Compiler: salsa::Database {

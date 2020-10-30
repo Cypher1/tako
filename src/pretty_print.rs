@@ -47,7 +47,6 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
                     write!(state, "{} = ", val.0).unwrap();
                     self.visit_prim(db, state, &val.1)?;
                     is_first = false;
-
                 }
                 write!(state, "}}")
             }
@@ -74,7 +73,7 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
         }
 
         match &*expr.args {
-            Node::PrimNode(Prim::Void(_)) => {},
+            Node::PrimNode(Prim::Void(_)) => {}
             node => {
                 write!(state, "(").unwrap();
                 self.visit(db, state, node)?;

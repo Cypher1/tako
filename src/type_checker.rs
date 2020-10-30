@@ -2,7 +2,7 @@ use crate::ast::{Node, Node::*, Prim::*};
 use crate::database::Compiler;
 use crate::errors::TError;
 
-use crate::types::{Type, void_type, unit_type, i32_type, bit_type, string_type, record};
+use crate::types::{bit_type, i32_type, record, string_type, unit_type, void_type, Type};
 
 pub fn infer(db: &dyn Compiler, expr: &Node) -> Result<Type, TError> {
     // Infer that expression t has type A, t => A
@@ -59,10 +59,10 @@ mod tests {
     use crate::database::DB;
 
     fn assert_type(prog: &'static str, ty: &'static str) {
-        use crate::cli_options::Options;
-        use std::collections::HashMap;
-        use crate::interpreter::Interpreter;
         use crate::ast::Visitor;
+        use crate::cli_options::Options;
+        use crate::interpreter::Interpreter;
+        use std::collections::HashMap;
         let mut db = DB::default();
         db.set_options(Options::default());
         let module = vec![];
@@ -80,10 +80,7 @@ mod tests {
     fn infer_type_of_i32() {
         let db = DB::default();
         let num = I32(23, Info::default()).to_node();
-        assert_eq!(
-            infer(&db, &num),
-            Ok(i32_type())
-        );
+        assert_eq!(infer(&db, &num), Ok(i32_type()));
         assert_type("23", "I32");
     }
 
