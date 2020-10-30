@@ -24,7 +24,7 @@ pub enum Code {
     },
     Func {
         name: String,
-        args: Vec<String>,
+        args: Box<Code>,
         return_type: String,
         body: Box<Code>,
         lambda: bool,
@@ -111,22 +111,21 @@ pub fn make_name(def: Vec<Symbol>) -> String {
 }
 
 fn pretty_print_block(src: Code, indent: &str) -> String {
+    let new_indent = indent.to_string() + "  ";
     // Calculate the expression as well...
     // TODO: Consider if it is dropped (should it be stored? is it a side effect?)
     match src {
         Code::Block(statements) => {
-            let new_indent = indent.to_string() + "  ";
             let body: Vec<String> = statements
                 .iter()
-                .map(|x| pretty_print_block(x.clone(), &new_indent))
+                .map(|x| pretty_print_block(x.clone(), new_indent))
                 .collect();
             format!("{{{}{indent}}}", body.join(""), indent = indent,)
         }
         Code::Struct(vals) => {
-            let new_indent = indent.to_string() + "  ";
             let body: Vec<String> = vals
                 .iter()
-                .map(|x| pretty_print_block(x.clone(), &new_indent))
+                .map(|x| pretty_print_block(x.clone(), new_indent))
                 .collect();
             format!("{{{}{indent}}}", body.join(", "), indent = indent,)
         }
@@ -157,16 +156,16 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
             lambda,
         } => {
             let body = if let Code::Block(_) = *inner {
-                pretty_print_block(*inner, &indent)
+                pretty_print_block(*inner, new_indent)
             } else {
                 // Auto wrap statements in blocks.
-                pretty_print_block(Code::Block(vec![*inner]), &indent)
+                pretty_print_block(Code::Block(vec![*inner]), new_indent)
             };
             if lambda {
                 format!(
                     "{indent}const auto {} = [&]({}) {};",
                     name,
-                    args.join(", "),
+                    pretty_print_block(args, new_indent),
                     body,
                     indent = indent
                 )
@@ -175,7 +174,7 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
                     "{indent}{} {}({}) {}",
                     return_type,
                     name,
-                    args.join(", "),
+                    pretty_print_block(args, new_indent),
                     body,
                     indent = indent
                 )
@@ -212,7 +211,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             info: main_info,
             name: "main".to_string(),
             value: Box::new(root.ast.clone()),
-            args: Some(vec![]),
+            args: Box::new(Prim::Unit(Info::default()).to_node()),
         };
         let mut table = root.table; // TODO: Shouldn't be mut
         if db.debug() > 1 {
@@ -311,31 +310,11 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
     fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
         // eprintln!("apply here: {:?}", expr);
         // Build the 'struct' of args
-        let mut arg_exprs = vec![];
-        for arg in expr.args.iter() {
-            let body = self.visit(db, state, &arg.value)?;
-            if let Some(args) = &arg.args {
-                let body = body.with_expr(&|exp| Code::Statement(format!("return {}", exp)));
-                let arg_expr = pretty_print_block(body, "");
-                let mut arg_names: Vec<String> = vec![];
-                for lambda_arg in args.iter() {
-                    // TODO: This is wrong, doesn't handle functions that take functions?
-                    arg_names.push(format!(
-                        "const auto {}",
-                        pretty_print_block(self.visit_let(db, state, lambda_arg)?, "")
-                    ));
-                }
-                arg_exprs.push(format!("[&]({}){{{}}}", arg_names.join(", "), arg_expr));
-                continue;
-            }
-            let arg_expr = pretty_print_block(body, "");
-            arg_exprs.push(arg_expr.clone());
-        }
-        let val = self.visit(db, state, &expr.inner)?;
-        match val {
+        let args = self.visit(db, state, &expr.args)?;
+        let inner = self.visit(db, state, &expr.inner)?;
+        match inner {
             Code::Expr(expr) => {
-                let arg_str = arg_exprs.join(", ");
-                let with_args = format!("{}({})", expr, arg_str);
+                let with_args = format!("{}({})", expr, args);
                 Ok(Code::Expr(with_args))
             }
             _ => panic!("Don't know how to apply arguments to a block"),
@@ -370,33 +349,21 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         }
         let name = make_name(path);
         let body = self.visit(db, state, &expr.value)?;
-        if let Some(args) = &expr.args {
-            let body = body.with_expr(&|exp| Code::Statement(format!("return {}", exp)));
-            let args: Vec<String> = args
-                .iter()
-                .map(|s| {
-                    format!(
-                        "const auto {}",
-                        make_name(
-                            s.get_info()
-                                .defined_at
-                                .expect("Could not find definition for let argument"),
-                        )
-                    )
-                })
-                .collect();
-
-            let node = Code::Func {
-                name,
-                args,
-                return_type: "int".to_string(),
-                body: Box::new(body),
-                lambda: true,
-            };
-
-            return Ok(node);
+        if let PrimNode(Prim::Void(_)) = &expr.args {
+            return Ok(body.with_expr(&|x| Code::Statement(format!("const auto {} = {}", name, x))));
         }
-        Ok(body.with_expr(&|x| Code::Statement(format!("const auto {} = {}", name, x))))
+        let args = Box::new(self.visit(db, state, &expr.args)?);
+        let body = body.with_expr(&|exp| Code::Statement(format!("return {}", exp)));
+
+        let node = Code::Func {
+            name,
+            args,
+            return_type: "int".to_string(),
+            body: Box::new(body),
+            lambda: true,
+        };
+
+        return Ok(node);
     }
 
     fn visit_un_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &UnOp) -> Res {

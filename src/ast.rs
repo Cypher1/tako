@@ -51,7 +51,7 @@ impl Sym {
         Let {
             name: self.name.clone(),
             value: Box::new(self.clone().to_node()),
-            args: Box::new(Prim::Void(Info::default())),
+            args: Box::new(Prim::Void(Info::default()).to_node()),
             info: self.get_info(),
         }
     }
@@ -68,6 +68,7 @@ impl ToNode for Sym {
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Prim {
+    Void(Info),
     Unit(Info),
     Bool(bool, Info),
     I32(i32, Info),

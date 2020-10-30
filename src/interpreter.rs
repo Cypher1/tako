@@ -344,7 +344,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             eprintln!("evaluating let {}", expr.clone().to_node());
         }
 
-        if expr.args.is_some() {
+        if expr.args == Prim::Void(Info::default()).to_node() {
             state
                 .last_mut()
                 .unwrap()

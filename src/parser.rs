@@ -26,49 +26,6 @@ fn binding_power(db: &dyn Compiler, tok: &Token) -> Result<i32, TError> {
     })
 }
 
-fn get_defs(root: Node) -> Vec<Let> {
-    use Node::*;
-    let mut args = vec![];
-
-    match root {
-        LetNode(n) => args.push(n),
-        SymNode(n) => args.push(n.to_let()),
-        BinOpNode(BinOp {
-            name,
-            left,
-            right,
-            info,
-        }) => {
-            if name == "," {
-                args.append(&mut get_defs(*left));
-                args.append(&mut get_defs(*right));
-            } else {
-                args.push(Let {
-                    name: "it".to_string(),
-                    args: None,
-                    value: Box::new(
-                        BinOp {
-                            name,
-                            left,
-                            right,
-                            info: info.clone(),
-                        }
-                        .to_node(),
-                    ),
-                    info,
-                });
-            }
-        }
-        n => args.push(Let {
-            name: "it".to_string(),
-            args: None,
-            value: Box::new(n.clone()),
-            info: n.get_info(),
-        }),
-    }
-    args
-}
-
 impl Token {
     pub fn get_info(&self) -> Info {
         self.pos.clone().get_info()
@@ -245,7 +202,7 @@ fn led(
                     Node::SymNode(s) => Ok((
                         Let {
                             name: s.name,
-                            args: None,
+                            args: Box::new(Prim::Void(head.get_info()).to_node()),
                             value: Box::new(right),
                             info: head.get_info(),
                         }
@@ -256,7 +213,7 @@ fn led(
                         Node::SymNode(s) => Ok((
                             Let {
                                 name: s.name,
-                                args: Some(a.args),
+                                args: a.args,
                                 value: Box::new(right),
                                 info: head.get_info(),
                             }
@@ -277,14 +234,14 @@ fn led(
                     return Ok((
                         Apply {
                             inner: Box::new(left),
-                            args: vec![],
+                            args: Box::new(Prim::Unit(head.get_info()).to_node()),
                             info: head.get_info(),
                         }
                         .to_node(),
                         toks,
                     ));
                 }
-                let (inner, mut new_toks) = expr(db, toks, 0)?;
+                let (args, mut new_toks) = expr(db, toks, 0)?;
                 let close = new_toks.front();
                 match (head.value.as_str(), close) {
                     (
@@ -313,11 +270,10 @@ fn led(
                 }
                 new_toks.pop_front();
                 // Introduce arguments
-                let args = get_defs(inner);
                 Ok((
                     Apply {
                         inner: Box::new(left),
-                        args,
+                        args: Box::new(args),
                         info: head.get_info(),
                     }
                     .to_node(),
@@ -605,7 +561,7 @@ pub mod tests {
                 left: Box::new(
                     Let {
                         name: "x".to_string(),
-                        args: Some(vec![]),
+                        args: Box::new(Prim::Unit(Info::default()).to_node()),
                         value: Box::new(
                             UnOp {
                                 name: "!".to_string(),
