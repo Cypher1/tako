@@ -2,7 +2,7 @@ use crate::ast::{Node, Node::*, Prim::*};
 use crate::database::Compiler;
 use crate::errors::TError;
 
-use crate::types::{Type, unit_type, i32_type, bit_type, string_type, record};
+use crate::types::{Type, void_type, unit_type, i32_type, bit_type, string_type, record};
 
 pub fn infer(db: &dyn Compiler, expr: &Node) -> Result<Type, TError> {
     // Infer that expression t has type A, t => A
@@ -10,6 +10,7 @@ pub fn infer(db: &dyn Compiler, expr: &Node) -> Result<Type, TError> {
     use crate::ast::*;
     match expr {
         PrimNode(prim) => match prim {
+            Void(_) => Ok(void_type()),
             Unit(_) => Ok(unit_type()),
             I32(_, _) => Ok(i32_type()),
             Bool(_, _) => Ok(bit_type()),

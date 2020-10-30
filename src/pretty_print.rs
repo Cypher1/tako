@@ -31,6 +31,7 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
     fn visit_prim(&mut self, db: &dyn Compiler, state: &mut State, expr: &Prim) -> Res {
         use Prim::*;
         let res = match expr {
+            Void(_) => write!(state, "Void"),
             Unit(_) => write!(state, "()"),
             Bool(val, _) => write!(state, "{}", val),
             I32(val, _) => write!(state, "{}", val),
@@ -73,7 +74,7 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
         }
 
         match &*expr.args {
-            PrimNode(Prim::Void(_)) => {},
+            Node::PrimNode(Prim::Void(_)) => {},
             node => {
                 write!(state, "(").unwrap();
                 self.visit(db, state, node)?;

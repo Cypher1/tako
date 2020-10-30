@@ -118,14 +118,14 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
         Code::Block(statements) => {
             let body: Vec<String> = statements
                 .iter()
-                .map(|x| pretty_print_block(x.clone(), new_indent))
+                .map(|x| pretty_print_block(x.clone(), new_indent.as_str()))
                 .collect();
             format!("{{{}{indent}}}", body.join(""), indent = indent,)
         }
         Code::Struct(vals) => {
             let body: Vec<String> = vals
                 .iter()
-                .map(|x| pretty_print_block(x.clone(), new_indent))
+                .map(|x| pretty_print_block(x.clone(), new_indent.as_str()))
                 .collect();
             format!("{{{}{indent}}}", body.join(", "), indent = indent,)
         }
@@ -156,16 +156,16 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
             lambda,
         } => {
             let body = if let Code::Block(_) = *inner {
-                pretty_print_block(*inner, new_indent)
+                pretty_print_block(*inner, new_indent.as_str())
             } else {
                 // Auto wrap statements in blocks.
-                pretty_print_block(Code::Block(vec![*inner]), new_indent)
+                pretty_print_block(Code::Block(vec![*inner]), new_indent.as_str())
             };
             if lambda {
                 format!(
                     "{indent}const auto {} = [&]({}) {};",
                     name,
-                    pretty_print_block(args, new_indent),
+                    pretty_print_block(*args, new_indent.as_str()),
                     body,
                     indent = indent
                 )
@@ -174,7 +174,7 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
                     "{indent}{} {}({}) {}",
                     return_type,
                     name,
-                    pretty_print_block(args, new_indent),
+                    pretty_print_block(*args, new_indent.as_str()),
                     body,
                     indent = indent
                 )
@@ -226,7 +226,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 return_type: _,
             } => Code::Func {
                 name: "main".to_string(),
-                args: vec!["int argc".to_string(), "char* argv[]".to_string()],
+                args: Box::new(Code::Expr("int argc, char* argv[]".to_string())),
                 body,
                 lambda: false,
                 return_type: "int".to_string(),
@@ -248,7 +248,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         for func in self.functions.clone().iter() {
             match &func {
                 Code::Func { name, args, .. } => {
-                    code = format!("{}{}({});\n", code, name, args.join(", "))
+                    code = format!("{}{}({});\n", code, name, pretty_print_block((**args).clone(), ""))
                 }
                 _ => panic!("Cannot create function from non-function"),
             }
@@ -287,6 +287,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
     fn visit_prim(&mut self, db: &dyn Compiler, state: &mut State, expr: &Prim) -> Res {
         use Prim::*;
         match expr {
+            Void(_) => Ok(Code::Expr("void".to_string())),
             Unit(_) => Ok(Code::Expr("nullptr".to_string())),
             I32(n, _) => Ok(Code::Expr(n.to_string())),
             Bool(true, _) => Ok(Code::Expr(1.to_string())),
@@ -314,7 +315,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         let inner = self.visit(db, state, &expr.inner)?;
         match inner {
             Code::Expr(expr) => {
-                let with_args = format!("{}({})", expr, args);
+                let with_args = format!("{}({})", expr, pretty_print_block(args, ""));
                 Ok(Code::Expr(with_args))
             }
             _ => panic!("Don't know how to apply arguments to a block"),
@@ -349,7 +350,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         }
         let name = make_name(path);
         let body = self.visit(db, state, &expr.value)?;
-        if let PrimNode(Prim::Void(_)) = &expr.args {
+        if let Node::PrimNode(Prim::Void(_)) = &*expr.args {
             return Ok(body.with_expr(&|x| Code::Statement(format!("const auto {} = {}", name, x))));
         }
         let args = Box::new(self.visit(db, state, &expr.args)?);

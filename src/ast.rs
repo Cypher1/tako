@@ -85,6 +85,7 @@ impl ToNode for Prim {
     fn get_info(&self) -> Info {
         use Prim::*;
         match self {
+            Void(info) => info.clone(),
             Unit(info) => info.clone(),
             Bool(_, info) => info.clone(),
             I32(_, info) => info.clone(),
