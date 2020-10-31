@@ -50,7 +50,7 @@ impl Sym {
     pub fn to_let(self: &Sym) -> Let {
         Let {
             name: self.name.clone(),
-            value: Box::new(self.clone().to_node()),
+            value: Box::new(Prim::Unit(Info::default()).to_node()),
             args: Box::new(Prim::Void(Info::default()).to_node()),
             info: self.get_info(),
         }
