@@ -1,7 +1,4 @@
-use crate::ast::Info;
-use crate::ast::Node;
-use crate::ast::Path;
-use crate::ast::Prim;
+use crate::ast::{Info, Node, Prim};
 
 use thiserror::Error;
 
@@ -12,8 +9,8 @@ pub enum TError {
     #[error("call to C++ compiler failed with error code\n{1:#?}. {0}")]
     CppCompilerError(String, Option<i32>),
 
-    #[error("unknown symbol `{0}` at {1:?}, {2:?}")]
-    UnknownSymbol(String, Info, Path),
+    #[error("unknown symbol `{0}` at {1:?}, {2}")]
+    UnknownSymbol(String, Info, String),
     #[error("unknown infix operator `{0}` at {1:?}")]
     UnknownInfixOperator(String, Info),
     #[error("unknown prefix operator `{0}` at {1:?}")]

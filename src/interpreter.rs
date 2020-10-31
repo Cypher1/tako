@@ -322,7 +322,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
         Err(TError::UnknownSymbol(
             name.to_string(),
             expr.info.clone(),
-            vec![],
+            "".to_string()
         ))
     }
 
