@@ -319,10 +319,11 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
         if let Some(default_impl) = crate::externs::get_implementation(name.to_owned()) {
             return default_impl(db, vec![&it_arg], expr.get_info());
         }
+        dbg!(state);
         Err(TError::UnknownSymbol(
             name.to_string(),
             expr.info.clone(),
-            "".to_string()
+            "interpreter::?".to_string(),
         ))
     }
 
@@ -347,7 +348,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             eprintln!("evaluating let {}", expr.clone().to_node());
         }
 
-        if *expr.args == Prim::Void(Info::default()).to_node() {
+        if *expr.args != Prim::Void(Info::default()).to_node() {
             state
                 .last_mut()
                 .unwrap()
@@ -424,14 +425,14 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             "," => {
                 let left = l?;
                 let right = r()?;
-                Ok(Struct(
-                    vec![("left".to_string(), left), ("right".to_string(), right)],
-                    info,
-                ))
+                dbg!(",", &left, &right);
+                Ok(left.merge(right))
             }
             ";" => {
-                l?;
-                Ok(r()?)
+                let left = l?;
+                let right = r()?;
+                dbg!(";", &left, &right);
+                Ok(left.merge(right))
             }
             "?" => match l {
                 Err(_) => r(),

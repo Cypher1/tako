@@ -94,8 +94,6 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
         if db.debug() > 1 {
             eprintln!("visiting {:?} {}", state.path.clone(), &expr.name);
         }
-        let mut info = expr.info.clone();
-        info.defined_at = Some(state.path.clone());
         let path_name = Symbol::new(expr.name.clone());
         state.path.push(path_name);
         let args = Box::new(self.visit(db, state, &expr.args)?);
@@ -105,7 +103,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
             name: expr.name.clone(),
             args,
             value,
-            info,
+            info: expr.info.clone(),
         }
         .to_node())
     }
