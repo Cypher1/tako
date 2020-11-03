@@ -270,8 +270,8 @@ fn led(
                 }
                 new_toks.pop_front();
                 // Introduce arguments
-                args = (||{
-                    if let Node::BinOpNode(BinOp {name, ..}) = args.clone() {
+                args = (|| {
+                    if let Node::BinOpNode(BinOp { name, .. }) = args.clone() {
                         if name == "," {
                             return args;
                         }
@@ -284,7 +284,8 @@ fn led(
                         args: Box::new(Prim::Unit(Info::default()).to_node()),
                         info: args.get_info(),
                         value: Box::new(args),
-                    }.to_node()
+                    }
+                    .to_node()
                 })();
                 Ok((
                     Apply {

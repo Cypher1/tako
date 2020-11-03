@@ -60,7 +60,8 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
                         eprintln!("   not found {} at {:?}", expr.name.clone(), search.clone());
                     }
                     if search.is_empty() {
-                        let path_names: Vec<String> = state.path.iter().map(|p|format!("{}", p)).collect();
+                        let path_names: Vec<String> =
+                            state.path.iter().map(|p| format!("{}", p)).collect();
                         return Err(TError::UnknownSymbol(
                             expr.name.clone(),
                             expr.get_info(),

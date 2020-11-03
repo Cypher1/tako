@@ -78,21 +78,18 @@ pub enum Prim {
     TypeValue(Type, Info),
 }
 
-fn merge_vals(
-    left: Vec<(String, Prim)>,
-    right: Vec<(String, Prim)>
-) -> Vec<(String, Prim)> {
+fn merge_vals(left: Vec<(String, Prim)>, right: Vec<(String, Prim)>) -> Vec<(String, Prim)> {
     let mut names = HashSet::<String>::new();
     for pair in right.iter() {
         names.insert(pair.0.clone());
     }
     let mut items = vec![];
-    for pair in left.iter()  {
+    for pair in left.iter() {
         if !names.contains(&pair.0) {
             items.push(pair.clone());
         }
     }
-    for pair in right.iter()  {
+    for pair in right.iter() {
         items.push(pair.clone());
     }
     items
@@ -103,7 +100,9 @@ impl Prim {
         use Prim::*;
         match (self, other) {
             (Struct(vals, info), Struct(o_vals, _)) => Struct(merge_vals(vals, o_vals), info),
-            (Struct(vals, info), other) => Struct(merge_vals(vals, vec![("it".to_string(), other)]), info),
+            (Struct(vals, info), other) => {
+                Struct(merge_vals(vals, vec![("it".to_string(), other)]), info)
+            }
             (_, other) => other,
         }
     }
