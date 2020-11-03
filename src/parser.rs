@@ -279,6 +279,9 @@ fn led(
                     if let Node::LetNode(letn) = args {
                         return letn.to_node();
                     }
+                    if let Node::SymNode(symn) = args {
+                        return symn.to_let().to_node();
+                    }
                     Let {
                         name: "it".to_string(),
                         args: Box::new(Prim::Unit(Info::default()).to_node()),
