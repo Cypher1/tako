@@ -276,6 +276,9 @@ fn led(
                             return args;
                         }
                     }
+                    if let Node::LetNode(letn) = args {
+                        return letn;
+                    }
                     Let {
                         name: "it".to_string(),
                         args: Box::new(Prim::Unit(Info::default()).to_node()),
