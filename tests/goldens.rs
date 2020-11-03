@@ -383,7 +383,7 @@ fn multi_comment_nested() {
   interpret_with_success("examples/multi_comment_nested.tk")
 }
 
-// #[test]
+#[test]
 fn mutual_recursion() {
   interpret_with_success("examples/mutual_recursion.tk")
 }
