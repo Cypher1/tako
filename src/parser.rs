@@ -277,7 +277,7 @@ fn led(
                         }
                     }
                     if let Node::LetNode(letn) = args {
-                        return letn;
+                        return letn.to_node();
                     }
                     Let {
                         name: "it".to_string(),

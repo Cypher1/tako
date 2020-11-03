@@ -156,10 +156,10 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
             lambda,
         } => {
             let body = if let Code::Block(_) = *inner {
-                pretty_print_block(*inner, new_indent.as_str())
+                pretty_print_block(*inner, indent)
             } else {
                 // Auto wrap statements in blocks.
-                pretty_print_block(Code::Block(vec![*inner]), new_indent.as_str())
+                pretty_print_block(Code::Block(vec![*inner]), indent)
             };
             if lambda {
                 format!(
