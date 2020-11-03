@@ -241,7 +241,7 @@ fn led(
                         toks,
                     ));
                 }
-                let (args, mut new_toks) = expr(db, toks, 0)?;
+                let (mut args, mut new_toks) = expr(db, toks, 0)?;
                 let close = new_toks.front();
                 match (head.value.as_str(), close) {
                     (
@@ -270,6 +270,19 @@ fn led(
                 }
                 new_toks.pop_front();
                 // Introduce arguments
+                args = (||{
+                    if let Node::BinOpNode(BinOp {name, ..}) = args.clone() {
+                        if name == "," {
+                            return args;
+                        }
+                    }
+                    Let {
+                        name: "it".to_string(),
+                        args: Box::new(Prim::Unit(Info::default()).to_node()),
+                        info: args.get_info(),
+                        value: Box::new(args),
+                    }.to_node()
+                })();
                 Ok((
                     Apply {
                         inner: Box::new(left),
