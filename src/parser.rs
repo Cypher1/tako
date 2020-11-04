@@ -133,6 +133,32 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
     }
 }
 
+fn get_defs(args: Node) -> Node {
+    if let Node::SymNode(symn) = args {
+        return symn.to_let().to_node();
+    }
+    if let Node::LetNode(letn) = args {
+        return letn.to_node();
+    }
+    if let Node::BinOpNode(BinOp { name, left, right, info }) = args.clone() {
+        if name == "," {
+            return BinOp {
+                name,
+                left: Box::new(get_defs(*left)),
+                right: Box::new(get_defs(*right)),
+                info
+            }.to_node();
+        }
+    }
+    Let {
+        name: "it".to_string(),
+        args: Box::new(Prim::Void(Info::default()).to_node()),
+        info: args.get_info(),
+        value: Box::new(args),
+    }
+    .to_node()
+}
+
 fn led(
     db: &dyn Compiler,
     mut toks: VecDeque<Token>,
@@ -241,7 +267,7 @@ fn led(
                         toks,
                     ));
                 }
-                let (mut args, mut new_toks) = expr(db, toks, 0)?;
+                let (args, mut new_toks) = expr(db, toks, 0)?;
                 let close = new_toks.front();
                 match (head.value.as_str(), close) {
                     (
@@ -270,30 +296,10 @@ fn led(
                 }
                 new_toks.pop_front();
                 // Introduce arguments
-                args = (|| {
-                    if let Node::BinOpNode(BinOp { name, .. }) = args.clone() {
-                        if name == "," {
-                            return args;
-                        }
-                    }
-                    if let Node::LetNode(letn) = args {
-                        return letn.to_node();
-                    }
-                    if let Node::SymNode(symn) = args {
-                        return symn.to_let().to_node();
-                    }
-                    Let {
-                        name: "it".to_string(),
-                        args: Box::new(Prim::Void(Info::default()).to_node()),
-                        info: args.get_info(),
-                        value: Box::new(args),
-                    }
-                    .to_node()
-                })();
                 Ok((
                     Apply {
                         inner: Box::new(left),
-                        args: Box::new(args),
+                        args: Box::new(get_defs(args)),
                         info: head.get_info(),
                     }
                     .to_node(),
