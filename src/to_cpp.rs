@@ -204,8 +204,8 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
     fn visit_root(&mut self, db: &dyn Compiler, module: &Path) -> Result<Out, TError> {
         let root = db.look_up_definitions(module.clone())?;
         let mut main_info = root.ast.get_info();
-        let main_at = module.clone();
-        //main_at.push(Symbol::new("main".to_string()));
+        let mut main_at = module.clone();
+        main_at.push(Symbol::new("main".to_string()));
         main_info.defined_at = Some(main_at);
         let main_let = Let {
             info: main_info,
@@ -346,7 +346,6 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             .get_info()
             .defined_at
             .expect("Could not find definition for let");
-        path.push(Symbol::new(expr.name.clone())); // TODO: Why is this necessary?
         let relative_path = path[context.len()..].to_vec();
         let uses = db
             .find_symbol_uses(context.clone(), relative_path.clone())?
