@@ -482,7 +482,7 @@ mod tests {
     fn eval_str(s: String) -> Res {
         use std::sync::Arc;
         let mut db = DB::default();
-        let filename = "test.tk";
+        let filename = "test/file.tk";
         let module = db.module_name(filename.to_owned());
         db.set_file(filename.to_owned(), Ok(Arc::new(s)));
         db.set_options(Options::default());
