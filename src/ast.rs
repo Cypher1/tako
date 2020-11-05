@@ -27,7 +27,7 @@ impl ToNode for Err {
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Apply {
     pub inner: Box<Node>,
-    pub args: Box<Node>,
+    pub args: Option<Vec<LetNode>>,
     pub info: Info,
 }
 
@@ -51,7 +51,7 @@ impl Sym {
         Let {
             name: self.name.clone(),
             value: Box::new(Prim::Unit(Info::default()).to_node()),
-            args: Box::new(Prim::Void(Info::default()).to_node()),
+            args: None,
             info: self.get_info(),
         }
     }
@@ -138,7 +138,7 @@ impl fmt::Display for Prim {
 pub struct Let {
     pub name: String,
     pub value: Box<Node>,
-    pub args: Box<Node>, // Void implies the let is a simple variable.
+    pub args: Option<Vec<LetNode>>,
     pub info: Info,
     // TODO; support captures
 }

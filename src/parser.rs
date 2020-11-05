@@ -133,30 +133,26 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
     }
 }
 
-fn get_defs(args: Node) -> Node {
+fn get_defs(args: Node) -> Vec<LetNode> {
     if let Node::SymNode(symn) = args {
-        return symn.to_let().to_node();
+        return vec![symn.to_let().to_node()];
     }
     if let Node::LetNode(letn) = args {
-        return letn.to_node();
+        return vec![letn.to_node()];
     }
     if let Node::BinOpNode(BinOp { name, left, right, info }) = args.clone() {
         if name == "," {
-            return BinOp {
-                name,
-                left: Box::new(get_defs(*left)),
-                right: Box::new(get_defs(*right)),
-                info
-            }.to_node();
+            let mut left = get_defs(*left);
+            left.append(get_defs(*right));
+            return left;
         }
     }
-    Let {
+    vec![Let {
         name: "it".to_string(),
         args: Box::new(Prim::Void(Info::default()).to_node()),
         info: args.get_info(),
         value: Box::new(args),
-    }
-    .to_node()
+    }]
 }
 
 fn led(
@@ -299,7 +295,7 @@ fn led(
                 Ok((
                     Apply {
                         inner: Box::new(left),
-                        args: Box::new(get_defs(args)),
+                        args: Some(get_defs(args)),
                         info: head.get_info(),
                     }
                     .to_node(),
