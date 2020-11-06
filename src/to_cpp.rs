@@ -313,7 +313,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         // Build the 'struct' of args
         let mut args = vec![];
         for arg in expr.args.iter() {
-            args.push(pretty_print_block(self.visit_let(db, state, &arg)?, ""));
+            args.push(pretty_print_block(self.visit(db, state, &arg.value)?, ""));
         }
         let inner = self.visit(db, state, &expr.inner)?;
         match inner {
@@ -354,9 +354,9 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                     relative_path.clone()
                 )
             });
-        if uses.is_empty() {
-            dbg!("Culling", &expr.get_info().defined_at);
-            dbg!(&relative_path);
+        if false && uses.is_empty() {
+            dbg!("Culling", &expr.get_info().defined_at.as_ref().map(path_to_string));
+            dbg!(path_to_string(&relative_path));
             return Ok(Code::Empty);
         }
         let name = make_name(path);

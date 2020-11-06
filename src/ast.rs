@@ -343,6 +343,13 @@ impl Symbol {
 pub type Path = Vec<Symbol>;
 pub type PathRef<'a> = &'a [Symbol];
 
+pub fn path_to_string(path: &Path) -> String {
+    path.iter()
+        .map(|p| format!("{}", p))
+        .collect::<Vec<String>>()
+        .join("::")
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Entry {
     pub uses: HashSet<Path>,
