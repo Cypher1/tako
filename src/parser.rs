@@ -133,23 +133,23 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
     }
 }
 
-fn get_defs(args: Node) -> Vec<LetNode> {
+fn get_defs(args: Node) -> Vec<Let> {
     if let Node::SymNode(symn) = args {
-        return vec![symn.to_let().to_node()];
+        return vec![symn.to_let()];
     }
     if let Node::LetNode(letn) = args {
-        return vec![letn.to_node()];
+        return vec![letn];
     }
-    if let Node::BinOpNode(BinOp { name, left, right, info }) = args.clone() {
+    if let Node::BinOpNode(BinOp { name, left, right, info: _}) = args.clone() {
         if name == "," {
             let mut left = get_defs(*left);
-            left.append(get_defs(*right));
+            left.append(&mut get_defs(*right));
             return left;
         }
     }
     vec![Let {
         name: "it".to_string(),
-        args: Box::new(Prim::Void(Info::default()).to_node()),
+        args: None,
         info: args.get_info(),
         value: Box::new(args),
     }]
@@ -224,7 +224,7 @@ fn led(
                     Node::SymNode(s) => Ok((
                         Let {
                             name: s.name,
-                            args: Box::new(Prim::Void(head.get_info()).to_node()),
+                            args: None,
                             value: Box::new(right),
                             info: head.get_info(),
                         }
@@ -235,7 +235,7 @@ fn led(
                         Node::SymNode(s) => Ok((
                             Let {
                                 name: s.name,
-                                args: a.args,
+                                args: Some(a.args),
                                 value: Box::new(right),
                                 info: head.get_info(),
                             }
@@ -256,7 +256,7 @@ fn led(
                     return Ok((
                         Apply {
                             inner: Box::new(left),
-                            args: Box::new(Prim::Unit(head.get_info()).to_node()),
+                            args: vec![],
                             info: head.get_info(),
                         }
                         .to_node(),
@@ -295,7 +295,7 @@ fn led(
                 Ok((
                     Apply {
                         inner: Box::new(left),
-                        args: Some(get_defs(args)),
+                        args: get_defs(args),
                         info: head.get_info(),
                     }
                     .to_node(),
@@ -583,7 +583,7 @@ pub mod tests {
                 left: Box::new(
                     Let {
                         name: "x".to_string(),
-                        args: Box::new(Prim::Unit(Info::default()).to_node()),
+                        args: Some(vec![]),
                         value: Box::new(
                             UnOp {
                                 name: "!".to_string(),

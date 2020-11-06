@@ -59,7 +59,15 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
     fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
         self.visit(db, state, &*expr.inner)?;
         write!(state, "(").unwrap();
-        self.visit(db, state, &*expr.args)?;
+        let mut is_first = true;
+        for arg in expr.args.iter() {
+            self.visit_let(db, state, &arg)?;
+            if is_first {
+                is_first = true;
+            } else {
+                write!(state, ", ").unwrap();
+            }
+        }
         write!(state, ")").unwrap();
         Ok(())
     }
@@ -72,13 +80,18 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
             write!(state, "{}", expr.name).unwrap();
         }
 
-        match &*expr.args {
-            Node::PrimNode(Prim::Void(_)) => {}
-            node => {
-                write!(state, "(").unwrap();
-                self.visit(db, state, node)?;
-                write!(state, ")").unwrap();
+        if let Some(args) = &expr.args {
+            write!(state, "(").unwrap();
+            let mut is_first = true;
+            for arg in args.iter() {
+                self.visit_let(db, state, &arg)?;
+                if is_first {
+                    is_first = true;
+                } else {
+                    write!(state, ", ").unwrap();
+                }
             }
+            write!(state, ")").unwrap();
         }
         write!(state, "=").unwrap();
         self.visit(db, state, &*expr.value)

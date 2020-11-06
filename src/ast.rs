@@ -27,7 +27,7 @@ impl ToNode for Err {
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Apply {
     pub inner: Box<Node>,
-    pub args: Option<Vec<LetNode>>,
+    pub args: Vec<Let>,
     pub info: Info,
 }
 
@@ -138,7 +138,7 @@ impl fmt::Display for Prim {
 pub struct Let {
     pub name: String,
     pub value: Box<Node>,
-    pub args: Option<Vec<LetNode>>,
+    pub args: Option<Vec<Let>>,
     pub info: Info,
     // TODO; support captures
 }
@@ -292,6 +292,16 @@ impl ToNode for Node {
             UnOpNode(n) => n.get_info(),
             BinOpNode(n) => n.get_info(),
         }
+    }
+}
+
+impl Node {
+    pub fn to_let(self) -> Result<Let, TError> {
+        use Node::*;
+        if let LetNode(n) = self {
+            return Ok(n);
+        }
+        Err(TError::ExpectedLetNode(self))
     }
 }
 

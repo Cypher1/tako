@@ -24,7 +24,7 @@ pub enum Code {
     },
     Func {
         name: String,
-        args: Box<Code>,
+        args: Vec<String>,
         return_type: String,
         body: Box<Code>,
         lambda: bool,
@@ -165,7 +165,7 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
                 format!(
                     "{indent}const auto {} = [&]({}) {};",
                     name,
-                    pretty_print_block(*args, new_indent.as_str()),
+                    args.join(", "),
                     body,
                     indent = indent
                 )
@@ -174,7 +174,7 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
                     "{indent}{} {}({}) {}",
                     return_type,
                     name,
-                    pretty_print_block(*args, new_indent.as_str()),
+                    args.join(", "),
                     body,
                     indent = indent
                 )
@@ -211,7 +211,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             info: main_info,
             name: "main".to_string(),
             value: Box::new(root.ast.clone()),
-            args: Box::new(Prim::Unit(Info::default()).to_node()),
+            args: Some(vec![]),
         };
         let mut table = root.table; // TODO: Shouldn't be mut
         if db.debug() > 1 {
@@ -226,7 +226,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 return_type: _,
             } => Code::Func {
                 name: "main".to_string(),
-                args: Box::new(Code::Expr("int argc, char* argv[]".to_string())),
+                args: vec!["int argc".to_string(), "char* argv[]".to_string()],
                 body,
                 lambda: false,
                 return_type: "int".to_string(),
@@ -252,7 +252,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                         "{}{}({});\n",
                         code,
                         name,
-                        pretty_print_block((**args).clone(), "")
+                        args.join(", "),
                     )
                 }
                 _ => panic!("Cannot create function from non-function"),
@@ -316,11 +316,14 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
     fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
         // eprintln!("apply here: {:?}", expr);
         // Build the 'struct' of args
-        let args = self.visit(db, state, &expr.args)?;
+        let mut args = vec![];
+        for arg in expr.args.iter() {
+            args.push(pretty_print_block(self.visit_let(db, state, &arg)?, ""));
+        }
         let inner = self.visit(db, state, &expr.inner)?;
         match inner {
             Code::Expr(expr) => {
-                let with_args = format!("{}({})", expr, pretty_print_block(args, ""));
+                let with_args = format!("{}({})", expr, args.join(", "));
                 Ok(Code::Expr(with_args))
             }
             _ => panic!("Don't know how to apply arguments to a block"),
@@ -342,7 +345,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
 
         let context = db.module_name(filename);
 
-        let mut path = expr
+        let path = expr
             .get_info()
             .defined_at
             .expect("Could not find definition for let");
@@ -363,21 +366,22 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         }
         let name = make_name(path);
         let body = self.visit(db, state, &expr.value)?;
-        if let Node::PrimNode(Prim::Void(_)) = &*expr.args {
-            return Ok(body.with_expr(&|x| Code::Statement(format!("const auto {} = {}", name, x))));
+        if let Some(eargs) = &expr.args {
+            let mut args = vec![];
+                for arg in eargs.iter() {
+                    args.push(pretty_print_block(self.visit_let(db, state, &arg)?, ""));
+                }
+            let body = body.with_expr(&|exp| Code::Statement(format!("return {}", exp)));
+
+            return Ok(Code::Func {
+                name,
+                args,
+                return_type: "int".to_string(),
+                body: Box::new(body),
+                lambda: true,
+            });
         }
-        let args = Box::new(self.visit(db, state, &expr.args)?);
-        let body = body.with_expr(&|exp| Code::Statement(format!("return {}", exp)));
-
-        let node = Code::Func {
-            name,
-            args,
-            return_type: "int".to_string(),
-            body: Box::new(body),
-            lambda: true,
-        };
-
-        Ok(node)
+        Ok(body.with_expr(&|x| Code::Statement(format!("const auto {} = {}", name, x))))
     }
 
     fn visit_un_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &UnOp) -> Res {

@@ -34,4 +34,7 @@ pub enum TError {
     FailedParse(String, Info),
     #[error("internal error `{0}` at {1}")]
     InternalError(String, Node),
+
+    #[error("Expected a let node, got `{0}`")]
+    ExpectedLetNode(Node),
 }
