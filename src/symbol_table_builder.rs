@@ -114,7 +114,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
         let args = expr
             .args
             .iter()
-            .map(|arg| self.visit_let(db, state, &arg)?.to_let())
+            .map(|arg| self.visit_let(db, state, &arg)?.as_let())
             .collect::<Result<_, _>>()?;
         let inner = Box::new(self.visit(db, state, &*expr.inner)?);
         state.path.pop();
@@ -142,7 +142,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
         let args = if let Some(args) = &expr.args {
             Some(
                 args.iter()
-                    .map(|arg| self.visit_let(db, state, &arg)?.to_let())
+                    .map(|arg| self.visit_let(db, state, &arg)?.as_let())
                     .collect::<Result<_, _>>()?,
             )
         } else {

@@ -135,7 +135,7 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
 
 fn get_defs(args: Node) -> Vec<Let> {
     if let Node::SymNode(symn) = args {
-        return vec![symn.to_let()];
+        return vec![symn.as_let()];
     }
     if let Node::LetNode(letn) = args {
         return vec![letn];

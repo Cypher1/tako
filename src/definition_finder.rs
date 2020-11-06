@@ -83,7 +83,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
         let args = expr
             .args
             .iter()
-            .map(|arg| self.visit_let(db, state, &arg)?.to_let())
+            .map(|arg| self.visit_let(db, state, &arg)?.as_let())
             .collect::<Result<Vec<Let>, TError>>()?;
         let inner = Box::new(self.visit(db, state, &*expr.inner)?);
         state.path.pop();
@@ -104,7 +104,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
         let args = if let Some(args) = &expr.args {
             Some(
                 args.iter()
-                    .map(|arg| self.visit_let(db, state, &arg)?.to_let())
+                    .map(|arg| self.visit_let(db, state, &arg)?.as_let())
                     .collect::<Result<Vec<Let>, TError>>()?,
             )
         } else {

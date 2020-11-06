@@ -47,7 +47,7 @@ pub struct Sym {
 }
 
 impl Sym {
-    pub fn to_let(self: &Sym) -> Let {
+    pub fn as_let(self: &Sym) -> Let {
         Let {
             name: self.name.clone(),
             value: Box::new(Prim::Unit(Info::default()).to_node()),
@@ -296,7 +296,7 @@ impl ToNode for Node {
 }
 
 impl Node {
-    pub fn to_let(self) -> Result<Let, TError> {
+    pub fn as_let(self) -> Result<Let, TError> {
         use Node::*;
         if let LetNode(n) = self {
             return Ok(n);
