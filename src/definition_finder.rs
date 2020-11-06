@@ -80,7 +80,11 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
 
     fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
         state.path.push(Symbol::Anon());
-        let args = expr.args.iter().map(|arg|self.visit_let(db, state, &arg)?.to_let()).collect::<Result<Vec<Let>, TError>>()?;
+        let args = expr
+            .args
+            .iter()
+            .map(|arg| self.visit_let(db, state, &arg)?.to_let())
+            .collect::<Result<Vec<Let>, TError>>()?;
         let inner = Box::new(self.visit(db, state, &*expr.inner)?);
         state.path.pop();
         Ok(Apply {
@@ -98,7 +102,11 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
         let path_name = Symbol::new(expr.name.clone());
         state.path.push(path_name);
         let args = if let Some(args) = &expr.args {
-            Some(args.iter().map(|arg|self.visit_let(db, state, &arg)?.to_let()).collect::<Result<Vec<Let>, TError>>()?)
+            Some(
+                args.iter()
+                    .map(|arg| self.visit_let(db, state, &arg)?.to_let())
+                    .collect::<Result<Vec<Let>, TError>>()?,
+            )
         } else {
             None
         };

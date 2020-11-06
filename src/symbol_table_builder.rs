@@ -111,7 +111,11 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
 
     fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
         state.path.push(Symbol::Anon());
-        let args = expr.args.iter().map(|arg|self.visit_let(db, state, &arg)?.to_let()).collect::<Result<_, _>>()?;
+        let args = expr
+            .args
+            .iter()
+            .map(|arg| self.visit_let(db, state, &arg)?.to_let())
+            .collect::<Result<_, _>>()?;
         let inner = Box::new(self.visit(db, state, &*expr.inner)?);
         state.path.pop();
 
@@ -136,7 +140,11 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
 
         // Consider the function arguments defined in this scope.
         let args = if let Some(args) = &expr.args {
-            Some(args.iter().map(|arg|self.visit_let(db, state, &arg)?.to_let()).collect::<Result<_, _>>()?)
+            Some(
+                args.iter()
+                    .map(|arg| self.visit_let(db, state, &arg)?.to_let())
+                    .collect::<Result<_, _>>()?,
+            )
         } else {
             None
         };

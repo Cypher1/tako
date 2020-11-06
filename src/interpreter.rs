@@ -318,7 +318,10 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             eprintln!("evaluating apply {}", expr.clone().to_node());
         }
         state.push(Frame::new());
-        expr.args.iter().map(|arg| self.visit_let(db, state, arg)).collect::<Result<Vec<Prim>, TError>>()?;
+        expr.args
+            .iter()
+            .map(|arg| self.visit_let(db, state, arg))
+            .collect::<Result<Vec<Prim>, TError>>()?;
         // Retrive the inner
         let inner = self.visit(db, state, &*expr.inner)?;
         // Run the inner

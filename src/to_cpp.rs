@@ -248,12 +248,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         for func in self.functions.clone().iter() {
             match &func {
                 Code::Func { name, args, .. } => {
-                    code = format!(
-                        "{}{}({});\n",
-                        code,
-                        name,
-                        args.join(", "),
-                    )
+                    code = format!("{}{}({});\n", code, name, args.join(", "),)
                 }
                 _ => panic!("Cannot create function from non-function"),
             }
@@ -368,9 +363,9 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         let body = self.visit(db, state, &expr.value)?;
         if let Some(eargs) = &expr.args {
             let mut args = vec![];
-                for arg in eargs.iter() {
-                    args.push(pretty_print_block(self.visit_let(db, state, &arg)?, ""));
-                }
+            for arg in eargs.iter() {
+                args.push(pretty_print_block(self.visit_let(db, state, &arg)?, ""));
+            }
             let body = body.with_expr(&|exp| Code::Statement(format!("return {}", exp)));
 
             return Ok(Code::Func {

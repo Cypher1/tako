@@ -140,7 +140,13 @@ fn get_defs(args: Node) -> Vec<Let> {
     if let Node::LetNode(letn) = args {
         return vec![letn];
     }
-    if let Node::BinOpNode(BinOp { name, left, right, info: _}) = args.clone() {
+    if let Node::BinOpNode(BinOp {
+        name,
+        left,
+        right,
+        info: _,
+    }) = args.clone()
+    {
         if name == "," {
             let mut left = get_defs(*left);
             left.append(&mut get_defs(*right));
