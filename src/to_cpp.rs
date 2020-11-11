@@ -364,7 +364,10 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         if let Some(eargs) = &expr.args {
             let mut args = vec![];
             for arg in eargs.iter() {
-                args.push(pretty_print_block(self.visit_let(db, state, &arg)?, ""));
+                args.push(match self.visit_let(db, state, &arg)? {
+                    Code::Statement(expr) => expr,
+                    _ => panic!("Let expression became non-statement"),
+                })
             }
             let body = body.with_expr(&|exp| Code::Statement(format!("return {}", exp)));
 
