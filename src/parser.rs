@@ -374,7 +374,11 @@ pub fn lex_string(
     Ok(toks)
 }
 
-pub fn parse_string(db: &dyn Compiler, module: PathRef, text: &Arc<String>) -> Result<Node, TError> {
+pub fn parse_string(
+    db: &dyn Compiler,
+    module: PathRef,
+    text: &Arc<String>,
+) -> Result<Node, TError> {
     let toks = db.lex_string(module.to_vec(), text.clone())?;
     if db.debug() > 0 {
         eprintln!("parsing str... {:?}", &module);
