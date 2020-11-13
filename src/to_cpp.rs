@@ -332,34 +332,33 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         //     expr.get_info().defined_at,
         //     expr.name
         // );
-        let filename = expr
-            .get_info()
-            .loc
-            .expect("cannot find symbol location")
-            .filename
-            .expect("cannot find symbol file location");
-
-        let context = db.module_name(filename);
-
         let path = expr
             .get_info()
             .defined_at
             .expect("Could not find definition for let");
-        let relative_path = path[context.len()..].to_vec();
-        let uses = db
-            .find_symbol_uses(context.clone(), relative_path.clone())?
-            .unwrap_or_else(|| {
-                panic!(
-                    "couldn't find uses for {:?} {:?}",
-                    context.clone(),
-                    relative_path.clone()
-                )
-            });
-        if false && uses.is_empty() {
-            dbg!("Culling", &expr.get_info().defined_at.as_ref().map(path_to_string));
-            dbg!(path_to_string(&relative_path));
-            return Ok(Code::Empty);
-        }
+
+        // let filename = expr
+            // .get_info()
+            // .loc
+            // .expect("cannot find symbol location")
+            // .filename
+            // .expect("cannot find symbol file location");
+        // let context = db.module_name(filename);
+        // let relative_path = path[context.len()..].to_vec();
+        // let uses = db
+            // .find_symbol_uses(context.clone(), relative_path.clone())?
+            // .unwrap_or_else(|| {
+                // panic!(
+                    // "couldn't find uses for {:?} {:?}",
+                    // context.clone(),
+                    // relative_path.clone()
+                // )
+            // });
+        // if uses.is_empty() {
+            // dbg!("Culling", &expr.get_info().defined_at.as_ref().map(path_to_string));
+            // dbg!(path_to_string(&relative_path));
+            // return Ok(Code::Empty);
+        // }
         let name = make_name(path);
         let body = self.visit(db, state, &expr.value)?;
         if let Some(eargs) = &expr.args {
