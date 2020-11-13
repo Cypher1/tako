@@ -343,17 +343,17 @@ fn expr(
     Ok((left, toks))
 }
 
-pub fn lex(db: &dyn Compiler, module: &Path) -> Result<VecDeque<Token>, TError> {
-    let filename = db.filename(module.clone());
+pub fn lex(db: &dyn Compiler, module: PathRef) -> Result<VecDeque<Token>, TError> {
+    let filename = db.filename(module.to_vec());
     lex_string(db, module, &db.file(filename)?.to_string())
 }
 
 pub fn lex_string(
     db: &dyn Compiler,
-    module: &Path,
+    module: PathRef,
     contents: &str,
 ) -> Result<VecDeque<Token>, TError> {
-    let filename = db.filename(module.clone());
+    let filename = db.filename(module.to_vec());
     let mut toks: VecDeque<Token> = VecDeque::new();
 
     let mut pos = Loc {
@@ -374,7 +374,7 @@ pub fn lex_string(
     Ok(toks)
 }
 
-pub fn parse_string(db: &dyn Compiler, module: &Path, text: &Arc<String>) -> Result<Node, TError> {
+pub fn parse_string(db: &dyn Compiler, module: PathRef, text: &Arc<String>) -> Result<Node, TError> {
     let toks = db.lex_string(module.to_vec(), text.clone())?;
     if db.debug() > 0 {
         eprintln!("parsing str... {:?}", &module);
@@ -390,8 +390,8 @@ pub fn parse_string(db: &dyn Compiler, module: &Path, text: &Arc<String>) -> Res
     Ok(root)
 }
 
-pub fn parse(db: &dyn Compiler, module: &Path) -> Result<Node, TError> {
-    let toks = db.lex_file(module.clone())?;
+pub fn parse(db: &dyn Compiler, module: PathRef) -> Result<Node, TError> {
+    let toks = db.lex_file(module.to_vec())?;
     if db.debug() > 0 {
         eprintln!("parsing file... {:?}", &module);
     }
