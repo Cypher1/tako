@@ -296,12 +296,12 @@ impl ToNode for Node {
 }
 
 impl Node {
-    pub fn as_let(self) -> Result<Let, TError> {
+    pub fn as_let(&self) -> Result<Let, TError> {
         use Node::*;
         if let LetNode(n) = self {
-            return Ok(n);
+            return Ok(n.clone());
         }
-        Err(TError::ExpectedLetNode(self))
+        Err(TError::ExpectedLetNode(self.clone()))
     }
 }
 
@@ -343,7 +343,7 @@ impl Symbol {
 pub type Path = Vec<Symbol>;
 pub type PathRef<'a> = &'a [Symbol];
 
-pub fn path_to_string(path: &Path) -> String {
+pub fn path_to_string(path: PathRef) -> String {
     path.iter()
         .map(|p| format!("{}", p))
         .collect::<Vec<String>>()
