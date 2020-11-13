@@ -163,11 +163,12 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
             };
             if lambda {
                 format!(
-                    "{indent}const auto {} = [&]({}) {};",
+                    "{indent}const auto {} = [&]({new_indent}{}{indent}) {};",
                     name,
-                    args.join(", "),
+                    args.join(&(",".to_string()+&new_indent)),
                     body,
-                    indent = indent
+                    indent = indent,
+                    new_indent = new_indent
                 )
             } else {
                 format!(
@@ -364,10 +365,12 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         if let Some(eargs) = &expr.args {
             let mut args = vec![];
             for arg in eargs.iter() {
-                args.push(match self.visit_let(db, state, &arg)? {
-                    Code::Statement(expr) => expr,
-                    _ => panic!("Let expression became non-statement"),
-                })
+                let path = arg
+                    .get_info()
+                    .defined_at
+                    .expect("Could not find definition for let arg");
+                let name = make_name(path);
+                args.push(format!("comst auto {}", name));
             }
             let body = body.with_expr(&|exp| Code::Statement(format!("return {}", exp)));
 
