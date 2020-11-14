@@ -365,7 +365,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                     .defined_at
                     .expect("Could not find definition for let arg");
                 let name = make_name(path);
-                args.push(format!("comst auto {}", name));
+                args.push(format!("const auto {}", name));
             }
             let body = body.with_expr(&|exp| Code::Statement(format!("return {}", exp)));
 
