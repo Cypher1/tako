@@ -322,6 +322,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         // Build the 'struct' of args
         let mut args = vec![];
         for arg in expr.args.iter() {
+            // TODO: Include lambda head in values
             args.push(pretty_print_block(self.visit(db, state, &arg.value)?, ""));
         }
         let inner = self.visit(db, state, &expr.inner)?;
