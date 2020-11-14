@@ -8,7 +8,7 @@ use std::process::Command;
 
 use directories::ProjectDirs;
 
-use super::ast::{Node, Path, Root, Symbol, Table, Visitor};
+use super::ast::{Node, Path, PathRef, Root, Symbol, Table, Visitor};
 use super::cli_options::Options;
 use super::errors::TError;
 use super::externs::{Extern, Semantic};
@@ -47,11 +47,10 @@ pub trait Compiler: salsa::Database {
     fn find_symbol(&self, mut context: Path, path: Path) -> Result<Option<Table>, TError>;
     fn find_symbol_uses(
         &self,
-        mut context: Path,
         path: Path,
-    ) -> Result<Option<HashSet<Path>>, TError>;
+    ) -> Result<HashSet<Path>, TError>;
 
-    fn look_up_definitions(&self, module: Path) -> Result<Root, TError>;
+    fn look_up_definitions(&self, context: Path) -> Result<Root, TError>;
 
     fn infer(&self, expr: Node) -> Result<Type, TError>;
 
@@ -174,7 +173,7 @@ fn build_symbol_table(db: &dyn Compiler, module: Path) -> Result<Root, TError> {
 
 fn find_symbol(db: &dyn Compiler, mut context: Path, path: Path) -> Result<Option<Table>, TError> {
     if db.debug() > 1 {
-        eprintln!(">>> looking for symbol in {:?}, {:?}", context, path);
+        eprintln!(">>> looking for symbol {:?} in {:?}", path, context);
     }
     let table = db.look_up_definitions(context.clone())?.table;
     loop {
@@ -202,16 +201,34 @@ fn find_symbol(db: &dyn Compiler, mut context: Path, path: Path) -> Result<Optio
 
 fn find_symbol_uses(
     db: &dyn Compiler,
-    context: Path,
     path: Path,
-) -> Result<Option<HashSet<Path>>, TError> {
-    Ok(db.find_symbol(context, path)?.map(|x| x.value.uses))
+) -> Result<HashSet<Path>, TError> {
+    if let Some(symb) = db.find_symbol(path.clone(), Vec::new())? {
+        return Ok(symb.value.uses);
+    }
+    use crate::ast::{path_to_string, Info};
+    Err(TError::UnknownSymbol(path_to_string(&path), Info::default(), "".to_string()))
 }
 
-fn look_up_definitions(db: &dyn Compiler, module: Path) -> Result<Root, TError> {
+fn to_file_path(context: PathRef) -> Path {
+    let mut module = context.to_vec();
+    loop {
+        match module.last() {
+            None => panic!(format!("Couldn't find a file associated with symbol at {:?}", context)),
+            Some(Symbol::Anon()) => {}, // Skip anons
+            Some(Symbol::Named(_, None)) => {}, // Skip regular symbols
+            Some(Symbol::Named(_, Some(_ext))) => break, // Found the file
+        }
+        module.pop();
+    }
+    module
+}
+
+fn look_up_definitions(db: &dyn Compiler, context: Path) -> Result<Root, TError> {
     use crate::definition_finder::DefinitionFinder;
+    let module = to_file_path(&context);
     if db.debug() > 0 {
-        eprintln!("look up definitions >> {:?}", module);
+        eprintln!("look up definitions >> {:?}", &module);
     }
     DefinitionFinder::process(&module, db)
 }
