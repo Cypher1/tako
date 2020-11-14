@@ -162,13 +162,21 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
                 pretty_print_block(Code::Block(vec![*inner]), indent)
             };
             if lambda {
+                let arg_str = if args.is_empty() {
+                    "".to_string()
+                } else {
+                    format!("{new_indent}{}{indent}",
+                        args.join(&(",".to_string() + &new_indent)),
+                        indent = indent,
+                        new_indent = new_indent
+                    )
+                };
                 format!(
-                    "{indent}const auto {} = [&]({new_indent}{}{indent}) {};",
+                    "{indent}const auto {} = [&]({}) {};",
                     name,
-                    args.join(&(",".to_string() + &new_indent)),
+                    arg_str,
                     body,
                     indent = indent,
-                    new_indent = new_indent
                 )
             } else {
                 format!(
@@ -337,28 +345,15 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             .defined_at
             .expect("Could not find definition for let");
 
-        // let filename = expr
-        // .get_info()
-        // .loc
-        // .expect("cannot find symbol location")
-        // .filename
-        // .expect("cannot find symbol file location");
-        // let context = db.module_name(filename);
-        // let relative_path = path[context.len()..].to_vec();
-        // let uses = db
-        // .find_symbol_uses(context.clone(), relative_path.clone())?
-        // .unwrap_or_else(|| {
-        // panic!(
-        // "couldn't find uses for {:?} {:?}",
-        // context.clone(),
-        // relative_path.clone()
-        // )
-        // });
-        // if uses.is_empty() {
-        // dbg!("Culling", &expr.get_info().defined_at.as_ref().map(path_to_string));
-        // dbg!(path_to_string(&relative_path));
-        // return Ok(Code::Empty);
-        // }
+        let uses = db.find_symbol_uses(path.clone())?;
+        if uses.is_empty() {
+            dbg!(
+                "Culling",
+                &expr.get_info().defined_at.map(|path| path_to_string(&path))
+            );
+            dbg!(path_to_string(&path));
+            return Ok(Code::Empty);
+        }
         let name = make_name(path);
         let body = self.visit(db, state, &expr.value)?;
         if let Some(eargs) = &expr.args {
