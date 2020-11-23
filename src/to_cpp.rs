@@ -17,6 +17,7 @@ pub enum Code {
     Struct(Vec<Code>),
     Expr(String),
     Statement(String),
+    Assignment(String, Box<Code>),
     If {
         condition: Box<Code>,
         then: Box<Code>,
@@ -43,6 +44,7 @@ impl Code {
                 Code::Block(statements)
             }
             Code::Statement(line) => Code::Statement(line),
+            Code::Assignment(name, value) => Code::Assignment(name, Box::new(value.with_expr(f))),
             Code::If {
                 condition,
                 then,
@@ -131,6 +133,7 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
         }
         Code::Expr(line) => line,
         Code::Statement(line) => format!("{}{};", indent, line),
+        Code::Assignment(name, value) => format!("{}const auto {} = {}", indent, name, pretty_print_block(*value, &indent)),
         Code::Empty => "".to_string(),
         Code::If {
             condition,
@@ -171,13 +174,7 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
                         new_indent = new_indent
                     )
                 };
-                format!(
-                    "{indent}const auto {} = [&]({}) {};",
-                    name,
-                    arg_str,
-                    body,
-                    indent = indent,
-                )
+                format!("[&]({}) {};", arg_str, body)
             } else {
                 format!(
                     "{indent}{} {}({}) {}",
@@ -369,15 +366,21 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             }
             let body = body.with_expr(&|exp| Code::Statement(format!("return {}", exp)));
 
-            return Ok(Code::Func {
-                name,
-                args,
-                return_type: "int".to_string(),
-                body: Box::new(body),
-                lambda: true,
-            });
+            return Ok(Code::Assignment (
+                    name.clone(),
+                    Box::new(
+                        Code::Func {
+                            name,
+                            args,
+                            return_type: "int".to_string(),
+                            body: Box::new(body),
+                            lambda: true,
+                        }
+                    )
+                )
+            );
         }
-        Ok(body.with_expr(&|x| Code::Statement(format!("const auto {} = {}", name, x))))
+        Ok(Code::Assignment(name, Box::new(body)))
     }
 
     fn visit_un_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &UnOp) -> Res {
