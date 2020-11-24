@@ -81,7 +81,21 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
         let args = expr
             .args
             .iter()
-            .map(|arg| self.visit_let(db, state, &arg)?.as_let())
+            .map(|arg| {
+                let val = self.visit_let(db, state, &arg)?.as_let();
+                let mut search = state.path.clone();
+                search.push(Symbol::new(arg.name.clone()));
+                let node = state.table.find_mut(&search);
+                match node {
+                    Some(node) => {
+                        node.value.uses.insert(state.path.clone());
+                    }
+                    None => {
+                        // TODO: error?
+                    }
+                };
+                val
+            })
             .collect::<Result<Vec<Let>, TError>>()?;
         let inner = Box::new(self.visit(db, state, &*expr.inner)?);
         state.path.pop();
