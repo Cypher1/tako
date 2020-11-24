@@ -133,7 +133,7 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
         }
         Code::Expr(line) => line,
         Code::Statement(line) => format!("{}{};", indent, line),
-        Code::Assignment(name, value) => format!("{}const auto {} = {}", indent, name, pretty_print_block(*value, &indent)),
+        Code::Assignment(name, value) => format!("{}const auto {} = {};", indent, name, pretty_print_block(*value, &indent)),
         Code::Empty => "".to_string(),
         Code::If {
             condition,
@@ -174,7 +174,7 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
                         new_indent = new_indent
                     )
                 };
-                format!("[&]({}) {};", arg_str, body)
+                format!("[&]({}) {}", arg_str, body)
             } else {
                 format!(
                     "{indent}{} {}({}) {}",
@@ -224,20 +224,23 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             eprintln!("table {:?}", table);
         }
         let main = match self.visit_let(db, &mut table, &main_let)? {
-            Code::Func {
-                name: _,
-                args: _,
-                body,
-                lambda: _,
-                return_type: _,
-            } => Code::Func {
-                name: "main".to_string(),
-                args: vec!["int argc".to_string(), "char* argv[]".to_string()],
-                body,
-                lambda: false,
-                return_type: "int".to_string(),
+            Code::Assignment(_, val) => match *val {
+                Code::Func {
+                    name: _,
+                    args: _,
+                    body,
+                    lambda: _,
+                    return_type: _,
+                } => Code::Func {
+                    name: "main".to_string(),
+                    args: vec!["int argc".to_string(), "char* argv[]".to_string()],
+                    body,
+                    lambda: false,
+                    return_type: "int".to_string(),
+                },
+                thing => panic!("main must be a Func {:?}", thing),
             },
-            thing => panic!("main must be a Func {:?}", thing),
+            thing => panic!("main must be an Func {:?}", thing),
         };
         // TODO(cypher1): Use a writer.
         let mut code = "".to_string();
@@ -320,7 +323,11 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         let mut args = vec![];
         for arg in expr.args.iter() {
             // TODO: Include lambda head in values
-            args.push(pretty_print_block(self.visit(db, state, &arg.value)?, ""));
+            let val = self.visit_let(db, state, &arg)?;
+            match val {
+                Code::Assignment(_, val) => args.push(pretty_print_block(*val, "")),
+                val => args.push(pretty_print_block(val, "")),
+            };
         }
         let inner = self.visit(db, state, &expr.inner)?;
         match inner {
