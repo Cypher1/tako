@@ -45,10 +45,7 @@ pub trait Compiler: salsa::Database {
     fn parse_file(&self, module: Path) -> Result<Node, TError>;
     fn build_symbol_table(&self, module: Path) -> Result<Root, TError>;
     fn find_symbol(&self, mut context: Path, path: Path) -> Result<Option<Table>, TError>;
-    fn find_symbol_uses(
-        &self,
-        path: Path,
-    ) -> Result<HashSet<Path>, TError>;
+    fn find_symbol_uses(&self, path: Path) -> Result<HashSet<Path>, TError>;
 
     fn look_up_definitions(&self, context: Path) -> Result<Root, TError>;
 
@@ -199,24 +196,28 @@ fn find_symbol(db: &dyn Compiler, mut context: Path, path: Path) -> Result<Optio
     }
 }
 
-fn find_symbol_uses(
-    db: &dyn Compiler,
-    path: Path,
-) -> Result<HashSet<Path>, TError> {
+fn find_symbol_uses(db: &dyn Compiler, path: Path) -> Result<HashSet<Path>, TError> {
     if let Some(symb) = db.find_symbol(path.clone(), Vec::new())? {
         return Ok(symb.value.uses);
     }
     use crate::ast::{path_to_string, Info};
-    Err(TError::UnknownSymbol(path_to_string(&path), Info::default(), "".to_string()))
+    Err(TError::UnknownSymbol(
+        path_to_string(&path),
+        Info::default(),
+        "".to_string(),
+    ))
 }
 
 fn to_file_path(context: PathRef) -> Path {
     let mut module = context.to_vec();
     loop {
         match module.last() {
-            None => panic!(format!("Couldn't find a file associated with symbol at {:?}", context)),
-            Some(Symbol::Anon()) => {}, // Skip anons
-            Some(Symbol::Named(_, None)) => {}, // Skip regular symbols
+            None => panic!(format!(
+                "Couldn't find a file associated with symbol at {:?}",
+                context
+            )),
+            Some(Symbol::Anon()) => {}                   // Skip anons
+            Some(Symbol::Named(_, None)) => {}           // Skip regular symbols
             Some(Symbol::Named(_, Some(_ext))) => break, // Found the file
         }
         module.pop();

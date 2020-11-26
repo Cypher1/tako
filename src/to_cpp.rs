@@ -91,7 +91,7 @@ impl Code {
                 right.insert(0, left);
                 Code::Block(right) // Backwards?
             }
-            (Code::Block(mut left), mut right) => {
+            (Code::Block(mut left), right) => {
                 for line in left.iter_mut() {
                     if let Code::Expr(expr) = line {
                         *line = Code::Statement(expr.to_owned());
@@ -139,7 +139,12 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
         }
         Code::Expr(line) => line,
         Code::Statement(line) => format!("{}{};", indent, line),
-        Code::Assignment(name, value) => format!("{}const auto {} = {};", indent, name, pretty_print_block(*value, &indent)),
+        Code::Assignment(name, value) => format!(
+            "{}const auto {} = {};",
+            indent,
+            name,
+            pretty_print_block(*value, &indent)
+        ),
         Code::Empty => "".to_string(),
         Code::If {
             condition,
@@ -176,7 +181,8 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
                 let arg_str = if args.is_empty() {
                     "".to_string()
                 } else {
-                    format!("{new_indent}{}{indent}",
+                    format!(
+                        "{new_indent}{}{indent}",
                         args.join(&(",".to_string() + &new_indent)),
                         indent = indent,
                         new_indent = new_indent
@@ -387,20 +393,17 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 args.push(format!("const auto {}", name));
             }
 
-            return Ok(Code::Assignment (
-                    name.clone(),
-                    Box::new(
-                        Code::Func {
-                            name,
-                            args,
-                            return_type: "int".to_string(), // TODO
-                            body: Box::new(body),
-                            lambda: true,
-                            call: false,
-                        }
-                    )
-                )
-            );
+            return Ok(Code::Assignment(
+                name.clone(),
+                Box::new(Code::Func {
+                    name,
+                    args,
+                    return_type: "int".to_string(), // TODO
+                    body: Box::new(body),
+                    lambda: true,
+                    call: false,
+                }),
+            ));
         }
         let body = match body {
             Code::Statement(s) => Code::Statement(s),
