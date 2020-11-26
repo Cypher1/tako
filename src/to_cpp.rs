@@ -97,9 +97,6 @@ impl Code {
                         *line = Code::Statement(expr.to_owned());
                     }
                 }
-                if let Code::Expr(expr) = right {
-                    right = Code::Statement(expr);
-                }
                 left.push(right);
                 Code::Block(left)
             }
