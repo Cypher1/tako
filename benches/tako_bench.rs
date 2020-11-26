@@ -9,41 +9,30 @@ use std::sync::Arc;
 pub fn criterion_benchmark(c: &mut Criterion) {
     let module = vec![];
 
-    c.bench_function(
-        "microbench_type_of_i32",
-        |b| {
-            let code = Arc::new("12".to_string());
-            let db = DB::default();
-            let prog = black_box(parse_string(&db, &module, &code).unwrap());
-            b.iter(|| infer(&db, &prog));
-        }
-    );
+    c.bench_function("microbench_type_of_i32", |b| {
+        let code = Arc::new("12".to_string());
+        let db = DB::default();
+        let prog = black_box(parse_string(&db, &module, &code).unwrap());
+        b.iter(|| infer(&db, &prog));
+    });
 
-    c.bench_function(
-        "microbench_parse_and_type_of_i32_pre_cache",
-        |b| {
-            let code = Arc::new("12".to_string());
-            let db = DB::default();
-            let prog = parse_string(&db, &module, &code).unwrap();
-            infer(&db, &prog);
-            b.iter(|| {
-                let prog = black_box(parse_string(&db, &module, &code).unwrap());
-                infer(&db, &prog)
-            });
-        }
-    );
-
-    c.bench_function(
-        "microbench_parse_and_type_of_i32",
-        |b| {
-            let code = Arc::new("12".to_string());
-            let db = DB::default();
+    c.bench_function("microbench_parse_and_type_of_i32_pre_cache", |b| {
+        let code = Arc::new("12".to_string());
+        let db = DB::default();
+        let prog = parse_string(&db, &module, &code).unwrap();
+        infer(&db, &prog);
+        b.iter(|| {
             let prog = black_box(parse_string(&db, &module, &code).unwrap());
-            b.iter(|| {
-                infer(&db, &prog)
-            });
-        }
-    );
+            infer(&db, &prog)
+        });
+    });
+
+    c.bench_function("microbench_parse_and_type_of_i32", |b| {
+        let code = Arc::new("12".to_string());
+        let db = DB::default();
+        let prog = black_box(parse_string(&db, &module, &code).unwrap());
+        b.iter(|| infer(&db, &prog));
+    });
 
     /* c.bench_function(
         "microbench_type_of_plus_expr",
@@ -57,4 +46,3 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
 criterion_group!(benches, criterion_benchmark);
 criterion_main!(benches);
-

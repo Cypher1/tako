@@ -432,6 +432,17 @@ string to_string(const bool& t){
             cpp: LangImpl::operator("!"),
         },
         Extern {
+            name: "...".to_string(),
+            semantic: operator(70, Left),
+            ty: Function {
+                intros: dict!("a" => variable("Type")), // TODO: This should unpack a type with a set of named values and put them into scope.
+                results: dict!("it" => variable("a")),
+                arguments: dict!("it" => variable("a")),
+                effects: vec![],
+            },
+            cpp: LangImpl::operator("..."), // TODO: Implement
+        },
+        Extern {
             name: "-".to_string(),
             semantic: operator(70, Left),
             ty: Function {
@@ -501,6 +512,12 @@ string to_string(const bool& t){
                 .with_flag("-lm"),
         },
         Extern {
+            name: "I32".to_string(),
+            semantic: Func,
+            ty: variable("Type"),
+            cpp: LangImpl::new("int32_t"),
+        },
+        Extern {
             name: "Number".to_string(),
             semantic: Func,
             ty: variable("Type"),
@@ -513,7 +530,7 @@ string to_string(const bool& t){
             cpp: LangImpl::new("std::string").with_includes("#include <string>"),
         },
         Extern {
-            name: "bit_type()".to_string(),
+            name: "Bit".to_string(),
             semantic: Func,
             ty: variable("Type"),
             cpp: LangImpl::new("short"),

@@ -46,6 +46,17 @@ pub struct Sym {
     pub info: Info,
 }
 
+impl Sym {
+    pub fn as_let(self: &Sym) -> Let {
+        Let {
+            name: self.name.clone(),
+            value: Box::new(Prim::Unit(Info::default()).to_node()),
+            args: None,
+            info: self.get_info(),
+        }
+    }
+}
+
 impl ToNode for Sym {
     fn to_node(self) -> Node {
         Node::SymNode(self)
@@ -57,11 +68,44 @@ impl ToNode for Sym {
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Prim {
+    Void(Info),
+    Unit(Info),
     Bool(bool, Info),
     I32(i32, Info),
     Str(String, Info),
     Lambda(Box<Node>),
+    Struct(Vec<(String, Prim)>, Info), // Should really just store values, but we can't do that yet.
     TypeValue(Type, Info),
+}
+
+fn merge_vals(left: Vec<(String, Prim)>, right: Vec<(String, Prim)>) -> Vec<(String, Prim)> {
+    let mut names = HashSet::<String>::new();
+    for pair in right.iter() {
+        names.insert(pair.0.clone());
+    }
+    let mut items = vec![];
+    for pair in left.iter() {
+        if !names.contains(&pair.0) {
+            items.push(pair.clone());
+        }
+    }
+    for pair in right.iter() {
+        items.push(pair.clone());
+    }
+    items
+}
+
+impl Prim {
+    pub fn merge(self: Prim, other: Prim) -> Prim {
+        use Prim::*;
+        match (self, other) {
+            (Struct(vals, info), Struct(o_vals, _)) => Struct(merge_vals(vals, o_vals), info),
+            (Struct(vals, info), other) => {
+                Struct(merge_vals(vals, vec![("it".to_string(), other)]), info)
+            }
+            (_, other) => other,
+        }
+    }
 }
 
 impl ToNode for Prim {
@@ -71,10 +115,13 @@ impl ToNode for Prim {
     fn get_info(&self) -> Info {
         use Prim::*;
         match self {
+            Void(info) => info.clone(),
+            Unit(info) => info.clone(),
             Bool(_, info) => info.clone(),
             I32(_, info) => info.clone(),
             Str(_, info) => info.clone(),
             Lambda(node) => (*node).get_info(),
+            Struct(_, info) => info.clone(),
             TypeValue(_, info) => info.clone(),
         }
     }
@@ -91,8 +138,9 @@ impl fmt::Display for Prim {
 pub struct Let {
     pub name: String,
     pub value: Box<Node>,
-    pub args: Option<Vec<Sym>>, // TODO(cypher1): Args should be let nodes.
+    pub args: Option<Vec<Let>>,
     pub info: Info,
+    // TODO; support captures
 }
 
 impl Let {
@@ -247,6 +295,16 @@ impl ToNode for Node {
     }
 }
 
+impl Node {
+    pub fn as_let(&self) -> Result<Let, TError> {
+        use Node::*;
+        if let LetNode(n) = self {
+            return Ok(n.clone());
+        }
+        Err(TError::ExpectedLetNode(self.clone()))
+    }
+}
+
 pub trait ToNode {
     fn to_node(self) -> Node;
     fn get_info(&self) -> Info;
@@ -276,12 +334,21 @@ impl Symbol {
     pub fn to_name(self: &Symbol) -> String {
         match self {
             Symbol::Anon() => "".to_owned(),
+            // TODO: Edge case exists here if two files with different extensions are used together
             Symbol::Named(name, _) => name.to_owned(),
         }
     }
 }
 
 pub type Path = Vec<Symbol>;
+pub type PathRef<'a> = &'a [Symbol];
+
+pub fn path_to_string(path: PathRef) -> String {
+    path.iter()
+        .map(|p| format!("{}", p))
+        .collect::<Vec<String>>()
+        .join("::")
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Entry {

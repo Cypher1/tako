@@ -61,12 +61,12 @@ pub fn work_on_string<'a>(
     if db.options().cmd == Command::Build {
         db.build_with_gpp(module_name)
     } else {
-        let table = db.build_symbol_table(module_name)?;
+        let root = db.look_up_definitions(module_name)?;
         let mut interp = Interpreter::default();
         if let Some(print_impl) = print_impl {
             interp.impls.insert("print".to_string(), print_impl);
         }
-        let res = interp.visit_root(db, &table)?;
+        let res = interp.visit_root(db, &root)?;
         use ast::ToNode;
         PrettyPrint::process(&res.to_node(), db).or_else(|_| panic!("Pretty print failed"))
     }

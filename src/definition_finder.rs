@@ -55,12 +55,16 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
                     return Ok(res.to_node());
                 }
                 None => {
-                    search.pop(); // Strip theF name off.
+                    search.pop(); // Strip the name off.
                     if db.debug() > 1 {
                         eprintln!("   not found {} at {:?}", expr.name.clone(), search.clone());
                     }
                     if search.is_empty() {
-                        return Err(TError::UnknownSymbol(expr.name.clone(), expr.get_info()));
+                        return Err(TError::UnknownSymbol(
+                            expr.name.clone(),
+                            expr.get_info(),
+                            path_to_string(&state.path),
+                        ));
                     }
                     search.pop(); // Up one, go again.
                 }
@@ -74,23 +78,20 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
 
     fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
         state.path.push(Symbol::Anon());
-        let mut args = vec![];
-        for arg in expr.args.iter() {
-            match self.visit_let(db, state, arg)? {
-                Node::LetNode(let_node) => {
-                    let mut defined_arg = let_node.clone();
-                    let mut path = state.path.clone();
-                    // Inject the value into the 'anon' stack frame.
-                    path.push(Symbol::new(let_node.name));
-                    if db.debug() > 1 {
-                        eprintln!("defining arg at {:?}", path.clone());
-                    }
-                    defined_arg.info.defined_at = Some(path);
-                    args.push(defined_arg)
+        let args = expr
+            .args
+            .iter()
+            .map(|arg| {
+                let val = self.visit_let(db, state, &arg)?.as_let();
+                let mut search = state.path.clone();
+                search.push(Symbol::new(arg.name.clone()));
+                let node = state.table.find_mut(&search);
+                if let Some(node) = node {
+                    node.value.uses.insert(state.path.clone());
                 }
-                _ => panic!("InternalError: definition_finder converted let node to other node."),
-            }
-        }
+                val
+            })
+            .collect::<Result<Vec<Let>, TError>>()?;
         let inner = Box::new(self.visit(db, state, &*expr.inner)?);
         state.path.pop();
         Ok(Apply {
@@ -107,13 +108,22 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
         }
         let path_name = Symbol::new(expr.name.clone());
         state.path.push(path_name);
+        let args = if let Some(args) = &expr.args {
+            Some(
+                args.iter()
+                    .map(|arg| self.visit_let(db, state, &arg)?.as_let())
+                    .collect::<Result<Vec<Let>, TError>>()?,
+            )
+        } else {
+            None
+        };
         let value = Box::new(self.visit(db, state, &expr.value)?);
         state.path.pop();
         Ok(Let {
             name: expr.name.clone(),
-            args: expr.args.clone(),
+            args,
             value,
-            info: expr.get_info(),
+            info: expr.info.clone(),
         }
         .to_node())
     }

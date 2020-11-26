@@ -20,8 +20,7 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
 
     fn visit_sym(&mut self, _db: &dyn Compiler, state: &mut State, expr: &Sym) -> Res {
         if let Some(def_at) = expr.get_info().defined_at {
-            let path: Vec<String> = def_at.iter().map(|p| format!("{}", p)).collect();
-            write!(state, "::{}", path.join("::")).unwrap();
+            write!(state, "::{}", path_to_string(&def_at)).unwrap();
         } else {
             write!(state, "{}", expr.name).unwrap();
         }
@@ -30,28 +29,30 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
 
     fn visit_prim(&mut self, db: &dyn Compiler, state: &mut State, expr: &Prim) -> Res {
         use Prim::*;
-        match expr {
-            Bool(val, _) => {
-                write!(state, "{}", val).unwrap();
-                Ok(())
+        let res = match expr {
+            Void(_) => write!(state, "Void"),
+            Unit(_) => write!(state, "()"),
+            Bool(val, _) => write!(state, "{}", val),
+            I32(val, _) => write!(state, "{}", val),
+            Str(val, _) => write!(state, "'{}'", val),
+            Lambda(val) => Ok(self.visit(db, state, val)?),
+            Struct(vals, _) => {
+                write!(state, "{{").unwrap();
+                let mut is_first = true;
+                for val in vals.iter() {
+                    if !is_first {
+                        write!(state, ", ").unwrap();
+                    }
+                    write!(state, "{} = ", val.0).unwrap();
+                    self.visit_prim(db, state, &val.1)?;
+                    is_first = false;
+                }
+                write!(state, "}}")
             }
-            I32(val, _) => {
-                write!(state, "{}", val).unwrap();
-                Ok(())
-            }
-            Str(val, _) => {
-                write!(state, "'{}'", val).unwrap();
-                Ok(())
-            }
-            Lambda(val) => {
-                self.visit(db, state, val)?;
-                Ok(())
-            }
-            TypeValue(val, _) => {
-                write!(state, "{}", val).unwrap();
-                Ok(())
-            }
-        }
+            TypeValue(val, _) => write!(state, "{}", val),
+        };
+        res.unwrap();
+        Ok(())
     }
 
     fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
@@ -59,11 +60,12 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
         write!(state, "(").unwrap();
         let mut is_first = true;
         for arg in expr.args.iter() {
-            if !is_first {
+            self.visit_let(db, state, &arg)?;
+            if is_first {
+                is_first = true;
+            } else {
                 write!(state, ", ").unwrap();
             }
-            self.visit_let(db, state, &arg)?;
-            is_first = false;
         }
         write!(state, ")").unwrap();
         Ok(())
@@ -71,29 +73,23 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
 
     fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
         if let Some(def_at) = expr.get_info().defined_at {
-            let path: Vec<String> = def_at.iter().map(|p| format!("{}", p)).collect();
-            write!(state, "::{}", path.join("::")).unwrap();
+            write!(state, "::{}", path_to_string(&def_at)).unwrap();
         } else {
             write!(state, "{}", expr.name).unwrap();
         }
-        match &expr.args {
-            Some(reqs) => {
-                if !reqs.is_empty() {
-                    write!(state, "(").unwrap();
-                }
-                let mut is_first = true;
-                for arg in reqs {
-                    if !is_first {
-                        write!(state, ", ").unwrap();
-                    }
-                    self.visit_sym(db, state, &arg)?;
-                    is_first = false;
-                }
-                if !reqs.is_empty() {
-                    write!(state, ")").unwrap();
+
+        if let Some(args) = &expr.args {
+            write!(state, "(").unwrap();
+            let mut is_first = true;
+            for arg in args.iter() {
+                self.visit_let(db, state, &arg)?;
+                if is_first {
+                    is_first = true;
+                } else {
+                    write!(state, ", ").unwrap();
                 }
             }
-            None => {}
+            write!(state, ")").unwrap();
         }
         write!(state, "=").unwrap();
         self.visit(db, state, &*expr.value)

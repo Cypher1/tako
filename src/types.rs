@@ -5,7 +5,7 @@ use std::fmt;
 
 // i32 here are sizes in bits, not bytes.
 // This means that we don't need to have a separate systems for bit&byte layouts.
-type Offset = i32;
+pub type Offset = i32;
 
 // A list of types with an offset to get to the first bit (used for padding, frequently 0).
 type Layout = Vec<Type>;
@@ -23,7 +23,7 @@ pub enum Type {
     Variable(String),
     Function {
         results: Pack,
-        intros: Pack,
+        intros: Pack, // TODO: Replace pack with some kind of struct and push the effects into the results.
         arguments: Pack,
         effects: Vec<String>,
     },

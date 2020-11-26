@@ -110,19 +110,12 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
     }
 
     fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
-        let arg_scope_name = Symbol::Anon();
-
-        state.path.push(arg_scope_name);
-        let mut args = Vec::new();
-        for arg in expr.args.iter() {
-            args.push(match self.visit_let(db, state, arg)? {
-                Node::LetNode(let_node) => Ok(let_node),
-                node => Err(TError::InternalError(
-                    "Symbol table builder converted let into non let".to_owned(),
-                    node,
-                )),
-            }?);
-        }
+        state.path.push(Symbol::Anon());
+        let args = expr
+            .args
+            .iter()
+            .map(|arg| self.visit_let(db, state, &arg)?.as_let())
+            .collect::<Result<_, _>>()?;
         let inner = Box::new(self.visit(db, state, &*expr.inner)?);
         state.path.pop();
 
@@ -135,40 +128,26 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
     }
 
     fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
-        let let_name = Symbol::new(expr.name.clone());
         if db.debug() > 1 {
-            eprintln!("visiting {:?} {}", state.path.clone(), &let_name);
+            eprintln!("visiting {:?} {}", state.path.clone(), &expr.name);
         }
 
         // Visit definition.
         let mut info = expr.get_info();
-        state.path.push(let_name);
+        state.path.push(Symbol::new(expr.name.clone()));
         info.defined_at = Some(state.path.clone());
         state.table.get_mut(&state.path);
 
         // Consider the function arguments defined in this scope.
-        let args = if let Some(e_args) = &expr.args {
-            let mut args = vec![];
-            for arg in e_args.iter() {
-                let mut arg_path = state.path.clone();
-                arg_path.push(Symbol::new(arg.name.clone()));
-                state.table.get_mut(&arg_path);
-                let mut sym = arg.clone();
-                if db.debug() > 1 {
-                    eprintln!(
-                        "visiting let arg {:?} {}",
-                        arg_path.clone(),
-                        &sym.name.clone()
-                    );
-                }
-                sym.info.defined_at = Some(arg_path);
-                args.push(sym);
-            }
-            Some(args)
+        let args = if let Some(args) = &expr.args {
+            Some(
+                args.iter()
+                    .map(|arg| self.visit_let(db, state, &arg)?.as_let())
+                    .collect::<Result<_, _>>()?,
+            )
         } else {
             None
         };
-
         let value = Box::new(self.visit(db, state, &expr.value)?);
         state.path.pop();
 

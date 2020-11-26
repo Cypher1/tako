@@ -5,7 +5,7 @@ use super::database::Compiler;
 use super::errors::TError;
 use super::type_checker::infer;
 
-type Frame = HashMap<String, Node>;
+type Frame = HashMap<String, Prim>;
 
 pub type ImplFn<'a> = &'a mut dyn FnMut(&dyn Compiler, Vec<&dyn Fn() -> Res>, Info) -> Res;
 
@@ -22,7 +22,7 @@ impl<'a> Default for Interpreter<'a> {
     }
 }
 
-fn find_symbol<'a>(state: &'a [Frame], name: &str) -> Option<&'a Node> {
+fn find_symbol<'a>(state: &'a [Frame], name: &str) -> Option<&'a Prim> {
     for frame in state.iter().rev() {
         if let Some(val) = frame.get(name) {
             return Some(val); // This is the variable
@@ -58,9 +58,12 @@ fn prim_add(l: &Prim, r: &Prim, info: Info) -> Res {
 pub fn prim_add_strs(l: &Prim, r: &Prim, info: Info) -> Res {
     use Prim::*;
     let to_str = |val: &Prim| match val {
+        Void(_) => "Void".to_string(),
+        Unit(_) => "()".to_string(),
         Bool(v, _) => format!("{}", v),
         I32(v, _) => format!("{}", v),
         Str(v, _) => v.clone(),
+        Struct(v, info) => format!("{:?}", Struct(v.to_vec(), info.clone())),
         Lambda(v) => format!("{}", v),
         TypeValue(v, _) => format!("{}", v),
     };
@@ -272,37 +275,19 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
         let name = &expr.name;
         let it_val = || {
             state.last().map(|frame| {
-                match frame
+                frame
                     .get("it")
                     .unwrap_or_else(|| panic!("{} needs an argument", expr.name))
                     .clone()
-                {
-                    crate::ast::Node::PrimNode(prim) => prim,
-                    node => panic!("{:?}", node),
-                }
             })
         };
         let it_arg = || Ok(it_val().unwrap());
         let value = find_symbol(&state, name);
-        match value {
-            Some(Node::PrimNode(prim)) => {
-                if db.debug() > 0 {
-                    eprintln!("from stack {}", prim.clone().to_node());
-                }
-                return Ok(prim.clone());
+        if let Some(prim) = value {
+            if db.debug() > 0 {
+                eprintln!("from stack {}", prim.clone().to_node());
             }
-            Some(val) => {
-                if db.debug() > 0 {
-                    eprintln!("running lambda {} -> {}", name, val);
-                }
-                let mut next = state.clone();
-                let result = self.visit(db, &mut next, &val.clone())?;
-                if db.debug() > 0 {
-                    eprintln!("got {}", result.clone().to_node());
-                }
-                return Ok(result);
-            } // This is the variable
-            None => {}
+            return Ok(prim.clone());
         }
         if db.debug() > 2 {
             eprintln!("checking for interpreter impl {}", expr.name.clone());
@@ -316,7 +301,12 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
         if let Some(default_impl) = crate::externs::get_implementation(name.to_owned()) {
             return default_impl(db, vec![&it_arg], expr.get_info());
         }
-        Err(TError::UnknownSymbol(name.to_string(), expr.info.clone()))
+        dbg!(state);
+        Err(TError::UnknownSymbol(
+            name.to_string(),
+            expr.info.clone(),
+            "interpreter::?".to_string(),
+        ))
     }
 
     fn visit_prim(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Prim) -> Res {
@@ -328,11 +318,17 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             eprintln!("evaluating apply {}", expr.clone().to_node());
         }
         state.push(Frame::new());
-        for arg in expr.args.iter() {
-            self.visit_let(db, state, arg)?;
-        }
-        // Visit the expr.inner
-        let res = self.visit(db, state, &*expr.inner)?;
+        expr.args
+            .iter()
+            .map(|arg| self.visit_let(db, state, arg))
+            .collect::<Result<Vec<Prim>, TError>>()?;
+        // Retrive the inner
+        let inner = self.visit(db, state, &*expr.inner)?;
+        // Run the inner
+        let res = match inner {
+            Prim::Lambda(func) => self.visit(db, state, &*func)?,
+            val => val,
+        };
         state.pop();
         Ok(res)
     }
@@ -343,11 +339,12 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
         }
 
         if expr.args.is_some() {
+            let val = Prim::Lambda(expr.value.clone());
             state
                 .last_mut()
                 .unwrap()
-                .insert(expr.name.clone(), expr.value.clone().to_node());
-            return Ok(Prim::Lambda(Box::new(expr.to_sym().to_node())));
+                .insert(expr.name.clone(), val.clone());
+            return Ok(val);
         }
         // Add a new scope
         state.push(Frame::new());
@@ -357,7 +354,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
         match state.last_mut() {
             None => panic!("there is no stack frame"),
             Some(frame) => {
-                frame.insert(expr.name.clone(), result.clone().to_node());
+                frame.insert(expr.name.clone(), result.clone());
                 Ok(result)
             }
         }
@@ -416,9 +413,17 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             "||" => prim_or(&l?, &r()?, info),
             "&" => prim_type_and(l?, r()?, info),
             "|" => prim_type_or(l?, r()?, info),
+            "," => {
+                let left = l?;
+                let right = r()?;
+                dbg!(format!("{},{}", &left, &right));
+                Ok(left.merge(right))
+            }
             ";" => {
-                l?;
-                Ok(r()?)
+                let left = l?;
+                let right = r()?;
+                dbg!(format!("{};{}", &left, &right));
+                Ok(left.merge(right))
             }
             "?" => match l {
                 Err(_) => r(),
@@ -480,15 +485,17 @@ mod tests {
     fn eval_str(s: String) -> Res {
         use std::sync::Arc;
         let mut db = DB::default();
-        let filename = "test.tk";
+        let filename = "test/file.tk";
         let module = db.module_name(filename.to_owned());
         db.set_file(filename.to_owned(), Ok(Arc::new(s)));
         db.set_options(Options::default());
         let ast = db.parse_file(module)?;
+        dbg!(format!("{}", &ast));
         let mut state = vec![HashMap::new()];
         Interpreter::default().visit(&db, &mut state, &ast)
     }
 
+    #[allow(dead_code)]
     fn trace<T: std::fmt::Display, E>(t: Result<T, E>) -> Result<T, E> {
         match &t {
             Ok(t) => eprintln!(">> {}", &t),

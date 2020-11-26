@@ -26,54 +26,6 @@ fn binding_power(db: &dyn Compiler, tok: &Token) -> Result<i32, TError> {
     })
 }
 
-fn get_defs(root: Node) -> Vec<Let> {
-    use Node::*;
-    let mut args = vec![];
-
-    match root {
-        LetNode(n) => args.push(n),
-        SymNode(n) => args.push(Let {
-            name: n.name.clone(),
-            args: None,
-            info: n.get_info(),
-            value: Box::new(n.to_node()),
-        }),
-        BinOpNode(BinOp {
-            name,
-            left,
-            right,
-            info,
-        }) => {
-            if name == "," {
-                args.append(&mut get_defs(*left));
-                args.append(&mut get_defs(*right));
-            } else {
-                args.push(Let {
-                    name: "it".to_string(),
-                    args: None,
-                    value: Box::new(
-                        BinOp {
-                            name,
-                            left,
-                            right,
-                            info: info.clone(),
-                        }
-                        .to_node(),
-                    ),
-                    info,
-                });
-            }
-        }
-        n => args.push(Let {
-            name: "it".to_string(),
-            args: None,
-            value: Box::new(n.clone()),
-            info: n.get_info(),
-        }),
-    }
-    args
-}
-
 impl Token {
     pub fn get_info(&self) -> Info {
         self.pos.clone().get_info()
@@ -181,6 +133,34 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
     }
 }
 
+fn get_defs(args: Node) -> Vec<Let> {
+    if let Node::SymNode(symn) = args {
+        return vec![symn.as_let()];
+    }
+    if let Node::LetNode(letn) = args {
+        return vec![letn];
+    }
+    if let Node::BinOpNode(BinOp {
+        name,
+        left,
+        right,
+        info: _,
+    }) = args.clone()
+    {
+        if name == "," {
+            let mut left = get_defs(*left);
+            left.append(&mut get_defs(*right));
+            return left;
+        }
+    }
+    vec![Let {
+        name: "it".to_string(),
+        args: None,
+        info: args.get_info(),
+        value: Box::new(args),
+    }]
+}
+
 fn led(
     db: &dyn Compiler,
     mut toks: VecDeque<Token>,
@@ -261,7 +241,7 @@ fn led(
                         Node::SymNode(s) => Ok((
                             Let {
                                 name: s.name,
-                                args: Some(a.args.iter().map(|l| l.to_sym()).collect()),
+                                args: Some(a.args),
                                 value: Box::new(right),
                                 info: head.get_info(),
                             }
@@ -289,8 +269,7 @@ fn led(
                         toks,
                     ));
                 }
-                let (inner, mut new_toks) = expr(db, toks, 0)?;
-                // TODO: Handle empty parens
+                let (args, mut new_toks) = expr(db, toks, 0)?;
                 let close = new_toks.front();
                 match (head.value.as_str(), close) {
                     (
@@ -319,11 +298,10 @@ fn led(
                 }
                 new_toks.pop_front();
                 // Introduce arguments
-                let args = get_defs(inner);
                 Ok((
                     Apply {
                         inner: Box::new(left),
-                        args,
+                        args: get_defs(args),
                         info: head.get_info(),
                     }
                     .to_node(),
@@ -342,7 +320,7 @@ fn expr(
     init_toks: VecDeque<Token>,
     init_lbp: i32,
 ) -> Result<(Node, VecDeque<Token>), TError> {
-    // TODO: Name updates fields, this is confusing (0 is tree, 1 is toks)
+    // TODO: Name update's fields, this is confusing (0 is tree, 1 is toks)
     let init_update = nud(db, init_toks)?;
     let mut left: Node = init_update.0;
     let mut toks: VecDeque<Token> = init_update.1;
@@ -365,17 +343,17 @@ fn expr(
     Ok((left, toks))
 }
 
-pub fn lex(db: &dyn Compiler, module: &Path) -> Result<VecDeque<Token>, TError> {
-    let filename = db.filename(module.clone());
+pub fn lex(db: &dyn Compiler, module: PathRef) -> Result<VecDeque<Token>, TError> {
+    let filename = db.filename(module.to_vec());
     lex_string(db, module, &db.file(filename)?.to_string())
 }
 
 pub fn lex_string(
     db: &dyn Compiler,
-    module: &Path,
+    module: PathRef,
     contents: &str,
 ) -> Result<VecDeque<Token>, TError> {
-    let filename = db.filename(module.clone());
+    let filename = db.filename(module.to_vec());
     let mut toks: VecDeque<Token> = VecDeque::new();
 
     let mut pos = Loc {
@@ -396,7 +374,11 @@ pub fn lex_string(
     Ok(toks)
 }
 
-pub fn parse_string(db: &dyn Compiler, module: &Path, text: &Arc<String>) -> Result<Node, TError> {
+pub fn parse_string(
+    db: &dyn Compiler,
+    module: PathRef,
+    text: &Arc<String>,
+) -> Result<Node, TError> {
     let toks = db.lex_string(module.to_vec(), text.clone())?;
     if db.debug() > 0 {
         eprintln!("parsing str... {:?}", &module);
@@ -412,8 +394,8 @@ pub fn parse_string(db: &dyn Compiler, module: &Path, text: &Arc<String>) -> Res
     Ok(root)
 }
 
-pub fn parse(db: &dyn Compiler, module: &Path) -> Result<Node, TError> {
-    let toks = db.lex_file(module.clone())?;
+pub fn parse(db: &dyn Compiler, module: PathRef) -> Result<Node, TError> {
+    let toks = db.lex_file(module.to_vec())?;
     if db.debug() > 0 {
         eprintln!("parsing file... {:?}", &module);
     }

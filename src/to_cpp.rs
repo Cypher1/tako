@@ -14,8 +14,10 @@ pub struct CodeGenerator {
 pub enum Code {
     Empty,
     Block(Vec<Code>),
+    Struct(Vec<Code>),
     Expr(String),
     Statement(String),
+    Assignment(String, Box<Code>),
     If {
         condition: Box<Code>,
         then: Box<Code>,
@@ -27,6 +29,7 @@ pub enum Code {
         return_type: String,
         body: Box<Code>,
         lambda: bool,
+        call: bool,
     },
 }
 
@@ -35,12 +38,14 @@ impl Code {
         match self {
             Code::Empty => Code::Empty,
             Code::Expr(expr) => f(expr),
+            Code::Struct(values) => Code::Struct(values),
             Code::Block(mut statements) => {
                 let last = statements.pop().unwrap();
                 statements.push(last.with_expr(f));
                 Code::Block(statements)
             }
             Code::Statement(line) => Code::Statement(line),
+            Code::Assignment(name, value) => Code::Assignment(name, Box::new(value.with_expr(f))),
             Code::If {
                 condition,
                 then,
@@ -55,6 +60,7 @@ impl Code {
                 args,
                 mut body,
                 lambda,
+                call,
                 return_type,
             } => {
                 body = Box::new(body.with_expr(f));
@@ -63,6 +69,7 @@ impl Code {
                     args,
                     body,
                     lambda,
+                    call,
                     return_type,
                 }
             }
@@ -109,19 +116,35 @@ pub fn make_name(def: Vec<Symbol>) -> String {
 }
 
 fn pretty_print_block(src: Code, indent: &str) -> String {
+    let new_indent = indent.to_string() + "  ";
     // Calculate the expression as well...
     // TODO: Consider if it is dropped (should it be stored? is it a side effect?)
     match src {
-        Code::Block(statements) => {
-            let new_indent = indent.to_string() + "  ";
+        Code::Block(mut statements) => {
+            let last = statements.pop().unwrap();
+            statements.push(last.with_expr(&|exp| Code::Statement(format!("return {}", exp))));
+            dbg!(&statements);
             let body: Vec<String> = statements
                 .iter()
-                .map(|x| pretty_print_block(x.clone(), &new_indent))
+                .map(|x| pretty_print_block(x.clone(), new_indent.as_str()))
                 .collect();
             format!("{{{}{indent}}}", body.join(""), indent = indent,)
         }
+        Code::Struct(vals) => {
+            let body: Vec<String> = vals
+                .iter()
+                .map(|x| pretty_print_block(x.clone(), new_indent.as_str()))
+                .collect();
+            format!("{{{}{indent}}}", body.join(", "), indent = indent,)
+        }
         Code::Expr(line) => line,
         Code::Statement(line) => format!("{}{};", indent, line),
+        Code::Assignment(name, value) => format!(
+            "{}const auto {} = {};",
+            indent,
+            name,
+            pretty_print_block(*value, &indent)
+        ),
         Code::Empty => "".to_string(),
         Code::If {
             condition,
@@ -145,21 +168,32 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
             return_type,
             body: inner,
             lambda,
+            call,
         } => {
-            let body = if let Code::Block(_) = *inner {
-                pretty_print_block(*inner, &indent)
+            let inner = if let Code::Block(_) = *inner {
+                *inner
             } else {
                 // Auto wrap statements in blocks.
-                pretty_print_block(Code::Block(vec![*inner]), &indent)
+                Code::Block(vec![*inner])
             };
+            let body = pretty_print_block(inner, indent);
             if lambda {
-                format!(
-                    "{indent}const auto {} = [&]({}) {};",
-                    name,
-                    args.join(", "),
-                    body,
-                    indent = indent
-                )
+                let arg_str = if args.is_empty() {
+                    "".to_string()
+                } else {
+                    format!(
+                        "{new_indent}{}{indent}",
+                        args.join(&(",".to_string() + &new_indent)),
+                        indent = indent,
+                        new_indent = new_indent
+                    )
+                };
+                let out = format!("[&]({}) {}", arg_str, body);
+                if call {
+                    format!("({})()", out)
+                } else {
+                    out
+                }
             } else {
                 format!(
                     "{indent}{} {}({}) {}",
@@ -209,20 +243,25 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             eprintln!("table {:?}", table);
         }
         let main = match self.visit_let(db, &mut table, &main_let)? {
-            Code::Func {
-                name: _,
-                args: _,
-                body,
-                lambda: _,
-                return_type: _,
-            } => Code::Func {
-                name: "main".to_string(),
-                args: vec!["int argc".to_string(), "char* argv[]".to_string()],
-                body,
-                lambda: false,
-                return_type: "int".to_string(),
+            Code::Assignment(_, val) => match *val {
+                Code::Func {
+                    name: _,
+                    args: _,
+                    body,
+                    lambda: _,
+                    call: _,
+                    return_type: _,
+                } => Code::Func {
+                    name: "main".to_string(),
+                    args: vec!["int argc".to_string(), "char* argv[]".to_string()],
+                    body,
+                    lambda: false,
+                    call: false,
+                    return_type: "int".to_string(),
+                },
+                thing => panic!("main must be a Func {:?}", thing),
             },
-            thing => panic!("main must be a Func {:?}", thing),
+            thing => panic!("main must be an Func {:?}", thing),
         };
         // TODO(cypher1): Use a writer.
         let mut code = "".to_string();
@@ -239,7 +278,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         for func in self.functions.clone().iter() {
             match &func {
                 Code::Func { name, args, .. } => {
-                    code = format!("{}{}({});\n", code, name, args.join(", "))
+                    code = format!("{}{}({});\n", code, name, args.join(", "),)
                 }
                 _ => panic!("Cannot create function from non-function"),
             }
@@ -278,11 +317,21 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
     fn visit_prim(&mut self, db: &dyn Compiler, state: &mut State, expr: &Prim) -> Res {
         use Prim::*;
         match expr {
+            Void(_) => Ok(Code::Expr("void".to_string())),
+            Unit(_) => Ok(Code::Expr("nullptr".to_string())),
             I32(n, _) => Ok(Code::Expr(n.to_string())),
             Bool(true, _) => Ok(Code::Expr(1.to_string())),
             Bool(false, _) => Ok(Code::Expr(0.to_string())),
             Str(s, _) => Ok(Code::Expr(format!("{:?}", s))),
             Lambda(node) => self.visit(db, state, node),
+            Struct(vals, _) => {
+                // TODO: Struct C++
+                let mut val_code = vec![];
+                for val in vals.iter() {
+                    val_code.push(self.visit_prim(db, state, &val.1)?);
+                }
+                Ok(Code::Struct(val_code))
+            }
             TypeValue(_ty, _) => {
                 unimplemented!("unimplemented primitive type in compilation to cpp")
             }
@@ -291,31 +340,20 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
 
     fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
         // eprintln!("apply here: {:?}", expr);
-        let val = self.visit(db, state, &expr.inner)?;
-        let mut arg_exprs = vec![];
+        // Build the 'struct' of args
+        let mut args = vec![];
         for arg in expr.args.iter() {
-            let body = self.visit(db, state, &arg.value)?;
-            if let Some(args) = &arg.args {
-                let body = body.with_expr(&|exp| Code::Statement(format!("return {}", exp)));
-                let arg_expr = pretty_print_block(body, "");
-                let mut arg_names: Vec<String> = vec![];
-                for lambda_arg in args.iter() {
-                    arg_names.push(format!(
-                        "const auto {}",
-                        pretty_print_block(self.visit_sym(db, state, lambda_arg)?, "")
-                    ));
-                }
-                arg_exprs.push(format!("[&]({}){{{}}}", arg_names.join(", "), arg_expr));
-                continue;
-            }
-            let arg_expr = pretty_print_block(body, "");
-            arg_exprs.push(arg_expr.clone())
+            // TODO: Include lambda head in values
+            let val = self.visit_let(db, state, &arg)?;
+            match val {
+                Code::Assignment(_, val) => args.push(pretty_print_block(*val, "")),
+                val => args.push(pretty_print_block(val, "")),
+            };
         }
-        // TODO: require label is none.
-        let arg_str = arg_exprs.join(", ");
-        match val {
+        let inner = self.visit(db, state, &expr.inner)?;
+        match inner {
             Code::Expr(expr) => {
-                let with_args = format!("{}({})", expr, arg_str);
+                let with_args = format!("{}({})", expr, args.join(", "));
                 Ok(Code::Expr(with_args))
             }
             _ => panic!("Don't know how to apply arguments to a block"),
@@ -328,56 +366,58 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         //     expr.get_info().defined_at,
         //     expr.name
         // );
-        let filename = expr
+        let path = expr
             .get_info()
-            .loc
-            .expect("cannot find symbol location")
-            .filename
-            .expect("cannot find symbol file location");
+            .defined_at
+            .expect("Could not find definition for let");
 
-        let context = db.module_name(filename);
-
-        let path = expr.get_info().defined_at.expect("Undefined symbol")[context.len()..].to_vec();
-
-        let uses = db
-            .find_symbol_uses(context.clone(), path.clone())?
-            .unwrap_or_else(|| panic!("couldn't find {:?} {:?}", context.clone(), path.clone()));
+        let uses = db.find_symbol_uses(path.clone())?;
         if uses.is_empty() {
+            dbg!(
+                "Culling",
+                &expr.get_info().defined_at.map(|path| path_to_string(&path))
+            );
+            dbg!(path_to_string(&path));
             return Ok(Code::Empty);
         }
-        let name = make_name(
-            expr.get_info()
-                .defined_at
-                .expect("Could not find definition for let"),
-        );
+        let name = make_name(path);
         let body = self.visit(db, state, &expr.value)?;
-        if let Some(args) = &expr.args {
-            let body = body.with_expr(&|exp| Code::Statement(format!("return {}", exp)));
-            let args: Vec<String> = args
-                .iter()
-                .map(|s| {
-                    format!(
-                        "const auto {}",
-                        make_name(
-                            s.get_info()
-                                .defined_at
-                                .expect("Could not find definition for let argument"),
-                        )
-                    )
-                })
-                .collect();
+        if let Some(eargs) = &expr.args {
+            let mut args = vec![];
+            for arg in eargs.iter() {
+                let path = arg
+                    .get_info()
+                    .defined_at
+                    .expect("Could not find definition for let arg");
+                let name = make_name(path);
+                args.push(format!("const auto {}", name));
+            }
 
-            let node = Code::Func {
-                name,
-                args,
-                return_type: "int".to_string(),
+            return Ok(Code::Assignment(
+                name.clone(),
+                Box::new(Code::Func {
+                    name,
+                    args,
+                    return_type: "int".to_string(), // TODO
+                    body: Box::new(body),
+                    lambda: true,
+                    call: false,
+                }),
+            ));
+        }
+        let body = match body {
+            Code::Statement(s) => Code::Statement(s),
+            Code::Expr(s) => Code::Expr(s),
+            body => Code::Func {
+                name: "".to_string(),
+                args: vec![],
+                return_type: "int".to_string(), // TODO
                 body: Box::new(body),
                 lambda: true,
-            };
-
-            return Ok(node);
-        }
-        Ok(body.with_expr(&|x| Code::Statement(format!("const auto {} = {}", name, x))))
+                call: true,
+            },
+        };
+        Ok(Code::Assignment(name, Box::new(body)))
     }
 
     fn visit_un_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &UnOp) -> Res {
@@ -416,7 +456,6 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             }
             ";" => {
                 // TODO: handle 'error' values more widly.
-                // TODO: ORDERING
                 return Ok(left.merge(right));
             }
             _ => {}
