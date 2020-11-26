@@ -409,7 +409,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 name: "".to_string(),
                 args: vec![],
                 return_type: "int".to_string(), // TODO
-                body: Box::new(body),
+                body: Box::new(body.with_expr(&|exp| Code::Statement(format!("return {}", exp)))),
                 lambda: true,
                 call: true,
             },
