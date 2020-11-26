@@ -86,14 +86,9 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
                 let mut search = state.path.clone();
                 search.push(Symbol::new(arg.name.clone()));
                 let node = state.table.find_mut(&search);
-                match node {
-                    Some(node) => {
-                        node.value.uses.insert(state.path.clone());
-                    }
-                    None => {
-                        // TODO: error?
-                    }
-                };
+                if let Some(node) = node {
+                    node.value.uses.insert(state.path.clone());
+                }
                 val
             })
             .collect::<Result<Vec<Let>, TError>>()?;
