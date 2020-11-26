@@ -29,6 +29,7 @@ pub enum Code {
         return_type: String,
         body: Box<Code>,
         lambda: bool,
+        call: bool,
     },
 }
 
@@ -59,6 +60,7 @@ impl Code {
                 args,
                 mut body,
                 lambda,
+                call,
                 return_type,
             } => {
                 body = Box::new(body.with_expr(f));
@@ -67,6 +69,7 @@ impl Code {
                     args,
                     body,
                     lambda,
+                    call,
                     return_type,
                 }
             }
@@ -88,11 +91,14 @@ impl Code {
                 right.insert(0, left);
                 Code::Block(right) // Backwards?
             }
-            (Code::Block(mut left), right) => {
+            (Code::Block(mut left), mut right) => {
                 for line in left.iter_mut() {
                     if let Code::Expr(expr) = line {
                         *line = Code::Statement(expr.to_owned());
                     }
+                }
+                if let Code::Expr(expr) = right {
+                    right = Code::Statement(expr);
                 }
                 left.push(right);
                 Code::Block(left)
@@ -157,6 +163,7 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
             return_type,
             body: inner,
             lambda,
+            call,
         } => {
             let body = if let Code::Block(_) = *inner {
                 pretty_print_block(*inner, indent)
@@ -174,7 +181,12 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
                         new_indent = new_indent
                     )
                 };
-                format!("[&]({}) {}", arg_str, body)
+                let out = format!("[&]({}) {}", arg_str, body);
+                if call {
+                    format!("({})()", out)
+                } else {
+                    out
+                }
             } else {
                 format!(
                     "{indent}{} {}({}) {}",
@@ -230,12 +242,14 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                     args: _,
                     body,
                     lambda: _,
+                    call: _,
                     return_type: _,
                 } => Code::Func {
                     name: "main".to_string(),
                     args: vec!["int argc".to_string(), "char* argv[]".to_string()],
                     body,
                     lambda: false,
+                    call: false,
                     return_type: "int".to_string(),
                 },
                 thing => panic!("main must be a Func {:?}", thing),
@@ -379,14 +393,27 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                         Code::Func {
                             name,
                             args,
-                            return_type: "int".to_string(),
+                            return_type: "int".to_string(), // TODO
                             body: Box::new(body),
                             lambda: true,
+                            call: false,
                         }
                     )
                 )
             );
         }
+        let body = match body {
+            Code::Statement(s) => Code::Statement(s),
+            Code::Expr(s) => Code::Expr(s),
+            body => Code::Func {
+                name: "".to_string(),
+                args: vec![],
+                return_type: "int".to_string(), // TODO
+                body: Box::new(body),
+                lambda: true,
+                call: true,
+            },
+        };
         Ok(Code::Assignment(name, Box::new(body)))
     }
 
@@ -426,7 +453,6 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             }
             ";" => {
                 // TODO: handle 'error' values more widly.
-                // TODO: ORDERING
                 return Ok(left.merge(right));
             }
             _ => {}
