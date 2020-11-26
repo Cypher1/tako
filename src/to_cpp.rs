@@ -123,7 +123,10 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
     // Calculate the expression as well...
     // TODO: Consider if it is dropped (should it be stored? is it a side effect?)
     match src {
-        Code::Block(statements) => {
+        Code::Block(mut statements) => {
+            let last = statements.pop().unwrap();
+            statements.push(last.with_expr(&|exp| Code::Statement(format!("return {}", exp))));
+            dbg!(&statements);
             let body: Vec<String> = statements
                 .iter()
                 .map(|x| pretty_print_block(x.clone(), new_indent.as_str()))
@@ -165,12 +168,13 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
             lambda,
             call,
         } => {
-            let body = if let Code::Block(_) = *inner {
-                pretty_print_block(*inner, indent)
+            let inner = if let Code::Block(_) = *inner {
+                *inner
             } else {
                 // Auto wrap statements in blocks.
-                pretty_print_block(Code::Block(vec![*inner]), indent)
+                Code::Block(vec![*inner])
             };
+            let body = pretty_print_block(inner, indent);
             if lambda {
                 let arg_str = if args.is_empty() {
                     "".to_string()
@@ -385,7 +389,6 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 let name = make_name(path);
                 args.push(format!("const auto {}", name));
             }
-            let body = body.with_expr(&|exp| Code::Statement(format!("return {}", exp)));
 
             return Ok(Code::Assignment (
                     name.clone(),
@@ -409,7 +412,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 name: "".to_string(),
                 args: vec![],
                 return_type: "int".to_string(), // TODO
-                body: Box::new(body.with_expr(&|exp| Code::Statement(format!("return {}", exp)))),
+                body: Box::new(body),
                 lambda: true,
                 call: true,
             },
