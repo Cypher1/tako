@@ -7,7 +7,8 @@ use super::type_checker::infer;
 
 type Frame = HashMap<String, Prim>;
 
-pub type ImplFn<'a> = &'a mut dyn FnMut(&dyn Compiler, Vec<&dyn Fn() -> Res>, Info) -> Res;
+pub type ImplFn<'a> = &'a mut dyn FnMut(&dyn Compiler, HashMap<String, Box<dyn Fn() -> Res>>, Info) -> Res;
+pub type PureImplFn<'a> = &'a dyn Fn(&dyn Compiler, HashMap<String, Box<dyn Fn() -> Res>>, Info) -> Res;
 
 // Walks the AST interpreting it.
 pub struct Interpreter<'a> {
@@ -273,15 +274,14 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             eprintln!("evaluating let {}", expr.clone().to_node());
         }
         let name = &expr.name;
-        let it_val = || {
-            state.last().map(|frame| {
-                frame
-                    .get("it")
-                    .unwrap_or_else(|| panic!("{} needs an argument", expr.name))
-                    .clone()
-            })
+        let frame = || {
+            let mut frame_vals: HashMap<String, Box<dyn Fn() -> Res>> = map!();
+            for (name, val) in state.last().unwrap().clone().iter() {
+                let val = val.clone();
+                frame_vals.insert(name.to_string(), Box::new(move ||Ok(val.clone())));
+            }
+            return frame_vals;
         };
-        let it_arg = || Ok(it_val().unwrap());
         let value = find_symbol(&state, name);
         if let Some(prim) = value {
             if db.debug() > 0 {
@@ -293,13 +293,13 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             eprintln!("checking for interpreter impl {}", expr.name.clone());
         }
         if let Some(extern_impl) = &mut self.impls.get_mut(name) {
-            return extern_impl(db, vec![&it_arg], expr.get_info());
+            return extern_impl(db, frame(), expr.get_info());
         }
         if db.debug() > 2 {
             eprintln!("checking for default impl {}", expr.name.clone());
         }
         if let Some(default_impl) = crate::externs::get_implementation(name.to_owned()) {
-            return default_impl(db, vec![&it_arg], expr.get_info());
+            return default_impl(db, frame(), expr.get_info());
         }
         dbg!(state);
         Err(TError::UnknownSymbol(
