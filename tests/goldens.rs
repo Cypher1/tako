@@ -1,4 +1,5 @@
 use std::fs::read_to_string;
+use std::collections::HashMap;
 
 use pretty_assertions::assert_eq;
 use takolib::cli_options::Options;
@@ -33,10 +34,10 @@ fn test_with_expectation(expected: TestResult, options: Vec<&str>) {
         };
         use takolib::interpreter::Res;
         let mut print_impl = &mut |_: &dyn Compiler,
-                                   args: Vec<&dyn Fn() -> takolib::interpreter::Res>,
+                                   args: HashMap<String, Box<dyn Fn() -> takolib::interpreter::Res>>,
                                    _: takolib::ast::Info|
          -> Res {
-            stdout.push(match args[0]()? {
+            stdout.push(match args.get("it").unwrap()()? {
                 Str(s, _) => s,
                 s => format!("{:?}", s),
             });

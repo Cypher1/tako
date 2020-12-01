@@ -9,12 +9,12 @@ use crate::types::{
     Type::*,
 };
 
-pub type FuncImpl = Box<dyn Fn(&dyn Compiler, Vec<&dyn Fn() -> Res>, Info) -> Res>;
+pub type FuncImpl = Box<dyn Fn(&dyn Compiler, HashMap<String, Box<dyn Fn() -> Res>>, Info) -> Res>;
 
 pub fn get_implementation(name: String) -> Option<FuncImpl> {
     match name.as_str() {
         "print" => Some(Box::new(|_, args, info| {
-            let val = args[0]()?;
+            let val = args.get("it").unwrap()()?;
             match val {
                 Str(s, _) => print!("{}", s),
                 s => print!("{:?}", s),
@@ -22,7 +22,7 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
             Ok(I32(0, info))
         })),
         "eprint" => Some(Box::new(|_, args, info| {
-            let val = args[0]()?;
+            let val = args.get("it").unwrap()()?;
             match val {
                 Str(s, _) => eprint!("{}", s),
                 s => eprint!("{:?}", s),
@@ -30,7 +30,7 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
             Ok(I32(0, info))
         })),
         "exit" => Some(Box::new(|_, args, _| {
-            let val = args[0]()?;
+            let val = args.get("it").unwrap()()?;
             let code = match val {
                 I32(n, _) => n,
                 s => {
@@ -41,16 +41,16 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
             std::process::exit(code);
         })),
         "++" => Some(Box::new(|_, args, info| {
-            prim_add_strs(&args[0]()?, &args[1]()?, info)
+            prim_add_strs(&args.get("left").unwrap()()?, &args.get("right").unwrap()()?, info)
         })),
         "^" => Some(Box::new(|_, args, info| {
-            prim_pow(&args[0]()?, &args[1]()?, info)
+            prim_pow(&args.get("left").unwrap()()?, &args.get("right").unwrap()()?, info)
         })),
 
         "argc" => Some(Box::new(|db, _, info| {
             Ok(I32(db.options().interpreter_args.len() as i32, info))
         })),
-        "argv" => Some(Box::new(|db, args, info| match args[0]()? {
+        "argv" => Some(Box::new(|db, args, info| match args.get("it").unwrap()()? {
             I32(ind, _) => Ok(Str(
                 db.options().interpreter_args[ind as usize].clone(),
                 info,
