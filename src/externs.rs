@@ -234,8 +234,8 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
                 arguments: Box::new(variable("a")),
                 intros: dict!("a" => variable("Type")),
             },
-            cpp: LangImpl::new("[](const int code){exit(code);}")
-                .with_includes("#include <stdlib.h>"),
+            cpp: LangImpl::new("[](const auto x, const auto y){return struct_x_i32_y_i32{.x=x,.y=y};}")
+                .with_type("typedef struct {int32_t x; int32_t y;} struct_x_i32_y_i32;\nstd::ostream& operator<<(std::ostream& os, const struct_x_i32_y_i32& t) { os << \"struct(x=\" << t.x << \", y=\" << t.y << \")\"; return os; }"),
         },
         Extern {
             name: ";".to_string(),
