@@ -1,4 +1,4 @@
 ob=struct(x=3, y=5)
 
-print("ob="++ob)
+print("ob="++ob++"\n")
 0
