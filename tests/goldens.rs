@@ -216,6 +216,22 @@ fn compile_higher_order() {
 }
 
 #[test]
+fn struct_construction() {
+    test_with_expectation(
+        OutputFile("goldens/examples_struct_construction.cc".to_string()),
+        vec!["--run", "examples/struct_construction.tk"],
+    );
+}
+
+#[test]
+fn compile_struct_construction() {
+    test_with_expectation(
+        OutputFile("goldens/examples_struct_construction.cc".to_string()),
+        vec!["examples/struct_construction.tk"],
+    );
+}
+
+#[test]
 fn compile_ignored_let() {
     test_with_expectation(
         OutputFile("goldens/examples_ignored_let.cc".to_string()),
