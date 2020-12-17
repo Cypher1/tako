@@ -123,7 +123,6 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
         Code::Block(mut statements) => {
             let last = statements.pop().unwrap();
             statements.push(last.with_expr(&|exp| Code::Statement(format!("return {}", exp))));
-            dbg!(&statements);
             let body: Vec<String> = statements
                 .iter()
                 .map(|x| pretty_print_block(x.clone(), new_indent.as_str()))
@@ -373,11 +372,6 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
 
         let uses = db.find_symbol_uses(path.clone())?;
         if uses.is_empty() {
-            dbg!(
-                "Culling",
-                &expr.get_info().defined_at.map(|path| path_to_string(&path))
-            );
-            dbg!(path_to_string(&path));
             return Ok(Code::Empty);
         }
         let name = make_name(path);

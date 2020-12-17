@@ -301,7 +301,6 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
         if let Some(default_impl) = crate::externs::get_implementation(name.to_owned()) {
             return default_impl(db, frame(), expr.get_info());
         }
-        dbg!(state);
         Err(TError::UnknownSymbol(
             name.to_string(),
             expr.info.clone(),
@@ -416,13 +415,11 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             "," => {
                 let left = l?;
                 let right = r()?;
-                dbg!(format!("{},{}", &left, &right));
                 Ok(left.merge(right))
             }
             ";" => {
                 let left = l?;
                 let right = r()?;
-                dbg!(format!("{};{}", &left, &right));
                 Ok(left.merge(right))
             }
             "?" => match l {
@@ -490,7 +487,6 @@ mod tests {
         db.set_file(filename.to_owned(), Ok(Arc::new(s)));
         db.set_options(Options::default());
         let ast = db.parse_file(module)?;
-        dbg!(format!("{}", &ast));
         let mut state = vec![HashMap::new()];
         Interpreter::default().visit(&db, &mut state, &ast)
     }
