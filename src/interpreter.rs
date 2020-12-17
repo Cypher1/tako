@@ -64,7 +64,7 @@ pub fn prim_add_strs(l: &Prim, r: &Prim, info: Info) -> Res {
         Bool(v, _) => format!("{}", v),
         I32(v, _) => format!("{}", v),
         Str(v, _) => v.clone(),
-        Struct(v, info) => format!("{:?}", Struct(v.to_vec(), info.clone())),
+        Struct(v, info) => format!("{}", Struct(v.to_vec(), info.clone())),
         Lambda(v) => format!("{}", v),
         TypeValue(v, _) => format!("{}", v),
     };

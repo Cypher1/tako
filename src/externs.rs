@@ -17,7 +17,7 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
             let val = args.get("it").unwrap()()?;
             match val {
                 Str(s, _) => print!("{}", s),
-                s => print!("{:?}", s),
+                s => print!("{}", s),
             };
             Ok(I32(0, info))
         })),

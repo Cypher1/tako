@@ -218,7 +218,7 @@ fn compile_higher_order() {
 #[test]
 fn struct_construction() {
     test_with_expectation(
-        OutputFile("goldens/examples_struct_construction.cc".to_string()),
+        Output("ob=struct(x=3, y=5)\n0".to_string()),
         vec!["--run", "examples/struct_construction.tk"],
     );
 }
