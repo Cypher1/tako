@@ -46,6 +46,8 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
             for (name, val) in args.iter() {
                 vals.push((name.to_string(), val()?));
             }
+            // TODO: Remove need for sorting (sort during toString and other cases?)
+            vals.sort_by(|a, b| a.0.cmp(&b.0));
             Ok(Struct(vals, info))
         })),
         "++" => Some(Box::new(|_, args, info| {
