@@ -20,17 +20,19 @@ pub enum Type {
     Padded(Offset, Box<Type>),
     Tag(Offset, Offset), // A locally unique id and the number of bits needed for it, should be replaced with a bit pattern at compile time.
     Pointer(Offset, Box<Type>), // Defaults to 8 bytes (64 bit)
-    Variable(String),
     Function {
-        results: Pack,
-        intros: Pack, // TODO: Replace pack with some kind of struct and push the effects into the results.
-        arguments: Pack,
-        effects: Vec<String>,
+        intros: Pack,
+        arguments: Box<Type>,
+        results: Box<Type>,
     },
     Apply {
         inner: Box<Type>,
-        arguments: Pack,
+        arguments: Box<Type>,
     },
+    // The following should be eliminated during lowering
+    Record(Pack),
+    WithEffect(Box<Type>, Vec<String>),
+    Variable(String),
 }
 
 impl fmt::Display for Type {
