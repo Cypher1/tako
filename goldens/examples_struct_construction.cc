@@ -26,7 +26,7 @@ string to_string(const bool& t){
 }
 
 int main(int argc, char* argv[]) {
-  const struct_x_i32_y_i32 examples_struct_construction_ob = {.x=3, .y=5};
+  const auto examples_struct_construction_ob = struct_x_i32_y_i32{.x=3, .y=5};
   std::cout << ((std::to_string("ob=")+(std::to_string(examples_struct_construction_ob) + "\n")));
   return 0;
 }
