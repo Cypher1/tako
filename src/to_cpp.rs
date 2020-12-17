@@ -1,4 +1,5 @@
 use crate::ast::*;
+use crate::types::Type;
 use crate::{database::Compiler, errors::TError};
 use std::collections::HashSet;
 
@@ -7,7 +8,7 @@ use std::collections::HashSet;
 pub struct CodeGenerator {
     functions: Vec<Code>,
     includes: HashSet<String>,
-    types: HashSet<String>,
+    types: HashSet<Type>,
     pub flags: HashSet<String>,
 }
 
@@ -276,12 +277,26 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         }
 
         // struct definitions
-        // TODO: forward definitions (for recursive types)
-        let mut types: Vec<&String> = self.types.iter().collect();
+        let mut types: Vec<&Type> = self.types.iter().collect();
         types.sort();
-        for inc in types.iter() {
-            if inc.as_str() != "" {
-                code = format!("{}{}\n", code, inc);
+
+        let make_dec = |ty: &Type| -> &str {
+            return "struct x_i32_y_i32;";
+        };
+
+        let make_def = |ty: &Type| -> &str {
+            return "struct x_i32_y_i32 {int32_t x; int32_t y;};\nstd::ostream& operator<<(std::ostream& os, const struct x_i32_y_i32& t) { os << \"struct(x=\" << t.x << \", y=\" << t.y << \")\"; return os; }";
+        };
+        for ty in types.iter() {
+            let ty_dec = make_dec(ty);
+            if ty_dec != "" {
+                code = format!("{}{}\n", code, ty_dec);
+            }
+        }
+        for ty in types.iter() {
+            let ty_def = make_def(ty);
+            if ty_def != "" {
+                code = format!("{}{}\n", code, ty_def);
             }
         }
         // Forward declarations

@@ -112,7 +112,7 @@ pub struct LangImpl {
     pub arg_joiner: String,
     pub arg_processor: String,
     pub includes: String,
-    pub types: Vec<String>,
+    pub types: Vec<Type>,
     pub flags: Vec<String>,
 }
 
@@ -154,8 +154,8 @@ impl LangImpl {
         self
     }
 
-    fn with_type(mut self, types: &str) -> LangImpl {
-        self.types.push(types.to_string());
+    fn with_type(mut self, ty: Type) -> LangImpl {
+        self.types.push(ty);
         self
     }
 
@@ -234,8 +234,8 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
                 arguments: Box::new(variable("a")),
                 intros: dict!("a" => variable("Type")),
             },
-            cpp: LangImpl::new("[](const auto x, const auto y){return struct_x_i32_y_i32{.x=x,.y=y};}")
-                .with_type("typedef struct {int32_t x; int32_t y;} struct_x_i32_y_i32;\nstd::ostream& operator<<(std::ostream& os, const struct_x_i32_y_i32& t) { os << \"struct(x=\" << t.x << \", y=\" << t.y << \")\"; return os; }"),
+            cpp: LangImpl::new("[](const auto x, const auto y){return x_i32_y_i32{.x=x,.y=y};}")
+                .with_type(Record(set![("x".to_string(), i32_type()), ("y".to_string(), i32_type())])),
         },
         Extern {
             name: ";".to_string(),
