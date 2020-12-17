@@ -110,6 +110,7 @@ pub struct LangImpl {
     pub arg_joiner: String,
     pub arg_processor: String,
     pub includes: String,
+    pub types: Vec<String>,
     pub flags: Vec<String>,
 }
 
@@ -120,6 +121,7 @@ impl LangImpl {
             arg_joiner: "".to_string(),
             arg_processor: "".to_string(),
             includes: "".to_string(),
+            types: vec![],
             flags: vec![],
         }
     }
@@ -130,6 +132,7 @@ impl LangImpl {
             arg_joiner: arg_joiner.to_string(),
             arg_processor: "".to_string(),
             includes: "".to_string(),
+            types: vec![],
             flags: vec![],
         }
     }
@@ -146,6 +149,11 @@ impl LangImpl {
 
     fn with_includes(mut self, includes: &str) -> LangImpl {
         self.includes = includes.to_string();
+        self
+    }
+
+    fn with_type(mut self, types: &str) -> LangImpl {
+        self.types.push(types.to_string());
         self
     }
 

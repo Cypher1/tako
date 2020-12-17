@@ -7,6 +7,7 @@ use std::collections::HashSet;
 pub struct CodeGenerator {
     functions: Vec<Code>,
     includes: HashSet<String>,
+    types: HashSet<String>,
     pub flags: HashSet<String>,
 }
 
@@ -273,6 +274,16 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 code = format!("{}{}\n", code, inc);
             }
         }
+
+        // struct definitions
+        // TODO: forward definitions (for recursive types)
+        let mut types: Vec<&String> = self.types.iter().collect();
+        types.sort();
+        for inc in types.iter() {
+            if inc.as_str() != "" {
+                code = format!("{}{}\n", code, inc);
+            }
+        }
         // Forward declarations
         for func in self.functions.clone().iter() {
             match &func {
@@ -306,6 +317,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         );
         if let Some(info) = db.get_extern(name.clone())? {
             self.includes.insert(info.cpp.includes);
+            self.types.extend(info.cpp.types);
             self.flags.extend(info.cpp.flags);
             // arg_processor
             return Ok(Code::Expr(info.cpp.code));
