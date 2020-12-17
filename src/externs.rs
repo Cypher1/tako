@@ -40,6 +40,14 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
             };
             std::process::exit(code);
         })),
+        "struct" => Some(Box::new(|_, args, info| {
+            use crate::ast::Prim;
+            let mut vals: Vec<(String, Prim)> = vec![];
+            for (name, val) in args.iter() {
+                vals.push((name.to_string(), val()?));
+            }
+            Ok(Struct(vals, info))
+        })),
         "++" => Some(Box::new(|_, args, info| {
             prim_add_strs(&args.get("left").unwrap()()?, &args.get("right").unwrap()()?, info)
         })),
