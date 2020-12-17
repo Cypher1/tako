@@ -232,6 +232,22 @@ fn compile_struct_construction() {
 }
 
 #[test]
+fn struct_construction2() {
+    test_with_expectation(
+        Output("h=struct(x=2, y=1, z=3)\n0".to_string()),
+        vec!["--run", "examples/struct_construction2.tk"],
+    );
+}
+
+#[test]
+fn compile_struct_construction2() {
+    test_with_expectation(
+        OutputFile("goldens/examples_struct_construction2.cc".to_string()),
+        vec!["examples/struct_construction2.tk"],
+    );
+}
+
+#[test]
 fn compile_ignored_let() {
     test_with_expectation(
         OutputFile("goldens/examples_ignored_let.cc".to_string()),

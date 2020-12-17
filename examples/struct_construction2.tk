@@ -1,0 +1,4 @@
+h=struct(y=1, x=2, z=3)
+
+print("h="++h++"\n")
+0
