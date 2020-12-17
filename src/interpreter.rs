@@ -418,9 +418,9 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
                 Ok(left.merge(right))
             }
             ";" => {
-                let left = l?;
+                l?;
                 let right = r()?;
-                Ok(left.merge(right))
+                Ok(right)
             }
             "?" => match l {
                 Err(_) => r(),
