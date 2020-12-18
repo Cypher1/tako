@@ -236,6 +236,8 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
             },
             cpp: LangImpl::new("[](const int32_t x, const int32_t y){return x_I32y_I32{.x=x,.y=y};}")
                 .with_type(Record(set![("x".to_string(), i32_type()), ("y".to_string(), i32_type())])),
+                // TODO: Use the variable 'a' and look that variable up before usage when code
+                // generating...
         },
         Extern {
             name: ";".to_string(),

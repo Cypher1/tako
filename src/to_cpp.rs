@@ -298,7 +298,23 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         };
 
         let make_def = |ty: &Type| -> Option<String> {
-            return ty_name(ty).map(|name|format!("{name} {{int32_t x; int32_t y;}};\nstd::ostream& operator<<(std::ostream& os, const {name}& t) {{ os << \"struct(x=\" << t.x << \", y=\" << t.y << \")\"; return os; }}", name=name));
+            return ty_name(ty).map(|name| {
+                let mut field_defs = vec![];
+                let mut body_to_str = vec![];
+                match ty {
+                    Type::Record(pack) => {
+                        let mut name = "struct".to_string();
+                        for (field, fty) in pack.iter() {
+                            let ty_cpp = "int32_t"; // TODO: handle different types.
+                            field_defs.push(format!("{ty_cpp} {field};", ty_cpp=ty_cpp, field=field));
+                            body_to_str.push(format!("{field}=\" << t.{field} << \"", field=field));
+                            name = format!("{}{}_{}", name, field, fty);
+                        }
+                    },
+                    _ => {},
+                }
+                format!("{name} {{{field_defs}}};\nstd::ostream& operator<<(std::ostream& os, const {name}& t) {{ os << \"struct({body_to_str})\"; return os; }}", name=name, field_defs=field_defs.join(" "), body_to_str=body_to_str.join(", "))
+            });
         };
         for ty in types.iter() {
             let ty_dec = make_dec(ty);
