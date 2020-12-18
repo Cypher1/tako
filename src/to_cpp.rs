@@ -280,22 +280,35 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         let mut types: Vec<&Type> = self.types.iter().collect();
         types.sort();
 
-        let make_dec = |ty: &Type| -> &str {
-            return "struct x_I32_y_I32;";
+        let ty_name = |ty: &Type| -> Option<String> {
+            match ty {
+                Type::Record(pack) => {
+                    let mut name = "struct ".to_string();
+                    for (field, fty) in pack.iter() {
+                        name = format!("{}{}_{}", name, field, fty);
+                    }
+                    return Some(name);
+                },
+                _ => None,
+            }
         };
 
-        let make_def = |ty: &Type| -> &str {
-            return "struct x_I32_y_I32 {int32_t x; int32_t y;};\nstd::ostream& operator<<(std::ostream& os, const struct x_I32_y_I32& t) { os << \"struct(x=\" << t.x << \", y=\" << t.y << \")\"; return os; }";
+        let make_dec = |ty: &Type| -> Option<String> {
+            return ty_name(ty).map(|name|format!("{name};", name=name));
+        };
+
+        let make_def = |ty: &Type| -> Option<String> {
+            return ty_name(ty).map(|name|format!("{name} {{int32_t x; int32_t y;}};\nstd::ostream& operator<<(std::ostream& os, const {name}& t) {{ os << \"struct(x=\" << t.x << \", y=\" << t.y << \")\"; return os; }}", name=name));
         };
         for ty in types.iter() {
             let ty_dec = make_dec(ty);
-            if ty_dec != "" {
+            if let Some(ty_dec) = ty_dec {
                 code = format!("{}{}\n", code, ty_dec);
             }
         }
         for ty in types.iter() {
             let ty_def = make_def(ty);
-            if ty_def != "" {
+            if let Some(ty_def) = ty_def {
                 code = format!("{}{}\n", code, ty_def);
             }
         }
