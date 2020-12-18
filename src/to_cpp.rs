@@ -281,11 +281,11 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         types.sort();
 
         let make_dec = |ty: &Type| -> &str {
-            return "struct x_i32_y_i32;";
+            return "struct x_I32_y_I32;";
         };
 
         let make_def = |ty: &Type| -> &str {
-            return "struct x_i32_y_i32 {int32_t x; int32_t y;};\nstd::ostream& operator<<(std::ostream& os, const struct x_i32_y_i32& t) { os << \"struct(x=\" << t.x << \", y=\" << t.y << \")\"; return os; }";
+            return "struct x_I32_y_I32 {int32_t x; int32_t y;};\nstd::ostream& operator<<(std::ostream& os, const struct x_I32_y_I32& t) { os << \"struct(x=\" << t.x << \", y=\" << t.y << \")\"; return os; }";
         };
         for ty in types.iter() {
             let ty_dec = make_dec(ty);
