@@ -234,7 +234,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
                 arguments: Box::new(variable("a")),
                 intros: dict!("a" => variable("Type")),
             },
-            cpp: LangImpl::new("[](const i32_t x, const i32_t y){return x_I32y_I32{.x=x,.y=y};}")
+            cpp: LangImpl::new("[](const int32_t x, const int32_t y){return x_I32y_I32{.x=x,.y=y};}")
                 .with_type(Record(set![("x".to_string(), i32_type()), ("y".to_string(), i32_type())])),
         },
         Extern {

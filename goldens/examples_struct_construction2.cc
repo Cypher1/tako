@@ -13,7 +13,7 @@ string to_string(const bool& t){
 }
 }
 struct x_I32y_I32z_I32;
-struct x_I32y_I32z_I32{int32_t x; int32_t y;};
+struct x_I32y_I32z_I32{int32_t x; int32_t y; int32_t z;};
 std::ostream& operator<<(std::ostream& os, const struct x_I32y_I32z_I32& t) { os << "struct(x=" << t.x << ", y=" << t.y << ", z=" << t.z << ")"; return os; }
 
 int main(int argc, char* argv[]) {
