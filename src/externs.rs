@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::ast::{Info, Prim::*};
+use crate::ast::{Info, Prim, Prim::*};
 use crate::database::Compiler;
 use crate::errors::TError;
 use crate::interpreter::{prim_add_strs, prim_pow, Res};
@@ -41,7 +41,6 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
             std::process::exit(code);
         })),
         "struct" => Some(Box::new(|_, args, info| {
-            use crate::ast::Prim;
             let mut vals: Vec<(String, Prim)> = vec![];
             for (name, val) in args.iter() {
                 vals.push((name.to_string(), val()?));
@@ -107,36 +106,57 @@ pub struct Extern {
 }
 
 #[derive(PartialEq, Eq, Clone, Debug)]
+pub enum LangBlob {
+    Static(String),
+    Constructor(String), // Variable name to look up and construct
+}
+use LangBlob::*;
+
+impl LangBlob {
+    pub fn to_string(self: &LangBlob) -> String {
+        match self {
+            Static(s) => s.to_string(),
+            Constructor(variable_name) => {
+                // TODO
+                "x_I32y_I32".to_string()
+            },
+        }
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct LangImpl {
-    pub code: String,
+    pub code: LangBlob,
     pub arg_joiner: String,
     pub arg_processor: String,
     pub includes: String,
-    pub types: Vec<Type>,
     pub flags: Vec<String>,
 }
 
 impl LangImpl {
     fn new(code: &str) -> LangImpl {
         LangImpl {
-            code: code.to_string(),
+            code: Static(code.to_string()),
             arg_joiner: "".to_string(),
             arg_processor: "".to_string(),
             includes: "".to_string(),
-            types: vec![],
+            flags: vec![],
+        }
+    }
+
+    fn constructor(variable_name: &str) -> LangImpl {
+        LangImpl {
+            code: Constructor(variable_name.to_string()),
+            arg_joiner: "".to_string(),
+            arg_processor: "".to_string(),
+            includes: "".to_string(),
             flags: vec![],
         }
     }
 
     fn operator(arg_joiner: &str) -> LangImpl {
-        LangImpl {
-            code: "".to_string(),
-            arg_joiner: arg_joiner.to_string(),
-            arg_processor: "".to_string(),
-            includes: "".to_string(),
-            types: vec![],
-            flags: vec![],
-        }
+        LangImpl::new("")
+            .with_arg_joiner(arg_joiner)
     }
 
     fn with_arg_joiner(mut self, arg_joiner: &str) -> LangImpl {
@@ -151,11 +171,6 @@ impl LangImpl {
 
     fn with_includes(mut self, includes: &str) -> LangImpl {
         self.includes = includes.to_string();
-        self
-    }
-
-    fn with_type(mut self, ty: Type) -> LangImpl {
-        self.types.push(ty);
         self
     }
 
@@ -234,10 +249,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
                 arguments: Box::new(variable("a")),
                 intros: dict!("a" => variable("Type")),
             },
-            cpp: LangImpl::new("[](const int32_t x, const int32_t y){return x_I32y_I32{.x=x,.y=y};}")
-                .with_type(Record(set![("x".to_string(), i32_type()), ("y".to_string(), i32_type())])),
-                // TODO: Use the variable 'a' and look that variable up before usage when code
-                // generating...
+            cpp: LangImpl::constructor("a")
         },
         Extern {
             name: ";".to_string(),
