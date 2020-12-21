@@ -1,7 +1,7 @@
 use crate::ast::*;
 use crate::types::Type;
 use crate::{database::Compiler, errors::TError};
-use crate::externs::LangBlob::*;
+use crate::externs::{LangBlob, LangBlob::*};
 use std::collections::HashSet;
 
 // Walks the AST compiling it to wasm.
@@ -367,7 +367,14 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             // TODO self.types.extend(info.cpp.types);
             self.flags.extend(info.cpp.flags);
             // arg_processor
-            return Ok(Code::Expr(info.cpp.code.to_string()));
+            return Ok(Code::Expr(
+                match info.cpp.code {
+                    Static(s) => s,
+                    Constructor(name) => {
+                        let ty = db.infer(Type::Variable(name, expr.get_info()))?;
+                        panic!("type {}", ty);
+                    },
+                }));
         }
         Ok(Code::Expr(name))
     }
@@ -525,7 +532,10 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 )
             };
             return Ok(self.build_call2(
-                info.cpp.code.to_string().as_str(),
+                &match info.cpp.code {
+                    Static(s) => s,
+                    Constructor(name) => panic!("Unexpected constructor for operator '{}'", name),
+                },
                 info.cpp.arg_joiner.as_str(),
                 left,
                 right,

@@ -78,7 +78,23 @@ impl fmt::Display for Type {
             Tag(tag, bits) => write!(f, "Tag<{}b>{}", bits, tag),
             Padded(size, t) => write!(f, "Pad<{}b>{}", size, t),
             StaticPointer(ptr_size) => write!(f, "*<{}b>Code", ptr_size),
-            x => write!(f, "({:?})", x),
+            Record(pack) => {
+                write!(f, "Record(")?;
+                for (field, ty) in pack {
+                    write!(f, "{}: {}", field, ty)?;
+                }
+                write!(f, ")")
+            },
+            Variable(name) => write!(f, "{}", name),
+            Function{intros, arguments, results} => {
+                write!(f, "(")?;
+                for (field, ty) in intros {
+                    write!(f, "{}: {}. ", field, ty)?;
+                }
+                write!(f, "{}): {}", *arguments, *results)
+            },
+            Apply{inner, arguments} => write!(f, "({})({})", *inner, *arguments),
+            WithEffect(ty, effects) => write!(f, "{} & {}", *ty, effects.join(" & ")),
         }
     }
 }

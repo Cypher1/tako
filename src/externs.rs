@@ -112,18 +112,6 @@ pub enum LangBlob {
 }
 use LangBlob::*;
 
-impl LangBlob {
-    pub fn to_string(self: &LangBlob) -> String {
-        match self {
-            Static(s) => s.to_string(),
-            Constructor(variable_name) => {
-                // TODO
-                "x_I32y_I32".to_string()
-            },
-        }
-    }
-}
-
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct LangImpl {
     pub code: LangBlob,
