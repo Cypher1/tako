@@ -19,7 +19,7 @@ pub struct Namespace {
 impl Visitor<State, Node, Root, Path> for DefinitionFinder {
     fn visit_root(&mut self, db: &dyn Compiler, module: &Path) -> Result<Root, TError> {
         let expr = db.build_symbol_table(module.clone())?;
-        if db.debug() > 0 {
+        if db.debug_level() > 0 {
             eprintln!("looking up definitions in file... {:?}", &module);
         }
         let mut state = State {
@@ -34,7 +34,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
     }
 
     fn visit_sym(&mut self, db: &dyn Compiler, state: &mut State, expr: &Sym) -> Res {
-        if db.debug() > 1 {
+        if db.debug_level() > 1 {
             eprintln!("visiting sym {:?} {}", state.path.clone(), &expr.name);
         }
         let mut search: Vec<Symbol> = state.path.clone();
@@ -47,7 +47,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
             match node {
                 Some(node) => {
                     node.value.uses.insert(state.path.clone());
-                    if db.debug() > 1 {
+                    if db.debug_level() > 1 {
                         eprintln!("FOUND {} at {:?}\n", expr.name.clone(), search.clone());
                     }
                     let mut res = expr.clone();
@@ -56,7 +56,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
                 }
                 None => {
                     search.pop(); // Strip the name off.
-                    if db.debug() > 1 {
+                    if db.debug_level() > 1 {
                         eprintln!("   not found {} at {:?}", expr.name.clone(), search.clone());
                     }
                     if search.is_empty() {
@@ -103,7 +103,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
     }
 
     fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
-        if db.debug() > 1 {
+        if db.debug_level() > 1 {
             eprintln!("visiting {:?} {}", state.path.clone(), &expr.name);
         }
         let path_name = Symbol::new(expr.name.clone());

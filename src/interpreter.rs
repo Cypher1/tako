@@ -272,7 +272,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
     }
 
     fn visit_sym(&mut self, db: &dyn Compiler, state: &mut State, expr: &Sym) -> Res {
-        if db.debug() > 0 {
+        if db.debug_level() > 0 {
             eprintln!("evaluating let {}", expr.clone().to_node());
         }
         let name = &expr.name;
@@ -286,18 +286,18 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
         };
         let value = find_symbol(&state, name);
         if let Some(prim) = value {
-            if db.debug() > 0 {
+            if db.debug_level() > 0 {
                 eprintln!("from stack {}", prim.clone().to_node());
             }
             return Ok(prim.clone());
         }
-        if db.debug() > 2 {
+        if db.debug_level() > 2 {
             eprintln!("checking for interpreter impl {}", expr.name.clone());
         }
         if let Some(extern_impl) = &mut self.impls.get_mut(name) {
             return extern_impl(db, frame(), expr.get_info());
         }
-        if db.debug() > 2 {
+        if db.debug_level() > 2 {
             eprintln!("checking for default impl {}", expr.name.clone());
         }
         if let Some(default_impl) = crate::externs::get_implementation(name.to_owned()) {
@@ -315,7 +315,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
     }
 
     fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
-        if db.debug() > 0 {
+        if db.debug_level() > 0 {
             eprintln!("evaluating apply {}", expr.clone().to_node());
         }
         state.push(Frame::new());
@@ -335,7 +335,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
     }
 
     fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
-        if db.debug() > 0 {
+        if db.debug_level() > 0 {
             eprintln!("evaluating let {}", expr.clone().to_node());
         }
 
@@ -363,7 +363,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
 
     fn visit_un_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &UnOp) -> Res {
         use Prim::*;
-        if db.debug() > 1 {
+        if db.debug_level() > 1 {
             eprintln!("evaluating unop {}", expr.clone().to_node());
         }
         let i = self.visit(db, state, &expr.inner)?;
@@ -390,7 +390,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
 
     fn visit_bin_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &BinOp) -> Res {
         use Prim::*;
-        if db.debug() > 1 {
+        if db.debug_level() > 1 {
             eprintln!("evaluating binop {}", expr.clone().to_node());
         }
         let info = expr.clone().get_info();

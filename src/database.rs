@@ -25,7 +25,7 @@ pub trait Compiler: salsa::Database {
     #[salsa::input]
     fn project_dirs(&self) -> Option<ProjectDirs>;
 
-    fn debug(&self) -> i32;
+    fn debug_level(&self) -> i32;
     fn files(&self) -> Vec<String>;
     fn history_file(&self) -> PathBuf;
     fn config_dir(&self) -> PathBuf;
@@ -68,8 +68,8 @@ fn history_file(db: &dyn Compiler) -> PathBuf {
     db.config_dir().join("tako_history")
 }
 
-fn debug(db: &dyn Compiler) -> i32 {
-    db.options().debug
+fn debug_level(db: &dyn Compiler) -> i32 {
+    db.options().debug_level
 }
 
 fn files(db: &dyn Compiler) -> Vec<String> {
@@ -104,7 +104,7 @@ pub fn filename(db: &dyn Compiler, module: Path) -> String {
         })
         .collect();
     let file_name = parts.join("/");
-    if db.debug() > 0 {
+    if db.debug_level() > 0 {
         eprintln!("Getting filename for {:?}, {:?}", module, file_name);
     }
     file_name
@@ -135,7 +135,7 @@ fn lex_string(
     contents: Arc<String>,
 ) -> Result<VecDeque<Token>, TError> {
     use crate::parser;
-    if db.debug() > 0 {
+    if db.debug_level() > 0 {
         eprintln!("lexing file... {:?}", &module);
     }
     parser::lex_string(db, &module, &contents)
@@ -143,7 +143,7 @@ fn lex_string(
 
 fn lex_file(db: &dyn Compiler, module: Path) -> Result<VecDeque<Token>, TError> {
     use crate::parser;
-    if db.debug() > 0 {
+    if db.debug_level() > 0 {
         eprintln!("lexing file... {:?}", &module);
     }
     parser::lex(db, &module)
@@ -169,7 +169,7 @@ fn build_symbol_table(db: &dyn Compiler, module: Path) -> Result<Root, TError> {
 }
 
 fn find_symbol(db: &dyn Compiler, mut context: Path, path: Path) -> Result<Option<Table>, TError> {
-    if db.debug() > 1 {
+    if db.debug_level() > 1 {
         eprintln!(">>> looking for symbol {:?} in {:?}", path, context);
     }
     let table = db.look_up_definitions(context.clone())?.table;
@@ -180,12 +180,12 @@ fn find_symbol(db: &dyn Compiler, mut context: Path, path: Path) -> Result<Optio
         let mut search: Vec<Symbol> = context.clone();
         search.extend(path.clone());
         if let Some(node) = table.find(&search) {
-            if db.debug() > 1 {
+            if db.debug_level() > 1 {
                 eprintln!("FOUND INSIDE {:?} {:?}", context, search);
             }
             return Ok(Some(node.clone()));
         }
-        if db.debug() > 1 {
+        if db.debug_level() > 1 {
             eprintln!("   not found {:?} at {:?}", path.clone(), search.clone());
         }
         if context.is_empty() {
@@ -228,7 +228,7 @@ fn to_file_path(context: PathRef) -> Path {
 fn look_up_definitions(db: &dyn Compiler, context: Path) -> Result<Root, TError> {
     use crate::definition_finder::DefinitionFinder;
     let module = to_file_path(&context);
-    if db.debug() > 0 {
+    if db.debug_level() > 0 {
         eprintln!("look up definitions >> {:?}", &module);
     }
     DefinitionFinder::process(&module, db)
@@ -236,7 +236,7 @@ fn look_up_definitions(db: &dyn Compiler, context: Path) -> Result<Root, TError>
 
 fn infer(db: &dyn Compiler, expr: Node) -> Result<Type, TError> {
     use crate::type_checker::infer;
-    if db.debug() > 0 {
+    if db.debug_level() > 0 {
         eprintln!("infering type for ... {:?}", &expr);
     }
     infer(db, &expr)
@@ -244,7 +244,7 @@ fn infer(db: &dyn Compiler, expr: Node) -> Result<Type, TError> {
 
 fn compile_to_cpp(db: &dyn Compiler, module: Path) -> Result<(String, HashSet<String>), TError> {
     use crate::to_cpp::CodeGenerator;
-    if db.debug() > 0 {
+    if db.debug_level() > 0 {
         eprintln!("generating code for file ... {:?}", &module);
     }
     CodeGenerator::process(&module, db)
@@ -252,7 +252,7 @@ fn compile_to_cpp(db: &dyn Compiler, module: Path) -> Result<(String, HashSet<St
 
 fn build_with_gpp(db: &dyn Compiler, module: Path) -> Result<String, TError> {
     let (res, flags) = db.compile_to_cpp(module.clone())?;
-    if db.debug() > 0 {
+    if db.debug_level() > 0 {
         eprintln!("building file with g++ ... {:?}", &module);
     }
 

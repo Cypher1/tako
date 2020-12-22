@@ -238,7 +238,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             args: Some(vec![]),
         };
         let mut table = root.table; // TODO: Shouldn't be mut
-        if db.debug() > 1 {
+        if db.debug_level() > 1 {
             eprintln!("table {:?}", table);
         }
         let main = match self.visit_let(db, &mut table, &main_let)? {
