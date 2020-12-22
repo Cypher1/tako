@@ -84,16 +84,20 @@ impl fmt::Display for Type {
                     write!(f, "{}: {}", field, ty)?;
                 }
                 write!(f, ")")
-            },
+            }
             Variable(name) => write!(f, "{}", name),
-            Function{intros, arguments, results} => {
+            Function {
+                intros,
+                arguments,
+                results,
+            } => {
                 write!(f, "(")?;
                 for (field, ty) in intros {
                     write!(f, "{}: {}. ", field, ty)?;
                 }
                 write!(f, "{}): {}", *arguments, *results)
-            },
-            Apply{inner, arguments} => write!(f, "({})({})", *inner, *arguments),
+            }
+            Apply { inner, arguments } => write!(f, "({})({})", *inner, *arguments),
             WithEffect(ty, effects) => write!(f, "{} & {}", *ty, effects.join(" & ")),
         }
     }

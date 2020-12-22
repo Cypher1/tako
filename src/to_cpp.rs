@@ -367,15 +367,15 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             // TODO self.types.extend(info.cpp.types);
             self.flags.extend(info.cpp.flags);
             // arg_processor
-            return Ok(Code::Expr(
-                match info.cpp.code {
-                    Static(s) => s,
-                    Constructor(name) => {
-                        let ty = db.infer(Prim::TypeValue(Type::Variable(name), expr.get_info()).to_node())?;
-                        dbg!(format!("type {}", ty));
-                        panic!("type {}", ty);
-                    },
-                }));
+            return Ok(Code::Expr(match info.cpp.code {
+                Static(s) => s,
+                Constructor(name) => {
+                    let ty =
+                        db.infer(Prim::TypeValue(Type::Variable(name), expr.get_info()).to_node())?;
+                    dbg!(format!("type {}", ty));
+                    panic!("type {}", ty);
+                }
+            }));
         }
         Ok(Code::Expr(name))
     }

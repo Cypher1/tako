@@ -41,17 +41,30 @@ pub fn infer(db: &dyn Compiler, expr: &Node) -> Result<Type, TError> {
                 return Ok(info.ty);
             }
             panic!("TODO Impl type checking for Sym '{}'", name)
-        },
+        }
         ApplyNode(Apply {
             inner,
             args,
             info: _,
         }) => {
             let inner_ty = db.infer(*inner.clone())?;
-            let args_ty: Result<Vec<Type>, TError> = args.iter().map(|arg| db.infer(arg.clone().to_node())).collect();
-            let args_tys: Vec<String> = args_ty?.iter().map(|ty|format!("{}", ty)).collect();
-            panic!("TODO Impl type checking for Apply {{args: {}, inner: {}}}", args_tys.join(", "), inner_ty)
-        },
+            let args_ty: Result<Vec<(String, Type)>, TError> = args
+                .iter()
+                .map(|arg| {
+                    db.infer(arg.value.clone().to_node())
+                        .map(|val| (arg.name.clone(), val))
+                })
+                .collect();
+            let args_tys: Vec<String> = args_ty?
+                .iter()
+                .map(|(name, ty)| format!("{}: {}", name, ty))
+                .collect();
+            panic!(
+                "TODO Impl type checking for Apply {{args: {{{}}}, inner: {}}}",
+                args_tys.join(", "),
+                inner_ty
+            )
+        }
         LetNode(Let {
             name: _,
             value: _,
