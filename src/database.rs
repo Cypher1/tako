@@ -38,6 +38,7 @@ pub trait Compiler: salsa::Database {
     fn module_name(&self, filename: String) -> Path;
     fn filename(&self, module: Path) -> String;
 
+    // Lexing, parsing and building symbol tables are currently done one whole file at a time.
     fn lex_string(&self, module: Path, contents: Arc<String>) -> Result<VecDeque<Token>, TError>;
     fn lex_file(&self, module: Path) -> Result<VecDeque<Token>, TError>;
     fn parse_string(&self, module: Path, contents: Arc<String>) -> Result<Node, TError>;
