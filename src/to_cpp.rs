@@ -1,7 +1,7 @@
 use crate::ast::*;
+use crate::externs::LangBlob::*;
 use crate::types::Type;
 use crate::{database::Compiler, errors::TError};
-use crate::externs::LangBlob::*;
 use std::collections::HashSet;
 
 // Walks the AST compiling it to wasm.
@@ -289,13 +289,13 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                         name = format!("{}{}_{}", name, field, fty);
                     }
                     return Some(name);
-                },
+                }
                 _ => None,
             }
         };
 
         let make_dec = |ty: &Type| -> Option<String> {
-            return ty_name(ty).map(|name|format!("{name};", name=name));
+            return ty_name(ty).map(|name| format!("{name};", name = name));
         };
 
         let make_def = |ty: &Type| -> Option<String> {

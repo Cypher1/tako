@@ -7,8 +7,10 @@ use super::type_checker::infer;
 
 type Frame = HashMap<String, Prim>;
 
-pub type ImplFn<'a> = &'a mut dyn FnMut(&dyn Compiler, HashMap<String, Box<dyn Fn() -> Res>>, Info) -> Res;
-pub type PureImplFn<'a> = &'a dyn Fn(&dyn Compiler, HashMap<String, Box<dyn Fn() -> Res>>, Info) -> Res;
+pub type ImplFn<'a> =
+    &'a mut dyn FnMut(&dyn Compiler, HashMap<String, Box<dyn Fn() -> Res>>, Info) -> Res;
+pub type PureImplFn<'a> =
+    &'a dyn Fn(&dyn Compiler, HashMap<String, Box<dyn Fn() -> Res>>, Info) -> Res;
 
 // Walks the AST interpreting it.
 pub struct Interpreter<'a> {
@@ -278,7 +280,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             let mut frame_vals: HashMap<String, Box<dyn Fn() -> Res>> = map!();
             for (name, val) in state.last().unwrap().clone().iter() {
                 let val = val.clone();
-                frame_vals.insert(name.to_string(), Box::new(move ||Ok(val.clone())));
+                frame_vals.insert(name.to_string(), Box::new(move || Ok(val.clone())));
             }
             return frame_vals;
         };
