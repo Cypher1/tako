@@ -12,7 +12,7 @@ pub struct Options {
     pub show_ast: bool,
     pub show_table: bool,
     pub show_full_ast: bool,
-    pub debug: i32,
+    pub debug_level: i32,
     pub interpreter_args: Vec<String>,
 }
 
@@ -24,7 +24,7 @@ impl Default for Options {
             show_ast: false,
             show_table: false,
             show_full_ast: false,
-            debug: 0,
+            debug_level: 0,
             interpreter_args: vec![],
         }
     }
@@ -48,7 +48,7 @@ impl Options {
                 match f.as_str() {
                     "-i" | "--interactive" => opts.cmd = Command::Repl,
                     "-r" | "--run" => opts.cmd = Command::Interpret,
-                    "-d" => opts.debug += 1,
+                    "-d" => opts.debug_level += 1,
                     "--ast" => opts.show_ast = true,
                     "--table" => opts.show_table = true,
                     "--full-ast" => opts.show_full_ast = true,

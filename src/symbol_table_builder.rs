@@ -64,7 +64,7 @@ impl Table {
 impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
     fn visit_root(&mut self, db: &dyn Compiler, module: &Path) -> Result<Root, TError> {
         let expr = &db.parse_file(module.clone())?;
-        if db.debug() > 0 {
+        if db.debug_level() > 0 {
             eprintln!("building symbol table for file... {:?}", &module);
         }
 
@@ -91,7 +91,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
             path: module.clone(),
         };
 
-        if db.debug() > 0 {
+        if db.debug_level() > 0 {
             eprintln!("table: {:?}", state.table);
         }
 
@@ -128,7 +128,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
     }
 
     fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
-        if db.debug() > 1 {
+        if db.debug_level() > 1 {
             eprintln!("visiting {:?} {}", state.path.clone(), &expr.name);
         }
 
