@@ -1,7 +1,7 @@
 use crate::ast::*;
 use crate::types::Type;
 use crate::{database::Compiler, errors::TError};
-use crate::externs::{LangBlob, LangBlob::*};
+use crate::externs::LangBlob::*;
 use std::collections::HashSet;
 
 // Walks the AST compiling it to wasm.
@@ -363,7 +363,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         if let Some(info) = db.get_extern(name.clone())? {
             self.includes.insert(info.cpp.includes);
 
-            dbg!(format!("{}", info.ty));
+            dbg!(format!(".ty {}", info.ty));
             // TODO self.types.extend(info.cpp.types);
             self.flags.extend(info.cpp.flags);
             // arg_processor
@@ -371,7 +371,8 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 match info.cpp.code {
                     Static(s) => s,
                     Constructor(name) => {
-                        let ty = db.infer(Type::Variable(name, expr.get_info()))?;
+                        let ty = db.infer(Prim::TypeValue(Type::Variable(name), expr.get_info()).to_node())?;
+                        dbg!(format!("type {}", ty));
                         panic!("type {}", ty);
                     },
                 }));
@@ -406,6 +407,8 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
     fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
         // eprintln!("apply here: {:?}", expr);
         // Build the 'struct' of args
+        let ty = db.infer(expr.clone().to_node())?;
+        dbg!(format!("apply {}:{}", expr.clone().to_node(), ty));
         let mut args = vec![];
         for arg in expr.args.iter() {
             // TODO: Include lambda head in values

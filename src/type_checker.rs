@@ -36,18 +36,30 @@ pub fn infer(db: &dyn Compiler, expr: &Node) -> Result<Type, TError> {
             right: _,
             info: _,
         }) => panic!("TODO Impl type checking for BinOp"),
-        SymNode(Sym { name: _, info: _ }) => panic!("TODO Impl type checking for Sym"),
+        SymNode(Sym { name, info: _ }) => {
+            if let Some(info) = db.get_extern(name.clone())? {
+                return Ok(info.ty);
+            }
+            panic!("TODO Impl type checking for Sym '{}'", name)
+        },
         ApplyNode(Apply {
-            inner: _,
-            args: _,
+            inner,
+            args,
             info: _,
-        }) => panic!("TODO Impl type checking for Apply"),
+        }) => {
+            let inner_ty = db.infer(*inner.clone())?;
+            let args_ty: Result<Vec<Type>, TError> = args.iter().map(|arg| db.infer(arg.clone().to_node())).collect();
+            let args_tys: Vec<String> = args_ty?.iter().map(|ty|format!("{}", ty)).collect();
+            panic!("TODO Impl type checking for Apply {{args: {}, inner: {}}}", args_tys.join(", "), inner_ty)
+        },
         LetNode(Let {
             name: _,
             value: _,
             args: _,
             info: _,
-        }) => panic!("TODO Impl type checking for Let"),
+        }) => {
+            panic!("TODO Impl type checking for Let {}", &expr)
+        }
         Error(Err { msg: _, info: _ }) => panic!("TODO Impl type checking for Let"),
     }
 }
