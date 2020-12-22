@@ -1,5 +1,5 @@
-use std::fs::read_to_string;
 use std::collections::HashMap;
+use std::fs::read_to_string;
 
 use pretty_assertions::assert_eq;
 use takolib::cli_options::Options;
@@ -33,16 +33,17 @@ fn test_with_expectation(expected: TestResult, options: Vec<&str>) {
             Prim::{Str, I32},
         };
         use takolib::interpreter::Res;
-        let mut print_impl = &mut |_: &dyn Compiler,
-                                   args: HashMap<String, Box<dyn Fn() -> takolib::interpreter::Res>>,
-                                   _: takolib::ast::Info|
-         -> Res {
-            stdout.push(match args.get("it").unwrap()()? {
-                Str(s, _) => s,
-                s => format!("{:?}", s),
-            });
-            Ok(I32(0, Info::default()))
-        };
+        let mut print_impl =
+            &mut |_: &dyn Compiler,
+                  args: HashMap<String, Box<dyn Fn() -> takolib::interpreter::Res>>,
+                  _: takolib::ast::Info|
+             -> Res {
+                stdout.push(match args.get("it").unwrap()()? {
+                    Str(s, _) => s,
+                    s => format!("{:?}", s),
+                });
+                Ok(I32(0, Info::default()))
+            };
         let files = db.files();
         if files.len() != 1 {
             panic!("Tests currently only support a single file.");
