@@ -9,18 +9,27 @@ use crate::location::*;
 use crate::tree::*;
 use crate::types::Type;
 
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct Err {
-    pub msg: String,
-    pub info: Info,
-}
-
-impl ToNode for Err {
+impl ToNode for TError {
     fn to_node(self) -> Node {
         Node::Error(self)
     }
     fn get_info(&self) -> Info {
-        self.info.clone()
+        use TError::*;
+        let default = Info::default();
+        match self {
+            CppCompilerError(_, _) => &default,
+            UnknownSymbol(_, info, _) => info,
+            UnknownInfixOperator(_, info) => info,
+            UnknownPrefixOperator(_, info) => info,
+            UnknownSizeOfVariableType(_, info) => info,
+            StaticPointerCardinality(info) => info,
+            TypeMismatch(_, _, info) => info,
+            TypeMismatch2(_, _, _, info) => info,
+            RequirementFailure(info) => info,
+            FailedParse(_, info) => info,
+            InternalError(_, node) => &node.get_info(),
+            ExpectedLetNode(node) => &node.get_info(),
+        }.clone()
     }
 }
 
@@ -242,7 +251,7 @@ impl Hash for Info {
 // #[derive(Debug)]
 #[derive(PartialEq, Eq, Clone, Hash)]
 pub enum Node {
-    Error(Err),
+    Error(TError),
     SymNode(Sym),
     PrimNode(Prim),
     ApplyNode(Apply),

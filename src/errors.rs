@@ -4,7 +4,7 @@ use thiserror::Error;
 
 use derivative::Derivative;
 #[derive(Error, Derivative)]
-#[derivative(Debug, PartialEq, Eq, Clone)]
+#[derivative(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum TError {
     #[error("call to C++ compiler failed with error code: {1:?}\n{0}")]
     CppCompilerError(String, Option<i32>),
@@ -33,8 +33,8 @@ pub enum TError {
     #[error("parse failed, {0} at {1:?}")]
     FailedParse(String, Info),
     #[error("internal error `{0}` at {1}")]
-    InternalError(String, Node),
+    InternalError(String, Box<Node>),
 
     #[error("Expected a let node, got `{0}`")]
-    ExpectedLetNode(Node),
+    ExpectedLetNode(Box<Node>),
 }
