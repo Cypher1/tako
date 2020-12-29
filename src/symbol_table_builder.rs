@@ -182,8 +182,8 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
         .to_node())
     }
 
-    fn handle_error(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Err) -> Res {
-        Err(TError::FailedParse(expr.msg.to_string(), expr.get_info()))
+    fn handle_error(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &TError) -> Res {
+        Err(expr.clone())
     }
 }
 

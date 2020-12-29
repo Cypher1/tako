@@ -15,21 +15,20 @@ impl ToNode for TError {
     }
     fn get_info(&self) -> Info {
         use TError::*;
-        let default = Info::default();
         match self {
-            CppCompilerError(_, _) => &default,
-            UnknownSymbol(_, info, _) => info,
-            UnknownInfixOperator(_, info) => info,
-            UnknownPrefixOperator(_, info) => info,
-            UnknownSizeOfVariableType(_, info) => info,
-            StaticPointerCardinality(info) => info,
-            TypeMismatch(_, _, info) => info,
-            TypeMismatch2(_, _, _, info) => info,
-            RequirementFailure(info) => info,
-            FailedParse(_, info) => info,
-            InternalError(_, node) => &node.get_info(),
-            ExpectedLetNode(node) => &node.get_info(),
-        }.clone()
+            CppCompilerError(_, _) => Info::default(),
+            UnknownSymbol(_, info, _) => info.clone(),
+            UnknownInfixOperator(_, info) => info.clone(),
+            UnknownPrefixOperator(_, info) => info.clone(),
+            UnknownSizeOfVariableType(_, info) => info.clone(),
+            StaticPointerCardinality(info) => info.clone(),
+            TypeMismatch(_, _, info) => info.clone(),
+            TypeMismatch2(_, _, _, info) => info.clone(),
+            RequirementFailure(info) => info.clone(),
+            FailedParse(_, info) => info.clone(),
+            InternalError(_, node) => node.get_info(),
+            ExpectedLetNode(node) => node.get_info(),
+        }
     }
 }
 
@@ -310,7 +309,7 @@ impl Node {
         if let LetNode(n) = self {
             return Ok(n.clone());
         }
-        Err(TError::ExpectedLetNode(self.clone()))
+        Err(TError::ExpectedLetNode(Box::new(self.clone())))
     }
 }
 
@@ -401,7 +400,7 @@ pub trait Visitor<State, Res, Final, Start = Root> {
         &mut self,
         db: &dyn Compiler,
         state: &mut State,
-        e: &Err,
+        e: &TError,
     ) -> Result<Res, TError>;
     fn visit_sym(&mut self, db: &dyn Compiler, state: &mut State, e: &Sym) -> Result<Res, TError>;
     fn visit_prim(&mut self, db: &dyn Compiler, state: &mut State, e: &Prim)

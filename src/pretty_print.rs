@@ -111,8 +111,8 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
         Ok(())
     }
 
-    fn handle_error(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Err) -> Res {
-        Err(TError::FailedParse(expr.msg.to_string(), expr.get_info()))
+    fn handle_error(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &TError) -> Res {
+        Err(expr.clone())
     }
 }
 

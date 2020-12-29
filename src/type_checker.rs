@@ -48,7 +48,7 @@ pub fn infer(db: &dyn Compiler, expr: &Node) -> Result<Type, TError> {
             args: _,
             info: _,
         }) => panic!("TODO Impl type checking for Let"),
-        Error(Err { msg: _, info: _ }) => panic!("TODO Impl type checking for Let"),
+        Error(err) => panic!("TODO Impl type checking for Let {}", err),
     }
 }
 
