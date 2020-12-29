@@ -125,6 +125,11 @@ mod tests {
     }
 
     // #[test]
+    fn infer_type_of_id_apply_explicit_it_arg() {
+        assert_type("{it}(it=12)", "I32");
+    }
+
+    // #[test]
     fn infer_type_of_plus_expr() {
         assert_type("12+32", "I32");
     }
