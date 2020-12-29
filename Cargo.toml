@@ -3,6 +3,7 @@ name = "tako"
 version = "0.1.0"
 authors = ["Joshua Pratt <jp10010101010000@gmail.com>"]
 edition = "2018"
+include = ["src/**/*", "LICENSE.md", "README.md"]
 
 [lib]
 name = "takolib"
@@ -12,9 +13,9 @@ path = "src/lib.rs"
 name = "tako"
 path = "src/main.rs"
 
-[[bench]]
-name = "tako_bench"
-harness = false
+#[[bench]]
+#name = "tako_bench"
+#harness = false
 
 [dependencies]
 salsa = "0.15.0"
@@ -27,7 +28,7 @@ termcolor = "1.1"
 
 [dev-dependencies]
 pretty_assertions = "0.6.1"
-criterion = "0.3"
+#criterion = "0.3"
 
 [profile.test]
 opt-level = 3
