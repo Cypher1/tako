@@ -4,7 +4,7 @@ use crate::errors::TError;
 
 use crate::types::{bit_type, i32_type, record, string_type, unit_type, void_type, Type};
 
-pub fn infer(db: &dyn Compiler, expr: &Node) -> Result<Type, TError> {
+pub fn infer(db: &dyn Compiler, expr: &Node, env: &Type) -> Result<Type, TError> {
     // Infer that expression t has type A, t => A
     // See https://ncatlab.org/nlab/show/bidirectional+typechecking
     use crate::ast::*;
@@ -15,11 +15,11 @@ pub fn infer(db: &dyn Compiler, expr: &Node) -> Result<Type, TError> {
             I32(_, _) => Ok(i32_type()),
             Bool(_, _) => Ok(bit_type()),
             Str(_, _) => Ok(string_type()),
-            Lambda(node) => infer(db, node.as_ref()), // TODO: abstraction
+            Lambda(node) => infer(db, node.as_ref(), env), // TODO: abstraction
             Struct(vals, _) => {
                 let mut tys: Vec<Type> = vec![];
                 for val in vals.iter() {
-                    tys.push(infer(db, &val.1.clone().to_node())?);
+                    tys.push(infer(db, &val.1.clone().to_node(), env)?);
                 }
                 Ok(record(tys)?)
             }
@@ -68,7 +68,9 @@ mod tests {
         let module = vec![];
         let prog_str = db.parse_str(module.clone(), prog).unwrap();
         dbg!(&prog_str);
-        let prog = TypeValue(infer(&db, &prog_str).unwrap(), Info::default());
+
+        let env = Type::Record(set![]); // TODO: Track the type env
+        let prog = TypeValue(infer(&db, &prog_str, &env).unwrap(), Info::default());
         let ty = db.parse_str(module, ty).unwrap();
         dbg!(&ty);
         let mut state = vec![HashMap::new()];
@@ -80,7 +82,8 @@ mod tests {
     fn infer_type_of_i32() {
         let db = DB::default();
         let num = I32(23, Info::default()).to_node();
-        assert_eq!(infer(&db, &num), Ok(i32_type()));
+        let env = Type::Record(set![]); // TODO: Track the type env
+        assert_eq!(infer(&db, &num, &env), Ok(i32_type()));
         assert_type("23", "I32");
     }
 
