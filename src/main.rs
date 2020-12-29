@@ -76,7 +76,7 @@ fn repl(db: &mut DB) -> Result<(), TError> {
                         break;
                     }
                     rl.add_history_entry(line.as_str());
-                    handle(work_on_string(db, line, "repl", None));
+                    handle(work_on_string(db, line, "repl.tk", None));
                 }
             }
             Err(ReadlineError::Interrupted) => {
