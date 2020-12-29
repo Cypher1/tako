@@ -9,18 +9,26 @@ use crate::location::*;
 use crate::tree::*;
 use crate::types::Type;
 
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct Err {
-    pub msg: String,
-    pub info: Info,
-}
-
-impl ToNode for Err {
+impl ToNode for TError {
     fn to_node(self) -> Node {
         Node::Error(self)
     }
     fn get_info(&self) -> Info {
-        self.info.clone()
+        use TError::*;
+        match self {
+            CppCompilerError(_, _) => Info::default(),
+            UnknownSymbol(_, info, _) => info.clone(),
+            UnknownInfixOperator(_, info) => info.clone(),
+            UnknownPrefixOperator(_, info) => info.clone(),
+            UnknownSizeOfVariableType(_, info) => info.clone(),
+            StaticPointerCardinality(info) => info.clone(),
+            TypeMismatch(_, _, info) => info.clone(),
+            TypeMismatch2(_, _, _, info) => info.clone(),
+            RequirementFailure(info) => info.clone(),
+            FailedParse(_, info) => info.clone(),
+            InternalError(_, node) => node.get_info(),
+            ExpectedLetNode(node) => node.get_info(),
+        }
     }
 }
 
@@ -242,7 +250,7 @@ impl Hash for Info {
 // #[derive(Debug)]
 #[derive(PartialEq, Eq, Clone, Hash)]
 pub enum Node {
-    Error(Err),
+    Error(TError),
     SymNode(Sym),
     PrimNode(Prim),
     ApplyNode(Apply),
@@ -301,7 +309,7 @@ impl Node {
         if let LetNode(n) = self {
             return Ok(n.clone());
         }
-        Err(TError::ExpectedLetNode(self.clone()))
+        Err(TError::ExpectedLetNode(Box::new(self.clone())))
     }
 }
 
@@ -392,7 +400,7 @@ pub trait Visitor<State, Res, Final, Start = Root> {
         &mut self,
         db: &dyn Compiler,
         state: &mut State,
-        e: &Err,
+        e: &TError,
     ) -> Result<Res, TError>;
     fn visit_sym(&mut self, db: &dyn Compiler, state: &mut State, e: &Sym) -> Result<Res, TError>;
     fn visit_prim(&mut self, db: &dyn Compiler, state: &mut State, e: &Prim)

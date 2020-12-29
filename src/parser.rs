@@ -123,11 +123,7 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
         }
     } else {
         Ok((
-            Err {
-                msg: "Unexpected eof, expected expr".to_string(),
-                info: Info::default(),
-            }
-            .to_node(),
+            TError::FailedParse("Unexpected eof, expected expr".to_string(), Info::default()).to_node(),
             toks,
         ))
     }
@@ -174,22 +170,14 @@ fn led(
     }) = toks.front()
     {
         return Ok((
-            Err {
-                msg: "Close bracket".to_string(),
-                info: pos.clone().get_info(),
-            }
-            .to_node(),
+            TError::FailedParse("Exected Close bracket".to_string(), pos.clone().get_info()).to_node(),
             toks,
         ));
     }
 
     match toks.pop_front() {
         None => Ok((
-            Err {
-                msg: "Unexpected eof, expected expr tail".to_string(),
-                info: left.get_info(),
-            }
-            .to_node(),
+            TError::FailedParse("Unexpected eof, expected expr tail".to_string(), left.get_info()).to_node(),
             toks,
         )),
         Some(head) => match head.tok_type {
