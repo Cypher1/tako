@@ -438,7 +438,9 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             ":" => {
                 let value = l?;
                 let ty = r()?;
-                let _type_of_value = infer(db, &value.clone().to_node());
+                use crate::types::Type::Record;
+                let env = Record(set![]); // TODO: Track the type env
+                let _type_of_value = infer(db, &value.clone().to_node(), &env);
                 // Check subtyping relationship of type_of_value and ty.
                 let sub_type = true;
                 if sub_type {
