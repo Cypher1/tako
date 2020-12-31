@@ -26,22 +26,48 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Type) -> Result<Type, TError>
             TypeValue(_ty, _) => Ok(Type::Variable("Type".to_string())),
         },
         UnOpNode(UnOp {
-            name: _,
+            name,
             inner: _,
             info: _,
-        }) => panic!("TODO Impl type checking for UnOp"),
+        }) => {
+            if let Some(ext) = db.get_extern(name.to_string())? {
+                // TODO intros
+                return Ok(ext.ty);
+            }
+            panic!("TODO Impl type checking for user defined UnOp")
+        },
         BinOpNode(BinOp {
-            name: _,
+            name,
             left: _,
             right: _,
             info: _,
-        }) => panic!("TODO Impl type checking for BinOp"),
-        SymNode(Sym { name: _, info: _ }) => panic!("TODO Impl type checking for Sym"),
+        }) => {
+            if let Some(ext) = db.get_extern(name.to_string())? {
+                // TODO intros
+                return Ok(ext.ty);
+            }
+            panic!("TODO Impl type checking for user defined BinOp")
+        },
+        SymNode(Sym { name, info: _ }) => {
+            if let Some(ext) = db.get_extern(name.to_string())? {
+                // TODO intros
+                return Ok(ext.ty);
+            }
+            panic!("TODO Impl type checking for user defined Sym")
+        },
         ApplyNode(Apply {
-            inner: _,
-            args: _,
+            inner,
+            args,
             info: _,
-        }) => panic!("TODO Impl type checking for Apply"),
+        }) => {
+            let inner_ty = infer(db, inner, env)?;
+            let mut arg_tys = vec![];
+            for arg in args.iter() {
+                let ty = infer(db, &arg.clone().to_node(), env)?;
+                arg_tys.push(ty);
+            }
+            panic!("TODO Type checking apply: {:?} with {:?}", inner_ty, arg_tys)
+        },
         LetNode(Let {
             name: _,
             value: _,
