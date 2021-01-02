@@ -317,14 +317,14 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
     fn visit_prim(&mut self, db: &dyn Compiler, state: &mut State, expr: &Prim) -> Res {
         use Prim::*;
         match expr {
-            Void(_) => Ok(Code::Expr("void".to_string())),
-            Unit(_) => Ok(Code::Expr("nullptr".to_string())),
-            I32(n, _) => Ok(Code::Expr(n.to_string())),
-            Bool(true, _) => Ok(Code::Expr(1.to_string())),
-            Bool(false, _) => Ok(Code::Expr(0.to_string())),
-            Str(s, _) => Ok(Code::Expr(format!("{:?}", s))),
+            Void() => Ok(Code::Expr("void".to_string())),
+            Unit() => Ok(Code::Expr("nullptr".to_string())),
+            I32(n) => Ok(Code::Expr(n.to_string())),
+            Bool(true) => Ok(Code::Expr(1.to_string())),
+            Bool(false) => Ok(Code::Expr(0.to_string())),
+            Str(s) => Ok(Code::Expr(format!("{:?}", s))),
             Lambda(node) => self.visit(db, state, node),
-            Struct(vals, _) => {
+            Struct(vals) => {
                 // TODO: Struct C++
                 let mut val_code = vec![];
                 for val in vals.iter() {
@@ -332,7 +332,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 }
                 Ok(Code::Struct(val_code))
             }
-            TypeValue(_ty, _) => {
+            TypeValue(_ty) => {
                 unimplemented!("unimplemented primitive type in compilation to cpp")
             }
         }

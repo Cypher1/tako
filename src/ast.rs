@@ -13,6 +13,8 @@ impl ToNode for TError {
     fn to_node(self) -> Node {
         Node::Error(self)
     }
+}
+impl HasInfo for TError {
     fn get_info(&self) -> Info {
         use TError::*;
         match self {
@@ -60,6 +62,8 @@ impl ToNode for Apply {
     fn to_node(self) -> Node {
         Node::ApplyNode(self)
     }
+}
+impl HasInfo for Apply {
     fn get_info(&self) -> Info {
         self.info.clone()
     }
@@ -78,7 +82,7 @@ impl Sym {
     pub fn as_let(self: &Sym) -> Let {
         Let {
             name: self.name.clone(),
-            value: Box::new(Prim::Unit(Info::default()).to_node()),
+            value: Box::new(Prim::Unit().to_node()),
             args: None,
             info: self.get_info(),
         }
@@ -89,6 +93,8 @@ impl ToNode for Sym {
     fn to_node(self) -> Node {
         Node::SymNode(self)
     }
+}
+impl HasInfo for Sym {
     fn get_info(&self) -> Info {
         self.info.clone()
     }
@@ -99,33 +105,7 @@ impl ToNode for Sym {
 
 impl ToNode for Prim {
     fn to_node(self) -> Node {
-        Node::PrimNode(self)
-    }
-    fn get_info(&self) -> Info {
-        use Prim::*;
-        match self {
-            Void(info) => info.clone(),
-            Unit(info) => info.clone(),
-            Bool(_, info) => info.clone(),
-            I32(_, info) => info.clone(),
-            Str(_, info) => info.clone(),
-            Lambda(node) => (*node).get_info(),
-            Struct(_, info) => info.clone(),
-            TypeValue(_, info) => info.clone(),
-        }
-    }
-    fn get_mut_info<'a>(&'a mut self) -> &'a mut Info {
-        use Prim::*;
-        match self {
-            Void(ref mut info) => info,
-            Unit(ref mut info) => info,
-            Bool(_, ref mut info) => info,
-            I32(_, ref mut info) => info,
-            Str(_, ref mut info) => info,
-            Lambda(ref mut node) => node.get_mut_info(),
-            Struct(_, ref mut info) => info,
-            TypeValue(_, ref mut info) => info,
-        }
+        Node::PrimNode(self, Info::default())
     }
 }
 
@@ -158,6 +138,8 @@ impl ToNode for Let {
     fn to_node(self) -> Node {
         Node::LetNode(self)
     }
+}
+impl HasInfo for Let {
     fn get_info(&self) -> Info {
         self.info.clone()
     }
@@ -177,6 +159,8 @@ impl ToNode for UnOp {
     fn to_node(self) -> Node {
         Node::UnOpNode(self)
     }
+}
+impl HasInfo for UnOp {
     fn get_info(&self) -> Info {
         self.info.clone()
     }
@@ -197,6 +181,8 @@ impl ToNode for BinOp {
     fn to_node(self) -> Node {
         Node::BinOpNode(self)
     }
+}
+impl HasInfo for BinOp {
     fn get_info(&self) -> Info {
         self.info.clone()
     }
@@ -255,7 +241,7 @@ impl Hash for Info {
 pub enum Node {
     Error(TError),
     SymNode(Sym),
-    PrimNode(Prim),
+    PrimNode(Prim, Info),
     ApplyNode(Apply),
     LetNode(Let),
     UnOpNode(UnOp),
@@ -268,7 +254,7 @@ impl std::fmt::Debug for Node {
         match self {
             Error(n) => n.fmt(f),
             SymNode(n) => n.fmt(f),
-            PrimNode(n) => n.fmt(f),
+            PrimNode(n, _) => n.fmt(f),
             ApplyNode(n) => n.fmt(f),
             LetNode(n) => n.fmt(f),
             UnOpNode(n) => n.fmt(f),
@@ -292,12 +278,14 @@ impl ToNode for Node {
     fn to_node(self) -> Node {
         self
     }
+}
+impl HasInfo for Node {
     fn get_info(&self) -> Info {
         use Node::*;
         match self {
             Error(n) => n.get_info(),
             SymNode(n) => n.get_info(),
-            PrimNode(n) => n.get_info(),
+            PrimNode(_n, info) => info.clone(),
             ApplyNode(n) => n.get_info(),
             LetNode(n) => n.get_info(),
             UnOpNode(n) => n.get_info(),
@@ -309,7 +297,7 @@ impl ToNode for Node {
         match self {
             Error(ref mut n) => n.get_mut_info(),
             SymNode(ref mut n) => n.get_mut_info(),
-            PrimNode(ref mut n) => n.get_mut_info(),
+            PrimNode(_, ref mut info) => info,
             ApplyNode(ref mut n) => n.get_mut_info(),
             LetNode(ref mut n) => n.get_mut_info(),
             UnOpNode(ref mut n) => n.get_mut_info(),
@@ -330,6 +318,9 @@ impl Node {
 
 pub trait ToNode {
     fn to_node(self) -> Node;
+}
+
+pub trait HasInfo {
     fn get_info(&self) -> Info;
     fn get_mut_info<'a>(&'a mut self) -> &'a mut Info;
 }
@@ -447,7 +438,7 @@ pub trait Visitor<State, Res, Final, Start = Root> {
         match e {
             Error(n) => self.handle_error(db, state, n),
             SymNode(n) => self.visit_sym(db, state, n),
-            PrimNode(n) => self.visit_prim(db, state, n),
+            PrimNode(n, _) => self.visit_prim(db, state, n),
             ApplyNode(n) => self.visit_apply(db, state, n),
             LetNode(n) => self.visit_let(db, state, n),
             UnOpNode(n) => self.visit_un_op(db, state, n),

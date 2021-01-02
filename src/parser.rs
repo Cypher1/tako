@@ -46,11 +46,11 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
     if let Some(head) = toks.pop_front() {
         match head.tok_type {
             TokenType::NumLit => Ok((
-                Prim::I32(head.value.parse().unwrap(), head.get_info()).to_node(),
+                Node::PrimNode(Prim::I32(head.value.parse().unwrap()), head.get_info()),
                 toks,
             )),
             TokenType::StringLit => Ok((
-                Prim::Str(head.value.clone(), head.get_info()).to_node(),
+                Node::PrimNode(Prim::Str(head.value.clone()), head.get_info()),
                 toks,
             )),
             TokenType::Op => {
@@ -104,10 +104,10 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
             TokenType::Sym => {
                 // TODO: Consider making these globals.
                 if head.value == "true" {
-                    return Ok((Prim::Bool(true, head.get_info()).to_node(), toks));
+                    return Ok((Prim::Bool(true).to_node(), toks));
                 }
                 if head.value == "false" {
-                    return Ok((Prim::Bool(false, head.get_info()).to_node(), toks));
+                    return Ok((Prim::Bool(false).to_node(), toks));
                 }
                 Ok((
                     Sym {
@@ -426,23 +426,23 @@ pub mod tests {
     }
 
     fn num_lit(x: i32) -> Box<Node> {
-        Box::new(I32(x, Info::default()).to_node())
+        Box::new(I32(x).to_node())
     }
 
     fn str_lit(x: String) -> Box<Node> {
-        Box::new(Str(x, Info::default()).to_node())
+        Box::new(Str(x).to_node())
     }
 
     #[test]
     fn parse_num() {
-        assert_eq!(parse("12".to_string()), I32(12, Info::default()).to_node());
+        assert_eq!(parse("12".to_string()), I32(12).to_node());
     }
 
     #[test]
     fn parse_str() {
         assert_eq!(
             parse("\"hello world\"".to_string()),
-            Str("hello world".to_string(), Info::default()).to_node()
+            Str("hello world".to_string()).to_node()
         );
     }
 
@@ -452,7 +452,7 @@ pub mod tests {
             parse("-12".to_string()),
             UnOp {
                 name: "-".to_string(),
-                inner: Box::new(I32(12, Info::default()).to_node()),
+                inner: Box::new(I32(12).to_node()),
                 info: Info::default()
             }
             .to_node()

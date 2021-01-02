@@ -16,14 +16,14 @@ type Pack = BTreeSet<(String, Type)>;
 
 #[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Debug, Hash)]
 pub enum Prim {
-    Void(Info),
-    Unit(Info),
-    Bool(bool, Info),
-    I32(i32, Info),
-    Str(String, Info),
+    Void(),
+    Unit(),
+    Bool(bool),
+    I32(i32),
+    Str(String),
     Lambda(Box<Node>),
-    Struct(Vec<(String, Prim)>, Info), // Should really just store values, but we can't do that yet.
-    TypeValue(Type, Info),
+    Struct(Vec<(String, Prim)>), // Should really just store values, but we can't do that yet.
+    TypeValue(Type),
 }
 
 fn merge_vals(left: Vec<(String, Prim)>, right: Vec<(String, Prim)>) -> Vec<(String, Prim)> {
@@ -47,9 +47,9 @@ impl Prim {
     pub fn merge(self: Prim, other: Prim) -> Prim {
         use Prim::*;
         match (self, other) {
-            (Struct(vals, info), Struct(o_vals, _)) => Struct(merge_vals(vals, o_vals), info),
-            (Struct(vals, info), other) => {
-                Struct(merge_vals(vals, vec![("it".to_string(), other)]), info)
+            (Struct(vals), Struct(o_vals)) => Struct(merge_vals(vals, o_vals)),
+            (Struct(vals), other) => {
+                Struct(merge_vals(vals, vec![("it".to_string(), other)]))
             }
             (_, other) => other,
         }

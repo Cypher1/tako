@@ -13,26 +13,26 @@ pub type FuncImpl = Box<dyn Fn(&dyn Compiler, HashMap<String, Box<dyn Fn() -> Re
 
 pub fn get_implementation(name: String) -> Option<FuncImpl> {
     match name.as_str() {
-        "print" => Some(Box::new(|_, args, info| {
+        "print" => Some(Box::new(|_, args, _info| {
             let val = args.get("it").unwrap()()?;
             match val {
-                Str(s, _) => print!("{}", s),
+                Str(s) => print!("{}", s),
                 s => print!("{:?}", s),
             };
-            Ok(I32(0, info))
+            Ok(I32(0))
         })),
-        "eprint" => Some(Box::new(|_, args, info| {
+        "eprint" => Some(Box::new(|_, args, _info| {
             let val = args.get("it").unwrap()()?;
             match val {
-                Str(s, _) => eprint!("{}", s),
+                Str(s) => eprint!("{}", s),
                 s => eprint!("{:?}", s),
             };
-            Ok(I32(0, info))
+            Ok(I32(0))
         })),
         "exit" => Some(Box::new(|_, args, _| {
             let val = args.get("it").unwrap()()?;
             let code = match val {
-                I32(n, _) => n,
+                I32(n) => n,
                 s => {
                     eprint!("{:?}", s);
                     1
@@ -55,14 +55,13 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
             )
         })),
 
-        "argc" => Some(Box::new(|db, _, info| {
-            Ok(I32(db.options().interpreter_args.len() as i32, info))
+        "argc" => Some(Box::new(|db, _, _info| {
+            Ok(I32(db.options().interpreter_args.len() as i32))
         })),
         "argv" => Some(Box::new(|db, args, info| {
             match args.get("it").unwrap()()? {
-                I32(ind, _) => Ok(Str(
-                    db.options().interpreter_args[ind as usize].clone(),
-                    info,
+                I32(ind) => Ok(Str(
+                    db.options().interpreter_args[ind as usize].clone()
                 )),
                 value => Err(TError::TypeMismatch(
                     "Expected index to be of type i32".to_string(),
@@ -71,13 +70,13 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
                 )),
             }
         })),
-        "I32" => Some(Box::new(|_db, _, info| Ok(TypeValue(i32_type(), info)))),
-        "Number" => Some(Box::new(|_db, _, info| Ok(TypeValue(number_type(), info)))),
-        "String" => Some(Box::new(|_db, _, info| Ok(TypeValue(string_type(), info)))),
-        "Bit" => Some(Box::new(|_db, _, info| Ok(TypeValue(bit_type(), info)))),
-        "Unit" => Some(Box::new(|_db, _, info| Ok(TypeValue(unit_type(), info)))),
-        "Void" => Some(Box::new(|_db, _, info| Ok(TypeValue(void_type(), info)))),
-        "Type" => Some(Box::new(|_db, _, info| Ok(TypeValue(type_type(), info)))),
+        "I32" => Some(Box::new(|_db, _, _info| Ok(TypeValue(i32_type())))),
+        "Number" => Some(Box::new(|_db, _, _info| Ok(TypeValue(number_type())))),
+        "String" => Some(Box::new(|_db, _, _info| Ok(TypeValue(string_type())))),
+        "Bit" => Some(Box::new(|_db, _, _info| Ok(TypeValue(bit_type())))),
+        "Unit" => Some(Box::new(|_db, _, _info| Ok(TypeValue(unit_type())))),
+        "Void" => Some(Box::new(|_db, _, _info| Ok(TypeValue(void_type())))),
+        "Type" => Some(Box::new(|_db, _, _info| Ok(TypeValue(type_type())))),
         _ => None,
     }
 }

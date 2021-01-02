@@ -9,21 +9,21 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Type) -> Result<Type, TError>
     // See https://ncatlab.org/nlab/show/bidirectional+typechecking
     use crate::ast::*;
     match expr {
-        PrimNode(prim) => match prim {
-            Void(_) => Ok(void_type()),
-            Unit(_) => Ok(unit_type()),
-            I32(_, _) => Ok(i32_type()),
-            Bool(_, _) => Ok(bit_type()),
-            Str(_, _) => Ok(string_type()),
+        PrimNode(prim, _) => match prim {
+            Void() => Ok(void_type()),
+            Unit() => Ok(unit_type()),
+            I32(_) => Ok(i32_type()),
+            Bool(_) => Ok(bit_type()),
+            Str(_) => Ok(string_type()),
             Lambda(node) => infer(db, node.as_ref(), env), // TODO: abstraction
-            Struct(vals, _) => {
+            Struct(vals) => {
                 let mut tys: Vec<Type> = vec![];
                 for val in vals.iter() {
                     tys.push(infer(db, &val.1.clone().to_node(), env)?);
                 }
                 Ok(record(tys)?)
             }
-            TypeValue(_ty, _) => Ok(Type::Variable("Type".to_string())),
+            TypeValue(_ty) => Ok(Type::Variable("Type".to_string())),
         },
         UnOpNode(UnOp {
             name,
@@ -81,7 +81,7 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Type) -> Result<Type, TError>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::{Info, ToNode};
+    use crate::ast::ToNode;
     use crate::database::DB;
 
     fn assert_type(prog: &'static str, ty: &'static str) {
@@ -96,7 +96,7 @@ mod tests {
         dbg!(&prog_str);
 
         let env = Type::Record(set![]); // TODO: Track the type env
-        let prog = TypeValue(infer(&db, &prog_str, &env).unwrap(), Info::default());
+        let prog = TypeValue(infer(&db, &prog_str, &env).unwrap());
         let ty = db.parse_str(module, ty).unwrap();
         dbg!(&ty);
         let mut state = vec![HashMap::new()];
@@ -111,7 +111,7 @@ mod tests {
     #[test]
     fn infer_type_of_i32() {
         let db = DB::default();
-        let num = I32(23, Info::default()).to_node();
+        let num = I32(23).to_node();
         let env = Type::Record(set![]); // TODO: Track the type env
         assert_eq!(infer(&db, &num, &env), Ok(i32_type()));
         assert_type("23", "I32");
