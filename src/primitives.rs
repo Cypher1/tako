@@ -10,9 +10,9 @@ use std::fmt;
 pub type Offset = i32;
 
 // A list of types with an offset to get to the first bit (used for padding, frequently 0).
-type Layout = Vec<Type>;
-type TypeSet = BTreeSet<Type>;
-type Pack = BTreeSet<(String, Type)>;
+type Layout = Vec<Prim>;
+type TypeSet = BTreeSet<Prim>;
+type Pack = BTreeSet<(String, Prim)>;
 
 #[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Debug, Hash)]
 pub enum Prim {
@@ -23,8 +23,26 @@ pub enum Prim {
     Str(String),
     Lambda(Box<Node>),
     Struct(Vec<(String, Prim)>), // Should really just store values, but we can't do that yet.
-    TypeValue(Type),
+    Union(TypeSet),
+    Product(TypeSet),
+    StaticPointer(Offset),
+    Padded(Offset, Box<Prim>),
+    Tag(Offset, Offset), // A locally unique id and the number of bits needed for it, should be replaced with a bit pattern at compile time.
+    Pointer(Offset, Box<Prim>), // Defaults to 8 bytes (64 bit)
+    Function {
+        intros: Pack,
+        arguments: Box<Prim>,
+        results: Box<Prim>,
+    },
+    App {
+        inner: Box<Prim>,
+        arguments: Box<Prim>,
+    },
+    // The following should be eliminated during lowering
+    WithEffect(Box<Prim>, Vec<String>),
+    Variable(String),
 }
+
 
 fn merge_vals(left: Vec<(String, Prim)>, right: Vec<(String, Prim)>) -> Vec<(String, Prim)> {
     let mut names = HashSet::<String>::new();
@@ -56,30 +74,7 @@ impl Prim {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Debug, Hash)]
-pub enum Type {
-    Union(TypeSet),
-    Product(TypeSet),
-    StaticPointer(Offset),
-    Padded(Offset, Box<Type>),
-    Tag(Offset, Offset), // A locally unique id and the number of bits needed for it, should be replaced with a bit pattern at compile time.
-    Pointer(Offset, Box<Type>), // Defaults to 8 bytes (64 bit)
-    Function {
-        intros: Pack,
-        arguments: Box<Type>,
-        results: Box<Type>,
-    },
-    Apply {
-        inner: Box<Type>,
-        arguments: Box<Type>,
-    },
-    // The following should be eliminated during lowering
-    Record(Pack),
-    WithEffect(Box<Type>, Vec<String>),
-    Variable(String),
-}
-
-impl fmt::Display for Type {
+impl fmt::Display for Prim {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let types = vec![
             (string_type(), "String"),
@@ -94,6 +89,24 @@ impl fmt::Display for Type {
             }
         }
         match self {
+            Void() => write!(f, "Void"),
+            Unit() => write!(f, "()"),
+            Bool(val) => write!(f, "{}", val),
+            I32(val) => write!(f, "{}", val),
+            Str(val) => write!(f, "'{}'", val),
+            Lambda(val) => write!(f, "{}", val),
+            Struct(vals) => {
+                write!(f, "{{").unwrap();
+                let mut is_first = true;
+                for val in vals.iter() {
+                    if !is_first {
+                        write!(f, ", ").unwrap();
+                    }
+                    write!(f, "{} = {}", val.0, &val.1).unwrap();
+                    is_first = false;
+                }
+                write!(f, "}}")
+            }
             Union(s) => {
                 write!(f, "Union(")?;
                 let mut first = true;
@@ -127,13 +140,13 @@ impl fmt::Display for Type {
     }
 }
 
-use Type::*;
+use Prim::*;
 
-impl Type {
-    pub fn ptr(self: Type) -> Type {
+impl Prim {
+    pub fn ptr(self: Prim) -> Prim {
         Pointer(8 * byte_size(), Box::new(self))
     }
-    pub fn padded(self: Type, size: Offset) -> Type {
+    pub fn padded(self: Prim, size: Offset) -> Prim {
         if size == 0 {
             return self;
         }
@@ -145,8 +158,8 @@ impl Type {
 }
 
 #[allow(dead_code)]
-pub fn card(ty: &Type) -> Result<Offset, TError> {
-    use Type::*;
+pub fn card(ty: &Prim) -> Result<Offset, TError> {
+    use Prim::*;
     match ty {
         Union(s) => {
             let mut sum = 0;
@@ -171,8 +184,8 @@ pub fn card(ty: &Type) -> Result<Offset, TError> {
 }
 
 // Calculates the memory needed for a new instance in bits.
-pub fn size(ty: &Type) -> Result<Offset, TError> {
-    use Type::*;
+pub fn size(ty: &Prim) -> Result<Offset, TError> {
+    use Prim::*;
     match ty {
         Union(s) => {
             let mut res = 0;
@@ -219,7 +232,7 @@ fn num_bits(n: Offset) -> Offset {
     }
 }
 
-pub fn record(values: Layout) -> Result<Type, TError> {
+pub fn record(values: Layout) -> Result<Prim, TError> {
     let mut layout = set![];
     let mut off = 0;
     for val in values {
@@ -231,7 +244,7 @@ pub fn record(values: Layout) -> Result<Type, TError> {
     Ok(Product(layout))
 }
 
-pub fn sum(values: Vec<Type>) -> Result<Type, TError> {
+pub fn sum(values: Vec<Prim>) -> Result<Prim, TError> {
     let mut layout = set![];
     let tag_bits = num_bits(values.len() as Offset);
     for (count, val) in values.into_iter().enumerate() {
@@ -244,19 +257,19 @@ pub fn sum(values: Vec<Type>) -> Result<Type, TError> {
     Ok(Union(layout))
 }
 
-pub fn void_type() -> Type {
+pub fn void_type() -> Prim {
     Union(set![])
 }
 
-pub fn unit_type() -> Type {
+pub fn unit_type() -> Prim {
     Product(set![])
 }
 
-pub fn bit_type() -> Type {
+pub fn bit_type() -> Prim {
     sum(vec![unit_type(), unit_type()]).expect("bit should be safe")
 }
 
-pub fn byte_type() -> Type {
+pub fn byte_type() -> Prim {
     record(vec![
         bit_type(),
         bit_type(),
@@ -274,27 +287,27 @@ pub fn byte_size() -> Offset {
     8
 }
 
-pub fn char_type() -> Type {
+pub fn char_type() -> Prim {
     byte_type()
 }
 
-pub fn string_type() -> Type {
+pub fn string_type() -> Prim {
     char_type().ptr()
 }
 
-pub fn i32_type() -> Type {
+pub fn i32_type() -> Prim {
     record(vec![byte_type(), byte_type(), byte_type(), byte_type()]).expect("i32 should be safe")
 }
 
-pub fn number_type() -> Type {
+pub fn number_type() -> Prim {
     variable("Number")
 }
 
-pub fn type_type() -> Type {
+pub fn type_type() -> Prim {
     variable("Type")
 }
 
-pub fn variable(name: &str) -> Type {
+pub fn variable(name: &str) -> Prim {
     Variable(name.to_string())
 }
 

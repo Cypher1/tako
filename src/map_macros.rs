@@ -39,3 +39,17 @@ macro_rules! dict(
         }
      };
 );
+
+#[macro_export]
+macro_rules! rec(
+    {} => {Struct(::std::vec::Vec::new())};
+    { $($key:expr => $value:expr),* } => {
+        {
+            let mut m = ::std::vec::Vec::new();
+            $(
+                m.push(($key.to_string(), $value));
+            )*
+            Struct(m)
+        }
+     };
+);

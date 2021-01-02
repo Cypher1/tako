@@ -2,9 +2,9 @@ use crate::ast::{Node, Node::*};
 use crate::database::Compiler;
 use crate::errors::TError;
 
-use crate::primitives::{bit_type, i32_type, record, string_type, unit_type, void_type, Prim::*, Type};
+use crate::primitives::{bit_type, i32_type, record, string_type, unit_type, void_type, Prim, Prim::*};
 
-pub fn infer(db: &dyn Compiler, expr: &Node, env: &Type) -> Result<Type, TError> {
+pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError> {
     // Infer that expression t has type A, t => A
     // See https://ncatlab.org/nlab/show/bidirectional+typechecking
     use crate::ast::*;
@@ -17,13 +17,13 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Type) -> Result<Type, TError>
             Str(_) => Ok(string_type()),
             Lambda(node) => infer(db, node.as_ref(), env), // TODO: abstraction
             Struct(vals) => {
-                let mut tys: Vec<Type> = vec![];
+                let mut tys: Vec<Prim> = vec![];
                 for val in vals.iter() {
                     tys.push(infer(db, &val.1.clone().to_node(), env)?);
                 }
                 Ok(record(tys)?)
             }
-            TypeValue(_ty) => Ok(Type::Variable("Type".to_string())),
+            _ty => Ok(Prim::Variable("Type".to_string())),
         },
         UnOpNode(UnOp {
             name,
@@ -95,8 +95,8 @@ mod tests {
         let prog_str = db.parse_str(module.clone(), prog).unwrap();
         dbg!(&prog_str);
 
-        let env = Type::Record(set![]); // TODO: Track the type env
-        let prog = TypeValue(infer(&db, &prog_str, &env).unwrap());
+        let env = rec![]; // TODO: Track the type env
+        let prog = infer(&db, &prog_str, &env).unwrap();
         let ty = db.parse_str(module, ty).unwrap();
         dbg!(&ty);
         let mut state = vec![HashMap::new()];
@@ -112,7 +112,7 @@ mod tests {
     fn infer_type_of_i32() {
         let db = DB::default();
         let num = I32(23).to_node();
-        let env = Type::Record(set![]); // TODO: Track the type env
+        let env = rec![]; // TODO: Track the type env
         assert_eq!(infer(&db, &num, &env), Ok(i32_type()));
         assert_type("23", "I32");
     }
