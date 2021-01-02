@@ -47,13 +47,13 @@ fn prim_add(l: &Prim, r: &Prim, _info: Info) -> Res {
         (Str(l), Bool(r)) => Ok(Str(l.to_string() + &r.to_string())),
         (Str(l), I32(r)) => Ok(Str(l.to_string() + &r.to_string())),
         (Str(l), Str(r)) => Ok(Str(l.to_string() + &r.to_string())),
-        (l, r) => Ok(sum(vec![l.clone(), r.clone()])?),
-        //(l, r) => Err(TError::TypeMismatch2(
-            //"+".to_string(),
-            //Box::new((*l).clone()),
-            //Box::new((*r).clone()),
-            //info,
-        //)),
+        // (TypeValue(l), TypeValue(r)) => Ok(TypeValue(sum(vec![l.clone(), r.clone()])?)),
+        (l, r) => Err(TError::TypeMismatch2(
+            "+".to_string(),
+            Box::new((*l).clone()),
+            Box::new((*r).clone()),
+            info,
+        )),
     }
 }
 
