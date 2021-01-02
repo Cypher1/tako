@@ -35,7 +35,8 @@ fn find_symbol<'a>(state: &'a [Frame], name: &str) -> Option<&'a Prim> {
     None
 }
 
-fn prim_add(l: &Prim, r: &Prim, info: Info) -> Res {
+fn prim_add(l: &Prim, r: &Prim, _info: Info) -> Res {
+    use super::primitives::sum;
     match (l, r) {
         (Bool(l), Bool(r)) => Ok(I32(if *l { 1 } else { 0 } + if *r { 1 } else { 0 })),
         (Bool(l), I32(r)) => Ok(I32(r.wrapping_add(if *l { 1 } else { 0 }))),
@@ -46,18 +47,23 @@ fn prim_add(l: &Prim, r: &Prim, info: Info) -> Res {
         (Str(l), Bool(r)) => Ok(Str(l.to_string() + &r.to_string())),
         (Str(l), I32(r)) => Ok(Str(l.to_string() + &r.to_string())),
         (Str(l), Str(r)) => Ok(Str(l.to_string() + &r.to_string())),
-        // (TypeValue(l), TypeValue(r)) => Ok(TypeValue(sum(vec![l.clone(), r.clone()])?)),
-        (l, r) => Err(TError::TypeMismatch2(
-            "+".to_string(),
-            Box::new((*l).clone()),
-            Box::new((*r).clone()),
-            info,
-        )),
+        (l, r) => Ok(sum(vec![l.clone(), r.clone()])?),
+        //(l, r) => Err(TError::TypeMismatch2(
+            //"+".to_string(),
+            //Box::new((*l).clone()),
+            //Box::new((*r).clone()),
+            //info,
+        //)),
     }
 }
 
 pub fn prim_add_strs(l: &Prim, r: &Prim, _info: Info) -> Res {
-    Ok(Str(format!("{}{}", l, &r)))
+    let to_str = |v: &Prim| if let Str(s) = v {
+        s.to_string()
+    } else {
+        format!("{}", v)
+    };
+    Ok(Str(format!("{}{}", to_str(l), to_str(r))))
 }
 
 fn prim_eq(l: &Prim, r: &Prim, info: Info) -> Res {
@@ -130,19 +136,22 @@ fn prim_sub(l: &Prim, r: &Prim, info: Info) -> Res {
 }
 
 fn prim_mul(l: &Prim, r: &Prim, info: Info) -> Res {
-    match (l, r) {
-        (Bool(l), I32(r)) => Ok(I32(if *l { *r } else { 0 })),
-        (Bool(l), Str(r)) => Ok(Str(if *l { r.to_string() } else { "".to_string() })),
-        (I32(l), Bool(r)) => Ok(I32(if *r { *l } else { 0 })),
-        (I32(l), I32(r)) => Ok(I32(l.wrapping_mul(*r))),
-        (Str(l), Bool(r)) => Ok(Str(if *r { l.to_string() } else { "".to_string() })),
-        // (TypeValue(l), TypeValue(r)) => { Ok(TypeValue(record(vec![l.clone(), r.clone()])?)) }
-        (l, r) => Err(TError::TypeMismatch2(
+    use super::primitives::record;
+    let fail = || Err(TError::TypeMismatch2(
             "*".to_string(),
             Box::new((*l).clone()),
             Box::new((*r).clone()),
             info,
-        )),
+        ));
+    match (l, r) {
+        (Bool(l), I32(r)) => Ok(I32(if *l { *r } else { 0 })),
+        (Bool(l), Str(r)) => Ok(Str(if *l { r.to_string() } else { "".to_string() })),
+        (I32(l), Bool(r)) => Ok(I32(if *r { *l } else { 0 })),
+        (Str(l), Bool(r)) => Ok(Str(if *r { l.to_string() } else { "".to_string() })),
+        (Bool(_), _) => fail(),
+        (_, Bool(_)) => fail(),
+        (I32(l), I32(r)) => Ok(I32(l.wrapping_mul(*r))),
+        (l, r) => { Ok(record(vec![l.clone(), r.clone()])?) }
     }
 }
 
@@ -194,27 +203,19 @@ fn prim_or(l: &Prim, r: &Prim, info: Info) -> Res {
     }
 }
 
-fn prim_type_arrow(l: Prim, r: Prim, info: Info) -> Res {
-    match (l, r) {
-        (l, r) => Ok(Prim::Function {
-                intros: dict!(),
-                results: Box::new(r),
-                arguments: Box::new(l),
-            }),
-        (l, r) => Err(TError::TypeMismatch2(
-            "->".to_string(),
-            Box::new(l),
-            Box::new(r),
-            info,
-        )),
-    }
+fn prim_type_arrow(l: Prim, r: Prim, _info: Info) -> Res {
+    Ok(Prim::Function {
+        intros: dict!(),
+        results: Box::new(r),
+        arguments: Box::new(l),
+    })
 }
 
-fn prim_type_and(l: Prim, r: Prim, info: Info) -> Res {
+fn prim_type_and(l: Prim, r: Prim, _info: Info) -> Res {
     Ok(Prim::Product(set!(l, r)))
 }
 
-fn prim_type_or(l: Prim, r: Prim, info: Info) -> Res {
+fn prim_type_or(l: Prim, r: Prim, _info: Info) -> Res {
     Ok(Prim::Union(set!(l, r)))
 }
 
