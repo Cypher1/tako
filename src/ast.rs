@@ -109,12 +109,6 @@ impl ToNode for Prim {
     }
 }
 
-impl fmt::Display for Prim {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.clone().to_node().fmt(f)
-    }
-}
-
 // Consider finding way to turn lets into binary operators.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub struct Let {

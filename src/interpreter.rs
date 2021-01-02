@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use super::ast::*;
-use super::primitives::{Prim, Prim::*, Type};
+use super::primitives::{Prim, Prim::*};
 use super::database::Compiler;
 use super::errors::TError;
 
@@ -35,8 +35,8 @@ fn find_symbol<'a>(state: &'a [Frame], name: &str) -> Option<&'a Prim> {
     None
 }
 
-fn prim_add(l: &Prim, r: &Prim, info: Info) -> Res {
-    use crate::primitives::sum;
+fn prim_add(l: &Prim, r: &Prim, _info: Info) -> Res {
+    use super::primitives::sum;
     match (l, r) {
         (Bool(l), Bool(r)) => Ok(I32(if *l { 1 } else { 0 } + if *r { 1 } else { 0 })),
         (Bool(l), I32(r)) => Ok(I32(r.wrapping_add(if *l { 1 } else { 0 }))),
@@ -47,28 +47,23 @@ fn prim_add(l: &Prim, r: &Prim, info: Info) -> Res {
         (Str(l), Bool(r)) => Ok(Str(l.to_string() + &r.to_string())),
         (Str(l), I32(r)) => Ok(Str(l.to_string() + &r.to_string())),
         (Str(l), Str(r)) => Ok(Str(l.to_string() + &r.to_string())),
-        (TypeValue(l), TypeValue(r)) => Ok(TypeValue(sum(vec![l.clone(), r.clone()])?)),
-        (l, r) => Err(TError::TypeMismatch2(
-            "+".to_string(),
-            Box::new((*l).clone()),
-            Box::new((*r).clone()),
-            info,
-        )),
+        (l, r) => Ok(sum(vec![l.clone(), r.clone()])?),
+        //(l, r) => Err(TError::TypeMismatch2(
+            //"+".to_string(),
+            //Box::new((*l).clone()),
+            //Box::new((*r).clone()),
+            //info,
+        //)),
     }
 }
 
 pub fn prim_add_strs(l: &Prim, r: &Prim, _info: Info) -> Res {
-    let to_str = |val: &Prim| match val {
-        Void() => "Void".to_string(),
-        Unit() => "()".to_string(),
-        Bool(v) => format!("{}", v),
-        I32(v) => format!("{}", v),
-        Str(v) => v.clone(),
-        Struct(v) => format!("{:?}", Struct(v.to_vec())),
-        Lambda(v) => format!("{}", v),
-        TypeValue(v) => format!("{}", v),
+    let to_str = |v: &Prim| if let Str(s) = v {
+        s.to_string()
+    } else {
+        format!("{}", v)
     };
-    Ok(Str(to_str(l) + &to_str(r)))
+    Ok(Str(format!("{}{}", to_str(l), to_str(r))))
 }
 
 fn prim_eq(l: &Prim, r: &Prim, info: Info) -> Res {
@@ -141,22 +136,22 @@ fn prim_sub(l: &Prim, r: &Prim, info: Info) -> Res {
 }
 
 fn prim_mul(l: &Prim, r: &Prim, info: Info) -> Res {
-    use crate::primitives::record;
-    match (l, r) {
-        (Bool(l), I32(r)) => Ok(I32(if *l { *r } else { 0 })),
-        (Bool(l), Str(r)) => Ok(Str(if *l { r.to_string() } else { "".to_string() })),
-        (I32(l), Bool(r)) => Ok(I32(if *r { *l } else { 0 })),
-        (I32(l), I32(r)) => Ok(I32(l.wrapping_mul(*r))),
-        (Str(l), Bool(r)) => Ok(Str(if *r { l.to_string() } else { "".to_string() })),
-        (TypeValue(l), TypeValue(r)) => {
-            Ok(TypeValue(record(vec![l.clone(), r.clone()])?))
-        }
-        (l, r) => Err(TError::TypeMismatch2(
+    use super::primitives::record;
+    let fail = || Err(TError::TypeMismatch2(
             "*".to_string(),
             Box::new((*l).clone()),
             Box::new((*r).clone()),
             info,
-        )),
+        ));
+    match (l, r) {
+        (Bool(l), I32(r)) => Ok(I32(if *l { *r } else { 0 })),
+        (Bool(l), Str(r)) => Ok(Str(if *l { r.to_string() } else { "".to_string() })),
+        (I32(l), Bool(r)) => Ok(I32(if *r { *l } else { 0 })),
+        (Str(l), Bool(r)) => Ok(Str(if *r { l.to_string() } else { "".to_string() })),
+        (Bool(_), _) => fail(),
+        (_, Bool(_)) => fail(),
+        (I32(l), I32(r)) => Ok(I32(l.wrapping_mul(*r))),
+        (l, r) => { Ok(record(vec![l.clone(), r.clone()])?) }
     }
 }
 
@@ -208,44 +203,20 @@ fn prim_or(l: &Prim, r: &Prim, info: Info) -> Res {
     }
 }
 
-fn prim_type_arrow(l: Prim, r: Prim, info: Info) -> Res {
-    match (l, r) {
-        (TypeValue(l), TypeValue(r)) => Ok(TypeValue(Type::Function {
-                intros: dict!(),
-                results: Box::new(r),
-                arguments: Box::new(l),
-            })),
-        (l, r) => Err(TError::TypeMismatch2(
-            "->".to_string(),
-            Box::new(l),
-            Box::new(r),
-            info,
-        )),
-    }
+fn prim_type_arrow(l: Prim, r: Prim, _info: Info) -> Res {
+    Ok(Prim::Function {
+        intros: dict!(),
+        results: Box::new(r),
+        arguments: Box::new(l),
+    })
 }
 
-fn prim_type_and(l: Prim, r: Prim, info: Info) -> Res {
-    match (l, r) {
-        (TypeValue(l), TypeValue(r)) => Ok(TypeValue(Type::Product(set!(l, r)))),
-        (l, r) => Err(TError::TypeMismatch2(
-            "&".to_string(),
-            Box::new(l),
-            Box::new(r),
-            info,
-        )),
-    }
+fn prim_type_and(l: Prim, r: Prim, _info: Info) -> Res {
+    Ok(Prim::Product(set!(l, r)))
 }
 
-fn prim_type_or(l: Prim, r: Prim, info: Info) -> Res {
-    match (l, r) {
-        (TypeValue(l), TypeValue(r)) => Ok(TypeValue(Type::Union(set!(l, r)))),
-        (l, r) => Err(TError::TypeMismatch2(
-            "|".to_string(),
-            Box::new(l),
-            Box::new(r),
-            info,
-        )),
-    }
+fn prim_type_or(l: Prim, r: Prim, _info: Info) -> Res {
+    Ok(Prim::Union(set!(l, r)))
 }
 
 pub fn prim_pow(l: &Prim, r: &Prim, info: Info) -> Res {
@@ -447,7 +418,7 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::super::ast::*;
-    use super::super::primitives::{Prim::*, Type::*, number_type, string_type};
+    use super::super::primitives::{Prim::*, number_type, string_type};
     use super::super::cli_options::Options;
     use super::super::database::{Compiler, DB};
     use super::{Interpreter, Res};
@@ -613,7 +584,7 @@ mod tests {
     fn parse_and_eval_i32_type() {
         assert_eq!(
             eval_str("I32".to_string()),
-            Ok(TypeValue(crate::primitives::i32_type()))
+            Ok(crate::primitives::i32_type())
         );
     }
 
@@ -621,7 +592,7 @@ mod tests {
     fn parse_and_eval_number_type() {
         assert_eq!(
             eval_str("Number".to_string()),
-            Ok(TypeValue(crate::primitives::number_type()))
+            Ok(crate::primitives::number_type())
         );
     }
 
@@ -629,7 +600,7 @@ mod tests {
     fn parse_and_eval_string_type() {
         assert_eq!(
             eval_str("String".to_string()),
-            Ok(TypeValue(crate::primitives::string_type()))
+            Ok(crate::primitives::string_type())
         );
     }
 
@@ -637,9 +608,7 @@ mod tests {
     fn parse_and_eval_string_or_number_type() {
         assert_eq!(
             eval_str("String | Number".to_string()),
-            Ok(TypeValue(
-                Union(set![number_type(), string_type()]),
-            ))
+            Ok(Union(set![number_type(), string_type()]))
         );
     }
 
@@ -647,9 +616,7 @@ mod tests {
     fn parse_and_eval_string_and_number_type() {
         assert_eq!(
             eval_str("String & Number".to_string()),
-            Ok(TypeValue(
-                Product(set![number_type(), string_type()]),
-            ))
+            Ok(Product(set![number_type(), string_type()]))
         );
     }
 
@@ -658,9 +625,7 @@ mod tests {
         use crate::primitives::*;
         assert_eq!(
             eval_str("String + I32".to_string()),
-            Ok(TypeValue(
-                sum(vec![string_type(), i32_type()]).unwrap(),
-            ))
+            Ok(sum(vec![string_type(), i32_type()]).unwrap())
         );
     }
 
@@ -669,9 +634,7 @@ mod tests {
         use crate::primitives::*;
         assert_eq!(
             eval_str("String * I32".to_string()),
-            Ok(TypeValue(
-                record(vec![string_type(), i32_type()]).unwrap(),
-            ))
+            Ok(record(vec![string_type(), i32_type()]).unwrap())
         );
     }
 
