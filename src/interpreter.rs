@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use super::ast::*;
 use super::database::Compiler;
 use super::errors::TError;
-use super::type_checker::infer;
 
 type Frame = HashMap<String, Prim>;
 
@@ -220,6 +219,24 @@ fn prim_or(l: &Prim, r: &Prim, info: Info) -> Res {
     }
 }
 
+fn prim_type_arrow(l: Prim, r: Prim, info: Info) -> Res {
+    use crate::types::Type::Function;
+    use Prim::*;
+    match (l, r) {
+        (TypeValue(l, _), TypeValue(r, _)) => Ok(TypeValue(Function {
+                intros: dict!(),
+                results: Box::new(r),
+                arguments: Box::new(l),
+            }, info)),
+        (l, r) => Err(TError::TypeMismatch2(
+            "->".to_string(),
+            Box::new(l),
+            Box::new(r),
+            info,
+        )),
+    }
+}
+
 fn prim_type_and(l: Prim, r: Prim, info: Info) -> Res {
     use crate::types::Type;
     use Prim::*;
@@ -356,7 +373,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             None => panic!("there is no stack frame"),
             Some(frame) => {
                 frame.insert(expr.name.clone(), result.clone());
-                Ok(result)
+                Ok(Prim::Struct(vec![(expr.name.clone(), result)], expr.get_info()))
             }
         }
     }
@@ -412,6 +429,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             "^" => prim_pow(&l?, &r()?, info),
             "&&" => prim_and(&l?, &r()?, info),
             "||" => prim_or(&l?, &r()?, info),
+            "->" => prim_type_arrow(l?, r()?, info),
             "&" => prim_type_and(l?, r()?, info),
             "|" => prim_type_or(l?, r()?, info),
             "," => {
@@ -435,24 +453,6 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
                 Ok(_) => r(),
                 l => l,
             },
-            ":" => {
-                let value = l?;
-                let ty = r()?;
-                use crate::types::Type::Record;
-                let env = Record(set![]); // TODO: Track the type env
-                let _type_of_value = infer(db, &value.clone().to_node(), &env);
-                // Check subtyping relationship of type_of_value and ty.
-                let sub_type = true;
-                if sub_type {
-                    return Ok(value);
-                }
-                Err(TError::TypeMismatch2(
-                    "Failure assertion of type annotation at runtime".to_string(),
-                    Box::new(value),
-                    Box::new(ty.clone()),
-                    ty.get_info(),
-                ))
-            }
             op => Err(TError::UnknownInfixOperator(op.to_string(), info)),
         }
     }
@@ -464,6 +464,8 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::super::ast::*;
     use super::super::cli_options::Options;
     use super::super::database::{Compiler, DB};

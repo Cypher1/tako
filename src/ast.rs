@@ -16,7 +16,7 @@ impl ToNode for TError {
     fn get_info(&self) -> Info {
         use TError::*;
         match self {
-            CppCompilerError(_, _) => Info::default(),
+            CppCompilerError(_, _, info) => info.clone(),
             UnknownSymbol(_, info, _) => info.clone(),
             UnknownInfixOperator(_, info) => info.clone(),
             UnknownPrefixOperator(_, info) => info.clone(),
@@ -28,6 +28,23 @@ impl ToNode for TError {
             FailedParse(_, info) => info.clone(),
             InternalError(_, node) => node.get_info(),
             ExpectedLetNode(node) => node.get_info(),
+        }
+    }
+    fn get_mut_info<'a>(&'a mut self) -> &'a mut Info {
+        use TError::*;
+        match self {
+            CppCompilerError(_, _, ref mut info) => info,
+            UnknownSymbol(_, ref mut info, _) => info,
+            UnknownInfixOperator(_, ref mut info) => info,
+            UnknownPrefixOperator(_, ref mut info) => info,
+            UnknownSizeOfVariableType(_, ref mut info) => info,
+            StaticPointerCardinality(ref mut info) => info,
+            TypeMismatch(_, _, ref mut info) => info,
+            TypeMismatch2(_, _, _, ref mut info) => info,
+            RequirementFailure(ref mut info) => info,
+            FailedParse(_, ref mut info) => info,
+            InternalError(_, ref mut node) => node.get_mut_info(),
+            ExpectedLetNode(ref mut node) => node.get_mut_info(),
         }
     }
 }
@@ -45,6 +62,9 @@ impl ToNode for Apply {
     }
     fn get_info(&self) -> Info {
         self.info.clone()
+    }
+    fn get_mut_info<'a>(&'a mut self) -> &'a mut Info {
+        &mut self.info
     }
 }
 
@@ -71,6 +91,9 @@ impl ToNode for Sym {
     }
     fn get_info(&self) -> Info {
         self.info.clone()
+    }
+    fn get_mut_info<'a>(&'a mut self) -> &'a mut Info {
+        &mut self.info
     }
 }
 
@@ -133,6 +156,19 @@ impl ToNode for Prim {
             TypeValue(_, info) => info.clone(),
         }
     }
+    fn get_mut_info<'a>(&'a mut self) -> &'a mut Info {
+        use Prim::*;
+        match self {
+            Void(ref mut info) => info,
+            Unit(ref mut info) => info,
+            Bool(_, ref mut info) => info,
+            I32(_, ref mut info) => info,
+            Str(_, ref mut info) => info,
+            Lambda(ref mut node) => node.get_mut_info(),
+            Struct(_, ref mut info) => info,
+            TypeValue(_, ref mut info) => info,
+        }
+    }
 }
 
 impl fmt::Display for Prim {
@@ -167,6 +203,9 @@ impl ToNode for Let {
     fn get_info(&self) -> Info {
         self.info.clone()
     }
+    fn get_mut_info<'a>(&'a mut self) -> &'a mut Info {
+        &mut self.info
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -182,6 +221,9 @@ impl ToNode for UnOp {
     }
     fn get_info(&self) -> Info {
         self.info.clone()
+    }
+    fn get_mut_info<'a>(&'a mut self) -> &'a mut Info {
+        &mut self.info
     }
 }
 
@@ -199,6 +241,9 @@ impl ToNode for BinOp {
     }
     fn get_info(&self) -> Info {
         self.info.clone()
+    }
+    fn get_mut_info<'a>(&'a mut self) -> &'a mut Info {
+        &mut self.info
     }
 }
 
@@ -301,6 +346,18 @@ impl ToNode for Node {
             BinOpNode(n) => n.get_info(),
         }
     }
+    fn get_mut_info<'a>(&'a mut self) -> &'a mut Info {
+        use Node::*;
+        match self {
+            Error(ref mut n) => n.get_mut_info(),
+            SymNode(ref mut n) => n.get_mut_info(),
+            PrimNode(ref mut n) => n.get_mut_info(),
+            ApplyNode(ref mut n) => n.get_mut_info(),
+            LetNode(ref mut n) => n.get_mut_info(),
+            UnOpNode(ref mut n) => n.get_mut_info(),
+            BinOpNode(ref mut n) => n.get_mut_info(),
+        }
+    }
 }
 
 impl Node {
@@ -316,6 +373,7 @@ impl Node {
 pub trait ToNode {
     fn to_node(self) -> Node;
     fn get_info(&self) -> Info;
+    fn get_mut_info<'a>(&'a mut self) -> &'a mut Info;
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]

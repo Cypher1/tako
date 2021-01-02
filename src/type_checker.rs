@@ -101,7 +101,11 @@ mod tests {
         dbg!(&ty);
         let mut state = vec![HashMap::new()];
         let result_type = Interpreter::default().visit(&db, &mut state, &ty);
-        assert_eq!(Ok(prog), result_type);
+        if let Err(err) = &result_type {
+            dbg!(format!("{}", &err));
+        }
+        assert_eq!(format!("{}", &prog), format!("{}", result_type.clone().unwrap()));
+        assert_eq!(prog, result_type.unwrap());
     }
 
     #[test]
@@ -140,7 +144,7 @@ mod tests {
 
     // #[test]
     fn infer_type_of_id() {
-        assert_type("{x}", ",(x: X): X");
+        assert_type("{x}", "(x=X) -> X");
     }
 
     // #[test]
@@ -161,5 +165,15 @@ mod tests {
     // #[test]
     fn infer_type_of_plus_expr() {
         assert_type("12+32", "I32");
+    }
+
+    #[test]
+    fn infer_type_of_argc() {
+        assert_type("argc", "I32");
+    }
+
+    #[test]
+    fn infer_type_of_argv() {
+        assert_type("argv", "(it=I32) -> String");
     }
 }

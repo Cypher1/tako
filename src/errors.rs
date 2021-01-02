@@ -7,7 +7,7 @@ use derivative::Derivative;
 #[derivative(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum TError {
     #[error("call to C++ compiler failed with error code: {1:?}\n{0}")]
-    CppCompilerError(String, Option<i32>),
+    CppCompilerError(String, Option<i32>, Info),
 
     #[error("unknown symbol `{0}` at {1:?}, {2}")]
     UnknownSymbol(String, Info, String),
@@ -25,7 +25,7 @@ pub enum TError {
 
     #[error("impossible type, {0} at {1}")]
     TypeMismatch(String, Box<Prim>, Info),
-    #[error("type mismatch, {0} vs {1} at {2}")]
+    #[error("type mismatch, arguments {0}, {1} vs {2} {3:?}")]
     TypeMismatch2(String, Box<Prim>, Box<Prim>, Info),
     #[error("runtime requirement failed at {0:?}")]
     RequirementFailure(Info),

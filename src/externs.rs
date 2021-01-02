@@ -171,7 +171,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
             name: "argv".to_string(),
             semantic: Func,
             ty: Function {
-                results: Box::new(Record(dict!("it" => string_type()))),
+                results: Box::new(string_type()),
                 intros: dict!(),
                 arguments: Box::new(Record(dict!("it" => i32_type()))),
             },
@@ -194,7 +194,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
             name: "exit".to_string(),
             semantic: Func,
             ty: Function {
-                results: Box::new(Record(dict! {"it" => void_type()})),
+                results: Box::new(void_type()),
                 arguments: Box::new(Record(dict! {"it" => i32_type()})),
                 intros: dict!(),
             },
@@ -218,7 +218,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
             name: "pointer".to_string(),
             semantic: Func,
             ty: Function {
-                results: Box::new(Record(dict! {"it" => variable("a")})),
+                results: Box::new(variable("a")),
                 arguments: Box::new(Record(dict! {"it" => variable("Type")})),
                 intros: dict!("a" => variable("Type")),
             },
@@ -240,7 +240,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
             semantic: operator(20, Left),
             ty: Function {
                 intros: dict!("a" => variable("Type"), "b" => variable("Type")),
-                results: Box::new(Record(dict!("it" => variable("b")))),
+                results: Box::new(variable("b")),
                 arguments: Box::new(Record(
                     dict!("left" => variable("a"), "right" => variable("b")),
                 )),
@@ -266,7 +266,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
             semantic: operator(40, Right),
             ty: Function {
                 intros: dict!("a" => variable("Identifier"), "b" => variable("Type")),
-                results: Box::new(Record(dict!("it" => variable("b")))),
+                results: Box::new(variable("b")),
                 arguments: Box::new(Record(
                     dict!("left" => variable("a"), "right" => variable("b")),
                 )),
@@ -274,27 +274,15 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
             cpp: LangImpl::operator(" = "),
         },
         Extern {
-            name: ":".to_string(),
-            semantic: operator(42, Left),
-            ty: Function {
-                intros: dict!("a" => variable("Type")),
-                results: Box::new(Record(dict!("it" => variable("a")))),
-                arguments: Box::new(Record(
-                    dict!("left" => variable("a"), "right" => variable("Type")),
-                )),
-            },
-            cpp: LangImpl::operator(":"),
-        },
-        Extern {
             name: "?".to_string(),
             semantic: operator(45, Left),
             ty: Function {
                 intros: dict!("a" => variable("Type"), "b" => variable("Type")),
-                results: Box::new(Record(dict!("it" => Union(set!(
+                results: Box::new(Union(set!(
                             variable("a"),
                             variable("b")
                     ))
-                ))),
+                ),
                 arguments: Box::new(Record(
                     dict!("left" => variable("a"), "right" => variable("b")),
                 )),
@@ -306,7 +294,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
             semantic: operator(47, Left),
             ty: Function {
                 intros: dict!("a" => variable("Type")),
-                results: Box::new(Record(dict!("it" => variable("a")))),
+                results: Box::new(variable("a")),
                 arguments: Box::new(Record(
                     dict!("left" => variable("Type"), "right" => variable("a")),
                 )),
@@ -318,8 +306,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
             semantic: operator(48, Left),
             ty: Function {
                 intros: dict!("a" => variable("Type"), "b" => variable("Type")),
-                results: Box::new(Record(
-                    dict!("it" => Union(set!(variable("a"), variable("b")))),
+                results: Box::new(Union(set!(variable("a"), variable("b")),
                 )),
                 arguments: Box::new(Record(
                     dict!("left" => variable("a"), "right" => variable("b")),
@@ -332,9 +319,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
             semantic: operator(48, Left),
             ty: Function {
                 intros: dict!("a" => variable("Type"), "b" => variable("Type")),
-                results: Box::new(Record(
-                    dict!("it" => Product(set!(variable("a"), variable("b")))),
-                )),
+                results: Box::new(Product(set!(variable("a"), variable("b")))),
                 arguments: Box::new(Record(
                     dict!("left" => variable("a"), "right" => variable("b")),
                 )),
@@ -346,7 +331,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
             semantic: operator(49, Left),
             ty: Function {
                 intros: dict!("a" => variable("Display"), "b" => variable("Display")),
-                results: Box::new(Record(dict!("it" => string_type()))),
+                results: Box::new(string_type()),
                 arguments: Box::new(Record(
                     dict!("left" => variable("a"), "right" => variable("b")),
                 )),
@@ -370,11 +355,27 @@ string to_string(const bool& t){
                 ),
         },
         Extern {
-            name: "<".to_string(),
+            name: "->".to_string(),
             semantic: operator(50, Left),
             ty: Function {
+                intros: dict!("a" => variable("Type"), "b" => variable("Type")),
+                results: Box::new(Function {
+                    intros: dict!(),
+                    results: Box::new(variable("b")),
+                    arguments: Box::new(variable("a")),
+                }),
+                arguments: Box::new(Record(
+                    dict!("left" => variable("a"), "right" => variable("b")),
+                )),
+            },
+            cpp: LangImpl::operator("???"),
+        },
+        Extern {
+            name: "<".to_string(),
+            semantic: operator(51, Left),
+            ty: Function {
                 intros: dict!("a" => variable("Number"), "b" => variable("Number")),
-                results: Box::new(Record(dict!("it" => bit_type()))),
+                results: Box::new(bit_type()),
                 arguments: Box::new(Record(
                     dict!("left" => variable("a"), "right" => variable("b")),
                 )),
@@ -383,10 +384,10 @@ string to_string(const bool& t){
         },
         Extern {
             name: "<=".to_string(),
-            semantic: operator(50, Left),
+            semantic: operator(51, Left),
             ty: Function {
                 intros: dict!("a" => variable("Number"), "b" => variable("Number")),
-                results: Box::new(Record(dict!("it" => bit_type()))),
+                results: Box::new(bit_type()),
                 arguments: Box::new(Record(
                     dict!("left" => variable("a"), "right" => variable("b")),
                 )),
@@ -395,10 +396,10 @@ string to_string(const bool& t){
         },
         Extern {
             name: ">".to_string(),
-            semantic: operator(50, Left),
+            semantic: operator(51, Left),
             ty: Function {
                 intros: dict!("a" => variable("Number"), "b" => variable("Number")),
-                results: Box::new(Record(dict!("it" => bit_type()))),
+                results: Box::new(bit_type()),
                 arguments: Box::new(Record(
                     dict!("left" => variable("a"), "right" => variable("b")),
                 )),
@@ -407,10 +408,10 @@ string to_string(const bool& t){
         },
         Extern {
             name: ">=".to_string(),
-            semantic: operator(50, Left),
+            semantic: operator(51, Left),
             ty: Function {
                 intros: dict!("a" => variable("Number"), "b" => variable("Number")),
-                results: Box::new(Record(dict!("it" => bit_type()))),
+                results: Box::new(bit_type()),
                 arguments: Box::new(Record(
                     dict!("left" => variable("a"), "right" => variable("b")),
                 )),
@@ -419,10 +420,10 @@ string to_string(const bool& t){
         },
         Extern {
             name: "!=".to_string(),
-            semantic: operator(50, Left),
+            semantic: operator(51, Left),
             ty: Function {
                 intros: dict!("a" => variable("Type"), "b" => variable("Type")),
-                results: Box::new(Record(dict!("it" => bit_type()))),
+                results: Box::new(bit_type()),
                 arguments: Box::new(Record(
                     dict!("left" => variable("a"), "right" => variable("b")),
                 )),
@@ -431,10 +432,10 @@ string to_string(const bool& t){
         },
         Extern {
             name: "==".to_string(),
-            semantic: operator(50, Left),
+            semantic: operator(51, Left),
             ty: Function {
                 intros: dict!("a" => variable("Type"), "b" => variable("Type")),
-                results: Box::new(Record(dict!("it" => bit_type()))),
+                results: Box::new(bit_type()),
                 arguments: Box::new(Record(
                     dict!("left" => variable("a"), "right" => variable("b")),
                 )),
@@ -446,7 +447,7 @@ string to_string(const bool& t){
             semantic: operator(60, Left),
             ty: Function {
                 intros: dict!(),
-                results: Box::new(Record(dict!("it" => bit_type()))),
+                results: Box::new(bit_type()),
                 arguments: Box::new(Record(dict!("left" => bit_type(), "right" => bit_type()))),
             },
             cpp: LangImpl::operator("||"),
@@ -456,7 +457,7 @@ string to_string(const bool& t){
             semantic: operator(60, Left),
             ty: Function {
                 intros: dict!(),
-                results: Box::new(Record(dict!("it" => bit_type()))),
+                results: Box::new(bit_type()),
                 arguments: Box::new(Record(dict!("left" => bit_type(), "right" => bit_type()))),
             },
             cpp: LangImpl::operator("&&"),
@@ -466,8 +467,8 @@ string to_string(const bool& t){
             semantic: operator(70, Left),
             ty: Function {
                 intros: dict!(),
-                results: Box::new(Record(dict!("it" => bit_type()))),
-                arguments: Box::new(Record(dict!("it" => bit_type()))),
+                results: Box::new(bit_type()),
+                arguments: Box::new(bit_type()),
             },
             cpp: LangImpl::operator("!"),
         },
@@ -476,7 +477,7 @@ string to_string(const bool& t){
             semantic: operator(70, Left),
             ty: Function {
                 intros: dict!("a" => variable("Type")), // TODO: This should unpack a type with a set of named values and put them into scope.
-                results: Box::new(Record(dict!("it" => variable("a")))),
+                results: Box::new(variable("a")),
                 arguments: Box::new(Record(dict!("it" => variable("a")))),
             },
             cpp: LangImpl::operator("..."), // TODO: Implement
@@ -486,7 +487,7 @@ string to_string(const bool& t){
             semantic: operator(70, Left),
             ty: Function {
                 intros: dict!("a" => variable("Number")),
-                results: Box::new(Record(dict!("it" => variable("a")))),
+                results: Box::new(variable("a")),
                 arguments: Box::new(Record(dict!("it" => variable("a")))),
             },
             cpp: LangImpl::operator("-"),
@@ -496,7 +497,7 @@ string to_string(const bool& t){
             semantic: operator(70, Left),
             ty: Function {
                 intros: dict!("a" => variable("Number"), "b" => variable("Number")),
-                results: Box::new(Record(dict!("it" => variable("a")))),
+                results: Box::new(variable("a")),
                 arguments: Box::new(Record(
                     dict!("left" => variable("a"), "right" => variable("b")),
                 )),
@@ -508,7 +509,7 @@ string to_string(const bool& t){
             semantic: operator(80, Left),
             ty: Function {
                 intros: dict!("a" => variable("Number"), "b" => variable("Number")),
-                results: Box::new(Record(dict!("it" => variable("a")))),
+                results: Box::new(variable("a")),
                 arguments: Box::new(Record(
                     dict!("left" => variable("a"), "right" => variable("b")),
                 )),
@@ -520,7 +521,7 @@ string to_string(const bool& t){
             semantic: operator(80, Left),
             ty: Function {
                 intros: dict!("a" => variable("Number"), "b" => variable("Number")),
-                results: Box::new(Record(dict!("it" => variable("a")))),
+                results: Box::new(variable("a")),
                 arguments: Box::new(Record(
                     dict!("left" => variable("a"), "right" => variable("b")),
                 )),
@@ -532,7 +533,7 @@ string to_string(const bool& t){
             semantic: operator(80, Left),
             ty: Function {
                 intros: dict!("a" => variable("Number"), "b" => variable("Number")),
-                results: Box::new(Record(dict!("it" => variable("a")))),
+                results: Box::new(variable("a")),
                 arguments: Box::new(Record(
                     dict!("left" => variable("a"), "right" => variable("b")),
                 )),
@@ -544,7 +545,7 @@ string to_string(const bool& t){
             semantic: operator(90, Right),
             ty: Function {
                 intros: dict!("a" => variable("Number"), "b" => variable("Number")),
-                results: Box::new(Record(dict!("it" => variable("a")))),
+                results: Box::new(variable("a")),
                 arguments: Box::new(Record(
                     dict!("left" => variable("a"), "right" => variable("b")),
                 )),

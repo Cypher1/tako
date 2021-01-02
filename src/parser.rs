@@ -160,7 +160,7 @@ fn get_defs(args: Node) -> Vec<Let> {
 fn led(
     db: &dyn Compiler,
     mut toks: VecDeque<Token>,
-    left: Node,
+    mut left: Node,
 ) -> Result<(Node, VecDeque<Token>), TError> {
     // eprintln!("here {:?} {:?}", toks, left);
     if let Some(Token {
@@ -202,44 +202,51 @@ fn led(
                         Direction::Right => 1,
                     },
                 )?;
-                if head.value != "=" {
-                    return Ok((
-                        BinOp {
-                            info: head.get_info(),
-                            name: head.value,
-                            left: Box::new(left),
-                            right: Box::new(right),
-                        }
-                        .to_node(),
-                        new_toks,
-                    ));
-                }
-                match left {
-                    Node::SymNode(s) => Ok((
-                        Let {
-                            name: s.name,
-                            args: None,
-                            value: Box::new(right),
-                            info: head.get_info(),
-                        }
-                        .to_node(),
-                        new_toks,
-                    )),
-                    Node::ApplyNode(a) => match *a.inner {
-                        Node::SymNode(s) => Ok((
-                            Let {
-                                name: s.name,
-                                args: Some(a.args),
-                                value: Box::new(right),
-                                info: head.get_info(),
-                            }
-                            .to_node(),
-                            new_toks,
-                        )),
-                        _ => panic!(format!("Cannot assign to {}", a.to_node())),
+                match head.value.as_str() {
+                    ":" => {
+                        left.get_mut_info().ty = Some(Box::new(right));
+                        return Ok((left, new_toks));
                     },
-                    _ => panic!(format!("Cannot assign to {}", left)),
+                    "=" => {
+                        match left {
+                            Node::SymNode(s) => return Ok((
+                                Let {
+                                    name: s.name,
+                                    args: None,
+                                    value: Box::new(right),
+                                    info: head.get_info(),
+                                }
+                                .to_node(),
+                                new_toks,
+                            )),
+                            Node::ApplyNode(a) => match *a.inner {
+                                Node::SymNode(s) => return Ok((
+                                    Let {
+                                        name: s.name,
+                                        args: Some(a.args),
+                                        value: Box::new(right),
+                                        info: head.get_info(),
+                                    }
+                                    .to_node(),
+                                    new_toks,
+                                )),
+                                _ => panic!(format!("Cannot assign to {}", a.to_node())),
+                            },
+                            _ => panic!(format!("Cannot assign to {}", left)),
+                        }
+                    },
+                    _ => {},
                 }
+                Ok((
+                    BinOp {
+                        info: head.get_info(),
+                        name: head.value,
+                        left: Box::new(left),
+                        right: Box::new(right),
+                    }
+                    .to_node(),
+                    new_toks,
+                ))
             }
             TokenType::CloseBracket => panic!("Unexpected close bracket"),
             TokenType::OpenBracket => {
