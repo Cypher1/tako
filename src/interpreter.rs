@@ -256,7 +256,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
                 let val = val.clone();
                 frame_vals.insert(name.to_string(), Box::new(move || Ok(val.clone())));
             }
-            return frame_vals;
+            frame_vals
         };
         let value = find_symbol(&state, name);
         if let Some(prim) = value {

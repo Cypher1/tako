@@ -28,7 +28,7 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
         Ok(())
     }
 
-    fn visit_prim(&mut self, db: &dyn Compiler, state: &mut State, expr: &Prim) -> Res {
+    fn visit_prim(&mut self, _db: &dyn Compiler, state: &mut State, expr: &Prim) -> Res {
         write!(state, "{}", &expr).unwrap();
         Ok(())
     }

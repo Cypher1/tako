@@ -32,7 +32,7 @@ impl HasInfo for TError {
             ExpectedLetNode(node) => node.get_info(),
         }
     }
-    fn get_mut_info<'a>(&'a mut self) -> &'a mut Info {
+    fn get_mut_info(&mut self) -> &mut Info {
         use TError::*;
         match self {
             CppCompilerError(_, _, ref mut info) => info,
@@ -67,7 +67,7 @@ impl HasInfo for Apply {
     fn get_info(&self) -> Info {
         self.info.clone()
     }
-    fn get_mut_info<'a>(&'a mut self) -> &'a mut Info {
+    fn get_mut_info(&mut self) -> &mut Info {
         &mut self.info
     }
 }
@@ -98,7 +98,7 @@ impl HasInfo for Sym {
     fn get_info(&self) -> Info {
         self.info.clone()
     }
-    fn get_mut_info<'a>(&'a mut self) -> &'a mut Info {
+    fn get_mut_info(&mut self) -> &mut Info {
         &mut self.info
     }
 }
@@ -137,7 +137,7 @@ impl HasInfo for Let {
     fn get_info(&self) -> Info {
         self.info.clone()
     }
-    fn get_mut_info<'a>(&'a mut self) -> &'a mut Info {
+    fn get_mut_info(&mut self) -> &mut Info {
         &mut self.info
     }
 }
@@ -158,7 +158,7 @@ impl HasInfo for UnOp {
     fn get_info(&self) -> Info {
         self.info.clone()
     }
-    fn get_mut_info<'a>(&'a mut self) -> &'a mut Info {
+    fn get_mut_info(&mut self) -> &mut Info {
         &mut self.info
     }
 }
@@ -180,7 +180,7 @@ impl HasInfo for BinOp {
     fn get_info(&self) -> Info {
         self.info.clone()
     }
-    fn get_mut_info<'a>(&'a mut self) -> &'a mut Info {
+    fn get_mut_info(&mut self) -> &mut Info {
         &mut self.info
     }
 }
@@ -286,7 +286,7 @@ impl HasInfo for Node {
             BinOpNode(n) => n.get_info(),
         }
     }
-    fn get_mut_info<'a>(&'a mut self) -> &'a mut Info {
+    fn get_mut_info(&mut self) -> &mut Info {
         use Node::*;
         match self {
             Error(ref mut n) => n.get_mut_info(),
@@ -316,7 +316,7 @@ pub trait ToNode {
 
 pub trait HasInfo {
     fn get_info(&self) -> Info;
-    fn get_mut_info<'a>(&'a mut self) -> &'a mut Info;
+    fn get_mut_info(&mut self) -> &mut Info;
 }
 
 #[derive(Debug, Clone, Ord, PartialOrd, Hash, PartialEq, Eq)]
