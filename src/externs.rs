@@ -4,7 +4,7 @@ use crate::ast::{Info, Prim::*};
 use crate::database::Compiler;
 use crate::errors::TError;
 use crate::interpreter::{prim_add_strs, prim_pow, Res};
-use crate::types::{
+use crate::primitives::{
     bit_type, i32_type, number_type, string_type, type_type, unit_type, variable, void_type, Type,
     Type::*,
 };

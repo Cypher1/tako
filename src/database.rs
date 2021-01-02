@@ -13,7 +13,7 @@ use super::cli_options::Options;
 use super::errors::TError;
 use super::externs::{Extern, Semantic};
 use super::tokens::Token;
-use super::types::Type;
+use super::primitives::Type;
 
 #[salsa::query_group(CompilerStorage)]
 pub trait Compiler: salsa::Database {

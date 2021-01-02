@@ -2,7 +2,7 @@ use crate::ast::{Node, Node::*, Prim::*};
 use crate::database::Compiler;
 use crate::errors::TError;
 
-use crate::types::{bit_type, i32_type, record, string_type, unit_type, void_type, Type};
+use crate::primitives::{bit_type, i32_type, record, string_type, unit_type, void_type, Type};
 
 pub fn infer(db: &dyn Compiler, expr: &Node, env: &Type) -> Result<Type, TError> {
     // Infer that expression t has type A, t => A

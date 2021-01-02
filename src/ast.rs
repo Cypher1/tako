@@ -7,7 +7,7 @@ use crate::database::DB;
 use crate::errors::TError;
 use crate::location::*;
 use crate::tree::*;
-use crate::types::Type;
+use crate::primitives::Type;
 
 impl ToNode for TError {
     fn to_node(self) -> Node {

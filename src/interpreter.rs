@@ -35,7 +35,7 @@ fn find_symbol<'a>(state: &'a [Frame], name: &str) -> Option<&'a Prim> {
 }
 
 fn prim_add(l: &Prim, r: &Prim, info: Info) -> Res {
-    use crate::types::sum;
+    use crate::primitives::sum;
     use Prim::*;
     match (l, r) {
         (Bool(l, _), Bool(r, _)) => Ok(I32(if *l { 1 } else { 0 } + if *r { 1 } else { 0 }, info)),
@@ -147,7 +147,7 @@ fn prim_sub(l: &Prim, r: &Prim, info: Info) -> Res {
 }
 
 fn prim_mul(l: &Prim, r: &Prim, info: Info) -> Res {
-    use crate::types::record;
+    use crate::primitives::record;
     use Prim::*;
     match (l, r) {
         (Bool(l, _), I32(r, _)) => Ok(I32(if *l { *r } else { 0 }, info)),
@@ -220,7 +220,7 @@ fn prim_or(l: &Prim, r: &Prim, info: Info) -> Res {
 }
 
 fn prim_type_arrow(l: Prim, r: Prim, info: Info) -> Res {
-    use crate::types::Type::Function;
+    use crate::primitives::Type::Function;
     use Prim::*;
     match (l, r) {
         (TypeValue(l, _), TypeValue(r, _)) => Ok(TypeValue(Function {
@@ -238,7 +238,7 @@ fn prim_type_arrow(l: Prim, r: Prim, info: Info) -> Res {
 }
 
 fn prim_type_and(l: Prim, r: Prim, info: Info) -> Res {
-    use crate::types::Type;
+    use crate::primitives::Type;
     use Prim::*;
     match (l, r) {
         (TypeValue(l, _), TypeValue(r, _)) => Ok(TypeValue(Type::Product(set!(l, r)), info)),
@@ -252,7 +252,7 @@ fn prim_type_and(l: Prim, r: Prim, info: Info) -> Res {
 }
 
 fn prim_type_or(l: Prim, r: Prim, info: Info) -> Res {
-    use crate::types::Type;
+    use crate::primitives::Type;
     use Prim::*;
     match (l, r) {
         (TypeValue(l, _), TypeValue(r, _)) => Ok(TypeValue(Type::Union(set!(l, r)), info)),
@@ -633,7 +633,7 @@ mod tests {
     fn parse_and_eval_i32_type() {
         assert_eq!(
             eval_str("I32".to_string()),
-            Ok(TypeValue(crate::types::i32_type(), Info::default()))
+            Ok(TypeValue(crate::primitives::i32_type(), Info::default()))
         );
     }
 
@@ -641,7 +641,7 @@ mod tests {
     fn parse_and_eval_number_type() {
         assert_eq!(
             eval_str("Number".to_string()),
-            Ok(TypeValue(crate::types::number_type(), Info::default()))
+            Ok(TypeValue(crate::primitives::number_type(), Info::default()))
         );
     }
 
@@ -649,13 +649,13 @@ mod tests {
     fn parse_and_eval_string_type() {
         assert_eq!(
             eval_str("String".to_string()),
-            Ok(TypeValue(crate::types::string_type(), Info::default()))
+            Ok(TypeValue(crate::primitives::string_type(), Info::default()))
         );
     }
 
     #[test]
     fn parse_and_eval_string_or_number_type() {
-        use crate::types::{Type::*, *};
+        use crate::primitives::{Type::*, *};
         assert_eq!(
             eval_str("String | Number".to_string()),
             Ok(TypeValue(
@@ -667,7 +667,7 @@ mod tests {
 
     #[test]
     fn parse_and_eval_string_and_number_type() {
-        use crate::types::{Type::*, *};
+        use crate::primitives::{Type::*, *};
         assert_eq!(
             eval_str("String & Number".to_string()),
             Ok(TypeValue(
@@ -679,7 +679,7 @@ mod tests {
 
     #[test]
     fn parse_and_eval_tagged_string_or_number_type() {
-        use crate::types::*;
+        use crate::primitives::*;
         assert_eq!(
             eval_str("String + I32".to_string()),
             Ok(TypeValue(
@@ -691,7 +691,7 @@ mod tests {
 
     #[test]
     fn parse_and_eval_string_times_number_type() {
-        use crate::types::*;
+        use crate::primitives::*;
         assert_eq!(
             eval_str("String * I32".to_string()),
             Ok(TypeValue(
