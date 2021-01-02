@@ -1,8 +1,8 @@
 use super::ast::*;
-use crate::primitives::Prim;
 use super::database::Compiler;
 use super::errors::TError;
 use super::tree::{to_hash_root, HashTree};
+use crate::primitives::Prim;
 
 // Walks the AST interpreting it.
 #[derive(Default)]

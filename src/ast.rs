@@ -6,8 +6,8 @@ use crate::database::Compiler;
 use crate::database::DB;
 use crate::errors::TError;
 use crate::location::*;
-use crate::tree::*;
 use crate::primitives::Prim;
+use crate::tree::*;
 
 impl ToNode for TError {
     fn to_node(self) -> Node {

@@ -6,8 +6,8 @@ use super::database::Compiler;
 use super::errors::TError;
 use super::externs::{Direction, Semantic};
 use super::location::*;
-use super::tokens::*;
 use super::primitives::Prim;
+use super::tokens::*;
 
 fn binding(db: &dyn Compiler, tok: &Token) -> Result<Semantic, TError> {
     db.get_extern_operator(tok.value.to_owned())
@@ -124,7 +124,8 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
         }
     } else {
         Ok((
-            TError::FailedParse("Unexpected eof, expected expr".to_string(), Info::default()).to_node(),
+            TError::FailedParse("Unexpected eof, expected expr".to_string(), Info::default())
+                .to_node(),
             toks,
         ))
     }
@@ -171,14 +172,19 @@ fn led(
     }) = toks.front()
     {
         return Ok((
-            TError::FailedParse("Exected Close bracket".to_string(), pos.clone().get_info()).to_node(),
+            TError::FailedParse("Exected Close bracket".to_string(), pos.clone().get_info())
+                .to_node(),
             toks,
         ));
     }
 
     match toks.pop_front() {
         None => Ok((
-            TError::FailedParse("Unexpected eof, expected expr tail".to_string(), left.get_info()).to_node(),
+            TError::FailedParse(
+                "Unexpected eof, expected expr tail".to_string(),
+                left.get_info(),
+            )
+            .to_node(),
             toks,
         )),
         Some(head) => match head.tok_type {
@@ -207,10 +213,10 @@ fn led(
                     ":" => {
                         left.get_mut_info().ty = Some(Box::new(right));
                         return Ok((left, new_toks));
-                    },
-                    "=" => {
-                        match left {
-                            Node::SymNode(s) => return Ok((
+                    }
+                    "=" => match left {
+                        Node::SymNode(s) => {
+                            return Ok((
                                 Let {
                                     name: s.name,
                                     args: None,
@@ -219,9 +225,11 @@ fn led(
                                 }
                                 .to_node(),
                                 new_toks,
-                            )),
-                            Node::ApplyNode(a) => match *a.inner {
-                                Node::SymNode(s) => return Ok((
+                            ))
+                        }
+                        Node::ApplyNode(a) => match *a.inner {
+                            Node::SymNode(s) => {
+                                return Ok((
                                     Let {
                                         name: s.name,
                                         args: Some(a.args),
@@ -230,13 +238,13 @@ fn led(
                                     }
                                     .to_node(),
                                     new_toks,
-                                )),
-                                _ => panic!(format!("Cannot assign to {}", a.to_node())),
-                            },
-                            _ => panic!(format!("Cannot assign to {}", left)),
-                        }
+                                ))
+                            }
+                            _ => panic!(format!("Cannot assign to {}", a.to_node())),
+                        },
+                        _ => panic!(format!("Cannot assign to {}", left)),
                     },
-                    _ => {},
+                    _ => {}
                 }
                 Ok((
                     BinOp {
@@ -412,8 +420,8 @@ pub mod tests {
     use crate::ast::*;
     use crate::database::Compiler;
     use crate::database::DB;
-    use Prim::*;
     use crate::primitives::Prim;
+    use Prim::*;
 
     fn parse(contents: String) -> Node {
         use crate::cli_options::Options;
