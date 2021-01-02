@@ -7,16 +7,18 @@ use crate::database::DB;
 use crate::errors::TError;
 use crate::location::*;
 use crate::tree::*;
-use crate::types::Type;
+use crate::primitives::Prim;
 
 impl ToNode for TError {
     fn to_node(self) -> Node {
         Node::Error(self)
     }
+}
+impl HasInfo for TError {
     fn get_info(&self) -> Info {
         use TError::*;
         match self {
-            CppCompilerError(_, _) => Info::default(),
+            CppCompilerError(_, _, info) => info.clone(),
             UnknownSymbol(_, info, _) => info.clone(),
             UnknownInfixOperator(_, info) => info.clone(),
             UnknownPrefixOperator(_, info) => info.clone(),
@@ -30,9 +32,26 @@ impl ToNode for TError {
             ExpectedLetNode(node) => node.get_info(),
         }
     }
+    fn get_mut_info<'a>(&'a mut self) -> &'a mut Info {
+        use TError::*;
+        match self {
+            CppCompilerError(_, _, ref mut info) => info,
+            UnknownSymbol(_, ref mut info, _) => info,
+            UnknownInfixOperator(_, ref mut info) => info,
+            UnknownPrefixOperator(_, ref mut info) => info,
+            UnknownSizeOfVariableType(_, ref mut info) => info,
+            StaticPointerCardinality(ref mut info) => info,
+            TypeMismatch(_, _, ref mut info) => info,
+            TypeMismatch2(_, _, _, ref mut info) => info,
+            RequirementFailure(ref mut info) => info,
+            FailedParse(_, ref mut info) => info,
+            InternalError(_, ref mut node) => node.get_mut_info(),
+            ExpectedLetNode(ref mut node) => node.get_mut_info(),
+        }
+    }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, PartialOrd, Ord)]
 pub struct Apply {
     pub inner: Box<Node>,
     pub args: Vec<Let>,
@@ -43,12 +62,17 @@ impl ToNode for Apply {
     fn to_node(self) -> Node {
         Node::ApplyNode(self)
     }
+}
+impl HasInfo for Apply {
     fn get_info(&self) -> Info {
         self.info.clone()
     }
+    fn get_mut_info<'a>(&'a mut self) -> &'a mut Info {
+        &mut self.info
+    }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, PartialOrd, Ord)]
 pub struct Sym {
     pub name: String,
     pub info: Info,
@@ -58,7 +82,7 @@ impl Sym {
     pub fn as_let(self: &Sym) -> Let {
         Let {
             name: self.name.clone(),
-            value: Box::new(Prim::Unit(Info::default()).to_node()),
+            value: Box::new(Prim::Unit().to_node()),
             args: None,
             info: self.get_info(),
         }
@@ -69,69 +93,19 @@ impl ToNode for Sym {
     fn to_node(self) -> Node {
         Node::SymNode(self)
     }
+}
+impl HasInfo for Sym {
     fn get_info(&self) -> Info {
         self.info.clone()
     }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub enum Prim {
-    Void(Info),
-    Unit(Info),
-    Bool(bool, Info),
-    I32(i32, Info),
-    Str(String, Info),
-    Lambda(Box<Node>),
-    Struct(Vec<(String, Prim)>, Info), // Should really just store values, but we can't do that yet.
-    TypeValue(Type, Info),
-}
-
-fn merge_vals(left: Vec<(String, Prim)>, right: Vec<(String, Prim)>) -> Vec<(String, Prim)> {
-    let mut names = HashSet::<String>::new();
-    for pair in right.iter() {
-        names.insert(pair.0.clone());
-    }
-    let mut items = vec![];
-    for pair in left.iter() {
-        if !names.contains(&pair.0) {
-            items.push(pair.clone());
-        }
-    }
-    for pair in right.iter() {
-        items.push(pair.clone());
-    }
-    items
-}
-
-impl Prim {
-    pub fn merge(self: Prim, other: Prim) -> Prim {
-        use Prim::*;
-        match (self, other) {
-            (Struct(vals, info), Struct(o_vals, _)) => Struct(merge_vals(vals, o_vals), info),
-            (Struct(vals, info), other) => {
-                Struct(merge_vals(vals, vec![("it".to_string(), other)]), info)
-            }
-            (_, other) => other,
-        }
+    fn get_mut_info<'a>(&'a mut self) -> &'a mut Info {
+        &mut self.info
     }
 }
 
 impl ToNode for Prim {
     fn to_node(self) -> Node {
-        Node::PrimNode(self)
-    }
-    fn get_info(&self) -> Info {
-        use Prim::*;
-        match self {
-            Void(info) => info.clone(),
-            Unit(info) => info.clone(),
-            Bool(_, info) => info.clone(),
-            I32(_, info) => info.clone(),
-            Str(_, info) => info.clone(),
-            Lambda(node) => (*node).get_info(),
-            Struct(_, info) => info.clone(),
-            TypeValue(_, info) => info.clone(),
-        }
+        Node::PrimNode(self, Info::default())
     }
 }
 
@@ -142,7 +116,7 @@ impl fmt::Display for Prim {
 }
 
 // Consider finding way to turn lets into binary operators.
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub struct Let {
     pub name: String,
     pub value: Box<Node>,
@@ -164,12 +138,17 @@ impl ToNode for Let {
     fn to_node(self) -> Node {
         Node::LetNode(self)
     }
+}
+impl HasInfo for Let {
     fn get_info(&self) -> Info {
         self.info.clone()
     }
+    fn get_mut_info<'a>(&'a mut self) -> &'a mut Info {
+        &mut self.info
+    }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub struct UnOp {
     pub name: String,
     pub inner: Box<Node>,
@@ -180,12 +159,17 @@ impl ToNode for UnOp {
     fn to_node(self) -> Node {
         Node::UnOpNode(self)
     }
+}
+impl HasInfo for UnOp {
     fn get_info(&self) -> Info {
         self.info.clone()
     }
+    fn get_mut_info<'a>(&'a mut self) -> &'a mut Info {
+        &mut self.info
+    }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub struct BinOp {
     pub name: String,
     pub left: Box<Node>,
@@ -197,12 +181,17 @@ impl ToNode for BinOp {
     fn to_node(self) -> Node {
         Node::BinOpNode(self)
     }
+}
+impl HasInfo for BinOp {
     fn get_info(&self) -> Info {
         self.info.clone()
     }
+    fn get_mut_info<'a>(&'a mut self) -> &'a mut Info {
+        &mut self.info
+    }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialOrd, Ord)]
 pub struct Info {
     pub loc: Option<Loc>,
     pub ty: Option<Box<Node>>,
@@ -248,11 +237,11 @@ impl Hash for Info {
 }
 
 // #[derive(Debug)]
-#[derive(PartialEq, Eq, Clone, Hash)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub enum Node {
     Error(TError),
     SymNode(Sym),
-    PrimNode(Prim),
+    PrimNode(Prim, Info),
     ApplyNode(Apply),
     LetNode(Let),
     UnOpNode(UnOp),
@@ -265,7 +254,7 @@ impl std::fmt::Debug for Node {
         match self {
             Error(n) => n.fmt(f),
             SymNode(n) => n.fmt(f),
-            PrimNode(n) => n.fmt(f),
+            PrimNode(n, _) => n.fmt(f),
             ApplyNode(n) => n.fmt(f),
             LetNode(n) => n.fmt(f),
             UnOpNode(n) => n.fmt(f),
@@ -289,16 +278,30 @@ impl ToNode for Node {
     fn to_node(self) -> Node {
         self
     }
+}
+impl HasInfo for Node {
     fn get_info(&self) -> Info {
         use Node::*;
         match self {
             Error(n) => n.get_info(),
             SymNode(n) => n.get_info(),
-            PrimNode(n) => n.get_info(),
+            PrimNode(_n, info) => info.clone(),
             ApplyNode(n) => n.get_info(),
             LetNode(n) => n.get_info(),
             UnOpNode(n) => n.get_info(),
             BinOpNode(n) => n.get_info(),
+        }
+    }
+    fn get_mut_info<'a>(&'a mut self) -> &'a mut Info {
+        use Node::*;
+        match self {
+            Error(ref mut n) => n.get_mut_info(),
+            SymNode(ref mut n) => n.get_mut_info(),
+            PrimNode(_, ref mut info) => info,
+            ApplyNode(ref mut n) => n.get_mut_info(),
+            LetNode(ref mut n) => n.get_mut_info(),
+            UnOpNode(ref mut n) => n.get_mut_info(),
+            BinOpNode(ref mut n) => n.get_mut_info(),
         }
     }
 }
@@ -315,10 +318,14 @@ impl Node {
 
 pub trait ToNode {
     fn to_node(self) -> Node;
-    fn get_info(&self) -> Info;
 }
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub trait HasInfo {
+    fn get_info(&self) -> Info;
+    fn get_mut_info<'a>(&'a mut self) -> &'a mut Info;
+}
+
+#[derive(Debug, Clone, Ord, PartialOrd, Hash, PartialEq, Eq)]
 pub enum Symbol {
     Anon(),
     Named(String, Option<String>), // name, (and for files) an optional extension
@@ -431,7 +438,7 @@ pub trait Visitor<State, Res, Final, Start = Root> {
         match e {
             Error(n) => self.handle_error(db, state, n),
             SymNode(n) => self.visit_sym(db, state, n),
-            PrimNode(n) => self.visit_prim(db, state, n),
+            PrimNode(n, _) => self.visit_prim(db, state, n),
             ApplyNode(n) => self.visit_apply(db, state, n),
             LetNode(n) => self.visit_let(db, state, n),
             UnOpNode(n) => self.visit_un_op(db, state, n),

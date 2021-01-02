@@ -13,7 +13,7 @@ use super::cli_options::Options;
 use super::errors::TError;
 use super::externs::{Extern, Semantic};
 use super::tokens::Token;
-use super::types::Type;
+use super::primitives::Type;
 
 #[salsa::query_group(CompilerStorage)]
 pub trait Compiler: salsa::Database {
@@ -286,7 +286,8 @@ fn build_with_gpp(db: &dyn Compiler, module: Path) -> Result<String, TError> {
         .expect("could not run g++");
     if !output.status.success() {
         let s = String::from_utf8(output.stderr).unwrap();
-        return Err(TError::CppCompilerError(s, output.status.code()));
+        use crate::ast::Info;
+        return Err(TError::CppCompilerError(s, output.status.code(), Info::default()));
     }
     let s = String::from_utf8(output.stdout).unwrap();
     eprintln!("{}", s);

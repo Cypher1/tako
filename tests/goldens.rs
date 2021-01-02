@@ -28,10 +28,7 @@ fn test_with_expectation(expected: TestResult, options: Vec<&str>) {
 
     let mut stdout: Vec<String> = vec![];
     let result = {
-        use takolib::ast::{
-            Info,
-            Prim::{Str, I32},
-        };
+        use takolib::primitives::Prim::{Str, I32};
         use takolib::interpreter::Res;
         let mut print_impl =
             &mut |_: &dyn Compiler,
@@ -39,10 +36,10 @@ fn test_with_expectation(expected: TestResult, options: Vec<&str>) {
                   _: takolib::ast::Info|
              -> Res {
                 stdout.push(match args.get("it").unwrap()()? {
-                    Str(s, _) => s,
+                    Str(s) => s,
                     s => format!("{:?}", s),
                 });
-                Ok(I32(0, Info::default()))
+                Ok(I32(0))
             };
         let files = db.files();
         if files.len() != 1 {

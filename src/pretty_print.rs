@@ -1,7 +1,8 @@
+use std::fmt::Write;
 use super::ast::*;
 use super::database::Compiler;
 use super::errors::TError;
-use std::fmt::Write;
+use super::primitives::Prim;
 
 // Walks the AST interpreting it.
 #[derive(Default)]
@@ -30,13 +31,13 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
     fn visit_prim(&mut self, db: &dyn Compiler, state: &mut State, expr: &Prim) -> Res {
         use Prim::*;
         let res = match expr {
-            Void(_) => write!(state, "Void"),
-            Unit(_) => write!(state, "()"),
-            Bool(val, _) => write!(state, "{}", val),
-            I32(val, _) => write!(state, "{}", val),
-            Str(val, _) => write!(state, "'{}'", val),
+            Void() => write!(state, "Void"),
+            Unit() => write!(state, "()"),
+            Bool(val) => write!(state, "{}", val),
+            I32(val) => write!(state, "{}", val),
+            Str(val) => write!(state, "'{}'", val),
             Lambda(val) => Ok(self.visit(db, state, val)?),
-            Struct(vals, _) => {
+            Struct(vals) => {
                 write!(state, "{{").unwrap();
                 let mut is_first = true;
                 for val in vals.iter() {
@@ -49,7 +50,7 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
                 }
                 write!(state, "}}")
             }
-            TypeValue(val, _) => write!(state, "{}", val),
+            TypeValue(val) => write!(state, "{}", val),
         };
         res.unwrap();
         Ok(())
