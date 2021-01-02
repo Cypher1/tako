@@ -28,10 +28,8 @@ fn test_with_expectation(expected: TestResult, options: Vec<&str>) {
 
     let mut stdout: Vec<String> = vec![];
     let result = {
-        use takolib::ast::{
-            Info,
-            Prim::{Str, I32},
-        };
+        use takolib::ast::Info;
+        use takolib::primitives::Prim::{Str, I32};
         use takolib::interpreter::Res;
         let mut print_impl =
             &mut |_: &dyn Compiler,

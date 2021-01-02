@@ -1,6 +1,8 @@
 use crate::ast::Info;
+use crate::ast::Node;
 use crate::errors::TError;
 use std::collections::BTreeSet;
+use std::collections::HashSet;
 use std::fmt;
 
 // i32 here are sizes in bits, not bytes.
@@ -11,6 +13,48 @@ pub type Offset = i32;
 type Layout = Vec<Type>;
 type TypeSet = BTreeSet<Type>;
 type Pack = BTreeSet<(String, Type)>;
+
+#[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Debug, Hash)]
+pub enum Prim {
+    Void(Info),
+    Unit(Info),
+    Bool(bool, Info),
+    I32(i32, Info),
+    Str(String, Info),
+    Lambda(Box<Node>),
+    Struct(Vec<(String, Prim)>, Info), // Should really just store values, but we can't do that yet.
+    TypeValue(Type, Info),
+}
+
+fn merge_vals(left: Vec<(String, Prim)>, right: Vec<(String, Prim)>) -> Vec<(String, Prim)> {
+    let mut names = HashSet::<String>::new();
+    for pair in right.iter() {
+        names.insert(pair.0.clone());
+    }
+    let mut items = vec![];
+    for pair in left.iter() {
+        if !names.contains(&pair.0) {
+            items.push(pair.clone());
+        }
+    }
+    for pair in right.iter() {
+        items.push(pair.clone());
+    }
+    items
+}
+
+impl Prim {
+    pub fn merge(self: Prim, other: Prim) -> Prim {
+        use Prim::*;
+        match (self, other) {
+            (Struct(vals, info), Struct(o_vals, _)) => Struct(merge_vals(vals, o_vals), info),
+            (Struct(vals, info), other) => {
+                Struct(merge_vals(vals, vec![("it".to_string(), other)]), info)
+            }
+            (_, other) => other,
+        }
+    }
+}
 
 #[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Debug, Hash)]
 pub enum Type {

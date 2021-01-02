@@ -1,7 +1,8 @@
+use std::fmt::Write;
 use super::ast::*;
 use super::database::Compiler;
 use super::errors::TError;
-use std::fmt::Write;
+use super::primitives::Prim;
 
 // Walks the AST interpreting it.
 #[derive(Default)]

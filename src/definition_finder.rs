@@ -1,4 +1,5 @@
 use crate::ast::*;
+use crate::primitives::Prim;
 use crate::database::Compiler;
 use crate::errors::TError;
 use crate::symbol_table_builder::State;

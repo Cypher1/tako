@@ -7,6 +7,7 @@ use super::errors::TError;
 use super::externs::{Direction, Semantic};
 use super::location::*;
 use super::tokens::*;
+use super::primitives::Prim;
 
 fn binding(db: &dyn Compiler, tok: &Token) -> Result<Semantic, TError> {
     db.get_extern_operator(tok.value.to_owned())
@@ -412,6 +413,7 @@ pub mod tests {
     use crate::database::Compiler;
     use crate::database::DB;
     use Prim::*;
+    use crate::primitives::Prim;
 
     fn parse(contents: String) -> Node {
         use crate::cli_options::Options;

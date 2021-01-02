@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
-use crate::ast::{Info, Prim::*};
+use crate::ast::Info;
 use crate::database::Compiler;
 use crate::errors::TError;
 use crate::interpreter::{prim_add_strs, prim_pow, Res};
 use crate::primitives::{
-    bit_type, i32_type, number_type, string_type, type_type, unit_type, variable, void_type, Type,
+    bit_type, i32_type, number_type, string_type, type_type, unit_type, variable, void_type, Prim::*, Type,
     Type::*,
 };
 

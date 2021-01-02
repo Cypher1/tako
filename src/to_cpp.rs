@@ -1,4 +1,5 @@
 use crate::ast::*;
+use crate::primitives::Prim;
 use crate::{database::Compiler, errors::TError};
 use std::collections::HashSet;
 

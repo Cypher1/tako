@@ -7,7 +7,7 @@ use crate::database::DB;
 use crate::errors::TError;
 use crate::location::*;
 use crate::tree::*;
-use crate::primitives::Type;
+use crate::primitives::Prim;
 
 impl ToNode for TError {
     fn to_node(self) -> Node {
@@ -49,7 +49,7 @@ impl ToNode for TError {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, PartialOrd, Ord)]
 pub struct Apply {
     pub inner: Box<Node>,
     pub args: Vec<Let>,
@@ -68,7 +68,7 @@ impl ToNode for Apply {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, PartialOrd, Ord)]
 pub struct Sym {
     pub name: String,
     pub info: Info,
@@ -94,48 +94,6 @@ impl ToNode for Sym {
     }
     fn get_mut_info<'a>(&'a mut self) -> &'a mut Info {
         &mut self.info
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub enum Prim {
-    Void(Info),
-    Unit(Info),
-    Bool(bool, Info),
-    I32(i32, Info),
-    Str(String, Info),
-    Lambda(Box<Node>),
-    Struct(Vec<(String, Prim)>, Info), // Should really just store values, but we can't do that yet.
-    TypeValue(Type, Info),
-}
-
-fn merge_vals(left: Vec<(String, Prim)>, right: Vec<(String, Prim)>) -> Vec<(String, Prim)> {
-    let mut names = HashSet::<String>::new();
-    for pair in right.iter() {
-        names.insert(pair.0.clone());
-    }
-    let mut items = vec![];
-    for pair in left.iter() {
-        if !names.contains(&pair.0) {
-            items.push(pair.clone());
-        }
-    }
-    for pair in right.iter() {
-        items.push(pair.clone());
-    }
-    items
-}
-
-impl Prim {
-    pub fn merge(self: Prim, other: Prim) -> Prim {
-        use Prim::*;
-        match (self, other) {
-            (Struct(vals, info), Struct(o_vals, _)) => Struct(merge_vals(vals, o_vals), info),
-            (Struct(vals, info), other) => {
-                Struct(merge_vals(vals, vec![("it".to_string(), other)]), info)
-            }
-            (_, other) => other,
-        }
     }
 }
 
@@ -178,7 +136,7 @@ impl fmt::Display for Prim {
 }
 
 // Consider finding way to turn lets into binary operators.
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub struct Let {
     pub name: String,
     pub value: Box<Node>,
@@ -208,7 +166,7 @@ impl ToNode for Let {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub struct UnOp {
     pub name: String,
     pub inner: Box<Node>,
@@ -227,7 +185,7 @@ impl ToNode for UnOp {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub struct BinOp {
     pub name: String,
     pub left: Box<Node>,
@@ -247,7 +205,7 @@ impl ToNode for BinOp {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialOrd, Ord)]
 pub struct Info {
     pub loc: Option<Loc>,
     pub ty: Option<Box<Node>>,
@@ -293,7 +251,7 @@ impl Hash for Info {
 }
 
 // #[derive(Debug)]
-#[derive(PartialEq, Eq, Clone, Hash)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub enum Node {
     Error(TError),
     SymNode(Sym),
@@ -376,7 +334,7 @@ pub trait ToNode {
     fn get_mut_info<'a>(&'a mut self) -> &'a mut Info;
 }
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Ord, PartialOrd, Hash, PartialEq, Eq)]
 pub enum Symbol {
     Anon(),
     Named(String, Option<String>), // name, (and for files) an optional extension

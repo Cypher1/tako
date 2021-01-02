@@ -1,10 +1,11 @@
-use crate::ast::{Info, Node, Prim};
+use crate::ast::{Info, Node};
+use crate::primitives::Prim;
 
 use thiserror::Error;
 
 use derivative::Derivative;
-#[derive(Error, Derivative)]
-#[derivative(Debug, PartialEq, Eq, Clone, Hash)]
+#[derive(Error, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Derivative)]
+#[derivative(Debug)]
 pub enum TError {
     #[error("call to C++ compiler failed with error code: {1:?}\n{0}")]
     CppCompilerError(String, Option<i32>, Info),

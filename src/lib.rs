@@ -11,6 +11,8 @@ pub mod ast;
 pub mod cli_options;
 pub mod database;
 pub mod errors;
+pub mod primitives;
+
 pub mod interpreter;
 pub mod parser;
 pub mod type_checker;
@@ -19,7 +21,6 @@ mod externs;
 mod location;
 mod tokens;
 mod tree;
-mod primitives;
 
 mod definition_finder;
 mod pretty_print;

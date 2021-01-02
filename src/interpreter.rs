@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use super::ast::*;
+use super::primitives::{Prim, Prim::*, Type};
 use super::database::Compiler;
 use super::errors::TError;
 
@@ -36,7 +37,6 @@ fn find_symbol<'a>(state: &'a [Frame], name: &str) -> Option<&'a Prim> {
 
 fn prim_add(l: &Prim, r: &Prim, info: Info) -> Res {
     use crate::primitives::sum;
-    use Prim::*;
     match (l, r) {
         (Bool(l, _), Bool(r, _)) => Ok(I32(if *l { 1 } else { 0 } + if *r { 1 } else { 0 }, info)),
         (Bool(l, _), I32(r, _)) => Ok(I32(r.wrapping_add(if *l { 1 } else { 0 }), info)),
@@ -58,7 +58,6 @@ fn prim_add(l: &Prim, r: &Prim, info: Info) -> Res {
 }
 
 pub fn prim_add_strs(l: &Prim, r: &Prim, info: Info) -> Res {
-    use Prim::*;
     let to_str = |val: &Prim| match val {
         Void(_) => "Void".to_string(),
         Unit(_) => "()".to_string(),
@@ -73,7 +72,6 @@ pub fn prim_add_strs(l: &Prim, r: &Prim, info: Info) -> Res {
 }
 
 fn prim_eq(l: &Prim, r: &Prim, info: Info) -> Res {
-    use Prim::*;
     match (l, r) {
         (Bool(l, _), Bool(r, _)) => Ok(Bool(*l == *r, info)),
         (I32(l, _), I32(r, _)) => Ok(Bool(l == r, info)),
@@ -88,7 +86,6 @@ fn prim_eq(l: &Prim, r: &Prim, info: Info) -> Res {
 }
 
 fn prim_neq(l: &Prim, r: &Prim, info: Info) -> Res {
-    use Prim::*;
     match (l, r) {
         (Bool(l, _), Bool(r, _)) => Ok(Bool(*l != *r, info)),
         (I32(l, _), I32(r, _)) => Ok(Bool(l != r, info)),
@@ -103,7 +100,6 @@ fn prim_neq(l: &Prim, r: &Prim, info: Info) -> Res {
 }
 
 fn prim_gt(l: &Prim, r: &Prim, info: Info) -> Res {
-    use Prim::*;
     match (l, r) {
         (Bool(l, _), Bool(r, _)) => Ok(Bool(*l & !(*r), info)),
         (I32(l, _), I32(r, _)) => Ok(Bool(l > r, info)),
@@ -118,7 +114,6 @@ fn prim_gt(l: &Prim, r: &Prim, info: Info) -> Res {
 }
 
 fn prim_gte(l: &Prim, r: &Prim, info: Info) -> Res {
-    use Prim::*;
     match (l, r) {
         (Bool(l, _), Bool(r, _)) => Ok(Bool(*l >= *r, info)),
         (I32(l, _), I32(r, _)) => Ok(Bool(l >= r, info)),
@@ -133,7 +128,6 @@ fn prim_gte(l: &Prim, r: &Prim, info: Info) -> Res {
 }
 
 fn prim_sub(l: &Prim, r: &Prim, info: Info) -> Res {
-    use Prim::*;
     match (l, r) {
         (I32(l, _), Bool(r, _)) => Ok(I32(l - if *r { 1 } else { 0 }, info)),
         (I32(l, _), I32(r, _)) => Ok(I32(l - r, info)),
@@ -148,7 +142,6 @@ fn prim_sub(l: &Prim, r: &Prim, info: Info) -> Res {
 
 fn prim_mul(l: &Prim, r: &Prim, info: Info) -> Res {
     use crate::primitives::record;
-    use Prim::*;
     match (l, r) {
         (Bool(l, _), I32(r, _)) => Ok(I32(if *l { *r } else { 0 }, info)),
         (Bool(l, _), Str(r, _)) => Ok(Str(if *l { r.to_string() } else { "".to_string() }, info)),
@@ -168,7 +161,6 @@ fn prim_mul(l: &Prim, r: &Prim, info: Info) -> Res {
 }
 
 fn prim_div(l: &Prim, r: &Prim, info: Info) -> Res {
-    use Prim::*;
     match (l, r) {
         (I32(l, _), I32(r, _)) => Ok(I32(l / r, info)),
         (l, r) => Err(TError::TypeMismatch2(
@@ -181,7 +173,6 @@ fn prim_div(l: &Prim, r: &Prim, info: Info) -> Res {
 }
 
 fn prim_mod(l: &Prim, r: &Prim, info: Info) -> Res {
-    use Prim::*;
     match (l, r) {
         (I32(l, _), I32(r, _)) => Ok(I32(l % r, info)),
         (l, r) => Err(TError::TypeMismatch2(
@@ -194,7 +185,6 @@ fn prim_mod(l: &Prim, r: &Prim, info: Info) -> Res {
 }
 
 fn prim_and(l: &Prim, r: &Prim, info: Info) -> Res {
-    use Prim::*;
     match (l, r) {
         (Bool(l, _), Bool(r, _)) => Ok(Bool(*l && *r, info)),
         (l, r) => Err(TError::TypeMismatch2(
@@ -207,7 +197,6 @@ fn prim_and(l: &Prim, r: &Prim, info: Info) -> Res {
 }
 
 fn prim_or(l: &Prim, r: &Prim, info: Info) -> Res {
-    use Prim::*;
     match (l, r) {
         (Bool(l, _), Bool(r, _)) => Ok(Bool(*l || *r, info)),
         (l, r) => Err(TError::TypeMismatch2(
@@ -220,10 +209,8 @@ fn prim_or(l: &Prim, r: &Prim, info: Info) -> Res {
 }
 
 fn prim_type_arrow(l: Prim, r: Prim, info: Info) -> Res {
-    use crate::primitives::Type::Function;
-    use Prim::*;
     match (l, r) {
-        (TypeValue(l, _), TypeValue(r, _)) => Ok(TypeValue(Function {
+        (TypeValue(l, _), TypeValue(r, _)) => Ok(TypeValue(Type::Function {
                 intros: dict!(),
                 results: Box::new(r),
                 arguments: Box::new(l),
@@ -238,8 +225,6 @@ fn prim_type_arrow(l: Prim, r: Prim, info: Info) -> Res {
 }
 
 fn prim_type_and(l: Prim, r: Prim, info: Info) -> Res {
-    use crate::primitives::Type;
-    use Prim::*;
     match (l, r) {
         (TypeValue(l, _), TypeValue(r, _)) => Ok(TypeValue(Type::Product(set!(l, r)), info)),
         (l, r) => Err(TError::TypeMismatch2(
@@ -252,8 +237,6 @@ fn prim_type_and(l: Prim, r: Prim, info: Info) -> Res {
 }
 
 fn prim_type_or(l: Prim, r: Prim, info: Info) -> Res {
-    use crate::primitives::Type;
-    use Prim::*;
     match (l, r) {
         (TypeValue(l, _), TypeValue(r, _)) => Ok(TypeValue(Type::Union(set!(l, r)), info)),
         (l, r) => Err(TError::TypeMismatch2(
@@ -266,7 +249,6 @@ fn prim_type_or(l: Prim, r: Prim, info: Info) -> Res {
 }
 
 pub fn prim_pow(l: &Prim, r: &Prim, info: Info) -> Res {
-    use Prim::*;
     match (l, r) {
         (I32(l, _), Bool(r, _)) => Ok(I32(if *r { *l } else { 1 }, info)),
         (I32(l, _), I32(r, _)) => Ok(I32(i32::pow(*l, *r as u32), info)), // TODO: require pos pow
@@ -379,7 +361,6 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
     }
 
     fn visit_un_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &UnOp) -> Res {
-        use Prim::*;
         if db.debug_level() > 1 {
             eprintln!("evaluating unop {}", expr.clone().to_node());
         }
@@ -406,7 +387,6 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
     }
 
     fn visit_bin_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &BinOp) -> Res {
-        use Prim::*;
         if db.debug_level() > 1 {
             eprintln!("evaluating binop {}", expr.clone().to_node());
         }
@@ -467,12 +447,12 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::super::ast::*;
+    use super::super::primitives::{Prim::*, Type::*, number_type, string_type};
     use super::super::cli_options::Options;
     use super::super::database::{Compiler, DB};
     use super::{Interpreter, Res};
     use std::collections::HashMap;
     use Node::*;
-    use Prim::*;
 
     #[test]
     fn eval_num() {
@@ -655,7 +635,6 @@ mod tests {
 
     #[test]
     fn parse_and_eval_string_or_number_type() {
-        use crate::primitives::{Type::*, *};
         assert_eq!(
             eval_str("String | Number".to_string()),
             Ok(TypeValue(
@@ -667,7 +646,6 @@ mod tests {
 
     #[test]
     fn parse_and_eval_string_and_number_type() {
-        use crate::primitives::{Type::*, *};
         assert_eq!(
             eval_str("String & Number".to_string()),
             Ok(TypeValue(
