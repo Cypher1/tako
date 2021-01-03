@@ -1,8 +1,8 @@
 #![allow(unused)]
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use takolib::database::DB;
-use takolib::database::Compiler;
 use takolib::cli_options::Options;
+use takolib::database::Compiler;
+use takolib::database::DB;
 use takolib::parser::parse_string;
 use takolib::type_checker::infer;
 

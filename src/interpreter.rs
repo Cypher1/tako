@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 use super::ast::*;
-use super::primitives::{Prim, Prim::*};
 use super::database::Compiler;
 use super::errors::TError;
+use super::primitives::{Prim, Prim::*};
 
 type Frame = HashMap<String, Prim>;
 
@@ -49,19 +49,21 @@ fn prim_add(l: &Prim, r: &Prim, _info: Info) -> Res {
         (Str(l), Str(r)) => Ok(Str(l.to_string() + &r.to_string())),
         (l, r) => Ok(sum(vec![l.clone(), r.clone()])?),
         //(l, r) => Err(TError::TypeMismatch2(
-            //"+".to_string(),
-            //Box::new((*l).clone()),
-            //Box::new((*r).clone()),
-            //info,
+        //"+".to_string(),
+        //Box::new((*l).clone()),
+        //Box::new((*r).clone()),
+        //info,
         //)),
     }
 }
 
 pub fn prim_add_strs(l: &Prim, r: &Prim, _info: Info) -> Res {
-    let to_str = |v: &Prim| if let Str(s) = v {
-        s.to_string()
-    } else {
-        format!("{}", v)
+    let to_str = |v: &Prim| {
+        if let Str(s) = v {
+            s.to_string()
+        } else {
+            format!("{}", v)
+        }
     };
     Ok(Str(format!("{}{}", to_str(l), to_str(r))))
 }
@@ -137,12 +139,14 @@ fn prim_sub(l: &Prim, r: &Prim, info: Info) -> Res {
 
 fn prim_mul(l: &Prim, r: &Prim, info: Info) -> Res {
     use super::primitives::record;
-    let fail = || Err(TError::TypeMismatch2(
+    let fail = || {
+        Err(TError::TypeMismatch2(
             "*".to_string(),
             Box::new((*l).clone()),
             Box::new((*r).clone()),
             info,
-        ));
+        ))
+    };
     match (l, r) {
         (Bool(l), I32(r)) => Ok(I32(if *l { *r } else { 0 })),
         (Bool(l), Str(r)) => Ok(Str(if *l { r.to_string() } else { "".to_string() })),
@@ -151,7 +155,7 @@ fn prim_mul(l: &Prim, r: &Prim, info: Info) -> Res {
         (Bool(_), _) => fail(),
         (_, Bool(_)) => fail(),
         (I32(l), I32(r)) => Ok(I32(l.wrapping_mul(*r))),
-        (l, r) => { Ok(record(vec![l.clone(), r.clone()])?) }
+        (l, r) => Ok(record(vec![l.clone(), r.clone()])?),
     }
 }
 
@@ -252,7 +256,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
                 let val = val.clone();
                 frame_vals.insert(name.to_string(), Box::new(move || Ok(val.clone())));
             }
-            return frame_vals;
+            frame_vals
         };
         let value = find_symbol(&state, name);
         if let Some(prim) = value {
@@ -418,9 +422,9 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::super::ast::*;
-    use super::super::primitives::{Prim::*, number_type, string_type};
     use super::super::cli_options::Options;
     use super::super::database::{Compiler, DB};
+    use super::super::primitives::{number_type, string_type, Prim::*};
     use super::{Interpreter, Res};
     use std::collections::HashMap;
     use Node::*;
@@ -459,70 +463,31 @@ mod tests {
 
     #[test]
     fn parse_and_eval_bool() {
-        assert_eq!(
-            eval_str("true".to_string()),
-            Ok(Bool(true))
-        );
+        assert_eq!(eval_str("true".to_string()), Ok(Bool(true)));
     }
 
     #[test]
     fn parse_and_eval_bool_and() {
-        assert_eq!(
-            eval_str("true&&true".to_string()),
-            Ok(Bool(true))
-        );
-        assert_eq!(
-            eval_str("false&&true".to_string()),
-            Ok(Bool(false))
-        );
-        assert_eq!(
-            eval_str("true&&false".to_string()),
-            Ok(Bool(false))
-        );
-        assert_eq!(
-            eval_str("false&&false".to_string()),
-            Ok(Bool(false))
-        );
+        assert_eq!(eval_str("true&&true".to_string()), Ok(Bool(true)));
+        assert_eq!(eval_str("false&&true".to_string()), Ok(Bool(false)));
+        assert_eq!(eval_str("true&&false".to_string()), Ok(Bool(false)));
+        assert_eq!(eval_str("false&&false".to_string()), Ok(Bool(false)));
     }
 
     #[test]
     fn parse_and_eval_bool_or() {
-        assert_eq!(
-            eval_str("true||true".to_string()),
-            Ok(Bool(true))
-        );
-        assert_eq!(
-            eval_str("false||true".to_string()),
-            Ok(Bool(true))
-        );
-        assert_eq!(
-            eval_str("true||false".to_string()),
-            Ok(Bool(true))
-        );
-        assert_eq!(
-            eval_str("false||false".to_string()),
-            Ok(Bool(false))
-        );
+        assert_eq!(eval_str("true||true".to_string()), Ok(Bool(true)));
+        assert_eq!(eval_str("false||true".to_string()), Ok(Bool(true)));
+        assert_eq!(eval_str("true||false".to_string()), Ok(Bool(true)));
+        assert_eq!(eval_str("false||false".to_string()), Ok(Bool(false)));
     }
 
     #[test]
     fn parse_and_eval_bool_eq() {
-        assert_eq!(
-            eval_str("true==true".to_string()),
-            Ok(Bool(true))
-        );
-        assert_eq!(
-            eval_str("false==true".to_string()),
-            Ok(Bool(false))
-        );
-        assert_eq!(
-            eval_str("true==false".to_string()),
-            Ok(Bool(false))
-        );
-        assert_eq!(
-            eval_str("false==false".to_string()),
-            Ok(Bool(true))
-        );
+        assert_eq!(eval_str("true==true".to_string()), Ok(Bool(true)));
+        assert_eq!(eval_str("false==true".to_string()), Ok(Bool(false)));
+        assert_eq!(eval_str("true==false".to_string()), Ok(Bool(false)));
+        assert_eq!(eval_str("false==false".to_string()), Ok(Bool(true)));
     }
 
     #[test]
@@ -532,22 +497,10 @@ mod tests {
 
     #[test]
     fn parse_and_eval_i32_eq() {
-        assert_eq!(
-            eval_str("0==0".to_string()),
-            Ok(Bool(true))
-        );
-        assert_eq!(
-            eval_str("-1==1".to_string()),
-            Ok(Bool(false))
-        );
-        assert_eq!(
-            eval_str("1==123".to_string()),
-            Ok(Bool(false))
-        );
-        assert_eq!(
-            eval_str("1302==1302".to_string()),
-            Ok(Bool(true))
-        );
+        assert_eq!(eval_str("0==0".to_string()), Ok(Bool(true)));
+        assert_eq!(eval_str("-1==1".to_string()), Ok(Bool(false)));
+        assert_eq!(eval_str("1==123".to_string()), Ok(Bool(false)));
+        assert_eq!(eval_str("1302==1302".to_string()), Ok(Bool(true)));
     }
 
     #[test]
@@ -561,10 +514,7 @@ mod tests {
 
     #[test]
     fn parse_and_eval_str() {
-        assert_eq!(
-            eval_str("\"32\"".to_string()),
-            Ok(Str("32".to_string()))
-        );
+        assert_eq!(eval_str("\"32\"".to_string()), Ok(Str("32".to_string())));
     }
 
     #[test]
@@ -574,10 +524,7 @@ mod tests {
 
     #[test]
     fn parse_and_eval_let_with_args() {
-        assert_eq!(
-            eval_str("x(it)=it*2;x(3)".to_string()),
-            Ok(I32(6))
-        );
+        assert_eq!(eval_str("x(it)=it*2;x(3)".to_string()), Ok(I32(6)));
     }
 
     #[test]

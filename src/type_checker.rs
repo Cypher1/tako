@@ -2,7 +2,9 @@ use crate::ast::{Node, Node::*};
 use crate::database::Compiler;
 use crate::errors::TError;
 
-use crate::primitives::{bit_type, i32_type, record, string_type, unit_type, void_type, Prim, Prim::*};
+use crate::primitives::{
+    bit_type, i32_type, record, string_type, unit_type, void_type, Prim, Prim::*,
+};
 
 pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError> {
     // Infer that expression t has type A, t => A
@@ -35,7 +37,7 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
                 return Ok(ext.ty);
             }
             panic!("TODO Impl type checking for user defined UnOp")
-        },
+        }
         BinOpNode(BinOp {
             name,
             left: _,
@@ -47,14 +49,14 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
                 return Ok(ext.ty);
             }
             panic!("TODO Impl type checking for user defined BinOp")
-        },
+        }
         SymNode(Sym { name, info: _ }) => {
             if let Some(ext) = db.get_extern(name.to_string())? {
                 // TODO intros
                 return Ok(ext.ty);
             }
             panic!("TODO Impl type checking for user defined Sym")
-        },
+        }
         ApplyNode(Apply {
             inner,
             args,
@@ -66,8 +68,11 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
                 let ty = infer(db, &arg.clone().to_node(), env)?;
                 arg_tys.push(ty);
             }
-            panic!("TODO Type checking apply: {:?} with {:?}", inner_ty, arg_tys)
-        },
+            panic!(
+                "TODO Type checking apply: {:?} with {:?}",
+                inner_ty, arg_tys
+            )
+        }
         LetNode(Let {
             name: _,
             value: _,
@@ -104,7 +109,10 @@ mod tests {
         if let Err(err) = &result_type {
             dbg!(format!("{}", &err));
         }
-        assert_eq!(format!("{}", &prog), format!("{}", result_type.clone().unwrap()));
+        assert_eq!(
+            format!("{}", &prog),
+            format!("{}", result_type.clone().unwrap())
+        );
         assert_eq!(prog, result_type.unwrap());
     }
 

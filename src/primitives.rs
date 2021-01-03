@@ -43,7 +43,6 @@ pub enum Prim {
     Variable(String),
 }
 
-
 fn merge_vals(left: Vec<(String, Prim)>, right: Vec<(String, Prim)>) -> Vec<(String, Prim)> {
     let mut names = HashSet::<String>::new();
     for pair in right.iter() {
@@ -66,9 +65,7 @@ impl Prim {
         use Prim::*;
         match (self, other) {
             (Struct(vals), Struct(o_vals)) => Struct(merge_vals(vals, o_vals)),
-            (Struct(vals), other) => {
-                Struct(merge_vals(vals, vec![("it".to_string(), other)]))
-            }
+            (Struct(vals), other) => Struct(merge_vals(vals, vec![("it".to_string(), other)])),
             (_, other) => other,
         }
     }

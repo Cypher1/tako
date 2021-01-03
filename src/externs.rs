@@ -4,7 +4,10 @@ use crate::ast::Info;
 use crate::database::Compiler;
 use crate::errors::TError;
 use crate::interpreter::{prim_add_strs, prim_pow, Res};
-use crate::primitives::{bit_type, i32_type, number_type, string_type, type_type, unit_type, variable, void_type, Prim, Prim::*};
+use crate::primitives::{
+    bit_type, i32_type, number_type, string_type, type_type, unit_type, variable, void_type, Prim,
+    Prim::*,
+};
 
 pub type FuncImpl = Box<dyn Fn(&dyn Compiler, HashMap<String, Box<dyn Fn() -> Res>>, Info) -> Res>;
 
@@ -57,9 +60,7 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
         })),
         "argv" => Some(Box::new(|db, args, info| {
             match args.get("it").unwrap()()? {
-                I32(ind) => Ok(Str(
-                    db.options().interpreter_args[ind as usize].clone()
-                )),
+                I32(ind) => Ok(Str(db.options().interpreter_args[ind as usize].clone())),
                 value => Err(TError::TypeMismatch(
                     "Expected index to be of type i32".to_string(),
                     Box::new(value),
@@ -266,11 +267,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
             semantic: operator(45, Left),
             ty: Function {
                 intros: dict!("a" => variable("Type"), "b" => variable("Type")),
-                results: Box::new(Union(set!(
-                            variable("a"),
-                            variable("b")
-                    ))
-                ),
+                results: Box::new(Union(set!(variable("a"), variable("b")))),
                 arguments: Box::new(rec!("left" => variable("a"), "right" => variable("b"))),
             },
             cpp: LangImpl::operator("?"),
@@ -301,7 +298,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
             ty: Function {
                 intros: dict!("a" => variable("Type"), "b" => variable("Type")),
                 results: Box::new(Product(set!(variable("a"), variable("b")))),
-                arguments: Box::new(rec!("left" => variable("a"), "right" => variable("b")))
+                arguments: Box::new(rec!("left" => variable("a"), "right" => variable("b"))),
             },
             cpp: LangImpl::operator("&"),
         },
@@ -311,7 +308,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
             ty: Function {
                 intros: dict!("a" => variable("Display"), "b" => variable("Display")),
                 results: Box::new(string_type()),
-                arguments: Box::new(rec!("left" => variable("a"), "right" => variable("b")))
+                arguments: Box::new(rec!("left" => variable("a"), "right" => variable("b"))),
             },
             cpp: LangImpl::operator("+")
                 .with_arg_processor("std::to_string")
@@ -341,7 +338,7 @@ string to_string(const bool& t){
                     results: Box::new(variable("b")),
                     arguments: Box::new(variable("a")),
                 }),
-                arguments: Box::new(rec!("left" => variable("a"), "right" => variable("b")))
+                arguments: Box::new(rec!("left" => variable("a"), "right" => variable("b"))),
             },
             cpp: LangImpl::operator("???"),
         },

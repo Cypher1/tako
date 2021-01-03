@@ -1,7 +1,7 @@
 use crate::ast::*;
-use crate::primitives::Prim;
 use crate::database::Compiler;
 use crate::errors::TError;
+use crate::primitives::Prim;
 use crate::symbol_table_builder::State;
 
 // Walks the AST interpreting it.
