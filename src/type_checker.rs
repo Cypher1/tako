@@ -40,13 +40,17 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
         }
         BinOpNode(BinOp {
             name,
-            left: _,
-            right: _,
+            left,
+            right,
             info: _,
         }) => {
             if let Some(ext) = db.get_extern(name.to_string())? {
                 // TODO intros
-                return Ok(ext.ty);
+                let ty = ext.ty;
+                let left_ty = infer(db, left, env)?;
+                let right_ty = infer(db, right, env)?;
+                dbg!(format!("{}{}{}", &ty, &left_ty, &right_ty));
+                return Ok(ty);
             }
             panic!("TODO Impl type checking for user defined BinOp")
         }
