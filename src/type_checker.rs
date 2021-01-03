@@ -49,7 +49,7 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
                 let ty = ext.ty;
                 let left_ty = infer(db, left, env)?;
                 let right_ty = infer(db, right, env)?;
-                dbg!(format!("{}{}{}", &ty, &left_ty, &right_ty));
+                eprintln!("({})(left = {}, right = {})", &ty, &left_ty, &right_ty);
                 return Ok(ty);
             }
             panic!("TODO Impl type checking for user defined BinOp")
