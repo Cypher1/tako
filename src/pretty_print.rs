@@ -34,8 +34,9 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
     }
 
     fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
-        self.visit(db, state, &*expr.inner)?;
         write!(state, "(").unwrap();
+        self.visit(db, state, &*expr.inner)?;
+        write!(state, ")(").unwrap();
         let mut is_first = true;
         for arg in expr.args.iter() {
             if is_first {

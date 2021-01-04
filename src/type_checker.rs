@@ -223,8 +223,18 @@ mod tests {
     }
 
     #[test]
+    fn infer_type_of_sym_with_struct_lets_i32() {
+        assert_type("x=12,y=4,x", "(x=I32,y=I32,it=I32)");
+    }
+
+    #[test]
+    fn infer_type_of_sym_without_let() {
+        assert_type("x", "a. (x=a) -> a");
+    }
+
+    #[test]
     fn infer_type_of_id() {
-        assert_type("{x}", "(x=X) -> X");
+        assert_type("{x}", "a. (x=a) -> a");
     }
 
     #[test]
