@@ -302,6 +302,21 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
         // Run the inner
         let res = match inner {
             Prim::Lambda(func) => self.visit(db, state, &*func)?,
+            Prim::Function{
+                intros: _, // TODO
+                arguments,
+                results
+            } => {
+                let frame = state.last_mut().expect("Stack frame missing");
+                if let Struct(vals) = *arguments {
+                    for (name, val) in vals {
+                        frame.insert(name, val);
+                    }
+                } else {
+                    frame.insert("it".to_string(), *arguments);
+                }
+                self.visit_prim(db, state, &*results)?
+            }
             val => val,
         };
         state.pop();
