@@ -66,7 +66,7 @@ impl Prim {
         match (self, other) {
             (Struct(vals), Struct(o_vals)) => Struct(merge_vals(vals, o_vals)),
             (Struct(vals), other) => Struct(merge_vals(vals, vec![("it".to_string(), other)])),
-            (_, other) => other,
+            (thing, other) => rec!["left" => thing, "right" => other],
         }
     }
 }
