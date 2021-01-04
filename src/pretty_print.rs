@@ -38,12 +38,12 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
         write!(state, "(").unwrap();
         let mut is_first = true;
         for arg in expr.args.iter() {
-            self.visit_let(db, state, &arg)?;
             if is_first {
-                is_first = true;
+                is_first = false;
             } else {
                 write!(state, ", ").unwrap();
             }
+            self.visit_let(db, state, &arg)?;
         }
         write!(state, ")").unwrap();
         Ok(())
