@@ -332,9 +332,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 }
                 Ok(Code::Struct(val_code))
             }
-            _ty => {
-                unimplemented!("unimplemented primitive type in compilation to cpp")
-            }
+            _ty => unimplemented!("unimplemented primitive type in compilation to cpp"),
         }
     }
 

@@ -29,11 +29,7 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
             }
             _ty => Ok(Prim::Variable("Type".to_string())),
         },
-        UnOpNode(UnOp {
-            name,
-            inner,
-            info,
-        }) => {
+        UnOpNode(UnOp { name, inner, info }) => {
             if let Some(ext) = db.get_extern(name.to_string())? {
                 // TODO intros
                 let ty = ext.ty;
@@ -41,14 +37,12 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
                 eprintln!("({})(it = {})", &ty, &it_ty);
                 let app = Apply {
                     inner: Box::new(ty.to_node()),
-                    args: vec![
-                        Let {
-                            name: "it".to_string(),
-                            args: None,
-                            value: Box::new(it_ty.to_node()),
-                            info: info.clone()
-                        },
-                    ],
+                    args: vec![Let {
+                        name: "it".to_string(),
+                        args: None,
+                        value: Box::new(it_ty.to_node()),
+                        info: info.clone(),
+                    }],
                     info: info.clone(),
                 };
                 let mut state = vec![HashMap::new()];
@@ -75,13 +69,13 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
                             name: "left".to_string(),
                             args: None,
                             value: Box::new(left_ty.to_node()),
-                            info: info.clone()
+                            info: info.clone(),
                         },
                         Let {
                             name: "right".to_string(),
                             args: None,
                             value: Box::new(right_ty.to_node()),
-                            info: info.clone()
+                            info: info.clone(),
                         },
                     ],
                     info: info.clone(),
@@ -98,11 +92,7 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
             }
             panic!("TODO Impl type checking for user defined Sym")
         }
-        ApplyNode(Apply {
-            inner,
-            args,
-            info,
-        }) => {
+        ApplyNode(Apply { inner, args, info }) => {
             let inner_ty = infer(db, inner, env)?;
             let mut arg_tys = vec![];
             for arg in args.iter() {
@@ -111,7 +101,7 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
                     name: arg.name.clone(),
                     args: None,
                     value: Box::new(ty.to_node()),
-                    info: info.clone()
+                    info: info.clone(),
                 };
                 arg_tys.push(ty_let);
             }
@@ -121,7 +111,7 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
                 info: info.clone(),
             };
             let mut state = vec![HashMap::new()];
-            return Interpreter::default().visit_apply(db, &mut state, &app);
+            Interpreter::default().visit_apply(db, &mut state, &app)
         }
         LetNode(Let {
             name: _,

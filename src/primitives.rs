@@ -132,14 +132,21 @@ impl fmt::Display for Prim {
             Tag(tag, bits) => write!(f, "Tag<{}b>{}", bits, tag),
             Padded(size, t) => write!(f, "Pad<{}b>{}", size, t),
             StaticPointer(ptr_size) => write!(f, "*<{}b>Code", ptr_size),
-            Function{intros, results, arguments} => {
+            Function {
+                intros,
+                results,
+                arguments,
+            } => {
                 if !intros.is_empty() {
-                    let ints: Vec<String> = intros.iter().map(|(name, ty)|format!("{}: {}", name, ty)).collect();
+                    let ints: Vec<String> = intros
+                        .iter()
+                        .map(|(name, ty)| format!("{}: {}", name, ty))
+                        .collect();
                     write!(f, "{}. ", ints.join(". "))?;
                 }
                 write!(f, "{} -> {}", arguments, results)
-            },
-            App{inner, arguments} => write!(f, "({})({})", inner, arguments),
+            }
+            App { inner, arguments } => write!(f, "({})({})", inner, arguments),
             WithEffect(ty, effs) => write!(f, "{}+{}", ty, effs.join("+")),
             Variable(name) => write!(f, "{}", name),
         }
