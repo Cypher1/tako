@@ -114,11 +114,29 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
             Interpreter::default().visit_apply(db, &mut state, &app)
         }
         LetNode(Let {
-            name: _,
-            value: _,
-            args: _,
+            name,
+            value,
+            args,
             info: _,
-        }) => panic!("TODO Impl type checking for Let"),
+        }) => {
+            let ty = infer(db, &value.clone().to_node(), env)?;
+            if let Some(args) = args {
+                let mut arg_tys = vec![];
+                for arg in args.iter() {
+                    let ty = infer(db, &arg.value.clone().to_node(), env)?;
+                    arg_tys.push((arg.name.clone(), ty));
+                }
+                let ty = Function {
+                    intros: set![],
+                    results: Box::new(ty),
+                    arguments: Box::new(Struct(arg_tys)),
+                };
+                Ok(Prim::Struct(vec![(name.clone(), ty)]))
+            } else {
+                let ty = Prim::Struct(vec![(name.clone(), ty)]);
+                Ok(ty)
+            }
+        }
         Error(err) => panic!("TODO Impl type checking for Let {}", err),
     }
 }
@@ -166,6 +184,16 @@ mod tests {
     #[test]
     fn infer_type_of_str() {
         assert_type("\"23\"", "String");
+    }
+
+    #[test]
+    fn infer_type_of_let_i32() {
+        assert_type("x=12", "(x=I32)");
+    }
+
+    #[test]
+    fn infer_type_of_let_string_to_i32() {
+        assert_type("x(s: String)=12", "(x=(s=String)->I32)");
     }
 
     #[test]
