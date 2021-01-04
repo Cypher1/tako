@@ -117,19 +117,24 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
             name,
             value,
             args,
-            info: _,
+            info,
         }) => {
-            let ty = infer(db, &value.clone().to_node(), env)?;
+            let ty = if let Some(ty) = info.ty.clone() {
+                let mut state = vec![HashMap::new()];
+                Interpreter::default().visit(db, &mut state, &ty)?
+            } else {
+                infer(db, &value.clone().to_node(), env)?
+            };
             if let Some(args) = args {
-                let mut arg_tys = vec![];
+                let mut arg_tys = rec![];
                 for arg in args.iter() {
-                    let ty = infer(db, &arg.value.clone().to_node(), env)?;
-                    arg_tys.push((arg.name.clone(), ty));
+                    let ty = infer(db, &arg.clone().to_node(), env)?;
+                    arg_tys = arg_tys.merge(ty);
                 }
                 let ty = Function {
                     intros: set![],
                     results: Box::new(ty),
-                    arguments: Box::new(Struct(arg_tys)),
+                    arguments: Box::new(arg_tys),
                 };
                 Ok(Prim::Struct(vec![(name.clone(), ty)]))
             } else {
