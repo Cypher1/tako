@@ -1,6 +1,8 @@
 use crate::ast::{Node, Node::*};
 use crate::database::Compiler;
 use crate::errors::TError;
+use crate::interpreter::Interpreter;
+use std::collections::HashMap;
 
 use crate::primitives::{
     bit_type, i32_type, record, string_type, unit_type, void_type, Prim, Prim::*,
@@ -42,7 +44,7 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
             name,
             left,
             right,
-            info: _,
+            info,
         }) => {
             if let Some(ext) = db.get_extern(name.to_string())? {
                 // TODO intros
@@ -50,7 +52,26 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
                 let left_ty = infer(db, left, env)?;
                 let right_ty = infer(db, right, env)?;
                 eprintln!("({})(left = {}, right = {})", &ty, &left_ty, &right_ty);
-                return Ok(ty);
+                let app = Apply {
+                    inner: Box::new(ty.to_node()),
+                    args: vec![
+                        Let {
+                            name: "left".to_string(),
+                            args: None,
+                            value: Box::new(left_ty.to_node()),
+                            info: info.clone()
+                        },
+                        Let {
+                            name: "right".to_string(),
+                            args: None,
+                            value: Box::new(right_ty.to_node()),
+                            info: info.clone()
+                        },
+                    ],
+                    info: info.clone(),
+                };
+                let mut state = vec![HashMap::new()];
+                return Interpreter::default().visit_apply(db, &mut state, &app);
             }
             panic!("TODO Impl type checking for user defined BinOp")
         }
