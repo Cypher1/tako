@@ -31,12 +31,28 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
         },
         UnOpNode(UnOp {
             name,
-            inner: _,
-            info: _,
+            inner,
+            info,
         }) => {
             if let Some(ext) = db.get_extern(name.to_string())? {
                 // TODO intros
-                return Ok(ext.ty);
+                let ty = ext.ty;
+                let it_ty = infer(db, inner, env)?;
+                eprintln!("({})(it = {})", &ty, &it_ty);
+                let app = Apply {
+                    inner: Box::new(ty.to_node()),
+                    args: vec![
+                        Let {
+                            name: "it".to_string(),
+                            args: None,
+                            value: Box::new(it_ty.to_node()),
+                            info: info.clone()
+                        },
+                    ],
+                    info: info.clone(),
+                };
+                let mut state = vec![HashMap::new()];
+                return Interpreter::default().visit_apply(db, &mut state, &app);
             }
             panic!("TODO Impl type checking for user defined UnOp")
         }
@@ -85,18 +101,27 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
         ApplyNode(Apply {
             inner,
             args,
-            info: _,
+            info,
         }) => {
             let inner_ty = infer(db, inner, env)?;
             let mut arg_tys = vec![];
             for arg in args.iter() {
-                let ty = infer(db, &arg.clone().to_node(), env)?;
-                arg_tys.push(ty);
+                let ty = infer(db, &arg.value.clone().to_node(), env)?;
+                let ty_let = Let {
+                    name: arg.name.clone(),
+                    args: None,
+                    value: Box::new(ty.to_node()),
+                    info: info.clone()
+                };
+                arg_tys.push(ty_let);
             }
-            panic!(
-                "TODO Type checking apply: {:?} with {:?}",
-                inner_ty, arg_tys
-            )
+            let app = Apply {
+                inner: Box::new(inner_ty.to_node()),
+                args: arg_tys,
+                info: info.clone(),
+            };
+            let mut state = vec![HashMap::new()];
+            return Interpreter::default().visit_apply(db, &mut state, &app);
         }
         LetNode(Let {
             name: _,
@@ -117,8 +142,6 @@ mod tests {
     fn assert_type(prog: &'static str, ty: &'static str) {
         use crate::ast::Visitor;
         use crate::cli_options::Options;
-        use crate::interpreter::Interpreter;
-        use std::collections::HashMap;
         let mut db = DB::default();
         db.set_options(Options::default());
         let module = vec![];
