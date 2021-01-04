@@ -156,25 +156,26 @@ mod tests {
         use crate::ast::Visitor;
         use crate::cli_options::Options;
         let mut db = DB::default();
-        db.set_options(Options::default());
+        db.set_options(Options::new(&["-d".to_string(), "-d".to_string(), "-d".to_string()]));
         let module = vec![];
         let prog_str = db.parse_str(module.clone(), prog).unwrap();
         dbg!(&prog_str);
 
         let env = rec![]; // TODO: Track the type env
-        let prog = infer(&db, &prog_str, &env).unwrap();
-        let ty = db.parse_str(module, ty).unwrap();
-        dbg!(&ty);
+        let prog_ast = infer(&db, &prog_str, &env).unwrap();
+
+        let ty_ast = db.parse_str(module, ty).unwrap();
         let mut state = vec![HashMap::new()];
-        let result_type = Interpreter::default().visit(&db, &mut state, &ty);
+        let result_type = Interpreter::default().visit(&db, &mut state, &ty_ast);
+        dbg!(&ty_ast, format!("{}", &result_type.clone().unwrap()));
         if let Err(err) = &result_type {
             dbg!(format!("{}", &err));
         }
         assert_eq!(
-            format!("{}", &prog),
+            format!("{}", &prog_ast),
             format!("{}", result_type.clone().unwrap())
         );
-        assert_eq!(prog, result_type.unwrap());
+        assert_eq!(prog_ast, result_type.unwrap());
     }
 
     #[test]
