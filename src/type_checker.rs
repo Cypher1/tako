@@ -31,12 +31,7 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
         },
         UnOpNode(UnOp { name, inner, info }) => {
             let it_ty = infer(db, inner, env)?;
-            let ty = if let Some(ext) = db.get_extern(name.to_string())? {
-                // TODO intros
-                ext.ty
-            } else {
-                infer(db, &Sym {name: name.to_string(), info: info.clone()}.to_node(), env)?
-            };
+            let ty = infer(db, &Sym {name: name.to_string(), info: info.clone()}.to_node(), env)?;
             eprintln!("({})(it = {})", &ty, &it_ty);
             let app = Apply {
                 inner: Box::new(ty.to_node()),
@@ -59,12 +54,7 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
         }) => {
             let left_ty = infer(db, left, env)?;
             let right_ty = infer(db, right, env)?;
-            let ty = if let Some(ext) = db.get_extern(name.to_string())? {
-                // TODO intros
-                ext.ty
-            } else {
-                infer(db, &Sym {name: name.to_string(), info: info.clone()}.to_node(), env)?
-            };
+            let ty = infer(db, &Sym {name: name.to_string(), info: info.clone()}.to_node(), env)?;
             eprintln!("({})(left = {}, right = {})", &ty, &left_ty, &right_ty);
             let app = Apply {
                 inner: Box::new(ty.to_node()),
