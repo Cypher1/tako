@@ -90,10 +90,11 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
             Ok(env.access(name))
         }
         ApplyNode(Apply { inner, args, info }) => {
-            let inner_ty = infer(db, inner, env)?;
             let mut arg_tys = vec![];
+            let mut let_tys = vec![];
             for arg in args.iter() {
                 let ty = infer(db, &arg.value.clone().to_node(), env)?;
+                let_tys.push((arg.name.clone(), ty.clone()));
                 let ty_let = Let {
                     name: arg.name.clone(),
                     args: None,
@@ -102,6 +103,7 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
                 };
                 arg_tys.push(ty_let);
             }
+            let inner_ty = infer(db, inner, &env.clone().merge(Struct(let_tys)))?;
             let app = Apply {
                 inner: Box::new(inner_ty.to_node()),
                 args: arg_tys,
