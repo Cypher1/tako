@@ -53,8 +53,13 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
             info,
         }) => {
             let left_ty = infer(db, left, env)?;
-            let right_ty = infer(db, right, env)?;
-            let ty = infer(db, &Sym {name: name.to_string(), info: info.clone()}.to_node(), env)?;
+            let env = if name == ";" {
+                env.clone().merge(left_ty.clone())
+            } else {
+                env.clone()
+            };
+            let right_ty = infer(db, right, &env)?;
+            let ty = infer(db, &Sym {name: name.to_string(), info: info.clone()}.to_node(), &env)?;
             eprintln!("({})(left = {}, right = {})", &ty, &left_ty, &right_ty);
             let app = Apply {
                 inner: Box::new(ty.to_node()),
@@ -82,7 +87,7 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
                 // TODO intros
                 return Ok(ext.ty);
             }
-            panic!("TODO Impl type checking for user defined Sym")
+            Ok(env.access(name))
         }
         ApplyNode(Apply { inner, args, info }) => {
             let inner_ty = infer(db, inner, env)?;

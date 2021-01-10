@@ -69,6 +69,46 @@ impl Prim {
             (thing, other) => rec!["left" => thing, "right" => other],
         }
     }
+
+    pub fn access(self: &Prim, name: &str) -> Prim {
+        match self {
+            Void() => Void(),
+            Unit() => Void(),
+            Bool(_) => Void(),
+            I32(_) => Void(),
+            Str(_) => Void(),
+            Lambda(_) => Void(),
+            Struct(tys) => {
+                for (param, ty) in tys.iter() {
+                    if param == name {
+                        return ty.clone();
+                    }
+                }
+                Void()
+            },
+            Union(_) => Void(), // TODO
+            Product(_) => Void(), // TODO
+            StaticPointer(_) => Void(),
+            Padded(_, ty) => ty.access(name),
+            Tag(_, _) => Void(), // TODO
+            Pointer(_, ty) => ty.access(name),
+            Function {
+                intros: _,
+                arguments,
+                results,
+            } => match name {
+                "arguments" => *arguments.clone(),
+                "results" => *results.clone(),
+                _ => Void(),
+            },
+            App {
+                inner: _,
+                arguments: _,
+            } => Void(), // TODO
+            WithEffect(ty, effs) => WithEffect(Box::new(ty.access(name)), effs.to_vec()),
+            Variable(var) => Variable(var.to_string()+"."+name),
+        }
+    }
 }
 
 impl fmt::Display for Prim {
