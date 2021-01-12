@@ -18,6 +18,7 @@ pub enum Code {
     Struct(Vec<Code>),
     Expr(String),
     Statement(String),
+    Template(String, Box<Code>),
     Assignment(String, Box<Code>),
     If {
         condition: Box<Code>,
@@ -46,6 +47,7 @@ impl Code {
                 Code::Block(statements)
             }
             Code::Statement(line) => Code::Statement(line),
+            Code::Template(name, body) => Code::Template(name, Box::new(body.with_expr(f))),
             Code::Assignment(name, value) => Code::Assignment(name, Box::new(value.with_expr(f))),
             Code::If {
                 condition,
@@ -139,6 +141,7 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
         }
         Code::Expr(line) => line,
         Code::Statement(line) => format!("{}{};", indent, line),
+        Code::Template(name, body) => format!("template <{} {}>\n{}", "typename", name, pretty_print_block(*body, indent)),
         Code::Assignment(name, value) => format!(
             "{}const auto {} = {};",
             indent,
@@ -356,6 +359,22 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             }
             _ => panic!("Don't know how to apply arguments to a block"),
         }
+    }
+
+    fn visit_abs(&mut self, db: &dyn Compiler, state: &mut State, expr: &Abs) -> Res {
+        // eprintln!(
+        //     "abs here: {:?}, {:?}",
+        //     expr.get_info().defined_at,
+        //     expr.name
+        // );
+        let path = expr
+            .get_info()
+            .defined_at
+            .expect("Could not find definition for abs");
+
+        let name = make_name(path);
+        let body = self.visit(db, state, &expr.value)?;
+        Ok(Code::Template(name, Box::new(body)))
     }
 
     fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {

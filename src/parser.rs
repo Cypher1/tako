@@ -214,6 +214,20 @@ fn led(
                         left.get_mut_info().ty = Some(Box::new(right));
                         return Ok((left, new_toks));
                     }
+                    "|-" => match left {
+                        Node::SymNode(s) => {
+                            return Ok((
+                                Abs {
+                                    name: s.name,
+                                    value: Box::new(right),
+                                    info: head.get_info(),
+                                }
+                                .to_node(),
+                                new_toks,
+                            ))
+                        }
+                        _ => panic!(format!("Cannot abstract over {}", left)),
+                    }
                     "=" => match left {
                         Node::SymNode(s) => {
                             return Ok((

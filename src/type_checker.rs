@@ -112,6 +112,21 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
             let mut state = vec![HashMap::new()];
             Interpreter::default().visit_apply(db, &mut state, &app)
         }
+        AbsNode(Abs {
+            name,
+            // ty,
+            value,
+            info: _,
+        }) => {
+            let ty = infer(db, &value.clone().to_node(), env)?;
+            match ty {
+                Function { mut intros, arguments, results } => {
+                    intros.insert((name.to_string(), Variable("typename".to_string())));
+                    return Ok( Function { intros, arguments, results });
+                }
+                ty => panic!("abstraction over {} for {}", &name, &ty),
+            }
+        }
         LetNode(Let {
             name,
             value,
@@ -124,22 +139,21 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
             } else {
                 infer(db, &value.clone().to_node(), env)?
             };
-            if let Some(args) = args {
+            let ty = if let Some(args) = args {
                 let mut arg_tys = rec![];
                 for arg in args.iter() {
                     let ty = infer(db, &arg.clone().to_node(), env)?;
                     arg_tys = arg_tys.merge(ty);
                 }
-                let ty = Function {
+                Function {
                     intros: set![],
                     results: Box::new(ty),
                     arguments: Box::new(arg_tys),
-                };
-                Ok(Prim::Struct(vec![(name.clone(), ty)]))
+                }
             } else {
-                let ty = Prim::Struct(vec![(name.clone(), ty)]);
-                Ok(ty)
-            }
+                ty
+            };
+            Ok(Prim::Struct(vec![(name.clone(), ty)]))
         }
         Error(err) => Err(err.clone())
     }
@@ -151,30 +165,30 @@ mod tests {
     use crate::ast::ToNode;
     use crate::database::DB;
 
-    fn assert_type(prog: &'static str, ty: &'static str) {
+    fn assert_type(prog_str: &'static str, ty: &'static str) {
         use crate::ast::Visitor;
         use crate::cli_options::Options;
         let mut db = DB::default();
         db.set_options(Options::new(&["-d".to_string(), "-d".to_string(), "-d".to_string()]));
         let module = vec![];
-        let prog_str = db.parse_str(module.clone(), prog).unwrap();
         dbg!(&prog_str);
+        let prog = db.parse_str(module.clone(), prog_str).unwrap();
 
-        let env = rec![]; // TODO: Track the type env
-        let prog_ast = infer(&db, &prog_str, &env).unwrap();
+        let env = Variable("a".to_string()); // TODO: Track the type env
+        let prog_ty  = infer(&db, &prog, &env).unwrap();
 
-        let ty_ast = db.parse_str(module, ty).unwrap();
+        let ty = db.parse_str(module, ty).unwrap();
         let mut state = vec![HashMap::new()];
-        let result_type = Interpreter::default().visit(&db, &mut state, &ty_ast);
-        dbg!(&ty_ast, format!("{}", &result_type.clone().unwrap()));
+        let result_type = Interpreter::default().visit(&db, &mut state, &ty);
+        // dbg!(&ty, format!("{}", &result_type.clone().unwrap()));
         if let Err(err) = &result_type {
             dbg!(format!("{}", &err));
         }
         assert_eq!(
-            format!("{}", &prog_ast),
+            format!("{}", &prog_ty),
             format!("{}", result_type.clone().unwrap())
         );
-        assert_eq!(prog_ast, result_type.unwrap());
+        assert_eq!(prog_ty, result_type.unwrap());
     }
 
     #[test]
@@ -228,12 +242,12 @@ mod tests {
 
     #[test]
     fn infer_type_of_sym_without_let() {
-        assert_type("x", "a. (x=a) -> a");
+        assert_type("x", "a|-(x=a) -> a");
     }
 
     #[test]
     fn infer_type_of_id() {
-        assert_type("{x}", "a. (x=a) -> a");
+        assert_type("{x}", "a|-(x=a) -> a");
     }
 
     #[test]

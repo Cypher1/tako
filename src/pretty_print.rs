@@ -50,6 +50,11 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
         Ok(())
     }
 
+    fn visit_abs(&mut self, db: &dyn Compiler, state: &mut State, expr: &Abs) -> Res {
+        write!(state, "{}|-", expr.name).unwrap();
+        self.visit(db, state, &*expr.value)
+    }
+
     fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
         if let Some(def_at) = expr.get_info().defined_at {
             write!(state, "::{}", path_to_string(&def_at)).unwrap();

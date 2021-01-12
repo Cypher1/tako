@@ -323,6 +323,21 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
         Ok(res)
     }
 
+    fn visit_abs(&mut self, db: &dyn Compiler, state: &mut State, expr: &Abs) -> Res {
+        if db.debug_level() > 0 {
+            eprintln!("introducing abstraction {}", expr.clone().to_node());
+        }
+
+        // Add a new scope
+        let mut frame = Frame::new();
+        frame.insert(expr.name.clone(), Unit());
+        state.push(frame);
+        let result = self.visit(db, state, &expr.value)?;
+        // Drop the finished scope
+        state.pop();
+        Ok(result)
+    }
+
     fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
         if db.debug_level() > 0 {
             eprintln!("evaluating let {}", expr.clone().to_node());
@@ -419,7 +434,6 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             "-|" => match l {
                 //TODO: Add pattern matching.
                 Ok(Bool(false)) => Err(TError::RequirementFailure(info)),
-                Ok(Lambda(_)) => Ok(Lambda(Box::new(expr.clone().to_node()))),
                 Ok(_) => r(),
                 l => l,
             },

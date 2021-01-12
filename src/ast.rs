@@ -111,6 +111,37 @@ impl ToNode for Prim {
 
 // Consider finding way to turn lets into binary operators.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
+pub struct Abs {
+    pub name: String,
+    // pub ty: Box<Node>,
+    pub value: Box<Node>,
+    pub info: Info,
+}
+
+impl Abs {
+    pub fn to_sym(self: &Abs) -> Sym {
+        Sym {
+            name: self.name.clone(),
+            info: self.get_info(),
+        }
+    }
+}
+
+impl ToNode for Abs {
+    fn to_node(self) -> Node {
+        Node::AbsNode(self)
+    }
+}
+impl HasInfo for Abs {
+    fn get_info(&self) -> Info {
+        self.info.clone()
+    }
+    fn get_mut_info(&mut self) -> &mut Info {
+        &mut self.info
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub struct Let {
     pub name: String,
     pub value: Box<Node>,
@@ -237,6 +268,7 @@ pub enum Node {
     SymNode(Sym),
     PrimNode(Prim, Info),
     ApplyNode(Apply),
+    AbsNode(Abs),
     LetNode(Let),
     UnOpNode(UnOp),
     BinOpNode(BinOp),
@@ -250,6 +282,7 @@ impl std::fmt::Debug for Node {
             SymNode(n) => n.fmt(f),
             PrimNode(n, _) => n.fmt(f),
             ApplyNode(n) => n.fmt(f),
+            AbsNode(n) => n.fmt(f),
             LetNode(n) => n.fmt(f),
             UnOpNode(n) => n.fmt(f),
             BinOpNode(n) => n.fmt(f),
@@ -281,6 +314,7 @@ impl HasInfo for Node {
             SymNode(n) => n.get_info(),
             PrimNode(_n, info) => info.clone(),
             ApplyNode(n) => n.get_info(),
+            AbsNode(n) => n.get_info(),
             LetNode(n) => n.get_info(),
             UnOpNode(n) => n.get_info(),
             BinOpNode(n) => n.get_info(),
@@ -293,6 +327,7 @@ impl HasInfo for Node {
             SymNode(ref mut n) => n.get_mut_info(),
             PrimNode(_, ref mut info) => info,
             ApplyNode(ref mut n) => n.get_mut_info(),
+            AbsNode(ref mut n) => n.get_mut_info(),
             LetNode(ref mut n) => n.get_mut_info(),
             UnOpNode(ref mut n) => n.get_mut_info(),
             BinOpNode(ref mut n) => n.get_mut_info(),
@@ -412,6 +447,7 @@ pub trait Visitor<State, Res, Final, Start = Root> {
         state: &mut State,
         e: &Apply,
     ) -> Result<Res, TError>;
+    fn visit_abs(&mut self, db: &dyn Compiler, state: &mut State, e: &Abs) -> Result<Res, TError>;
     fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, e: &Let) -> Result<Res, TError>;
     fn visit_un_op(
         &mut self,
@@ -434,6 +470,7 @@ pub trait Visitor<State, Res, Final, Start = Root> {
             SymNode(n) => self.visit_sym(db, state, n),
             PrimNode(n, _) => self.visit_prim(db, state, n),
             ApplyNode(n) => self.visit_apply(db, state, n),
+            AbsNode(n) => self.visit_abs(db, state, n),
             LetNode(n) => self.visit_let(db, state, n),
             UnOpNode(n) => self.visit_un_op(db, state, n),
             BinOpNode(n) => self.visit_bin_op(db, state, n),

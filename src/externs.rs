@@ -273,6 +273,16 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
             cpp: LangImpl::operator("?"),
         },
         Extern {
+            name: "|-".to_string(),
+            semantic: operator(46, Left),
+            ty: Function {
+                intros: dict!("a" => variable("Type")),
+                results: Box::new(variable("a")),
+                arguments: Box::new(rec!("left" => variable("Type"), "right" => variable("a"))),
+            },
+            cpp: LangImpl::operator("|-"),
+        },
+        Extern {
             name: "-|".to_string(),
             semantic: operator(47, Left),
             ty: Function {

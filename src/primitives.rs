@@ -182,7 +182,7 @@ impl fmt::Display for Prim {
                         .iter()
                         .map(|(name, ty)| format!("{}: {}", name, ty))
                         .collect();
-                    write!(f, "{}. ", ints.join(". "))?;
+                    write!(f, "{}|-", ints.join("|-"))?;
                 }
                 write!(f, "{} -> {}", arguments, results)
             }

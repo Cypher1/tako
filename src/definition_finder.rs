@@ -103,6 +103,19 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
         .to_node())
     }
 
+    fn visit_abs(&mut self, db: &dyn Compiler, state: &mut State, expr: &Abs) -> Res {
+        if db.debug_level() > 1 {
+            eprintln!("visiting {:?} {}", state.path.clone(), &expr.name);
+        }
+        let value = Box::new(self.visit(db, state, &expr.value)?);
+        Ok(Abs {
+            name: expr.name.clone(),
+            value,
+            info: expr.info.clone(),
+        }
+        .to_node())
+    }
+
     fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
         if db.debug_level() > 1 {
             eprintln!("visiting {:?} {}", state.path.clone(), &expr.name);
