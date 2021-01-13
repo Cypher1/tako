@@ -330,11 +330,12 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
 
         // Add a new scope
         let mut frame = Frame::new();
-        frame.insert(expr.name.clone(), Unit());
+        frame.insert(expr.name.clone(), Variable(expr.name.clone()));
         state.push(frame);
         let result = self.visit(db, state, &expr.value)?;
         // Drop the finished scope
         state.pop();
+        // TODO: Rewrap in the abstraction
         Ok(result)
     }
 

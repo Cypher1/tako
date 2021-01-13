@@ -174,7 +174,7 @@ mod tests {
         dbg!(&prog_str);
         let prog = db.parse_str(module.clone(), prog_str).unwrap();
 
-        let env = Variable("a".to_string()); // TODO: Track the type env
+        let env = Variable("test_program".to_string()); // TODO: Track the type env
         let prog_ty  = infer(&db, &prog, &env).unwrap();
 
         let ty = db.parse_str(module, ty).unwrap();
@@ -242,7 +242,7 @@ mod tests {
 
     #[test]
     fn infer_type_of_sym_without_let() {
-        assert_type("x", "a|-(x=a) -> a");
+        assert_type("x", "test_program |- test_program.x");
     }
 
     #[test]

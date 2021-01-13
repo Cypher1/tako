@@ -106,7 +106,7 @@ impl Prim {
                 arguments: _,
             } => Void(), // TODO
             WithEffect(ty, effs) => WithEffect(Box::new(ty.access(name)), effs.to_vec()),
-            Variable(var) => Variable(var.to_string()+"."+name),
+            Variable(var) => Variable(format!("{}_{}", var, name)),
         }
     }
 }
