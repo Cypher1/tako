@@ -31,7 +31,15 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
         },
         UnOpNode(UnOp { name, inner, info }) => {
             let it_ty = infer(db, inner, env)?;
-            let ty = infer(db, &Sym {name: name.to_string(), info: info.clone()}.to_node(), env)?;
+            let ty = infer(
+                db,
+                &Sym {
+                    name: name.to_string(),
+                    info: info.clone(),
+                }
+                .to_node(),
+                env,
+            )?;
             eprintln!("({})(it = {})", &ty, &it_ty);
             let app = Apply {
                 inner: Box::new(ty.to_node()),
@@ -59,7 +67,15 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
                 env.clone()
             };
             let right_ty = infer(db, right, &env)?;
-            let ty = infer(db, &Sym {name: name.to_string(), info: info.clone()}.to_node(), &env)?;
+            let ty = infer(
+                db,
+                &Sym {
+                    name: name.to_string(),
+                    info: info.clone(),
+                }
+                .to_node(),
+                &env,
+            )?;
             eprintln!("({})(left = {}, right = {})", &ty, &left_ty, &right_ty);
             let app = Apply {
                 inner: Box::new(ty.to_node()),
@@ -120,9 +136,17 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
         }) => {
             let ty = infer(db, &value.clone().to_node(), env)?;
             match ty {
-                Function { mut intros, arguments, results } => {
+                Function {
+                    mut intros,
+                    arguments,
+                    results,
+                } => {
                     intros.insert((name.to_string(), Variable("typename".to_string())));
-                    return Ok( Function { intros, arguments, results });
+                    return Ok(Function {
+                        intros,
+                        arguments,
+                        results,
+                    });
                 }
                 ty => panic!("abstraction over {} for {}", &name, &ty),
             }
@@ -155,7 +179,7 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
             };
             Ok(Prim::Struct(vec![(name.clone(), ty)]))
         }
-        Error(err) => Err(err.clone())
+        Error(err) => Err(err.clone()),
     }
 }
 
@@ -242,7 +266,7 @@ mod tests {
 
     #[test]
     fn infer_type_of_sym_without_let() {
-        assert_type("x", "test_program |- test_program.x");
+        assert_type("x", "test_program |- x |- test_program.x");
     }
 
     #[test]

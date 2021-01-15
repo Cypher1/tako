@@ -141,7 +141,12 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
         }
         Code::Expr(line) => line,
         Code::Statement(line) => format!("{}{};", indent, line),
-        Code::Template(name, body) => format!("template <{} {}>\n{}", "typename", name, pretty_print_block(*body, indent)),
+        Code::Template(name, body) => format!(
+            "template <{} {}>\n{}",
+            "typename",
+            name,
+            pretty_print_block(*body, indent)
+        ),
         Code::Assignment(name, value) => format!(
             "{}const auto {} = {};",
             indent,

@@ -227,7 +227,7 @@ fn led(
                             ))
                         }
                         _ => panic!(format!("Cannot abstract over {}", left)),
-                    }
+                    },
                     "=" => match left {
                         Node::SymNode(s) => {
                             return Ok((

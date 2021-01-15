@@ -85,8 +85,8 @@ impl Prim {
                     }
                 }
                 Void()
-            },
-            Union(_) => Void(), // TODO
+            }
+            Union(_) => Void(),   // TODO
             Product(_) => Void(), // TODO
             StaticPointer(_) => Void(),
             Padded(_, ty) => ty.access(name),

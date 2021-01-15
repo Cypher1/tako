@@ -302,10 +302,10 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
         // Run the inner
         let res = match inner {
             Prim::Lambda(func) => self.visit(db, state, &*func)?,
-            Prim::Function{
+            Prim::Function {
                 intros: _, // TODO
                 arguments,
-                results
+                results,
             } => {
                 let frame = state.last_mut().expect("Stack frame missing");
                 if let Struct(vals) = *arguments {
@@ -423,6 +423,22 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
                 let right = r()?;
                 Ok(left.merge(right))
             }
+            "." => {
+                let l = l?;
+                Ok(Lambda(Box::new(
+                    Apply {
+                        inner: Box::new(r()?.to_node()),
+                        args: vec![Let {
+                            name: "it".to_string(),
+                            value: Box::new(l.to_node()),
+                            args: None,
+                            info: info.clone(),
+                        }],
+                        info,
+                    }
+                    .to_node(),
+                )))
+            },
             ";" => {
                 l?;
                 let right = r()?;

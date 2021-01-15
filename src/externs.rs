@@ -29,6 +29,24 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
             };
             Ok(I32(0))
         })),
+        "." => Some(Box::new(|_db, args, info| {
+            let left = args.get("left").unwrap()()?;
+            let right = args.get("right").unwrap()()?;
+            use crate::ast::{Apply, Let, ToNode};
+            Ok(Lambda(Box::new(
+                Apply {
+                    inner: Box::new(right.to_node()),
+                    args: vec![Let {
+                        name: "it".to_string(),
+                        value: Box::new(left.to_node()),
+                        args: None,
+                        info: info.clone(),
+                    }],
+                    info,
+                }
+                .to_node(),
+            )))
+        })),
         "exit" => Some(Box::new(|_, args, _| {
             let val = args.get("it").unwrap()()?;
             let code = match val {
@@ -514,6 +532,18 @@ string to_string(const bool& t){
                 .with_includes("#include <cmath>")
                 .with_arg_joiner(", ")
                 .with_flag("-lm"),
+        },
+        Extern {
+            name: ".".to_string(),
+            semantic: operator(100, Right),
+            ty: Function {
+                intros: dict!("a" => variable("Type"), "b" => variable("Type"), "c" => variable("Type")),
+                results: Box::new(variable("c")),
+                arguments: Box::new(
+                    rec!("left" => variable("a"), "right" => Function{intros: dict!(), arguments: Box::new(rec!("it" => variable("a"))), results: Box::new(variable("c"))}),
+                ),
+            },
+            cpp: LangImpl::new("[](const auto l, const auto r){return r(l);}"),
         },
         Extern {
             name: "I32".to_string(),
