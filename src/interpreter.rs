@@ -425,9 +425,10 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             }
             "." => {
                 let l = l?;
-                Ok(Lambda(Box::new(
-                    Apply {
-                        inner: Box::new(r()?.to_node()),
+                let r = r()?;
+                self.visit_apply(db, state,
+                    &Apply {
+                        inner: Box::new(r.to_node()),
                         args: vec![Let {
                             name: "it".to_string(),
                             value: Box::new(l.to_node()),
@@ -436,8 +437,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
                         }],
                         info,
                     }
-                    .to_node(),
-                )))
+                )
             },
             ";" => {
                 l?;
