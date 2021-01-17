@@ -66,6 +66,7 @@ impl Prim {
         match (self, other) {
             (Struct(vals), Struct(o_vals)) => Struct(merge_vals(vals, o_vals)),
             (Struct(vals), other) => Struct(merge_vals(vals, vec![("it".to_string(), other)])),
+            (vals, Struct(other)) => Struct(merge_vals(vec![("it".to_string(), vals)], other)),
             (thing, other) => rec!["left" => thing, "right" => other],
         }
     }
@@ -106,7 +107,7 @@ impl Prim {
                 arguments: _,
             } => Void(), // TODO
             WithEffect(ty, effs) => WithEffect(Box::new(ty.access(name)), effs.to_vec()),
-            Variable(var) => Variable(format!("{}_{}", var, name)),
+            Variable(var) => Variable(format!("{}.{}", var, name)),
         }
     }
 }
