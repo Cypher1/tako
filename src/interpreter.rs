@@ -247,9 +247,8 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
 
     fn visit_sym(&mut self, db: &dyn Compiler, state: &mut State, expr: &Sym) -> Res {
         if db.debug_level() > 0 {
-            eprintln!("evaluating let {}", expr.clone().to_node());
+            eprintln!("evaluating sym {}", expr.clone().to_node());
         }
-        let name = &expr.name;
         let frame = || {
             let mut frame_vals: HashMap<String, Box<dyn Fn() -> Res>> = map!();
             for (name, val) in state.last().unwrap().clone().iter() {
@@ -258,6 +257,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             }
             frame_vals
         };
+        let name = &expr.name;
         let value = find_symbol(&state, name);
         if let Some(prim) = value {
             if db.debug_level() > 0 {
@@ -266,13 +266,13 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             return Ok(prim.clone());
         }
         if db.debug_level() > 2 {
-            eprintln!("checking for interpreter impl {}", expr.name.clone());
+            eprintln!("checking for interpreter impl {}", name);
         }
         if let Some(extern_impl) = &mut self.impls.get_mut(name) {
             return extern_impl(db, frame(), expr.get_info());
         }
         if db.debug_level() > 2 {
-            eprintln!("checking for default impl {}", expr.name.clone());
+            eprintln!("checking for default impl {}", name);
         }
         if let Some(default_impl) = crate::externs::get_implementation(name.to_owned()) {
             return default_impl(db, frame(), expr.get_info());
