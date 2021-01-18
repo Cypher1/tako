@@ -2,6 +2,7 @@ use crate::ast::Info;
 use crate::ast::Node;
 use crate::errors::TError;
 use std::collections::BTreeSet;
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt;
 
@@ -13,6 +14,7 @@ pub type Offset = i32;
 type Layout = Vec<Prim>;
 type TypeSet = BTreeSet<Prim>;
 type Pack = BTreeSet<(String, Prim)>;
+pub type Frame = HashMap<String, Prim>;
 
 #[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Debug, Hash)]
 pub enum Prim {
@@ -61,13 +63,32 @@ fn merge_vals(left: Vec<(String, Prim)>, right: Vec<(String, Prim)>) -> Vec<(Str
 }
 
 impl Prim {
+    pub fn to_struct(self: Prim) -> Vec<(String, Prim)> {
+        match self {
+            Struct(vals) => vals,
+            _ => vec![("it".to_string(), self)],
+        }
+    }
+
     pub fn merge(self: Prim, other: Prim) -> Prim {
         use Prim::*;
         match (self, other) {
             (Struct(vals), Struct(o_vals)) => Struct(merge_vals(vals, o_vals)),
-            (Struct(vals), other) => Struct(merge_vals(vals, vec![("it".to_string(), other)])),
-            (vals, Struct(other)) => Struct(merge_vals(vec![("it".to_string(), vals)], other)),
+            (Struct(vals), other) => Struct(merge_vals(vals, other.to_struct())),
+            (vals, Struct(other)) => Struct(merge_vals(vals.to_struct(), other)),
             (thing, other) => rec!["left" => thing, "right" => other],
+        }
+    }
+
+    pub fn unify(self: &Prim, other: &Prim, env: &mut Vec<Frame>) -> Result<Prim, TError> {
+        match (self, other) {
+            (Variable(name), ty) => {
+                // TODO check if already assigned (and if so unify again)
+                // TODO handle unwrap
+                env.last_mut().unwrap().insert(name.to_string(), ty.clone());
+                Ok(ty.clone())
+            },
+            _ => Ok(Void())
         }
     }
 

@@ -1,11 +1,9 @@
+#![feature(map_first_last)]
 use std::collections::HashMap;
-
 use super::ast::*;
 use super::database::Compiler;
 use super::errors::TError;
-use super::primitives::{Prim, Prim::*};
-
-type Frame = HashMap<String, Prim>;
+use super::primitives::{Frame, Prim, Prim::*};
 
 pub type ImplFn<'a> =
     &'a mut dyn FnMut(&dyn Compiler, HashMap<String, Box<dyn Fn() -> Res>>, Info) -> Res;
@@ -284,7 +282,50 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
         ))
     }
 
-    fn visit_prim(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Prim) -> Res {
+    fn visit_prim(&mut self, db: &dyn Compiler, state: &mut State, expr: &Prim) -> Res {
+        eprintln!("visiting prim {}", &expr);
+        match expr {
+            Variable(name) => {
+                let frame = state.last().cloned().unwrap_or_else(||map![]);
+                let mut kvs = vec![];
+                for (k, v) in frame.iter() {
+                    kvs.push(format!("{} = {}", k, v))
+                }
+                eprintln!("variable {}, state: {}", &name, &kvs.join(","));
+                return state.last().unwrap().get(name).cloned().ok_or(TError::OutOfScopeTypeVariable(name.to_string(), Info::default())); // TODO: Get some info?
+            }
+            Product(tys) => {
+                let mut new_tys = set![];
+                for ty in tys.iter() {
+                    let new_ty = self.visit_prim(db, state, &ty)?; // Evaluate the type
+                    new_tys.insert(new_ty);
+                }
+                if new_tys.len() == 1 {
+                    return Ok(new_tys.iter().cloned().next().expect("This should never fail (1 sized set shouldn't be empty)"));
+                }
+            }
+            Struct(tys) => {
+                let mut new_tys = vec![];
+                for (name, ty) in tys.iter() {
+                    let new_ty = self.visit_prim(db, state, &ty)?; // Evaluate the type
+                    new_tys.push((name.clone(), new_ty));
+                }
+                return Ok(Struct(new_tys));
+            }
+            Function {arguments, results, ..} => {
+                if let Some(frame) = state.clone().last() {
+                    for (arg, ty) in arguments.clone().to_struct().iter() {
+                        let arg_ty = &frame.get(arg).unwrap_or_else(||&Void());
+                        eprintln!(">> {}: {} unified with {}", &arg, &ty, &arg_ty);
+                        let unified = ty.unify(arg_ty, state)?;
+                        eprintln!(">>>> {}", &unified);
+                    }
+                    return self.visit_prim(db, state, results);
+                }
+
+            }
+            _ => {}
+        }
         Ok(expr.clone())
     }
 

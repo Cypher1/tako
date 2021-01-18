@@ -20,6 +20,7 @@ impl HasInfo for TError {
         match self {
             CppCompilerError(_, _, info) => info.clone(),
             UnknownSymbol(_, info, _) => info.clone(),
+            OutOfScopeTypeVariable(_, info) => info.clone(),
             UnknownInfixOperator(_, info) => info.clone(),
             UnknownPrefixOperator(_, info) => info.clone(),
             UnknownSizeOfVariableType(_, info) => info.clone(),
@@ -37,6 +38,7 @@ impl HasInfo for TError {
         match self {
             CppCompilerError(_, _, ref mut info) => info,
             UnknownSymbol(_, ref mut info, _) => info,
+            OutOfScopeTypeVariable(_, ref mut info) => info,
             UnknownInfixOperator(_, ref mut info) => info,
             UnknownPrefixOperator(_, ref mut info) => info,
             UnknownSizeOfVariableType(_, ref mut info) => info,
@@ -113,7 +115,6 @@ impl ToNode for Prim {
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub struct Abs {
     pub name: String,
-    // pub ty: Box<Node>,
     pub value: Box<Node>,
     pub info: Info,
 }

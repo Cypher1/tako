@@ -9,6 +9,13 @@ use crate::primitives::{
 };
 
 pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError> {
+    eprintln!("--- inferring type of {} ---", &expr);
+    let res = infer_impl(db, expr, env);
+    eprintln!("--- inferred type of {} : {} ---", &expr, res.clone().unwrap_or_else(|_|Void()));
+    res
+}
+
+fn infer_impl(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError> {
     // Infer that expression t has type A, t => A
     // See https://ncatlab.org/nlab/show/bidirectional+typechecking
     use crate::ast::*;
@@ -31,76 +38,40 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
         },
         UnOpNode(UnOp { name, inner, info }) => {
             let it_ty = infer(db, inner, env)?;
-            let ty = infer(
+            let new_env = env.clone().merge(rec!{"it" => it_ty});
+            infer(
                 db,
                 &Sym {
                     name: name.to_string(),
                     info: info.clone(),
                 }
                 .to_node(),
-                env,
-            )?;
-            eprintln!("({})(it = {})", &ty, &it_ty);
-            let app = Apply {
-                inner: Box::new(ty.to_node()),
-                args: vec![Let {
-                    name: "it".to_string(),
-                    args: None,
-                    value: Box::new(it_ty.to_node()),
-                    info: info.clone(),
-                }],
-                info: info.clone(),
-            };
-            let mut state = vec![HashMap::new()];
-            Interpreter::default().visit_apply(db, &mut state, &app)
+                &new_env,
+            )
         }
-        BinOpNode(BinOp {
-            name,
-            left,
-            right,
-            info,
-        }) => {
+        BinOpNode(BinOp { name, left, right, info }) => {
             let left_ty = infer(db, left, env)?;
-            let env = if name == ";" {
-                env.clone().merge(left_ty.clone())
-            } else {
-                env.clone()
-            };
-            let right_ty = infer(db, right, &env)?;
-            let ty = infer(
+            let right_ty = infer(db, right, env)?;
+            let new_env = env.clone().merge(rec!{"left" => left_ty, "right" => right_ty});
+            infer(
                 db,
                 &Sym {
                     name: name.to_string(),
                     info: info.clone(),
                 }
                 .to_node(),
-                &env,
-            )?;
-            let app = Apply {
-                inner: Box::new(ty.to_node()),
-                args: vec![
-                    Let {
-                        name: "left".to_string(),
-                        args: None,
-                        value: Box::new(left_ty.to_node()),
-                        info: info.clone(),
-                    },
-                    Let {
-                        name: "right".to_string(),
-                        args: None,
-                        value: Box::new(right_ty.to_node()),
-                        info: info.clone(),
-                    },
-                ],
-                info: info.clone(),
-            };
-            let mut state = vec![HashMap::new()];
-            Interpreter::default().visit_apply(db, &mut state, &app)
+                &new_env,
+            )
         }
         SymNode(Sym { name, info: _ }) => {
             if let Some(ext) = db.get_extern(name.to_string())? {
                 // TODO intros
-                return Ok(ext.ty);
+                let mut frame = HashMap::new();
+                for (name, ty) in env.clone().to_struct().iter() {
+                    frame.insert(name.clone(), ty.clone());
+                }
+                let mut state = vec![frame];
+                return Interpreter::default().visit(db, &mut state, &ext.ty);
             }
             Ok(env.access(name))
         }
@@ -131,7 +102,6 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
         }
         AbsNode(Abs {
             name,
-            // ty,
             value,
             info: _,
         }) => {

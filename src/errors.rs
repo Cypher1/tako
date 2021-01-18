@@ -12,6 +12,8 @@ pub enum TError {
 
     #[error("unknown symbol `{0}` at {1:?}, {2}")]
     UnknownSymbol(String, Info, String),
+    #[error("out of scope type variable `{0}`")]
+    OutOfScopeTypeVariable(String, Info),
     #[error("unknown infix operator `{0}` at {1:?}")]
     UnknownInfixOperator(String, Info),
     #[error("unknown prefix operator `{0}` at {1:?}")]
