@@ -22,6 +22,7 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
 fn infer_impl(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError> {
     // Infer that expression t has type A, t => A
     // See https://ncatlab.org/nlab/show/bidirectional+typechecking
+    let info = Info::default();
     use crate::ast::*;
     match expr {
         PrimNode(prim, _) => match prim {
@@ -42,8 +43,8 @@ fn infer_impl(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError
         },
         UnOpNode(UnOp { name, inner, info }) => {
             let it_ty = infer(db, inner, env)?;
-            let new_env = env.clone().merge(rec! {"it" => it_ty});
-            infer(
+            let new_env = env.clone().merge(rec! {"it" => it_ty.clone()});
+            let inner_ty = infer(
                 db,
                 &Sym {
                     name: name.to_string(),
@@ -51,7 +52,14 @@ fn infer_impl(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError
                 }
                 .to_node(),
                 &new_env,
-            )
+            )?;
+            let app = Apply {
+                inner: Box::new(inner_ty.to_node()),
+                args: vec![Let{name: "it".to_string(), args: None, value: Box::new(it_ty.to_node()), info: info.clone()}],
+                info: info.clone(),
+            };
+            let mut state = vec![];
+            return Interpreter::default().visit_apply(db, &mut state, &app);
         }
         BinOpNode(BinOp {
             name,
@@ -66,8 +74,8 @@ fn infer_impl(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError
             let right_ty = infer(db, right, &tmp_env)?;
             let new_env = env
                 .clone()
-                .merge(rec! {"left" => left_ty, "right" => right_ty});
-            infer(
+                .merge(rec! {"left" => left_ty.clone(), "right" => right_ty.clone()});
+            let inner_ty = infer(
                 db,
                 &Sym {
                     name: name.to_string(),
@@ -75,7 +83,14 @@ fn infer_impl(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError
                 }
                 .to_node(),
                 &new_env,
-            )
+            )?;
+            let app = Apply {
+                inner: Box::new(inner_ty.to_node()),
+                args: vec![Let{name: "left".to_string(), args: None, value: Box::new(left_ty.to_node()), info: info.clone()}, Let{name: "right".to_string(), args: None, value: Box::new(right_ty.to_node()), info: info.clone()}],
+                info: info.clone(),
+            };
+            let mut state = vec![];
+            return Interpreter::default().visit_apply(db, &mut state, &app);
         }
         SymNode(Sym { name, info: _ }) => {
             if let Some(ext) = db.get_extern(name.to_string())? {

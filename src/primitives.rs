@@ -88,7 +88,7 @@ impl Prim {
                 env.last_mut().unwrap().insert(name.to_string(), ty.clone());
                 Ok(ty.clone())
             }
-            _ => Ok(Void()),
+            _ => Ok(self.clone()),
         }
     }
 

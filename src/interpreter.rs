@@ -344,16 +344,19 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
                 return Ok(Struct(new_tys));
             }
             Function {
-                arguments, results, ..
+                arguments, results, intros
             } => {
                 if let Some(frame) = state.clone().last() {
+                    let mut new_args = vec![];
                     for (arg, ty) in arguments.clone().to_struct().iter() {
                         let arg_ty = &frame.get(arg).unwrap_or_else(|| &Void());
                         eprintln!(">> {}: {} unified with {}", &arg, &ty, &arg_ty);
                         let unified = ty.unify(arg_ty, state)?;
                         eprintln!(">>>> {}", &unified);
+                        new_args.push((arg.clone(), unified));
                     }
-                    return self.visit_prim(db, state, results);
+                    let results = self.visit_prim(db, state, results)?;
+                    return Ok(Function {intros: dict!(), arguments: Box::new(Struct(new_args)), results: Box::new(results)});
                 }
             }
             _ => {}
@@ -393,7 +396,13 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             val => val,
         };
         state.pop();
-        Ok(res)
+        match res {
+            Function{results, ..} => Ok(*results),
+            res => {
+                eprintln!("unexpected, apply on a {}", res);
+                Ok(res)
+            }
+        }
     }
 
     fn visit_abs(&mut self, db: &dyn Compiler, state: &mut State, expr: &Abs) -> Res {
