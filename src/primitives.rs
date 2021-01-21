@@ -45,7 +45,7 @@ pub enum Prim {
     Variable(String),
 }
 
-fn merge_vals(left: Vec<(String, Prim)>, right: Vec<(String, Prim)>) -> Vec<(String, Prim)> {
+pub fn merge_vals(left: Vec<(String, Prim)>, right: Vec<(String, Prim)>) -> Vec<(String, Prim)> {
     let mut names = HashSet::<String>::new();
     for pair in right.iter() {
         names.insert(pair.0.clone());
@@ -87,8 +87,8 @@ impl Prim {
                 // TODO handle unwrap
                 env.last_mut().unwrap().insert(name.to_string(), ty.clone());
                 Ok(ty.clone())
-            },
-            _ => Ok(Void())
+            }
+            _ => Ok(Void()),
         }
     }
 

@@ -1,11 +1,13 @@
 use std::collections::HashMap;
 
-use crate::ast::{Node, Info, ToNode};
+use crate::ast::{Info, Node, ToNode};
 use crate::database::Compiler;
 use crate::errors::TError;
 use crate::interpreter::{prim_add_strs, prim_pow, Res};
 use crate::primitives::{
-    bit_type, i32_type, number_type, string_type, type_type, unit_type, variable, void_type, Prim::* };
+    bit_type, i32_type, number_type, string_type, type_type, unit_type, variable, void_type,
+    Prim::*,
+};
 
 pub type FuncImpl = Box<dyn Fn(&dyn Compiler, HashMap<String, Box<dyn Fn() -> Res>>, Info) -> Res>;
 
@@ -270,7 +272,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
         },
         Extern {
             name: "=".to_string(),
-            semantic: operator(40, Right),
+            semantic: operator(40, Left),
             ty: Function {
                 intros: dict!("a" => variable("Identifier"), "b" => variable("Type")),
                 results: Box::new(variable("b")),

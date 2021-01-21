@@ -11,7 +11,11 @@ use crate::primitives::{
 pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError> {
     eprintln!("--- inferring type of {} ---", &expr);
     let res = infer_impl(db, expr, env);
-    eprintln!("--- inferred type of {} : {} ---", &expr, res.clone().unwrap_or_else(|_|Void()));
+    eprintln!(
+        "--- inferred type of {} : {} ---",
+        &expr,
+        res.clone().unwrap_or_else(|_| Void())
+    );
     res
 }
 
@@ -38,7 +42,7 @@ fn infer_impl(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError
         },
         UnOpNode(UnOp { name, inner, info }) => {
             let it_ty = infer(db, inner, env)?;
-            let new_env = env.clone().merge(rec!{"it" => it_ty});
+            let new_env = env.clone().merge(rec! {"it" => it_ty});
             infer(
                 db,
                 &Sym {
@@ -49,10 +53,20 @@ fn infer_impl(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError
                 &new_env,
             )
         }
-        BinOpNode(BinOp { name, left, right, info }) => {
+        BinOpNode(BinOp {
+            name,
+            left,
+            right,
+            info,
+        }) => {
             let left_ty = infer(db, left, env)?;
-            let right_ty = infer(db, right, env)?;
-            let new_env = env.clone().merge(rec!{"left" => left_ty, "right" => right_ty});
+            let tmp_env = env
+                .clone()
+                .merge(left_ty.clone());
+            let right_ty = infer(db, right, &tmp_env)?;
+            let new_env = env
+                .clone()
+                .merge(rec! {"left" => left_ty, "right" => right_ty});
             infer(
                 db,
                 &Sym {
@@ -73,6 +87,8 @@ fn infer_impl(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError
                 let mut state = vec![frame];
                 return Interpreter::default().visit(db, &mut state, &ext.ty);
             }
+            eprintln!("access sym: {}", name);
+            eprintln!("env sym: {}", env);
             Ok(env.access(name))
         }
         ApplyNode(Apply { inner, args, info }) => {
@@ -164,20 +180,27 @@ mod tests {
         use crate::ast::Visitor;
         use crate::cli_options::Options;
         let mut db = DB::default();
-        db.set_options(Options::new(&["-d".to_string(), "-d".to_string(), "-d".to_string()]));
+        db.set_options(Options::new(&[
+            "-d".to_string(),
+            "-d".to_string(),
+            "-d".to_string(),
+        ]));
         let module = vec![];
         dbg!(&prog_str);
         let prog = db.parse_str(module.clone(), prog_str).unwrap();
 
         let env = Variable("test_program".to_string()); // TODO: Track the type env
-        let prog_ty  = infer(&db, &prog, &env).unwrap();
-
         let ty = db.parse_str(module, ty).unwrap();
         let mut state = vec![HashMap::new()];
         let result_type = Interpreter::default().visit(&db, &mut state, &ty);
+
+        let prog_ty = infer(&db, &prog, &env).unwrap();
+
         if let Err(err) = &result_type {
             dbg!(format!("{}", &err));
         }
+        eprintln!("got: {}", prog_ty.clone());
+        eprintln!("expected: {}", result_type.clone().unwrap());
         assert_eq!(
             format!("{}", &prog_ty),
             format!("{}", result_type.clone().unwrap())

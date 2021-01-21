@@ -1,9 +1,8 @@
-#![feature(map_first_last)]
-use std::collections::HashMap;
 use super::ast::*;
 use super::database::Compiler;
 use super::errors::TError;
-use super::primitives::{Frame, Prim, Prim::*};
+use super::primitives::{merge_vals, Frame, Prim, Prim::*};
+use std::collections::HashMap;
 
 pub type ImplFn<'a> =
     &'a mut dyn FnMut(&dyn Compiler, HashMap<String, Box<dyn Fn() -> Res>>, Info) -> Res;
@@ -286,23 +285,55 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
         eprintln!("visiting prim {}", &expr);
         match expr {
             Variable(name) => {
-                let frame = state.last().cloned().unwrap_or_else(||map![]);
+                let frame = state.last().cloned().unwrap_or_else(|| map![]);
                 let mut kvs = vec![];
                 for (k, v) in frame.iter() {
                     kvs.push(format!("{} = {}", k, v))
                 }
                 eprintln!("variable {}, state: {}", &name, &kvs.join(","));
-                return state.last().unwrap().get(name).cloned().ok_or(TError::OutOfScopeTypeVariable(name.to_string(), Info::default())); // TODO: Get some info?
+                return state.last().unwrap().get(name).cloned().ok_or(
+                    TError::OutOfScopeTypeVariable(name.to_string(), Info::default()),
+                ); // TODO: Get some info?
             }
             Product(tys) => {
                 let mut new_tys = set![];
+                eprintln!("<<>> Product of {:?}", tys);
                 for ty in tys.iter() {
                     let new_ty = self.visit_prim(db, state, &ty)?; // Evaluate the type
+                    if new_tys.len() == 1 {
+                        let ty = new_tys
+                            .iter()
+                            .cloned()
+                            .next()
+                            .expect("This should never fail (1 sized set shouldn't be empty)");
+                        match (&ty, &new_ty) {
+                            (Product(ty), Product(new_ty)) => {
+                                new_tys = ty.union(new_ty).cloned().collect();
+                                continue;
+                            }
+                            (Struct(ty), Struct(new_ty)) => {
+                                new_tys = set![Struct(merge_vals(ty.clone(), new_ty.clone()))];
+                                continue;
+                            }
+                            (Struct(ty), new_ty) => {
+                                new_tys = set![Struct(merge_vals(ty.clone(), vec![("it".to_string(), new_ty.clone())]))];
+                                continue;
+                            }
+                            _ => {},
+                        }
+                    }
                     new_tys.insert(new_ty);
                 }
                 if new_tys.len() == 1 {
-                    return Ok(new_tys.iter().cloned().next().expect("This should never fail (1 sized set shouldn't be empty)"));
+                    let ty = new_tys
+                        .iter()
+                        .cloned()
+                        .next()
+                        .expect("This should never fail (1 sized set shouldn't be empty)");
+                    return Ok(ty);
                 }
+                eprintln!("<<<<>>>> of {}", Product(new_tys.clone()).to_node());
+                return Ok(Product(new_tys));
             }
             Struct(tys) => {
                 let mut new_tys = vec![];
@@ -312,17 +343,18 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
                 }
                 return Ok(Struct(new_tys));
             }
-            Function {arguments, results, ..} => {
+            Function {
+                arguments, results, ..
+            } => {
                 if let Some(frame) = state.clone().last() {
                     for (arg, ty) in arguments.clone().to_struct().iter() {
-                        let arg_ty = &frame.get(arg).unwrap_or_else(||&Void());
+                        let arg_ty = &frame.get(arg).unwrap_or_else(|| &Void());
                         eprintln!(">> {}: {} unified with {}", &arg, &ty, &arg_ty);
                         let unified = ty.unify(arg_ty, state)?;
                         eprintln!(">>>> {}", &unified);
                     }
                     return self.visit_prim(db, state, results);
                 }
-
             }
             _ => {}
         }
@@ -467,7 +499,9 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             "." => {
                 let l = l?;
                 let r = r()?;
-                self.visit_apply(db, state,
+                self.visit_apply(
+                    db,
+                    state,
                     &Apply {
                         inner: Box::new(r.to_node()),
                         args: vec![Let {
@@ -477,9 +511,9 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
                             info: info.clone(),
                         }],
                         info,
-                    }
+                    },
                 )
-            },
+            }
             ";" => {
                 l?;
                 let right = r()?;
