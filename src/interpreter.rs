@@ -315,10 +315,13 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
                                 continue;
                             }
                             (Struct(ty), new_ty) => {
-                                new_tys = set![Struct(merge_vals(ty.clone(), vec![("it".to_string(), new_ty.clone())]))];
+                                new_tys = set![Struct(merge_vals(
+                                    ty.clone(),
+                                    vec![("it".to_string(), new_ty.clone())]
+                                ))];
                                 continue;
                             }
-                            _ => {},
+                            _ => {}
                         }
                     }
                     new_tys.insert(new_ty);
@@ -342,7 +345,9 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
                 return Ok(Struct(new_tys));
             }
             Function {
-                arguments, results, intros
+                arguments,
+                results,
+                intros,
             } => {
                 if let Some(frame) = state.clone().last() {
                     let mut new_args = vec![];
@@ -354,7 +359,11 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
                         new_args.push((arg.clone(), unified));
                     }
                     let results = self.visit_prim(db, state, results)?;
-                    return Ok(Function {intros: dict!(), arguments: Box::new(Struct(new_args)), results: Box::new(results)});
+                    return Ok(Function {
+                        intros: dict!(),
+                        arguments: Box::new(Struct(new_args)),
+                        results: Box::new(results),
+                    });
                 }
             }
             _ => {}
@@ -395,7 +404,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
         };
         state.pop();
         match res {
-            Function{results, ..} => Ok(*results),
+            Function { results, .. } => Ok(*results),
             res => {
                 eprintln!("unexpected, apply on a {}", res);
                 Ok(res)

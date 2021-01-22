@@ -44,7 +44,12 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
             )?;
             let app = Apply {
                 inner: Box::new(inner_ty.to_node()),
-                args: vec![Let{name: "it".to_string(), args: None, value: Box::new(it_ty.to_node()), info: info.clone()}],
+                args: vec![Let {
+                    name: "it".to_string(),
+                    args: None,
+                    value: Box::new(it_ty.to_node()),
+                    info: info.clone(),
+                }],
                 info: info.clone(),
             };
             let mut state = vec![];
@@ -57,9 +62,7 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
             info,
         }) => {
             let left_ty = infer(db, left, env)?;
-            let tmp_env = env
-                .clone()
-                .merge(left_ty.clone());
+            let tmp_env = env.clone().merge(left_ty.clone());
             let right_ty = infer(db, right, &tmp_env)?;
             let new_env = env
                 .clone()
@@ -75,7 +78,20 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
             )?;
             let app = Apply {
                 inner: Box::new(inner_ty.to_node()),
-                args: vec![Let{name: "left".to_string(), args: None, value: Box::new(left_ty.to_node()), info: info.clone()}, Let{name: "right".to_string(), args: None, value: Box::new(right_ty.to_node()), info: info.clone()}],
+                args: vec![
+                    Let {
+                        name: "left".to_string(),
+                        args: None,
+                        value: Box::new(left_ty.to_node()),
+                        info: info.clone(),
+                    },
+                    Let {
+                        name: "right".to_string(),
+                        args: None,
+                        value: Box::new(right_ty.to_node()),
+                        info: info.clone(),
+                    },
+                ],
                 info: info.clone(),
             };
             let mut state = vec![];
