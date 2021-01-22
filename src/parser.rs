@@ -193,7 +193,7 @@ fn led(
                 toks.push_front(head);
                 toks.push_front(Token {
                     tok_type: TokenType::Op,
-                    value: ";".to_string(),
+                    value: ",".to_string(),
                     pos,
                 });
                 Ok((left, toks))
@@ -594,7 +594,7 @@ pub mod tests {
         assert_eq!(
             parse("\"hello world\"\n7".to_string()),
             BinOp {
-                name: ";".to_string(),
+                name: ",".to_string(),
                 left: Box::new(str_lit("hello world".to_string()).to_node()),
                 right: num_lit(7),
                 info: Info::default()
@@ -606,7 +606,7 @@ pub mod tests {
     #[test]
     fn parse_strings_with_operators_and_trailing_values_in_let() {
         assert_eq!(
-            parse("x()= !\"hello world\"\n7".to_string()),
+            parse("x()= !\"hello world\";\n7".to_string()),
             BinOp {
                 name: ";".to_string(),
                 left: Box::new(

@@ -264,7 +264,7 @@ mod tests {
 
     #[test]
     fn infer_type_of_sym_with_extra_lets_i32() {
-        assert_type("x=12;y=4;x", "I32");
+        assert_type("x=12,y=4;x", "I32");
     }
 
     #[test]
