@@ -297,7 +297,6 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             }
             Product(tys) => {
                 let mut new_tys = set![];
-                eprintln!("<<>> Product of {:?}", tys);
                 for ty in tys.iter() {
                     let new_ty = self.visit_prim(db, state, &ty)?; // Evaluate the type
                     if new_tys.len() == 1 {
@@ -332,7 +331,6 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
                         .expect("This should never fail (1 sized set shouldn't be empty)");
                     return Ok(ty);
                 }
-                eprintln!("<<<<>>>> of {}", Product(new_tys.clone()).to_node());
                 return Ok(Product(new_tys));
             }
             Struct(tys) => {

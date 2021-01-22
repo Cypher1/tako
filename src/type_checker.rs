@@ -9,17 +9,6 @@ use crate::primitives::{
 };
 
 pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError> {
-    eprintln!("--- inferring type of {} ---", &expr);
-    let res = infer_impl(db, expr, env);
-    eprintln!(
-        "--- inferred type of {} : {} ---",
-        &expr,
-        res.clone().unwrap_or_else(|_| Void())
-    );
-    res
-}
-
-fn infer_impl(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError> {
     // Infer that expression t has type A, t => A
     // See https://ncatlab.org/nlab/show/bidirectional+typechecking
     let info = Info::default();
