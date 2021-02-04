@@ -66,12 +66,11 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
             write!(state, "(").unwrap();
             let mut is_first = true;
             for arg in args.iter() {
-                if is_first {
-                    is_first = true;
-                } else {
+                if !is_first {
                     write!(state, ", ").unwrap();
                 }
                 self.visit_let(db, state, &arg)?;
+                is_first = false;
             }
             write!(state, ")").unwrap();
         }

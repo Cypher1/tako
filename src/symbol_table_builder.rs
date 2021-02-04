@@ -66,7 +66,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
     fn visit_root(&mut self, db: &dyn Compiler, module: &Path) -> Result<Root, TError> {
         let expr = &db.parse_file(module.clone())?;
         if db.debug_level() > 0 {
-            eprintln!("building symbol table for file... {:?}", &module);
+            eprintln!("building symbol table for file... {}", path_to_string(&module));
         }
 
         let mut table = Table::default();
@@ -130,7 +130,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
 
     fn visit_abs(&mut self, db: &dyn Compiler, state: &mut State, expr: &Abs) -> Res {
         if db.debug_level() > 1 {
-            eprintln!("visiting {:?} {}", state.path.clone(), &expr.name);
+            eprintln!("visiting {} {}", path_to_string(&state.path), &expr.name);
         }
 
         // Visit definition.
@@ -152,7 +152,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
 
     fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
         if db.debug_level() > 1 {
-            eprintln!("visiting {:?} {}", state.path.clone(), &expr.name);
+            eprintln!("visiting {} {}", path_to_string(&state.path), &expr.name);
         }
 
         // Visit definition.
