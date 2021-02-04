@@ -365,8 +365,7 @@ impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Symbol::Anon() => write!(f, "?")?,
-            Symbol::Named(name, None) => write!(f, "{}", name)?,
-            Symbol::Named(name, Some(ext)) => write!(f, "{}.{}", name, ext)?,
+            Symbol::Named(name, _) => write!(f, "{}", name)?,
         }
         Ok(())
     }
@@ -392,7 +391,7 @@ pub fn path_to_string(path: PathRef) -> String {
     path.iter()
         .map(|p| format!("{}", p))
         .collect::<Vec<String>>()
-        .join("::")
+        .join(".")
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
