@@ -272,7 +272,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
         },
         Extern {
             name: "=".to_string(),
-            semantic: operator(40, Left),
+            semantic: operator(40, Right),
             ty: Function {
                 intros: dict!("a" => variable("Identifier"), "b" => variable("Type")),
                 results: Box::new(variable("b")),
