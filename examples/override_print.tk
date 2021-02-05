@@ -2,6 +2,7 @@ print(it) = 0 // This overwrites print so that print does nothing.
 main() = {
     print("Hello\n")
     print("World\n")
+    ; 0
 }
 
-main()
+; main()
