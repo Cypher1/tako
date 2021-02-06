@@ -21,7 +21,10 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
     fn visit_root(&mut self, db: &dyn Compiler, module: &Path) -> Result<Root, TError> {
         let expr = db.build_symbol_table(module.clone())?;
         if db.debug_level() > 0 {
-            eprintln!("looking up definitions in file... {:?}", &module);
+            eprintln!(
+                "looking up definitions in file... {}",
+                path_to_string(&module)
+            );
         }
         let mut state = State {
             path: module.clone(),
@@ -36,7 +39,11 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
 
     fn visit_sym(&mut self, db: &dyn Compiler, state: &mut State, expr: &Sym) -> Res {
         if db.debug_level() > 1 {
-            eprintln!("visiting sym {:?} {}", state.path.clone(), &expr.name);
+            eprintln!(
+                "visiting sym {} {}",
+                path_to_string(&state.path),
+                &expr.name
+            );
         }
         let mut search: Vec<Symbol> = state.path.clone();
         loop {
@@ -49,7 +56,11 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
                 Some(node) => {
                     node.value.uses.insert(state.path.clone());
                     if db.debug_level() > 1 {
-                        eprintln!("FOUND {} at {:?}\n", expr.name.clone(), search.clone());
+                        eprintln!(
+                            "FOUND {} at {}\n",
+                            expr.name.clone(),
+                            path_to_string(&search)
+                        );
                     }
                     let mut res = expr.clone();
                     res.info.defined_at = Some(search);
@@ -58,7 +69,11 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
                 None => {
                     search.pop(); // Strip the name off.
                     if db.debug_level() > 1 {
-                        eprintln!("   not found {} at {:?}", expr.name.clone(), search.clone());
+                        eprintln!(
+                            "   not found {} at {}",
+                            expr.name.clone(),
+                            path_to_string(&search)
+                        );
                     }
                     if search.is_empty() {
                         return Err(TError::UnknownSymbol(
@@ -103,9 +118,22 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
         .to_node())
     }
 
+    fn visit_abs(&mut self, db: &dyn Compiler, state: &mut State, expr: &Abs) -> Res {
+        if db.debug_level() > 1 {
+            eprintln!("visiting {} {}", path_to_string(&state.path), &expr.name);
+        }
+        let value = Box::new(self.visit(db, state, &expr.value)?);
+        Ok(Abs {
+            name: expr.name.clone(),
+            value,
+            info: expr.info.clone(),
+        }
+        .to_node())
+    }
+
     fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
         if db.debug_level() > 1 {
-            eprintln!("visiting {:?} {}", state.path.clone(), &expr.name);
+            eprintln!("visiting {} {}", path_to_string(&state.path), &expr.name);
         }
         let path_name = Symbol::new(expr.name.clone());
         state.path.push(path_name);

@@ -1,11 +1,8 @@
-use std::collections::HashMap;
-
 use super::ast::*;
 use super::database::Compiler;
 use super::errors::TError;
-use super::primitives::{Prim, Prim::*};
-
-type Frame = HashMap<String, Prim>;
+use super::primitives::{merge_vals, Frame, Prim, Prim::*};
+use std::collections::HashMap;
 
 pub type ImplFn<'a> =
     &'a mut dyn FnMut(&dyn Compiler, HashMap<String, Box<dyn Fn() -> Res>>, Info) -> Res;
@@ -247,9 +244,8 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
 
     fn visit_sym(&mut self, db: &dyn Compiler, state: &mut State, expr: &Sym) -> Res {
         if db.debug_level() > 0 {
-            eprintln!("evaluating let {}", expr.clone().to_node());
+            eprintln!("evaluating sym {}", expr.clone().to_node());
         }
-        let name = &expr.name;
         let frame = || {
             let mut frame_vals: HashMap<String, Box<dyn Fn() -> Res>> = map!();
             for (name, val) in state.last().unwrap().clone().iter() {
@@ -258,6 +254,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             }
             frame_vals
         };
+        let name = &expr.name;
         let value = find_symbol(&state, name);
         if let Some(prim) = value {
             if db.debug_level() > 0 {
@@ -266,13 +263,13 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             return Ok(prim.clone());
         }
         if db.debug_level() > 2 {
-            eprintln!("checking for interpreter impl {}", expr.name.clone());
+            eprintln!("checking for interpreter impl {}", name);
         }
         if let Some(extern_impl) = &mut self.impls.get_mut(name) {
             return extern_impl(db, frame(), expr.get_info());
         }
         if db.debug_level() > 2 {
-            eprintln!("checking for default impl {}", expr.name.clone());
+            eprintln!("checking for default impl {}", name);
         }
         if let Some(default_impl) = crate::externs::get_implementation(name.to_owned()) {
             return default_impl(db, frame(), expr.get_info());
@@ -284,7 +281,93 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
         ))
     }
 
-    fn visit_prim(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Prim) -> Res {
+    fn visit_prim(&mut self, db: &dyn Compiler, state: &mut State, expr: &Prim) -> Res {
+        eprintln!("visiting prim {}", &expr);
+        match expr {
+            Variable(name) => {
+                let frame = state.last().cloned().unwrap_or_default();
+                let mut kvs = vec![];
+                for (k, v) in frame.iter() {
+                    kvs.push(format!("{} = {}", k, v))
+                }
+                eprintln!("variable {}, state: {}", &name, &kvs.join(","));
+                return state.last().unwrap().get(name).cloned().ok_or_else(|| {
+                    TError::OutOfScopeTypeVariable(name.to_string(), Info::default())
+                }); // TODO: Get some info?
+            }
+            Product(tys) => {
+                let mut new_tys = set![];
+                for ty in tys.iter() {
+                    let new_ty = self.visit_prim(db, state, &ty)?; // Evaluate the type
+                    if new_tys.len() == 1 {
+                        let ty = new_tys
+                            .iter()
+                            .cloned()
+                            .next()
+                            .expect("This should never fail (1 sized set shouldn't be empty)");
+                        match (&ty, &new_ty) {
+                            (Product(ty), Product(new_ty)) => {
+                                new_tys = ty.union(new_ty).cloned().collect();
+                                continue;
+                            }
+                            (Struct(ty), Struct(new_ty)) => {
+                                new_tys = set![Struct(merge_vals(ty.clone(), new_ty.clone()))];
+                                continue;
+                            }
+                            (Struct(ty), new_ty) => {
+                                new_tys = set![Struct(merge_vals(
+                                    ty.clone(),
+                                    vec![("it".to_string(), new_ty.clone())]
+                                ))];
+                                continue;
+                            }
+                            _ => {}
+                        }
+                    }
+                    new_tys.insert(new_ty);
+                }
+                if new_tys.len() == 1 {
+                    let ty = new_tys
+                        .iter()
+                        .cloned()
+                        .next()
+                        .expect("This should never fail (1 sized set shouldn't be empty)");
+                    return Ok(ty);
+                }
+                return Ok(Product(new_tys));
+            }
+            Struct(tys) => {
+                let mut new_tys = vec![];
+                for (name, ty) in tys.iter() {
+                    let new_ty = self.visit_prim(db, state, &ty)?; // Evaluate the type
+                    new_tys.push((name.clone(), new_ty));
+                }
+                return Ok(Struct(new_tys));
+            }
+            Function {
+                arguments,
+                results,
+                intros: _,
+            } => {
+                if let Some(frame) = state.clone().last() {
+                    let mut new_args = vec![];
+                    for (arg, ty) in arguments.clone().into_struct().iter() {
+                        let arg_ty = &frame.get(arg).unwrap_or(&Void());
+                        eprintln!(">> {}: {} unified with {}", &arg, &ty, &arg_ty);
+                        let unified = ty.unify(arg_ty, state)?;
+                        eprintln!(">>>> {}", &unified);
+                        new_args.push((arg.clone(), unified));
+                    }
+                    let results = self.visit_prim(db, state, results)?;
+                    return Ok(Function {
+                        intros: dict!(),
+                        arguments: Box::new(Struct(new_args)),
+                        results: Box::new(results),
+                    });
+                }
+            }
+            _ => {}
+        }
         Ok(expr.clone())
     }
 
@@ -302,10 +385,47 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
         // Run the inner
         let res = match inner {
             Prim::Lambda(func) => self.visit(db, state, &*func)?,
+            Prim::Function {
+                intros: _, // TODO
+                arguments,
+                results,
+            } => {
+                let frame = state.last_mut().expect("Stack frame missing");
+                if let Struct(vals) = *arguments {
+                    for (name, val) in vals {
+                        frame.insert(name, val);
+                    }
+                } else {
+                    frame.insert("it".to_string(), *arguments);
+                }
+                self.visit_prim(db, state, &*results)?
+            }
             val => val,
         };
         state.pop();
-        Ok(res)
+        match res {
+            Function { results, .. } => Ok(*results),
+            res => {
+                eprintln!("unexpected, apply on a {}", res);
+                Ok(res)
+            }
+        }
+    }
+
+    fn visit_abs(&mut self, db: &dyn Compiler, state: &mut State, expr: &Abs) -> Res {
+        if db.debug_level() > 0 {
+            eprintln!("introducing abstraction {}", expr.clone().to_node());
+        }
+
+        // Add a new scope
+        let mut frame = Frame::new();
+        frame.insert(expr.name.clone(), Variable(expr.name.clone()));
+        state.push(frame);
+        let result = self.visit(db, state, &expr.value)?;
+        // Drop the finished scope
+        state.pop();
+        // TODO: Rewrap in the abstraction
+        Ok(result)
     }
 
     fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
@@ -392,6 +512,24 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
                 let right = r()?;
                 Ok(left.merge(right))
             }
+            "." => {
+                let l = l?;
+                let r = r()?;
+                self.visit_apply(
+                    db,
+                    state,
+                    &Apply {
+                        inner: Box::new(r.to_node()),
+                        args: vec![Let {
+                            name: "it".to_string(),
+                            value: Box::new(l.to_node()),
+                            args: None,
+                            info: info.clone(),
+                        }],
+                        info,
+                    },
+                )
+            }
             ";" => {
                 l?;
                 let right = r()?;
@@ -404,7 +542,6 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             "-|" => match l {
                 //TODO: Add pattern matching.
                 Ok(Bool(false)) => Err(TError::RequirementFailure(info)),
-                Ok(Lambda(_)) => Ok(Lambda(Box::new(expr.clone().to_node()))),
                 Ok(_) => r(),
                 l => l,
             },

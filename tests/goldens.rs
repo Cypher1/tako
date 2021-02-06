@@ -66,7 +66,7 @@ fn test_with_expectation(expected: TestResult, options: Vec<&str>) {
             let golden = read
                 .unwrap_or_else(|_| panic!("golden file {} could not be read", gold))
                 .replace("\r", "");
-            assert_eq!(golden, format!("{}{}", stdout.join(""), result));
+            assert_eq!(format!("{}{}", stdout.join(""), result), golden);
             eprintln!("Success. Result:\n{:?}", result);
         }
         (Err(err), Error) => {
@@ -580,6 +580,11 @@ fn printing() {
 
 #[test]
 fn error_printing() {
+    interpret_with_success("examples/error_printing.tk");
+}
+
+#[test]
+fn compile_error_printing() {
     compile_with_success("examples/error_printing.tk");
 }
 

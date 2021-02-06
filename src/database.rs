@@ -8,7 +8,7 @@ use std::process::Command;
 
 use directories::ProjectDirs;
 
-use super::ast::{Node, Path, PathRef, Root, Symbol, Table, Visitor};
+use super::ast::{path_to_string, Node, Path, PathRef, Root, Symbol, Table, Visitor};
 use super::cli_options::Options;
 use super::errors::TError;
 use super::externs::{Extern, Semantic};
@@ -106,7 +106,11 @@ pub fn filename(db: &dyn Compiler, module: Path) -> String {
         .collect();
     let file_name = parts.join("/");
     if db.debug_level() > 0 {
-        eprintln!("Getting filename for {:?}, {:?}", module, file_name);
+        eprintln!(
+            "Getting filename for {}, {}",
+            path_to_string(&module),
+            file_name
+        );
     }
     file_name
 }
@@ -137,7 +141,7 @@ fn lex_string(
 ) -> Result<VecDeque<Token>, TError> {
     use crate::parser;
     if db.debug_level() > 0 {
-        eprintln!("lexing file... {:?}", &module);
+        eprintln!("lexing file... {}", path_to_string(&module));
     }
     parser::lex_string(db, &module, &contents)
 }
@@ -145,7 +149,7 @@ fn lex_string(
 fn lex_file(db: &dyn Compiler, module: Path) -> Result<VecDeque<Token>, TError> {
     use crate::parser;
     if db.debug_level() > 0 {
-        eprintln!("lexing file... {:?}", &module);
+        eprintln!("lexing file... {}", path_to_string(&module));
     }
     parser::lex(db, &module)
 }
@@ -171,7 +175,11 @@ fn build_symbol_table(db: &dyn Compiler, module: Path) -> Result<Root, TError> {
 
 fn find_symbol(db: &dyn Compiler, mut context: Path, path: Path) -> Result<Option<Table>, TError> {
     if db.debug_level() > 1 {
-        eprintln!(">>> looking for symbol {:?} in {:?}", path, context);
+        eprintln!(
+            ">>> looking for symbol {} in {}",
+            path_to_string(&path),
+            path_to_string(&context)
+        );
     }
     let table = db.look_up_definitions(context.clone())?.table;
     loop {
@@ -182,15 +190,27 @@ fn find_symbol(db: &dyn Compiler, mut context: Path, path: Path) -> Result<Optio
         search.extend(path.clone());
         if let Some(node) = table.find(&search) {
             if db.debug_level() > 1 {
-                eprintln!("FOUND INSIDE {:?} {:?}", context, search);
+                eprintln!(
+                    "FOUND INSIDE {} {}",
+                    path_to_string(&context),
+                    path_to_string(&search)
+                );
             }
             return Ok(Some(node.clone()));
         }
         if db.debug_level() > 1 {
-            eprintln!("   not found {:?} at {:?}", path.clone(), search.clone());
+            eprintln!(
+                "   not found {} at {}",
+                path_to_string(&path),
+                path_to_string(&search)
+            );
         }
         if context.is_empty() {
-            eprintln!("   not found {:?} at {:?}", path, search);
+            eprintln!(
+                "   not found {} at {}",
+                path_to_string(&path),
+                path_to_string(&search)
+            );
             return Ok(None);
         }
         context.pop(); // Up one, go again.
@@ -201,7 +221,7 @@ fn find_symbol_uses(db: &dyn Compiler, path: Path) -> Result<HashSet<Path>, TErr
     if let Some(symb) = db.find_symbol(path.clone(), Vec::new())? {
         return Ok(symb.value.uses);
     }
-    use crate::ast::{path_to_string, Info};
+    use crate::ast::Info;
     Err(TError::UnknownSymbol(
         path_to_string(&path),
         Info::default(),
@@ -214,8 +234,8 @@ fn to_file_path(context: PathRef) -> Path {
     loop {
         match module.last() {
             None => panic!(format!(
-                "Couldn't find a file associated with symbol at {:?}",
-                context
+                "Couldn't find a file associated with symbol at {}",
+                path_to_string(&context)
             )),
             Some(Symbol::Anon()) => {}                   // Skip anons
             Some(Symbol::Named(_, None)) => {}           // Skip regular symbols
@@ -230,7 +250,7 @@ fn look_up_definitions(db: &dyn Compiler, context: Path) -> Result<Root, TError>
     use crate::definition_finder::DefinitionFinder;
     let module = to_file_path(&context);
     if db.debug_level() > 0 {
-        eprintln!("look up definitions >> {:?}", &module);
+        eprintln!("look up definitions >> {}", path_to_string(&module));
     }
     DefinitionFinder::process(&module, db)
 }
@@ -238,7 +258,7 @@ fn look_up_definitions(db: &dyn Compiler, context: Path) -> Result<Root, TError>
 fn infer(db: &dyn Compiler, expr: Node, env: Prim) -> Result<Prim, TError> {
     use crate::type_checker::infer;
     if db.debug_level() > 0 {
-        eprintln!("infering type for ... {:?}", &expr);
+        eprintln!("infering type for ... {}", &expr);
     }
     infer(db, &expr, &env)
 }
@@ -246,7 +266,7 @@ fn infer(db: &dyn Compiler, expr: Node, env: Prim) -> Result<Prim, TError> {
 fn compile_to_cpp(db: &dyn Compiler, module: Path) -> Result<(String, HashSet<String>), TError> {
     use crate::to_cpp::CodeGenerator;
     if db.debug_level() > 0 {
-        eprintln!("generating code for file ... {:?}", &module);
+        eprintln!("generating code for file ... {}", path_to_string(&module));
     }
     CodeGenerator::process(&module, db)
 }
@@ -254,7 +274,7 @@ fn compile_to_cpp(db: &dyn Compiler, module: Path) -> Result<(String, HashSet<St
 fn build_with_gpp(db: &dyn Compiler, module: Path) -> Result<String, TError> {
     let (res, flags) = db.compile_to_cpp(module.clone())?;
     if db.debug_level() > 0 {
-        eprintln!("building file with g++ ... {:?}", &module);
+        eprintln!("building file with g++ ... {}", path_to_string(&module));
     }
 
     let name: String = module

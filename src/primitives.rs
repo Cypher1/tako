@@ -2,6 +2,7 @@ use crate::ast::Info;
 use crate::ast::Node;
 use crate::errors::TError;
 use std::collections::BTreeSet;
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt;
 
@@ -13,6 +14,7 @@ pub type Offset = i32;
 type Layout = Vec<Prim>;
 type TypeSet = BTreeSet<Prim>;
 type Pack = BTreeSet<(String, Prim)>;
+pub type Frame = HashMap<String, Prim>;
 
 #[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Debug, Hash)]
 pub enum Prim {
@@ -43,7 +45,7 @@ pub enum Prim {
     Variable(String),
 }
 
-fn merge_vals(left: Vec<(String, Prim)>, right: Vec<(String, Prim)>) -> Vec<(String, Prim)> {
+pub fn merge_vals(left: Vec<(String, Prim)>, right: Vec<(String, Prim)>) -> Vec<(String, Prim)> {
     let mut names = HashSet::<String>::new();
     for pair in right.iter() {
         names.insert(pair.0.clone());
@@ -61,12 +63,72 @@ fn merge_vals(left: Vec<(String, Prim)>, right: Vec<(String, Prim)>) -> Vec<(Str
 }
 
 impl Prim {
+    pub fn into_struct(self: Prim) -> Vec<(String, Prim)> {
+        match self {
+            Struct(vals) => vals,
+            _ => vec![("it".to_string(), self)],
+        }
+    }
+
     pub fn merge(self: Prim, other: Prim) -> Prim {
         use Prim::*;
         match (self, other) {
             (Struct(vals), Struct(o_vals)) => Struct(merge_vals(vals, o_vals)),
-            (Struct(vals), other) => Struct(merge_vals(vals, vec![("it".to_string(), other)])),
-            (_, other) => other,
+            (Struct(vals), other) => Struct(merge_vals(vals, other.into_struct())),
+            (vals, Struct(other)) => Struct(merge_vals(vals.into_struct(), other)),
+            (thing, other) => rec!["left" => thing, "right" => other],
+        }
+    }
+
+    pub fn unify(self: &Prim, other: &Prim, env: &mut Vec<Frame>) -> Result<Prim, TError> {
+        match (self, other) {
+            (Variable(name), ty) => {
+                // TODO check if already assigned (and if so unify again)
+                // TODO handle unwrap
+                env.last_mut().unwrap().insert(name.to_string(), ty.clone());
+                Ok(ty.clone())
+            }
+            _ => Ok(self.clone()),
+        }
+    }
+
+    pub fn access(self: &Prim, name: &str) -> Prim {
+        match self {
+            Void() => Void(),
+            Unit() => Void(),
+            Bool(_) => Void(),
+            I32(_) => Void(),
+            Str(_) => Void(),
+            Lambda(_) => Void(),
+            Struct(tys) => {
+                for (param, ty) in tys.iter() {
+                    if param == name {
+                        return ty.clone();
+                    }
+                }
+                Void()
+            }
+            Union(_) => Void(),   // TODO
+            Product(_) => Void(), // TODO
+            StaticPointer(_) => Void(),
+            Padded(_, ty) => ty.access(name),
+            Tag(_, _) => Void(), // TODO
+            Pointer(_, ty) => ty.access(name),
+            Function {
+                intros: _,
+                arguments,
+                results,
+            } => match name {
+                "arguments" => *arguments.clone(),
+                "results" => *results.clone(),
+                _ => Void(),
+            },
+            App {
+                inner: _,
+                arguments: _,
+            } => Void(), // TODO
+            WithEffect(ty, effs) => WithEffect(Box::new(ty.access(name)), effs.to_vec()),
+            Variable(var) => Variable(format!("{}.{}", var, name)),
         }
     }
 }
@@ -93,7 +155,7 @@ impl fmt::Display for Prim {
             Str(val) => write!(f, "'{}'", val),
             Lambda(val) => write!(f, "{}", val),
             Struct(vals) => {
-                write!(f, "{{").unwrap();
+                write!(f, "(").unwrap();
                 let mut is_first = true;
                 for val in vals.iter() {
                     if !is_first {
@@ -102,7 +164,7 @@ impl fmt::Display for Prim {
                     write!(f, "{} = {}", val.0, &val.1).unwrap();
                     is_first = false;
                 }
-                write!(f, "}}")
+                write!(f, ")")
             }
             Union(s) => {
                 write!(f, "Union(")?;
@@ -132,7 +194,23 @@ impl fmt::Display for Prim {
             Tag(tag, bits) => write!(f, "Tag<{}b>{}", bits, tag),
             Padded(size, t) => write!(f, "Pad<{}b>{}", size, t),
             StaticPointer(ptr_size) => write!(f, "*<{}b>Code", ptr_size),
-            x => write!(f, "({:?})", x),
+            Function {
+                intros,
+                results,
+                arguments,
+            } => {
+                if !intros.is_empty() {
+                    let ints: Vec<String> = intros
+                        .iter()
+                        .map(|(name, ty)| format!("{}: {}", name, ty))
+                        .collect();
+                    write!(f, "{}|-", ints.join("|-"))?;
+                }
+                write!(f, "{} -> {}", arguments, results)
+            }
+            App { inner, arguments } => write!(f, "({})({})", inner, arguments),
+            WithEffect(ty, effs) => write!(f, "{}+{}", ty, effs.join("+")),
+            Variable(name) => write!(f, "{}", name),
         }
     }
 }

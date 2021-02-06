@@ -21,7 +21,7 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
 
     fn visit_sym(&mut self, _db: &dyn Compiler, state: &mut State, expr: &Sym) -> Res {
         if let Some(def_at) = expr.get_info().defined_at {
-            write!(state, "::{}", path_to_string(&def_at)).unwrap();
+            write!(state, ".{}", path_to_string(&def_at)).unwrap();
         } else {
             write!(state, "{}", expr.name).unwrap();
         }
@@ -34,24 +34,30 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
     }
 
     fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
-        self.visit(db, state, &*expr.inner)?;
         write!(state, "(").unwrap();
+        self.visit(db, state, &*expr.inner)?;
+        write!(state, ")(").unwrap();
         let mut is_first = true;
         for arg in expr.args.iter() {
-            self.visit_let(db, state, &arg)?;
             if is_first {
-                is_first = true;
+                is_first = false;
             } else {
                 write!(state, ", ").unwrap();
             }
+            self.visit_let(db, state, &arg)?;
         }
         write!(state, ")").unwrap();
         Ok(())
     }
 
+    fn visit_abs(&mut self, db: &dyn Compiler, state: &mut State, expr: &Abs) -> Res {
+        write!(state, "{}|-", expr.name).unwrap();
+        self.visit(db, state, &*expr.value)
+    }
+
     fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
         if let Some(def_at) = expr.get_info().defined_at {
-            write!(state, "::{}", path_to_string(&def_at)).unwrap();
+            write!(state, ".{}", path_to_string(&def_at)).unwrap();
         } else {
             write!(state, "{}", expr.name).unwrap();
         }
@@ -60,12 +66,11 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
             write!(state, "(").unwrap();
             let mut is_first = true;
             for arg in args.iter() {
-                self.visit_let(db, state, &arg)?;
-                if is_first {
-                    is_first = true;
-                } else {
+                if !is_first {
                     write!(state, ", ").unwrap();
                 }
+                self.visit_let(db, state, &arg)?;
+                is_first = false;
             }
             write!(state, ")").unwrap();
         }
