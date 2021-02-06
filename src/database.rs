@@ -8,7 +8,7 @@ use std::process::Command;
 
 use directories::ProjectDirs;
 
-use super::ast::{Node, Path, PathRef, Root, Symbol, Table, Visitor, path_to_string};
+use super::ast::{path_to_string, Node, Path, PathRef, Root, Symbol, Table, Visitor};
 use super::cli_options::Options;
 use super::errors::TError;
 use super::externs::{Extern, Semantic};
@@ -106,7 +106,11 @@ pub fn filename(db: &dyn Compiler, module: Path) -> String {
         .collect();
     let file_name = parts.join("/");
     if db.debug_level() > 0 {
-        eprintln!("Getting filename for {}, {}", path_to_string(&module), file_name);
+        eprintln!(
+            "Getting filename for {}, {}",
+            path_to_string(&module),
+            file_name
+        );
     }
     file_name
 }
@@ -171,7 +175,11 @@ fn build_symbol_table(db: &dyn Compiler, module: Path) -> Result<Root, TError> {
 
 fn find_symbol(db: &dyn Compiler, mut context: Path, path: Path) -> Result<Option<Table>, TError> {
     if db.debug_level() > 1 {
-        eprintln!(">>> looking for symbol {} in {}", path_to_string(&path), path_to_string(&context));
+        eprintln!(
+            ">>> looking for symbol {} in {}",
+            path_to_string(&path),
+            path_to_string(&context)
+        );
     }
     let table = db.look_up_definitions(context.clone())?.table;
     loop {
@@ -182,15 +190,27 @@ fn find_symbol(db: &dyn Compiler, mut context: Path, path: Path) -> Result<Optio
         search.extend(path.clone());
         if let Some(node) = table.find(&search) {
             if db.debug_level() > 1 {
-                eprintln!("FOUND INSIDE {} {}", path_to_string(&context), path_to_string(&search));
+                eprintln!(
+                    "FOUND INSIDE {} {}",
+                    path_to_string(&context),
+                    path_to_string(&search)
+                );
             }
             return Ok(Some(node.clone()));
         }
         if db.debug_level() > 1 {
-            eprintln!("   not found {} at {}", path_to_string(&path), path_to_string(&search));
+            eprintln!(
+                "   not found {} at {}",
+                path_to_string(&path),
+                path_to_string(&search)
+            );
         }
         if context.is_empty() {
-            eprintln!("   not found {} at {}", path_to_string(&path), path_to_string(&search));
+            eprintln!(
+                "   not found {} at {}",
+                path_to_string(&path),
+                path_to_string(&search)
+            );
             return Ok(None);
         }
         context.pop(); // Up one, go again.

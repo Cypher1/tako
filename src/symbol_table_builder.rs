@@ -66,7 +66,10 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
     fn visit_root(&mut self, db: &dyn Compiler, module: &Path) -> Result<Root, TError> {
         let expr = &db.parse_file(module.clone())?;
         if db.debug_level() > 0 {
-            eprintln!("building symbol table for file... {}", path_to_string(&module));
+            eprintln!(
+                "building symbol table for file... {}",
+                path_to_string(&module)
+            );
         }
 
         let mut table = Table::default();
