@@ -580,6 +580,11 @@ fn printing() {
 
 #[test]
 fn error_printing() {
+    interpret_with_success("examples/error_printing.tk");
+}
+
+#[test]
+fn compile_error_printing() {
     compile_with_success("examples/error_printing.tk");
 }
 
