@@ -291,9 +291,9 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
                     kvs.push(format!("{} = {}", k, v))
                 }
                 eprintln!("variable {}, state: {}", &name, &kvs.join(","));
-                return state.last().unwrap().get(name).cloned().ok_or_else(
-                    ||TError::OutOfScopeTypeVariable(name.to_string(), Info::default()),
-                ); // TODO: Get some info?
+                return state.last().unwrap().get(name).cloned().ok_or_else(|| {
+                    TError::OutOfScopeTypeVariable(name.to_string(), Info::default())
+                }); // TODO: Get some info?
             }
             Product(tys) => {
                 let mut new_tys = set![];
