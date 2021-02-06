@@ -268,7 +268,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
                 results: Box::new(Product(set!(variable("a"), variable("b")))),
                 arguments: Box::new(rec!("left" => variable("a"), "right" => variable("b"))),
             }.to_node(),
-            cpp: LangImpl::operator(", "),
+            cpp: LangImpl::operator(";"),
         },
         Extern {
             name: "=".to_string(),

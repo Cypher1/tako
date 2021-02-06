@@ -471,7 +471,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 };
                 return Ok(done);
             }
-            ";" => {
+            "," | ";" => {
                 // TODO: handle 'error' values more widly.
                 return Ok(left.merge(right));
             }
