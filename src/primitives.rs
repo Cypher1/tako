@@ -63,7 +63,7 @@ pub fn merge_vals(left: Vec<(String, Prim)>, right: Vec<(String, Prim)>) -> Vec<
 }
 
 impl Prim {
-    pub fn to_struct(self: Prim) -> Vec<(String, Prim)> {
+    pub fn into_struct(self: Prim) -> Vec<(String, Prim)> {
         match self {
             Struct(vals) => vals,
             _ => vec![("it".to_string(), self)],
@@ -74,8 +74,8 @@ impl Prim {
         use Prim::*;
         match (self, other) {
             (Struct(vals), Struct(o_vals)) => Struct(merge_vals(vals, o_vals)),
-            (Struct(vals), other) => Struct(merge_vals(vals, other.to_struct())),
-            (vals, Struct(other)) => Struct(merge_vals(vals.to_struct(), other)),
+            (Struct(vals), other) => Struct(merge_vals(vals, other.into_struct())),
+            (vals, Struct(other)) => Struct(merge_vals(vals.into_struct(), other)),
             (thing, other) => rec!["left" => thing, "right" => other],
         }
     }

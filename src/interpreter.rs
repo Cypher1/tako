@@ -285,14 +285,14 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
         eprintln!("visiting prim {}", &expr);
         match expr {
             Variable(name) => {
-                let frame = state.last().cloned().unwrap_or_else(|| map![]);
+                let frame = state.last().cloned().unwrap_or_default();
                 let mut kvs = vec![];
                 for (k, v) in frame.iter() {
                     kvs.push(format!("{} = {}", k, v))
                 }
                 eprintln!("variable {}, state: {}", &name, &kvs.join(","));
-                return state.last().unwrap().get(name).cloned().ok_or(
-                    TError::OutOfScopeTypeVariable(name.to_string(), Info::default()),
+                return state.last().unwrap().get(name).cloned().ok_or_else(
+                    ||TError::OutOfScopeTypeVariable(name.to_string(), Info::default()),
                 ); // TODO: Get some info?
             }
             Product(tys) => {
@@ -347,12 +347,12 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             Function {
                 arguments,
                 results,
-                intros,
+                intros: _,
             } => {
                 if let Some(frame) = state.clone().last() {
                     let mut new_args = vec![];
-                    for (arg, ty) in arguments.clone().to_struct().iter() {
-                        let arg_ty = &frame.get(arg).unwrap_or_else(|| &Void());
+                    for (arg, ty) in arguments.clone().into_struct().iter() {
+                        let arg_ty = &frame.get(arg).unwrap_or(&Void());
                         eprintln!(">> {}: {} unified with {}", &arg, &ty, &arg_ty);
                         let unified = ty.unify(arg_ty, state)?;
                         eprintln!(">>>> {}", &unified);

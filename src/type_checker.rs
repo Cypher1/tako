@@ -11,7 +11,6 @@ use crate::primitives::{
 pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError> {
     // Infer that expression t has type A, t => A
     // See https://ncatlab.org/nlab/show/bidirectional+typechecking
-    let info = Info::default();
     use crate::ast::*;
     match expr {
         PrimNode(prim, _) => match prim {
@@ -53,7 +52,7 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
                 info: info.clone(),
             };
             let mut state = vec![];
-            return Interpreter::default().visit_apply(db, &mut state, &app);
+            Interpreter::default().visit_apply(db, &mut state, &app)
         }
         BinOpNode(BinOp {
             name,
@@ -95,13 +94,13 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
                 info: info.clone(),
             };
             let mut state = vec![];
-            return Interpreter::default().visit_apply(db, &mut state, &app);
+            Interpreter::default().visit_apply(db, &mut state, &app)
         }
         SymNode(Sym { name, info: _ }) => {
             if let Some(ext) = db.get_extern(name.to_string())? {
                 // TODO intros
                 let mut frame = HashMap::new();
-                for (name, ty) in env.clone().to_struct().iter() {
+                for (name, ty) in env.clone().into_struct().iter() {
                     frame.insert(name.clone(), ty.clone());
                 }
                 let mut state = vec![frame];
@@ -149,11 +148,11 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
                     results,
                 } => {
                     intros.insert((name.to_string(), Variable("typename".to_string())));
-                    return Ok(Function {
+                    Ok(Function {
                         intros,
                         arguments,
                         results,
-                    });
+                    })
                 }
                 ty => panic!("abstraction over {} for {}", &name, &ty),
             }

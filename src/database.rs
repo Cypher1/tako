@@ -221,7 +221,7 @@ fn find_symbol_uses(db: &dyn Compiler, path: Path) -> Result<HashSet<Path>, TErr
     if let Some(symb) = db.find_symbol(path.clone(), Vec::new())? {
         return Ok(symb.value.uses);
     }
-    use crate::ast::{path_to_string, Info};
+    use crate::ast::Info;
     Err(TError::UnknownSymbol(
         path_to_string(&path),
         Info::default(),
