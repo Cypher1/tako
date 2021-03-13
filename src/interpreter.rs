@@ -1,7 +1,7 @@
 use super::ast::*;
 use super::database::Compiler;
 use super::errors::TError;
-use super::primitives::{merge_vals, Frame, Prim, Prim::*, void_type};
+use super::primitives::{merge_vals, void_type, Frame, Prim, Prim::*};
 use std::collections::HashMap;
 
 pub type ImplFn<'a> =

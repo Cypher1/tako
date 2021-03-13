@@ -6,7 +6,7 @@ use crate::database::Compiler;
 use crate::database::DB;
 use crate::errors::TError;
 use crate::location::*;
-use crate::primitives::{Prim, unit_type};
+use crate::primitives::{unit_type, Prim};
 use crate::tree::*;
 
 impl ToNode for TError {

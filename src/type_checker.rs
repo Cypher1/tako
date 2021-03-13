@@ -2,12 +2,10 @@ use crate::ast::{Node, Node::*};
 use crate::database::Compiler;
 use crate::errors::TError;
 use crate::interpreter::Interpreter;
-use std::collections::HashMap;
 use std::collections::BTreeSet;
+use std::collections::HashMap;
 
-use crate::primitives::{
-    bit_type, i32_type, record, string_type, Prim, Prim::*,
-};
+use crate::primitives::{bit_type, i32_type, record, string_type, Prim, Prim::*};
 
 pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError> {
     // Infer that expression t has type A, t => A
