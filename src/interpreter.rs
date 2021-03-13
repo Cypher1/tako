@@ -1,7 +1,7 @@
 use super::ast::*;
 use super::database::Compiler;
 use super::errors::TError;
-use super::primitives::{merge_vals, Frame, Prim, Prim::*};
+use super::primitives::{merge_vals, Frame, Prim, Prim::*, void_type};
 use std::collections::HashMap;
 
 pub type ImplFn<'a> =
@@ -352,7 +352,8 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
                 if let Some(frame) = state.clone().last() {
                     let mut new_args = vec![];
                     for (arg, ty) in arguments.clone().into_struct().iter() {
-                        let arg_ty = &frame.get(arg).unwrap_or(&Void());
+                        let void = void_type();
+                        let arg_ty = &frame.get(arg).unwrap_or(&void);
                         eprintln!(">> {}: {} unified with {}", &arg, &ty, &arg_ty);
                         let unified = ty.unify(arg_ty, state)?;
                         eprintln!(">>>> {}", &unified);

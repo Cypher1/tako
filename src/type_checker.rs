@@ -3,9 +3,10 @@ use crate::database::Compiler;
 use crate::errors::TError;
 use crate::interpreter::Interpreter;
 use std::collections::HashMap;
+use std::collections::BTreeSet;
 
 use crate::primitives::{
-    bit_type, i32_type, record, string_type, unit_type, void_type, Prim, Prim::*,
+    bit_type, i32_type, record, string_type, Prim, Prim::*,
 };
 
 pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError> {
@@ -14,8 +15,20 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
     use crate::ast::*;
     match expr {
         PrimNode(prim, _) => match prim {
-            Void() => Ok(void_type()),
-            Unit() => Ok(unit_type()),
+            Product(vals) => {
+                let mut tys: BTreeSet<Prim> = set![];
+                for val in vals.iter() {
+                    tys.insert(infer(db, &val.clone().to_node(), env)?);
+                }
+                Ok(Product(tys))
+            }
+            Union(vals) => {
+                let mut tys: BTreeSet<Prim> = set![];
+                for val in vals.iter() {
+                    tys.insert(infer(db, &val.clone().to_node(), env)?);
+                }
+                Ok(Union(tys))
+            }
             I32(_) => Ok(i32_type()),
             Bool(_) => Ok(bit_type()),
             Str(_) => Ok(string_type()),

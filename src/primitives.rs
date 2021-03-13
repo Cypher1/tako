@@ -18,8 +18,6 @@ pub type Frame = HashMap<String, Prim>;
 
 #[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Debug, Hash)]
 pub enum Prim {
-    Void(),
-    Unit(),
     Bool(bool),
     I32(i32),
     Str(String),
@@ -94,25 +92,23 @@ impl Prim {
 
     pub fn access(self: &Prim, name: &str) -> Prim {
         match self {
-            Void() => Void(),
-            Unit() => Void(),
-            Bool(_) => Void(),
-            I32(_) => Void(),
-            Str(_) => Void(),
-            Lambda(_) => Void(),
+            Bool(_) => void_type(),
+            I32(_) => void_type(),
+            Str(_) => void_type(),
+            Lambda(_) => void_type(),
             Struct(tys) => {
                 for (param, ty) in tys.iter() {
                     if param == name {
                         return ty.clone();
                     }
                 }
-                Void()
+                void_type()
             }
-            Union(_) => Void(),   // TODO
-            Product(_) => Void(), // TODO
-            StaticPointer(_) => Void(),
+            Union(_) => void_type(),   // TODO
+            Product(_) => void_type(), // TODO
+            StaticPointer(_) => void_type(),
             Padded(_, ty) => ty.access(name),
-            Tag(_, _) => Void(), // TODO
+            Tag(_, _) => void_type(), // TODO
             Pointer(_, ty) => ty.access(name),
             Function {
                 intros: _,
@@ -121,12 +117,12 @@ impl Prim {
             } => match name {
                 "arguments" => *arguments.clone(),
                 "results" => *results.clone(),
-                _ => Void(),
+                _ => void_type(),
             },
             App {
                 inner: _,
                 arguments: _,
-            } => Void(), // TODO
+            } => void_type(), // TODO
             WithEffect(ty, effs) => WithEffect(Box::new(ty.access(name)), effs.to_vec()),
             Variable(var) => Variable(format!("{}.{}", var, name)),
         }
@@ -148,8 +144,6 @@ impl fmt::Display for Prim {
             }
         }
         match self {
-            Void() => write!(f, "Void"),
-            Unit() => write!(f, "()"),
             Bool(val) => write!(f, "{}", val),
             I32(val) => write!(f, "{}", val),
             Str(val) => write!(f, "'{}'", val),
@@ -167,28 +161,36 @@ impl fmt::Display for Prim {
                 write!(f, ")")
             }
             Union(s) => {
-                write!(f, "Union(")?;
-                let mut first = true;
-                for sty in s {
-                    if !first {
-                        write!(f, ", ")?;
+                if s.is_empty() {
+                    write!(f, "Void")
+                } else {
+                    write!(f, "Union(")?;
+                    let mut first = true;
+                    for sty in s {
+                        if !first {
+                            write!(f, ", ")?;
+                        }
+                        first = false;
+                        write!(f, "{}", sty)?;
                     }
-                    first = false;
-                    write!(f, "{}", sty)?;
+                    write!(f, ")")
                 }
-                write!(f, ")")
             }
             Product(s) => {
-                write!(f, "Product(")?;
-                let mut first = true;
-                for sty in s {
-                    if !first {
-                        write!(f, ", ")?;
+                if s.is_empty() {
+                    write!(f, "()")
+                } else {
+                    write!(f, "Product(")?;
+                    let mut first = true;
+                    for sty in s {
+                        if !first {
+                            write!(f, ", ")?;
+                        }
+                        first = false;
+                        write!(f, "{}", sty)?;
                     }
-                    first = false;
-                    write!(f, "{}", sty)?;
+                    write!(f, ")")
                 }
-                write!(f, ")")
             }
             Pointer(ptr_size, t) => write!(f, "*<{}b>{}", ptr_size, t),
             Tag(tag, bits) => write!(f, "Tag<{}b>{}", bits, tag),
