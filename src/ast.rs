@@ -6,7 +6,7 @@ use crate::database::Compiler;
 use crate::database::DB;
 use crate::errors::TError;
 use crate::location::*;
-use crate::primitives::Prim;
+use crate::primitives::{unit_type, Prim};
 use crate::tree::*;
 
 impl ToNode for TError {
@@ -84,7 +84,7 @@ impl Sym {
     pub fn as_let(self: &Sym) -> Let {
         Let {
             name: self.name.clone(),
-            value: Box::new(Prim::Unit().to_node()),
+            value: Box::new(unit_type().to_node()),
             args: None,
             info: self.get_info(),
         }

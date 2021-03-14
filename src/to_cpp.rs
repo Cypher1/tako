@@ -325,8 +325,18 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
     fn visit_prim(&mut self, db: &dyn Compiler, state: &mut State, expr: &Prim) -> Res {
         use Prim::*;
         match expr {
-            Void() => Ok(Code::Expr("void".to_string())),
-            Unit() => Ok(Code::Expr("nullptr".to_string())),
+            Product(tys) => {
+                if tys.is_empty() {
+                    return Ok(Code::Expr("void".to_string()));
+                }
+                unimplemented!("unimplemented sum type in compilation to cpp")
+            }
+            Union(tys) => {
+                if tys.is_empty() {
+                    return Ok(Code::Expr("nullptr".to_string()));
+                }
+                unimplemented!("unimplemented sum type in compilation to cpp")
+            }
             I32(n) => Ok(Code::Expr(n.to_string())),
             Bool(true) => Ok(Code::Expr(1.to_string())),
             Bool(false) => Ok(Code::Expr(0.to_string())),
