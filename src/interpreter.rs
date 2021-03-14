@@ -243,7 +243,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
     }
 
     fn visit_sym(&mut self, db: &dyn Compiler, state: &mut State, expr: &Sym) -> Res {
-        if db.debug_level() > 0 {
+        if db.debug_level() > 1 {
             eprintln!("evaluating sym {}", expr.clone().to_node());
         }
         let frame = || {
@@ -258,7 +258,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
         let value = find_symbol(&state, name);
         if let Some(prim) = value {
             if db.debug_level() > 0 {
-                eprintln!("from stack {}", prim.clone().to_node());
+                eprintln!("{} = (from stack) {}", name, prim.clone().to_node());
             }
             return Ok(prim.clone());
         }
@@ -375,7 +375,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
     }
 
     fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
-        if db.debug_level() > 0 {
+        if db.debug_level() > 1 {
             eprintln!("evaluating apply {}", expr.clone().to_node());
         }
         state.push(Frame::new());
@@ -418,7 +418,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
     }
 
     fn visit_abs(&mut self, db: &dyn Compiler, state: &mut State, expr: &Abs) -> Res {
-        if db.debug_level() > 0 {
+        if db.debug_level() > 1 {
             eprintln!("introducing abstraction {}", expr.clone().to_node());
         }
 
@@ -434,7 +434,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
     }
 
     fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
-        if db.debug_level() > 0 {
+        if db.debug_level() > 1 {
             eprintln!("evaluating let {}", expr.clone().to_node());
         }
 
