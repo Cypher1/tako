@@ -1,0 +1,2 @@
+print((parse_i32(argv(1))+1)++"\n");
+0
