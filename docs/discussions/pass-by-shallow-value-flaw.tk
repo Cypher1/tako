@@ -31,7 +31,7 @@ main(): Int {
   println("outer2.value is", outer2.value);
   println("outer3.value is", outer3.value);
   println("inner1.value is", inner1.value);
-  return 0;
+  0
 }
 
 /* output:

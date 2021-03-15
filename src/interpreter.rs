@@ -282,7 +282,9 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
     }
 
     fn visit_prim(&mut self, db: &dyn Compiler, state: &mut State, expr: &Prim) -> Res {
-        eprintln!("visiting prim {}", &expr);
+        if db.debug_level() > 2 {
+            eprintln!("visiting prim {}", &expr);
+        }
         match expr {
             Variable(name) => {
                 let frame = state.last().cloned().unwrap_or_default();
@@ -407,7 +409,9 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
         match res {
             Function { results, .. } => Ok(*results),
             res => {
-                eprintln!("unexpected, apply on a {}", res);
+                if db.debug_level() > 1 {
+                    eprintln!("unexpected, apply on a {}", res);
+                }
                 Ok(res)
             }
         }

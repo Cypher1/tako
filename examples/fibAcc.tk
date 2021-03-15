@@ -1,0 +1,9 @@
+fib(it) = {
+  doFib(n, curr, prev) = n == 0 -| curr ? {
+    next=prev+curr;
+    doFib(n=n-1, prev=curr, curr=next)
+  };
+  doFib(n=it, curr=0, prev=1)
+};
+
+fib(30)

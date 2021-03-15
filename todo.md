@@ -2,6 +2,7 @@
 
 ## Features
 
+- Support sending extra arguments (after '--') from interpreter to the interpreted program
 - Shift+enter in REPL stops continues without execution
 - REPL remembers variables from previous executions
 - REPL completion from std::lib and imported files
@@ -80,5 +81,5 @@
 
 - No way to run machine or low level instructions
 - No way to hide local data from a child function (locals)
-- No type checking (requirements and exhuastiveness checking)
+- No type checking (requirements and exhaustiveness checking)
 - Compiler is far behind interpreter feature set
