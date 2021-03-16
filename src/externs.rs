@@ -58,6 +58,17 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
             };
             std::process::exit(code);
         })),
+        "parse_i32" => Some(Box::new(|_, args, info| {
+            let val = args.get("it").unwrap()()?;
+            match val {
+                Str(n) => Ok(I32(n.parse::<i32>().unwrap())),
+                s => Err(TError::TypeMismatch(
+                    "Expected parse_i32 argument to be a string encoded i32".to_string(),
+                    Box::new(s),
+                    info,
+                ))
+            }
+        })),
         "++" => Some(Box::new(|_, args, info| {
             prim_add_strs(
                 &args.get("left").unwrap()()?,
@@ -215,6 +226,16 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
             }.to_node(),
             cpp: LangImpl::new("[](const int code){exit(code);}")
                 .with_includes("#include <stdlib.h>"),
+        },
+        Extern {
+            name: "parse_i32".to_string(),
+            semantic: Func,
+            ty: Function {
+                results: Box::new(Union(set![i32_type(), void_type()])),
+                arguments: Box::new(rec! {"it" => string_type()}),
+                intros: dict!(),
+            }.to_node(),
+            cpp: LangImpl::new("std::stoi").with_includes("#include <string>"),
         },
         Extern {
             name: "print".to_string(),

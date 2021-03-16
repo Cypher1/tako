@@ -1,9 +1,8 @@
 fib(it) = {
-  doFib(n, curr, prev) = n == 0 -| curr ? {
-    next=prev+curr;
-    doFib(n=n-1, prev=curr, curr=next)
-  };
-  doFib(n=it, curr=0, prev=1)
+  doFib(n, a, b) =
+    n == 0 -| a
+    ? (k=a+b; doFib(n=n-1, b=a, a=k));
+  doFib(n=it, a=0, b=1)
 };
 
-fib(30)
+fib(parse_i32(argv(1)))

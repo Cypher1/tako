@@ -589,6 +589,11 @@ fn compile_error_printing() {
 }
 
 #[test]
+fn compile_parse_i32() {
+    compile_with_success("examples/parse_i32.tk");
+}
+
+#[test]
 fn requirement() {
     test_with_expectation(Error, vec!["--run", "counter_examples/requirement.tk"]);
 }
