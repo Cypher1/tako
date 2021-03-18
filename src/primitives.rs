@@ -21,6 +21,7 @@ pub enum Prim {
     Bool(bool),
     I32(i32),
     Str(String),
+    BuiltIn(String),
     Lambda(Box<Node>),
     Struct(Vec<(String, Prim)>), // Should really just store values, but we can't do that yet.
     Union(TypeSet),
@@ -125,6 +126,7 @@ impl Prim {
             } => void_type(), // TODO
             WithEffect(ty, effs) => WithEffect(Box::new(ty.access(name)), effs.to_vec()),
             Variable(var) => Variable(format!("{}.{}", var, name)),
+            BuiltIn(name) => panic!("Built in {} does not currently support introspection", name)
         }
     }
 }
@@ -144,6 +146,7 @@ impl fmt::Display for Prim {
             }
         }
         match self {
+            BuiltIn(name) => write!(f, "{}", name),
             Bool(val) => write!(f, "{}", val),
             I32(val) => write!(f, "{}", val),
             Str(val) => write!(f, "'{}'", val),

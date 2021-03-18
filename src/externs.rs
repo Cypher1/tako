@@ -6,7 +6,7 @@ use crate::errors::TError;
 use crate::interpreter::{prim_add_strs, prim_pow, Res};
 use crate::primitives::{
     bit_type, i32_type, number_type, string_type, type_type, unit_type, variable, void_type,
-    Prim::*,
+    Prim, Prim::*,
 };
 
 pub type FuncImpl = Box<dyn Fn(&dyn Compiler, HashMap<String, Box<dyn Fn() -> Res>>, Info) -> Res>;
@@ -28,6 +28,42 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
                 s => eprint!("{:?}", s),
             };
             Ok(I32(0))
+        })),
+        "struct" => Some(Box::new(|_, args, info| {
+            use crate::ast::{BinOp, Sym};
+            let mut sorted_args: Vec<_> = args.iter().collect();
+            sorted_args.sort_by_key(|a| a.0);
+            let mut requirements: Vec<Node> = vec![];
+            for (name, arg) in sorted_args.iter() {
+                let arg = arg()?;
+                requirements.push(
+                    BinOp {
+                        name: "-|".to_string(),
+                        left: Box::new(BinOp {
+                            name: "==".to_string(),
+                            left: Box::new(Sym{name: "it".to_string(), info: info.clone()}.to_node()),
+                            right: Box::new(Str(name.to_string()).to_node()),
+                            info: info.clone()
+                        }.to_node()),
+                        right: Box::new(arg.to_node()),
+                        info: info.clone()
+                    }.to_node()
+                )
+            }
+            if let Some(first) = requirements.first() {
+                let mut curr = first.clone(); // Nah don't clone
+                for next in requirements[1..].iter() {
+                    curr = BinOp {
+                        name: "?".to_string(),
+                        left: Box::new(curr),
+                        right: Box::new(next.clone()),
+                        info: info.clone()
+                    }.to_node();
+                }
+                Ok(Lambda(Box::new(curr)))
+            } else {
+                Ok(Lambda(Box::new(Product(set![]).to_node())))
+            }
         })),
         "." => Some(Box::new(|_db, args, info| {
             let left = args.get("left").unwrap()()?;
@@ -83,7 +119,6 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
                 info,
             )
         })),
-
         "argc" => Some(Box::new(|db, _, _info| {
             Ok(I32(db.options().interpreter_args.len() as i32))
         })),
@@ -97,13 +132,6 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
                 )),
             }
         })),
-        "I32" => Some(Box::new(|_db, _, _info| Ok(i32_type()))),
-        "Number" => Some(Box::new(|_db, _, _info| Ok(number_type()))),
-        "String" => Some(Box::new(|_db, _, _info| Ok(string_type()))),
-        "Bit" => Some(Box::new(|_db, _, _info| Ok(bit_type()))),
-        "Unit" => Some(Box::new(|_db, _, _info| Ok(unit_type()))),
-        "Void" => Some(Box::new(|_db, _, _info| Ok(void_type()))),
-        "Type" => Some(Box::new(|_db, _, _info| Ok(type_type()))),
         _ => None,
     }
 }
@@ -127,6 +155,7 @@ fn operator(binding: i32, assoc: Direction) -> Semantic {
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Extern {
     pub name: String,
+    pub value: Prim,
     pub semantic: Semantic,
     pub ty: Node,
     pub cpp: LangImpl,
@@ -189,12 +218,14 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
     let mut externs = vec![
         Extern {
             name: "argc".to_string(),
+            value: BuiltIn("argc".to_string()),
             semantic: Func,
             ty: i32_type().to_node(),
-            cpp: LangImpl::new("argc"),
+            cpp: LangImpl::new("[&argc](){return argc;}"),
         },
         Extern {
             name: "argv".to_string(),
+            value: BuiltIn("argv".to_string()),
             semantic: Func,
             ty: Function {
                 results: Box::new(string_type()),
@@ -205,6 +236,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
         },
         Extern {
             name: "eprint".to_string(),
+            value: BuiltIn("eprint".to_string()),
             semantic: Func,
             ty: Function {
                 results: Box::new(WithEffect(
@@ -218,6 +250,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
         },
         Extern {
             name: "exit".to_string(),
+            value: BuiltIn("exit".to_string()),
             semantic: Func,
             ty: Function {
                 results: Box::new(void_type()),
@@ -229,6 +262,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
         },
         Extern {
             name: "parse_i32".to_string(),
+            value: BuiltIn("parse_i32".to_string()),
             semantic: Func,
             ty: Function {
                 results: Box::new(Union(set![i32_type(), void_type()])),
@@ -239,6 +273,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
         },
         Extern {
             name: "print".to_string(),
+            value: BuiltIn("print".to_string()),
             semantic: Func,
             ty: Function {
                 results: Box::new(WithEffect(
@@ -252,6 +287,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
         },
         Extern {
             name: "pointer".to_string(),
+            value: BuiltIn("pointer".to_string()),
             semantic: Func,
             ty: Function {
                 results: Box::new(variable("a")),
@@ -262,6 +298,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
         },
         Extern {
             name: "struct".to_string(),
+            value: BuiltIn("struct".to_string()),
             semantic: Func,
             ty: Function {
                 results: Box::new(variable("a")),
@@ -273,6 +310,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
         },
         Extern {
             name: ";".to_string(),
+            value: BuiltIn(";".to_string()),
             semantic: operator(20, Left),
             ty: Function {
                 intros: dict!("a" => variable("Type"), "b" => variable("Type")),
@@ -283,6 +321,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
         },
         Extern {
             name: ",".to_string(),
+            value: BuiltIn(",".to_string()),
             semantic: operator(30, Left),
             ty: Function {
                 intros: dict!("a" => variable("Type"), "b" => variable("Type")),
@@ -293,6 +332,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
         },
         Extern {
             name: "=".to_string(),
+            value: BuiltIn("=".to_string()),
             semantic: operator(40, Right),
             ty: Function {
                 intros: dict!("a" => variable("Identifier"), "b" => variable("Type")),
@@ -303,6 +343,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
         },
         Extern {
             name: "?".to_string(),
+            value: BuiltIn("?".to_string()),
             semantic: operator(45, Left),
             ty: Function {
                 intros: dict!("a" => variable("Type"), "b" => variable("Type")),
@@ -313,6 +354,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
         },
         Extern {
             name: "|-".to_string(),
+            value: BuiltIn("|-".to_string()),
             semantic: operator(46, Right),
             ty: Function {
                 intros: dict!("a" => variable("Type")),
@@ -323,6 +365,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
         },
         Extern {
             name: "-|".to_string(),
+            value: BuiltIn("-|".to_string()),
             semantic: operator(47, Left),
             ty: Function {
                 intros: dict!("a" => variable("Type")),
@@ -333,6 +376,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
         },
         Extern {
             name: "|".to_string(),
+            value: BuiltIn("|".to_string()),
             semantic: operator(48, Left),
             ty: Function {
                 intros: dict!("a" => variable("Type"), "b" => variable("Type")),
@@ -343,6 +387,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
         },
         Extern {
             name: "&".to_string(),
+            value: BuiltIn("&".to_string()),
             semantic: operator(48, Left),
             ty: Function {
                 intros: dict!("a" => variable("Type"), "b" => variable("Type")),
@@ -353,6 +398,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
         },
         Extern {
             name: "++".to_string(),
+            value: BuiltIn("++".to_string()),
             semantic: operator(49, Left),
             ty: Function {
                 intros: dict!("a" => variable("Display"), "b" => variable("Display")),
@@ -379,6 +425,7 @@ string to_string(const bool& t){
         },
         Extern {
             name: "->".to_string(),
+            value: BuiltIn("->".to_string()),
             semantic: operator(50, Left),
             ty: Function {
                 intros: dict!("a" => variable("Type"), "b" => variable("Type")),
@@ -393,6 +440,7 @@ string to_string(const bool& t){
         },
         Extern {
             name: "<".to_string(),
+            value: BuiltIn("<".to_string()),
             semantic: operator(51, Left),
             ty: Function {
                 intros: dict!("a" => variable("Number"), "b" => variable("Number")),
@@ -403,6 +451,7 @@ string to_string(const bool& t){
         },
         Extern {
             name: "<=".to_string(),
+            value: BuiltIn("<=".to_string()),
             semantic: operator(51, Left),
             ty: Function {
                 intros: dict!("a" => variable("Number"), "b" => variable("Number")),
@@ -413,6 +462,7 @@ string to_string(const bool& t){
         },
         Extern {
             name: ">".to_string(),
+            value: BuiltIn(">".to_string()),
             semantic: operator(51, Left),
             ty: Function {
                 intros: dict!("a" => variable("Number"), "b" => variable("Number")),
@@ -423,6 +473,7 @@ string to_string(const bool& t){
         },
         Extern {
             name: ">=".to_string(),
+            value: BuiltIn(">=".to_string()),
             semantic: operator(51, Left),
             ty: Function {
                 intros: dict!("a" => variable("Number"), "b" => variable("Number")),
@@ -433,6 +484,7 @@ string to_string(const bool& t){
         },
         Extern {
             name: "!=".to_string(),
+            value: BuiltIn("!=".to_string()),
             semantic: operator(51, Left),
             ty: Function {
                 intros: dict!("a" => variable("Type"), "b" => variable("Type")),
@@ -443,6 +495,7 @@ string to_string(const bool& t){
         },
         Extern {
             name: "==".to_string(),
+            value: BuiltIn("==".to_string()),
             semantic: operator(51, Left),
             ty: Function {
                 intros: dict!("a" => variable("Type"), "b" => variable("Type")),
@@ -453,6 +506,7 @@ string to_string(const bool& t){
         },
         Extern {
             name: "||".to_string(),
+            value: BuiltIn("||".to_string()),
             semantic: operator(60, Left),
             ty: Function {
                 intros: dict!(),
@@ -463,6 +517,7 @@ string to_string(const bool& t){
         },
         Extern {
             name: "&&".to_string(),
+            value: BuiltIn("&&".to_string()),
             semantic: operator(60, Left),
             ty: Function {
                 intros: dict!(),
@@ -473,6 +528,7 @@ string to_string(const bool& t){
         },
         Extern {
             name: "!".to_string(),
+            value: BuiltIn("!".to_string()),
             semantic: operator(70, Left),
             ty: Function {
                 intros: dict!(),
@@ -483,6 +539,7 @@ string to_string(const bool& t){
         },
         Extern {
             name: "...".to_string(),
+            value: BuiltIn("...".to_string()),
             semantic: operator(70, Left),
             ty: Function {
                 intros: dict!("a" => variable("Type")), // TODO: This should unpack a type with a set of named values and put them into scope.
@@ -493,6 +550,7 @@ string to_string(const bool& t){
         },
         Extern {
             name: "-".to_string(),
+            value: BuiltIn("-".to_string()),
             semantic: operator(70, Left),
             ty: Function {
                 intros: dict!("a" => variable("Number")),
@@ -503,6 +561,7 @@ string to_string(const bool& t){
         },
         Extern {
             name: "+".to_string(),
+            value: BuiltIn("+".to_string()),
             semantic: operator(70, Left),
             ty: Function {
                 intros: dict!("a" => variable("Number"), "b" => variable("Number")),
@@ -513,6 +572,7 @@ string to_string(const bool& t){
         },
         Extern {
             name: "*".to_string(),
+            value: BuiltIn("*".to_string()),
             semantic: operator(80, Left),
             ty: Function {
                 intros: dict!("a" => variable("Number"), "b" => variable("Number")),
@@ -523,6 +583,7 @@ string to_string(const bool& t){
         },
         Extern {
             name: "%".to_string(),
+            value: BuiltIn("%".to_string()),
             semantic: operator(80, Left),
             ty: Function {
                 intros: dict!("a" => variable("Number"), "b" => variable("Number")),
@@ -533,6 +594,7 @@ string to_string(const bool& t){
         },
         Extern {
             name: "/".to_string(),
+            value: BuiltIn("/".to_string()),
             semantic: operator(80, Left),
             ty: Function {
                 intros: dict!("a" => variable("Number"), "b" => variable("Number")),
@@ -543,6 +605,7 @@ string to_string(const bool& t){
         },
         Extern {
             name: "^".to_string(),
+            value: BuiltIn("^".to_string()),
             semantic: operator(90, Right),
             ty: Function {
                 intros: dict!("a" => variable("Number"), "b" => variable("Number")),
@@ -556,6 +619,7 @@ string to_string(const bool& t){
         },
         Extern {
             name: ".".to_string(),
+            value: BuiltIn(".".to_string()),
             semantic: operator(100, Right),
             ty: Function {
                 intros: dict!("a" => variable("Type"), "b" => variable("Type"), "c" => variable("Type")),
@@ -568,42 +632,49 @@ string to_string(const bool& t){
         },
         Extern {
             name: "I32".to_string(),
+            value: i32_type(),
             semantic: Func,
             ty: variable("Type").to_node(),
             cpp: LangImpl::new("int32_t"),
         },
         Extern {
             name: "Number".to_string(),
+            value: number_type(),
             semantic: Func,
             ty: variable("Type").to_node(),
             cpp: LangImpl::new("usize"),
         },
         Extern {
             name: "String".to_string(),
+            value: string_type(),
             semantic: Func,
             ty: variable("Type").to_node(),
             cpp: LangImpl::new("std::string").with_includes("#include <string>"),
         },
         Extern {
             name: "Bit".to_string(),
+            value: bit_type(),
             semantic: Func,
             ty: variable("Type").to_node(),
             cpp: LangImpl::new("short"),
         },
         Extern {
             name: "Unit".to_string(),
+            value: unit_type(),
             semantic: Func,
             ty: variable("Type").to_node(),
             cpp: LangImpl::new("void"),
         },
         Extern {
             name: "Void".to_string(),
+            value: void_type(),
             semantic: Func,
             ty: variable("Void").to_node(),
             cpp: LangImpl::new("/*void: should never happen*/ auto"),
         },
         Extern {
             name: "Type".to_string(),
+            value: type_type(),
             semantic: Func,
             ty: variable("Type").to_node(),
             cpp: LangImpl::new("auto"),
