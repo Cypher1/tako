@@ -206,29 +206,34 @@ mod tests {
     use crate::ast::ToNode;
     use crate::database::DB;
 
-    fn assert_type(prog_str: &'static str, ty: &'static str) {
+    fn assert_type(prog_str: &'static str, type_str: &'static str) {
+        dbg!(&prog_str);
+        dbg!(&type_str);
         use crate::ast::Visitor;
         use crate::cli_options::Options;
+        use std::sync::Arc;
         let mut db = DB::default();
-        db.set_options(Options::new(&[
-            "-d".to_string(),
-            "-d".to_string(),
-            "-d".to_string(),
-        ]));
-        let module = vec![];
-        dbg!(&prog_str);
-        let prog = db.parse_str(module.clone(), prog_str).unwrap();
+        db.set_options(Options::default().with_debug(3));
 
-        let env = Variable("test_program".to_string()); // TODO: Track the type env
-        let ty = db.parse_str(module, ty).unwrap();
-        let mut state = vec![HashMap::new()];
-        let result_type = Interpreter::default().visit(&db, &mut state, &ty);
+        let type_filename = "test/type.tk";
+        db.set_file(type_filename.to_owned(), Ok(Arc::new(type_str.to_owned())));
+        let type_module = db.module_name(type_filename.to_owned());
 
-        let prog_ty = infer(&db, &prog, &env).unwrap();
-
+        let ty = db.look_up_definitions(type_module).unwrap();
+        let result_type = Interpreter::default().visit_root(&db, &ty);
         if let Err(err) = &result_type {
             dbg!(format!("{}", &err));
         }
+
+        let prog_filename = "test/prog.tk";
+        db.set_file(prog_filename.to_owned(), Ok(Arc::new(prog_str.to_owned())));
+        let prog_module = db.module_name(prog_filename.to_owned());
+
+        let prog = db.look_up_definitions(prog_module).unwrap();
+
+        let env = Variable("test_program".to_string()); // TODO: Track the type env
+        let prog_ty = infer(&db, &prog.ast, &env).unwrap();
+
         eprintln!("got: {}", prog_ty.clone());
         eprintln!("expected: {}", result_type.clone().unwrap());
         assert_eq!(

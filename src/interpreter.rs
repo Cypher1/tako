@@ -238,7 +238,11 @@ pub type Res = Result<Prim, TError>;
 type State = Vec<Frame>;
 impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
     fn visit_root(&mut self, db: &dyn Compiler, root: &Root) -> Res {
-        let mut state = vec![HashMap::new()];
+        let mut base_frame = map!{};
+        for (name, ext) in db.get_externs()?.iter() {
+            base_frame.insert(name.to_owned(), ext.value.clone());
+        }
+        let mut state = vec![base_frame];
         self.visit(db, &mut state, &root.ast)
     }
 
@@ -246,14 +250,6 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
         if db.debug_level() > 1 {
             eprintln!("evaluating sym {}", expr.clone().to_node());
         }
-        let frame = || {
-            let mut frame_vals: HashMap<String, Box<dyn Fn() -> Res>> = map!();
-            for (name, val) in state.last().unwrap().clone().iter() {
-                let val = val.clone();
-                frame_vals.insert(name.to_string(), Box::new(move || Ok(val.clone())));
-            }
-            frame_vals
-        };
         let name = &expr.name;
         let value = find_symbol(&state, name);
         if let Some(prim) = value {
@@ -261,18 +257,6 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
                 eprintln!("{} = (from stack) {}", name, prim.clone().to_node());
             }
             return Ok(prim.clone());
-        }
-        if db.debug_level() > 2 {
-            eprintln!("checking for interpreter impl {}", name);
-        }
-        if let Some(extern_impl) = &mut self.impls.get_mut(name) {
-            return extern_impl(db, frame(), expr.get_info());
-        }
-        if db.debug_level() > 2 {
-            eprintln!("checking for default impl {}", name);
-        }
-        if let Some(default_impl) = crate::externs::get_implementation(name.to_owned()) {
-            return default_impl(db, frame(), expr.get_info());
         }
         Err(TError::UnknownSymbol(
             name.to_string(),
@@ -386,8 +370,36 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
         // Retrive the inner
         let inner = self.visit(db, state, &*expr.inner)?;
         // Run the inner
+        if db.debug_level() > 2 {
+            eprintln!("apply args {:?} to inner {}", state.last(), inner.clone().to_node());
+        }
         let res = match inner {
             Prim::Lambda(func) => self.visit(db, state, &*func)?,
+            Prim::BuiltIn(name) => {
+                if db.debug_level() > 2 {
+                    eprintln!("looking up interpreter impl {}", name);
+                }
+                let frame = || {
+                    let mut frame_vals: HashMap<String, Box<dyn Fn() -> Res>> = map!();
+                    for (name, val) in state.last().unwrap().clone().iter() {
+                        let val = val.clone();
+                        frame_vals.insert(name.to_string(), Box::new(move || Ok(val.clone())));
+                    }
+                    frame_vals
+                };
+                if let Some(extern_impl) = &mut self.impls.get_mut(&name) {
+                    return extern_impl(db, frame(), expr.get_info());
+                }
+                if db.debug_level() > 2 {
+                    eprintln!("looking up default impl {}", &name);
+                }
+                if let Some(default_impl) = crate::externs::get_implementation(name.to_owned()) {
+                    let val = default_impl(db, frame(), expr.get_info())?;
+                    eprintln!("got val {}", &val);
+                    return Ok(val);
+                }
+                panic!("Built a 'Built in' with unknown built in named {}", name);
+            }
             Prim::Function {
                 intros: _, // TODO
                 arguments,
@@ -568,7 +580,6 @@ mod tests {
     use super::super::database::{Compiler, DB};
     use super::super::primitives::{number_type, string_type, Prim::*};
     use super::{Interpreter, Res};
-    use std::collections::HashMap;
     use Node::*;
 
     #[test]
@@ -586,12 +597,11 @@ mod tests {
         use std::sync::Arc;
         let mut db = DB::default();
         let filename = "test/file.tk";
-        let module = db.module_name(filename.to_owned());
+        let module_name = db.module_name(filename.to_owned());
         db.set_file(filename.to_owned(), Ok(Arc::new(s)));
-        db.set_options(Options::default());
-        let ast = db.parse_file(module)?;
-        let mut state = vec![HashMap::new()];
-        Interpreter::default().visit(&db, &mut state, &ast)
+        db.set_options(Options::default().with_debug(3));
+        let root = db.look_up_definitions(module_name)?;
+        Interpreter::default().visit_root(&db, &root)
     }
 
     #[allow(dead_code)]
@@ -724,6 +734,47 @@ mod tests {
         assert_eq!(
             eval_str("String * I32".to_string()),
             Ok(record(vec![string_type(), i32_type()]).unwrap())
+        );
+    }
+
+    #[test]
+    fn parse_and_eval_struct_x4_y5_access_x() {
+        assert_eq!(
+            eval_str("struct(x=4, y=5)(\"x\")".to_string()),
+            Ok(I32(4))
+        );
+    }
+
+    #[test]
+    fn parse_and_eval_struct_x4_y5_access_y() {
+        assert_eq!(
+            eval_str("struct(x=4, y=\"Hi\")(\"y\")".to_string()),
+            Ok(Str("Hi".to_string()))
+        );
+    }
+
+    #[test]
+    fn parse_and_eval_struct_x4_y5() {
+        assert_eq!(
+            eval_str("\"\"++struct(x=4, y=\"Hi\")".to_string()),
+            Ok(Str("(((it==\'x\')-|4)?((it==\'y\')-|\'Hi\'))".to_string()))
+            // Ok(Str("struct(x=4, y=\"Hi\")".to_string()))
+        );
+    }
+
+    #[test]
+    fn parse_and_eval_struct_empty() {
+        assert_eq!(
+            eval_str("struct()".to_string()),
+            Ok(Lambda(Box::new(Product(set![]).to_node())))
+        );
+    }
+
+    #[test]
+    fn parse_and_eval_print() {
+        assert_eq!(
+            eval_str("print".to_string()),
+            Ok(BuiltIn("print".to_string()))
         );
     }
 
