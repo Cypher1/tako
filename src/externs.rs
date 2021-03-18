@@ -31,8 +31,10 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
         })),
         "struct" => Some(Box::new(|_, args, info| {
             use crate::ast::{BinOp, Sym};
+            let mut sorted_args: Vec<_> = args.iter().collect();
+            sorted_args.sort_by_key(|a| a.0);
             let mut requirements: Vec<Node> = vec![];
-            for (name, arg) in args.iter() {
+            for (name, arg) in sorted_args.iter() {
                 let arg = arg()?;
                 requirements.push(
                     BinOp {
@@ -219,7 +221,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
             value: BuiltIn("argc".to_string()),
             semantic: Func,
             ty: i32_type().to_node(),
-            cpp: LangImpl::new("argc"),
+            cpp: LangImpl::new("[&argc](){return argc;}"),
         },
         Extern {
             name: "argv".to_string(),

@@ -394,9 +394,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
                     eprintln!("looking up default impl {}", &name);
                 }
                 if let Some(default_impl) = crate::externs::get_implementation(name.to_owned()) {
-                    let val = default_impl(db, frame(), expr.get_info())?;
-                    eprintln!("got val {}", &val);
-                    return Ok(val);
+                    return default_impl(db, frame(), expr.get_info());
                 }
                 panic!("Built a 'Built in' with unknown built in named {}", name);
             }
