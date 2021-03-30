@@ -174,6 +174,11 @@ mod tests {
     use crate::primitives::{i32_type, variable, number_type, Prim::*};
     use crate::errors::TError;
 
+    fn assert_eqs<T: Eq + Clone + std::fmt::Display + std::fmt::Debug>(l: T, r: T) {
+        assert_eq!(format!("{}", l.clone()), format!("{}", r.clone()), "non-equal string representations");
+        assert_eq!(l, r, "non-equal objects with same string representations");
+    }
+
     fn test_path() -> Path {
         vec![
             Named("root".to_string(), None),
@@ -210,8 +215,8 @@ mod tests {
         let path = test_path();
         tgb.restrict_type(&path, &i32_type())?;
 
-        let ty = tgb.get_type(&path);
-        assert_eq!(ty, Some(i32_type()));
+        let ty = tgb.get_type(&path).unwrap();
+        assert_eqs(ty, i32_type());
 
         Ok(())
     }
@@ -223,8 +228,8 @@ mod tests {
         tgb.restrict_type(&path, &i32_type())?;
         tgb.restrict_type(&path, &number_type())?;
 
-        let ty = tgb.get_type(&path);
-        assert_eq!(ty, Some(Product(set![i32_type(), number_type()])));
+        let ty = tgb.get_type(&path).unwrap();
+        assert_eqs(ty, Product(set![i32_type(), number_type()]));
         Ok(())
     }
 
@@ -235,10 +240,10 @@ mod tests {
         tgb.restrict_type(&path, &variable("a"))?;
         tgb.restrict_type(&path, &i32_type())?;
 
-        let ty = tgb.get_type(&path);
-        assert_eq!(ty, Some(i32_type()));
-        let var_ty_a = tgb.get_type(&path);
-        assert_eq!(var_ty_a, Some(i32_type()));
+        let ty = tgb.get_type(&path).unwrap();
+        assert_eqs(ty, i32_type());
+        let var_ty_a = tgb.get_type(&path).unwrap();
+        assert_eqs(var_ty_a, i32_type());
         Ok(())
     }
 }
