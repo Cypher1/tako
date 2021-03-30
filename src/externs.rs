@@ -239,7 +239,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
             value: BuiltIn("eprint".to_string()),
             semantic: Func,
             ty: Function {
-                results: Box::new(WithEffect(
+                results: Box::new(WithRequirement(
                     Box::new(unit_type()),
                     vec!["stderr".to_string()],
                 )),
@@ -276,7 +276,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
             value: BuiltIn("print".to_string()),
             semantic: Func,
             ty: Function {
-                results: Box::new(WithEffect(
+                results: Box::new(WithRequirement(
                     Box::new(unit_type()),
                     vec!["stdout".to_string()],
                 )),

@@ -212,7 +212,7 @@ fn prim_type_arrow(l: Prim, r: Prim, _info: Info) -> Res {
     })
 }
 
-fn prim_type_and(l: Prim, r: Prim, _info: Info) -> Res {
+pub fn prim_type_and(l: Prim, r: Prim) -> Res {
     Ok(Prim::Product(set!(l, r)))
 }
 
@@ -520,7 +520,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             "&&" => prim_and(&l?, &r()?, info),
             "||" => prim_or(&l?, &r()?, info),
             "->" => prim_type_arrow(l?, r()?, info),
-            "&" => prim_type_and(l?, r()?, info),
+            "&" => prim_type_and(l?, r()?),
             "|" => prim_type_or(l?, r()?, info),
             "," => {
                 let left = l?;

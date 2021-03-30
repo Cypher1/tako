@@ -40,7 +40,7 @@ pub enum Prim {
         arguments: Box<Prim>,
     },
     // The following should be eliminated during lowering
-    WithEffect(Box<Prim>, Vec<String>),
+    WithRequirement(Box<Prim>, Vec<String>),
     Variable(String),
 }
 
@@ -124,7 +124,7 @@ impl Prim {
                 inner: _,
                 arguments: _,
             } => void_type(), // TODO
-            WithEffect(ty, effs) => WithEffect(Box::new(ty.access(name)), effs.to_vec()),
+            WithRequirement(ty, effs) => WithRequirement(Box::new(ty.access(name)), effs.to_vec()),
             Variable(var) => Variable(format!("{}.{}", var, name)),
             BuiltIn(name) => panic!("Built in {} does not currently support introspection", name)
         }
@@ -214,7 +214,7 @@ impl fmt::Display for Prim {
                 write!(f, "{} -> {}", arguments, results)
             }
             App { inner, arguments } => write!(f, "({})({})", inner, arguments),
-            WithEffect(ty, effs) => write!(f, "{}+{}", ty, effs.join("+")),
+            WithRequirement(ty, effs) => write!(f, "{}+{}", ty, effs.join("+")),
             Variable(name) => write!(f, "{}", name),
         }
     }
