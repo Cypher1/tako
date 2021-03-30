@@ -18,18 +18,20 @@ pub type Frame = HashMap<String, Prim>;
 
 #[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Debug, Hash)]
 pub enum Prim {
+    // Actual primitives
     Bool(bool),
     I32(i32),
     Str(String),
     BuiltIn(String),
+    Tag(Offset, Offset), // A locally unique id and the number of bits needed for it, should be replaced with a bit pattern at compile time.
+    StaticPointer(Offset),
+    // Complex types
+    Pointer(Offset, Box<Prim>), // Defaults to 8 bytes (64 bit)
     Lambda(Box<Node>),
     Struct(Vec<(String, Prim)>), // Should really just store values, but we can't do that yet.
     Union(TypeSet),
     Product(TypeSet),
-    StaticPointer(Offset),
     Padded(Offset, Box<Prim>),
-    Tag(Offset, Offset), // A locally unique id and the number of bits needed for it, should be replaced with a bit pattern at compile time.
-    Pointer(Offset, Box<Prim>), // Defaults to 8 bytes (64 bit)
     Function {
         intros: Pack,
         arguments: Box<Prim>,
