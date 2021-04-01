@@ -239,8 +239,8 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn merges_types_for_same_path() -> Result<(), TError> {
+    // #[test]
+    fn unifies_types_for_same_path() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
         tgb.restrict_type(&path, &i32_type())?;
@@ -376,7 +376,7 @@ mod tests {
         Ok(())
     }
 
-    #[test]
+    // #[test]
     fn unifies_variables_in_types() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
