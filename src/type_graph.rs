@@ -108,10 +108,15 @@ impl TypeGraph {
                 let mut new_tys = set![];
                 for ty in tys.iter() {
                     let ty = self.unify(ty, &t)?;
-                    new_tys.insert(ty);
+                    if ty != void_type() {
+                        new_tys.insert(ty);
+                    }
                 }
-                // TODO; cancelling out voids and single values
-                Union(new_tys)
+                if new_tys.len() == 1 {
+                    new_tys.iter().next().expect("set with len 1 should always have a value").clone()
+                } else {
+                    Union(new_tys)
+                }
             },
             (t, Product(tys)) | (Product(tys), t) => {
                 let mut new_tys = set![];
@@ -370,6 +375,48 @@ mod tests {
         let path = test_path();
         tgb.restrict_type(&path, &I32(4))?;
         tgb.restrict_type(&path, &Str("No".to_string()))?;
+
+        let ty = tgb.get_type(&path).unwrap();
+        assert_eqs(ty, void_type());
+        Ok(())
+    }
+
+    #[test]
+    fn unifies_equivalent_unions() -> Result<(), TError> {
+        let mut tgb = TypeGraph::default();
+        let path = test_path();
+        let l = Union(set!(Bool(false), Bool(true)));
+        let r = Union(set!(Bool(true), Bool(false)));
+        tgb.restrict_type(&path, &l)?;
+        tgb.restrict_type(&path, &r)?;
+
+        let ty = tgb.get_type(&path).unwrap();
+        assert_eqs(ty, l);
+        Ok(())
+    }
+
+    #[test]
+    fn unifies_unions_with_values() -> Result<(), TError> {
+        let mut tgb = TypeGraph::default();
+        let path = test_path();
+        let l = Union(set!(Bool(false)));
+        let r = Bool(false);
+        tgb.restrict_type(&path, &l)?;
+        tgb.restrict_type(&path, &r)?;
+
+        let ty = tgb.get_type(&path).unwrap();
+        assert_eqs(ty, r);
+        Ok(())
+    }
+
+    #[test]
+    fn unifies_non_equivalent_unions_to_void() -> Result<(), TError> {
+        let mut tgb = TypeGraph::default();
+        let path = test_path();
+        let l = Union(set!(Bool(true)));
+        let r = Union(set!(Bool(true), Bool(false)));
+        tgb.restrict_type(&path, &l)?;
+        tgb.restrict_type(&path, &r)?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, void_type());
