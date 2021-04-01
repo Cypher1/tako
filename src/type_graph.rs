@@ -47,7 +47,42 @@ impl TypeGraph {
         }
     }
 
+    fn normalize(&mut self, v: Prim) -> Result<Prim, TError> {
+        use crate::primitives::Prim::*;
+        Ok(match v {
+            // Lambda(_),
+            // Function {
+                // intros: Pack,
+                // arguments: Box<Prim>,
+                // results: Box<Prim>,
+            // },
+            // App {
+                // inner: Box<Prim>,
+                // arguments: Box<Prim>,
+            // },
+            // Struct(Vec<(String, Prim)>),
+            // Union(TypeSet),
+            // Product(TypeSet),
+            Padded(n, t) => {
+                match self.normalize(*t)? {
+                    Padded(k, u) => Padded(n+k, u),
+                    Union(tys) => Union(tys.iter().map(|ty| Padded(n, Box::new(ty.clone()))).collect()),
+                    Product(tys) => Product(tys.iter().map(|ty| Padded(n, Box::new(ty.clone()))).collect()),
+                    ty => Padded(n, Box::new(ty)),
+                }
+            }
+            // WithRequirement(Box<Prim>, Vec<String>),
+            // Variable(String),
+            _ => v
+        })
+    }
+
     fn unify(&mut self, l: &Prim, r: &Prim) -> Result<Prim, TError> {
+        let v = self.unify_impl(l, r)?;
+        self.normalize(v)
+    }
+
+    fn unify_impl(&mut self, l: &Prim, r: &Prim) -> Result<Prim, TError> {
         use crate::primitives::{Prim::*, void_type};
         Ok(match (l, r) {
             (Struct(s), Struct(t)) => {
@@ -311,7 +346,7 @@ mod tests {
         tgb.restrict_type(&path, &r)?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, l);
+        assert_eqs(ty, r);
         Ok(())
     }
 
