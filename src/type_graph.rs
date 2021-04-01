@@ -48,7 +48,7 @@ impl TypeGraph {
     }
 
     fn normalize(&mut self, v: Prim) -> Result<Prim, TError> {
-        use crate::primitives::Prim::*;
+        use crate::primitives::{Prim::*, void_type};
         Ok(match v {
             // Lambda(_),
             // Function {
@@ -61,8 +61,44 @@ impl TypeGraph {
                 // arguments: Box<Prim>,
             // },
             // Struct(Vec<(String, Prim)>),
-            // Union(TypeSet),
-            // Product(TypeSet),
+            Union(tys) => {
+                let mut new_tys = set![];
+                for ty in tys.iter() {
+                    let ty = self.unify(ty, &ty)?;
+                    if ty != void_type() {
+                        match self.normalize(ty)? {
+                            Union(tys) => new_tys = new_tys.union(&tys).cloned().collect(),
+                            ty => {
+                                new_tys.insert(ty.clone());
+                            }
+                        }
+                    }
+                }
+                if new_tys.len() == 1 {
+                    new_tys.iter().next().expect("set with len 1 should always have a value").clone()
+                } else {
+                    Union(new_tys)
+                }
+            }
+            Product(tys) => {
+                let mut new_tys = set![];
+                for ty in tys.iter() {
+                    let ty = self.unify(ty, &ty)?;
+                    if ty != void_type() {
+                        match self.normalize(ty)? {
+                            Product(tys) => new_tys = new_tys.union(&tys).cloned().collect(),
+                            ty => {
+                                new_tys.insert(ty.clone());
+                            }
+                        }
+                    }
+                }
+                if new_tys.len() == 1 {
+                    new_tys.iter().next().expect("set with len 1 should always have a value").clone()
+                } else {
+                    Product(new_tys)
+                }
+            }
             Padded(n, t) => {
                 match self.normalize(*t)? {
                     Padded(k, u) => Padded(n+k, u),
