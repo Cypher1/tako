@@ -75,6 +75,7 @@ impl TypeGraph {
                     let ty = self.unify(ty, &t)?;
                     new_tys.insert(ty);
                 }
+                // TODO; cancelling out voids and single values
                 Union(new_tys)
             },
             (t, Product(tys)) | (Product(tys), t) => {
@@ -85,13 +86,16 @@ impl TypeGraph {
                 }
                 Product(new_tys)
             },
-            (Padded(k, t1), Padded(j, t2)) => {
+            (Padded(k, u), Padded(j, v)) => {
                 if k == j {
-                    Padded(*k, Box::new(self.unify(t1, t2)?))
+                    Padded(*k, Box::new(self.unify(u, v)?))
+                } else if k > j {
+                    Padded(*j, Box::new(self.unify(&Padded(k-j, u.clone()), v)?))
                 } else {
-                    void_type()
+                    Padded(*k, Box::new(self.unify(u, &Padded(j-k, v.clone()))?))
                 }
             },
+            (t, Padded(0, u)) | (Padded(0, u), t) => self.unify(t, u)?,
             (_, Padded(_, _)) | (Padded(_, _), _) => void_type(),
             (Tag(k, u), Tag(j, v)) => {
                 if k == j && u == v {
@@ -278,6 +282,47 @@ mod tests {
         let path = test_path();
         tgb.restrict_type(&path, &Str("Yes".to_string()))?;
         tgb.restrict_type(&path, &Str("No".to_string()))?;
+
+        let ty = tgb.get_type(&path).unwrap();
+        assert_eqs(ty, void_type());
+        Ok(())
+    }
+
+    #[test]
+    fn unifies_equal_padded_bools_in_types() -> Result<(), TError> {
+        let mut tgb = TypeGraph::default();
+        let path = test_path();
+        let l = Padded(10, Box::new(Bool(true)));
+        tgb.restrict_type(&path, &l)?;
+        tgb.restrict_type(&path, &l)?;
+
+        let ty = tgb.get_type(&path).unwrap();
+        assert_eqs(ty, l);
+        Ok(())
+    }
+
+    #[test]
+    fn unifies_equivalent_nonequal_padded_bools_in_types() -> Result<(), TError> {
+        let mut tgb = TypeGraph::default();
+        let path = test_path();
+        let l = Padded(5, Box::new(Padded(5, Box::new(Bool(true)))));
+        let r = Padded(10, Box::new(Bool(true)));
+        tgb.restrict_type(&path, &l)?;
+        tgb.restrict_type(&path, &r)?;
+
+        let ty = tgb.get_type(&path).unwrap();
+        assert_eqs(ty, l);
+        Ok(())
+    }
+
+    #[test]
+    fn unifies_non_equivalent_padded_bools_in_types_to_void() -> Result<(), TError> {
+        let mut tgb = TypeGraph::default();
+        let path = test_path();
+        let l = Padded(5, Box::new(Padded(5, Box::new(Bool(true)))));
+        let r = Padded(11, Box::new(Bool(true)));
+        tgb.restrict_type(&path, &l)?;
+        tgb.restrict_type(&path, &r)?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, void_type());
