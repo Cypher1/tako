@@ -410,10 +410,24 @@ mod tests {
     }
 
     #[test]
+    fn unifies_overlapping_unions_to_overlap() -> Result<(), TError> {
+        let mut tgb = TypeGraph::default();
+        let path = test_path();
+        let l = Union(set!(I32(3), I32(4), I32(5)));
+        let r = Union(set!(I32(1), I32(2), I32(3)));
+        tgb.restrict_type(&path, &l)?;
+        tgb.restrict_type(&path, &r)?;
+
+        let ty = tgb.get_type(&path).unwrap();
+        assert_eqs(ty, I32(3));
+        Ok(())
+    }
+
+    #[test]
     fn unifies_non_equivalent_unions_to_void() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        let l = Union(set!(Bool(true)));
+        let l = Union(set!(I32(3)));
         let r = Union(set!(Bool(true), Bool(false)));
         tgb.restrict_type(&path, &l)?;
         tgb.restrict_type(&path, &r)?;
