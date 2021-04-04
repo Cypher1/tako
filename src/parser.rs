@@ -67,7 +67,11 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
                 ))
             }
             TokenType::CloseBracket => {
-                panic!("Unexpected close bracket {}: {:?}", head.value, head.get_info());
+                panic!(
+                    "Unexpected close bracket {}: {:?}",
+                    head.value,
+                    head.get_info()
+                );
             }
             TokenType::OpenBracket => {
                 let (inner, mut new_toks) = expr(db, toks, 0)?;

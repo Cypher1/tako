@@ -52,12 +52,9 @@ impl Visitor<State, (), TypeGraph, Path> for TypeGraphBuilder {
 
     fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
         state.path.push(Symbol::Anon());
-        expr
-            .args
+        expr.args
             .iter()
-            .map(|arg| {
-                self.visit_let(db, state, &arg)
-            })
+            .map(|arg| self.visit_let(db, state, &arg))
             .collect::<Result<Vec<()>, TError>>()?;
         self.visit(db, state, &*expr.inner)?;
         state.path.pop();

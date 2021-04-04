@@ -128,7 +128,7 @@ impl Prim {
             } => void_type(), // TODO
             WithRequirement(ty, effs) => WithRequirement(Box::new(ty.access(name)), effs.to_vec()),
             Variable(var) => Variable(format!("{}.{}", var, name)),
-            BuiltIn(name) => panic!("Built in {} does not currently support introspection", name)
+            BuiltIn(name) => panic!("Built in {} does not currently support introspection", name),
         }
     }
 }

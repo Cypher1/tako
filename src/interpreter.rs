@@ -238,7 +238,7 @@ pub type Res = Result<Prim, TError>;
 type State = Vec<Frame>;
 impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
     fn visit_root(&mut self, db: &dyn Compiler, root: &Root) -> Res {
-        let mut base_frame = map!{};
+        let mut base_frame = map! {};
         for (name, ext) in db.get_externs()?.iter() {
             base_frame.insert(name.to_owned(), ext.value.clone());
         }
@@ -371,7 +371,11 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
         let inner = self.visit(db, state, &*expr.inner)?;
         // Run the inner
         if db.debug_level() > 2 {
-            eprintln!("apply args {:?} to inner {}", state.last(), inner.clone().to_node());
+            eprintln!(
+                "apply args {:?} to inner {}",
+                state.last(),
+                inner.clone().to_node()
+            );
         }
         let res = match inner {
             Prim::Lambda(func) => self.visit(db, state, &*func)?,
@@ -737,10 +741,7 @@ mod tests {
 
     #[test]
     fn parse_and_eval_struct_x4_y5_access_x() {
-        assert_eq!(
-            eval_str("struct(x=4, y=5)(\"x\")".to_string()),
-            Ok(I32(4))
-        );
+        assert_eq!(eval_str("struct(x=4, y=5)(\"x\")".to_string()), Ok(I32(4)));
     }
 
     #[test]
@@ -755,8 +756,7 @@ mod tests {
     fn parse_and_eval_struct_x4_y5() {
         assert_eq!(
             eval_str("\"\"++struct(x=4, y=\"Hi\")".to_string()),
-            Ok(Str("(((it==\'x\')-|4)?((it==\'y\')-|\'Hi\'))".to_string()))
-            // Ok(Str("struct(x=4, y=\"Hi\")".to_string()))
+            Ok(Str("(((it==\'x\')-|4)?((it==\'y\')-|\'Hi\'))".to_string())) // Ok(Str("struct(x=4, y=\"Hi\")".to_string()))
         );
     }
 

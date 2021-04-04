@@ -32,7 +32,10 @@ impl Default for Options {
 
 impl Options {
     pub fn with_debug(self: Options, debug_level: i32) -> Options {
-        Options{debug_level, ..self}
+        Options {
+            debug_level,
+            ..self
+        }
     }
 
     pub fn new<I, T>(args: I) -> Options
