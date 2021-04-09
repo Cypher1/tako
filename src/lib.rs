@@ -16,6 +16,8 @@ pub mod primitives;
 pub mod interpreter;
 pub mod parser;
 pub mod type_checker;
+pub mod type_graph;
+pub mod type_graph_builder;
 
 mod externs;
 mod location;

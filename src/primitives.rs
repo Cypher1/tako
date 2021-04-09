@@ -18,18 +18,20 @@ pub type Frame = HashMap<String, Prim>;
 
 #[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Debug, Hash)]
 pub enum Prim {
+    // Actual primitives
     Bool(bool),
     I32(i32),
     Str(String),
     BuiltIn(String),
+    Tag(Offset, Offset), // A locally unique id and the number of bits needed for it, should be replaced with a bit pattern at compile time.
+    StaticPointer(Offset),
+    // Complex types
+    Pointer(Offset, Box<Prim>), // Defaults to 8 bytes (64 bit)
     Lambda(Box<Node>),
     Struct(Vec<(String, Prim)>), // Should really just store values, but we can't do that yet.
     Union(TypeSet),
     Product(TypeSet),
-    StaticPointer(Offset),
     Padded(Offset, Box<Prim>),
-    Tag(Offset, Offset), // A locally unique id and the number of bits needed for it, should be replaced with a bit pattern at compile time.
-    Pointer(Offset, Box<Prim>), // Defaults to 8 bytes (64 bit)
     Function {
         intros: Pack,
         arguments: Box<Prim>,
@@ -40,7 +42,7 @@ pub enum Prim {
         arguments: Box<Prim>,
     },
     // The following should be eliminated during lowering
-    WithEffect(Box<Prim>, Vec<String>),
+    WithRequirement(Box<Prim>, Vec<String>),
     Variable(String),
 }
 
@@ -124,9 +126,9 @@ impl Prim {
                 inner: _,
                 arguments: _,
             } => void_type(), // TODO
-            WithEffect(ty, effs) => WithEffect(Box::new(ty.access(name)), effs.to_vec()),
+            WithRequirement(ty, effs) => WithRequirement(Box::new(ty.access(name)), effs.to_vec()),
             Variable(var) => Variable(format!("{}.{}", var, name)),
-            BuiltIn(name) => panic!("Built in {} does not currently support introspection", name)
+            BuiltIn(name) => panic!("Built in {} does not currently support introspection", name),
         }
     }
 }
@@ -214,7 +216,7 @@ impl fmt::Display for Prim {
                 write!(f, "{} -> {}", arguments, results)
             }
             App { inner, arguments } => write!(f, "({})({})", inner, arguments),
-            WithEffect(ty, effs) => write!(f, "{}+{}", ty, effs.join("+")),
+            WithRequirement(ty, effs) => write!(f, "{}+{}", ty, effs.join("+")),
             Variable(name) => write!(f, "{}", name),
         }
     }

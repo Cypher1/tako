@@ -5,8 +5,8 @@ use crate::database::Compiler;
 use crate::errors::TError;
 use crate::interpreter::{prim_add_strs, prim_pow, Res};
 use crate::primitives::{
-    bit_type, i32_type, number_type, string_type, type_type, unit_type, variable, void_type,
-    Prim, Prim::*,
+    bit_type, i32_type, number_type, string_type, type_type, unit_type, variable, void_type, Prim,
+    Prim::*,
 };
 
 pub type FuncImpl = Box<dyn Fn(&dyn Compiler, HashMap<String, Box<dyn Fn() -> Res>>, Info) -> Res>;
@@ -39,15 +39,25 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
                 requirements.push(
                     BinOp {
                         name: "-|".to_string(),
-                        left: Box::new(BinOp {
-                            name: "==".to_string(),
-                            left: Box::new(Sym{name: "it".to_string(), info: info.clone()}.to_node()),
-                            right: Box::new(Str(name.to_string()).to_node()),
-                            info: info.clone()
-                        }.to_node()),
+                        left: Box::new(
+                            BinOp {
+                                name: "==".to_string(),
+                                left: Box::new(
+                                    Sym {
+                                        name: "it".to_string(),
+                                        info: info.clone(),
+                                    }
+                                    .to_node(),
+                                ),
+                                right: Box::new(Str(name.to_string()).to_node()),
+                                info: info.clone(),
+                            }
+                            .to_node(),
+                        ),
                         right: Box::new(arg.to_node()),
-                        info: info.clone()
-                    }.to_node()
+                        info: info.clone(),
+                    }
+                    .to_node(),
                 )
             }
             if let Some(first) = requirements.first() {
@@ -57,8 +67,9 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
                         name: "?".to_string(),
                         left: Box::new(curr),
                         right: Box::new(next.clone()),
-                        info: info.clone()
-                    }.to_node();
+                        info: info.clone(),
+                    }
+                    .to_node();
                 }
                 Ok(Lambda(Box::new(curr)))
             } else {
@@ -102,7 +113,7 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
                     "Expected parse_i32 argument to be a string encoded i32".to_string(),
                     Box::new(s),
                     info,
-                ))
+                )),
             }
         })),
         "++" => Some(Box::new(|_, args, info| {
@@ -239,7 +250,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
             value: BuiltIn("eprint".to_string()),
             semantic: Func,
             ty: Function {
-                results: Box::new(WithEffect(
+                results: Box::new(WithRequirement(
                     Box::new(unit_type()),
                     vec!["stderr".to_string()],
                 )),
@@ -276,7 +287,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
             value: BuiltIn("print".to_string()),
             semantic: Func,
             ty: Function {
-                results: Box::new(WithEffect(
+                results: Box::new(WithRequirement(
                     Box::new(unit_type()),
                     vec!["stdout".to_string()],
                 )),
