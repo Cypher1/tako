@@ -17,7 +17,7 @@ pub struct TypeGraph {
 }
 
 impl TypeGraph {
-    fn get_new_id(&mut self) -> Id {
+    pub fn get_new_id(&mut self) -> Id {
         let curr = self.counter;
         self.counter += 1;
         curr
@@ -27,7 +27,7 @@ impl TypeGraph {
         self.symbols.get(path).clone()
     }
 
-    fn get_id_for_path(&mut self, path: &Path) -> Id {
+    pub fn get_id_for_path(&mut self, path: &Path) -> Id {
         let id = self.symbols.get(path).clone();
         if let Some(id) = id {
             id.clone()
@@ -38,7 +38,7 @@ impl TypeGraph {
         }
     }
 
-    fn get_type(&self, path: &Path) -> Option<Prim> {
+    pub fn get_type(&self, path: &Path) -> Option<Prim> {
         let id = self.symbols.get(path); // TODO: Use get_id_for_path?
         if let Some(id) = id {
             self.types.get(&id).cloned()
@@ -47,7 +47,7 @@ impl TypeGraph {
         }
     }
 
-    fn normalize(&mut self, v: Prim) -> Result<Prim, TError> {
+    pub fn normalize(&mut self, v: Prim) -> Result<Prim, TError> {
         use crate::primitives::{void_type, Prim::*};
         Ok(match v {
             // Lambda(_),
@@ -80,6 +80,7 @@ impl TypeGraph {
             Union(tys) => {
                 let mut new_tys = set![];
                 for ty in tys.iter().cloned() {
+                    let ty = self.normalize(ty)?;
                     if ty != void_type() {
                         match ty {
                             Union(tys) => new_tys = new_tys.union(&tys).cloned().collect(),
@@ -130,16 +131,16 @@ impl TypeGraph {
             }
             Padded(n, t) => match self.normalize(*t)? {
                 Padded(k, u) => Padded(n + k, u),
-                Union(tys) => Union(
+                Union(tys) => self.normalize(Union(
                     tys.iter()
                         .map(|ty| Padded(n, Box::new(ty.clone())))
-                        .collect(),
-                ),
-                Product(tys) => Product(
+                        .collect()
+                ))?,
+                Product(tys) => self.normalize(Product(
                     tys.iter()
                         .map(|ty| Padded(n, Box::new(ty.clone())))
-                        .collect(),
-                ),
+                        .collect()
+                ))?,
                 ty => Padded(n, Box::new(ty)),
             },
             // WithRequirement(Box<Prim>, Vec<String>),
@@ -148,9 +149,21 @@ impl TypeGraph {
         })
     }
 
-    fn unify(&mut self, l: &Prim, r: &Prim) -> Result<Prim, TError> {
-        let v = self.unify_impl(l, r)?;
-        self.normalize(v)
+    pub fn unify(&mut self, l: &Prim, r: &Prim) -> Result<Prim, TError> {
+        let l = self.normalize(l.clone())?;
+        let r = self.normalize(r.clone())?;
+        let v = self.unify_impl(&l, &r)?;
+        let v = self.normalize(v)?;
+        use crate::primitives::void_type;
+        if l == r && l != v {
+            panic!("wtf\n{}\n{}\n{}", &l, &r, &v);
+        }
+        if v != void_type() {
+            eprintln!("unified:\n     {}\nwith {}\n to {}", &l, &r, &v);
+        } else {
+            eprintln!("couldnt not unify:\n     {}\nwith {}", &l, &r);
+        }
+        Ok(v)
     }
 
     fn unify_impl(&mut self, l: &Prim, r: &Prim) -> Result<Prim, TError> {
@@ -202,29 +215,21 @@ impl TypeGraph {
             }
             (Product(s), ty) | (ty, Product(s)) => {
                 let mut new_tys = set![]; // union find it?
-                let mut voided = false;
-                let mut incorporated = false;
                 for t in s.iter() {
-                    if ty == &void_type() {
-                        voided = true;
-                        break; // impossible type
+                    let ty = self.unify(ty, &t)?;
+                    if ty == void_type() {
+                        return Ok(void_type());
                     }
-                    match self.unify(&ty, &t)? {
-                        Product(_) => {
-                            new_tys.insert(t.clone()); // can't simplify
+                    match ty {
+                        Product(tys) => {
+                            new_tys = new_tys.union(&tys).cloned().collect();
                         }
-                        t => {
-                            new_tys.insert(t.clone()); // unified s by t
-                            incorporated = true;
+                        ty => {
+                            new_tys.insert(ty.clone());
                         }
                     }
                 }
-                if !incorporated {
-                    new_tys.insert(ty.clone());
-                }
-                if voided {
-                    void_type()
-                } else if new_tys.len() == 1 {
+                if new_tys.len() == 1 {
                     new_tys
                         .iter()
                         .next()
@@ -257,7 +262,13 @@ impl TypeGraph {
                 }
             }
             (t, Padded(0, u)) | (Padded(0, u), t) => self.unify(t, u)?,
-            (_, Padded(_, _)) | (Padded(_, _), _) => void_type(),
+            (t, Padded(k, u)) | (Padded(k, u), t) => {
+                // actually we need to check if these overlap...
+                Product(set!(
+                        t.clone(),
+                        Padded(*k, u.clone())
+                ))
+            }
             (Tag(k, u), Tag(j, v)) => {
                 if k == j && u == v {
                     Tag(*k, *u)
@@ -320,6 +331,16 @@ impl TypeGraph {
         })
     }
 
+    pub fn is_assignable_to(&mut self, from: &Prim, to: &Prim) -> Result<bool, TError> {
+        // To be assignable from and to must unify to the same type as
+        // from (i.e. we can't need more from 'from' than it already providee).
+        let from = self.normalize(from.clone())?;
+        let to = self.normalize(to.clone())?;
+        let unified = self.unify(&from, &to)?;
+        eprintln!("{}. {}. -> {}", &from, &to, &unified);
+        Ok(unified == from)
+    }
+
     fn restrict_type_for_id(&mut self, id: &Id, ty: &Prim) -> Result<(), TError> {
         // TODO: Merge with existing types
         let curr_ty = self.types.get(id).cloned();
@@ -346,7 +367,7 @@ mod tests {
     use super::TypeGraph;
     use crate::ast::{Path, Symbol::*};
     use crate::errors::TError;
-    use crate::primitives::{i32_type, number_type, variable, void_type, Prim::*};
+    use crate::primitives::{bit_type, byte_type, string_type, i32_type, number_type, variable, void_type, Prim::*};
 
     fn assert_eqs<T: Eq + Clone + std::fmt::Display + std::fmt::Debug>(l: T, r: T) {
         assert_eq!(
@@ -396,18 +417,6 @@ mod tests {
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, i32_type());
 
-        Ok(())
-    }
-
-    // #[test]
-    fn unifies_types_for_same_path() -> Result<(), TError> {
-        let mut tgb = TypeGraph::default();
-        let path = test_path();
-        tgb.restrict_type(&path, &i32_type())?;
-        tgb.restrict_type(&path, &number_type())?;
-
-        let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, Product(set![i32_type(), number_type()]));
         Ok(())
     }
 
@@ -511,10 +520,27 @@ mod tests {
     }
 
     #[test]
-    fn unifies_non_equivalent_padded_bools_in_types_to_void() -> Result<(), TError> {
+    fn unifies_overlapping_padded_bools() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
         let l = Padded(5, Box::new(Padded(5, Box::new(Bool(true)))));
+        let r = Padded(11, Box::new(Bool(true)));
+        tgb.restrict_type(&path, &l)?;
+        tgb.restrict_type(&path, &r)?;
+
+        let ty = tgb.get_type(&path).unwrap();
+        assert_eqs(ty, Product(set!(
+            Padded(10, Box::new(Bool(true))),
+            Padded(11, Box::new(Bool(true)))
+        )));
+        Ok(())
+    }
+
+    #[test]
+    fn unifies_non_equivalent_padded_bools_in_types_to_void() -> Result<(), TError> {
+        let mut tgb = TypeGraph::default();
+        let path = test_path();
+        let l = Padded(5, Box::new(Padded(6, Box::new(Bool(false)))));
         let r = Padded(11, Box::new(Bool(true)));
         tgb.restrict_type(&path, &l)?;
         tgb.restrict_type(&path, &r)?;
@@ -654,6 +680,26 @@ mod tests {
     }
 
     #[test]
+    fn unifies_unions_to_union_products() -> Result<(), TError> {
+        let mut tgb = TypeGraph::default();
+        let path = test_path();
+        let l = Union(set!(variable("a"), variable("b")));
+        let r = Union(set!(variable("c"), variable("d")));
+        let res = Union(set!(
+                Product(set!(variable("a"), variable("c"))),
+                Product(set!(variable("a"), variable("d"))),
+                Product(set!(variable("b"), variable("c"))),
+                Product(set!(variable("b"), variable("d")))
+        ));
+        tgb.restrict_type(&path, &l)?;
+        tgb.restrict_type(&path, &r)?;
+
+        let ty = tgb.get_type(&path).unwrap();
+        assert_eqs(ty, res);
+        Ok(())
+    }
+
+    #[test]
     fn unifies_non_equivalent_products_to_void() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
@@ -727,17 +773,45 @@ mod tests {
         assert_eqs(ty, void_type());
         Ok(())
     }
-    // #[test]
-    fn unifies_variables_in_types() -> Result<(), TError> {
+
+    #[test]
+    fn assignment_to_equal_type_bit() -> Result<(), TError> {
+        let mut tgb = TypeGraph::default();
+        assert!(tgb.is_assignable_to(&bit_type(), &bit_type())?);
+        Ok(())
+    }
+
+    #[test]
+    fn assignment_to_equal_type_byte() -> Result<(), TError> {
+        let mut tgb = TypeGraph::default();
+        assert!(tgb.is_assignable_to(&byte_type(), &byte_type())?);
+        Ok(())
+    }
+
+    #[test]
+    fn assignment_to_equal_type_str() -> Result<(), TError> {
+        let mut tgb = TypeGraph::default();
+        assert!(tgb.is_assignable_to(&string_type(), &string_type())?);
+        Ok(())
+    }
+
+    #[test]
+    fn assignment_to_equal_type_i32() -> Result<(), TError> {
+        let mut tgb = TypeGraph::default();
+        assert!(tgb.is_assignable_to(&i32_type(), &i32_type())?);
+        Ok(())
+    }
+
+    #[test]
+    fn unifies_variables_in_types_ensuring_assignment() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
         tgb.restrict_type(&path, &variable("a"))?;
         tgb.restrict_type(&path, &i32_type())?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, i32_type());
-        let var_ty_a = tgb.get_type(&path).unwrap();
-        assert_eqs(var_ty_a, i32_type());
+        assert!(tgb.is_assignable_to(&ty, &i32_type())?);
+        assert!(tgb.is_assignable_to(&ty, &variable("a"))?);
         Ok(())
     }
 }
