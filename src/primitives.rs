@@ -351,6 +351,10 @@ pub fn bit_type() -> Prim {
     sum(vec![unit_type(), unit_type()]).expect("bit should be safe")
 }
 
+pub fn trit_type() -> Prim {
+    sum(vec![unit_type(), unit_type(), unit_type()]).expect("trit should be safe")
+}
+
 pub fn byte_type() -> Prim {
     record(vec![
         bit_type(),
@@ -445,8 +449,8 @@ mod tests {
         assert_eq!(size(&bitt), Ok(1));
     }
     #[test]
-    fn trit_type() {
-        let trit = sum(vec![unit_type(), unit_type(), unit_type()]).unwrap();
+    fn trit() {
+        let trit = trit_type();
         assert_eq!(card(&trit), Ok(3));
         assert_eq!(size(&trit), Ok(2));
     }
