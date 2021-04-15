@@ -341,7 +341,7 @@ impl TypeGraph {
         Ok(unified == from)
     }
 
-    fn restrict_type_for_id(&mut self, id: &Id, ty: &Prim) -> Result<(), TError> {
+    fn require_assignable_for_id(&mut self, id: &Id, ty: &Prim) -> Result<(), TError> {
         // TODO: Merge with existing types
         let curr_ty = self.types.get(id).cloned();
         let m = if let Some(curr_ty) = curr_ty {
@@ -356,9 +356,9 @@ impl TypeGraph {
         Ok(())
     }
 
-    pub fn restrict_type(&mut self, path: &Path, ty: &Prim) -> Result<(), TError> {
+    pub fn require_assignable(&mut self, path: &Path, ty: &Prim) -> Result<(), TError> {
         let id = self.get_id_for_path(path);
-        self.restrict_type_for_id(&id, ty)
+        self.require_assignable_for_id(&id, ty)
     }
 }
 
@@ -390,7 +390,7 @@ mod tests {
     fn adding_type_gets_a_new_id() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        tgb.restrict_type(&path, &i32_type())?;
+        tgb.require_assignable(&path, &i32_type())?;
         let id = tgb.id_for_path(&path);
         assert_ne!(id, None, "Should get a new Id for this path");
         Ok(())
@@ -400,9 +400,9 @@ mod tests {
     fn adding_a_second_type_gets_the_same_id() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        tgb.restrict_type(&path, &i32_type())?;
+        tgb.require_assignable(&path, &i32_type())?;
         let id = tgb.id_for_path(&path).cloned();
-        tgb.restrict_type(&path, &number_type())?;
+        tgb.require_assignable(&path, &number_type())?;
         let id2 = tgb.id_for_path(&path).cloned();
         assert_eq!(id, id2, "Should get the same Id for this path");
         Ok(())
@@ -412,7 +412,7 @@ mod tests {
     fn round_trips_type_single_i32() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        tgb.restrict_type(&path, &i32_type())?;
+        tgb.require_assignable(&path, &i32_type())?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, i32_type());
@@ -424,8 +424,8 @@ mod tests {
     fn unifies_equal_bools_in_types() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        tgb.restrict_type(&path, &Bool(true))?;
-        tgb.restrict_type(&path, &Bool(true))?;
+        tgb.require_assignable(&path, &Bool(true))?;
+        tgb.require_assignable(&path, &Bool(true))?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, Bool(true));
@@ -436,8 +436,8 @@ mod tests {
     fn unifies_non_equal_bools_in_types_to_void() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        tgb.restrict_type(&path, &Bool(true))?;
-        tgb.restrict_type(&path, &Bool(false))?;
+        tgb.require_assignable(&path, &Bool(true))?;
+        tgb.require_assignable(&path, &Bool(false))?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, void_type());
@@ -448,8 +448,8 @@ mod tests {
     fn unifies_equal_i32_in_types() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        tgb.restrict_type(&path, &I32(4))?;
-        tgb.restrict_type(&path, &I32(4))?;
+        tgb.require_assignable(&path, &I32(4))?;
+        tgb.require_assignable(&path, &I32(4))?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, I32(4));
@@ -460,8 +460,8 @@ mod tests {
     fn unifies_non_equal_i32_in_types_to_void() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        tgb.restrict_type(&path, &I32(4))?;
-        tgb.restrict_type(&path, &I32(5))?;
+        tgb.require_assignable(&path, &I32(4))?;
+        tgb.require_assignable(&path, &I32(5))?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, void_type());
@@ -472,8 +472,8 @@ mod tests {
     fn unifies_equal_strs_in_types_to_void() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        tgb.restrict_type(&path, &Str("Woo".to_string()))?;
-        tgb.restrict_type(&path, &Str("Woo".to_string()))?;
+        tgb.require_assignable(&path, &Str("Woo".to_string()))?;
+        tgb.require_assignable(&path, &Str("Woo".to_string()))?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, Str("Woo".to_string()));
@@ -484,8 +484,8 @@ mod tests {
     fn unifies_non_equal_str_in_types_to_void() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        tgb.restrict_type(&path, &Str("Yes".to_string()))?;
-        tgb.restrict_type(&path, &Str("No".to_string()))?;
+        tgb.require_assignable(&path, &Str("Yes".to_string()))?;
+        tgb.require_assignable(&path, &Str("No".to_string()))?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, void_type());
@@ -497,8 +497,8 @@ mod tests {
         let mut tgb = TypeGraph::default();
         let path = test_path();
         let l = Padded(10, Box::new(Bool(true)));
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &l)?;
+        tgb.require_assignable(&path, &l)?;
+        tgb.require_assignable(&path, &l)?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, l);
@@ -511,8 +511,8 @@ mod tests {
         let path = test_path();
         let l = Padded(5, Box::new(Padded(5, Box::new(Bool(true)))));
         let r = Padded(10, Box::new(Bool(true)));
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        tgb.require_assignable(&path, &l)?;
+        tgb.require_assignable(&path, &r)?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, r);
@@ -525,8 +525,8 @@ mod tests {
         let path = test_path();
         let l = Padded(5, Box::new(Padded(5, Box::new(Bool(true)))));
         let r = Padded(11, Box::new(Bool(true)));
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        tgb.require_assignable(&path, &l)?;
+        tgb.require_assignable(&path, &r)?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, Product(set!(
@@ -542,8 +542,8 @@ mod tests {
         let path = test_path();
         let l = Padded(5, Box::new(Padded(6, Box::new(Bool(false)))));
         let r = Padded(11, Box::new(Bool(true)));
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        tgb.require_assignable(&path, &l)?;
+        tgb.require_assignable(&path, &r)?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, void_type());
@@ -554,8 +554,8 @@ mod tests {
     fn unifies_non_equal_i32_and_str_in_types_to_void() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        tgb.restrict_type(&path, &I32(4))?;
-        tgb.restrict_type(&path, &Str("No".to_string()))?;
+        tgb.require_assignable(&path, &I32(4))?;
+        tgb.require_assignable(&path, &Str("No".to_string()))?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, void_type());
@@ -568,8 +568,8 @@ mod tests {
         let path = test_path();
         let l = Union(set!(Bool(false), Bool(true)));
         let r = Union(set!(Bool(true), Bool(false)));
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        tgb.require_assignable(&path, &l)?;
+        tgb.require_assignable(&path, &r)?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, l);
@@ -582,8 +582,8 @@ mod tests {
         let path = test_path();
         let l = Union(set!(Bool(false)));
         let r = Bool(false);
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        tgb.require_assignable(&path, &l)?;
+        tgb.require_assignable(&path, &r)?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, r);
@@ -596,8 +596,8 @@ mod tests {
         let path = test_path();
         let l = Union(set!(I32(3), I32(4), I32(5)));
         let r = Union(set!(I32(1), I32(2), I32(3)));
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        tgb.require_assignable(&path, &l)?;
+        tgb.require_assignable(&path, &r)?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, I32(3));
@@ -610,8 +610,8 @@ mod tests {
         let path = test_path();
         let l = Union(set!(I32(3), Union(set![I32(4), I32(5)])));
         let r = Union(set!(Union(set![I32(1), I32(2)]), I32(3)));
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        tgb.require_assignable(&path, &l)?;
+        tgb.require_assignable(&path, &r)?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, I32(3));
@@ -624,8 +624,8 @@ mod tests {
         let path = test_path();
         let l = Union(set!(I32(3)));
         let r = Union(set!(Bool(true), Bool(false)));
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        tgb.require_assignable(&path, &l)?;
+        tgb.require_assignable(&path, &r)?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, void_type());
@@ -638,8 +638,8 @@ mod tests {
         let path = test_path();
         let l = Product(set!(Bool(false)));
         let r = Bool(false);
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        tgb.require_assignable(&path, &l)?;
+        tgb.require_assignable(&path, &r)?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, r);
@@ -653,8 +653,8 @@ mod tests {
         let l = Product(set!(variable("a"), variable("b")));
         let r = Product(set!(variable("b"), variable("c")));
         let res = Product(set!(variable("a"), variable("b"), variable("c")));
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        tgb.require_assignable(&path, &l)?;
+        tgb.require_assignable(&path, &r)?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, res);
@@ -671,8 +671,8 @@ mod tests {
             variable("c")
         ));
         let res = Product(set!(variable("a"), variable("b"), variable("c")));
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        tgb.require_assignable(&path, &l)?;
+        tgb.require_assignable(&path, &r)?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, res);
@@ -691,8 +691,8 @@ mod tests {
                 Product(set!(variable("b"), variable("c"))),
                 Product(set!(variable("b"), variable("d")))
         ));
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        tgb.require_assignable(&path, &l)?;
+        tgb.require_assignable(&path, &r)?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, res);
@@ -705,8 +705,8 @@ mod tests {
         let path = test_path();
         let l = Product(set!(I32(3)));
         let r = Product(set!(Bool(true), Bool(false)));
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        tgb.require_assignable(&path, &l)?;
+        tgb.require_assignable(&path, &r)?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, void_type());
@@ -719,8 +719,8 @@ mod tests {
         let path = test_path();
         let l = rec!["left" => variable("a"), "right" => variable("b")];
         let r = rec!["left" => variable("a"), "right" => variable("b")];
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        tgb.require_assignable(&path, &l)?;
+        tgb.require_assignable(&path, &r)?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, l);
@@ -735,8 +735,8 @@ mod tests {
         let r = rec!["left" => variable("c"), "right" => variable("b")];
         let res =
             rec!["left" => Product(set![variable("a"), variable("c")]), "right" => variable("b")];
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        tgb.require_assignable(&path, &l)?;
+        tgb.require_assignable(&path, &r)?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, res);
@@ -752,8 +752,8 @@ mod tests {
             rec!["left" => variable("a")]
         ]);
         let r = rec!["left" => variable("a"), "right" => variable("b")];
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        tgb.require_assignable(&path, &l)?;
+        tgb.require_assignable(&path, &r)?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, r);
@@ -766,8 +766,8 @@ mod tests {
         let path = test_path();
         let l = rec!["left" => I32(1), "right" => variable("b")];
         let r = rec!["left" => I32(2), "right" => variable("b")];
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        tgb.require_assignable(&path, &l)?;
+        tgb.require_assignable(&path, &r)?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, void_type());
@@ -806,8 +806,8 @@ mod tests {
     fn unifies_variables_in_types_ensuring_assignment() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        tgb.restrict_type(&path, &variable("a"))?;
-        tgb.restrict_type(&path, &i32_type())?;
+        tgb.require_assignable(&path, &variable("a"))?;
+        tgb.require_assignable(&path, &i32_type())?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert!(tgb.is_assignable_to(&ty, &i32_type())?);
