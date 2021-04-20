@@ -5,23 +5,23 @@ use crate::interpreter::Interpreter;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 
-use crate::primitives::{bit_type, i32_type, record, string_type, Prim, Prim::*};
+use crate::primitives::{bit_type, i32_type, record, string_type, Val, Val::*};
 
-pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError> {
+pub fn infer(db: &dyn Compiler, expr: &Node, env: &Val) -> Result<Val, TError> {
     // Infer that expression t has type A, t => A
     // See https://ncatlab.org/nlab/show/bidirectional+typechecking
     use crate::ast::*;
     match expr {
-        PrimNode(prim, _) => match prim {
+        ValNode(prim, _) => match prim {
             Product(vals) => {
-                let mut tys: BTreeSet<Prim> = set![];
+                let mut tys: BTreeSet<Val> = set![];
                 for val in vals.iter() {
                     tys.insert(infer(db, &val.clone().to_node(), env)?);
                 }
                 Ok(Product(tys))
             }
             Union(vals) => {
-                let mut tys: BTreeSet<Prim> = set![];
+                let mut tys: BTreeSet<Val> = set![];
                 for val in vals.iter() {
                     tys.insert(infer(db, &val.clone().to_node(), env)?);
                 }
@@ -32,13 +32,13 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
             Str(_) => Ok(string_type()),
             Lambda(node) => infer(db, node.as_ref(), env), // TODO: abstraction
             Struct(vals) => {
-                let mut tys: Vec<Prim> = vec![];
+                let mut tys: Vec<Val> = vec![];
                 for val in vals.iter() {
                     tys.push(infer(db, &val.1.clone().to_node(), env)?);
                 }
                 Ok(record(tys)?)
             }
-            _ty => Ok(Prim::Variable("Type".to_string())),
+            _ty => Ok(Val::Variable("Type".to_string())),
         },
         UnOpNode(UnOp { name, inner, info }) => {
             let it_ty = infer(db, inner, env)?;
@@ -194,7 +194,7 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Prim) -> Result<Prim, TError>
             } else {
                 ty
             };
-            Ok(Prim::Struct(vec![(name.clone(), ty)]))
+            Ok(Val::Struct(vec![(name.clone(), ty)]))
         }
         Error(err) => Err(err.clone()),
     }

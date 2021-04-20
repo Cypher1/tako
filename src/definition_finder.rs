@@ -1,7 +1,7 @@
 use crate::ast::*;
 use crate::database::Compiler;
 use crate::errors::TError;
-use crate::primitives::Prim;
+use crate::primitives::Val;
 use crate::symbol_table_builder::State;
 
 // Walks the AST interpreting it.
@@ -88,7 +88,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
         }
     }
 
-    fn visit_prim(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Prim) -> Res {
+    fn visit_val(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Val) -> Res {
         Ok(expr.clone().to_node())
     }
 

@@ -1,6 +1,6 @@
 use crate::ast::*;
 use crate::errors::TError;
-use crate::primitives::Prim;
+use crate::primitives::Val;
 use std::collections::HashMap;
 
 type Id = i32; // TODO: Make this a vec of Id so it can be treated as a stack
@@ -10,14 +10,14 @@ pub struct TypeGraph {
     // Map from paths to Ids (to avoid mapping from Paths to other things)
     pub symbols: HashMap<Path, Id>,
 
-    pub types: HashMap<Id, Prim>,
+    pub types: HashMap<Id, Val>,
 
     // A counter used for generating new type variables... (probably a bad idea)
     pub counter: Id,
 }
 
 impl TypeGraph {
-    fn get_new_id(&mut self) -> Id {
+    pub fn get_new_id(&mut self) -> Id {
         let curr = self.counter;
         self.counter += 1;
         curr
@@ -27,7 +27,7 @@ impl TypeGraph {
         self.symbols.get(path).clone()
     }
 
-    fn get_id_for_path(&mut self, path: &Path) -> Id {
+    pub fn get_id_for_path(&mut self, path: &Path) -> Id {
         let id = self.symbols.get(path).clone();
         if let Some(id) = id {
             id.clone()
@@ -38,7 +38,7 @@ impl TypeGraph {
         }
     }
 
-    fn get_type(&self, path: &Path) -> Option<Prim> {
+    pub fn get_type(&self, path: &Path) -> Option<Val> {
         let id = self.symbols.get(path); // TODO: Use get_id_for_path?
         if let Some(id) = id {
             self.types.get(&id).cloned()
@@ -47,18 +47,18 @@ impl TypeGraph {
         }
     }
 
-    fn normalize(&mut self, v: Prim) -> Result<Prim, TError> {
-        use crate::primitives::{void_type, Prim::*};
+    pub fn normalize(&mut self, v: Val) -> Result<Val, TError> {
+        use crate::primitives::{void_type, Val::*};
         Ok(match v {
             // Lambda(_),
             // Function {
             // intros: Pack,
-            // arguments: Box<Prim>,
-            // results: Box<Prim>,
+            // arguments: Box<Val>,
+            // results: Box<Val>,
             // },
             // App {
-            // inner: Box<Prim>,
-            // arguments: Box<Prim>,
+            // inner: Box<Val>,
+            // arguments: Box<Val>,
             // },
             Struct(tys) => {
                 let mut voided = false;
@@ -80,6 +80,7 @@ impl TypeGraph {
             Union(tys) => {
                 let mut new_tys = set![];
                 for ty in tys.iter().cloned() {
+                    let ty = self.normalize(ty)?;
                     if ty != void_type() {
                         match ty {
                             Union(tys) => new_tys = new_tys.union(&tys).cloned().collect(),
@@ -130,32 +131,44 @@ impl TypeGraph {
             }
             Padded(n, t) => match self.normalize(*t)? {
                 Padded(k, u) => Padded(n + k, u),
-                Union(tys) => Union(
+                Union(tys) => self.normalize(Union(
                     tys.iter()
                         .map(|ty| Padded(n, Box::new(ty.clone())))
-                        .collect(),
-                ),
-                Product(tys) => Product(
+                        .collect()
+                ))?,
+                Product(tys) => self.normalize(Product(
                     tys.iter()
                         .map(|ty| Padded(n, Box::new(ty.clone())))
-                        .collect(),
-                ),
+                        .collect()
+                ))?,
                 ty => Padded(n, Box::new(ty)),
             },
-            // WithRequirement(Box<Prim>, Vec<String>),
+            // WithRequirement(Box<Val>, Vec<String>),
             // Variable(String),
             _ => v,
         })
     }
 
-    fn unify(&mut self, l: &Prim, r: &Prim) -> Result<Prim, TError> {
-        let v = self.unify_impl(l, r)?;
-        self.normalize(v)
+    pub fn unify(&mut self, from: &Val, to: &Val) -> Result<Val, TError> {
+        let from = self.normalize(from.clone())?;
+        let to = self.normalize(to.clone())?;
+        let v = self.unify_impl(&from, &to)?;
+        let v = self.normalize(v)?;
+        use crate::primitives::void_type;
+        if from == to && from != v {
+            panic!("wtf\n{}\n{}\n{}", &from, &to, &v);
+        }
+        if v != void_type() {
+            eprintln!("unified:\n     {}\nwith {}\n to {}", &from, &to, &v);
+        } else {
+            eprintln!("couldnt not unify:\n     {}\nwith {}", &from, &to);
+        }
+        Ok(v)
     }
 
-    fn unify_impl(&mut self, l: &Prim, r: &Prim) -> Result<Prim, TError> {
-        use crate::primitives::{void_type, Prim::*};
-        Ok(match (l, r) {
+    fn unify_impl(&mut self, from: &Val, to: &Val) -> Result<Val, TError> {
+        use crate::primitives::{void_type, Val::*};
+        Ok(match (from, to) {
             (Struct(s), Struct(t)) => {
                 let mut names = set![];
                 let mut s_tys = map![];
@@ -202,29 +215,21 @@ impl TypeGraph {
             }
             (Product(s), ty) | (ty, Product(s)) => {
                 let mut new_tys = set![]; // union find it?
-                let mut voided = false;
-                let mut incorporated = false;
                 for t in s.iter() {
-                    if ty == &void_type() {
-                        voided = true;
-                        break; // impossible type
+                    let ty = self.unify(ty, &t)?;
+                    if ty == void_type() {
+                        return Ok(void_type());
                     }
-                    match self.unify(&ty, &t)? {
-                        Product(_) => {
-                            new_tys.insert(t.clone()); // can't simplify
+                    match ty {
+                        Product(tys) => {
+                            new_tys = new_tys.union(&tys).cloned().collect();
                         }
-                        t => {
-                            new_tys.insert(t.clone()); // unified s by t
-                            incorporated = true;
+                        ty => {
+                            new_tys.insert(ty.clone());
                         }
                     }
                 }
-                if !incorporated {
-                    new_tys.insert(ty.clone());
-                }
-                if voided {
-                    void_type()
-                } else if new_tys.len() == 1 {
+                if new_tys.len() == 1 {
                     new_tys
                         .iter()
                         .next()
@@ -257,7 +262,13 @@ impl TypeGraph {
                 }
             }
             (t, Padded(0, u)) | (Padded(0, u), t) => self.unify(t, u)?,
-            (_, Padded(_, _)) | (Padded(_, _), _) => void_type(),
+            (t, Padded(k, u)) | (Padded(k, u), t) => {
+                // actually we need to check if these overlap...
+                Product(set!(
+                        t.clone(),
+                        Padded(*k, u.clone())
+                ))
+            }
             (Tag(k, u), Tag(j, v)) => {
                 if k == j && u == v {
                     Tag(*k, *u)
@@ -320,7 +331,17 @@ impl TypeGraph {
         })
     }
 
-    fn restrict_type_for_id(&mut self, id: &Id, ty: &Prim) -> Result<(), TError> {
+    pub fn is_assignable_to(&mut self, from: &Val, to: &Val) -> Result<bool, TError> {
+        // To be assignable from and to must unify to the same type as
+        // from (i.e. we can't need more from 'from' than it already providee).
+        let from = self.normalize(from.clone())?;
+        let to = self.normalize(to.clone())?;
+        let unified = self.unify(&from, &to)?;
+        eprintln!("{}. {}. -> {}", &from, &to, &unified);
+        Ok(unified == from)
+    }
+
+    fn require_assignable_for_id(&mut self, id: &Id, ty: &Val) -> Result<(), TError> {
         // TODO: Merge with existing types
         let curr_ty = self.types.get(id).cloned();
         let m = if let Some(curr_ty) = curr_ty {
@@ -335,9 +356,9 @@ impl TypeGraph {
         Ok(())
     }
 
-    pub fn restrict_type(&mut self, path: &Path, ty: &Prim) -> Result<(), TError> {
+    pub fn require_assignable(&mut self, path: &Path, ty: &Val) -> Result<(), TError> {
         let id = self.get_id_for_path(path);
-        self.restrict_type_for_id(&id, ty)
+        self.require_assignable_for_id(&id, ty)
     }
 }
 
@@ -346,15 +367,15 @@ mod tests {
     use super::TypeGraph;
     use crate::ast::{Path, Symbol::*};
     use crate::errors::TError;
-    use crate::primitives::{i32_type, number_type, variable, void_type, Prim::*};
+    use crate::primitives::{bit_type, byte_type, string_type, i32_type, number_type, variable, void_type, Val::*};
 
-    fn assert_eqs<T: Eq + Clone + std::fmt::Display + std::fmt::Debug>(l: T, r: T) {
+    fn assert_eqs<T: Eq + Clone + std::fmt::Display + std::fmt::Debug>(a: T, b: T) {
         assert_eq!(
-            format!("{}", l.clone()),
-            format!("{}", r.clone()),
+            format!("{}", a.clone()),
+            format!("{}", b.clone()),
             "non-equal string representations"
         );
-        assert_eq!(l, r, "non-equal objects with same string representations");
+        assert_eq!(a, b, "non-equal objects with same string representations");
     }
 
     fn test_path() -> Path {
@@ -369,7 +390,7 @@ mod tests {
     fn adding_type_gets_a_new_id() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        tgb.restrict_type(&path, &i32_type())?;
+        tgb.require_assignable(&path, &i32_type())?;
         let id = tgb.id_for_path(&path);
         assert_ne!(id, None, "Should get a new Id for this path");
         Ok(())
@@ -379,9 +400,9 @@ mod tests {
     fn adding_a_second_type_gets_the_same_id() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        tgb.restrict_type(&path, &i32_type())?;
+        tgb.require_assignable(&path, &i32_type())?;
         let id = tgb.id_for_path(&path).cloned();
-        tgb.restrict_type(&path, &number_type())?;
+        tgb.require_assignable(&path, &number_type())?;
         let id2 = tgb.id_for_path(&path).cloned();
         assert_eq!(id, id2, "Should get the same Id for this path");
         Ok(())
@@ -391,7 +412,7 @@ mod tests {
     fn round_trips_type_single_i32() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        tgb.restrict_type(&path, &i32_type())?;
+        tgb.require_assignable(&path, &i32_type())?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, i32_type());
@@ -399,24 +420,12 @@ mod tests {
         Ok(())
     }
 
-    // #[test]
-    fn unifies_types_for_same_path() -> Result<(), TError> {
-        let mut tgb = TypeGraph::default();
-        let path = test_path();
-        tgb.restrict_type(&path, &i32_type())?;
-        tgb.restrict_type(&path, &number_type())?;
-
-        let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, Product(set![i32_type(), number_type()]));
-        Ok(())
-    }
-
     #[test]
     fn unifies_equal_bools_in_types() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        tgb.restrict_type(&path, &Bool(true))?;
-        tgb.restrict_type(&path, &Bool(true))?;
+        tgb.require_assignable(&path, &Bool(true))?;
+        tgb.require_assignable(&path, &Bool(true))?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, Bool(true));
@@ -427,8 +436,8 @@ mod tests {
     fn unifies_non_equal_bools_in_types_to_void() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        tgb.restrict_type(&path, &Bool(true))?;
-        tgb.restrict_type(&path, &Bool(false))?;
+        tgb.require_assignable(&path, &Bool(true))?;
+        tgb.require_assignable(&path, &Bool(false))?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, void_type());
@@ -439,8 +448,8 @@ mod tests {
     fn unifies_equal_i32_in_types() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        tgb.restrict_type(&path, &I32(4))?;
-        tgb.restrict_type(&path, &I32(4))?;
+        tgb.require_assignable(&path, &I32(4))?;
+        tgb.require_assignable(&path, &I32(4))?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, I32(4));
@@ -451,8 +460,8 @@ mod tests {
     fn unifies_non_equal_i32_in_types_to_void() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        tgb.restrict_type(&path, &I32(4))?;
-        tgb.restrict_type(&path, &I32(5))?;
+        tgb.require_assignable(&path, &I32(4))?;
+        tgb.require_assignable(&path, &I32(5))?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, void_type());
@@ -463,8 +472,8 @@ mod tests {
     fn unifies_equal_strs_in_types_to_void() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        tgb.restrict_type(&path, &Str("Woo".to_string()))?;
-        tgb.restrict_type(&path, &Str("Woo".to_string()))?;
+        tgb.require_assignable(&path, &Str("Woo".to_string()))?;
+        tgb.require_assignable(&path, &Str("Woo".to_string()))?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, Str("Woo".to_string()));
@@ -475,8 +484,8 @@ mod tests {
     fn unifies_non_equal_str_in_types_to_void() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        tgb.restrict_type(&path, &Str("Yes".to_string()))?;
-        tgb.restrict_type(&path, &Str("No".to_string()))?;
+        tgb.require_assignable(&path, &Str("Yes".to_string()))?;
+        tgb.require_assignable(&path, &Str("No".to_string()))?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, void_type());
@@ -487,12 +496,12 @@ mod tests {
     fn unifies_equal_padded_bools_in_types() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        let l = Padded(10, Box::new(Bool(true)));
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &l)?;
+        let a = Padded(10, Box::new(Bool(true)));
+        tgb.require_assignable(&path, &a)?;
+        tgb.require_assignable(&path, &a)?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, l);
+        assert_eqs(ty, a);
         Ok(())
     }
 
@@ -500,13 +509,30 @@ mod tests {
     fn unifies_equivalent_nonequal_padded_bools_in_types() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        let l = Padded(5, Box::new(Padded(5, Box::new(Bool(true)))));
-        let r = Padded(10, Box::new(Bool(true)));
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        let a = Padded(5, Box::new(Padded(5, Box::new(Bool(true)))));
+        let b = Padded(10, Box::new(Bool(true)));
+        tgb.require_assignable(&path, &a)?;
+        tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, r);
+        assert_eqs(ty, b);
+        Ok(())
+    }
+
+    #[test]
+    fn unifies_overlapping_padded_bools() -> Result<(), TError> {
+        let mut tgb = TypeGraph::default();
+        let path = test_path();
+        let a = Padded(5, Box::new(Padded(5, Box::new(Bool(true)))));
+        let b = Padded(11, Box::new(Bool(true)));
+        tgb.require_assignable(&path, &a)?;
+        tgb.require_assignable(&path, &b)?;
+
+        let ty = tgb.get_type(&path).unwrap();
+        assert_eqs(ty, Product(set!(
+            Padded(10, Box::new(Bool(true))),
+            Padded(11, Box::new(Bool(true)))
+        )));
         Ok(())
     }
 
@@ -514,10 +540,10 @@ mod tests {
     fn unifies_non_equivalent_padded_bools_in_types_to_void() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        let l = Padded(5, Box::new(Padded(5, Box::new(Bool(true)))));
-        let r = Padded(11, Box::new(Bool(true)));
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        let a = Padded(5, Box::new(Padded(6, Box::new(Bool(false)))));
+        let b = Padded(11, Box::new(Bool(true)));
+        tgb.require_assignable(&path, &a)?;
+        tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, void_type());
@@ -528,8 +554,8 @@ mod tests {
     fn unifies_non_equal_i32_and_str_in_types_to_void() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        tgb.restrict_type(&path, &I32(4))?;
-        tgb.restrict_type(&path, &Str("No".to_string()))?;
+        tgb.require_assignable(&path, &I32(4))?;
+        tgb.require_assignable(&path, &Str("No".to_string()))?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, void_type());
@@ -540,13 +566,13 @@ mod tests {
     fn unifies_equivalent_unions() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        let l = Union(set!(Bool(false), Bool(true)));
-        let r = Union(set!(Bool(true), Bool(false)));
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        let a = Union(set!(Bool(false), Bool(true)));
+        let b = Union(set!(Bool(true), Bool(false)));
+        tgb.require_assignable(&path, &a)?;
+        tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, l);
+        assert_eqs(ty, a);
         Ok(())
     }
 
@@ -554,13 +580,13 @@ mod tests {
     fn unifies_unions_with_values() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        let l = Union(set!(Bool(false)));
-        let r = Bool(false);
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        let a = Union(set!(Bool(false)));
+        let b = Bool(false);
+        tgb.require_assignable(&path, &a)?;
+        tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, r);
+        assert_eqs(ty, b);
         Ok(())
     }
 
@@ -568,10 +594,10 @@ mod tests {
     fn unifies_overlapping_unions_to_overlap() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        let l = Union(set!(I32(3), I32(4), I32(5)));
-        let r = Union(set!(I32(1), I32(2), I32(3)));
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        let a = Union(set!(I32(3), I32(4), I32(5)));
+        let b = Union(set!(I32(1), I32(2), I32(3)));
+        tgb.require_assignable(&path, &a)?;
+        tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, I32(3));
@@ -582,10 +608,10 @@ mod tests {
     fn unifies_unions_of_unions() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        let l = Union(set!(I32(3), Union(set![I32(4), I32(5)])));
-        let r = Union(set!(Union(set![I32(1), I32(2)]), I32(3)));
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        let a = Union(set!(I32(3), Union(set![I32(4), I32(5)])));
+        let b = Union(set!(Union(set![I32(1), I32(2)]), I32(3)));
+        tgb.require_assignable(&path, &a)?;
+        tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, I32(3));
@@ -596,10 +622,10 @@ mod tests {
     fn unifies_non_equivalent_unions_to_void() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        let l = Union(set!(I32(3)));
-        let r = Union(set!(Bool(true), Bool(false)));
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        let a = Union(set!(I32(3)));
+        let b = Union(set!(Bool(true), Bool(false)));
+        tgb.require_assignable(&path, &a)?;
+        tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, void_type());
@@ -610,13 +636,13 @@ mod tests {
     fn unifies_products_with_values() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        let l = Product(set!(Bool(false)));
-        let r = Bool(false);
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        let a = Product(set!(Bool(false)));
+        let b = Bool(false);
+        tgb.require_assignable(&path, &a)?;
+        tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, r);
+        assert_eqs(ty, b);
         Ok(())
     }
 
@@ -624,11 +650,11 @@ mod tests {
     fn unifies_overlapping_products_to_overlap() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        let l = Product(set!(variable("a"), variable("b")));
-        let r = Product(set!(variable("b"), variable("c")));
+        let a = Product(set!(variable("a"), variable("b")));
+        let b = Product(set!(variable("b"), variable("c")));
         let res = Product(set!(variable("a"), variable("b"), variable("c")));
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        tgb.require_assignable(&path, &a)?;
+        tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, res);
@@ -639,14 +665,34 @@ mod tests {
     fn unifies_products_of_products() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        let l = Product(set!(variable("a"), variable("b")));
-        let r = Product(set!(
+        let a = Product(set!(variable("a"), variable("b")));
+        let b = Product(set!(
             Product(set!(variable("b"), variable("c"))),
             variable("c")
         ));
         let res = Product(set!(variable("a"), variable("b"), variable("c")));
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        tgb.require_assignable(&path, &a)?;
+        tgb.require_assignable(&path, &b)?;
+
+        let ty = tgb.get_type(&path).unwrap();
+        assert_eqs(ty, res);
+        Ok(())
+    }
+
+    #[test]
+    fn unifies_unions_to_union_products() -> Result<(), TError> {
+        let mut tgb = TypeGraph::default();
+        let path = test_path();
+        let a = Union(set!(variable("a"), variable("b")));
+        let b = Union(set!(variable("c"), variable("d")));
+        let res = Union(set!(
+                Product(set!(variable("a"), variable("c"))),
+                Product(set!(variable("a"), variable("d"))),
+                Product(set!(variable("b"), variable("c"))),
+                Product(set!(variable("b"), variable("d")))
+        ));
+        tgb.require_assignable(&path, &a)?;
+        tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, res);
@@ -657,10 +703,10 @@ mod tests {
     fn unifies_non_equivalent_products_to_void() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        let l = Product(set!(I32(3)));
-        let r = Product(set!(Bool(true), Bool(false)));
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        let a = Product(set!(I32(3)));
+        let b = Product(set!(Bool(true), Bool(false)));
+        tgb.require_assignable(&path, &a)?;
+        tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, void_type());
@@ -671,13 +717,13 @@ mod tests {
     fn unifies_equivalent_structs() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        let l = rec!["left" => variable("a"), "right" => variable("b")];
-        let r = rec!["left" => variable("a"), "right" => variable("b")];
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        let a = rec!["left" => variable("a"), "right" => variable("b")];
+        let b = rec!["left" => variable("a"), "right" => variable("b")];
+        tgb.require_assignable(&path, &a)?;
+        tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, l);
+        assert_eqs(ty, a);
         Ok(())
     }
 
@@ -685,12 +731,12 @@ mod tests {
     fn unifies_structs() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        let l = rec!["left" => variable("a"), "right" => variable("b")];
-        let r = rec!["left" => variable("c"), "right" => variable("b")];
+        let a = rec!["left" => variable("a"), "right" => variable("b")];
+        let b = rec!["left" => variable("c"), "right" => variable("b")];
         let res =
             rec!["left" => Product(set![variable("a"), variable("c")]), "right" => variable("b")];
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        tgb.require_assignable(&path, &a)?;
+        tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, res);
@@ -701,16 +747,16 @@ mod tests {
     fn unifies_products_of_structs() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        let l = Product(set![
+        let a = Product(set![
             rec!["right" => variable("b")],
             rec!["left" => variable("a")]
         ]);
-        let r = rec!["left" => variable("a"), "right" => variable("b")];
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        let b = rec!["left" => variable("a"), "right" => variable("b")];
+        tgb.require_assignable(&path, &a)?;
+        tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, r);
+        assert_eqs(ty, b);
         Ok(())
     }
 
@@ -718,26 +764,54 @@ mod tests {
     fn unifies_non_equivalent_structs_to_void() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        let l = rec!["left" => I32(1), "right" => variable("b")];
-        let r = rec!["left" => I32(2), "right" => variable("b")];
-        tgb.restrict_type(&path, &l)?;
-        tgb.restrict_type(&path, &r)?;
+        let a = rec!["left" => I32(1), "right" => variable("b")];
+        let b = rec!["left" => I32(2), "right" => variable("b")];
+        tgb.require_assignable(&path, &a)?;
+        tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, void_type());
         Ok(())
     }
+
+    #[test]
+    fn assignment_to_equal_type_bit() -> Result<(), TError> {
+        let mut tgb = TypeGraph::default();
+        assert!(tgb.is_assignable_to(&bit_type(), &bit_type())?);
+        Ok(())
+    }
+
     // #[test]
-    fn unifies_variables_in_types() -> Result<(), TError> {
+    fn assignment_to_equal_type_byte() -> Result<(), TError> {
+        let mut tgb = TypeGraph::default();
+        assert!(tgb.is_assignable_to(&byte_type(), &byte_type())?);
+        Ok(())
+    }
+
+    // #[test]
+    fn assignment_to_equal_type_str() -> Result<(), TError> {
+        let mut tgb = TypeGraph::default();
+        assert!(tgb.is_assignable_to(&string_type(), &string_type())?);
+        Ok(())
+    }
+
+    // #[test]
+    fn assignment_to_equal_type_i32() -> Result<(), TError> {
+        let mut tgb = TypeGraph::default();
+        assert!(tgb.is_assignable_to(&i32_type(), &i32_type())?);
+        Ok(())
+    }
+
+    // #[test]
+    fn unifies_variables_in_types_ensuring_assignment() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        tgb.restrict_type(&path, &variable("a"))?;
-        tgb.restrict_type(&path, &i32_type())?;
+        tgb.require_assignable(&path, &variable("a"))?;
+        tgb.require_assignable(&path, &i32_type())?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, i32_type());
-        let var_ty_a = tgb.get_type(&path).unwrap();
-        assert_eqs(var_ty_a, i32_type());
+        assert!(tgb.is_assignable_to(&ty, &i32_type())?);
+        assert!(tgb.is_assignable_to(&ty, &variable("a"))?);
         Ok(())
     }
 }

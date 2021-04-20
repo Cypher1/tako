@@ -2,7 +2,7 @@ use super::ast::*;
 use super::database::Compiler;
 use super::errors::TError;
 use super::tree::{to_hash_root, HashTree};
-use crate::primitives::Prim;
+use crate::primitives::Val;
 
 // Walks the AST interpreting it.
 #[derive(Default)]
@@ -109,7 +109,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
         Ok(expr.clone().to_node())
     }
 
-    fn visit_prim(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Prim) -> Res {
+    fn visit_val(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Val) -> Res {
         Ok(expr.clone().to_node())
     }
 

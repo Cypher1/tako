@@ -11,13 +11,13 @@ use std::fmt;
 pub type Offset = i32;
 
 // A list of types with an offset to get to the first bit (used for padding, frequently 0).
-type Layout = Vec<Prim>;
-type TypeSet = BTreeSet<Prim>;
-type Pack = BTreeSet<(String, Prim)>;
-pub type Frame = HashMap<String, Prim>;
+type Layout = Vec<Val>;
+type TypeSet = BTreeSet<Val>;
+type Pack = BTreeSet<(String, Val)>;
+pub type Frame = HashMap<String, Val>;
 
 #[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Debug, Hash)]
-pub enum Prim {
+pub enum Val {
     // Actual primitives
     Bool(bool),
     I32(i32),
@@ -26,27 +26,27 @@ pub enum Prim {
     Tag(Offset, Offset), // A locally unique id and the number of bits needed for it, should be replaced with a bit pattern at compile time.
     StaticPointer(Offset),
     // Complex types
-    Pointer(Offset, Box<Prim>), // Defaults to 8 bytes (64 bit)
+    Pointer(Offset, Box<Val>), // Defaults to 8 bytes (64 bit)
     Lambda(Box<Node>),
-    Struct(Vec<(String, Prim)>), // Should really just store values, but we can't do that yet.
+    Struct(Vec<(String, Val)>), // Should really just store values, but we can't do that yet.
     Union(TypeSet),
     Product(TypeSet),
-    Padded(Offset, Box<Prim>),
+    Padded(Offset, Box<Val>),
     Function {
         intros: Pack,
-        arguments: Box<Prim>,
-        results: Box<Prim>,
+        arguments: Box<Val>,
+        results: Box<Val>,
     },
     App {
-        inner: Box<Prim>,
-        arguments: Box<Prim>,
+        inner: Box<Val>,
+        arguments: Box<Val>,
     },
     // The following should be eliminated during lowering
-    WithRequirement(Box<Prim>, Vec<String>),
+    WithRequirement(Box<Val>, Vec<String>),
     Variable(String),
 }
 
-pub fn merge_vals(left: Vec<(String, Prim)>, right: Vec<(String, Prim)>) -> Vec<(String, Prim)> {
+pub fn merge_vals(left: Vec<(String, Val)>, right: Vec<(String, Val)>) -> Vec<(String, Val)> {
     let mut names = HashSet::<String>::new();
     for pair in right.iter() {
         names.insert(pair.0.clone());
@@ -63,16 +63,16 @@ pub fn merge_vals(left: Vec<(String, Prim)>, right: Vec<(String, Prim)>) -> Vec<
     items
 }
 
-impl Prim {
-    pub fn into_struct(self: Prim) -> Vec<(String, Prim)> {
+impl Val {
+    pub fn into_struct(self: Val) -> Vec<(String, Val)> {
         match self {
             Struct(vals) => vals,
             _ => vec![("it".to_string(), self)],
         }
     }
 
-    pub fn merge(self: Prim, other: Prim) -> Prim {
-        use Prim::*;
+    pub fn merge(self: Val, other: Val) -> Val {
+        use Val::*;
         match (self, other) {
             (Struct(vals), Struct(o_vals)) => Struct(merge_vals(vals, o_vals)),
             (Struct(vals), other) => Struct(merge_vals(vals, other.into_struct())),
@@ -81,7 +81,7 @@ impl Prim {
         }
     }
 
-    pub fn unify(self: &Prim, other: &Prim, env: &mut Vec<Frame>) -> Result<Prim, TError> {
+    pub fn unify(self: &Val, other: &Val, env: &mut Vec<Frame>) -> Result<Val, TError> {
         match (self, other) {
             (Variable(name), ty) => {
                 // TODO check if already assigned (and if so unify again)
@@ -93,7 +93,7 @@ impl Prim {
         }
     }
 
-    pub fn access(self: &Prim, name: &str) -> Prim {
+    pub fn access(self: &Val, name: &str) -> Val {
         match self {
             Bool(_) => void_type(),
             I32(_) => void_type(),
@@ -133,7 +133,7 @@ impl Prim {
     }
 }
 
-impl fmt::Display for Prim {
+impl fmt::Display for Val {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let types = vec![
             (string_type(), "String"),
@@ -222,13 +222,13 @@ impl fmt::Display for Prim {
     }
 }
 
-use Prim::*;
+use Val::*;
 
-impl Prim {
-    pub fn ptr(self: Prim) -> Prim {
+impl Val {
+    pub fn ptr(self: Val) -> Val {
         Pointer(8 * byte_size(), Box::new(self))
     }
-    pub fn padded(self: Prim, size: Offset) -> Prim {
+    pub fn padded(self: Val, size: Offset) -> Val {
         if size == 0 {
             return self;
         }
@@ -240,8 +240,8 @@ impl Prim {
 }
 
 #[allow(dead_code)]
-pub fn card(ty: &Prim) -> Result<Offset, TError> {
-    use Prim::*;
+pub fn card(ty: &Val) -> Result<Offset, TError> {
+    use Val::*;
     match ty {
         Union(s) => {
             let mut sum = 0;
@@ -266,8 +266,8 @@ pub fn card(ty: &Prim) -> Result<Offset, TError> {
 }
 
 // Calculates the memory needed for a new instance in bits.
-pub fn size(ty: &Prim) -> Result<Offset, TError> {
-    use Prim::*;
+pub fn size(ty: &Val) -> Result<Offset, TError> {
+    use Val::*;
     match ty {
         Union(s) => {
             let mut res = 0;
@@ -314,7 +314,7 @@ fn num_bits(n: Offset) -> Offset {
     }
 }
 
-pub fn record(values: Layout) -> Result<Prim, TError> {
+pub fn record(values: Layout) -> Result<Val, TError> {
     let mut layout = set![];
     let mut off = 0;
     for val in values {
@@ -326,7 +326,7 @@ pub fn record(values: Layout) -> Result<Prim, TError> {
     Ok(Product(layout))
 }
 
-pub fn sum(values: Vec<Prim>) -> Result<Prim, TError> {
+pub fn sum(values: Vec<Val>) -> Result<Val, TError> {
     let mut layout = set![];
     let tag_bits = num_bits(values.len() as Offset);
     for (count, val) in values.into_iter().enumerate() {
@@ -339,19 +339,23 @@ pub fn sum(values: Vec<Prim>) -> Result<Prim, TError> {
     Ok(Union(layout))
 }
 
-pub fn void_type() -> Prim {
+pub fn void_type() -> Val {
     Union(set![])
 }
 
-pub fn unit_type() -> Prim {
+pub fn unit_type() -> Val {
     Product(set![])
 }
 
-pub fn bit_type() -> Prim {
+pub fn bit_type() -> Val {
     sum(vec![unit_type(), unit_type()]).expect("bit should be safe")
 }
 
-pub fn byte_type() -> Prim {
+pub fn trit_type() -> Val {
+    sum(vec![unit_type(), unit_type(), unit_type()]).expect("trit should be safe")
+}
+
+pub fn byte_type() -> Val {
     record(vec![
         bit_type(),
         bit_type(),
@@ -369,27 +373,27 @@ pub fn byte_size() -> Offset {
     8
 }
 
-pub fn char_type() -> Prim {
+pub fn char_type() -> Val {
     byte_type()
 }
 
-pub fn string_type() -> Prim {
+pub fn string_type() -> Val {
     char_type().ptr()
 }
 
-pub fn i32_type() -> Prim {
+pub fn i32_type() -> Val {
     record(vec![byte_type(), byte_type(), byte_type(), byte_type()]).expect("i32 should be safe")
 }
 
-pub fn number_type() -> Prim {
+pub fn number_type() -> Val {
     variable("Number")
 }
 
-pub fn type_type() -> Prim {
+pub fn type_type() -> Val {
     variable("Type")
 }
 
-pub fn variable(name: &str) -> Prim {
+pub fn variable(name: &str) -> Val {
     Variable(name.to_string())
 }
 
@@ -445,8 +449,8 @@ mod tests {
         assert_eq!(size(&bitt), Ok(1));
     }
     #[test]
-    fn trit_type() {
-        let trit = sum(vec![unit_type(), unit_type(), unit_type()]).unwrap();
+    fn trit() {
+        let trit = trit_type();
         assert_eq!(card(&trit), Ok(3));
         assert_eq!(size(&trit), Ok(2));
     }

@@ -5,8 +5,8 @@ use crate::database::Compiler;
 use crate::errors::TError;
 use crate::interpreter::{prim_add_strs, prim_pow, Res};
 use crate::primitives::{
-    bit_type, i32_type, number_type, string_type, type_type, unit_type, variable, void_type, Prim,
-    Prim::*,
+    bit_type, i32_type, number_type, string_type, type_type, unit_type, variable, void_type, Val,
+    Val::*,
 };
 
 pub type FuncImpl = Box<dyn Fn(&dyn Compiler, HashMap<String, Box<dyn Fn() -> Res>>, Info) -> Res>;
@@ -166,7 +166,7 @@ fn operator(binding: i32, assoc: Direction) -> Semantic {
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Extern {
     pub name: String,
-    pub value: Prim,
+    pub value: Val,
     pub semantic: Semantic,
     pub ty: Node,
     pub cpp: LangImpl,

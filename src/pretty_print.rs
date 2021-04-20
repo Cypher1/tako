@@ -1,7 +1,7 @@
 use super::ast::*;
 use super::database::Compiler;
 use super::errors::TError;
-use super::primitives::Prim;
+use super::primitives::Val;
 use std::fmt::Write;
 
 // Walks the AST interpreting it.
@@ -28,7 +28,7 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
         Ok(())
     }
 
-    fn visit_prim(&mut self, _db: &dyn Compiler, state: &mut State, expr: &Prim) -> Res {
+    fn visit_val(&mut self, _db: &dyn Compiler, state: &mut State, expr: &Val) -> Res {
         write!(state, "{}", &expr).unwrap();
         Ok(())
     }
