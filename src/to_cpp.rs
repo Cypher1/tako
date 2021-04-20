@@ -1,5 +1,5 @@
 use crate::ast::*;
-use crate::primitives::Val;
+use crate::primitives::{Val, Prim};
 use crate::{database::Compiler, errors::TError};
 use std::collections::HashSet;
 
@@ -337,10 +337,15 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 }
                 unimplemented!("unimplemented sum type in compilation to cpp")
             }
-            I32(n) => Ok(Code::Expr(n.to_string())),
-            Bool(true) => Ok(Code::Expr(1.to_string())),
-            Bool(false) => Ok(Code::Expr(0.to_string())),
-            Str(s) => Ok(Code::Expr(format!("{:?}", s))),
+            PrimVal(prim) => {
+                use Prim::*;
+                match prim {
+                    I32(n) => Ok(Code::Expr(n.to_string())),
+                    Bool(true) => Ok(Code::Expr(1.to_string())),
+                    Bool(false) => Ok(Code::Expr(0.to_string())),
+                    Str(s) => Ok(Code::Expr(format!("{:?}", s))),
+                }
+            }
             Lambda(node) => self.visit(db, state, node),
             Struct(vals) => {
                 // TODO: Struct C++

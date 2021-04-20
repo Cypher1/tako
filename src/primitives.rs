@@ -17,14 +17,18 @@ type Pack = BTreeSet<(String, Val)>;
 pub type Frame = HashMap<String, Val>;
 
 #[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Debug, Hash)]
-pub enum Val {
-    // Actual primitives
+pub enum Prim {
     Bool(bool),
     I32(i32),
     Str(String),
     BuiltIn(String),
     Tag(Offset, Offset), // A locally unique id and the number of bits needed for it, should be replaced with a bit pattern at compile time.
     StaticPointer(Offset),
+}
+
+#[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Debug, Hash)]
+pub enum Val {
+    PrimVal(Prim),
     // Complex types
     Pointer(Offset, Box<Val>), // Defaults to 8 bytes (64 bit)
     Lambda(Box<Node>),
@@ -61,6 +65,22 @@ pub fn merge_vals(left: Vec<(String, Val)>, right: Vec<(String, Val)>) -> Vec<(S
         items.push(pair.clone());
     }
     items
+}
+
+pub fn boolean(b: bool) -> Val {
+    Val::PrimVal(Prim::Bool(b))
+}
+
+pub fn string(s: &str) -> Val {
+    Val::PrimVal(Prim::Str(s.to_string()))
+}
+
+pub fn int32(i: i32) -> Val {
+    Val::PrimVal(Prim::I32(i))
+}
+
+pub fn builtin(name: &str) -> Val {
+    Val::PrimVal(Prim::BuiltIn(name.to_string()))
 }
 
 impl Val {
