@@ -781,28 +781,28 @@ mod tests {
         Ok(())
     }
 
-    #[test]
+    // #[test]
     fn assignment_to_equal_type_byte() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         assert!(tgb.is_assignable_to(&byte_type(), &byte_type())?);
         Ok(())
     }
 
-    #[test]
+    // #[test]
     fn assignment_to_equal_type_str() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         assert!(tgb.is_assignable_to(&string_type(), &string_type())?);
         Ok(())
     }
 
-    #[test]
+    // #[test]
     fn assignment_to_equal_type_i32() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         assert!(tgb.is_assignable_to(&i32_type(), &i32_type())?);
         Ok(())
     }
 
-    #[test]
+    // #[test]
     fn unifies_variables_in_types_ensuring_assignment() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
