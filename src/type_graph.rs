@@ -1,6 +1,6 @@
 use crate::ast::*;
 use crate::errors::TError;
-use crate::primitives::Prim;
+use crate::primitives::Val;
 use std::collections::HashMap;
 
 type Id = i32; // TODO: Make this a vec of Id so it can be treated as a stack
@@ -10,7 +10,7 @@ pub struct TypeGraph {
     // Map from paths to Ids (to avoid mapping from Paths to other things)
     pub symbols: HashMap<Path, Id>,
 
-    pub types: HashMap<Id, Prim>,
+    pub types: HashMap<Id, Val>,
 
     // A counter used for generating new type variables... (probably a bad idea)
     pub counter: Id,
@@ -38,7 +38,7 @@ impl TypeGraph {
         }
     }
 
-    pub fn get_type(&self, path: &Path) -> Option<Prim> {
+    pub fn get_type(&self, path: &Path) -> Option<Val> {
         let id = self.symbols.get(path); // TODO: Use get_id_for_path?
         if let Some(id) = id {
             self.types.get(&id).cloned()
@@ -47,18 +47,18 @@ impl TypeGraph {
         }
     }
 
-    pub fn normalize(&mut self, v: Prim) -> Result<Prim, TError> {
-        use crate::primitives::{void_type, Prim::*};
+    pub fn normalize(&mut self, v: Val) -> Result<Val, TError> {
+        use crate::primitives::{void_type, Val::*};
         Ok(match v {
             // Lambda(_),
             // Function {
             // intros: Pack,
-            // arguments: Box<Prim>,
-            // results: Box<Prim>,
+            // arguments: Box<Val>,
+            // results: Box<Val>,
             // },
             // App {
-            // inner: Box<Prim>,
-            // arguments: Box<Prim>,
+            // inner: Box<Val>,
+            // arguments: Box<Val>,
             // },
             Struct(tys) => {
                 let mut voided = false;
@@ -143,13 +143,13 @@ impl TypeGraph {
                 ))?,
                 ty => Padded(n, Box::new(ty)),
             },
-            // WithRequirement(Box<Prim>, Vec<String>),
+            // WithRequirement(Box<Val>, Vec<String>),
             // Variable(String),
             _ => v,
         })
     }
 
-    pub fn unify(&mut self, from: &Prim, to: &Prim) -> Result<Prim, TError> {
+    pub fn unify(&mut self, from: &Val, to: &Val) -> Result<Val, TError> {
         let from = self.normalize(from.clone())?;
         let to = self.normalize(to.clone())?;
         let v = self.unify_impl(&from, &to)?;
@@ -166,8 +166,8 @@ impl TypeGraph {
         Ok(v)
     }
 
-    fn unify_impl(&mut self, from: &Prim, to: &Prim) -> Result<Prim, TError> {
-        use crate::primitives::{void_type, Prim::*};
+    fn unify_impl(&mut self, from: &Val, to: &Val) -> Result<Val, TError> {
+        use crate::primitives::{void_type, Val::*};
         Ok(match (from, to) {
             (Struct(s), Struct(t)) => {
                 let mut names = set![];
@@ -331,7 +331,7 @@ impl TypeGraph {
         })
     }
 
-    pub fn is_assignable_to(&mut self, from: &Prim, to: &Prim) -> Result<bool, TError> {
+    pub fn is_assignable_to(&mut self, from: &Val, to: &Val) -> Result<bool, TError> {
         // To be assignable from and to must unify to the same type as
         // from (i.e. we can't need more from 'from' than it already providee).
         let from = self.normalize(from.clone())?;
@@ -341,7 +341,7 @@ impl TypeGraph {
         Ok(unified == from)
     }
 
-    fn require_assignable_for_id(&mut self, id: &Id, ty: &Prim) -> Result<(), TError> {
+    fn require_assignable_for_id(&mut self, id: &Id, ty: &Val) -> Result<(), TError> {
         // TODO: Merge with existing types
         let curr_ty = self.types.get(id).cloned();
         let m = if let Some(curr_ty) = curr_ty {
@@ -356,7 +356,7 @@ impl TypeGraph {
         Ok(())
     }
 
-    pub fn require_assignable(&mut self, path: &Path, ty: &Prim) -> Result<(), TError> {
+    pub fn require_assignable(&mut self, path: &Path, ty: &Val) -> Result<(), TError> {
         let id = self.get_id_for_path(path);
         self.require_assignable_for_id(&id, ty)
     }
@@ -367,7 +367,7 @@ mod tests {
     use super::TypeGraph;
     use crate::ast::{Path, Symbol::*};
     use crate::errors::TError;
-    use crate::primitives::{bit_type, byte_type, string_type, i32_type, number_type, variable, void_type, Prim::*};
+    use crate::primitives::{bit_type, byte_type, string_type, i32_type, number_type, variable, void_type, Val::*};
 
     fn assert_eqs<T: Eq + Clone + std::fmt::Display + std::fmt::Debug>(a: T, b: T) {
         assert_eq!(

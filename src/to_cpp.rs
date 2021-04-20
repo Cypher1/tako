@@ -1,5 +1,5 @@
 use crate::ast::*;
-use crate::primitives::Prim;
+use crate::primitives::Val;
 use crate::{database::Compiler, errors::TError};
 use std::collections::HashSet;
 
@@ -322,8 +322,8 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         Ok(Code::Expr(name))
     }
 
-    fn visit_prim(&mut self, db: &dyn Compiler, state: &mut State, expr: &Prim) -> Res {
-        use Prim::*;
+    fn visit_val(&mut self, db: &dyn Compiler, state: &mut State, expr: &Val) -> Res {
+        use Val::*;
         match expr {
             Product(tys) => {
                 if tys.is_empty() {
@@ -346,7 +346,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 // TODO: Struct C++
                 let mut val_code = vec![];
                 for val in vals.iter() {
-                    val_code.push(self.visit_prim(db, state, &val.1)?);
+                    val_code.push(self.visit_val(db, state, &val.1)?);
                 }
                 Ok(Code::Struct(val_code))
             }

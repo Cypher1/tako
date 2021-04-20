@@ -1,7 +1,7 @@
 use crate::ast::*;
 use crate::database::Compiler;
 use crate::errors::TError;
-use crate::primitives::Prim;
+use crate::primitives::Val;
 
 use crate::type_graph::*;
 
@@ -46,7 +46,7 @@ impl Visitor<State, (), TypeGraph, Path> for TypeGraphBuilder {
         Ok(())
     }
 
-    fn visit_prim(&mut self, _db: &dyn Compiler, _state: &mut State, _expr: &Prim) -> Res {
+    fn visit_val(&mut self, _db: &dyn Compiler, _state: &mut State, _expr: &Val) -> Res {
         Ok(())
     }
 

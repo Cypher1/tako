@@ -12,7 +12,7 @@ use super::ast::{path_to_string, Node, Path, PathRef, Root, Symbol, Table, Visit
 use super::cli_options::Options;
 use super::errors::TError;
 use super::externs::{Extern, Semantic};
-use super::primitives::Prim;
+use super::primitives::Val;
 use super::tokens::Token;
 
 #[salsa::query_group(CompilerStorage)]
@@ -50,7 +50,7 @@ pub trait Compiler: salsa::Database {
 
     fn look_up_definitions(&self, context: Path) -> Result<Root, TError>;
 
-    fn infer(&self, expr: Node, env: Prim) -> Result<Prim, TError>;
+    fn infer(&self, expr: Node, env: Val) -> Result<Val, TError>;
 
     fn compile_to_cpp(&self, module: Path) -> Result<(String, HashSet<String>), TError>;
     fn build_with_gpp(&self, module: Path) -> Result<String, TError>;
@@ -255,7 +255,7 @@ fn look_up_definitions(db: &dyn Compiler, context: Path) -> Result<Root, TError>
     DefinitionFinder::process(&module, db)
 }
 
-fn infer(db: &dyn Compiler, expr: Node, env: Prim) -> Result<Prim, TError> {
+fn infer(db: &dyn Compiler, expr: Node, env: Val) -> Result<Val, TError> {
     use crate::type_checker::infer;
     if db.debug_level() > 0 {
         eprintln!("infering type for ... {}", &expr);

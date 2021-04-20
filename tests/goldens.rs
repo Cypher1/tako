@@ -29,7 +29,7 @@ fn test_with_expectation(expected: TestResult, options: Vec<&str>) {
     let mut stdout: Vec<String> = vec![];
     let result = {
         use takolib::interpreter::Res;
-        use takolib::primitives::Prim::{Str, I32};
+        use takolib::primitives::Val::{Str, I32};
         let mut print_impl =
             &mut |_: &dyn Compiler,
                   args: HashMap<String, Box<dyn Fn() -> takolib::interpreter::Res>>,

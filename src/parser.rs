@@ -6,7 +6,7 @@ use super::database::Compiler;
 use super::errors::TError;
 use super::externs::{Direction, Semantic};
 use super::location::*;
-use super::primitives::Prim;
+use super::primitives::Val;
 use super::tokens::*;
 
 fn binding(db: &dyn Compiler, tok: &Token) -> Result<Semantic, TError> {
@@ -46,11 +46,11 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
     if let Some(head) = toks.pop_front() {
         match head.tok_type {
             TokenType::NumLit => Ok((
-                Node::PrimNode(Prim::I32(head.value.parse().unwrap()), head.get_info()),
+                Node::ValNode(Val::I32(head.value.parse().unwrap()), head.get_info()),
                 toks,
             )),
             TokenType::StringLit => Ok((
-                Node::PrimNode(Prim::Str(head.value.clone()), head.get_info()),
+                Node::ValNode(Val::Str(head.value.clone()), head.get_info()),
                 toks,
             )),
             TokenType::Op => {
@@ -108,10 +108,10 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
             TokenType::Sym => {
                 // TODO: Consider making these globals.
                 if head.value == "true" {
-                    return Ok((Prim::Bool(true).to_node(), toks));
+                    return Ok((Val::Bool(true).to_node(), toks));
                 }
                 if head.value == "false" {
-                    return Ok((Prim::Bool(false).to_node(), toks));
+                    return Ok((Val::Bool(false).to_node(), toks));
                 }
                 Ok((
                     Sym {
@@ -436,8 +436,8 @@ pub mod tests {
     use crate::ast::*;
     use crate::database::Compiler;
     use crate::database::DB;
-    use crate::primitives::Prim;
-    use Prim::*;
+    use crate::primitives::Val;
+    use Val::*;
 
     fn parse(contents: String) -> Node {
         use crate::cli_options::Options;

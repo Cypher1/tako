@@ -1,5 +1,5 @@
 use crate::ast::{Info, Node};
-use crate::primitives::Prim;
+use crate::primitives::Val;
 
 use thiserror::Error;
 
@@ -27,9 +27,9 @@ pub enum TError {
     StaticPointerCardinality(Info),
 
     #[error("impossible type, {0} at {1}")]
-    TypeMismatch(String, Box<Prim>, Info),
+    TypeMismatch(String, Box<Val>, Info),
     #[error("type mismatch, arguments {0}, {1} vs {2} {3:?}")]
-    TypeMismatch2(String, Box<Prim>, Box<Prim>, Info),
+    TypeMismatch2(String, Box<Val>, Box<Val>, Info),
     #[error("runtime requirement failed at {0:?}")]
     RequirementFailure(Info),
 

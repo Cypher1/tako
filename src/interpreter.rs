@@ -1,7 +1,7 @@
 use super::ast::*;
 use super::database::Compiler;
 use super::errors::TError;
-use super::primitives::{merge_vals, void_type, Frame, Prim, Prim::*};
+use super::primitives::{merge_vals, void_type, Frame, Val, Val::*};
 use std::collections::HashMap;
 
 pub type ImplFn<'a> =
@@ -22,7 +22,7 @@ impl<'a> Default for Interpreter<'a> {
     }
 }
 
-fn find_symbol<'a>(state: &'a [Frame], name: &str) -> Option<&'a Prim> {
+fn find_symbol<'a>(state: &'a [Frame], name: &str) -> Option<&'a Val> {
     for frame in state.iter().rev() {
         if let Some(val) = frame.get(name) {
             return Some(val); // This is the variable
@@ -32,7 +32,7 @@ fn find_symbol<'a>(state: &'a [Frame], name: &str) -> Option<&'a Prim> {
     None
 }
 
-fn prim_add(l: &Prim, r: &Prim, _info: Info) -> Res {
+fn prim_add(l: &Val, r: &Val, _info: Info) -> Res {
     use super::primitives::sum;
     match (l, r) {
         (Bool(l), Bool(r)) => Ok(I32(if *l { 1 } else { 0 } + if *r { 1 } else { 0 })),
@@ -54,8 +54,8 @@ fn prim_add(l: &Prim, r: &Prim, _info: Info) -> Res {
     }
 }
 
-pub fn prim_add_strs(l: &Prim, r: &Prim, _info: Info) -> Res {
-    let to_str = |v: &Prim| {
+pub fn prim_add_strs(l: &Val, r: &Val, _info: Info) -> Res {
+    let to_str = |v: &Val| {
         if let Str(s) = v {
             s.to_string()
         } else {
@@ -65,7 +65,7 @@ pub fn prim_add_strs(l: &Prim, r: &Prim, _info: Info) -> Res {
     Ok(Str(format!("{}{}", to_str(l), to_str(r))))
 }
 
-fn prim_eq(l: &Prim, r: &Prim, info: Info) -> Res {
+fn prim_eq(l: &Val, r: &Val, info: Info) -> Res {
     match (l, r) {
         (Bool(l), Bool(r)) => Ok(Bool(*l == *r)),
         (I32(l), I32(r)) => Ok(Bool(l == r)),
@@ -79,7 +79,7 @@ fn prim_eq(l: &Prim, r: &Prim, info: Info) -> Res {
     }
 }
 
-fn prim_neq(l: &Prim, r: &Prim, info: Info) -> Res {
+fn prim_neq(l: &Val, r: &Val, info: Info) -> Res {
     match (l, r) {
         (Bool(l), Bool(r)) => Ok(Bool(*l != *r)),
         (I32(l), I32(r)) => Ok(Bool(l != r)),
@@ -93,7 +93,7 @@ fn prim_neq(l: &Prim, r: &Prim, info: Info) -> Res {
     }
 }
 
-fn prim_gt(l: &Prim, r: &Prim, info: Info) -> Res {
+fn prim_gt(l: &Val, r: &Val, info: Info) -> Res {
     match (l, r) {
         (Bool(l), Bool(r)) => Ok(Bool(*l & !(*r))),
         (I32(l), I32(r)) => Ok(Bool(l > r)),
@@ -107,7 +107,7 @@ fn prim_gt(l: &Prim, r: &Prim, info: Info) -> Res {
     }
 }
 
-fn prim_gte(l: &Prim, r: &Prim, info: Info) -> Res {
+fn prim_gte(l: &Val, r: &Val, info: Info) -> Res {
     match (l, r) {
         (Bool(l), Bool(r)) => Ok(Bool(*l >= *r)),
         (I32(l), I32(r)) => Ok(Bool(l >= r)),
@@ -121,7 +121,7 @@ fn prim_gte(l: &Prim, r: &Prim, info: Info) -> Res {
     }
 }
 
-fn prim_sub(l: &Prim, r: &Prim, info: Info) -> Res {
+fn prim_sub(l: &Val, r: &Val, info: Info) -> Res {
     match (l, r) {
         (I32(l), Bool(r)) => Ok(I32(l - if *r { 1 } else { 0 })),
         (I32(l), I32(r)) => Ok(I32(l - r)),
@@ -134,7 +134,7 @@ fn prim_sub(l: &Prim, r: &Prim, info: Info) -> Res {
     }
 }
 
-fn prim_mul(l: &Prim, r: &Prim, info: Info) -> Res {
+fn prim_mul(l: &Val, r: &Val, info: Info) -> Res {
     use super::primitives::record;
     let fail = || {
         Err(TError::TypeMismatch2(
@@ -156,7 +156,7 @@ fn prim_mul(l: &Prim, r: &Prim, info: Info) -> Res {
     }
 }
 
-fn prim_div(l: &Prim, r: &Prim, info: Info) -> Res {
+fn prim_div(l: &Val, r: &Val, info: Info) -> Res {
     match (l, r) {
         (I32(l), I32(r)) => Ok(I32(l / r)),
         (l, r) => Err(TError::TypeMismatch2(
@@ -168,7 +168,7 @@ fn prim_div(l: &Prim, r: &Prim, info: Info) -> Res {
     }
 }
 
-fn prim_mod(l: &Prim, r: &Prim, info: Info) -> Res {
+fn prim_mod(l: &Val, r: &Val, info: Info) -> Res {
     match (l, r) {
         (I32(l), I32(r)) => Ok(I32(l % r)),
         (l, r) => Err(TError::TypeMismatch2(
@@ -180,7 +180,7 @@ fn prim_mod(l: &Prim, r: &Prim, info: Info) -> Res {
     }
 }
 
-fn prim_and(l: &Prim, r: &Prim, info: Info) -> Res {
+fn prim_and(l: &Val, r: &Val, info: Info) -> Res {
     match (l, r) {
         (Bool(l), Bool(r)) => Ok(Bool(*l && *r)),
         (l, r) => Err(TError::TypeMismatch2(
@@ -192,7 +192,7 @@ fn prim_and(l: &Prim, r: &Prim, info: Info) -> Res {
     }
 }
 
-fn prim_or(l: &Prim, r: &Prim, info: Info) -> Res {
+fn prim_or(l: &Val, r: &Val, info: Info) -> Res {
     match (l, r) {
         (Bool(l), Bool(r)) => Ok(Bool(*l || *r)),
         (l, r) => Err(TError::TypeMismatch2(
@@ -204,23 +204,23 @@ fn prim_or(l: &Prim, r: &Prim, info: Info) -> Res {
     }
 }
 
-fn prim_type_arrow(l: Prim, r: Prim, _info: Info) -> Res {
-    Ok(Prim::Function {
+fn prim_type_arrow(l: Val, r: Val, _info: Info) -> Res {
+    Ok(Val::Function {
         intros: dict!(),
         results: Box::new(r),
         arguments: Box::new(l),
     })
 }
 
-pub fn prim_type_and(l: Prim, r: Prim) -> Res {
-    Ok(Prim::Product(set!(l, r)))
+pub fn prim_type_and(l: Val, r: Val) -> Res {
+    Ok(Val::Product(set!(l, r)))
 }
 
-fn prim_type_or(l: Prim, r: Prim, _info: Info) -> Res {
-    Ok(Prim::Union(set!(l, r)))
+fn prim_type_or(l: Val, r: Val, _info: Info) -> Res {
+    Ok(Val::Union(set!(l, r)))
 }
 
-pub fn prim_pow(l: &Prim, r: &Prim, info: Info) -> Res {
+pub fn prim_pow(l: &Val, r: &Val, info: Info) -> Res {
     match (l, r) {
         (I32(l), Bool(r)) => Ok(I32(if *r { *l } else { 1 })),
         (I32(l), I32(r)) => Ok(I32(i32::pow(*l, *r as u32))), // TODO: require pos pow
@@ -234,9 +234,9 @@ pub fn prim_pow(l: &Prim, r: &Prim, info: Info) -> Res {
 }
 
 // TODO: Return nodes.
-pub type Res = Result<Prim, TError>;
+pub type Res = Result<Val, TError>;
 type State = Vec<Frame>;
-impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
+impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
     fn visit_root(&mut self, db: &dyn Compiler, root: &Root) -> Res {
         let mut base_frame = map! {};
         for (name, ext) in db.get_externs()?.iter() {
@@ -265,7 +265,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
         ))
     }
 
-    fn visit_prim(&mut self, db: &dyn Compiler, state: &mut State, expr: &Prim) -> Res {
+    fn visit_val(&mut self, db: &dyn Compiler, state: &mut State, expr: &Val) -> Res {
         if db.debug_level() > 2 {
             eprintln!("visiting prim {}", &expr);
         }
@@ -284,7 +284,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             Product(tys) => {
                 let mut new_tys = set![];
                 for ty in tys.iter() {
-                    let new_ty = self.visit_prim(db, state, &ty)?; // Evaluate the type
+                    let new_ty = self.visit_val(db, state, &ty)?; // Evaluate the type
                     if new_tys.len() == 1 {
                         let ty = new_tys
                             .iter()
@@ -325,7 +325,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             Struct(tys) => {
                 let mut new_tys = vec![];
                 for (name, ty) in tys.iter() {
-                    let new_ty = self.visit_prim(db, state, &ty)?; // Evaluate the type
+                    let new_ty = self.visit_val(db, state, &ty)?; // Evaluate the type
                     new_tys.push((name.clone(), new_ty));
                 }
                 return Ok(Struct(new_tys));
@@ -345,7 +345,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
                         eprintln!(">>>> {}", &unified);
                         new_args.push((arg.clone(), unified));
                     }
-                    let results = self.visit_prim(db, state, results)?;
+                    let results = self.visit_val(db, state, results)?;
                     return Ok(Function {
                         intros: dict!(),
                         arguments: Box::new(Struct(new_args)),
@@ -366,7 +366,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
         expr.args
             .iter()
             .map(|arg| self.visit_let(db, state, arg))
-            .collect::<Result<Vec<Prim>, TError>>()?;
+            .collect::<Result<Vec<Val>, TError>>()?;
         // Retrive the inner
         let inner = self.visit(db, state, &*expr.inner)?;
         // Run the inner
@@ -378,8 +378,8 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             );
         }
         let res = match inner {
-            Prim::Lambda(func) => self.visit(db, state, &*func)?,
-            Prim::BuiltIn(name) => {
+            Val::Lambda(func) => self.visit(db, state, &*func)?,
+            Val::BuiltIn(name) => {
                 if db.debug_level() > 2 {
                     eprintln!("looking up interpreter impl {}", name);
                 }
@@ -402,7 +402,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
                 }
                 panic!("Built a 'Built in' with unknown built in named {}", name);
             }
-            Prim::Function {
+            Val::Function {
                 intros: _, // TODO
                 arguments,
                 results,
@@ -415,7 +415,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
                 } else {
                     frame.insert("it".to_string(), *arguments);
                 }
-                self.visit_prim(db, state, &*results)?
+                self.visit_val(db, state, &*results)?
             }
             val => val,
         };
@@ -453,7 +453,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
         }
 
         if expr.args.is_some() {
-            let val = Prim::Lambda(expr.value.clone());
+            let val = Val::Lambda(expr.value.clone());
             state
                 .last_mut()
                 .unwrap()
@@ -469,7 +469,7 @@ impl<'a> Visitor<State, Prim, Prim> for Interpreter<'a> {
             None => panic!("there is no stack frame"),
             Some(frame) => {
                 frame.insert(expr.name.clone(), result.clone());
-                Ok(Prim::Struct(vec![(expr.name.clone(), result)]))
+                Ok(Val::Struct(vec![(expr.name.clone(), result)]))
             }
         }
     }
@@ -580,7 +580,7 @@ mod tests {
     use super::super::ast::*;
     use super::super::cli_options::Options;
     use super::super::database::{Compiler, DB};
-    use super::super::primitives::{number_type, string_type, Prim::*};
+    use super::super::primitives::{number_type, string_type, Val::*};
     use super::{Interpreter, Res};
     use Node::*;
 
@@ -588,7 +588,7 @@ mod tests {
     fn eval_num() {
         let mut db = DB::default();
         db.set_options(Options::default());
-        let tree = PrimNode(I32(12), Info::default());
+        let tree = ValNode(I32(12), Info::default());
         assert_eq!(
             Interpreter::default().visit(&db, &mut vec![], &tree),
             Ok(I32(12))
