@@ -350,8 +350,8 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                     Tag(bits) => {
                         unimplemented!("unimplemented Tag {:?} in compilation to cpp", &bits)
                     }
-                    StaticPointer(ptr) => {
-                        unimplemented!("unimplemented StaticPointer {} in compilation to cpp", &ptr)
+                    BitStr(size) => {
+                        unimplemented!("unimplemented BitStr {} in compilation to cpp", &size)
                     }
                 }
             }

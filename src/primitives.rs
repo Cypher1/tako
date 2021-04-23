@@ -26,7 +26,7 @@ pub enum Prim {
     Str(String),
     BuiltIn(String),
     Tag(BitString), // An identifying bit string (prefix).
-    StaticPointer(Offset),
+    BitStr(Offset),
 }
 
 #[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Debug, Hash)]
@@ -185,7 +185,7 @@ impl fmt::Display for Val {
                 }
                 write!(f, "Tag({})", bit_str)
             }
-            PrimVal(StaticPointer(ptr_size)) => write!(f, "*<{}b>Code", ptr_size),
+            PrimVal(BitStr(ptr_size)) => write!(f, "*<{}b>Code", ptr_size),
             Lambda(val) => write!(f, "{}", val),
             Struct(vals) => {
                 write!(f, "(").unwrap();
@@ -277,7 +277,7 @@ pub fn card(ty: &Val) -> Result<Offset, TError> {
     use Val::*;
     match ty {
         PrimVal(Tag(_bits)) => Ok(1),
-        PrimVal(StaticPointer(_ptr_size)) => Err(TError::StaticPointerCardinality(Info::default())),
+        PrimVal(BitStr(_ptr_size)) => Err(TError::StaticPointerCardinality(Info::default())),
         Union(s) => {
             let mut sum = 0;
             for sty in s {
@@ -304,7 +304,7 @@ pub fn size(ty: &Val) -> Result<Offset, TError> {
     use Val::*;
     match ty {
         PrimVal(Tag(bits)) => Ok(bits.len()),
-        PrimVal(StaticPointer(ptr_size)) => Ok(*ptr_size),
+        PrimVal(BitStr(ptr_size)) => Ok(*ptr_size),
         Union(s) => {
             let mut res = 0;
             for sty in s.iter() {
@@ -585,14 +585,14 @@ mod tests {
 
     #[test]
     fn bool_and_fn() {
-        let fn_ptr = PrimVal(Prim::StaticPointer(64));
+        let fn_ptr = PrimVal(Prim::BitStr(64));
         let closure = record(vec![bit_type(), fn_ptr]).unwrap();
         assert_eq!(size(&closure), Ok(65));
     }
 
     #[test]
     fn bool_or_fn() {
-        let fn_ptr = PrimVal(Prim::StaticPointer(64));
+        let fn_ptr = PrimVal(Prim::BitStr(64));
         let closure = sum(vec![bit_type(), fn_ptr]).unwrap();
         assert_eq!(size(&closure), Ok(65));
     }
