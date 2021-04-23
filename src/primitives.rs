@@ -18,6 +18,7 @@ pub type Frame = HashMap<String, Val>;
 
 #[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Debug, Hash)]
 pub enum Prim {
+    // Actual primitives
     Bool(bool),
     I32(i32),
     Str(String),
