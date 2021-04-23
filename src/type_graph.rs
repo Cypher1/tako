@@ -326,7 +326,7 @@ mod tests {
     use super::TypeGraph;
     use crate::ast::{Path, Symbol::*};
     use crate::errors::TError;
-    use crate::primitives::{bit_type, byte_type, string_type, i32_type, number_type, variable, void_type, Val::*, Prim::*, boolean, int32, string};
+    use crate::primitives::{bit_type, byte_type, string_type, i32_type, number_type, variable, void_type, Val::*, boolean, int32, string};
 
     fn assert_eqs<T: Eq + Clone + std::fmt::Display + std::fmt::Debug>(a: T, b: T) {
         assert_eq!(

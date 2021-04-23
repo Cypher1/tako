@@ -436,8 +436,7 @@ pub mod tests {
     use crate::ast::*;
     use crate::database::Compiler;
     use crate::database::DB;
-    use crate::primitives::{Val, int32, boolean, string};
-    use Val::*;
+    use crate::primitives::{int32, string};
 
     fn parse(contents: String) -> Node {
         use crate::cli_options::Options;

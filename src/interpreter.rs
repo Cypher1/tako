@@ -35,15 +35,15 @@ fn find_symbol<'a>(state: &'a [Frame], name: &str) -> Option<&'a Val> {
 fn prim_add(l: &Val, r: &Val, _info: Info) -> Res {
     use super::primitives::sum;
     match (l, r) {
-        (Bool(l), Bool(r)) => Ok(int32(if *l { 1 } else { 0 } + if *r { 1 } else { 0 })),
-        (Bool(l), I32(r)) => Ok(int32(r.wrapping_add(if *l { 1 } else { 0 }))),
-        (Bool(l), Str(r)) => Ok(string(l.to_string() + &r.to_string())),
-        (I32(l), Bool(r)) => Ok(int32(l.wrapping_add(if *r { 1 } else { 0 }))),
-        (I32(l), I32(r)) => Ok(int32(l.wrapping_add(*r))),
-        (I32(l), Str(r)) => Ok(string(l.to_string() + &r.to_string())),
-        (Str(l), Bool(r)) => Ok(string(l.to_string() + &r.to_string())),
-        (Str(l), I32(r)) => Ok(string(l.to_string() + &r.to_string())),
-        (Str(l), Str(r)) => Ok(string(l.to_string() + &r.to_string())),
+        (PrimVal(Bool(l)), PrimVal(Bool(r))) => Ok(int32(if *l { 1 } else { 0 } + if *r { 1 } else { 0 })),
+        (PrimVal(Bool(l)), PrimVal(I32(r))) => Ok(int32(r.wrapping_add(if *l { 1 } else { 0 }))),
+        (PrimVal(Bool(l)), PrimVal(Str(r))) => Ok(PrimVal(Str(l.to_string() + &r.to_string()))),
+        (PrimVal(I32(l)), PrimVal(Bool(r))) => Ok(int32(l.wrapping_add(if *r { 1 } else { 0 }))),
+        (PrimVal(I32(l)), PrimVal(I32(r))) => Ok(int32(l.wrapping_add(*r))),
+        (PrimVal(I32(l)), PrimVal(Str(r))) => Ok(PrimVal(Str(l.to_string() + &r.to_string()))),
+        (PrimVal(Str(l)), PrimVal(Bool(r))) => Ok(PrimVal(Str(l.to_string() + &r.to_string()))),
+        (PrimVal(Str(l)), PrimVal(I32(r))) => Ok(PrimVal(Str(l.to_string() + &r.to_string()))),
+        (PrimVal(Str(l)), PrimVal(Str(r))) => Ok(PrimVal(Str(l.to_string() + &r.to_string()))),
         (l, r) => Ok(sum(vec![l.clone(), r.clone()])?),
         //(l, r) => Err(TError::TypeMismatch2(
         //"+".to_string(),
@@ -62,14 +62,14 @@ pub fn prim_add_strs(l: &Val, r: &Val, _info: Info) -> Res {
             format!("{}", v)
         }
     };
-    Ok(string(format!("{}{}", to_str(l), to_str(r))))
+    Ok(PrimVal(Str(format!("{}{}", to_str(l), to_str(r)))))
 }
 
 fn prim_eq(l: &Val, r: &Val, info: Info) -> Res {
     match (l, r) {
-        (Bool(l), Bool(r)) => Ok(boolean(*l == *r)),
-        (I32(l), I32(r)) => Ok(boolean(l == r)),
-        (Str(l), Str(r)) => Ok(boolean(l == r)),
+        (PrimVal(Bool(l)), PrimVal(Bool(r))) => Ok(boolean(*l == *r)),
+        (PrimVal(I32(l)), PrimVal(I32(r))) => Ok(boolean(l == r)),
+        (PrimVal(Str(l)), PrimVal(Str(r))) => Ok(boolean(l == r)),
         (l, r) => Err(TError::TypeMismatch2(
             "==".to_string(),
             Box::new((*l).clone()),
@@ -81,9 +81,9 @@ fn prim_eq(l: &Val, r: &Val, info: Info) -> Res {
 
 fn prim_neq(l: &Val, r: &Val, info: Info) -> Res {
     match (l, r) {
-        (Bool(l), Bool(r)) => Ok(boolean(*l != *r)),
-        (I32(l), I32(r)) => Ok(boolean(l != r)),
-        (Str(l), Str(r)) => Ok(boolean(l != r)),
+        (PrimVal(Bool(l)), PrimVal(Bool(r))) => Ok(boolean(*l != *r)),
+        (PrimVal(I32(l)), PrimVal(I32(r))) => Ok(boolean(l != r)),
+        (PrimVal(Str(l)), PrimVal(Str(r))) => Ok(boolean(l != r)),
         (l, r) => Err(TError::TypeMismatch2(
             "!=".to_string(),
             Box::new((*l).clone()),
@@ -95,9 +95,9 @@ fn prim_neq(l: &Val, r: &Val, info: Info) -> Res {
 
 fn prim_gt(l: &Val, r: &Val, info: Info) -> Res {
     match (l, r) {
-        (Bool(l), Bool(r)) => Ok(boolean(*l & !(*r))),
-        (I32(l), I32(r)) => Ok(boolean(l > r)),
-        (Str(l), Str(r)) => Ok(boolean(l > r)),
+        (PrimVal(Bool(l)), PrimVal(Bool(r))) => Ok(boolean(*l & !(*r))),
+        (PrimVal(I32(l)), PrimVal(I32(r))) => Ok(boolean(l > r)),
+        (PrimVal(Str(l)), PrimVal(Str(r))) => Ok(boolean(l > r)),
         (l, r) => Err(TError::TypeMismatch2(
             ">".to_string(),
             Box::new((*l).clone()),
@@ -109,9 +109,9 @@ fn prim_gt(l: &Val, r: &Val, info: Info) -> Res {
 
 fn prim_gte(l: &Val, r: &Val, info: Info) -> Res {
     match (l, r) {
-        (Bool(l), Bool(r)) => Ok(boolean(*l >= *r)),
-        (I32(l), I32(r)) => Ok(boolean(l >= r)),
-        (Str(l), Str(r)) => Ok(boolean(l >= r)),
+        (PrimVal(Bool(l)), PrimVal(Bool(r))) => Ok(boolean(*l >= *r)),
+        (PrimVal(I32(l)), PrimVal(I32(r))) => Ok(boolean(l >= r)),
+        (PrimVal(Str(l)), PrimVal(Str(r))) => Ok(boolean(l >= r)),
         (l, r) => Err(TError::TypeMismatch2(
             ">=".to_string(),
             Box::new((*l).clone()),
@@ -586,7 +586,7 @@ mod tests {
     use super::super::ast::*;
     use super::super::cli_options::Options;
     use super::super::database::{Compiler, DB};
-    use super::super::primitives::{number_type, string_type, Val::*};
+    use super::super::primitives::{number_type, int32, boolean, string, string_type, Val::*};
     use super::{Interpreter, Res};
     use Node::*;
 
@@ -601,12 +601,12 @@ mod tests {
         );
     }
 
-    fn eval_str(s: String) -> Res {
+    fn eval_str(s: &str) -> Res {
         use std::sync::Arc;
         let mut db = DB::default();
         let filename = "test/file.tk";
         let module_name = db.module_name(filename.to_owned());
-        db.set_file(filename.to_owned(), Ok(Arc::new(s)));
+        db.set_file(filename.to_owned(), Ok(Arc::new(s.to_string())));
         db.set_options(Options::default().with_debug(3));
         let root = db.look_up_definitions(module_name)?;
         Interpreter::default().visit_root(&db, &root)
@@ -623,74 +623,74 @@ mod tests {
 
     #[test]
     fn parse_and_eval_bool() {
-        assert_eq!(eval_str("true".to_string()), Ok(boolean(true)));
+        assert_eq!(eval_str("true"), Ok(boolean(true)));
     }
 
     #[test]
     fn parse_and_eval_bool_and() {
-        assert_eq!(eval_str("true&&true".to_string()), Ok(boolean(true)));
-        assert_eq!(eval_str("false&&true".to_string()), Ok(boolean(false)));
-        assert_eq!(eval_str("true&&false".to_string()), Ok(boolean(false)));
-        assert_eq!(eval_str("false&&false".to_string()), Ok(boolean(false)));
+        assert_eq!(eval_str("true&&true"), Ok(boolean(true)));
+        assert_eq!(eval_str("false&&true"), Ok(boolean(false)));
+        assert_eq!(eval_str("true&&false"), Ok(boolean(false)));
+        assert_eq!(eval_str("false&&false"), Ok(boolean(false)));
     }
 
     #[test]
     fn parse_and_eval_bool_or() {
-        assert_eq!(eval_str("true||true".to_string()), Ok(boolean(true)));
-        assert_eq!(eval_str("false||true".to_string()), Ok(boolean(true)));
-        assert_eq!(eval_str("true||false".to_string()), Ok(boolean(true)));
-        assert_eq!(eval_str("false||false".to_string()), Ok(boolean(false)));
+        assert_eq!(eval_str("true||true"), Ok(boolean(true)));
+        assert_eq!(eval_str("false||true"), Ok(boolean(true)));
+        assert_eq!(eval_str("true||false"), Ok(boolean(true)));
+        assert_eq!(eval_str("false||false"), Ok(boolean(false)));
     }
 
     #[test]
     fn parse_and_eval_bool_eq() {
-        assert_eq!(eval_str("true==true".to_string()), Ok(boolean(true)));
-        assert_eq!(eval_str("false==true".to_string()), Ok(boolean(false)));
-        assert_eq!(eval_str("true==false".to_string()), Ok(boolean(false)));
-        assert_eq!(eval_str("false==false".to_string()), Ok(boolean(true)));
+        assert_eq!(eval_str("true==true"), Ok(boolean(true)));
+        assert_eq!(eval_str("false==true"), Ok(boolean(false)));
+        assert_eq!(eval_str("true==false"), Ok(boolean(false)));
+        assert_eq!(eval_str("false==false"), Ok(boolean(true)));
     }
 
     #[test]
     fn parse_and_eval_i32() {
-        assert_eq!(eval_str("32".to_string()), Ok(int32(32)));
+        assert_eq!(eval_str("32"), Ok(int32(32)));
     }
 
     #[test]
     fn parse_and_eval_i32_eq() {
-        assert_eq!(eval_str("0==0".to_string()), Ok(boolean(true)));
-        assert_eq!(eval_str("-1==1".to_string()), Ok(boolean(false)));
-        assert_eq!(eval_str("1==123".to_string()), Ok(boolean(false)));
-        assert_eq!(eval_str("1302==1302".to_string()), Ok(boolean(true)));
+        assert_eq!(eval_str("0==0"), Ok(boolean(true)));
+        assert_eq!(eval_str("-1==1"), Ok(boolean(false)));
+        assert_eq!(eval_str("1==123"), Ok(boolean(false)));
+        assert_eq!(eval_str("1302==1302"), Ok(boolean(true)));
     }
 
     #[test]
     fn parse_and_eval_i32_pow() {
-        assert_eq!(eval_str("2^3".to_string()), Ok(int32(8)));
-        assert_eq!(eval_str("3^2".to_string()), Ok(int32(9)));
-        assert_eq!(eval_str("-4^2".to_string()), Ok(int32(-16)));
-        assert_eq!(eval_str("(-4)^2".to_string()), Ok(int32(16)));
-        assert_eq!(eval_str("2^3^2".to_string()), Ok(int32(512)));
+        assert_eq!(eval_str("2^3"), Ok(int32(8)));
+        assert_eq!(eval_str("3^2"), Ok(int32(9)));
+        assert_eq!(eval_str("-4^2"), Ok(int32(-16)));
+        assert_eq!(eval_str("(-4)^2"), Ok(int32(16)));
+        assert_eq!(eval_str("2^3^2"), Ok(int32(512)));
     }
 
     #[test]
     fn parse_and_eval_str() {
-        assert_eq!(eval_str("\"32\"".to_string()), Ok(Str("32".to_string())));
+        assert_eq!(eval_str("\"32\""), Ok(string("32")));
     }
 
     #[test]
     fn parse_and_eval_let() {
-        assert_eq!(eval_str("x=3;x".to_string()), Ok(int32(3)));
+        assert_eq!(eval_str("x=3;x"), Ok(int32(3)));
     }
 
     #[test]
     fn parse_and_eval_let_with_args() {
-        assert_eq!(eval_str("x(it)=it*2;x(3)".to_string()), Ok(int32(6)));
+        assert_eq!(eval_str("x(it)=it*2;x(3)"), Ok(int32(6)));
     }
 
     #[test]
     fn parse_and_eval_i32_type() {
         assert_eq!(
-            eval_str("int32".to_string()),
+            eval_str("I32"),
             Ok(crate::primitives::i32_type())
         );
     }
@@ -698,7 +698,7 @@ mod tests {
     #[test]
     fn parse_and_eval_number_type() {
         assert_eq!(
-            eval_str("Number".to_string()),
+            eval_str("Number"),
             Ok(crate::primitives::number_type())
         );
     }
@@ -706,7 +706,7 @@ mod tests {
     #[test]
     fn parse_and_eval_string_type() {
         assert_eq!(
-            eval_str("String".to_string()),
+            eval_str("String"),
             Ok(crate::primitives::string_type())
         );
     }
@@ -714,7 +714,7 @@ mod tests {
     #[test]
     fn parse_and_eval_string_or_number_type() {
         assert_eq!(
-            eval_str("String | Number".to_string()),
+            eval_str("String | Number"),
             Ok(Union(set![number_type(), string_type()]))
         );
     }
@@ -722,7 +722,7 @@ mod tests {
     #[test]
     fn parse_and_eval_string_and_number_type() {
         assert_eq!(
-            eval_str("String & Number".to_string()),
+            eval_str("String & Number"),
             Ok(Product(set![number_type(), string_type()]))
         );
     }
@@ -731,7 +731,7 @@ mod tests {
     fn parse_and_eval_tagged_string_or_number_type() {
         use crate::primitives::*;
         assert_eq!(
-            eval_str("String + int32".to_string()),
+            eval_str("String + I32"),
             Ok(sum(vec![string_type(), i32_type()]).unwrap())
         );
     }
@@ -740,45 +740,47 @@ mod tests {
     fn parse_and_eval_string_times_number_type() {
         use crate::primitives::*;
         assert_eq!(
-            eval_str("String * int32".to_string()),
+            eval_str("String * I32"),
             Ok(record(vec![string_type(), i32_type()]).unwrap())
         );
     }
 
     #[test]
     fn parse_and_eval_struct_x4_y5_access_x() {
-        assert_eq!(eval_str("struct(x=4, y=5)(\"x\")".to_string()), Ok(int32(4)));
+        assert_eq!(eval_str("struct(x=4, y=5)(\"x\")"), Ok(int32(4)));
     }
 
     #[test]
     fn parse_and_eval_struct_x4_y5_access_y() {
         assert_eq!(
-            eval_str("struct(x=4, y=\"Hi\")(\"y\")".to_string()),
-            Ok(Str("Hi".to_string()))
+            eval_str("struct(x=4, y=\"Hi\")(\"y\")"),
+            Ok(string("Hi"))
         );
     }
 
     #[test]
     fn parse_and_eval_struct_x4_y5() {
         assert_eq!(
-            eval_str("\"\"++struct(x=4, y=\"Hi\")".to_string()),
-            Ok(Str("(((it==\'x\')-|4)?((it==\'y\')-|\'Hi\'))".to_string())) // Ok(Str("struct(x=4, y=\"Hi\")".to_string()))
+            eval_str("\"\"++struct(x=4, y=\"Hi\")"),
+            Ok(string("(((it==\'x\')-|4)?((it==\'y\')-|\'Hi\'))")) // Ok(Str("struct(x=4, y=\"Hi\")".to_string()))
         );
     }
 
     #[test]
     fn parse_and_eval_struct_empty() {
         assert_eq!(
-            eval_str("struct()".to_string()),
+            eval_str("struct()"),
             Ok(Lambda(Box::new(Product(set![]).to_node())))
         );
     }
 
     #[test]
     fn parse_and_eval_print() {
+        use crate::primitives::Val::PrimVal;
+        use crate::primitives::Prim::BuiltIn;
         assert_eq!(
-            eval_str("print".to_string()),
-            Ok(BuiltIn("print".to_string()))
+            eval_str("print"),
+            Ok(PrimVal(BuiltIn("print".to_string())))
         );
     }
 
@@ -792,7 +794,7 @@ mod tests {
             let res = num1.wrapping_add(num2);
             eprintln!("mul {:?} + {:?} = {:?}", num1, num2, res);
             assert_eq!(
-                eval_str(format!("mul(x, y)=x+y;mul(x= {}, y= {})", num1, num2)),
+                eval_str(&format!("mul(x, y)=x+y;mul(x= {}, y= {})", num1, num2)),
                 Ok(int32(res))
             );
         }
@@ -808,7 +810,7 @@ mod tests {
             let res = num1.wrapping_mul(num2);
             eprintln!("mul {:?} * {:?} = {:?}", num1, num2, res);
             assert_eq!(
-                eval_str(format!("mul(x, y)=x*y;mul(x= {}, y= {})", num1, num2)),
+                eval_str(&format!("mul(x, y)=x*y;mul(x= {}, y= {})", num1, num2)),
                 Ok(int32(res))
             );
         }
