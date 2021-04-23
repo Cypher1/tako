@@ -350,9 +350,6 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                     Tag(bits) => {
                         unimplemented!("unimplemented Tag {:?} in compilation to cpp", &bits)
                     }
-                    BitStr(size) => {
-                        unimplemented!("unimplemented BitStr {} in compilation to cpp", &size)
-                    }
                 }
             }
             Lambda(node) => self.visit(db, state, node),

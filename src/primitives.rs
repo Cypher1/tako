@@ -26,7 +26,6 @@ pub enum Prim {
     Str(String),
     BuiltIn(String),
     Tag(BitString), // An identifying bit string (prefix).
-    BitStr(Offset),
 }
 
 #[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Debug, Hash)]
@@ -51,6 +50,7 @@ pub enum Val {
     // The following should be eliminated during lowering
     WithRequirement(Box<Val>, Vec<String>),
     Variable(String),
+    BitStr(Offset),
 }
 
 pub fn merge_vals(left: Vec<(String, Val)>, right: Vec<(String, Val)>) -> Vec<(String, Val)> {
@@ -125,7 +125,7 @@ impl Val {
             PrimVal(Prim::BuiltIn(name)) => {
                 panic!("Built in {} does not currently support introspection", name)
             }
-            PrimVal(_) => void_type(),
+            BitStr(_) | PrimVal(_) => void_type(),
             Lambda(_) => void_type(),
             Struct(tys) => {
                 for (param, ty) in tys.iter() {
@@ -185,7 +185,7 @@ impl fmt::Display for Val {
                 }
                 write!(f, "Tag({})", bit_str)
             }
-            PrimVal(BitStr(ptr_size)) => write!(f, "*<{}b>Code", ptr_size),
+            BitStr(ptr_size) => write!(f, "*<{}b>Code", ptr_size),
             Lambda(val) => write!(f, "{}", val),
             Struct(vals) => {
                 write!(f, "(").unwrap();
@@ -277,7 +277,7 @@ pub fn card(ty: &Val) -> Result<Offset, TError> {
     use Val::*;
     match ty {
         PrimVal(Tag(_bits)) => Ok(1),
-        PrimVal(BitStr(_ptr_size)) => Err(TError::StaticPointerCardinality(Info::default())),
+        BitStr(_ptr_size) => Err(TError::StaticPointerCardinality(Info::default())),
         Union(s) => {
             let mut sum = 0;
             for sty in s {
@@ -304,7 +304,7 @@ pub fn size(ty: &Val) -> Result<Offset, TError> {
     use Val::*;
     match ty {
         PrimVal(Tag(bits)) => Ok(bits.len()),
-        PrimVal(BitStr(ptr_size)) => Ok(*ptr_size),
+        BitStr(ptr_size) => Ok(*ptr_size),
         Union(s) => {
             let mut res = 0;
             for sty in s.iter() {
@@ -585,14 +585,14 @@ mod tests {
 
     #[test]
     fn bool_and_fn() {
-        let fn_ptr = PrimVal(Prim::BitStr(64));
+        let fn_ptr = BitStr(64);
         let closure = record(vec![bit_type(), fn_ptr]).unwrap();
         assert_eq!(size(&closure), Ok(65));
     }
 
     #[test]
     fn bool_or_fn() {
-        let fn_ptr = PrimVal(Prim::BitStr(64));
+        let fn_ptr = BitStr(64);
         let closure = sum(vec![bit_type(), fn_ptr]).unwrap();
         assert_eq!(size(&closure), Ok(65));
     }
