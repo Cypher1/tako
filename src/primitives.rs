@@ -1,6 +1,7 @@
 use crate::ast::Info;
 use crate::ast::Node;
 use crate::errors::TError;
+use bitvec::prelude::*;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -16,17 +17,13 @@ type TypeSet = BTreeSet<Val>;
 type Pack = BTreeSet<(String, Val)>;
 pub type Frame = HashMap<String, Val>;
 
-type BitString = Vec<bool>;
-// TODO: Consider using https://docs.rs/bitvec/0.22.3/bitvec/ instead of a BitString
-
 #[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Debug, Hash)]
 pub enum Prim {
     Bool(bool),
     I32(i32),
     Str(String),
     BuiltIn(String),
-    Tag(BitString), // An identifying bit string (prefix).
-    StaticPointer(Offset),
+    Tag(BitVec), // An identifying bit string (prefix).
 }
 
 #[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Debug, Hash)]
@@ -51,6 +48,7 @@ pub enum Val {
     // The following should be eliminated during lowering
     WithRequirement(Box<Val>, Vec<String>),
     Variable(String),
+    BitStr(Offset),
 }
 
 pub fn merge_vals(left: Vec<(String, Val)>, right: Vec<(String, Val)>) -> Vec<(String, Val)> {
@@ -70,7 +68,7 @@ pub fn merge_vals(left: Vec<(String, Val)>, right: Vec<(String, Val)>) -> Vec<(S
     items
 }
 
-pub fn tag(bits: BitString) -> Val {
+pub fn tag(bits: BitVec) -> Val {
     Val::PrimVal(Prim::Tag(bits))
 }
 
@@ -125,7 +123,7 @@ impl Val {
             PrimVal(Prim::BuiltIn(name)) => {
                 panic!("Built in {} does not currently support introspection", name)
             }
-            PrimVal(_) => void_type(),
+            BitStr(_) | PrimVal(_) => void_type(),
             Lambda(_) => void_type(),
             Struct(tys) => {
                 for (param, ty) in tys.iter() {
@@ -185,7 +183,7 @@ impl fmt::Display for Val {
                 }
                 write!(f, "Tag({})", bit_str)
             }
-            PrimVal(StaticPointer(ptr_size)) => write!(f, "*<{}b>Code", ptr_size),
+            BitStr(ptr_size) => write!(f, "*<{}b>Code", ptr_size),
             Lambda(val) => write!(f, "{}", val),
             Struct(vals) => {
                 write!(f, "(").unwrap();
@@ -277,7 +275,7 @@ pub fn card(ty: &Val) -> Result<Offset, TError> {
     use Val::*;
     match ty {
         PrimVal(Tag(_bits)) => Ok(1),
-        PrimVal(StaticPointer(_ptr_size)) => Err(TError::StaticPointerCardinality(Info::default())),
+        BitStr(_ptr_size) => Err(TError::StaticPointerCardinality(Info::default())),
         Union(s) => {
             let mut sum = 0;
             for sty in s {
@@ -304,7 +302,7 @@ pub fn size(ty: &Val) -> Result<Offset, TError> {
     use Val::*;
     match ty {
         PrimVal(Tag(bits)) => Ok(bits.len()),
-        PrimVal(StaticPointer(ptr_size)) => Ok(*ptr_size),
+        BitStr(ptr_size) => Ok(*ptr_size),
         Union(s) => {
             let mut res = 0;
             for sty in s.iter() {
@@ -348,13 +346,13 @@ fn num_bits(n: Offset) -> Offset {
     }
 }
 
-pub fn bits(mut n: Offset, len: Offset) -> BitString {
-    let mut v: BitString = vec![false; len];
+pub fn bits(mut n: Offset, len: Offset) -> BitVec {
+    let mut v: BitVec = bitvec![0; len];
     for ind in 0..len {
         if n == 0 {
             break;
         }
-        v[len - 1 - ind] = if n % 2 == 0 { false } else { true };
+        *v.get_mut(len - 1 - ind).unwrap() = if n % 2 == 0 { false } else { true };
         n /= 2;
     }
     v
@@ -449,38 +447,38 @@ mod tests {
 
     #[test]
     fn bits_zero_length() {
-        assert_eq!(bits(0, 0), vec![]);
-        assert_eq!(bits(1, 0), vec![]);
+        assert_eq!(bits(0, 0), bits![]);
+        assert_eq!(bits(1, 0), bits![]);
     }
 
     #[test]
     fn bits_one_length() {
-        assert_eq!(bits(0, 1), vec![false]);
-        assert_eq!(bits(1, 1), vec![true]);
-        assert_eq!(bits(2, 1), vec![false]);
-        assert_eq!(bits(3, 1), vec![true]);
+        assert_eq!(bits(0, 1), bits![0]);
+        assert_eq!(bits(1, 1), bits![1]);
+        assert_eq!(bits(2, 1), bits![0]);
+        assert_eq!(bits(3, 1), bits![1]);
     }
 
     #[test]
     fn bits_two_length() {
-        assert_eq!(bits(0, 2), vec![false, false]);
-        assert_eq!(bits(1, 2), vec![false, true]);
-        assert_eq!(bits(2, 2), vec![true, false]);
-        assert_eq!(bits(3, 2), vec![true, true]);
-        assert_eq!(bits(4, 2), vec![false, false]);
+        assert_eq!(bits(0, 2), bits![0, 0]);
+        assert_eq!(bits(1, 2), bits![0, 1]);
+        assert_eq!(bits(2, 2), bits![1, 0]);
+        assert_eq!(bits(3, 2), bits![1, 1]);
+        assert_eq!(bits(4, 2), bits![0, 0]);
     }
 
     #[test]
     fn bits_three_length() {
-        assert_eq!(bits(0, 3), vec![false, false, false]);
-        assert_eq!(bits(1, 3), vec![false, false, true]);
-        assert_eq!(bits(2, 3), vec![false, true, false]);
-        assert_eq!(bits(3, 3), vec![false, true, true]);
-        assert_eq!(bits(4, 3), vec![true, false, false]);
-        assert_eq!(bits(5, 3), vec![true, false, true]);
-        assert_eq!(bits(6, 3), vec![true, true, false]);
-        assert_eq!(bits(7, 3), vec![true, true, true]);
-        assert_eq!(bits(8, 3), vec![false, false, false]);
+        assert_eq!(bits(0, 3), bits![0, 0, 0]);
+        assert_eq!(bits(1, 3), bits![0, 0, 1]);
+        assert_eq!(bits(2, 3), bits![0, 1, 0]);
+        assert_eq!(bits(3, 3), bits![0, 1, 1]);
+        assert_eq!(bits(4, 3), bits![1, 0, 0]);
+        assert_eq!(bits(5, 3), bits![1, 0, 1]);
+        assert_eq!(bits(6, 3), bits![1, 1, 0]);
+        assert_eq!(bits(7, 3), bits![1, 1, 1]);
+        assert_eq!(bits(8, 3), bits![0, 0, 0]);
     }
 
     #[test]
@@ -585,14 +583,14 @@ mod tests {
 
     #[test]
     fn bool_and_fn() {
-        let fn_ptr = PrimVal(Prim::StaticPointer(64));
+        let fn_ptr = BitStr(64);
         let closure = record(vec![bit_type(), fn_ptr]).unwrap();
         assert_eq!(size(&closure), Ok(65));
     }
 
     #[test]
     fn bool_or_fn() {
-        let fn_ptr = PrimVal(Prim::StaticPointer(64));
+        let fn_ptr = BitStr(64);
         let closure = sum(vec![bit_type(), fn_ptr]).unwrap();
         assert_eq!(size(&closure), Ok(65));
     }
