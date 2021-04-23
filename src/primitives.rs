@@ -1,6 +1,7 @@
 use crate::ast::Info;
 use crate::ast::Node;
 use crate::errors::TError;
+use bitvec::prelude::*;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -16,16 +17,13 @@ type TypeSet = BTreeSet<Val>;
 type Pack = BTreeSet<(String, Val)>;
 pub type Frame = HashMap<String, Val>;
 
-type BitString = Vec<bool>;
-// TODO: Consider using https://docs.rs/bitvec/0.22.3/bitvec/ instead of a BitString
-
 #[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Debug, Hash)]
 pub enum Prim {
     Bool(bool),
     I32(i32),
     Str(String),
     BuiltIn(String),
-    Tag(BitString), // An identifying bit string (prefix).
+    Tag(BitVec), // An identifying bit string (prefix).
 }
 
 #[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Debug, Hash)]
@@ -70,7 +68,7 @@ pub fn merge_vals(left: Vec<(String, Val)>, right: Vec<(String, Val)>) -> Vec<(S
     items
 }
 
-pub fn tag(bits: BitString) -> Val {
+pub fn tag(bits: BitVec) -> Val {
     Val::PrimVal(Prim::Tag(bits))
 }
 
@@ -348,13 +346,13 @@ fn num_bits(n: Offset) -> Offset {
     }
 }
 
-pub fn bits(mut n: Offset, len: Offset) -> BitString {
-    let mut v: BitString = vec![false; len];
+pub fn bits(mut n: Offset, len: Offset) -> BitVec {
+    let mut v: BitVec = bitvec![0; len];
     for ind in 0..len {
         if n == 0 {
             break;
         }
-        v[len - 1 - ind] = if n % 2 == 0 { false } else { true };
+        *v.get_mut(len - 1 - ind).unwrap() = if n % 2 == 0 { false } else { true };
         n /= 2;
     }
     v
@@ -449,38 +447,38 @@ mod tests {
 
     #[test]
     fn bits_zero_length() {
-        assert_eq!(bits(0, 0), vec![]);
-        assert_eq!(bits(1, 0), vec![]);
+        assert_eq!(bits(0, 0), bits![]);
+        assert_eq!(bits(1, 0), bits![]);
     }
 
     #[test]
     fn bits_one_length() {
-        assert_eq!(bits(0, 1), vec![false]);
-        assert_eq!(bits(1, 1), vec![true]);
-        assert_eq!(bits(2, 1), vec![false]);
-        assert_eq!(bits(3, 1), vec![true]);
+        assert_eq!(bits(0, 1), bits![0]);
+        assert_eq!(bits(1, 1), bits![1]);
+        assert_eq!(bits(2, 1), bits![0]);
+        assert_eq!(bits(3, 1), bits![1]);
     }
 
     #[test]
     fn bits_two_length() {
-        assert_eq!(bits(0, 2), vec![false, false]);
-        assert_eq!(bits(1, 2), vec![false, true]);
-        assert_eq!(bits(2, 2), vec![true, false]);
-        assert_eq!(bits(3, 2), vec![true, true]);
-        assert_eq!(bits(4, 2), vec![false, false]);
+        assert_eq!(bits(0, 2), bits![0, 0]);
+        assert_eq!(bits(1, 2), bits![0, 1]);
+        assert_eq!(bits(2, 2), bits![1, 0]);
+        assert_eq!(bits(3, 2), bits![1, 1]);
+        assert_eq!(bits(4, 2), bits![0, 0]);
     }
 
     #[test]
     fn bits_three_length() {
-        assert_eq!(bits(0, 3), vec![false, false, false]);
-        assert_eq!(bits(1, 3), vec![false, false, true]);
-        assert_eq!(bits(2, 3), vec![false, true, false]);
-        assert_eq!(bits(3, 3), vec![false, true, true]);
-        assert_eq!(bits(4, 3), vec![true, false, false]);
-        assert_eq!(bits(5, 3), vec![true, false, true]);
-        assert_eq!(bits(6, 3), vec![true, true, false]);
-        assert_eq!(bits(7, 3), vec![true, true, true]);
-        assert_eq!(bits(8, 3), vec![false, false, false]);
+        assert_eq!(bits(0, 3), bits![0, 0, 0]);
+        assert_eq!(bits(1, 3), bits![0, 0, 1]);
+        assert_eq!(bits(2, 3), bits![0, 1, 0]);
+        assert_eq!(bits(3, 3), bits![0, 1, 1]);
+        assert_eq!(bits(4, 3), bits![1, 0, 0]);
+        assert_eq!(bits(5, 3), bits![1, 0, 1]);
+        assert_eq!(bits(6, 3), bits![1, 1, 0]);
+        assert_eq!(bits(7, 3), bits![1, 1, 1]);
+        assert_eq!(bits(8, 3), bits![0, 0, 0]);
     }
 
     #[test]
