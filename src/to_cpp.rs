@@ -1,5 +1,5 @@
 use crate::ast::*;
-use crate::primitives::{Val, Prim};
+use crate::primitives::{Prim, Val};
 use crate::{database::Compiler, errors::TError};
 use std::collections::HashSet;
 
@@ -344,9 +344,15 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                     Bool(true) => Ok(Code::Expr(1.to_string())),
                     Bool(false) => Ok(Code::Expr(0.to_string())),
                     Str(s) => Ok(Code::Expr(format!("{:?}", s))),
-                    BuiltIn(name) => unimplemented!("unimplemented BuiltIn to {} in compilation to cpp", &name),
-                    Tag(bits, _len) => unimplemented!("unimplemented Tag {} in compilation to cpp", &bits),
-                    StaticPointer(ptr) => unimplemented!("unimplemented StaticPointer {} in compilation to cpp", &ptr),
+                    BuiltIn(name) => {
+                        unimplemented!("unimplemented BuiltIn to {} in compilation to cpp", &name)
+                    }
+                    Tag(bits, _len) => {
+                        unimplemented!("unimplemented Tag {} in compilation to cpp", &bits)
+                    }
+                    StaticPointer(ptr) => {
+                        unimplemented!("unimplemented StaticPointer {} in compilation to cpp", &ptr)
+                    }
                 }
             }
             Lambda(node) => self.visit(db, state, node),

@@ -6,7 +6,7 @@ use super::database::Compiler;
 use super::errors::TError;
 use super::externs::{Direction, Semantic};
 use super::location::*;
-use super::primitives::{Val, Prim, int32, string};
+use super::primitives::{int32, string, Prim, Val};
 use super::tokens::*;
 
 fn binding(db: &dyn Compiler, tok: &Token) -> Result<Semantic, TError> {
@@ -49,10 +49,7 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
                 Node::ValNode(int32(head.value.parse().unwrap()), head.get_info()),
                 toks,
             )),
-            TokenType::StringLit => Ok((
-                Node::ValNode(string(&head.value), head.get_info()),
-                toks,
-            )),
+            TokenType::StringLit => Ok((Node::ValNode(string(&head.value), head.get_info()), toks)),
             TokenType::Op => {
                 let lbp = binding_power(db, &head)?;
                 let (right, new_toks) = expr(db, toks, lbp)?;

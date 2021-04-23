@@ -119,7 +119,9 @@ impl Val {
 
     pub fn access(self: &Val, name: &str) -> Val {
         match self {
-            PrimVal(Prim::BuiltIn(name)) => panic!("Built in {} does not currently support introspection", name),
+            PrimVal(Prim::BuiltIn(name)) => {
+                panic!("Built in {} does not currently support introspection", name)
+            }
             PrimVal(_) => void_type(),
             Lambda(_) => void_type(),
             Struct(tys) => {
@@ -262,8 +264,8 @@ impl Val {
 
 #[allow(dead_code)]
 pub fn card(ty: &Val) -> Result<Offset, TError> {
-    use Val::*;
     use Prim::*;
+    use Val::*;
     match ty {
         PrimVal(Tag(_tag, _bits)) => Ok(1),
         PrimVal(StaticPointer(_ptr_size)) => Err(TError::StaticPointerCardinality(Info::default())),
@@ -289,8 +291,8 @@ pub fn card(ty: &Val) -> Result<Offset, TError> {
 
 // Calculates the memory needed for a new instance in bits.
 pub fn size(ty: &Val) -> Result<Offset, TError> {
-    use Val::*;
     use Prim::*;
+    use Val::*;
     match ty {
         PrimVal(Tag(_tag, bits)) => Ok(*bits),
         PrimVal(StaticPointer(ptr_size)) => Ok(*ptr_size),

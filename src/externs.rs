@@ -5,12 +5,8 @@ use crate::database::Compiler;
 use crate::errors::TError;
 use crate::interpreter::{prim_add_strs, prim_pow, Res};
 use crate::primitives::{
-    bit_type, i32_type, number_type, string_type, type_type, unit_type, variable, void_type, Val,
-    Val::*,
-    Prim::*,
-    builtin,
-    string,
-    int32
+    bit_type, builtin, i32_type, int32, number_type, string, string_type, type_type, unit_type,
+    variable, void_type, Prim::*, Val, Val::*,
 };
 
 pub type FuncImpl = Box<dyn Fn(&dyn Compiler, HashMap<String, Box<dyn Fn() -> Res>>, Info) -> Res>;

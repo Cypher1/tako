@@ -1,7 +1,9 @@
 use super::ast::*;
 use super::database::Compiler;
 use super::errors::TError;
-use super::primitives::{merge_vals, void_type, Frame, Val, Val::*, Prim::*, int32, string, boolean};
+use super::primitives::{
+    boolean, int32, merge_vals, string, void_type, Frame, Prim::*, Val, Val::*,
+};
 use std::collections::HashMap;
 
 pub type ImplFn<'a> =
@@ -35,7 +37,9 @@ fn find_symbol<'a>(state: &'a [Frame], name: &str) -> Option<&'a Val> {
 fn prim_add(l: &Val, r: &Val, _info: Info) -> Res {
     use super::primitives::sum;
     match (l, r) {
-        (PrimVal(Bool(l)), PrimVal(Bool(r))) => Ok(int32(if *l { 1 } else { 0 } + if *r { 1 } else { 0 })),
+        (PrimVal(Bool(l)), PrimVal(Bool(r))) => {
+            Ok(int32(if *l { 1 } else { 0 } + if *r { 1 } else { 0 }))
+        }
         (PrimVal(Bool(l)), PrimVal(I32(r))) => Ok(int32(r.wrapping_add(if *l { 1 } else { 0 }))),
         (PrimVal(Bool(l)), PrimVal(Str(r))) => Ok(PrimVal(Str(l.to_string() + &r.to_string()))),
         (PrimVal(I32(l)), PrimVal(Bool(r))) => Ok(int32(l.wrapping_add(if *r { 1 } else { 0 }))),
@@ -390,7 +394,8 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
                             let mut frame_vals: HashMap<String, Box<dyn Fn() -> Res>> = map!();
                             for (name, val) in state.last().unwrap().clone().iter() {
                                 let val = val.clone();
-                                frame_vals.insert(name.to_string(), Box::new(move || Ok(val.clone())));
+                                frame_vals
+                                    .insert(name.to_string(), Box::new(move || Ok(val.clone())));
                             }
                             frame_vals
                         };
@@ -400,7 +405,9 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
                         if db.debug_level() > 2 {
                             eprintln!("looking up default impl {}", &name);
                         }
-                        if let Some(default_impl) = crate::externs::get_implementation(name.to_owned()) {
+                        if let Some(default_impl) =
+                            crate::externs::get_implementation(name.to_owned())
+                        {
                             return default_impl(db, frame(), expr.get_info());
                         }
                         panic!("Built a 'Built in' with unknown built in named {}", name);
@@ -586,7 +593,7 @@ mod tests {
     use super::super::ast::*;
     use super::super::cli_options::Options;
     use super::super::database::{Compiler, DB};
-    use super::super::primitives::{number_type, int32, boolean, string, string_type, Val::*};
+    use super::super::primitives::{boolean, int32, number_type, string, string_type, Val::*};
     use super::{Interpreter, Res};
     use Node::*;
 
@@ -689,26 +696,17 @@ mod tests {
 
     #[test]
     fn parse_and_eval_i32_type() {
-        assert_eq!(
-            eval_str("I32"),
-            Ok(crate::primitives::i32_type())
-        );
+        assert_eq!(eval_str("I32"), Ok(crate::primitives::i32_type()));
     }
 
     #[test]
     fn parse_and_eval_number_type() {
-        assert_eq!(
-            eval_str("Number"),
-            Ok(crate::primitives::number_type())
-        );
+        assert_eq!(eval_str("Number"), Ok(crate::primitives::number_type()));
     }
 
     #[test]
     fn parse_and_eval_string_type() {
-        assert_eq!(
-            eval_str("String"),
-            Ok(crate::primitives::string_type())
-        );
+        assert_eq!(eval_str("String"), Ok(crate::primitives::string_type()));
     }
 
     #[test]
@@ -752,10 +750,7 @@ mod tests {
 
     #[test]
     fn parse_and_eval_struct_x4_y5_access_y() {
-        assert_eq!(
-            eval_str("struct(x=4, y=\"Hi\")(\"y\")"),
-            Ok(string("Hi"))
-        );
+        assert_eq!(eval_str("struct(x=4, y=\"Hi\")(\"y\")"), Ok(string("Hi")));
     }
 
     #[test]
@@ -776,12 +771,9 @@ mod tests {
 
     #[test]
     fn parse_and_eval_print() {
-        use crate::primitives::Val::PrimVal;
         use crate::primitives::Prim::BuiltIn;
-        assert_eq!(
-            eval_str("print"),
-            Ok(PrimVal(BuiltIn("print".to_string())))
-        );
+        use crate::primitives::Val::PrimVal;
+        assert_eq!(eval_str("print"), Ok(PrimVal(BuiltIn("print".to_string()))));
     }
 
     #[test]

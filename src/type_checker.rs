@@ -5,7 +5,7 @@ use crate::interpreter::Interpreter;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 
-use crate::primitives::{bit_type, i32_type, record, string_type, Val, Val::*, Prim::*};
+use crate::primitives::{bit_type, i32_type, record, string_type, Prim::*, Val, Val::*};
 
 pub fn infer(db: &dyn Compiler, expr: &Node, env: &Val) -> Result<Val, TError> {
     // Infer that expression t has type A, t => A

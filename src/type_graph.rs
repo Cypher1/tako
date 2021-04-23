@@ -134,12 +134,12 @@ impl TypeGraph {
                 Union(tys) => self.normalize(Union(
                     tys.iter()
                         .map(|ty| Padded(n, Box::new(ty.clone())))
-                        .collect()
+                        .collect(),
                 ))?,
                 Product(tys) => self.normalize(Product(
                     tys.iter()
                         .map(|ty| Padded(n, Box::new(ty.clone())))
-                        .collect()
+                        .collect(),
                 ))?,
                 ty => Padded(n, Box::new(ty)),
             },
@@ -264,10 +264,7 @@ impl TypeGraph {
             (t, Padded(0, u)) | (Padded(0, u), t) => self.unify(t, u)?,
             (t, Padded(k, u)) | (Padded(k, u), t) => {
                 // actually we need to check if these overlap...
-                Product(set!(
-                        t.clone(),
-                        Padded(*k, u.clone())
-                ))
+                Product(set!(t.clone(), Padded(*k, u.clone())))
             }
             (PrimVal(p), PrimVal(q)) => {
                 if p == q {
@@ -326,7 +323,10 @@ mod tests {
     use super::TypeGraph;
     use crate::ast::{Path, Symbol::*};
     use crate::errors::TError;
-    use crate::primitives::{bit_type, byte_type, string_type, i32_type, number_type, variable, void_type, Val::*, boolean, int32, string};
+    use crate::primitives::{
+        bit_type, boolean, byte_type, i32_type, int32, number_type, string, string_type, variable,
+        void_type, Val::*,
+    };
 
     fn assert_eqs<T: Eq + Clone + std::fmt::Display + std::fmt::Debug>(a: T, b: T) {
         assert_eq!(
@@ -488,10 +488,13 @@ mod tests {
         tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, Product(set!(
-            Padded(10, Box::new(boolean(true))),
-            Padded(11, Box::new(boolean(true)))
-        )));
+        assert_eqs(
+            ty,
+            Product(set!(
+                Padded(10, Box::new(boolean(true))),
+                Padded(11, Box::new(boolean(true)))
+            )),
+        );
         Ok(())
     }
 
@@ -645,10 +648,10 @@ mod tests {
         let a = Union(set!(variable("a"), variable("b")));
         let b = Union(set!(variable("c"), variable("d")));
         let res = Union(set!(
-                Product(set!(variable("a"), variable("c"))),
-                Product(set!(variable("a"), variable("d"))),
-                Product(set!(variable("b"), variable("c"))),
-                Product(set!(variable("b"), variable("d")))
+            Product(set!(variable("a"), variable("c"))),
+            Product(set!(variable("a"), variable("d"))),
+            Product(set!(variable("b"), variable("c"))),
+            Product(set!(variable("b"), variable("d")))
         ));
         tgb.require_assignable(&path, &a)?;
         tgb.require_assignable(&path, &b)?;
