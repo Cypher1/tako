@@ -2,13 +2,11 @@
 
 ## Features
 
-- Support sending extra arguments (after '--') from interpreter to the interpreted program
 - Shift+enter in REPL stops continues without execution
 - REPL remembers variables from previous executions
 - REPL completion from std::lib and imported files
 - Load, unload, reload and display loaded modules in REPL
 - Imports
-- Externs (started)
 - Move globals / std into a file using low level ops (started)
 - Check for associativity errors (e.g. a&&b||c)
 - Allow operator declaration (with semantics on evaluation order [i.e. which sides are auto converted to lambdas before being sent to the operator])
@@ -36,17 +34,18 @@
   - Functions that take just one argument can skip "()" parens(e.g. func(y) == func y)
 - Locals (scope management)
 - Main + command function argument parsing
-- Conversion to ssa (after parsing)
+- Conversion to SSA (after parsing)
 - Conversion to stack?
-- Move source locations out of errors and ast nodes in favour of symbol 'paths'
+- Move source locations out of errors and AST nodes in favour of symbol 'paths'
 - Provide a mapping between symbol 'paths' and source locations
 - Look up source locations only when displaying info / errors to the user
+- Incremental re-parsing
+- Replace symbol table builder, definition finder and type checker with type graph builder
 
 ## Testing
 
-- Tests for code generator
-- Testing for error generation (i.e. source locations, file names)
-- Tests for type checker
+- Unit tests for code generator
+- Unit tests for error generation (i.e. source locations, file names)
 - Tests for compiled programs (not just golden sources, but behaviour)
 
 - Standardize on cli arguments (copying, where possible from go, rustc, cargo) e.g.:
@@ -58,28 +57,27 @@
 
 ## User code optimisations
 
-- [Conversion between Arrays of Structs and Structs of Arrays](https://en.wikipedia.org/wiki/AoS_and_SoA)
-- Function fusion / code inlining
-- Struct fusion (i.e. inlining / flattening of data)
-- Constant propagation
 - Rewrite rules +/ symbolic execution
-- [Super compilaton](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/07/supercomp-by-eval.pdf)
+  - [Conversion between Arrays of Structs and Structs of Arrays](https://en.wikipedia.org/wiki/AoS_and_SoA)
+  - Function fusion / code inlining
+  - Struct fusion (i.e. inlining / flattening of data)
+  - Constant propagation
+  - [Super compilation](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/07/supercomp-by-eval.pdf)
 
 ### Compiler optimisations
 
-- Store ast as map of ssa nodes by id, map from 'symbol paths' to ids
-- Perform passes over the ssa map values without having to perform ast traversal
-- Deduplicate ssa nodes (i.e. duplicate nodes are only stored once, start with constants and then bubble it up)
+- Store AST as map of SSA nodes by id, map from 'symbol paths' to ids
+- Perform passes over the SSA map values without having to perform AST traversal
+- De duplicate SSA nodes (i.e. duplicate nodes are only stored once, start with constants and then bubble it up)
 - Intern strings
 
 ## Communication
 
-- Improve on ReadMe
+- Improve on Read Me
 - Language documentation
 
 ## Pain points
 
 - No way to run machine or low level instructions
-- No way to hide local data from a child function (locals)
 - No type checking (requirements and exhaustiveness checking)
 - Compiler is far behind interpreter feature set
