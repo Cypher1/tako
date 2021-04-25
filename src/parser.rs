@@ -6,7 +6,7 @@ use super::database::Compiler;
 use super::errors::TError;
 use super::externs::{Direction, Semantic};
 use super::location::*;
-use super::primitives::Val;
+use super::primitives::{int32, string, Prim, Val};
 use super::tokens::*;
 
 fn binding(db: &dyn Compiler, tok: &Token) -> Result<Semantic, TError> {
@@ -46,13 +46,10 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
     if let Some(head) = toks.pop_front() {
         match head.tok_type {
             TokenType::NumLit => Ok((
-                Node::ValNode(Val::I32(head.value.parse().unwrap()), head.get_info()),
+                Node::ValNode(int32(head.value.parse().unwrap()), head.get_info()),
                 toks,
             )),
-            TokenType::StringLit => Ok((
-                Node::ValNode(Val::Str(head.value.clone()), head.get_info()),
-                toks,
-            )),
+            TokenType::StringLit => Ok((Node::ValNode(string(&head.value), head.get_info()), toks)),
             TokenType::Op => {
                 let lbp = binding_power(db, &head)?;
                 let (right, new_toks) = expr(db, toks, lbp)?;
@@ -108,10 +105,10 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
             TokenType::Sym => {
                 // TODO: Consider making these globals.
                 if head.value == "true" {
-                    return Ok((Val::Bool(true).to_node(), toks));
+                    return Ok((Val::PrimVal(Prim::Bool(true)).to_node(), toks));
                 }
                 if head.value == "false" {
-                    return Ok((Val::Bool(false).to_node(), toks));
+                    return Ok((Val::PrimVal(Prim::Bool(false)).to_node(), toks));
                 }
                 Ok((
                     Sym {
@@ -436,8 +433,7 @@ pub mod tests {
     use crate::ast::*;
     use crate::database::Compiler;
     use crate::database::DB;
-    use crate::primitives::Val;
-    use Val::*;
+    use crate::primitives::{int32, string};
 
     fn parse(contents: String) -> Node {
         use crate::cli_options::Options;
@@ -450,23 +446,23 @@ pub mod tests {
     }
 
     fn num_lit(x: i32) -> Box<Node> {
-        Box::new(I32(x).to_node())
+        Box::new(int32(x).to_node())
     }
 
-    fn str_lit(x: String) -> Box<Node> {
-        Box::new(Str(x).to_node())
+    fn str_lit(x: &str) -> Box<Node> {
+        Box::new(string(x).to_node())
     }
 
     #[test]
     fn parse_num() {
-        assert_eq!(parse("12".to_string()), I32(12).to_node());
+        assert_eq!(parse("12".to_string()), int32(12).to_node());
     }
 
     #[test]
     fn parse_str() {
         assert_eq!(
             parse("\"hello world\"".to_string()),
-            Str("hello world".to_string()).to_node()
+            string("hello world").to_node()
         );
     }
 
@@ -476,7 +472,7 @@ pub mod tests {
             parse("-12".to_string()),
             UnOp {
                 name: "-".to_string(),
-                inner: Box::new(I32(12).to_node()),
+                inner: Box::new(int32(12).to_node()),
                 info: Info::default()
             }
             .to_node()
@@ -583,8 +579,8 @@ pub mod tests {
             parse("\"hello\"+\" world\"".to_string()),
             BinOp {
                 name: "+".to_string(),
-                left: str_lit("hello".to_string()),
-                right: str_lit(" world".to_string()),
+                left: str_lit("hello"),
+                right: str_lit(" world"),
                 info: Info::default()
             }
             .to_node()
@@ -597,7 +593,7 @@ pub mod tests {
             parse("\"hello world\"\n7".to_string()),
             BinOp {
                 name: ",".to_string(),
-                left: Box::new(str_lit("hello world".to_string()).to_node()),
+                left: Box::new(str_lit("hello world").to_node()),
                 right: num_lit(7),
                 info: Info::default()
             }
@@ -618,7 +614,7 @@ pub mod tests {
                         value: Box::new(
                             UnOp {
                                 name: "!".to_string(),
-                                inner: str_lit("hello world".to_string()),
+                                inner: str_lit("hello world"),
                                 info: Info::default(),
                             }
                             .to_node()

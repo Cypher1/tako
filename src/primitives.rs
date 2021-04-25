@@ -1,6 +1,7 @@
 use crate::ast::Info;
 use crate::ast::Node;
 use crate::errors::TError;
+use bitvec::prelude::*;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -8,7 +9,7 @@ use std::fmt;
 
 // i32 here are sizes in bits, not bytes.
 // This means that we don't need to have a separate systems for bit&byte layouts.
-pub type Offset = i32;
+pub type Offset = usize;
 
 // A list of types with an offset to get to the first bit (used for padding, frequently 0).
 type Layout = Vec<Val>;
@@ -17,14 +18,17 @@ type Pack = BTreeSet<(String, Val)>;
 pub type Frame = HashMap<String, Val>;
 
 #[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Debug, Hash)]
-pub enum Val {
-    // Actual primitives
+pub enum Prim {
     Bool(bool),
     I32(i32),
     Str(String),
     BuiltIn(String),
-    Tag(Offset, Offset), // A locally unique id and the number of bits needed for it, should be replaced with a bit pattern at compile time.
-    StaticPointer(Offset),
+    Tag(BitVec), // An identifying bit string (prefix).
+}
+
+#[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Debug, Hash)]
+pub enum Val {
+    PrimVal(Prim),
     // Complex types
     Pointer(Offset, Box<Val>), // Defaults to 8 bytes (64 bit)
     Lambda(Box<Node>),
@@ -44,6 +48,7 @@ pub enum Val {
     // The following should be eliminated during lowering
     WithRequirement(Box<Val>, Vec<String>),
     Variable(String),
+    BitStr(Offset),
 }
 
 pub fn merge_vals(left: Vec<(String, Val)>, right: Vec<(String, Val)>) -> Vec<(String, Val)> {
@@ -61,6 +66,26 @@ pub fn merge_vals(left: Vec<(String, Val)>, right: Vec<(String, Val)>) -> Vec<(S
         items.push(pair.clone());
     }
     items
+}
+
+pub fn tag(bits: BitVec) -> Val {
+    Val::PrimVal(Prim::Tag(bits))
+}
+
+pub fn boolean(b: bool) -> Val {
+    Val::PrimVal(Prim::Bool(b))
+}
+
+pub fn string(s: &str) -> Val {
+    Val::PrimVal(Prim::Str(s.to_string()))
+}
+
+pub fn int32(i: i32) -> Val {
+    Val::PrimVal(Prim::I32(i))
+}
+
+pub fn builtin(name: &str) -> Val {
+    Val::PrimVal(Prim::BuiltIn(name.to_string()))
 }
 
 impl Val {
@@ -95,9 +120,10 @@ impl Val {
 
     pub fn access(self: &Val, name: &str) -> Val {
         match self {
-            Bool(_) => void_type(),
-            I32(_) => void_type(),
-            Str(_) => void_type(),
+            PrimVal(Prim::BuiltIn(name)) => {
+                panic!("Built in {} does not currently support introspection", name)
+            }
+            BitStr(_) | PrimVal(_) => void_type(),
             Lambda(_) => void_type(),
             Struct(tys) => {
                 for (param, ty) in tys.iter() {
@@ -109,9 +135,7 @@ impl Val {
             }
             Union(_) => void_type(),   // TODO
             Product(_) => void_type(), // TODO
-            StaticPointer(_) => void_type(),
             Padded(_, ty) => ty.access(name),
-            Tag(_, _) => void_type(), // TODO
             Pointer(_, ty) => ty.access(name),
             Function {
                 intros: _,
@@ -128,7 +152,6 @@ impl Val {
             } => void_type(), // TODO
             WithRequirement(ty, effs) => WithRequirement(Box::new(ty.access(name)), effs.to_vec()),
             Variable(var) => Variable(format!("{}.{}", var, name)),
-            BuiltIn(name) => panic!("Built in {} does not currently support introspection", name),
         }
     }
 }
@@ -147,11 +170,20 @@ impl fmt::Display for Val {
                 return write!(f, "{}", name);
             }
         }
+        use Prim::*;
         match self {
-            BuiltIn(name) => write!(f, "{}", name),
-            Bool(val) => write!(f, "{}", val),
-            I32(val) => write!(f, "{}", val),
-            Str(val) => write!(f, "'{}'", val),
+            PrimVal(BuiltIn(name)) => write!(f, "{}", name),
+            PrimVal(Bool(val)) => write!(f, "{}", val),
+            PrimVal(I32(val)) => write!(f, "{}", val),
+            PrimVal(Str(val)) => write!(f, "'{}'", val),
+            PrimVal(Tag(bits)) => {
+                let mut bit_str = "".to_string();
+                for b in bits.iter() {
+                    bit_str.push(if *b { '1' } else { '0' });
+                }
+                write!(f, "Tag({})", bit_str)
+            }
+            BitStr(ptr_size) => write!(f, "*<{}b>Code", ptr_size),
             Lambda(val) => write!(f, "{}", val),
             Struct(vals) => {
                 write!(f, "(").unwrap();
@@ -198,9 +230,7 @@ impl fmt::Display for Val {
                 }
             }
             Pointer(ptr_size, t) => write!(f, "*<{}b>{}", ptr_size, t),
-            Tag(tag, bits) => write!(f, "Tag<{}b>{}", bits, tag),
             Padded(size, t) => write!(f, "Pad<{}b>{}", size, t),
-            StaticPointer(ptr_size) => write!(f, "*<{}b>Code", ptr_size),
             Function {
                 intros,
                 results,
@@ -241,8 +271,11 @@ impl Val {
 
 #[allow(dead_code)]
 pub fn card(ty: &Val) -> Result<Offset, TError> {
+    use Prim::*;
     use Val::*;
     match ty {
+        PrimVal(Tag(_bits)) => Ok(1),
+        BitStr(_ptr_size) => Err(TError::StaticPointerCardinality(Info::default())),
         Union(s) => {
             let mut sum = 0;
             for sty in s {
@@ -258,17 +291,18 @@ pub fn card(ty: &Val) -> Result<Offset, TError> {
             Ok(prod)
         }
         Pointer(_ptr_size, t) => card(&t),
-        Tag(_tag, _bits) => Ok(1),
         Padded(_size, t) => card(&t),
-        StaticPointer(_ptr_size) => Err(TError::StaticPointerCardinality(Info::default())),
         x => panic!(format!("unhandled: card of {:#?}", x)),
     }
 }
 
 // Calculates the memory needed for a new instance in bits.
 pub fn size(ty: &Val) -> Result<Offset, TError> {
+    use Prim::*;
     use Val::*;
     match ty {
+        PrimVal(Tag(bits)) => Ok(bits.len()),
+        BitStr(ptr_size) => Ok(*ptr_size),
         Union(s) => {
             let mut res = 0;
             for sty in s.iter() {
@@ -291,8 +325,6 @@ pub fn size(ty: &Val) -> Result<Offset, TError> {
             Ok(res)
         }
         Pointer(ptr_size, _t) => Ok(*ptr_size),
-        Tag(_tag, bits) => Ok(*bits),
-        StaticPointer(ptr_size) => Ok(*ptr_size),
         Padded(bits, t) => Ok(bits + size(t)?),
         Variable(name) => Err(TError::UnknownSizeOfVariableType(
             name.clone(),
@@ -314,6 +346,18 @@ fn num_bits(n: Offset) -> Offset {
     }
 }
 
+pub fn bits(mut n: Offset, len: Offset) -> BitVec {
+    let mut v: BitVec = bitvec![0; len];
+    for ind in 0..len {
+        if n == 0 {
+            break;
+        }
+        *v.get_mut(len - 1 - ind).unwrap() = if n % 2 == 0 { false } else { true };
+        n /= 2;
+    }
+    v
+}
+
 pub fn record(values: Layout) -> Result<Val, TError> {
     let mut layout = set![];
     let mut off = 0;
@@ -330,7 +374,7 @@ pub fn sum(values: Vec<Val>) -> Result<Val, TError> {
     let mut layout = set![];
     let tag_bits = num_bits(values.len() as Offset);
     for (count, val) in values.into_iter().enumerate() {
-        let mut tagged = Tag(count as i32, tag_bits);
+        let mut tagged = tag(bits(count, tag_bits));
         if val != unit_type() {
             tagged = record(vec![tagged, val])?;
         }
@@ -402,6 +446,42 @@ mod tests {
     use super::*;
 
     #[test]
+    fn bits_zero_length() {
+        assert_eq!(bits(0, 0), bits![]);
+        assert_eq!(bits(1, 0), bits![]);
+    }
+
+    #[test]
+    fn bits_one_length() {
+        assert_eq!(bits(0, 1), bits![0]);
+        assert_eq!(bits(1, 1), bits![1]);
+        assert_eq!(bits(2, 1), bits![0]);
+        assert_eq!(bits(3, 1), bits![1]);
+    }
+
+    #[test]
+    fn bits_two_length() {
+        assert_eq!(bits(0, 2), bits![0, 0]);
+        assert_eq!(bits(1, 2), bits![0, 1]);
+        assert_eq!(bits(2, 2), bits![1, 0]);
+        assert_eq!(bits(3, 2), bits![1, 1]);
+        assert_eq!(bits(4, 2), bits![0, 0]);
+    }
+
+    #[test]
+    fn bits_three_length() {
+        assert_eq!(bits(0, 3), bits![0, 0, 0]);
+        assert_eq!(bits(1, 3), bits![0, 0, 1]);
+        assert_eq!(bits(2, 3), bits![0, 1, 0]);
+        assert_eq!(bits(3, 3), bits![0, 1, 1]);
+        assert_eq!(bits(4, 3), bits![1, 0, 0]);
+        assert_eq!(bits(5, 3), bits![1, 0, 1]);
+        assert_eq!(bits(6, 3), bits![1, 1, 0]);
+        assert_eq!(bits(7, 3), bits![1, 1, 1]);
+        assert_eq!(bits(8, 3), bits![0, 0, 0]);
+    }
+
+    #[test]
     fn void() {
         assert_eq!(card(&void_type()), Ok(0));
         assert_eq!(size(&void_type()), Ok(0));
@@ -413,24 +493,24 @@ mod tests {
     }
     #[test]
     fn tag1_type() {
-        assert_eq!(card(&Tag(1, 1)), Ok(1));
-        assert_eq!(size(&Tag(1, 1)), Ok(1));
+        assert_eq!(card(&tag(bits(1, 1))), Ok(1));
+        assert_eq!(size(&tag(bits(1, 1))), Ok(1));
     }
     #[test]
     fn tag2_type() {
-        assert_eq!(card(&Tag(0, 2)), Ok(1));
-        assert_eq!(size(&Tag(0, 2)), Ok(2));
-        assert_eq!(card(&Tag(1, 2)), Ok(1));
-        assert_eq!(size(&Tag(1, 2)), Ok(2));
-        assert_eq!(card(&Tag(2, 2)), Ok(1));
-        assert_eq!(size(&Tag(2, 2)), Ok(2));
-        assert_eq!(card(&Tag(3, 2)), Ok(1));
-        assert_eq!(size(&Tag(3, 2)), Ok(2));
+        assert_eq!(card(&tag(bits(0, 2))), Ok(1));
+        assert_eq!(size(&tag(bits(0, 2))), Ok(2));
+        assert_eq!(card(&tag(bits(1, 2))), Ok(1));
+        assert_eq!(size(&tag(bits(1, 2))), Ok(2));
+        assert_eq!(card(&tag(bits(2, 2))), Ok(1));
+        assert_eq!(size(&tag(bits(2, 2))), Ok(2));
+        assert_eq!(card(&tag(bits(3, 2))), Ok(1));
+        assert_eq!(size(&tag(bits(3, 2))), Ok(2));
     }
     #[test]
     fn tag4_type() {
-        assert_eq!(card(&Tag(4, 3)), Ok(1));
-        assert_eq!(size(&Tag(4, 3)), Ok(3));
+        assert_eq!(card(&tag(bits(4, 3))), Ok(1));
+        assert_eq!(size(&tag(bits(4, 3))), Ok(3));
     }
 
     #[test]
@@ -503,14 +583,14 @@ mod tests {
 
     #[test]
     fn bool_and_fn() {
-        let fn_ptr = StaticPointer(64);
+        let fn_ptr = BitStr(64);
         let closure = record(vec![bit_type(), fn_ptr]).unwrap();
         assert_eq!(size(&closure), Ok(65));
     }
 
     #[test]
     fn bool_or_fn() {
-        let fn_ptr = StaticPointer(64);
+        let fn_ptr = BitStr(64);
         let closure = sum(vec![bit_type(), fn_ptr]).unwrap();
         assert_eq!(size(&closure), Ok(65));
     }

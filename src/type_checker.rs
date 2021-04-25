@@ -5,7 +5,7 @@ use crate::interpreter::Interpreter;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 
-use crate::primitives::{bit_type, i32_type, record, string_type, Val, Val::*};
+use crate::primitives::{bit_type, i32_type, record, string_type, Prim::*, Val, Val::*};
 
 pub fn infer(db: &dyn Compiler, expr: &Node, env: &Val) -> Result<Val, TError> {
     // Infer that expression t has type A, t => A
@@ -27,9 +27,9 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Val) -> Result<Val, TError> {
                 }
                 Ok(Union(tys))
             }
-            I32(_) => Ok(i32_type()),
-            Bool(_) => Ok(bit_type()),
-            Str(_) => Ok(string_type()),
+            PrimVal(I32(_)) => Ok(i32_type()),
+            PrimVal(Bool(_)) => Ok(bit_type()),
+            PrimVal(Str(_)) => Ok(string_type()),
             Lambda(node) => infer(db, node.as_ref(), env), // TODO: abstraction
             Struct(vals) => {
                 let mut tys: Vec<Val> = vec![];
@@ -244,8 +244,9 @@ mod tests {
 
     #[test]
     fn infer_type_of_i32() {
+        use crate::primitives::int32;
         let db = DB::default();
-        let num = I32(23).to_node();
+        let num = int32(23).to_node();
         let env = rec![]; // TODO: Track the type env
         assert_eq!(infer(&db, &num, &env), Ok(i32_type()));
         assert_type("23", "I32");

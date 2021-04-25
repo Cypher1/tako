@@ -439,8 +439,7 @@ pub trait Visitor<State, Res, Final, Start = Root> {
         e: &TError,
     ) -> Result<Res, TError>;
     fn visit_sym(&mut self, db: &dyn Compiler, state: &mut State, e: &Sym) -> Result<Res, TError>;
-    fn visit_val(&mut self, db: &dyn Compiler, state: &mut State, e: &Val)
-        -> Result<Res, TError>;
+    fn visit_val(&mut self, db: &dyn Compiler, state: &mut State, e: &Val) -> Result<Res, TError>;
     fn visit_apply(
         &mut self,
         db: &dyn Compiler,

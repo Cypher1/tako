@@ -29,17 +29,18 @@ fn test_with_expectation(expected: TestResult, options: Vec<&str>) {
     let mut stdout: Vec<String> = vec![];
     let result = {
         use takolib::interpreter::Res;
-        use takolib::primitives::Val::{Str, I32};
+        use takolib::primitives::Prim::{Str, I32};
+        use takolib::primitives::Val::PrimVal;
         let mut print_impl =
             &mut |_: &dyn Compiler,
                   args: HashMap<String, Box<dyn Fn() -> takolib::interpreter::Res>>,
                   _: takolib::ast::Info|
              -> Res {
                 stdout.push(match args.get("it").unwrap()()? {
-                    Str(s) => s,
+                    PrimVal(Str(s)) => s,
                     s => format!("{:?}", s),
                 });
-                Ok(I32(0))
+                Ok(PrimVal(I32(0)))
             };
         let files = db.files();
         if files.len() != 1 {
