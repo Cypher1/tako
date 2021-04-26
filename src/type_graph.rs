@@ -23,10 +23,6 @@ impl TypeGraph {
         curr
     }
 
-    fn id_for_path(&mut self, path: &Path) -> Option<&Id> {
-        self.symbols.get(path).clone()
-    }
-
     pub fn get_id_for_path(&mut self, path: &Path) -> Id {
         let id = self.symbols.get(path).clone();
         if let Some(id) = id {
@@ -320,13 +316,19 @@ impl TypeGraph {
 
 #[cfg(test)]
 mod tests {
-    use super::TypeGraph;
+    use super::{Id, TypeGraph};
     use crate::ast::{Path, Symbol::*};
     use crate::errors::TError;
     use crate::primitives::{
         bit_type, boolean, byte_type, i32_type, int32, number_type, string, string_type, variable,
         void_type, Val::*,
     };
+
+    impl TypeGraph {
+        fn id_for_path(&mut self, path: &Path) -> Option<&Id> {
+            self.symbols.get(path).clone()
+        }
+    }
 
     fn assert_eqs<T: Eq + Clone + std::fmt::Display + std::fmt::Debug>(a: T, b: T) {
         assert_eq!(
