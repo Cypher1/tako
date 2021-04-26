@@ -25,9 +25,15 @@ pub fn eval(mut stack: Stack) -> Stack {
         match curr {
             T(S) => {
                 if stack.len() >= 3 {
-                    let x = stack.pop_front().expect("Empty pop_front from non-empty stack (S.x).");
-                    let y = stack.pop_front().expect("Empty pop_front from non-empty stack (S.y).");
-                    let z = stack.pop_front().expect("Empty pop_front from non-empty stack (S.z).");
+                    let x = stack
+                        .pop_front()
+                        .expect("Empty pop_front from non-empty stack (S.x).");
+                    let y = stack
+                        .pop_front()
+                        .expect("Empty pop_front from non-empty stack (S.y).");
+                    let z = stack
+                        .pop_front()
+                        .expect("Empty pop_front from non-empty stack (S.z).");
                     // xz(yz)
                     let mut parend = vec![];
                     if let P(y) = y {
@@ -46,7 +52,9 @@ pub fn eval(mut stack: Stack) -> Stack {
             }
             T(K) => {
                 if stack.len() >= 2 {
-                    let val = stack.pop_front().expect("Empty pop_front from non-empty stack (K).");
+                    let val = stack
+                        .pop_front()
+                        .expect("Empty pop_front from non-empty stack (K).");
                     stack.pop_front(); // drop
                     stack.push_front(val); // TODO: Replace rather than pop_front+push_front
                 } else {
@@ -126,7 +134,7 @@ mod tests {
     fn term_i() {
         test(
             vec![T(I), v("x"), v("y"), v("z")].into(),
-            vec![v("x"), v("y"), v("z")].into()
+            vec![v("x"), v("y"), v("z")].into(),
         );
     }
 
@@ -134,7 +142,7 @@ mod tests {
     fn term_k() {
         test(
             vec![T(K), v("x"), v("y"), v("z")].into(),
-            vec![v("x"), v("z")].into()
+            vec![v("x"), v("z")].into(),
         );
     }
 
@@ -142,7 +150,7 @@ mod tests {
     fn term_s() {
         test(
             vec![T(S), v("x"), v("y"), v("z")].into(),
-            vec![v("x"), v("z"), P(vec![v("y"), v("z")].into())].into()
+            vec![v("x"), v("z"), P(vec![v("y"), v("z")].into())].into(),
         );
     }
 
@@ -157,8 +165,15 @@ mod tests {
         βα
          */
         test(
-            vec![T(S), P(vec![T(K), P(vec![T(S), T(I)].into())].into()), T(K), v("a"), v("b")].into(),
-            vec![v("b"), v("a")].into()
+            vec![
+                T(S),
+                P(vec![T(K), P(vec![T(S), T(I)].into())].into()),
+                T(K),
+                v("a"),
+                v("b"),
+            ]
+            .into(),
+            vec![v("b"), v("a")].into(),
         );
     }
 }
