@@ -47,9 +47,9 @@ impl TypeGraph {
         }
     }
 
-    pub fn normalize(&mut self, v: Val) -> Result<Val, TError> {
+    pub fn normalize(&mut self, value: Val) -> Result<Val, TError> {
         use crate::primitives::{void_type, Val::*};
-        Ok(match v {
+        Ok(match value {
             // Lambda(_),
             // Function {
             // intros: Pack,
@@ -129,8 +129,8 @@ impl TypeGraph {
                     Product(new_tys)
                 }
             }
-            Padded(n, t) => match self.normalize(*t)? {
-                Padded(k, u) => Padded(n + k, u),
+            Padded(n, inner) => match self.normalize(*inner)? {
+                Padded(k, inner) => Padded(n + k, inner),
                 Union(tys) => self.normalize(Union(
                     tys.iter()
                         .map(|ty| Padded(n, Box::new(ty.clone())))
@@ -145,7 +145,7 @@ impl TypeGraph {
             },
             // WithRequirement(Box<Val>, Vec<String>),
             // Variable(String),
-            _ => v,
+            _ => value,
         })
     }
 
