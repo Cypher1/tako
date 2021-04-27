@@ -106,6 +106,43 @@ mod util {
         abs(abs(curr))
     }
 
+    #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Debug)]
+    pub enum DecodeChurchError {
+        ExpectedAbstractionOverFunction(Term),
+        ExpectedAbstractionOverBaseValue(Term),
+        ExpectedFunctionApplication(Term),
+        ExpectedFunctionApplicationOrBaseValue(Term),
+    }
+
+    pub fn church_to_i32(t: Term) -> Result<i32, DecodeChurchError> {
+        use DecodeChurchError::*;
+        let mut curr = if let Abs{inner} = t {
+            *inner
+        } else {
+            return Err(ExpectedAbstractionOverFunction(t));
+        };
+        curr = if let Abs{inner} = curr {
+            *inner
+        } else {
+            return Err(ExpectedAbstractionOverBaseValue(curr));
+        };
+        let mut n = 0;
+        loop {
+            if var(0) == curr {
+                return Ok(n);
+            } else if let App{inner, arg} = curr {
+                if var(1) == *inner {
+                    curr = *arg;
+                    n += 1;
+                } else {
+                    return Err(ExpectedFunctionApplication(*inner));
+                }
+            } else {
+                return Err(ExpectedFunctionApplicationOrBaseValue(curr));
+            }
+        }
+    }
+
     pub fn church_plus() -> Term {
         //          m.  n.  f.  x.          ((m f)((n f) x))
         abs(abs(abs(abs(app(
@@ -251,4 +288,38 @@ mod test {
         let seven = church_nat(7);
         assert_eq!(app(app(church_plus(), three), four).eval(), seven);
     }
+
+    #[test]
+    fn eval_church_3_plus_4_to_i32_eq_7() {
+        let three = church_nat(3);
+        let four = church_nat(4);
+        assert_eq!(church_to_i32(app(app(church_plus(), three), four).eval()), Ok(7));
+    }
+
+    #[test]
+    fn fail_to_decode_true_as_nat() {
+        assert_eq!(church_to_i32(church_bool(true)), Err(DecodeChurchError::ExpectedFunctionApplicationOrBaseValue(var(1))));
+    }
+
+    #[test]
+    fn decode_false_as_nat() {
+        // This is surprising, but it seems to be right.
+        assert_eq!(church_to_i32(church_bool(false)), Ok(0));
+    }
+
+    #[test]
+    fn fail_to_decode_x_as_nat() {
+        assert_eq!(church_to_i32(var(0)), Err(DecodeChurchError::ExpectedAbstractionOverFunction(var(0))));
+    }
+
+    #[test]
+    fn fail_to_decode_x_y_as_nat() {
+        assert_eq!(church_to_i32(app(var(0), var(1))), Err(DecodeChurchError::ExpectedAbstractionOverFunction(app(var(0), var(1)))));
+    }
+
+    #[test]
+    fn fail_to_decode_id_as_nat() {
+        assert_eq!(church_to_i32(abs(var(0))), Err(DecodeChurchError::ExpectedAbstractionOverBaseValue(var(0))));
+    }
+
 }
