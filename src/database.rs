@@ -16,7 +16,7 @@ use super::primitives::Val;
 use super::tokens::Token;
 
 #[salsa::query_group(CompilerStorage)]
-pub trait Compiler: salsa::Database {
+pub trait Compiler {
     #[salsa::input]
     fn file(&self, filename: String) -> Result<Arc<String>, TError>;
 

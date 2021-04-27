@@ -23,10 +23,6 @@ impl TypeGraph {
         curr
     }
 
-    fn id_for_path(&mut self, path: &Path) -> Option<&Id> {
-        self.symbols.get(path).clone()
-    }
-
     pub fn get_id_for_path(&mut self, path: &Path) -> Id {
         let id = self.symbols.get(path).clone();
         if let Some(id) = id {
@@ -47,9 +43,9 @@ impl TypeGraph {
         }
     }
 
-    pub fn normalize(&mut self, v: Val) -> Result<Val, TError> {
+    pub fn normalize(&mut self, value: Val) -> Result<Val, TError> {
         use crate::primitives::{void_type, Val::*};
-        Ok(match v {
+        Ok(match value {
             // Lambda(_),
             // Function {
             // intros: Pack,
@@ -129,8 +125,8 @@ impl TypeGraph {
                     Product(new_tys)
                 }
             }
-            Padded(n, t) => match self.normalize(*t)? {
-                Padded(k, u) => Padded(n + k, u),
+            Padded(n, inner) => match self.normalize(*inner)? {
+                Padded(k, inner) => Padded(n + k, inner),
                 Union(tys) => self.normalize(Union(
                     tys.iter()
                         .map(|ty| Padded(n, Box::new(ty.clone())))
@@ -145,7 +141,7 @@ impl TypeGraph {
             },
             // WithRequirement(Box<Val>, Vec<String>),
             // Variable(String),
-            _ => v,
+            _ => value,
         })
     }
 
@@ -320,13 +316,19 @@ impl TypeGraph {
 
 #[cfg(test)]
 mod tests {
-    use super::TypeGraph;
+    use super::{Id, TypeGraph};
     use crate::ast::{Path, Symbol::*};
     use crate::errors::TError;
     use crate::primitives::{
         bit_type, boolean, byte_type, i32_type, int32, number_type, string, string_type, variable,
         void_type, Val::*,
     };
+
+    impl TypeGraph {
+        fn id_for_path(&mut self, path: &Path) -> Option<&Id> {
+            self.symbols.get(path).clone()
+        }
+    }
 
     fn assert_eqs<T: Eq + Clone + std::fmt::Display + std::fmt::Debug>(a: T, b: T) {
         assert_eq!(

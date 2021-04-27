@@ -26,9 +26,9 @@ mod tree;
 
 mod definition_finder;
 mod pretty_print;
+mod ski;
 mod symbol_table_builder;
 mod to_cpp;
-mod ski;
 
 use ast::Visitor;
 use interpreter::Interpreter;
