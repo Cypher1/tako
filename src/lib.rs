@@ -26,7 +26,7 @@ mod tree;
 
 mod definition_finder;
 mod pretty_print;
-mod ski;
+mod experimental;
 mod symbol_table_builder;
 mod to_cpp;
 
