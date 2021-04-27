@@ -117,8 +117,8 @@ pub fn shows(s: &Stack) -> String {
 
 #[cfg(test)]
 mod tests {
-    use pretty_assertions::assert_eq;
     use super::*;
+    use pretty_assertions::assert_eq;
 
     fn v(name: &str) -> SVal {
         SVal::V(name.to_string())
