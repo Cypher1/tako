@@ -69,6 +69,7 @@ mod symbol_table;
 mod tokens;
 
 // This is where the fun, but currently unused stuff goes
+#[cfg(test)]
 #[allow(dead_code)]
 mod experimental;
 
