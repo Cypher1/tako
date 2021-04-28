@@ -1,6 +1,11 @@
 #![allow(dead_code)]
 use std::collections::VecDeque;
 
+// Thanks to the following sources for info on these topics:
+// Donnacha Oisín Kidney for https://doisinkidney.com/posts/2020-10-17-ski.html
+// Ben Lynn for https://crypto.stanford.edu/~blynn/lambda/sk.html
+// and of course Pearson for 'Types and Programming languages'
+
 #[derive(Debug, PartialEq, Eq, Clone, Hash, PartialOrd, Ord)]
 pub enum Ski {
     S,
@@ -15,7 +20,11 @@ pub enum SVal {
     P(Stack),
 }
 
-type Stack = VecDeque<SVal>;
+pub fn p(stack: &[SKI]) -> SKI {
+    P(stack.to_vec().into())
+}
+
+type Stack = VecDeque<SKI>;
 
 use SVal::{P, T, V};
 use Ski::{I, K, S};
@@ -24,7 +33,7 @@ pub fn eval(mut stack: Stack) -> Stack {
     // debug!("{:?}", shows(&stack));
     while let Some(curr) = stack.pop_front() {
         match curr {
-            T(S) => {
+            S => {
                 if stack.len() >= 3 {
                     let x = stack
                         .pop_front()
@@ -36,22 +45,22 @@ pub fn eval(mut stack: Stack) -> Stack {
                         .pop_front()
                         .expect("Empty pop_front from non-empty stack (S.z).");
                     // xz(yz)
-                    let mut parend = vec![];
+                    let mut parend = VecDeque::new();
                     if let P(y) = y {
                         parend.extend(y);
                     } else {
-                        parend.push(y);
+                        parend.push_back(y);
                     }
-                    parend.push(z.clone());
-                    stack.push_front(P(parend.into()));
+                    parend.push_back(z.clone());
+                    stack.push_front(P(parend));
                     stack.push_front(z);
                     stack.push_front(x);
                 } else {
-                    stack.push_front(T(S));
+                    stack.push_front(S);
                     return stack;
                 }
             }
-            T(K) => {
+            K => {
                 if stack.len() >= 2 {
                     let val = stack
                         .pop_front()
@@ -59,11 +68,11 @@ pub fn eval(mut stack: Stack) -> Stack {
                     stack.pop_front(); // drop
                     stack.push_front(val); // TODO: Replace rather than pop_front+push_front
                 } else {
-                    stack.push_front(T(K));
+                    stack.push_front(K);
                     return stack;
                 }
             }
-            T(I) => {} // Identity
+            I => {} // Identity
             V(name) => {
                 let mut simplified = VecDeque::new();
                 for val in stack.iter().cloned() {
@@ -94,11 +103,11 @@ pub fn eval(mut stack: Stack) -> Stack {
     panic!("no instructions")
 }
 
-pub fn show(s: &SVal) -> String {
+pub fn show(s: &SKI) -> String {
     match s {
-        T(S) => "S".to_string(),
-        T(K) => "K".to_string(),
-        T(I) => "I".to_string(),
+        S => "S".to_string(),
+        K => "K".to_string(),
+        I => "I".to_string(),
         V(name) => name.to_string(),
         P(st) => {
             let mut s = "(".to_string();
@@ -120,8 +129,8 @@ mod tests {
     use super::*;
     use log::info;
 
-    fn v(name: &str) -> SVal {
-        SVal::V(name.to_string())
+    fn v(name: &str) -> SKI {
+        SKI::V(name.to_string())
     }
 
     fn test(stack: Stack, expected: &Stack) {
@@ -135,7 +144,7 @@ mod tests {
     #[test]
     fn term_i() {
         test(
-            vec![T(I), v("x"), v("y"), v("z")].into(),
+            vec![I, v("x"), v("y"), v("z")].into(),
             &vec![v("x"), v("y"), v("z")].into(),
         );
     }
@@ -143,7 +152,7 @@ mod tests {
     #[test]
     fn term_k() {
         test(
-            vec![T(K), v("x"), v("y"), v("z")].into(),
+            vec![K, v("x"), v("y"), v("z")].into(),
             &vec![v("x"), v("z")].into(),
         );
     }
@@ -151,8 +160,35 @@ mod tests {
     #[test]
     fn term_s() {
         test(
-            vec![T(S), v("x"), v("y"), v("z")].into(),
+            vec![S, v("x"), v("y"), v("z")].into(),
             &vec![v("x"), v("z"), P(vec![v("y"), v("z")].into())].into(),
+        );
+    }
+
+    #[test]
+    fn abc_to_a() {
+        // S(KK)K
+        test(
+            vec![S, p(&[K, K]), K, v("a"), v("b"), v("c")].into(),
+            vec![v("a")].into(),
+        );
+    }
+
+    #[test]
+    fn abc_to_b() {
+        // KK
+        test(
+            vec![K, K, v("a"), v("b"), v("c")].into(),
+            vec![v("b")].into(),
+        );
+    }
+
+    #[test]
+    fn abc_to_c() {
+        // SSK(SK)
+        test(
+            vec![S, S, K, p(&[S, K]), v("a"), v("b"), v("c")].into(),
+            vec![v("c")].into(),
         );
     }
 
@@ -168,9 +204,9 @@ mod tests {
          */
         test(
             vec![
-                T(S),
-                P(vec![T(K), P(vec![T(S), T(I)].into())].into()),
-                T(K),
+                S,
+                p(&[K, p(&[S, I])]),
+                K,
                 v("a"),
                 v("b"),
             ]
