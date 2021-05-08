@@ -51,11 +51,25 @@ mod test {
 
     #[test]
     fn church_2_to_ski() {
-        todo!();
+        // S(S(K(S)K)I
+        assert_eq!(
+            church_nat(2).to_ski(),
+            p(&[S, p(&[S, p(&[K, S, K])]), I])
+        );
+    }
+
+    #[test]
+    fn church_succ_to_ski() {
+        // S(S(KSK)
+        assert_eq!(
+            church_succ().to_ski(),
+            p(&[S, p(&[S, p(&[K, S, K])])])
+        );
     }
 
     #[test]
     fn church_plus_to_ski() {
+        // S(S(K(S)K)
         todo!();
     }
 
