@@ -9,29 +9,29 @@ pub enum Term {
 }
 use Term::{Abs, App, Var};
 
-fn var(ind: Ind) -> Term {
+pub fn var(ind: Ind) -> Term {
     Var { ind }
 }
 
-fn app(inner: Term, arg: Term) -> Term {
+pub fn app(inner: Term, arg: Term) -> Term {
     App {
         inner: Box::new(inner),
         arg: Box::new(arg),
     }
 }
 
-fn abs(inner: Term) -> Term {
+pub fn abs(inner: Term) -> Term {
     Abs {
         inner: Box::new(inner),
     }
 }
 
 impl Term {
-    fn shift(&self, delta: Delta) -> Term {
+    pub fn shift(&self, delta: Delta) -> Term {
         self.shift_with_cutoff(delta, 0)
     }
 
-    fn shift_with_cutoff(&self, delta: Delta, cutoff: Ind) -> Term {
+    pub fn shift_with_cutoff(&self, delta: Delta, cutoff: Ind) -> Term {
         match self {
             Var { ind } => {
                 if *ind < cutoff {
@@ -50,7 +50,7 @@ impl Term {
         }
     }
 
-    fn substitute(&self, x: Ind, with: &Term) -> Term {
+    pub fn substitute(&self, x: Ind, with: &Term) -> Term {
         match self {
             Var { ind } => if *ind == x { with } else { self }.clone(),
             App { inner, arg } => app(inner.substitute(x, with), arg.substitute(x, with)),
@@ -58,7 +58,7 @@ impl Term {
         }
     }
 
-    fn beta_reduce(&self) -> Term {
+    pub fn beta_reduce(&self) -> Term {
         if let App { inner, arg } = self {
             let inner: &Term = &*inner; // TODO: Work out why I can't write this in one line.
             if let Abs { inner } = inner {
@@ -68,7 +68,7 @@ impl Term {
         self.clone()
     }
 
-    fn eval(&self) -> Term {
+    pub fn eval(&self) -> Term {
         match self {
             Var { .. } => self.clone(),
             App { inner, arg } => {

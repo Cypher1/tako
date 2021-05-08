@@ -1,15 +1,26 @@
 use crate::experimental::lambda;
 use crate::experimental::ski;
 
-use ski::{SKI, SKI::*};
+use ski::{SKI, SKI::*, p};
 
 impl lambda::Term {
     pub fn to_ski(&self) -> SKI {
         use lambda::Term::*;
         match self {
-            Var {ind} => todo!(),
-            Abs {inner} => todo!(),
+            Var {ind} => V(format!("unknown_{}", *ind)),
             App {inner, arg} => P(vec![inner.to_ski(), arg.to_ski()].into()),
+            Abs {inner} => {
+                if **inner == (Var{ind: 0}) {
+                    I
+                } else if let App {inner, arg} = &**inner {
+                    let inner = Abs{inner: inner.clone()}.to_ski();
+                    let arg = Abs{inner: arg.clone()}.to_ski();
+                    p(&[S, inner, arg])
+                } else {
+                    let inner = inner.shift(-1).to_ski();
+                    p(&[K, inner])
+                }
+            }
         }
     }
 }
@@ -30,7 +41,12 @@ mod test {
 
     #[test]
     fn church_1_to_ski() {
-        todo!();
+        // (\f. (\x. (f x)))
+        eprintln!("{:?}", church_nat(1));
+        assert_eq!(
+            church_nat(1).to_ski(),
+            P(vec![S, p(&[K, p(&[S, I])]), K].into())
+        );
     }
 
     #[test]
