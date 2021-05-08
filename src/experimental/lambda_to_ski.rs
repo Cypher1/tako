@@ -35,7 +35,7 @@ mod test {
     fn church_0_to_ski() {
         assert_eq!(
             church_nat(0).to_ski(),
-            P(vec![K,I].into())
+            p(&[K,I])
         );
     }
 
@@ -45,7 +45,7 @@ mod test {
         eprintln!("{:?}", church_nat(1));
         assert_eq!(
             church_nat(1).to_ski(),
-            P(vec![S, p(&[K, p(&[S, I])]), K].into())
+            p(&[I])
         );
     }
 
