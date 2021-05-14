@@ -57,10 +57,11 @@ impl Lambski {
     }
 
     pub fn skified(&self) -> Lambski {
+        use Lambski::*;
         match self {
             // See: https://blog.ngzhian.com/ski2.html
-            Var {ind} => panic!("unknown_{}", *ind), // Clause 1.
-            App {inner, arg} => P(vec![inner.to_ski(), arg.to_ski()].into()), // Clause 2.
+            Var {ind} => Lambski::Var {ind: *ind}, // Clause 1.
+            App {inner, arg} => P(vec![inner.skified(), arg.skified()].into()), // Clause 2.
             Abs {inner} => {
                 match &**inner {
                     Var {ind} => {
@@ -71,13 +72,13 @@ impl Lambski {
                         }
                     },
                     App {inner, arg} => {
-                        let inner = Abs{inner: inner.clone()}.to_ski();
-                        let arg = Abs{inner: arg.clone()}.to_ski();
+                        let inner = Abs{inner: inner.clone()}.skified();
+                        let arg = Abs{inner: arg.clone()}.skified();
                         p(&[S, inner, arg]) // Clause 6.
                     },
                     inner => {
                         if !inner.uses(0) {
-                            let inner = inner.shift(-1).to_ski();
+                            let inner = inner.shift(-1).skified();
                             p(&[K, inner]) // Clause 3.
                         } else {
                             // translate (Abs (x, translate (Abs (y, e))))
