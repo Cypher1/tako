@@ -1,5 +1,5 @@
 type Delta = i32;
-type Ind = Delta; // Should be unsigned
+pub type Ind = Delta; // Should be unsigned
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Debug)]
 pub enum Term {
@@ -27,6 +27,14 @@ pub fn abs(inner: Term) -> Term {
 }
 
 impl Term {
+    pub fn uses(&self, var: Ind) -> bool {
+        match self {
+            Var { ind } => *ind == var,
+            App { inner, arg } => inner.uses(var) || arg.uses(var),
+            Abs { inner } => inner.uses(var+1),
+        }
+    }
+
     pub fn shift(&self, delta: Delta) -> Term {
         self.shift_with_cutoff(delta, 0)
     }

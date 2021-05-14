@@ -20,6 +20,13 @@ pub enum SVal {
     P(Stack),
 }
 
+use std::fmt;
+impl fmt::Display for SKI {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", show(self))
+    }
+}
+
 pub fn p(stack: &[SKI]) -> SKI {
     P(stack.to_vec().into())
 }
