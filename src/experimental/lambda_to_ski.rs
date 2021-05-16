@@ -3,7 +3,7 @@ use crate::experimental::ski;
 
 use ski::{SKI, p};
 
-use lambda::{Ind, Term};
+use lambda::{Ind, Delta, Term};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Debug)]
 enum Lambski {
@@ -15,18 +15,33 @@ enum Lambski {
     I,
 }
 
+fn var(ind: Ind) -> Lambski {
+    use Lambski::*;
+    Var { ind }
+}
+
+fn app(inner: Lambski, arg: Lambski) -> Lambski {
+    use Lambski::*;
+    App {
+        inner: Box::new(inner),
+        arg: Box::new(arg),
+    }
+}
+
+fn abs(inner: Lambski) -> Lambski {
+    use Lambski::*;
+    Abs {
+        inner: Box::new(inner),
+    }
+}
+
 impl Lambski {
     pub fn force_lambda(&self) -> Term {
         use Lambski::*;
         match self {
-            Var {ind} => Term::Var {ind: *ind},
-            App {inner, arg} => Term::App {
-                inner: Box::new(inner.force_lambda()),
-                arg: Box::new(arg.force_lambda()),
-            },
-            Abs {inner} => Term::Abs {
-                inner: Box::new(inner.force_lambda()),
-            },
+            Var {ind} => lambda::var(*ind),
+            App {inner, arg} => lambda::app(inner.force_lambda(), arg.force_lambda()),
+            Abs {inner} => lambda::abs(inner.force_lambda()),
             ski => panic!("Contained ski: {:?}", ski),
         }
     }
@@ -36,6 +51,7 @@ impl Lambski {
             Lambski::S => SKI::S,
             Lambski::K => SKI::K,
             Lambski::I => SKI::I,
+            Lambski::App { inner, arg } => SKI::P(vec![inner.force_ski(), arg.force_ski()].into()),
             lambda => panic!("Contained lambda: {:?}", lambda),
         }
     }
@@ -46,7 +62,7 @@ impl Lambski {
             Lambski::S => abs(abs(abs(app(app(var(2), var(0)), app(var(1), var(0)))))),
             Lambski::K => abs(abs(var(1))),
             Lambski::I => abs(var(0)),
-            Lambski::Var{ind} => Term::Var{ind: *ind},
+            Lambski::Var{ind} => lambda::var(*ind),
             Lambski::App{inner, arg} => app(inner.to_lambda(), arg.to_lambda()),
             Lambski::Abs{inner} => abs(inner.to_lambda()),
         }
@@ -56,38 +72,81 @@ impl Lambski {
         self.skified().force_ski()
     }
 
+    pub fn uses(&self, var: Ind) -> bool {
+        use Lambski::*;
+        match self {
+            Var { ind } => *ind == var,
+            App { inner, arg } => inner.uses(var) || arg.uses(var),
+            Abs { inner } => inner.uses(var+1),
+            _ => false,
+        }
+    }
+
+    pub fn shift(&self, delta: Delta) -> Lambski {
+        self.shift_with_cutoff(delta, 0)
+    }
+
+    pub fn shift_with_cutoff(&self, delta: Delta, cutoff: Ind) -> Lambski {
+        use Lambski::*;
+        match self {
+            Var { ind } => {
+                if *ind < cutoff {
+                    self.clone()
+                } else {
+                    var(ind
+                        .checked_add(delta)
+                        .expect("Should not run out of indexes"))
+                }
+            }
+            App { inner, arg } => app(
+                inner.shift_with_cutoff(delta, cutoff),
+                arg.shift_with_cutoff(delta, cutoff),
+            ),
+            Abs { inner } => abs(inner.shift_with_cutoff(delta, cutoff + 1)),
+            S => S,
+            K => K,
+            I => I,
+        }
+    }
+
     pub fn skified(&self) -> Lambski {
         use Lambski::*;
         match self {
             // See: https://blog.ngzhian.com/ski2.html
-            Var {ind} => Lambski::Var {ind: *ind}, // Clause 1.
-            App {inner, arg} => P(vec![inner.skified(), arg.skified()].into()), // Clause 2.
+            Var {ind} => var(*ind), // Clause 1.
+            App {inner, arg} => app(inner.skified(), arg.skified()), // Clause 2.
             Abs {inner} => {
                 match &**inner {
                     Var {ind} => {
                         if *ind == 0 {
                             I // Clause 4.
                         } else {
-                            panic!("Wrong index {}", ind) // Hmmmm.
+                            panic!("TODO: VAR {}", *ind)
                         }
                     },
                     App {inner, arg} => {
                         let inner = Abs{inner: inner.clone()}.skified();
                         let arg = Abs{inner: arg.clone()}.skified();
-                        p(&[S, inner, arg]) // Clause 6.
+                        // p(&[S, inner, arg]) // Clause 6.
+                        app(S, app(inner.skified(), arg.skified())) // Clause 6.
                     },
+                    Abs { inner } => {
+                            // translate (Abs (x, translate (Abs (y, e))))
+                            Abs { inner: Box::new(Abs {inner: inner.clone()}.skified())}.skified() // Clause 5.
+                    }
                     inner => {
                         if !inner.uses(0) {
                             let inner = inner.shift(-1).skified();
-                            p(&[K, inner]) // Clause 3.
+                            app(K, inner) // Clause 3.
                         } else {
-                            // translate (Abs (x, translate (Abs (y, e))))
-                            // Clause 5.
-
+                            panic!("TODO: ${:?}", self);
                         }
                     }
                 }
             }
+            S => S,
+            K => K,
+            I => I,
         }
     }
 }
@@ -99,8 +158,22 @@ impl SKI {
             SKI::S => S,
             SKI::K => K,
             SKI::I => I,
-            SKI::V(_name) => todo!(),
-            SKI::P(_stack) => todo!(),
+            SKI::V(name) => panic!("Lambski does not support abstract variable {}", name),
+            SKI::P(stack) => {
+                let mut curr = None;
+                for next in stack.iter() {
+                    let next = next.to_lambski();
+                    if let Some(head) = curr {
+                        curr = Some(App {
+                            inner: Box::new(head),
+                            arg: Box::new(next),
+                        });
+                    } else {
+                        curr = Some(next);
+                    }
+                }
+                curr.expect("Cannot convert empty stack")
+            }
         }
     }
 
@@ -113,11 +186,8 @@ impl lambda::Term {
     pub fn to_lambski(&self) -> Lambski {
         use Lambski::*;
         match self {
-            Term::Var {ind} => Var {ind: *ind},
-            Term::App {inner, arg} => App {
-                inner: Box::new(inner.to_lambski()),
-                arg: Box::new(arg.to_lambski()),
-            },
+            Term::Var {ind} => var(*ind),
+            Term::App {inner, arg} => app(inner.to_lambski(), arg.to_lambski()),
             Term::Abs {inner} => Abs {
                 inner: Box::new(inner.to_lambski()),
             },
@@ -178,12 +248,14 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     fn church_plus_to_ski() {
         // S(S(K(S)K)
         todo!();
     }
 
     #[test]
+    #[ignore]
     fn church_3_plus_4_to_ski() {
         todo!();
     }

@@ -1,4 +1,4 @@
-type Delta = i32;
+pub type Delta = i32;
 pub type Ind = Delta; // Should be unsigned
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Debug)]
