@@ -11,30 +11,24 @@ pub enum Ski {
     S,
     K,
     I,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Hash, PartialOrd, Ord)]
-pub enum SVal {
-    T(Ski),
     V(String),
     P(Stack),
 }
 
 use std::fmt;
-impl fmt::Display for SKI {
+impl fmt::Display for Ski {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", show(self))
     }
 }
 
-pub fn p(stack: &[SKI]) -> SKI {
+pub fn p(stack: &[Ski]) -> Ski {
     P(stack.to_vec().into())
 }
 
-type Stack = VecDeque<SKI>;
+type Stack = VecDeque<Ski>;
 
-use SVal::{P, T, V};
-use Ski::{I, K, S};
+use Ski::{I, K, S, P, V};
 
 pub fn eval(mut stack: Stack) -> Stack {
     // debug!("{:?}", shows(&stack));
@@ -110,7 +104,7 @@ pub fn eval(mut stack: Stack) -> Stack {
     panic!("no instructions")
 }
 
-pub fn show(s: &SKI) -> String {
+pub fn show(s: &Ski) -> String {
     match s {
         S => "S".to_string(),
         K => "K".to_string(),
@@ -136,8 +130,8 @@ mod tests {
     use super::*;
     use log::info;
 
-    fn v(name: &str) -> SKI {
-        SKI::V(name.to_string())
+    fn v(name: &str) -> Ski {
+        Ski::V(name.to_string())
     }
 
     fn test(stack: Stack, expected: &Stack) {

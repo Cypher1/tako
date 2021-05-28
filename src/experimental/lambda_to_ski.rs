@@ -1,7 +1,7 @@
 use crate::experimental::lambda;
 use crate::experimental::ski;
 
-use ski::{SKI, p};
+use ski::{Ski, p};
 
 use lambda::{Ind, Delta, Term};
 
@@ -46,12 +46,12 @@ impl Lambski {
         }
     }
 
-    pub fn force_ski(&self) -> SKI {
+    pub fn force_ski(&self) -> Ski {
         match self {
-            Lambski::S => SKI::S,
-            Lambski::K => SKI::K,
-            Lambski::I => SKI::I,
-            Lambski::App { inner, arg } => SKI::P(vec![inner.force_ski(), arg.force_ski()].into()),
+            Lambski::S => Ski::S,
+            Lambski::K => Ski::K,
+            Lambski::I => Ski::I,
+            Lambski::App { inner, arg } => Ski::P(vec![inner.force_ski(), arg.force_ski()].into()),
             lambda => panic!("Contained lambda: {:?}", lambda),
         }
     }
@@ -68,7 +68,7 @@ impl Lambski {
         }
     }
 
-    pub fn to_ski(&self) -> SKI {
+    pub fn to_ski(&self) -> Ski {
         self.skified().force_ski()
     }
 
@@ -117,13 +117,6 @@ impl Lambski {
             App {inner, arg} => app(inner.skified(), arg.skified()), // Clause 2.
             Abs {inner} => {
                 match &**inner {
-                    Var {ind} => {
-                        if *ind == 0 {
-                            I // Clause 4.
-                        } else {
-                            panic!("TODO: VAR {}", *ind)
-                        }
-                    },
                     App {inner, arg} => {
                         let inner = Abs{inner: inner.clone()}.skified();
                         let arg = Abs{inner: arg.clone()}.skified();
@@ -138,8 +131,10 @@ impl Lambski {
                         if !inner.uses(0) {
                             let inner = inner.shift(-1).skified();
                             app(K, inner) // Clause 3.
+                        } else if let Var {ind: 0} = inner {
+                            I // Clause 4.
                         } else {
-                            panic!("TODO: ${:?}", self);
+                            panic!("TODO: ${:?}", self)
                         }
                     }
                 }
@@ -151,15 +146,15 @@ impl Lambski {
     }
 }
 
-impl SKI {
+impl Ski {
     pub fn to_lambski(&self) -> Lambski {
         use Lambski::*;
         match self {
-            SKI::S => S,
-            SKI::K => K,
-            SKI::I => I,
-            SKI::V(name) => panic!("Lambski does not support abstract variable {}", name),
-            SKI::P(stack) => {
+            Ski::S => S,
+            Ski::K => K,
+            Ski::I => I,
+            Ski::V(name) => panic!("Lambski does not support abstract variable {}", name),
+            Ski::P(stack) => {
                 let mut curr = None;
                 for next in stack.iter() {
                     let next = next.to_lambski();
@@ -194,21 +189,25 @@ impl lambda::Term {
         }
     }
 
-    pub fn to_ski(&self) -> SKI {
+    pub fn to_ski(&self) -> Ski {
         self.to_lambski().to_ski()
     }
 }
 
 #[cfg(test)]
 mod test {
+    use std::collections::VecDeque;
+
     use pretty_assertions::assert_eq;
     use super::*;
     use lambda::util::*;
-    use SKI::*;
+    use Ski::*;
 
-    fn test(l: lambda::Term, s: SKI) {
+    fn test(l: lambda::Term, s: Ski) {
         let skid = l.to_ski();
-        assert_eq!(format!("{}", skid), format!("{}", s));
+        let skid = ski::eval(vec![skid].into());
+        let s = ski::eval(vec![s].into());
+        assert_eq!(format!("{:?}", skid), format!("{:?}", s));
         assert_eq!(skid, s);
     }
 
@@ -248,15 +247,18 @@ mod test {
     }
 
     #[test]
-    #[ignore]
     fn church_plus_to_ski() {
-        // S(S(K(S)K)
-        todo!();
+        test(
+            church_plus(),
+            p(&[I]) // THIS IS WRONG
+        );
     }
 
     #[test]
-    #[ignore]
     fn church_3_plus_4_to_ski() {
-        todo!();
+        test(
+            lambda::app(lambda::app(church_plus(), church_nat(3)), church_nat(4)),
+            p(&[I]) // THIS IS WRONG
+        );
     }
 }
