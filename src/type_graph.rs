@@ -1,6 +1,6 @@
 use crate::ast::*;
 use crate::errors::TError;
-use crate::primitives::Val;
+use crate::primitives::{TypeSet, Val};
 use std::collections::HashMap;
 
 type Id = i32; // TODO: Make this a vec of Id so it can be treated as a stack
@@ -14,6 +14,44 @@ pub struct TypeGraph {
 
     // A counter used for generating new type variables... (probably a bad idea)
     pub counter: Id,
+}
+
+fn reduce_common_padding(tys: TypeSet, builder: Box<dyn FnOnce(TypeSet) -> Val>) -> Val {
+    use crate::primitives::Val::Padded;
+    let mut common_padding = None;
+    for ty in tys.iter() {
+        common_padding = Some(
+            if let Padded(k, _ty) = ty {
+                std::cmp::min(*k, common_padding.unwrap_or(*k))
+            } else {
+                0
+            }
+        );
+    }
+    let common_padding = common_padding.unwrap_or(0);
+    if common_padding > 0 {
+        let mut unpadded_tys = set![];
+        for ty in tys.iter().cloned() {
+            if let Padded(k, ty) = ty {
+                let k = k-common_padding;
+                unpadded_tys.insert((*ty).padded(k));
+            }
+        }
+        return builder(unpadded_tys).padded(common_padding);
+    }
+    builder(tys)
+}
+
+fn only_item_or_build(vals: TypeSet, builder: Box<dyn FnOnce(TypeSet) -> Val>) -> Val {
+    if vals.len() == 1 {
+        vals
+            .iter()
+            .next()
+            .expect("set with len 1 should always have a value")
+            .clone()
+    } else {
+        reduce_common_padding(vals, builder)
+    }
 }
 
 impl TypeGraph {
@@ -57,21 +95,15 @@ impl TypeGraph {
             // arguments: Box<Val>,
             // },
             Struct(tys) => {
-                let mut voided = false;
                 let mut new_tys = vec![];
                 for (name, ty) in tys.iter() {
                     let ty = self.normalize(ty.clone())?;
                     if ty == void_type() {
-                        voided = true;
-                        break;
+                        return Ok(void_type());
                     }
                     new_tys.push((name.clone(), ty));
                 }
-                if voided {
-                    void_type()
-                } else {
-                    Struct(new_tys)
-                }
+                Struct(new_tys)
             }
             Union(tys) => {
                 let mut new_tys = set![];
@@ -86,24 +118,14 @@ impl TypeGraph {
                         }
                     }
                 }
-                if new_tys.len() == 1 {
-                    new_tys
-                        .iter()
-                        .next()
-                        .expect("set with len 1 should always have a value")
-                        .clone()
-                } else {
-                    Union(new_tys)
-                }
+                only_item_or_build(new_tys, Box::new(Union))
             }
             Product(tys) => {
                 let mut new_tys = set![];
-                let mut voided = false;
                 for ty in tys.iter() {
                     let ty = self.normalize(ty.clone())?;
                     if ty == void_type() {
-                        voided = true;
-                        break;
+                        return Ok(void_type());
                     }
                     // Check for void overlap
                     match ty {
@@ -113,31 +135,21 @@ impl TypeGraph {
                         }
                     }
                 }
-                if voided {
-                    void_type()
-                } else if new_tys.len() == 1 {
-                    new_tys
-                        .iter()
-                        .next()
-                        .expect("set with len 1 should always have a value")
-                        .clone()
-                } else {
-                    Product(new_tys)
-                }
+                only_item_or_build(new_tys, Box::new(Product))
             }
             Padded(n, inner) => match self.normalize(*inner)? {
-                Padded(k, inner) => Padded(n + k, inner),
+                Padded(k, inner) => inner.padded(n + k),
                 Union(tys) => self.normalize(Union(
                     tys.iter()
-                        .map(|ty| Padded(n, Box::new(ty.clone())))
+                        .map(|ty| ty.clone().padded(n))
                         .collect(),
                 ))?,
                 Product(tys) => self.normalize(Product(
                     tys.iter()
-                        .map(|ty| Padded(n, Box::new(ty.clone())))
+                        .map(|ty| ty.clone().padded(n))
                         .collect(),
                 ))?,
-                ty => Padded(n, Box::new(ty)),
+                ty => ty.padded(n),
             },
             // WithRequirement(Box<Val>, Vec<String>),
             // Variable(String),
@@ -150,15 +162,15 @@ impl TypeGraph {
         let to = self.normalize(to.clone())?;
         let v = self.unify_impl(&from, &to)?;
         let v = self.normalize(v)?;
-        use crate::primitives::void_type;
+        // use crate::primitives::void_type;
         if from == to && from != v {
             panic!("wtf\n{}\n{}\n{}", &from, &to, &v);
         }
-        if v != void_type() {
-            eprintln!("unified:\n     {}\nwith {}\n to {}", &from, &to, &v);
-        } else {
-            eprintln!("couldnt not unify:\n     {}\nwith {}", &from, &to);
-        }
+        // if v != void_type() {
+            // eprintln!("unified:\n     {}\nwith {}\n to {}", &from, &to, &v);
+        // } else {
+            // eprintln!("couldnt not unify:\n     {}\nwith {}", &from, &to);
+        // }
         Ok(v)
     }
 
@@ -199,15 +211,7 @@ impl TypeGraph {
                         new_tys.insert(ty);
                     }
                 }
-                if new_tys.len() == 1 {
-                    new_tys
-                        .iter()
-                        .next()
-                        .expect("set with len 1 should always have a value")
-                        .clone()
-                } else {
-                    Union(new_tys)
-                }
+                only_item_or_build(new_tys, Box::new(Union))
             }
             (Product(s), ty) | (ty, Product(s)) => {
                 let mut new_tys = set![]; // union find it?
@@ -225,15 +229,7 @@ impl TypeGraph {
                         }
                     }
                 }
-                if new_tys.len() == 1 {
-                    new_tys
-                        .iter()
-                        .next()
-                        .expect("set with len 1 should always have a value")
-                        .clone()
-                } else {
-                    Product(new_tys)
-                }
+                only_item_or_build(new_tys, Box::new(Product))
             }
             (Variable(s), Variable(t)) => {
                 if s == t {
@@ -257,19 +253,17 @@ impl TypeGraph {
                     Padded(*k, Box::new(self.unify(u, &Padded(j - k, v.clone()))?))
                 }
             }
-            (t, Padded(0, u)) | (Padded(0, u), t) => self.unify(t, u)?,
             (t, Padded(k, u)) | (Padded(k, u), t) => {
                 // actually we need to check if these overlap...
-                Product(set!(t.clone(), Padded(*k, u.clone())))
+                only_item_or_build(set![t.clone(), Padded(*k, u.clone())], Box::new(Product))
             }
-            (PrimVal(p), PrimVal(q)) => {
-                if p == q {
+            (PrimVal(p), q) | (q, PrimVal(p)) => {
+                if PrimVal(p.clone()) == *q {
                     PrimVal(p.clone())
                 } else {
                     void_type()
                 }
             }
-            (PrimVal(_), _) | (_, PrimVal(_)) => void_type(),
             (Pointer(k, t1), Pointer(j, t2)) => {
                 if k == j {
                     Pointer(*k, Box::new(self.unify(t1, t2)?))
@@ -320,7 +314,7 @@ mod tests {
     use crate::ast::{Path, Symbol::*};
     use crate::errors::TError;
     use crate::primitives::{
-        bit_type, boolean, byte_type, i32_type, int32, number_type, string, string_type, variable,
+        bit_type, record, boolean, byte_type, trit_type, i32_type, int32, number_type, string, string_type, variable,
         void_type, Val::*,
     };
 
@@ -378,6 +372,29 @@ mod tests {
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(ty, i32_type());
 
+        Ok(())
+    }
+
+    #[test]
+    fn normalize_type_bit_to_type_bit() -> Result<(), TError> {
+        let mut tgb = TypeGraph::default();
+        assert_eq!(tgb.normalize(bit_type())?, tgb.normalize(bit_type())?);
+        assert_eq!(tgb.normalize(bit_type())?, bit_type());
+        Ok(())
+    }
+
+    #[test]
+    fn normalize_type_trit_to_type_trit() -> Result<(), TError> {
+        let mut tgb = TypeGraph::default();
+        assert_eq!(tgb.normalize(trit_type())?, trit_type());
+        Ok(())
+    }
+
+    #[test]
+    fn normalize_type_byte_to_type_byte() -> Result<(), TError> {
+        let mut tgb = TypeGraph::default();
+        assert_eq!(tgb.normalize(byte_type())?, tgb.normalize(byte_type())?);
+        assert_eq!(tgb.normalize(byte_type())?, byte_type());
         Ok(())
     }
 
@@ -484,8 +501,8 @@ mod tests {
     fn unifies_overlapping_padded_bools() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        let a = Padded(5, Box::new(Padded(5, Box::new(boolean(true)))));
-        let b = Padded(11, Box::new(boolean(true)));
+        let a = Padded(5, Box::new(boolean(true).padded(5)));
+        let b = boolean(true).padded(11);
         tgb.require_assignable(&path, &a)?;
         tgb.require_assignable(&path, &b)?;
 
@@ -493,9 +510,9 @@ mod tests {
         assert_eqs(
             ty,
             Product(set!(
-                Padded(10, Box::new(boolean(true))),
-                Padded(11, Box::new(boolean(true)))
-            )),
+                boolean(true),
+                boolean(true).padded(1)
+            )).padded(10),
         );
         Ok(())
     }
@@ -504,8 +521,8 @@ mod tests {
     fn unifies_non_equivalent_padded_bools_in_types_to_void() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        let a = Padded(5, Box::new(Padded(6, Box::new(boolean(false)))));
-        let b = Padded(11, Box::new(boolean(true)));
+        let a = Padded(5, Box::new(boolean(false).padded(6))); // Keep the second padding explicit to test normalization.
+        let b = boolean(true).padded(11);
         tgb.require_assignable(&path, &a)?;
         tgb.require_assignable(&path, &b)?;
 
@@ -745,28 +762,38 @@ mod tests {
         Ok(())
     }
 
-    // #[test]
+    #[test]
+    fn assignment_to_equal_type_pair_bit() -> Result<(), TError> {
+        let pair_bit = || {
+            record(vec![bit_type(), bit_type()]).unwrap()
+        };
+        let mut tgb = TypeGraph::default();
+        assert!(tgb.is_assignable_to(&pair_bit(), &pair_bit())?);
+        Ok(())
+    }
+
+    #[test]
     fn assignment_to_equal_type_byte() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         assert!(tgb.is_assignable_to(&byte_type(), &byte_type())?);
         Ok(())
     }
 
-    // #[test]
+    #[test]
     fn assignment_to_equal_type_str() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         assert!(tgb.is_assignable_to(&string_type(), &string_type())?);
         Ok(())
     }
 
-    // #[test]
+    #[test]
     fn assignment_to_equal_type_i32() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         assert!(tgb.is_assignable_to(&i32_type(), &i32_type())?);
         Ok(())
     }
 
-    // #[test]
+    #[test]
     fn unifies_variables_in_types_ensuring_assignment() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();

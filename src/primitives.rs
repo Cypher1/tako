@@ -13,11 +13,11 @@ pub type Offset = usize;
 
 // A list of types with an offset to get to the first bit (used for padding, frequently 0).
 type Layout = Vec<Val>;
-type TypeSet = BTreeSet<Val>;
+pub type TypeSet = BTreeSet<Val>;
 type Pack = BTreeSet<(String, Val)>;
 pub type Frame = HashMap<String, Val>;
 
-#[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Debug, Hash)]
+#[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Hash)]
 pub enum Prim {
     Bool(bool),
     I32(i32),
@@ -26,7 +26,26 @@ pub enum Prim {
     Tag(BitVec), // An identifying bit string (prefix).
 }
 
-#[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Debug, Hash)]
+impl std::fmt::Debug for Prim {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use Prim::*;
+        match self {
+            Bool(b) => write!(f, "{:?}", b)?,
+            I32(i) => write!(f, "{:?}", i)?,
+            Str(s) => write!(f, "'{}'", s)?,
+            BuiltIn(b) => write!(f, "BuiltIn#{}", b)?,
+            Tag(bits) => {
+                write!(f, "b")?;
+                for bit in bits.iter() {
+                    write!(f, "{}", if *bit { '1' } else { '0' })?
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Hash)]
 pub enum Val {
     PrimVal(Prim),
     // Complex types
@@ -49,6 +68,12 @@ pub enum Val {
     WithRequirement(Box<Val>, Vec<String>),
     Variable(String),
     BitStr(Offset),
+}
+
+impl std::fmt::Debug for Val {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self)
+    }
 }
 
 pub fn merge_vals(left: Vec<(String, Val)>, right: Vec<(String, Val)>) -> Vec<(String, Val)> {
@@ -170,20 +195,9 @@ impl fmt::Display for Val {
                 return write!(f, "{}", name);
             }
         }
-        use Prim::*;
         match self {
-            PrimVal(BuiltIn(name)) => write!(f, "{}", name),
-            PrimVal(Bool(val)) => write!(f, "{}", val),
-            PrimVal(I32(val)) => write!(f, "{}", val),
-            PrimVal(Str(val)) => write!(f, "'{}'", val),
-            PrimVal(Tag(bits)) => {
-                let mut bit_str = "".to_string();
-                for b in bits.iter() {
-                    bit_str.push(if *b { '1' } else { '0' });
-                }
-                write!(f, "Tag({})", bit_str)
-            }
-            BitStr(ptr_size) => write!(f, "*<{}b>Code", ptr_size),
+            PrimVal(prim) => write!(f, "{:?}", prim),
+            BitStr(ptr_size) => write!(f, "Pointer<{}b>Code", ptr_size),
             Lambda(val) => write!(f, "{}", val),
             Struct(vals) => {
                 write!(f, "(").unwrap();
@@ -201,11 +215,11 @@ impl fmt::Display for Val {
                 if s.is_empty() {
                     write!(f, "Void")
                 } else {
-                    write!(f, "Union(")?;
+                    write!(f, "(")?;
                     let mut first = true;
                     for sty in s {
                         if !first {
-                            write!(f, ", ")?;
+                            write!(f, "|")?;
                         }
                         first = false;
                         write!(f, "{}", sty)?;
@@ -215,13 +229,13 @@ impl fmt::Display for Val {
             }
             Product(s) => {
                 if s.is_empty() {
-                    write!(f, "()")
+                    write!(f, "Unit")
                 } else {
-                    write!(f, "Product(")?;
+                    write!(f, "(")?;
                     let mut first = true;
                     for sty in s {
                         if !first {
-                            write!(f, ", ")?;
+                            write!(f, "*")?;
                         }
                         first = false;
                         write!(f, "{}", sty)?;
@@ -229,7 +243,7 @@ impl fmt::Display for Val {
                     write!(f, ")")
                 }
             }
-            Pointer(ptr_size, t) => write!(f, "*<{}b>{}", ptr_size, t),
+            Pointer(ptr_size, ty) => write!(f, "Pointer<{}b>{}", ptr_size, ty),
             Padded(size, t) => write!(f, "Pad<{}b>{}", size, t),
             Function {
                 intros,
