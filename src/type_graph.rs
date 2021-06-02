@@ -101,6 +101,41 @@ fn cancel_neighbours(mut tys: TypeSet) -> TypeSet {
     tys
 }
 
+fn simplify_bits(tys: TypeSet) -> TypeSet {
+    use crate::primitives::{size, Val::Padded};
+    // Find contiguous values?
+    // [    x    ]
+    //       [    y    ]
+    // [  x  |x&y|  y  ]
+    let get_pad = |ty: &Val| match ty {
+        Padded(k, ty) => (*k, (**ty).clone()),
+        ty => (0, ty.clone()),
+    };
+    let mut unhandled = set![];
+    let mut sized = vec![];
+    for ty in tys.iter() {
+        let (pad, ty) = get_pad(ty);
+        if let Ok(s) = size(&ty) {
+            sized.push((pad, pad+s, ty));
+        } else {
+            unhandled.insert(ty.clone().padded(pad));
+        }
+    }
+
+    // When adding, find each value in the vec that overlaps
+    // accumulate them
+    // remove the old ones and re-add the conglomerate.
+    for ty in sized.iter() {
+    }
+
+    let mut tys = set![];
+    for ty in sized.iter() {
+        let (start, _end, ty) = ty;
+        tys.insert((*ty).clone().padded(*start));
+    }
+    unhandled.union(&tys).cloned().collect()
+}
+
 impl TypeGraph {
     pub fn get_new_id(&mut self) -> Id {
         let curr = self.counter;
@@ -183,11 +218,7 @@ impl TypeGraph {
                         }
                     }
                 }
-                // Find contiguous values?
-                // [    x    ]
-                //       [    y    ]
-                // [  x  |x&y|  y  ]
-                
+                let new_tys = simplify_bits(new_tys);
                 // Cancel all the neighbours (e.g. (a|b)*b => (a*b)|b
                 only_item_or_build(cancel_neighbours(new_tys), Product)
             }
@@ -367,6 +398,7 @@ impl TypeGraph {
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
     use super::{Id, TypeGraph};
     use crate::ast::{Path, Symbol::*};
     use crate::errors::TError;
@@ -379,15 +411,6 @@ mod tests {
         fn id_for_path(&mut self, path: &Path) -> Option<&Id> {
             self.symbols.get(path).clone()
         }
-    }
-
-    fn assert_eqs<T: Eq + Clone + std::fmt::Display + std::fmt::Debug>(a: T, b: T) {
-        assert_eq!(
-            format!("{}", a.clone()),
-            format!("{}", b.clone()),
-            "non-equal string representations"
-        );
-        assert_eq!(a, b, "non-equal objects with same string representations");
     }
 
     fn test_path() -> Path {
@@ -429,7 +452,7 @@ mod tests {
         tgb.require_assignable(&path, &i32_type())?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, i32_type());
+        assert_eq!(ty, i32_type());
 
         Ok(())
     }
@@ -528,7 +551,7 @@ mod tests {
         tgb.require_assignable(&path, &boolean(true))?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, boolean(true));
+        assert_eq!(ty, boolean(true));
         Ok(())
     }
 
@@ -540,7 +563,7 @@ mod tests {
         tgb.require_assignable(&path, &boolean(false))?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, void_type());
+        assert_eq!(ty, void_type());
         Ok(())
     }
 
@@ -556,7 +579,7 @@ mod tests {
 
         let ty = tgb.get_type(&path).unwrap();
         // therefore value must start with b11
-        assert_eqs(ty, tag(bits(3, 2)));
+        assert_eq!(ty, tag(bits(3, 2)));
         Ok(())
     }
 
@@ -572,7 +595,7 @@ mod tests {
 
         let ty = tgb.get_type(&path).unwrap();
         // therefore value must start with b11
-        assert_eqs(ty, tag(bits(3, 2)));
+        assert_eq!(ty, tag(bits(3, 2)));
         Ok(())
     }
 
@@ -588,7 +611,7 @@ mod tests {
 
         let ty = tgb.get_type(&path).unwrap();
         // therefore there's no valid value
-        assert_eqs(ty, void_type());
+        assert_eq!(ty, void_type());
         Ok(())
     }
 
@@ -600,7 +623,7 @@ mod tests {
         tgb.require_assignable(&path, &int32(4))?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, int32(4));
+        assert_eq!(ty, int32(4));
         Ok(())
     }
 
@@ -612,7 +635,7 @@ mod tests {
         tgb.require_assignable(&path, &int32(5))?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, void_type());
+        assert_eq!(ty, void_type());
         Ok(())
     }
 
@@ -624,7 +647,7 @@ mod tests {
         tgb.require_assignable(&path, &string("Woo"))?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, string("Woo"));
+        assert_eq!(ty, string("Woo"));
         Ok(())
     }
 
@@ -636,7 +659,7 @@ mod tests {
         tgb.require_assignable(&path, &string("No"))?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, void_type());
+        assert_eq!(ty, void_type());
         Ok(())
     }
 
@@ -649,7 +672,7 @@ mod tests {
         tgb.require_assignable(&path, &a)?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, a);
+        assert_eq!(ty, a);
         Ok(())
     }
 
@@ -663,7 +686,7 @@ mod tests {
         tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, b);
+        assert_eq!(ty, b);
         Ok(())
     }
 
@@ -677,7 +700,7 @@ mod tests {
         tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(
+        assert_eq!(
             ty,
             Product(set!(boolean(true), boolean(true).padded(1))).padded(10),
         );
@@ -694,7 +717,7 @@ mod tests {
         tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, void_type());
+        assert_eq!(ty, void_type());
         Ok(())
     }
 
@@ -706,7 +729,7 @@ mod tests {
         tgb.require_assignable(&path, &string("No"))?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, void_type());
+        assert_eq!(ty, void_type());
         Ok(())
     }
 
@@ -720,7 +743,7 @@ mod tests {
         tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, a);
+        assert_eq!(ty, a);
         Ok(())
     }
 
@@ -734,7 +757,7 @@ mod tests {
         tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, b);
+        assert_eq!(ty, b);
         Ok(())
     }
 
@@ -748,7 +771,7 @@ mod tests {
         tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, int32(3));
+        assert_eq!(ty, int32(3));
         Ok(())
     }
 
@@ -762,7 +785,7 @@ mod tests {
         tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, int32(3));
+        assert_eq!(ty, int32(3));
         Ok(())
     }
 
@@ -776,7 +799,7 @@ mod tests {
         tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, void_type());
+        assert_eq!(ty, void_type());
         Ok(())
     }
 
@@ -790,7 +813,7 @@ mod tests {
         tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, b);
+        assert_eq!(ty, b);
         Ok(())
     }
 
@@ -805,7 +828,7 @@ mod tests {
         tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, res);
+        assert_eq!(ty, res);
         Ok(())
     }
 
@@ -823,7 +846,7 @@ mod tests {
         tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, res);
+        assert_eq!(ty, res);
         Ok(())
     }
 
@@ -843,7 +866,7 @@ mod tests {
         tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, res);
+        assert_eq!(ty, res);
         Ok(())
     }
 
@@ -857,7 +880,7 @@ mod tests {
         tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, void_type());
+        assert_eq!(ty, void_type());
         Ok(())
     }
 
@@ -871,7 +894,7 @@ mod tests {
         tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, a);
+        assert_eq!(ty, a);
         Ok(())
     }
 
@@ -887,7 +910,7 @@ mod tests {
         tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, res);
+        assert_eq!(ty, res);
         Ok(())
     }
 
@@ -904,7 +927,7 @@ mod tests {
         tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, b);
+        assert_eq!(ty, b);
         Ok(())
     }
 
@@ -918,7 +941,7 @@ mod tests {
         tgb.require_assignable(&path, &b)?;
 
         let ty = tgb.get_type(&path).unwrap();
-        assert_eqs(ty, void_type());
+        assert_eq!(ty, void_type());
         Ok(())
     }
 

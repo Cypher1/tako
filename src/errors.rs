@@ -22,6 +22,14 @@ pub enum TError {
         "unknown size of variable type (i.e. type variables could have any size) `{0}` at {1:?}"
     )]
     UnknownSizeOfVariableType(String, Info),
+    #[error(
+        "unknown size of abstract type (i.e. size is dependant on context) `{0}` at {1:?}"
+    )]
+    UnknownSizeOfAbstractType(String, Info),
+    #[error(
+        "unknown cardinality of abstract type (i.e. cardinality is dependant on context) `{0}` at {1:?}"
+    )]
+    UnknownCardOfAbstractType(String, Info),
 
     #[error("unknown cardinality of static pointers (i.e. static pointers could point at anything) at {0:?}")]
     StaticPointerCardinality(Info),
