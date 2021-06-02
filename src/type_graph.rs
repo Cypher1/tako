@@ -20,20 +20,18 @@ fn reduce_common_padding(tys: TypeSet, builder: fn(TypeSet) -> Val) -> Val {
     use crate::primitives::Val::Padded;
     let mut common_padding = None;
     for ty in tys.iter() {
-        common_padding = Some(
-            if let Padded(k, _ty) = ty {
-                std::cmp::min(*k, common_padding.unwrap_or(*k))
-            } else {
-                0
-            }
-        );
+        common_padding = Some(if let Padded(k, _ty) = ty {
+            std::cmp::min(*k, common_padding.unwrap_or(*k))
+        } else {
+            0
+        });
     }
     let common_padding = common_padding.unwrap_or(0);
     if common_padding > 0 {
         let mut unpadded_tys = set![];
         for ty in tys.iter().cloned() {
             if let Padded(k, ty) = ty {
-                let k = k-common_padding;
+                let k = k - common_padding;
                 unpadded_tys.insert((*ty).padded(k));
             }
         }
@@ -46,8 +44,7 @@ fn only_item_or_build(vals: TypeSet, builder: fn(TypeSet) -> Val) -> Val {
     if vals.is_empty() {
         builder(vals) // skip reductions automatically.
     } else if vals.len() == 1 {
-        vals
-            .iter()
+        vals.iter()
             .next()
             .expect("set with len 1 should always have a value")
             .clone()
@@ -72,13 +69,14 @@ fn factor_out(val: Val, reduction: &Val) -> Val {
         Padded(k, ty) => match reduction {
             Padded(j, reduction) => {
                 if k <= *j {
-                    factor_out(*ty, &reduction.clone().padded(j-k))
+                    factor_out(*ty, &reduction.clone().padded(j - k))
                 } else {
                     *ty
                 }
             }
             _ => *ty,
-        }.padded(k),
+        }
+        .padded(k),
         t => match reduction {
             Product(reductions) => {
                 let mut t = t;
@@ -88,7 +86,7 @@ fn factor_out(val: Val, reduction: &Val) -> Val {
                 t
             }
             _ => t,
-        }
+        },
     }
 }
 
@@ -190,16 +188,12 @@ impl TypeGraph {
             }
             Padded(n, inner) => match self.normalize(*inner)? {
                 Padded(k, inner) => inner.padded(n + k),
-                Union(tys) => self.normalize(Union(
-                    tys.iter()
-                        .map(|ty| ty.clone().padded(n))
-                        .collect(),
-                ))?,
-                Product(tys) => self.normalize(Product(
-                    tys.iter()
-                        .map(|ty| ty.clone().padded(n))
-                        .collect(),
-                ))?,
+                Union(tys) => {
+                    self.normalize(Union(tys.iter().map(|ty| ty.clone().padded(n)).collect()))?
+                }
+                Product(tys) => {
+                    self.normalize(Product(tys.iter().map(|ty| ty.clone().padded(n)).collect()))?
+                }
                 ty => ty.padded(n),
             },
             // WithRequirement(Box<Val>, Vec<String>),
@@ -218,9 +212,9 @@ impl TypeGraph {
             panic!("wtf\n{}\n{}\n{:#?}", &from, &to, &v);
         }
         // if v != void_type() {
-            // eprintln!("unified:\n     {}\nwith {}\n to {}", &from, &to, &v);
+        // eprintln!("unified:\n     {}\nwith {}\n to {}", &from, &to, &v);
         // } else {
-            // eprintln!("couldnt not unify:\n     {}\nwith {}", &from, &to);
+        // eprintln!("couldnt not unify:\n     {}\nwith {}", &from, &to);
         // }
         Ok(v)
     }
@@ -298,7 +292,11 @@ impl TypeGraph {
             (Padded(k, u), Padded(j, v)) => {
                 let min_pad = std::cmp::min(*k, *j);
                 let max_pad = std::cmp::max(*k, *j);
-                self.unify(&u.clone().padded(max_pad-j), &v.clone().padded(max_pad - k))?.padded(min_pad)
+                self.unify(
+                    &u.clone().padded(max_pad - j),
+                    &v.clone().padded(max_pad - k),
+                )?
+                .padded(min_pad)
             }
             (t, Padded(k, u)) | (Padded(k, u), t) => {
                 // actually we need to check if these overlap...
@@ -360,8 +358,8 @@ mod tests {
     use crate::ast::{Path, Symbol::*};
     use crate::errors::TError;
     use crate::primitives::{
-        bit_type, record, boolean, byte_type, trit_type, i32_type, int32, number_type, string, string_type, variable,
-        void_type, Val::*,
+        bit_type, boolean, byte_type, i32_type, int32, number_type, record, string, string_type,
+        trit_type, variable, void_type, Val::*,
     };
 
     impl TypeGraph {
@@ -555,10 +553,7 @@ mod tests {
         let ty = tgb.get_type(&path).unwrap();
         assert_eqs(
             ty,
-            Product(set!(
-                boolean(true),
-                boolean(true).padded(1)
-            )).padded(10),
+            Product(set!(boolean(true), boolean(true).padded(1))).padded(10),
         );
         Ok(())
     }
@@ -810,9 +805,7 @@ mod tests {
 
     #[test]
     fn assignment_to_equal_type_pair_bit() -> Result<(), TError> {
-        let pair_bit = || {
-            record(vec![bit_type(), bit_type()]).unwrap()
-        };
+        let pair_bit = || record(vec![bit_type(), bit_type()]).unwrap();
         let mut tgb = TypeGraph::default();
         assert!(tgb.is_assignable_to(&pair_bit(), &pair_bit())?);
         Ok(())
