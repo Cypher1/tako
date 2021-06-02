@@ -43,7 +43,7 @@ fn reduce_common_padding(tys: TypeSet, builder: fn(TypeSet) -> Val) -> Val {
 }
 
 fn only_item_or_build(vals: TypeSet, builder: fn(TypeSet) -> Val) -> Val {
-    if vals.len() == 0 {
+    if vals.is_empty() {
         builder(vals) // skip reductions automatically.
     } else if vals.len() == 1 {
         vals
@@ -92,6 +92,17 @@ fn factor_out(val: Val, reduction: &Val) -> Val {
     }
 }
 
+fn cancel_neighbours(mut tys: TypeSet) -> TypeSet {
+    for ty in tys.clone().iter() {
+        let mut simpl_tys = set![];
+        for other in tys.iter().cloned() {
+            simpl_tys.insert(factor_out(other, &ty));
+        }
+        tys = simpl_tys;
+    }
+    tys
+}
+
 impl TypeGraph {
     pub fn get_new_id(&mut self) -> Id {
         let curr = self.counter;
@@ -100,12 +111,12 @@ impl TypeGraph {
     }
 
     pub fn get_id_for_path(&mut self, path: &Path) -> Id {
-        let id = self.symbols.get(path).clone();
+        let id = self.symbols.get(path);
         if let Some(id) = id {
-            id.clone()
+            *id
         } else {
             let new = self.get_new_id();
-            self.symbols.insert(path.clone(), new.clone());
+            self.symbols.insert(path.clone(), new);
             new
         }
     }
@@ -157,14 +168,7 @@ impl TypeGraph {
                     }
                 }
                 // Cancel all the neighbours (e.g. (a*b)|(c*b) => (a|c)*b
-                for ty in new_tys.clone().iter() {
-                    let mut simpl_tys = set![];
-                    for other in new_tys.iter().cloned() {
-                        simpl_tys.insert(factor_out(other, &ty));
-                    }
-                    new_tys = simpl_tys;
-                }
-                only_item_or_build(new_tys, Union)
+                only_item_or_build(cancel_neighbours(new_tys), Union)
             }
             Product(tys) => {
                 let mut new_tys = set![];
@@ -182,14 +186,7 @@ impl TypeGraph {
                     }
                 }
                 // Cancel all the neighbours (e.g. (a|b)*b => (a*b)|b
-                for ty in new_tys.clone().iter() {
-                    let mut simpl_tys = set![];
-                    for other in new_tys.iter().cloned() {
-                        simpl_tys.insert(factor_out(other, &ty));
-                    }
-                    new_tys = simpl_tys;
-                }
-                only_item_or_build(new_tys, Product)
+                only_item_or_build(cancel_neighbours(new_tys), Product)
             }
             Padded(n, inner) => match self.normalize(*inner)? {
                 Padded(k, inner) => inner.padded(n + k),
@@ -299,13 +296,9 @@ impl TypeGraph {
                 s.clone()
             }
             (Padded(k, u), Padded(j, v)) => {
-                if k == j {
-                    self.unify(u, v)?.padded(*k)
-                } else if k > j {
-                    (self.unify(&u.clone().padded(k-j), v)?).padded(*j)
-                } else {
-                    self.unify(u, &v.clone().padded(j - k))?.padded(*k)
-                }
+                let min_pad = std::cmp::min(*k, *j);
+                let max_pad = std::cmp::max(*k, *j);
+                self.unify(&u.clone().padded(max_pad-j), &v.clone().padded(max_pad - k))?.padded(min_pad)
             }
             (t, Padded(k, u)) | (Padded(k, u), t) => {
                 // actually we need to check if these overlap...
@@ -351,8 +344,7 @@ impl TypeGraph {
         };
 
         // Check overlap?
-
-        self.types.insert(id.clone(), m);
+        self.types.insert(*id, m);
         Ok(())
     }
 

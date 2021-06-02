@@ -351,7 +351,7 @@ pub fn bits(mut n: Offset, len: Offset) -> BitVec {
         if n == 0 {
             break;
         }
-        *v.get_mut(len - 1 - ind).unwrap() = if n % 2 == 0 { false } else { true };
+        *v.get_mut(len - 1 - ind).unwrap() = n % 2 != 0;
         n /= 2;
     }
     v
