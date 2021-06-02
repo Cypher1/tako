@@ -25,10 +25,12 @@ mod tokens;
 mod tree;
 
 mod definition_finder;
-mod experimental;
 mod pretty_print;
 mod symbol_table_builder;
 mod to_cpp;
+
+#[allow(dead_code)]
+mod experimental; // This is where the fun, but currently unused stuff goes
 
 use ast::Visitor;
 use interpreter::Interpreter;

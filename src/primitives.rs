@@ -13,11 +13,11 @@ pub type Offset = usize;
 
 // A list of types with an offset to get to the first bit (used for padding, frequently 0).
 type Layout = Vec<Val>;
-type TypeSet = BTreeSet<Val>;
+pub type TypeSet = BTreeSet<Val>;
 type Pack = BTreeSet<(String, Val)>;
 pub type Frame = HashMap<String, Val>;
 
-#[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Debug, Hash)]
+#[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Hash)]
 pub enum Prim {
     Bool(bool),
     I32(i32),
@@ -26,7 +26,26 @@ pub enum Prim {
     Tag(BitVec), // An identifying bit string (prefix).
 }
 
-#[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Debug, Hash)]
+impl std::fmt::Debug for Prim {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use Prim::*;
+        match self {
+            Bool(b) => write!(f, "{:?}", b)?,
+            I32(i) => write!(f, "{:?}", i)?,
+            Str(s) => write!(f, "'{}'", s)?,
+            BuiltIn(b) => write!(f, "BuiltIn#{}", b)?,
+            Tag(bits) => {
+                write!(f, "b")?;
+                for bit in bits.iter() {
+                    write!(f, "{}", if *bit { '1' } else { '0' })?
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Hash)]
 pub enum Val {
     PrimVal(Prim),
     // Complex types
@@ -157,6 +176,12 @@ impl Val {
 }
 
 impl fmt::Display for Val {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:#?}", self)
+    }
+}
+
+impl std::fmt::Debug for Val {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let types = vec![
             (string_type(), "String"),
@@ -170,67 +195,41 @@ impl fmt::Display for Val {
                 return write!(f, "{}", name);
             }
         }
-        use Prim::*;
         match self {
-            PrimVal(BuiltIn(name)) => write!(f, "{}", name),
-            PrimVal(Bool(val)) => write!(f, "{}", val),
-            PrimVal(I32(val)) => write!(f, "{}", val),
-            PrimVal(Str(val)) => write!(f, "'{}'", val),
-            PrimVal(Tag(bits)) => {
-                let mut bit_str = "".to_string();
-                for b in bits.iter() {
-                    bit_str.push(if *b { '1' } else { '0' });
-                }
-                write!(f, "Tag({})", bit_str)
-            }
-            BitStr(ptr_size) => write!(f, "*<{}b>Code", ptr_size),
+            PrimVal(prim) => write!(f, "{:?}", prim),
+            BitStr(ptr_size) => write!(f, "Pointer<{}b>Code", ptr_size),
             Lambda(val) => write!(f, "{}", val),
             Struct(vals) => {
-                write!(f, "(").unwrap();
-                let mut is_first = true;
+                let mut out = f.debug_struct("");
                 for val in vals.iter() {
-                    if !is_first {
-                        write!(f, ", ").unwrap();
-                    }
-                    write!(f, "{} = {}", val.0, &val.1).unwrap();
-                    is_first = false;
+                    out.field(&val.0, &val.1);
                 }
-                write!(f, ")")
+                out.finish()
             }
             Union(s) => {
                 if s.is_empty() {
                     write!(f, "Void")
                 } else {
-                    write!(f, "Union(")?;
-                    let mut first = true;
+                    let mut out = f.debug_tuple("|");
                     for sty in s {
-                        if !first {
-                            write!(f, ", ")?;
-                        }
-                        first = false;
-                        write!(f, "{}", sty)?;
+                        out.field(sty);
                     }
-                    write!(f, ")")
+                    out.finish()
                 }
             }
             Product(s) => {
                 if s.is_empty() {
-                    write!(f, "()")
+                    write!(f, "Unit")
                 } else {
-                    write!(f, "Product(")?;
-                    let mut first = true;
+                    let mut out = f.debug_tuple("*");
                     for sty in s {
-                        if !first {
-                            write!(f, ", ")?;
-                        }
-                        first = false;
-                        write!(f, "{}", sty)?;
+                        out.field(sty);
                     }
-                    write!(f, ")")
+                    out.finish()
                 }
             }
-            Pointer(ptr_size, t) => write!(f, "*<{}b>{}", ptr_size, t),
-            Padded(size, t) => write!(f, "Pad<{}b>{}", size, t),
+            Pointer(ptr_size, ty) => write!(f, "Pointer<{}b>{:#?}", ptr_size, ty),
+            Padded(size, t) => write!(f, "pad_{}#{:#?}", size, t),
             Function {
                 intros,
                 results,
@@ -239,14 +238,14 @@ impl fmt::Display for Val {
                 if !intros.is_empty() {
                     let ints: Vec<String> = intros
                         .iter()
-                        .map(|(name, ty)| format!("{}: {}", name, ty))
+                        .map(|(name, ty)| format!("{}: {:#?}", name, ty))
                         .collect();
                     write!(f, "{}|-", ints.join("|-"))?;
                 }
-                write!(f, "{} -> {}", arguments, results)
+                write!(f, "{:#?} -> {:#?}", arguments, results)
             }
-            App { inner, arguments } => write!(f, "({})({})", inner, arguments),
-            WithRequirement(ty, effs) => write!(f, "{}+{}", ty, effs.join("+")),
+            App { inner, arguments } => write!(f, "({:#?})({:#?})", inner, arguments),
+            WithRequirement(ty, effs) => write!(f, "{:#?}+{}", ty, effs.join("+")),
             Variable(name) => write!(f, "{}", name),
         }
     }
@@ -352,7 +351,7 @@ pub fn bits(mut n: Offset, len: Offset) -> BitVec {
         if n == 0 {
             break;
         }
-        *v.get_mut(len - 1 - ind).unwrap() = if n % 2 == 0 { false } else { true };
+        *v.get_mut(len - 1 - ind).unwrap() = n % 2 != 0;
         n /= 2;
     }
     v
