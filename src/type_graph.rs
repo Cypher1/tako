@@ -64,12 +64,31 @@ fn factor_out(val: Val, reduction: &Val) -> Val {
             new_tys.insert(factor_out(ty, reduction));
         }
         new_tys.remove(reduction);
-        builder(new_tys)
+        only_item_or_build(new_tys, builder)
     };
     match val {
         Product(tys) => factor_tys(tys, Product),
         Union(tys) => factor_tys(tys, Union),
-        t => t
+        Padded(k, ty) => match reduction {
+            Padded(j, reduction) => {
+                if k <= *j {
+                    factor_out(*ty, &reduction.clone().padded(j-k))
+                } else {
+                    *ty
+                }
+            }
+            _ => *ty,
+        }.padded(k),
+        t => match reduction {
+            Product(reductions) => {
+                let mut t = t;
+                for reduction in reductions.iter() {
+                    t = factor_out(t, reduction);
+                }
+                t
+            }
+            _ => t,
+        }
     }
 }
 
@@ -137,6 +156,14 @@ impl TypeGraph {
                         }
                     }
                 }
+                // Cancel all the neighbours (e.g. (a*b)|(c*b) => (a|c)*b
+                for ty in new_tys.clone().iter() {
+                    let mut simpl_tys = set![];
+                    for other in new_tys.iter().cloned() {
+                        simpl_tys.insert(factor_out(other, &ty));
+                    }
+                    new_tys = simpl_tys;
+                }
                 only_item_or_build(new_tys, Union)
             }
             Product(tys) => {
@@ -154,6 +181,7 @@ impl TypeGraph {
                         }
                     }
                 }
+                // Cancel all the neighbours (e.g. (a|b)*b => (a*b)|b
                 for ty in new_tys.clone().iter() {
                     let mut simpl_tys = set![];
                     for other in new_tys.iter().cloned() {
@@ -161,7 +189,6 @@ impl TypeGraph {
                     }
                     new_tys = simpl_tys;
                 }
-                // Cancel all the neighbours (e.g. (a|b)*b => (a*b)|b
                 only_item_or_build(new_tys, Product)
             }
             Padded(n, inner) => match self.normalize(*inner)? {
@@ -191,7 +218,7 @@ impl TypeGraph {
         let v = self.normalize(v)?;
         // use crate::primitives::void_type;
         if from == to && from != v {
-            panic!("wtf\n{}\n{}\n{}", &from, &to, &v);
+            panic!("wtf\n{}\n{}\n{:#?}", &from, &to, &v);
         }
         // if v != void_type() {
             // eprintln!("unified:\n     {}\nwith {}\n to {}", &from, &to, &v);
@@ -799,28 +826,28 @@ mod tests {
         Ok(())
     }
 
-    // #[test]
+    #[test]
     fn assignment_to_equal_type_byte() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         assert!(tgb.is_assignable_to(&byte_type(), &byte_type())?);
         Ok(())
     }
 
-    // #[test]
+    #[test]
     fn assignment_to_equal_type_str() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         assert!(tgb.is_assignable_to(&string_type(), &string_type())?);
         Ok(())
     }
 
-    // #[test]
+    #[test]
     fn assignment_to_equal_type_i32() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         assert!(tgb.is_assignable_to(&i32_type(), &i32_type())?);
         Ok(())
     }
 
-    // #[test]
+    #[test]
     fn unifies_variables_in_types_ensuring_assignment() -> Result<(), TError> {
         let mut tgb = TypeGraph::default();
         let path = test_path();
