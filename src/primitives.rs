@@ -1,5 +1,4 @@
-use crate::ast::Info;
-use crate::ast::Node;
+use crate::ast::{Info, Node};
 use crate::errors::TError;
 use bitvec::prelude::*;
 use std::collections::BTreeSet;
@@ -189,6 +188,8 @@ impl std::fmt::Debug for Val {
             (i32_type(), "I32"),
             (byte_type(), "Byte"),
             (bit_type(), "Bit"),
+            (trit_type(), "Trit"),
+            (quad_type(), "Quad"),
         ];
         for (ty, name) in types.iter() {
             if self == ty {
@@ -398,6 +399,10 @@ pub fn trit_type() -> Val {
     sum(vec![unit_type(), unit_type(), unit_type()]).expect("trit should be safe")
 }
 
+pub fn quad_type() -> Val {
+    sum(vec![unit_type(), unit_type(), unit_type(), unit_type()]).expect("quad should be safe")
+}
+
 pub fn byte_type() -> Val {
     record(vec![
         bit_type(),
@@ -540,8 +545,8 @@ mod tests {
         assert_eq!(size(&quad), Ok(2));
     }
     #[test]
-    fn quad_type() {
-        let quad = sum(vec![unit_type(), unit_type(), unit_type(), unit_type()]).unwrap();
+    fn quad() {
+        let quad = quad_type();
         assert_eq!(card(&quad), Ok(4));
         assert_eq!(size(&quad), Ok(2));
     }

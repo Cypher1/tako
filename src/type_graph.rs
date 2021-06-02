@@ -183,6 +183,11 @@ impl TypeGraph {
                         }
                     }
                 }
+                // Find contiguous values?
+                // [    x    ]
+                //       [    y    ]
+                // [  x  |x&y|  y  ]
+                
                 // Cancel all the neighbours (e.g. (a|b)*b => (a*b)|b
                 only_item_or_build(cancel_neighbours(new_tys), Product)
             }
@@ -220,7 +225,7 @@ impl TypeGraph {
     }
 
     fn unify_impl(&mut self, from: &Val, to: &Val) -> Result<Val, TError> {
-        use crate::primitives::{void_type, Val::*};
+        use crate::primitives::{void_type, Val::*, Prim::Tag};
         Ok(match (from, to) {
             (Struct(s), Struct(t)) => {
                 let mut names = set![];
@@ -302,6 +307,14 @@ impl TypeGraph {
                 // actually we need to check if these overlap...
                 only_item_or_build(set![t.clone(), Padded(*k, u.clone())], Product)
             }
+            (PrimVal(Tag(p)), PrimVal(Tag(q))) => {
+                let (shorter, longer) = if p.len() < q.len() { (p, q) } else { (q, p) };
+                if longer[0..shorter.len()] == shorter[0..] {
+                    PrimVal(Tag(longer.clone()))
+                } else {
+                    void_type()
+                }
+            }
             (PrimVal(p), q) | (q, PrimVal(p)) => {
                 if PrimVal(p.clone()) == *q {
                     PrimVal(p.clone())
@@ -358,8 +371,8 @@ mod tests {
     use crate::ast::{Path, Symbol::*};
     use crate::errors::TError;
     use crate::primitives::{
-        bit_type, boolean, byte_type, i32_type, int32, number_type, record, string, string_type,
-        trit_type, variable, void_type, Val::*,
+        bit_type, boolean, byte_type, i32_type, int32, number_type, quad_type, record, string,
+        string_type, sum, trit_type, variable, void_type, Val::*,
     };
 
     impl TypeGraph {
@@ -461,6 +474,53 @@ mod tests {
     }
 
     #[test]
+    fn normalize_type_trit_bit_to_trit_bit() -> Test {
+        let trit_bit = || record(vec![bit_type(), trit_type()]).unwrap();
+        let mut tgb = TypeGraph::default();
+        assert_eq!(tgb.normalize(trit_bit())?, trit_bit());
+        Ok(())
+    }
+
+    #[test]
+    fn normalize_type_trit_xor_bit_to_trit_xor_bit() -> Test {
+        let trit_xor_bit = || sum(vec![bit_type(), trit_type()]).unwrap();
+        let mut tgb = TypeGraph::default();
+        assert_eq!(tgb.normalize(trit_xor_bit())?, trit_xor_bit());
+        Ok(())
+    }
+
+    #[test]
+    fn normalize_type_trit_or_bit_to_simple_trit() -> Test {
+        let trit_or_bit = || Union(set![bit_type(), trit_type()]);
+        let mut tgb = TypeGraph::default();
+        assert_eq!(tgb.normalize(trit_or_bit())?, trit_type());
+        Ok(())
+    }
+
+    #[test]
+    fn normalize_type_trit_or_quad_to_simple_quad() -> Test {
+        let trit_or_quad = || Union(set![quad_type(), trit_type()]);
+        let mut tgb = TypeGraph::default();
+        assert_eq!(tgb.normalize(trit_or_quad())?, quad_type());
+        Ok(())
+    }
+
+    #[test]
+    fn normalize_type_quad_to_quad() -> Test {
+        let mut tgb = TypeGraph::default();
+        assert_eq!(tgb.normalize(quad_type())?, quad_type());
+        Ok(())
+    }
+
+    #[test]
+    fn normalize_type_nested_quad_to_quad() -> Test {
+        let nested_quad = record(vec![bit_type(), bit_type()]).unwrap();
+        let mut tgb = TypeGraph::default();
+        assert_eq!(tgb.normalize(nested_quad)?, quad_type());
+        Ok(())
+    }
+
+    #[test]
     fn unifies_equal_bools_in_types() -> Test {
         let mut tgb = TypeGraph::default();
         let path = test_path();
@@ -480,6 +540,54 @@ mod tests {
         tgb.require_assignable(&path, &boolean(false))?;
 
         let ty = tgb.get_type(&path).unwrap();
+        assert_eqs(ty, void_type());
+        Ok(())
+    }
+
+    #[test]
+    fn unifies_tags_to_shared() -> Test {
+        use crate::primitives::{tag, bits};
+        let mut tgb = TypeGraph::default();
+        let path = test_path();
+        // value must start with b11
+        tgb.require_assignable(&path, &tag(bits(3, 2)))?;
+        // value must start with b11
+        tgb.require_assignable(&path, &tag(bits(3, 1)))?;
+
+        let ty = tgb.get_type(&path).unwrap();
+        // therefore value must start with b11
+        assert_eqs(ty, tag(bits(3, 2)));
+        Ok(())
+    }
+
+    #[test]
+    fn unifies_equal_tags_to_tag() -> Test {
+        use crate::primitives::{tag, bits};
+        let mut tgb = TypeGraph::default();
+        let path = test_path();
+        // value must start with b11
+        tgb.require_assignable(&path, &tag(bits(3, 2)))?;
+        // value must start with b11
+        tgb.require_assignable(&path, &tag(bits(3, 2)))?;
+
+        let ty = tgb.get_type(&path).unwrap();
+        // therefore value must start with b11
+        assert_eqs(ty, tag(bits(3, 2)));
+        Ok(())
+    }
+
+    #[test]
+    fn unifies_non_equal_tags_to_void() -> Test {
+        use crate::primitives::{tag, bits};
+        let mut tgb = TypeGraph::default();
+        let path = test_path();
+        // value must start with b11
+        tgb.require_assignable(&path, &tag(bits(3, 2)))?;
+        // value must start with b00
+        tgb.require_assignable(&path, &tag(bits(0, 2)))?;
+
+        let ty = tgb.get_type(&path).unwrap();
+        // therefore there's no valid value
         assert_eqs(ty, void_type());
         Ok(())
     }
