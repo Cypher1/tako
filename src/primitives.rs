@@ -1,5 +1,4 @@
-use crate::ast::Info;
-use crate::ast::Node;
+use crate::ast::{Info, Node};
 use crate::errors::TError;
 use bitvec::prelude::*;
 use std::collections::BTreeSet;
@@ -12,7 +11,7 @@ use std::fmt;
 pub type Offset = usize;
 
 // A list of types with an offset to get to the first bit (used for padding, frequently 0).
-type Layout = Vec<Val>;
+type Layout = Vec<Val>; // Use a deque
 pub type TypeSet = BTreeSet<Val>;
 type Pack = BTreeSet<(String, Val)>;
 pub type Frame = HashMap<String, Val>;
@@ -189,6 +188,8 @@ impl std::fmt::Debug for Val {
             (i32_type(), "I32"),
             (byte_type(), "Byte"),
             (bit_type(), "Bit"),
+            (trit_type(), "Trit"),
+            (quad_type(), "Quad"),
         ];
         for (ty, name) in types.iter() {
             if self == ty {
@@ -291,7 +292,7 @@ pub fn card(ty: &Val) -> Result<Offset, TError> {
         }
         Pointer(_ptr_size, t) => card(&t),
         Padded(_size, t) => card(&t),
-        x => panic!(format!("unhandled: card of {:#?}", x)),
+        x => Err(TError::UnknownCardOfAbstractType(format!("{:#?}", x), Info::default())),
     }
 }
 
@@ -329,7 +330,7 @@ pub fn size(ty: &Val) -> Result<Offset, TError> {
             name.clone(),
             Info::default(),
         )),
-        x => panic!(format!("unhandled: size of {:#?}", x)),
+        x => Err(TError::UnknownSizeOfAbstractType(format!("{:#?}", x), Info::default())),
     }
 }
 
@@ -361,12 +362,25 @@ pub fn record(values: Layout) -> Result<Val, TError> {
     let mut layout = set![];
     let mut off = 0;
     for val in values {
+        // Detect nested records?
         // Work out the padding here
         let size = size(&val)?;
         layout.insert(val.padded(off));
         off += size;
     }
-    Ok(Product(layout))
+    let mut tys = set![];
+    add_to_product(&mut tys, &layout);
+    Ok(Product(tys))
+}
+
+pub fn add_to_product(tys: &mut TypeSet, values: &TypeSet) {
+    for val in values {
+        if let Product(vals) = val {
+            add_to_product(tys, vals);
+        } else {
+            tys.insert(val.clone()); // hopeless
+        }
+    }
 }
 
 pub fn sum(values: Vec<Val>) -> Result<Val, TError> {
@@ -396,6 +410,10 @@ pub fn bit_type() -> Val {
 
 pub fn trit_type() -> Val {
     sum(vec![unit_type(), unit_type(), unit_type()]).expect("trit should be safe")
+}
+
+pub fn quad_type() -> Val {
+    record(vec![bit_type(), bit_type()]).expect("quad should be safe")
 }
 
 pub fn byte_type() -> Val {
@@ -540,8 +558,8 @@ mod tests {
         assert_eq!(size(&quad), Ok(2));
     }
     #[test]
-    fn quad_type() {
-        let quad = sum(vec![unit_type(), unit_type(), unit_type(), unit_type()]).unwrap();
+    fn quad() {
+        let quad = quad_type();
         assert_eq!(card(&quad), Ok(4));
         assert_eq!(size(&quad), Ok(2));
     }
