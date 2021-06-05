@@ -233,10 +233,10 @@ fn to_file_path(context: PathRef) -> Path {
     let mut module = context.to_vec();
     loop {
         match module.last() {
-            None => panic!(format!(
+            None => panic!(
                 "Couldn't find a file associated with symbol at {}",
                 path_to_string(&context)
-            )),
+            ),
             Some(Symbol::Anon()) => {}                   // Skip anons
             Some(Symbol::Named(_, None)) => {}           // Skip regular symbols
             Some(Symbol::Named(_, Some(_ext))) => break, // Found the file

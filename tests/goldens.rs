@@ -80,7 +80,7 @@ fn test_with_expectation(expected: TestResult, options: Vec<&str>) {
         (Err(err), expectation) => {
             eprintln!("---Got error---\n{}", err);
             eprintln!("---Expected---\n{:?}", expectation);
-            panic!(format!("Error: {:?}", err));
+            panic!("Error: {:?}", err);
         }
     }
 }

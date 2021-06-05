@@ -88,10 +88,10 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
                             ("[", "]") => {}
                             ("{", "}") => {}
                             (open, chr) => {
-                                panic!(format!(
+                                panic!(
                                     "Unexpected closing bracket for {}, found {} at {:?}.",
                                     open, chr, pos
-                                ));
+                                );
                             }
                         };
                     }
@@ -226,7 +226,7 @@ fn led(
                                 new_toks,
                             ))
                         }
-                        _ => panic!(format!("Cannot abstract over {}", left)),
+                        _ => panic!("Cannot abstract over {}", left),
                     },
                     "=" => match left {
                         Node::SymNode(s) => {
@@ -254,9 +254,9 @@ fn led(
                                     new_toks,
                                 ))
                             }
-                            _ => panic!(format!("Cannot assign to {}", a.to_node())),
+                            _ => panic!("Cannot assign to {}", a.to_node()),
                         },
-                        _ => panic!(format!("Cannot assign to {}", left)),
+                        _ => panic!("Cannot assign to {}", left),
                     },
                     _ => {}
                 }
@@ -303,10 +303,10 @@ fn led(
                             ("[", "]") => {}
                             ("{", "}") => {}
                             (open, chr) => {
-                                panic!(format!(
+                                panic!(
                                     "Unexpected closing bracket for {}, found {}.",
                                     open, chr
-                                ));
+                                );
                             }
                         };
                     }
