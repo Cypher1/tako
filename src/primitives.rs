@@ -11,7 +11,7 @@ use std::fmt;
 pub type Offset = usize;
 
 // A list of types with an offset to get to the first bit (used for padding, frequently 0).
-type Layout = Vec<Val>;
+type Layout = Vec<Val>; // Use a deque
 pub type TypeSet = BTreeSet<Val>;
 type Pack = BTreeSet<(String, Val)>;
 pub type Frame = HashMap<String, Val>;
@@ -362,12 +362,25 @@ pub fn record(values: Layout) -> Result<Val, TError> {
     let mut layout = set![];
     let mut off = 0;
     for val in values {
+        // Detect nested records?
         // Work out the padding here
         let size = size(&val)?;
         layout.insert(val.padded(off));
         off += size;
     }
-    Ok(Product(layout))
+    let mut tys = set![];
+    add_to_product(&mut tys, &layout);
+    Ok(Product(tys))
+}
+
+pub fn add_to_product(tys: &mut TypeSet, values: &TypeSet) {
+    for val in values {
+        if let Product(vals) = val {
+            add_to_product(tys, vals);
+        } else {
+            tys.insert(val.clone()); // hopeless
+        }
+    }
 }
 
 pub fn sum(values: Vec<Val>) -> Result<Val, TError> {
@@ -400,7 +413,7 @@ pub fn trit_type() -> Val {
 }
 
 pub fn quad_type() -> Val {
-    sum(vec![unit_type(), unit_type(), unit_type(), unit_type()]).expect("quad should be safe")
+    record(vec![bit_type(), bit_type()]).expect("quad should be safe")
 }
 
 pub fn byte_type() -> Val {
