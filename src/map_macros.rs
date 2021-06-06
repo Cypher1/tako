@@ -45,10 +45,10 @@ macro_rules! rec(
     {} => {Struct(::std::vec::Vec::new())};
     { $($key:expr => $value:expr),* } => {
         {
-            let mut m = ::std::vec::Vec::new();
+            let m = vec![
             $(
-                m.push(($key.to_string(), $value));
-            )*
+                ($key.to_string(), $value),
+            )*];
             Struct(m)
         }
      };

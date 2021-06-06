@@ -292,7 +292,10 @@ pub fn card(ty: &Val) -> Result<Offset, TError> {
         }
         Pointer(_ptr_size, t) => card(&t),
         Padded(_size, t) => card(&t),
-        x => Err(TError::UnknownCardOfAbstractType(format!("{:#?}", x), Info::default())),
+        x => Err(TError::UnknownCardOfAbstractType(
+            format!("{:#?}", x),
+            Info::default(),
+        )),
     }
 }
 
@@ -330,7 +333,10 @@ pub fn size(ty: &Val) -> Result<Offset, TError> {
             name.clone(),
             Info::default(),
         )),
-        x => Err(TError::UnknownSizeOfAbstractType(format!("{:#?}", x), Info::default())),
+        x => Err(TError::UnknownSizeOfAbstractType(
+            format!("{:#?}", x),
+            Info::default(),
+        )),
     }
 }
 

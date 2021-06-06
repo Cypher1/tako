@@ -2,7 +2,7 @@
 use std::collections::VecDeque;
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash, PartialOrd, Ord)]
-pub enum SKI {
+pub enum Ski {
     S,
     K,
     I,
@@ -10,7 +10,7 @@ pub enum SKI {
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash, PartialOrd, Ord)]
 pub enum SVal {
-    T(SKI),
+    T(Ski),
     V(String),
     P(Stack),
 }
@@ -18,7 +18,7 @@ pub enum SVal {
 type Stack = VecDeque<SVal>;
 
 use SVal::*;
-use SKI::*;
+use Ski::*;
 
 pub fn eval(mut stack: Stack) -> Stack {
     // eprintln!("{:?}", shows(&stack));
