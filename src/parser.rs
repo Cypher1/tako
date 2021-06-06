@@ -303,10 +303,7 @@ fn led(
                             ("[", "]") => {}
                             ("{", "}") => {}
                             (open, chr) => {
-                                panic!(
-                                    "Unexpected closing bracket for {}, found {}.",
-                                    open, chr
-                                );
+                                panic!("Unexpected closing bracket for {}, found {}.", open, chr);
                             }
                         };
                     }

@@ -220,7 +220,7 @@ impl TypeGraph {
     }
 
     fn unify_impl(&mut self, from: &Val, to: &Val) -> Result<Val, TError> {
-        use crate::primitives::{void_type, Val::*, Prim::Tag};
+        use crate::primitives::{void_type, Prim::Tag, Val::*};
         Ok(match (from, to) {
             (Struct(s), Struct(t)) => {
                 let mut names = set![];
@@ -362,7 +362,6 @@ impl TypeGraph {
 
 #[cfg(test)]
 mod tests {
-    use pretty_assertions::assert_eq;
     use super::{Id, TypeGraph};
     use crate::ast::{Path, Symbol::*};
     use crate::errors::TError;
@@ -370,6 +369,7 @@ mod tests {
         bit_type, boolean, byte_type, i32_type, int32, number_type, quad_type, record, string,
         string_type, sum, trit_type, variable, void_type, Val::*,
     };
+    use pretty_assertions::assert_eq;
 
     impl TypeGraph {
         fn id_for_path(&mut self, path: &Path) -> Option<&Id> {
@@ -533,7 +533,7 @@ mod tests {
 
     #[test]
     fn unifies_tags_to_shared() -> Test {
-        use crate::primitives::{tag, bits};
+        use crate::primitives::{bits, tag};
         let mut tgb = TypeGraph::default();
         let path = test_path();
         // value must start with b11
@@ -549,7 +549,7 @@ mod tests {
 
     #[test]
     fn unifies_equal_tags_to_tag() -> Test {
-        use crate::primitives::{tag, bits};
+        use crate::primitives::{bits, tag};
         let mut tgb = TypeGraph::default();
         let path = test_path();
         // value must start with b11
@@ -565,7 +565,7 @@ mod tests {
 
     #[test]
     fn unifies_non_equal_tags_to_void() -> Test {
-        use crate::primitives::{tag, bits};
+        use crate::primitives::{bits, tag};
         let mut tgb = TypeGraph::default();
         let path = test_path();
         // value must start with b11
