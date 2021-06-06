@@ -114,7 +114,7 @@ impl TypeGraph {
             *id
         } else {
             let new = self.get_new_id();
-            self.symbols.insert(path.clone(), new);
+            self.symbols.insert(path.to_owned(), new);
             new
         }
     }
