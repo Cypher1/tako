@@ -426,7 +426,7 @@ fn fac() {
 fn hello_name() {
     test_with_expectation(
         OutputFile("goldens/examples_hello_name.txt".to_string()),
-        vec!["--run", "examples/hello_name.tk", "--", "Peanut", "Josh"],
+        vec!["--run", "examples/hello_name.tk", "--", "Peanut", "Jay"],
     );
 }
 
