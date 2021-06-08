@@ -77,7 +77,7 @@ We will use [SemVer](http://semver.org/) for versioning. There are no versions c
 
 ## Authors
 
-* **Joshua Pratt** - *Initial work* - [Cypher1](https://github.com/Cypher1)
+* **J Pratt** - *Initial work* - [Cypher1](https://github.com/Cypher1)
 
 See also the list of [contributors](https://github.com/Cypher1/tako/contributors) who participated in this project.
 
