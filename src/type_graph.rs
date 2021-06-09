@@ -299,8 +299,33 @@ impl TypeGraph {
                 .padded(min_pad)
             }
             (t, Padded(k, u)) | (Padded(k, u), t) => {
-                // actually we need to check if these overlap...
-                only_item_or_build(set![t.clone(), Padded(*k, u.clone())], Product)
+                match (t.clone(), *u.clone()) {
+                    (PrimVal(Tag(t)), PrimVal(Tag(v))) => {
+                        if t.len() < *k {
+                            // gap.
+                            Product(set![PrimVal(Tag(t)), PrimVal(Tag(v)).padded(*k)])
+                        } else {
+                            let overlap = t.len() - k;
+                            let t_overlap = &t[t.len()-overlap..];
+                            let v_overlap = &v[0..overlap];
+                            assert_eq!(
+                                t_overlap.len(),
+                                v_overlap.len()
+                                );
+                            if t_overlap == v_overlap {
+                                let mut other = t.clone();
+                                other.extend(&v[overlap..]);
+                                PrimVal(Tag(other))
+                            } else {
+                                void_type()
+                            }
+                        }
+                    }
+                    _ => {
+                        // actually we need to check if these overlap...
+                        only_item_or_build(set![t.clone(), Padded(*k, u.clone())], Product)
+                    }
+                }
             }
             (PrimVal(Tag(p)), PrimVal(Tag(q))) => {
                 let (shorter, longer) = if p.len() < q.len() { (p, q) } else { (q, p) };
@@ -539,6 +564,42 @@ mod tests {
             PrimVal(Tag(bitvec![0,1])).padded(1)
         ]);
         assert_eq!(tgb.normalize(bits)?, void_type());
+        Ok(())
+    }
+
+    #[test]
+    fn unify_tags_nonoverlapping_equals() -> Test {
+        let mut tgb = TypeGraph::default();
+        let path = test_path();
+        tgb.require_assignable(&path, &PrimVal(Tag(bitvec![0])))?;
+        tgb.require_assignable(&path, &PrimVal(Tag(bitvec![1])).padded(1))?;
+
+        let ty = tgb.get_type(&path).unwrap();
+        assert_eq!(ty, PrimVal(Tag(bitvec![0, 1])));
+        Ok(())
+    }
+
+    #[test]
+    fn unify_tags_overlapping_equals() -> Test {
+        let mut tgb = TypeGraph::default();
+        let path = test_path();
+        tgb.require_assignable(&path, &PrimVal(Tag(bitvec![0,1])))?;
+        tgb.require_assignable(&path, &PrimVal(Tag(bitvec![1,1])).padded(1))?;
+
+        let ty = tgb.get_type(&path).unwrap();
+        assert_eq!(ty, PrimVal(Tag(bitvec![0, 1, 1])));
+        Ok(())
+    }
+
+    #[test]
+    fn unify_tags_overlapping_nonequals() -> Test {
+        let mut tgb = TypeGraph::default();
+        let path = test_path();
+        tgb.require_assignable(&path, &PrimVal(Tag(bitvec![0,1])))?;
+        tgb.require_assignable(&path, &PrimVal(Tag(bitvec![0,1])).padded(1))?;
+
+        let ty = tgb.get_type(&path).unwrap();
+        assert_eq!(ty, void_type());
         Ok(())
     }
 
