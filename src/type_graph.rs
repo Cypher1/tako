@@ -362,14 +362,16 @@ impl TypeGraph {
 
 #[cfg(test)]
 mod tests {
+    use bitvec::prelude::*;
+    use pretty_assertions::assert_eq;
     use super::{Id, TypeGraph};
     use crate::ast::{Path, Symbol::*};
     use crate::errors::TError;
     use crate::primitives::{
         bit_type, boolean, byte_type, i32_type, int32, number_type, quad_type, record, string,
         string_type, sum, trit_type, variable, void_type, Val::*,
+        Prim::Tag,
     };
-    use pretty_assertions::assert_eq;
 
     impl TypeGraph {
         fn id_for_path(&mut self, path: &Path) -> Option<&Id> {
@@ -504,6 +506,39 @@ mod tests {
         let nested_quad = record(vec![bit_type(), bit_type()]).unwrap();
         let mut tgb = TypeGraph::default();
         assert_eq!(tgb.normalize(nested_quad)?, quad_type());
+        Ok(())
+    }
+
+    #[test]
+    fn normalize_tags_nonoverlapping_equals() -> Test {
+        let mut tgb = TypeGraph::default();
+        let bits = Product(set![
+            PrimVal(Tag(bitvec![0])),
+            PrimVal(Tag(bitvec![1])).padded(1)
+        ]);
+        assert_eq!(tgb.normalize(bits)?, PrimVal(Tag(bitvec![0, 1])));
+        Ok(())
+    }
+
+    #[test]
+    fn normalize_tags_overlapping_equals() -> Test {
+        let mut tgb = TypeGraph::default();
+        let bits = Product(set![
+            PrimVal(Tag(bitvec![0,1])),
+            PrimVal(Tag(bitvec![1,1])).padded(1)
+        ]);
+        assert_eq!(tgb.normalize(bits)?, PrimVal(Tag(bitvec![0, 1, 1])));
+        Ok(())
+    }
+
+    #[test]
+    fn normalize_tags_overlapping_nonequals() -> Test {
+        let mut tgb = TypeGraph::default();
+        let bits = Product(set![
+            PrimVal(Tag(bitvec![0,1])),
+            PrimVal(Tag(bitvec![0,1])).padded(1)
+        ]);
+        assert_eq!(tgb.normalize(bits)?, void_type());
         Ok(())
     }
 
