@@ -1,6 +1,7 @@
 use crate::ast::*;
 use crate::errors::TError;
-use crate::primitives::{TypeSet, Val};
+use crate::primitives::{void_type, Offset, Prim::*, TypeSet, Val, Val::*};
+use bitvec::prelude::*;
 use std::collections::HashMap;
 
 type Id = i32; // TODO: Make this a vec of Id so it can be treated as a stack
@@ -17,7 +18,6 @@ pub struct TypeGraph {
 }
 
 fn reduce_common_padding(tys: TypeSet, builder: fn(TypeSet) -> Val) -> Val {
-    use crate::primitives::Val::Padded;
     let mut common_padding = None;
     for ty in tys.iter() {
         common_padding = Some(if let Padded(k, _ty) = ty {
@@ -54,7 +54,6 @@ fn only_item_or_build(vals: TypeSet, builder: fn(TypeSet) -> Val) -> Val {
 }
 
 fn factor_out(val: Val, reduction: &Val) -> Val {
-    use crate::primitives::Val::*;
     let factor_tys = |tys: TypeSet, builder: fn(TypeSet) -> Val| {
         let mut new_tys = set![];
         for ty in tys.iter().cloned() {
@@ -101,6 +100,74 @@ fn cancel_neighbours(mut tys: TypeSet) -> TypeSet {
     tys
 }
 
+fn merge_bit_pattern(
+    left: &(Offset, BitVec),
+    right: &(Offset, BitVec),
+) -> Option<Option<(Offset, BitVec)>> {
+    let ((left_offset, left), (right_offset, right)) = if left.0 < right.0 {
+        (left, right)
+    } else {
+        (right, left)
+    };
+    if left_offset + left.len() < *right_offset {
+        None // gap.
+    } else {
+        let overlap = left_offset + left.len() - right_offset;
+        let left_overlap = &right[left.len() - overlap..];
+        let right_overlap = &right[0..overlap];
+        assert_eq!(left_overlap.len(), right_overlap.len());
+        Some(if left_overlap == right_overlap {
+            let mut other = left.clone();
+            other.extend(&right[overlap..]);
+            Some((*left_offset, other))
+        } else {
+            None
+        })
+    }
+}
+
+fn merge_bit_patterns(tys: TypeSet) -> Option<TypeSet> {
+    let mut bits: Vec<(Offset, BitVec)> = vec![];
+    let mut others: TypeSet = set![];
+
+    for ty in tys {
+        match ty {
+            PrimVal(Tag(t)) => bits.push((0, t)),
+            Padded(k, ty) => match *ty {
+                PrimVal(Tag(t)) => bits.push((k, t)),
+                ty => {
+                    others.insert(ty.padded(k));
+                }
+            },
+            _ => {
+                others.insert(ty);
+            }
+        }
+    }
+
+    let mut new_bits = set![];
+    for b in bits {
+        let mut b = b;
+        for other in new_bits.clone().iter() {
+            if let Some(overlap) = merge_bit_pattern(&b, &other) {
+                if let Some(overlap) = overlap {
+                    // merge them
+                    new_bits.remove(other);
+                    b = overlap;
+                } else {
+                    return None;
+                }
+            }
+        }
+        new_bits.insert(b);
+    }
+
+    for (off, bit) in new_bits {
+        others.insert(PrimVal(Tag(bit)).padded(off));
+    }
+    Some(others)
+}
+
 impl TypeGraph {
     pub fn get_new_id(&mut self) -> Id {
         let curr = self.counter;
@@ -129,7 +196,6 @@ impl TypeGraph {
     }
 
     pub fn normalize(&mut self, value: Val) -> Result<Val, TError> {
-        use crate::primitives::{void_type, Val::*};
         Ok(match value {
             // Lambda(_),
             // Function {
@@ -183,8 +249,12 @@ impl TypeGraph {
                         }
                     }
                 }
-                // Cancel all the neighbours (e.g. (a|b)*b => (a*b)|b
-                only_item_or_build(cancel_neighbours(new_tys), Product)
+                if let Some(new_tys) = merge_bit_patterns(new_tys) {
+                    // Cancel all the neighbours (e.g. (a|b)*b => (a*b)|b
+                    only_item_or_build(cancel_neighbours(new_tys), Product)
+                } else {
+                    void_type()
+                }
             }
             Padded(n, inner) => match self.normalize(*inner)? {
                 Padded(k, inner) => inner.padded(n + k),
@@ -207,7 +277,6 @@ impl TypeGraph {
         let to = self.normalize(to.clone())?;
         let v = self.unify_impl(&from, &to)?;
         let v = self.normalize(v)?;
-        // use crate::primitives::void_type;
         if from == to && from != v {
             panic!("wtf\n{}\n{}\n{:#?}", &from, &to, &v);
         }
@@ -220,7 +289,6 @@ impl TypeGraph {
     }
 
     fn unify_impl(&mut self, from: &Val, to: &Val) -> Result<Val, TError> {
-        use crate::primitives::{void_type, Prim::Tag, Val::*};
         Ok(match (from, to) {
             (Struct(s), Struct(t)) => {
                 let mut names = set![];
@@ -367,8 +435,9 @@ mod tests {
     use crate::errors::TError;
     use crate::primitives::{
         bit_type, boolean, byte_type, i32_type, int32, number_type, quad_type, record, string,
-        string_type, sum, trit_type, variable, void_type, Val::*,
+        string_type, sum, trit_type, variable, void_type, Prim::Tag, Val::*,
     };
+    use bitvec::prelude::*;
     use pretty_assertions::assert_eq;
 
     impl TypeGraph {
@@ -504,6 +573,75 @@ mod tests {
         let nested_quad = record(vec![bit_type(), bit_type()]).unwrap();
         let mut tgb = TypeGraph::default();
         assert_eq!(tgb.normalize(nested_quad)?, quad_type());
+        Ok(())
+    }
+
+    #[test]
+    fn normalize_tags_nonoverlapping_equals() -> Test {
+        let mut tgb = TypeGraph::default();
+        let bits = Product(set![
+            PrimVal(Tag(bitvec![0])),
+            PrimVal(Tag(bitvec![1])).padded(1)
+        ]);
+        assert_eq!(tgb.normalize(bits)?, PrimVal(Tag(bitvec![0, 1])));
+        Ok(())
+    }
+
+    #[test]
+    fn normalize_tags_overlapping_equals() -> Test {
+        let mut tgb = TypeGraph::default();
+        let bits = Product(set![
+            PrimVal(Tag(bitvec![0, 1])),
+            PrimVal(Tag(bitvec![1, 1])).padded(1)
+        ]);
+        assert_eq!(tgb.normalize(bits)?, PrimVal(Tag(bitvec![0, 1, 1])));
+        Ok(())
+    }
+
+    #[test]
+    fn normalize_tags_overlapping_nonequals() -> Test {
+        let mut tgb = TypeGraph::default();
+        let bits = Product(set![
+            PrimVal(Tag(bitvec![0, 1])),
+            PrimVal(Tag(bitvec![0, 1])).padded(1)
+        ]);
+        assert_eq!(tgb.normalize(bits)?, void_type());
+        Ok(())
+    }
+
+    #[test]
+    fn unify_tags_nonoverlapping_equals() -> Test {
+        let mut tgb = TypeGraph::default();
+        let path = test_path();
+        tgb.require_assignable(&path, &PrimVal(Tag(bitvec![0])))?;
+        tgb.require_assignable(&path, &PrimVal(Tag(bitvec![1])).padded(1))?;
+
+        let ty = tgb.get_type(&path).unwrap();
+        assert_eq!(ty, PrimVal(Tag(bitvec![0, 1])));
+        Ok(())
+    }
+
+    #[test]
+    fn unify_tags_overlapping_equals() -> Test {
+        let mut tgb = TypeGraph::default();
+        let path = test_path();
+        tgb.require_assignable(&path, &PrimVal(Tag(bitvec![0, 1])))?;
+        tgb.require_assignable(&path, &PrimVal(Tag(bitvec![1, 1])).padded(1))?;
+
+        let ty = tgb.get_type(&path).unwrap();
+        assert_eq!(ty, PrimVal(Tag(bitvec![0, 1, 1])));
+        Ok(())
+    }
+
+    #[test]
+    fn unify_tags_overlapping_nonequals() -> Test {
+        let mut tgb = TypeGraph::default();
+        let path = test_path();
+        tgb.require_assignable(&path, &PrimVal(Tag(bitvec![0, 1])))?;
+        tgb.require_assignable(&path, &PrimVal(Tag(bitvec![0, 1])).padded(1))?;
+
+        let ty = tgb.get_type(&path).unwrap();
+        assert_eq!(ty, void_type());
         Ok(())
     }
 
