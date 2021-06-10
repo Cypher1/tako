@@ -126,7 +126,7 @@ fn merge_bit_pattern(
     }
 }
 
-fn merge_bit_patterns(mut tys: TypeSet) -> Option<TypeSet> {
+fn merge_bit_patterns(tys: TypeSet) -> Option<TypeSet> {
     let mut bits: Vec<(Offset, BitVec)> = vec![];
     let mut others: TypeSet = set![];
 
