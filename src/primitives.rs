@@ -354,11 +354,11 @@ fn num_bits(n: Offset) -> Offset {
 
 pub fn bits(mut n: Offset, len: Offset) -> BitVec {
     let mut v: BitVec = bitvec![0; len];
-    for ind in 0..len {
+    for mut b in v.iter_mut().rev() {
         if n == 0 {
             break;
         }
-        *v.get_mut(len - 1 - ind).unwrap() = n % 2 != 0;
+        *b = n % 2 != 0;
         n /= 2;
     }
     v
