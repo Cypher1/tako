@@ -46,7 +46,7 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
     if let Some(head) = toks.pop_front() {
         match head.tok_type {
             TokenType::NumLit => Ok((
-                Node::ValNode(int32(head.value.parse().unwrap()), head.get_info()),
+                Node::ValNode(int32(head.value.parse().expect("Unexpected numeric character")), head.get_info()),
                 toks,
             )),
             TokenType::StringLit => Ok((Node::ValNode(string(&head.value), head.get_info()), toks)),

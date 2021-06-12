@@ -36,7 +36,7 @@ fn test_with_expectation(expected: TestResult, options: Vec<&str>) {
                   args: HashMap<String, Box<dyn Fn() -> takolib::interpreter::Res>>,
                   _: takolib::ast::Info|
              -> Res {
-                stdout.push(match args.get("it").unwrap()()? {
+                stdout.push(match args.get("it").expect("Expected value named 'it' not found")()? {
                     PrimVal(Str(s)) => s,
                     s => format!("{:?}", s),
                 });

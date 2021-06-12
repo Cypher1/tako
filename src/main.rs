@@ -22,13 +22,13 @@ fn handle(res: Result<String, TError>) {
             let mut stderr = StandardStream::stderr(ColorChoice::Auto);
             stderr
                 .set_color(ColorSpec::new().set_fg(Some(Color::Yellow)))
-                .unwrap();
+                .expect("Could not set termcolor");
             eprintln!("Error: {}", err);
             if let Some(source) = err.source() {
                 eprintln!("Caused by: {}", source);
             }
 
-            stderr.set_color(&ColorSpec::new()).unwrap();
+            stderr.set_color(&ColorSpec::new()).expect("Could not set termcolor");
         }
     }
 }
@@ -40,7 +40,7 @@ fn main() -> Result<(), TError> {
     let project_dirs = ProjectDirs::from("systems", "mimir", "tako");
     db.set_project_dirs(project_dirs);
 
-    std::fs::create_dir_all(&db.config_dir()).unwrap();
+    std::fs::create_dir_all(&db.config_dir()).expect("Could not create config directory");
 
     db.set_options(Options::new(&args[1..]));
 
@@ -94,6 +94,6 @@ fn repl(db: &mut DB) -> Result<(), TError> {
         }
         last_cmd_was_interrupt = cmd_was_interrupt;
     }
-    rl.save_history(&db.history_file()).unwrap();
+    rl.save_history(&db.history_file()).expect("Could not save history");
     Ok(())
 }

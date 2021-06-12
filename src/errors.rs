@@ -42,8 +42,15 @@ pub enum TError {
     #[error("parse failed, {0} at {1:?}")]
     FailedParse(String, Info),
     #[error("internal error `{0}` at {1}")]
-    InternalError(String, Box<Node>),
+    InternalError(String, Info),
 
     #[error("Expected a let node, got `{0}`")]
     ExpectedLetNode(Box<Node>),
+}
+
+impl From<std::fmt::Error> for TError {
+    fn from(error: std::fmt::Error) -> Self {
+        use TError::InternalError;
+        InternalError (error.to_string(), Info::default())
+    }
 }

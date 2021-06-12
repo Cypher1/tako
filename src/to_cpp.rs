@@ -42,7 +42,7 @@ impl Code {
             Code::Expr(expr) => f(expr),
             Code::Struct(values) => Code::Struct(values),
             Code::Block(mut statements) => {
-                let last = statements.pop().unwrap();
+                let last = statements.pop().expect("Unexpected empty code block");
                 statements.push(last.with_expr(f));
                 Code::Block(statements)
             }
@@ -124,7 +124,7 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
     // TODO: Consider if it is dropped (should it be stored? is it a side effect?)
     match src {
         Code::Block(mut statements) => {
-            let last = statements.pop().unwrap();
+            let last = statements.pop().expect("Unexpected empty code block");
             statements.push(last.with_expr(&|exp| Code::Statement(format!("return {}", exp))));
             let body: Vec<String> = statements
                 .iter()
