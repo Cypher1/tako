@@ -468,31 +468,36 @@ pub fn variable(name: &str) -> Val {
 mod tests {
     use super::*;
 
+    type Res = Result<(), TError>;
+
     #[test]
-    fn bits_zero_length() {
+    fn bits_zero_length() -> Res {
         assert_eq!(bits(0, 0), bits![]);
         assert_eq!(bits(1, 0), bits![]);
+        Ok(())
     }
 
     #[test]
-    fn bits_one_length() {
+    fn bits_one_length() -> Res {
         assert_eq!(bits(0, 1), bits![0]);
         assert_eq!(bits(1, 1), bits![1]);
         assert_eq!(bits(2, 1), bits![0]);
         assert_eq!(bits(3, 1), bits![1]);
+        Ok(())
     }
 
     #[test]
-    fn bits_two_length() {
+    fn bits_two_length() -> Res {
         assert_eq!(bits(0, 2), bits![0, 0]);
         assert_eq!(bits(1, 2), bits![0, 1]);
         assert_eq!(bits(2, 2), bits![1, 0]);
         assert_eq!(bits(3, 2), bits![1, 1]);
         assert_eq!(bits(4, 2), bits![0, 0]);
+        Ok(())
     }
 
     #[test]
-    fn bits_three_length() {
+    fn bits_three_length() -> Res {
         assert_eq!(bits(0, 3), bits![0, 0, 0]);
         assert_eq!(bits(1, 3), bits![0, 0, 1]);
         assert_eq!(bits(2, 3), bits![0, 1, 0]);
@@ -502,25 +507,29 @@ mod tests {
         assert_eq!(bits(6, 3), bits![1, 1, 0]);
         assert_eq!(bits(7, 3), bits![1, 1, 1]);
         assert_eq!(bits(8, 3), bits![0, 0, 0]);
+        Ok(())
     }
 
     #[test]
-    fn void() {
+    fn void() -> Res {
         assert_eq!(card(&void_type()), Ok(0));
         assert_eq!(size(&void_type()), Ok(0));
+        Ok(())
     }
     #[test]
-    fn unit() {
+    fn unit() -> Res {
         assert_eq!(card(&unit_type()), Ok(1));
         assert_eq!(size(&unit_type()), Ok(0));
+        Ok(())
     }
     #[test]
-    fn tag1_type() {
+    fn tag1_type() -> Res {
         assert_eq!(card(&tag(bits(1, 1))), Ok(1));
         assert_eq!(size(&tag(bits(1, 1))), Ok(1));
+        Ok(())
     }
     #[test]
-    fn tag2_type() {
+    fn tag2_type() -> Res {
         assert_eq!(card(&tag(bits(0, 2))), Ok(1));
         assert_eq!(size(&tag(bits(0, 2))), Ok(2));
         assert_eq!(card(&tag(bits(1, 2))), Ok(1));
@@ -529,48 +538,55 @@ mod tests {
         assert_eq!(size(&tag(bits(2, 2))), Ok(2));
         assert_eq!(card(&tag(bits(3, 2))), Ok(1));
         assert_eq!(size(&tag(bits(3, 2))), Ok(2));
+        Ok(())
     }
     #[test]
-    fn tag4_type() {
+    fn tag4_type() -> Res {
         assert_eq!(card(&tag(bits(4, 3))), Ok(1));
         assert_eq!(size(&tag(bits(4, 3))), Ok(3));
+        Ok(())
     }
 
     #[test]
-    fn union_n_type() {
+    fn union_n_type() -> Res {
         let union2 = Union(set![unit_type(), unit_type()]);
         assert_eq!(card(&union2), Ok(1));
         assert_eq!(size(&union2), Ok(0));
         let union3 = Union(set![unit_type(), unit_type(), unit_type()]);
         assert_eq!(card(&union3), Ok(1));
         assert_eq!(size(&union3), Ok(0));
+        Ok(())
     }
     #[test]
-    fn bit() {
+    fn bit() -> Res {
         let bitt = bit_type();
         assert_eq!(card(&bitt), Ok(2));
         assert_eq!(size(&bitt), Ok(1));
+        Ok(())
     }
     #[test]
-    fn trit() {
+    fn trit() -> Res {
         let trit = trit_type();
         assert_eq!(card(&trit), Ok(3));
         assert_eq!(size(&trit), Ok(2));
+        Ok(())
     }
     #[test]
-    fn nested_quad_type() {
-        let quad = record(vec![bit_type(), bit_type()]).unwrap();
+    fn nested_quad_type() -> Res {
+        let quad = record(vec![bit_type(), bit_type()])?;
         assert_eq!(card(&quad), Ok(4));
         assert_eq!(size(&quad), Ok(2));
+        Ok(())
     }
     #[test]
-    fn quad() {
+    fn quad() -> Res {
         let quad = quad_type();
         assert_eq!(card(&quad), Ok(4));
         assert_eq!(size(&quad), Ok(2));
+        Ok(())
     }
     #[test]
-    fn pent_type() {
+    fn pent_type() -> Res {
         let pent = sum(vec![
             unit_type(),
             unit_type(),
@@ -578,43 +594,49 @@ mod tests {
             unit_type(),
             unit_type(),
         ])
-        .unwrap();
+        ?;
         assert_eq!(card(&pent), Ok(5));
         assert_eq!(size(&pent), Ok(3));
+        Ok(())
     }
     #[test]
-    fn pair_bool_ptrs() {
+    fn pair_bool_ptrs() -> Res {
         let bool_ptr = Pointer(64, Box::new(bit_type()));
-        let quad = record(vec![bool_ptr.clone(), bool_ptr]).unwrap();
+        let quad = record(vec![bool_ptr.clone(), bool_ptr])?;
         assert_eq!(card(&quad), Ok(4));
         assert_eq!(size(&quad), Ok(2 * 64));
+        Ok(())
     }
     #[test]
-    fn nested_nibble() {
-        let quad = record(vec![bit_type(), bit_type()]).unwrap();
-        let nibble = record(vec![quad.clone(), quad]).unwrap();
+    fn nested_nibble() -> Res {
+        let quad = record(vec![bit_type(), bit_type()])?;
+        let nibble = record(vec![quad.clone(), quad])?;
         assert_eq!(card(&nibble), Ok(16));
         assert_eq!(size(&nibble), Ok(4));
+        Ok(())
     }
     #[test]
-    fn padded_nibble() {
-        let quad = record(vec![bit_type().padded(2), bit_type()]).unwrap();
-        let nibble = record(vec![quad.clone(), quad]).unwrap();
+    fn padded_nibble() -> Res {
+        let quad = record(vec![bit_type().padded(2), bit_type()])?;
+        let nibble = record(vec![quad.clone(), quad])?;
         assert_eq!(card(&nibble), Ok(16));
         assert_eq!(size(&nibble), Ok(8));
+        Ok(())
     }
 
     #[test]
-    fn bool_and_fn() {
+    fn bool_and_fn() -> Res {
         let fn_ptr = BitStr(64);
-        let closure = record(vec![bit_type(), fn_ptr]).unwrap();
+        let closure = record(vec![bit_type(), fn_ptr])?;
         assert_eq!(size(&closure), Ok(65));
+        Ok(())
     }
 
     #[test]
-    fn bool_or_fn() {
+    fn bool_or_fn() -> Res {
         let fn_ptr = BitStr(64);
-        let closure = sum(vec![bit_type(), fn_ptr]).unwrap();
+        let closure = sum(vec![bit_type(), fn_ptr])?;
         assert_eq!(size(&closure), Ok(65));
+        Ok(())
     }
 }
