@@ -72,7 +72,7 @@ jobs:
     - name: Install clippy
       run: rustup component add clippy
     - name: Clippy
-      run: cargo clippy --all-targets --all-features -- -D warnings
+      run: cargo clippy --all-features -- -D warnings
     - name: Install fmt
       run: rustup component add rustfmt
     - name: Format
