@@ -46,10 +46,8 @@ pub fn work<'a>(
     print_impl: Option<ImplFn<'a>>,
 ) -> Result<String, TError> {
     let mut contents = String::new();
-    let mut file = File::open(filename.to_owned())
-        .unwrap_or_else(|_| panic!("io error opening file {}", filename.to_owned()));
-    file.read_to_string(&mut contents)
-        .unwrap_or_else(|_| panic!("io error reading file {}", filename.to_owned()));
+    let mut file = File::open(filename.to_owned())?;
+    file.read_to_string(&mut contents)?;
 
     work_on_string(db, contents, filename, print_impl)
 }
@@ -74,6 +72,6 @@ pub fn work_on_string<'a>(
         }
         let res = interp.visit_root(db, &root)?;
         use ast::ToNode;
-        PrettyPrint::process(&res.to_node(), db).or_else(|_| panic!("Pretty print failed"))
+        PrettyPrint::process(&res.into_node(), db).or_else(|_| panic!("Pretty print failed"))
     }
 }

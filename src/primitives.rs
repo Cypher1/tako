@@ -128,7 +128,9 @@ impl Val {
         match (self, other) {
             (Variable(name), ty) => {
                 // TODO check if already assigned (and if so unify again)
-                env.last_mut().expect("unexpected empty env").insert(name.to_string(), ty.clone());
+                env.last_mut()
+                    .expect("unexpected empty env")
+                    .insert(name.to_string(), ty.clone());
                 Ok(ty.clone())
             }
             _ => Ok(self.clone()),

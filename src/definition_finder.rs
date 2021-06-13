@@ -64,7 +64,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
                     }
                     let mut res = expr.clone();
                     res.info.defined_at = Some(search);
-                    return Ok(res.to_node());
+                    return Ok(res.into_node());
                 }
                 None => {
                     search.pop(); // Strip the name off.
@@ -89,7 +89,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
     }
 
     fn visit_val(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Val) -> Res {
-        Ok(expr.clone().to_node())
+        Ok(expr.clone().into_node())
     }
 
     fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
@@ -115,7 +115,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
             args,
             info: expr.get_info(),
         }
-        .to_node())
+        .into_node())
     }
 
     fn visit_abs(&mut self, db: &dyn Compiler, state: &mut State, expr: &Abs) -> Res {
@@ -128,7 +128,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
             value,
             info: expr.info.clone(),
         }
-        .to_node())
+        .into_node())
     }
 
     fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
@@ -154,7 +154,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
             value,
             info: expr.info.clone(),
         }
-        .to_node())
+        .into_node())
     }
 
     fn visit_un_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &UnOp) -> Res {
@@ -164,7 +164,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
             inner,
             info: expr.get_info(),
         }
-        .to_node())
+        .into_node())
     }
 
     fn visit_bin_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &BinOp) -> Res {
@@ -176,7 +176,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
             right,
             info: expr.get_info(),
         }
-        .to_node())
+        .into_node())
     }
 
     fn handle_error(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &TError) -> Res {

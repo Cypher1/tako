@@ -4,6 +4,7 @@ use takolib::cli_options::Options;
 use takolib::database::Compiler;
 use takolib::database::DB;
 use takolib::parser::parse_string;
+use takolib::primitives::Val::Variable;
 use takolib::type_checker::infer;
 
 use std::sync::Arc;
@@ -16,7 +17,8 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         let mut db = DB::default();
         db.set_options(Options::default());
         let prog = black_box(parse_string(&db, &module, &code).expect("should parse"));
-        b.iter(|| infer(&db, &prog));
+        let env = Variable("test_program".to_string()); // TODO: Track the type env
+        b.iter(|| infer(&db, &prog, &env));
     });
 
     c.bench_function("microbench_parse_and_type_of_i32_pre_cache", |b| {
@@ -24,10 +26,11 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         let mut db = DB::default();
         db.set_options(Options::default());
         let prog = parse_string(&db, &module, &code).expect("should parse");
-        infer(&db, &prog);
+        let env = Variable("test_program".to_string()); // TODO: Track the type env
+        infer(&db, &prog, &env);
         b.iter(|| {
             let prog = black_box(parse_string(&db, &module, &code).expect("should parse"));
-            infer(&db, &prog)
+            infer(&db, &prog, &env)
         });
     });
 
@@ -36,7 +39,8 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         let mut db = DB::default();
         db.set_options(Options::default());
         let prog = black_box(parse_string(&db, &module, &code).expect("should parse"));
-        b.iter(|| infer(&db, &prog));
+        let env = Variable("test_program".to_string()); // TODO: Track the type env
+        b.iter(|| infer(&db, &prog, &env));
     });
 
     /* c.bench_function(
@@ -45,7 +49,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
             let mut db = DB::default();
             db.set_options(Options::default());
             let prog = black_box(parse_string(&mut db, "12+32".to_string()));
-            b.iter(|| infer(&db, &prog));
+            b.iter(|| infer(&db, &prog, &env));
         }
     );*/
 }

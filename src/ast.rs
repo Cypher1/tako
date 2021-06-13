@@ -10,7 +10,7 @@ use crate::primitives::{unit_type, Val};
 use crate::tree::*;
 
 impl ToNode for TError {
-    fn to_node(self) -> Node {
+    fn into_node(self) -> Node {
         Node::Error(self)
     }
 }
@@ -30,7 +30,7 @@ impl HasInfo for TError {
             TypeMismatch(_, _, info) => info.clone(),
             TypeMismatch2(_, _, _, info) => info.clone(),
             RequirementFailure(info) => info.clone(),
-            FailedParse(_, info) => info.clone(),
+            ParseError(_, info) => info.clone(),
             InternalError(_, info) => info.clone(),
             ExpectedLetNode(node) => node.get_info(),
             UnknownPath(_, info) => info.clone(),
@@ -51,7 +51,7 @@ impl HasInfo for TError {
             TypeMismatch(_, _, ref mut info) => info,
             TypeMismatch2(_, _, _, ref mut info) => info,
             RequirementFailure(ref mut info) => info,
-            FailedParse(_, ref mut info) => info,
+            ParseError(_, ref mut info) => info,
             InternalError(_, ref mut info) => info,
             ExpectedLetNode(ref mut node) => node.get_mut_info(),
             UnknownPath(_, ref mut info) => info,
@@ -67,7 +67,7 @@ pub struct Apply {
 }
 
 impl ToNode for Apply {
-    fn to_node(self) -> Node {
+    fn into_node(self) -> Node {
         Node::ApplyNode(self)
     }
 }
@@ -90,7 +90,7 @@ impl Sym {
     pub fn as_let(self: &Sym) -> Let {
         Let {
             name: self.name.clone(),
-            value: Box::new(unit_type().to_node()),
+            value: Box::new(unit_type().into_node()),
             args: None,
             info: self.get_info(),
         }
@@ -98,7 +98,7 @@ impl Sym {
 }
 
 impl ToNode for Sym {
-    fn to_node(self) -> Node {
+    fn into_node(self) -> Node {
         Node::SymNode(self)
     }
 }
@@ -112,7 +112,7 @@ impl HasInfo for Sym {
 }
 
 impl ToNode for Val {
-    fn to_node(self) -> Node {
+    fn into_node(self) -> Node {
         Node::ValNode(self, Info::default())
     }
 }
@@ -135,7 +135,7 @@ impl Abs {
 }
 
 impl ToNode for Abs {
-    fn to_node(self) -> Node {
+    fn into_node(self) -> Node {
         Node::AbsNode(self)
     }
 }
@@ -167,7 +167,7 @@ impl Let {
 }
 
 impl ToNode for Let {
-    fn to_node(self) -> Node {
+    fn into_node(self) -> Node {
         Node::LetNode(self)
     }
 }
@@ -188,7 +188,7 @@ pub struct UnOp {
 }
 
 impl ToNode for UnOp {
-    fn to_node(self) -> Node {
+    fn into_node(self) -> Node {
         Node::UnOpNode(self)
     }
 }
@@ -210,7 +210,7 @@ pub struct BinOp {
 }
 
 impl ToNode for BinOp {
-    fn to_node(self) -> Node {
+    fn into_node(self) -> Node {
         Node::BinOpNode(self)
     }
 }
@@ -315,7 +315,7 @@ impl fmt::Display for Node {
 }
 
 impl ToNode for Node {
-    fn to_node(self) -> Node {
+    fn into_node(self) -> Node {
         self
     }
 }
@@ -359,7 +359,7 @@ impl Node {
 }
 
 pub trait ToNode {
-    fn to_node(self) -> Node;
+    fn into_node(self) -> Node;
 }
 
 pub trait HasInfo {

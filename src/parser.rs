@@ -62,16 +62,14 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
                         inner: Box::new(right),
                         info: head.get_info(),
                     }
-                    .to_node(),
+                    .into_node(),
                     new_toks,
                 ))
             }
-            TokenType::CloseBracket => {
-                Err(TError::FailedParse(
-                        format!("Unexpected close bracket {}", head.value),
-                        head.get_info()
-                ))
-            }
+            TokenType::CloseBracket => Err(TError::ParseError(
+                format!("Unexpected close bracket {}", head.value),
+                head.get_info(),
+            )),
             TokenType::OpenBracket => {
                 let (inner, mut new_toks) = expr(db, toks, 0)?;
                 // TODO require close bracket.
@@ -82,7 +80,7 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
                         Some(Token {
                             value: close,
                             tok_type: TokenType::CloseBracket,
-                            pos,
+                            pos: _,
                         }),
                     ) => {
                         match (open, close.as_str()) {
@@ -90,20 +88,20 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
                             ("[", "]") => {}
                             ("{", "}") => {}
                             (open, chr) => {
-                                return Err(TError::FailedParse(
+                                return Err(TError::ParseError(
                                     format!(
                                         "Unexpected closing bracket for {}, found {}",
                                         open, chr
                                     ),
-                                    head.get_info()
+                                    head.get_info(),
                                 ));
                             }
                         };
                     }
                     (open, chr) => {
-                        return Err(TError::FailedParse(
+                        return Err(TError::ParseError(
                             format!("Unclosed bracket {} found {:?}", open, chr),
-                            head.get_info()
+                            head.get_info(),
                         ));
                     }
                 }
@@ -113,31 +111,29 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
             TokenType::Sym => {
                 // TODO: Consider making these globals.
                 if head.value == "true" {
-                    return Ok((Val::PrimVal(Prim::Bool(true)).to_node(), toks));
+                    return Ok((Val::PrimVal(Prim::Bool(true)).into_node(), toks));
                 }
                 if head.value == "false" {
-                    return Ok((Val::PrimVal(Prim::Bool(false)).to_node(), toks));
+                    return Ok((Val::PrimVal(Prim::Bool(false)).into_node(), toks));
                 }
                 Ok((
                     Sym {
                         name: head.value.clone(),
                         info: head.get_info(),
                     }
-                    .to_node(),
+                    .into_node(),
                     toks,
                 ))
             }
-            TokenType::Unknown | TokenType::Whitespace => {
-                return Err(TError::FailedParse(
-                    "Lexer should not produce unknown or whitespace".to_string(),
-                    head.get_info()
-                ));
-            }
+            TokenType::Unknown | TokenType::Whitespace => Err(TError::ParseError(
+                "Lexer should not produce unknown or whitespace".to_string(),
+                head.get_info(),
+            )),
         }
     } else {
         Ok((
-            TError::FailedParse("Unexpected eof, expected expr".to_string(), Info::default())
-                .to_node(),
+            TError::ParseError("Unexpected eof, expected expr".to_string(), Info::default())
+                .into_node(),
             toks,
         ))
     }
@@ -183,19 +179,19 @@ fn led(
     }) = toks.front()
     {
         return Ok((
-            TError::FailedParse("Exected Close bracket".to_string(), pos.clone().get_info())
-                .to_node(),
+            TError::ParseError("Exected Close bracket".to_string(), pos.clone().get_info())
+                .into_node(),
             toks,
         ));
     }
 
     match toks.pop_front() {
         None => Ok((
-            TError::FailedParse(
+            TError::ParseError(
                 "Unexpected eof, expected expr tail".to_string(),
                 left.get_info(),
             )
-            .to_node(),
+            .into_node(),
             toks,
         )),
         Some(head) => match head.tok_type {
@@ -233,11 +229,16 @@ fn led(
                                     value: Box::new(right),
                                     info: head.get_info(),
                                 }
-                                .to_node(),
+                                .into_node(),
                                 new_toks,
                             ))
                         }
-                        _ => panic!("Cannot abstract over {}", left),
+                        _ => {
+                            return Err(TError::ParseError(
+                                format!("Cannot abstract over {}", left),
+                                head.get_info(),
+                            ))
+                        }
                     },
                     "=" => match left {
                         Node::SymNode(s) => {
@@ -248,7 +249,7 @@ fn led(
                                     value: Box::new(right),
                                     info: head.get_info(),
                                 }
-                                .to_node(),
+                                .into_node(),
                                 new_toks,
                             ))
                         }
@@ -261,13 +262,23 @@ fn led(
                                         value: Box::new(right),
                                         info: head.get_info(),
                                     }
-                                    .to_node(),
+                                    .into_node(),
                                     new_toks,
                                 ))
                             }
-                            _ => panic!("Cannot assign to {}", a.to_node()),
+                            _ => {
+                                return Err(TError::ParseError(
+                                    format!("Cannot assign to {}", a.into_node()),
+                                    head.get_info(),
+                                ))
+                            }
                         },
-                        _ => panic!("Cannot assign to {}", left),
+                        _ => {
+                            return Err(TError::ParseError(
+                                format!("Cannot assign to {}", left),
+                                head.get_info(),
+                            ))
+                        }
                     },
                     _ => {}
                 }
@@ -278,11 +289,14 @@ fn led(
                         left: Box::new(left),
                         right: Box::new(right),
                     }
-                    .to_node(),
+                    .into_node(),
                     new_toks,
                 ))
             }
-            TokenType::CloseBracket => panic!("Unexpected close bracket"),
+            TokenType::CloseBracket => Err(TError::ParseError(
+                "Unexpected close bracket".to_string(),
+                head.get_info(),
+            )),
             TokenType::OpenBracket => {
                 if head.value.as_str() == "("
                     && toks.front().map(|t| &t.value) == Some(&")".to_string())
@@ -294,7 +308,7 @@ fn led(
                             args: vec![],
                             info: head.get_info(),
                         }
-                        .to_node(),
+                        .into_node(),
                         toks,
                     ));
                 }
@@ -314,12 +328,21 @@ fn led(
                             ("[", "]") => {}
                             ("{", "}") => {}
                             (open, chr) => {
-                                panic!("Unexpected closing bracket for {}, found {}.", open, chr);
+                                return Err(TError::ParseError(
+                                    format!(
+                                        "Unexpected closing bracket for {}, found {}.",
+                                        open, chr
+                                    ),
+                                    head.get_info(),
+                                ));
                             }
                         };
                     }
                     (open, chr) => {
-                        panic!("Unclosed bracket {}, found {:?}", open, chr);
+                        return Err(TError::ParseError(
+                            format!("Unclosed bracket {}, found {:?}", open, chr),
+                            head.get_info(),
+                        ));
                     }
                 }
                 new_toks.pop_front();
@@ -330,13 +353,14 @@ fn led(
                         args: get_defs(args),
                         info: head.get_info(),
                     }
-                    .to_node(),
+                    .into_node(),
                     new_toks,
                 ))
             }
-            TokenType::Unknown | TokenType::Whitespace => {
-                panic!("Lexer should not produce unknown or whitespace")
-            }
+            TokenType::Unknown | TokenType::Whitespace => Err(TError::ParseError(
+                "Lexer should not produce unknown or whitespace".to_string(),
+                head.get_info(),
+            )),
         },
     }
 }
@@ -410,8 +434,11 @@ pub fn parse_string(
     }
     let (root, left_over) = expr(db, toks, 0)?;
 
-    if !left_over.is_empty() {
-        panic!("Oh no: Left over tokens {:?}", left_over);
+    if let Some(head) = left_over.front() {
+        return Err(TError::ParseError(
+            format!("Oh no: Left over tokens {:?}", left_over),
+            head.get_info(),
+        ));
     }
     if db.options().show_ast {
         eprintln!("ast: {}", root);
@@ -426,8 +453,11 @@ pub fn parse(db: &dyn Compiler, module: PathRef) -> Result<Node, TError> {
     }
     let (root, left_over) = expr(db, toks, 0)?;
 
-    if !left_over.is_empty() {
-        panic!("Oh no: Left over tokens {:?}", left_over);
+    if let Some(head) = left_over.front() {
+        return Err(TError::ParseError(
+            format!("Oh no: Left over tokens {:?}", left_over),
+            head.get_info(),
+        ));
     }
     if db.options().show_ast {
         eprintln!("ast: {}", root);
@@ -454,23 +484,23 @@ pub mod tests {
     }
 
     fn num_lit(x: i32) -> Box<Node> {
-        Box::new(int32(x).to_node())
+        Box::new(int32(x).into_node())
     }
 
     fn str_lit(x: &str) -> Box<Node> {
-        Box::new(string(x).to_node())
+        Box::new(string(x).into_node())
     }
 
     #[test]
     fn parse_num() {
-        assert_eq!(parse("12".to_string()), int32(12).to_node());
+        assert_eq!(parse("12".to_string()), int32(12).into_node());
     }
 
     #[test]
     fn parse_str() {
         assert_eq!(
             parse("\"hello world\"".to_string()),
-            string("hello world").to_node()
+            string("hello world").into_node()
         );
     }
 
@@ -480,10 +510,10 @@ pub mod tests {
             parse("-12".to_string()),
             UnOp {
                 name: "-".to_string(),
-                inner: Box::new(int32(12).to_node()),
+                inner: Box::new(int32(12).into_node()),
                 info: Info::default()
             }
-            .to_node()
+            .into_node()
         );
     }
 
@@ -497,7 +527,7 @@ pub mod tests {
                 right: num_lit(12),
                 info: Info::default()
             }
-            .to_node()
+            .into_node()
         );
     }
 
@@ -511,7 +541,7 @@ pub mod tests {
                 right: num_lit(12),
                 info: Info::default()
             }
-            .to_node()
+            .into_node()
         );
     }
 
@@ -529,11 +559,11 @@ pub mod tests {
                         right: num_lit(4),
                         info: Info::default()
                     }
-                    .to_node()
+                    .into_node()
                 ),
                 info: Info::default()
             }
-            .to_node()
+            .into_node()
         );
     }
 
@@ -550,12 +580,12 @@ pub mod tests {
                         right: num_lit(2),
                         info: Info::default()
                     }
-                    .to_node()
+                    .into_node()
                 ),
                 right: num_lit(4),
                 info: Info::default()
             }
-            .to_node()
+            .into_node()
         );
     }
 
@@ -573,11 +603,11 @@ pub mod tests {
                         right: num_lit(4),
                         info: Info::default()
                     }
-                    .to_node()
+                    .into_node()
                 ),
                 info: Info::default()
             }
-            .to_node()
+            .into_node()
         );
     }
 
@@ -591,7 +621,7 @@ pub mod tests {
                 right: str_lit(" world"),
                 info: Info::default()
             }
-            .to_node()
+            .into_node()
         );
     }
 
@@ -601,11 +631,11 @@ pub mod tests {
             parse("\"hello world\"\n7".to_string()),
             BinOp {
                 name: ",".to_string(),
-                left: Box::new(str_lit("hello world").to_node()),
+                left: Box::new(str_lit("hello world").into_node()),
                 right: num_lit(7),
                 info: Info::default()
             }
-            .to_node()
+            .into_node()
         );
     }
 
@@ -625,16 +655,16 @@ pub mod tests {
                                 inner: str_lit("hello world"),
                                 info: Info::default(),
                             }
-                            .to_node()
+                            .into_node()
                         ),
                         info: Info::default(),
                     }
-                    .to_node()
+                    .into_node()
                 ),
                 right: num_lit(7),
                 info: Info::default()
             }
-            .to_node()
+            .into_node()
         );
     }
 }

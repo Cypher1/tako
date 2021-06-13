@@ -20,9 +20,9 @@ jobs:
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     - name: Run tests
-      run: cargo test --release --verbose
+      run: cargo test --locked --release --verbose
     - name: Run ignored tests
-      run: cargo test --release --verbose -- --ignored
+      run: cargo test --locked --release --verbose -- --ignored
   
   build:
     name: Build using ${{ matrix.os }}
@@ -40,7 +40,7 @@ jobs:
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     - name: Build
-      run: cargo build --release --verbose
+      run: cargo build --locked --release --verbose
     - name: Upload executable Linux
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v1
@@ -53,3 +53,27 @@ jobs:
       with:
         name: tako.exe
         path: target/release/tako.exe
+  
+  lint:
+    name: Lint using ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    steps:
+    - uses: actions/checkout@v1
+    - uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    - name: Install clippy
+      run: rustup component add clippy
+    - name: Clippy
+      run: cargo clippy --all-features -- -D warnings
+    - name: Install fmt
+      run: rustup component add rustfmt
+    - name: Format
+      run: cargo fmt --all -- --check
