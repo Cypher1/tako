@@ -33,6 +33,7 @@ impl HasInfo for TError {
             FailedParse(_, info) => info.clone(),
             InternalError(_, info) => info.clone(),
             ExpectedLetNode(node) => node.get_info(),
+            UnknownPath(_, info) => info.clone(),
         }
     }
     fn get_mut_info(&mut self) -> &mut Info {
@@ -53,6 +54,7 @@ impl HasInfo for TError {
             FailedParse(_, ref mut info) => info,
             InternalError(_, ref mut info) => info,
             ExpectedLetNode(ref mut node) => node.get_mut_info(),
+            UnknownPath(_, ref mut info) => info,
         }
     }
 }

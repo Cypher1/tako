@@ -593,8 +593,7 @@ mod tests {
             unit_type(),
             unit_type(),
             unit_type(),
-        ])
-        ?;
+        ])?;
         assert_eq!(card(&pent), Ok(5));
         assert_eq!(size(&pent), Ok(3));
         Ok(())

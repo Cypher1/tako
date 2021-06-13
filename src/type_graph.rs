@@ -186,12 +186,13 @@ impl TypeGraph {
         }
     }
 
-    pub fn get_type(&self, path: &Path) -> Option<Val> {
+    pub fn get_type(&self, path: &Path) -> Result<Val, TError> {
         let id = self.symbols.get(path); // TODO: Use get_id_for_path?
-        if let Some(id) = id {
-            self.types.get(&id).cloned()
+        let ty = id.and_then(|id| self.types.get(id));
+        if let Some(ty) = ty {
+            Ok(ty.clone())
         } else {
-            None
+            Err(TError::UnknownPath(path_to_string(path), Info::default()))
         }
     }
 
@@ -435,7 +436,7 @@ mod tests {
     use crate::errors::TError;
     use crate::primitives::{
         bit_type, boolean, byte_type, i32_type, int32, number_type, quad_type, record, string,
-        string_type, sum, trit_type, variable, void_type, Prim::Tag, Val::*,
+        string_type, sum, trit_type, variable, void_type, Prim::Tag, Val, Val::*,
     };
     use bitvec::prelude::*;
     use pretty_assertions::assert_eq;
@@ -455,6 +456,7 @@ mod tests {
     }
 
     type Test = Result<(), TError>;
+    type TypeG = fn() -> Result<Val, TError>;
 
     #[test]
     fn adding_type_gets_a_new_id() -> Test {
@@ -484,7 +486,7 @@ mod tests {
         let path = test_path();
         tgb.require_assignable(&path, &i32_type())?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         assert_eq!(ty, i32_type());
 
         Ok(())
@@ -507,9 +509,9 @@ mod tests {
 
     #[test]
     fn normalize_type_pair_bit_to_pair_bit() -> Test {
-        let pair_bit = || record(vec![bit_type(), bit_type()]).unwrap();
+        let pair_bit: TypeG = || Ok(record(vec![bit_type(), bit_type()])?);
         let mut tgb = TypeGraph::default();
-        assert_eq!(tgb.normalize(pair_bit())?, pair_bit());
+        assert_eq!(tgb.normalize(pair_bit()?)?, pair_bit()?);
         Ok(())
     }
 
@@ -523,41 +525,41 @@ mod tests {
 
     #[test]
     fn normalize_type_bit_trit_to_bit_trit() -> Test {
-        let bit_trit = || record(vec![bit_type(), trit_type()]).unwrap();
+        let bit_trit: TypeG = || Ok(record(vec![bit_type(), trit_type()])?);
         let mut tgb = TypeGraph::default();
-        assert_eq!(tgb.normalize(bit_trit())?, bit_trit());
+        assert_eq!(tgb.normalize(bit_trit()?)?, bit_trit()?);
         Ok(())
     }
 
     #[test]
     fn normalize_type_trit_bit_to_trit_bit() -> Test {
-        let trit_bit = || record(vec![bit_type(), trit_type()]).unwrap();
+        let trit_bit: TypeG = || Ok(record(vec![bit_type(), trit_type()])?);
         let mut tgb = TypeGraph::default();
-        assert_eq!(tgb.normalize(trit_bit())?, trit_bit());
+        assert_eq!(tgb.normalize(trit_bit()?)?, trit_bit()?);
         Ok(())
     }
 
     #[test]
     fn normalize_type_trit_xor_bit_to_trit_xor_bit() -> Test {
-        let trit_xor_bit = || sum(vec![bit_type(), trit_type()]).unwrap();
+        let trit_xor_bit: TypeG = || Ok(sum(vec![bit_type(), trit_type()])?);
         let mut tgb = TypeGraph::default();
-        assert_eq!(tgb.normalize(trit_xor_bit())?, trit_xor_bit());
+        assert_eq!(tgb.normalize(trit_xor_bit()?)?, trit_xor_bit()?);
         Ok(())
     }
 
     // #[test]
     fn normalize_type_trit_or_bit_to_simple_trit() -> Test {
-        let trit_or_bit = || Union(set![bit_type(), trit_type()]);
+        let trit_or_bit: TypeG = || Ok(Union(set![bit_type(), trit_type()]));
         let mut tgb = TypeGraph::default();
-        assert_eq!(tgb.normalize(trit_or_bit())?, trit_type());
+        assert_eq!(tgb.normalize(trit_or_bit()?)?, trit_type());
         Ok(())
     }
 
     // #[test]
     fn normalize_type_trit_or_quad_to_simple_quad() -> Test {
-        let trit_or_quad = || Union(set![quad_type(), trit_type()]);
+        let trit_or_quad: TypeG = || Ok(Union(set![quad_type(), trit_type()]));
         let mut tgb = TypeGraph::default();
-        assert_eq!(tgb.normalize(trit_or_quad())?, quad_type());
+        assert_eq!(tgb.normalize(trit_or_quad()?)?, quad_type());
         Ok(())
     }
 
@@ -570,7 +572,7 @@ mod tests {
 
     #[test]
     fn normalize_type_nested_quad_to_quad() -> Test {
-        let nested_quad = record(vec![bit_type(), bit_type()]).unwrap();
+        let nested_quad = record(vec![bit_type(), bit_type()])?;
         let mut tgb = TypeGraph::default();
         assert_eq!(tgb.normalize(nested_quad)?, quad_type());
         Ok(())
@@ -616,7 +618,7 @@ mod tests {
         tgb.require_assignable(&path, &PrimVal(Tag(bitvec![0])))?;
         tgb.require_assignable(&path, &PrimVal(Tag(bitvec![1])).padded(1))?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         assert_eq!(ty, PrimVal(Tag(bitvec![0, 1])));
         Ok(())
     }
@@ -628,7 +630,7 @@ mod tests {
         tgb.require_assignable(&path, &PrimVal(Tag(bitvec![0, 1])))?;
         tgb.require_assignable(&path, &PrimVal(Tag(bitvec![1, 1])).padded(1))?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         assert_eq!(ty, PrimVal(Tag(bitvec![0, 1, 1])));
         Ok(())
     }
@@ -640,7 +642,7 @@ mod tests {
         tgb.require_assignable(&path, &PrimVal(Tag(bitvec![0, 1])))?;
         tgb.require_assignable(&path, &PrimVal(Tag(bitvec![0, 1])).padded(1))?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         assert_eq!(ty, void_type());
         Ok(())
     }
@@ -652,7 +654,7 @@ mod tests {
         tgb.require_assignable(&path, &boolean(true))?;
         tgb.require_assignable(&path, &boolean(true))?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         assert_eq!(ty, boolean(true));
         Ok(())
     }
@@ -664,7 +666,7 @@ mod tests {
         tgb.require_assignable(&path, &boolean(true))?;
         tgb.require_assignable(&path, &boolean(false))?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         assert_eq!(ty, void_type());
         Ok(())
     }
@@ -679,7 +681,7 @@ mod tests {
         // value must start with b11
         tgb.require_assignable(&path, &tag(bits(3, 1)))?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         // therefore value must start with b11
         assert_eq!(ty, tag(bits(3, 2)));
         Ok(())
@@ -695,7 +697,7 @@ mod tests {
         // value must start with b11
         tgb.require_assignable(&path, &tag(bits(3, 2)))?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         // therefore value must start with b11
         assert_eq!(ty, tag(bits(3, 2)));
         Ok(())
@@ -711,7 +713,7 @@ mod tests {
         // value must start with b00
         tgb.require_assignable(&path, &tag(bits(0, 2)))?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         // therefore there's no valid value
         assert_eq!(ty, void_type());
         Ok(())
@@ -721,12 +723,12 @@ mod tests {
     fn unifies_trit_or_bit_in_types() -> Test {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        let trit_or_bit = || Union(set![bit_type(), trit_type()]);
-        tgb.require_assignable(&path, &trit_or_bit())?;
-        tgb.require_assignable(&path, &trit_or_bit())?;
+        let trit_or_bit: TypeG = || Ok(Union(set![bit_type(), trit_type()]));
+        tgb.require_assignable(&path, &trit_or_bit()?)?;
+        tgb.require_assignable(&path, &trit_or_bit()?)?;
 
-        let norm = tgb.normalize(trit_or_bit())?;
-        let ty = tgb.get_type(&path).unwrap();
+        let norm = tgb.normalize(trit_or_bit()?)?;
+        let ty = tgb.get_type(&path)?;
         assert_eq!(ty, norm);
         Ok(())
     }
@@ -738,7 +740,7 @@ mod tests {
         tgb.require_assignable(&path, &int32(4))?;
         tgb.require_assignable(&path, &int32(4))?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         assert_eq!(ty, int32(4));
         Ok(())
     }
@@ -750,7 +752,7 @@ mod tests {
         tgb.require_assignable(&path, &int32(4))?;
         tgb.require_assignable(&path, &int32(5))?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         assert_eq!(ty, void_type());
         Ok(())
     }
@@ -762,7 +764,7 @@ mod tests {
         tgb.require_assignable(&path, &string("Woo"))?;
         tgb.require_assignable(&path, &string("Woo"))?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         assert_eq!(ty, string("Woo"));
         Ok(())
     }
@@ -774,7 +776,7 @@ mod tests {
         tgb.require_assignable(&path, &string("Yes"))?;
         tgb.require_assignable(&path, &string("No"))?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         assert_eq!(ty, void_type());
         Ok(())
     }
@@ -787,7 +789,7 @@ mod tests {
         tgb.require_assignable(&path, &a)?;
         tgb.require_assignable(&path, &a)?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         assert_eq!(ty, a);
         Ok(())
     }
@@ -801,7 +803,7 @@ mod tests {
         tgb.require_assignable(&path, &a)?;
         tgb.require_assignable(&path, &b)?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         assert_eq!(ty, b);
         Ok(())
     }
@@ -815,7 +817,7 @@ mod tests {
         tgb.require_assignable(&path, &a)?;
         tgb.require_assignable(&path, &b)?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         assert_eq!(
             ty,
             Product(set!(boolean(true), boolean(true).padded(1))).padded(10),
@@ -832,7 +834,7 @@ mod tests {
         tgb.require_assignable(&path, &a)?;
         tgb.require_assignable(&path, &b)?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         assert_eq!(ty, void_type());
         Ok(())
     }
@@ -844,7 +846,7 @@ mod tests {
         tgb.require_assignable(&path, &int32(4))?;
         tgb.require_assignable(&path, &string("No"))?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         assert_eq!(ty, void_type());
         Ok(())
     }
@@ -858,7 +860,7 @@ mod tests {
         tgb.require_assignable(&path, &a)?;
         tgb.require_assignable(&path, &b)?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         assert_eq!(ty, a);
         Ok(())
     }
@@ -872,7 +874,7 @@ mod tests {
         tgb.require_assignable(&path, &a)?;
         tgb.require_assignable(&path, &b)?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         assert_eq!(ty, b);
         Ok(())
     }
@@ -886,7 +888,7 @@ mod tests {
         tgb.require_assignable(&path, &a)?;
         tgb.require_assignable(&path, &b)?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         assert_eq!(ty, int32(3));
         Ok(())
     }
@@ -900,7 +902,7 @@ mod tests {
         tgb.require_assignable(&path, &a)?;
         tgb.require_assignable(&path, &b)?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         assert_eq!(ty, int32(3));
         Ok(())
     }
@@ -914,7 +916,7 @@ mod tests {
         tgb.require_assignable(&path, &a)?;
         tgb.require_assignable(&path, &b)?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         assert_eq!(ty, void_type());
         Ok(())
     }
@@ -928,7 +930,7 @@ mod tests {
         tgb.require_assignable(&path, &a)?;
         tgb.require_assignable(&path, &b)?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         assert_eq!(ty, b);
         Ok(())
     }
@@ -943,7 +945,7 @@ mod tests {
         tgb.require_assignable(&path, &a)?;
         tgb.require_assignable(&path, &b)?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         assert_eq!(ty, res);
         Ok(())
     }
@@ -961,7 +963,7 @@ mod tests {
         tgb.require_assignable(&path, &a)?;
         tgb.require_assignable(&path, &b)?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         assert_eq!(ty, res);
         Ok(())
     }
@@ -981,7 +983,7 @@ mod tests {
         tgb.require_assignable(&path, &a)?;
         tgb.require_assignable(&path, &b)?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         assert_eq!(ty, res);
         Ok(())
     }
@@ -995,7 +997,7 @@ mod tests {
         tgb.require_assignable(&path, &a)?;
         tgb.require_assignable(&path, &b)?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         assert_eq!(ty, void_type());
         Ok(())
     }
@@ -1009,7 +1011,7 @@ mod tests {
         tgb.require_assignable(&path, &a)?;
         tgb.require_assignable(&path, &b)?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         assert_eq!(ty, a);
         Ok(())
     }
@@ -1025,7 +1027,7 @@ mod tests {
         tgb.require_assignable(&path, &a)?;
         tgb.require_assignable(&path, &b)?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         assert_eq!(ty, res);
         Ok(())
     }
@@ -1042,7 +1044,7 @@ mod tests {
         tgb.require_assignable(&path, &a)?;
         tgb.require_assignable(&path, &b)?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         assert_eq!(ty, b);
         Ok(())
     }
@@ -1056,7 +1058,7 @@ mod tests {
         tgb.require_assignable(&path, &a)?;
         tgb.require_assignable(&path, &b)?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         assert_eq!(ty, void_type());
         Ok(())
     }
@@ -1070,9 +1072,9 @@ mod tests {
 
     #[test]
     fn assignment_to_equal_type_pair_bit() -> Test {
-        let pair_bit = || record(vec![bit_type(), bit_type()]).unwrap();
+        let pair_bit: TypeG = || Ok(record(vec![bit_type(), bit_type()])?);
         let mut tgb = TypeGraph::default();
-        assert!(tgb.is_assignable_to(&pair_bit(), &pair_bit())?);
+        assert!(tgb.is_assignable_to(&pair_bit()?, &pair_bit()?)?);
         Ok(())
     }
 
@@ -1104,7 +1106,7 @@ mod tests {
         tgb.require_assignable(&path, &variable("a"))?;
         tgb.require_assignable(&path, &i32_type())?;
 
-        let ty = tgb.get_type(&path).unwrap();
+        let ty = tgb.get_type(&path)?;
         assert!(tgb.is_assignable_to(&ty, &i32_type())?);
         assert!(tgb.is_assignable_to(&ty, &variable("a"))?);
         Ok(())

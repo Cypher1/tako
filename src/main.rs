@@ -28,7 +28,9 @@ fn handle(res: Result<String, TError>) {
                 eprintln!("Caused by: {}", source);
             }
 
-            stderr.set_color(&ColorSpec::new()).expect("Could not set termcolor");
+            stderr
+                .set_color(&ColorSpec::new())
+                .expect("Could not set termcolor");
         }
     }
 }
@@ -94,6 +96,7 @@ fn repl(db: &mut DB) -> Result<(), TError> {
         }
         last_cmd_was_interrupt = cmd_was_interrupt;
     }
-    rl.save_history(&db.history_file()).expect("Could not save history");
+    rl.save_history(&db.history_file())
+        .expect("Could not save history");
     Ok(())
 }
