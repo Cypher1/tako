@@ -25,7 +25,6 @@ harness = false
 salsa = "0.15.0"
 thiserror = "1.0.20"
 derivative = "2.1.1"
-rand = "0.7.3"
 rustyline = "6.3.0"
 directories = "3.0"
 termcolor = "1.1"
@@ -34,6 +33,7 @@ criterion = { version = "0.3", optional = true }
 
 [dev-dependencies]
 pretty_assertions = "0.6.1"
+rand = "0.7.3"
 
 [profile.test]
 opt-level = 3
