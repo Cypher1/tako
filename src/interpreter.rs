@@ -485,13 +485,9 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
         let result = self.visit(db, state, &expr.value)?;
         // Drop the finished scope
         state.pop();
-        match state.last_mut() {
-            None => panic!("there is no stack frame"),
-            Some(frame) => {
-                frame.insert(expr.name.clone(), result.clone());
-                Ok(Val::Struct(vec![(expr.name.clone(), result)]))
-            }
-        }
+        let frame = state.last_mut().expect("Stack frame missing");
+        frame.insert(expr.name.clone(), result.clone());
+        Ok(Val::Struct(vec![(expr.name.clone(), result)]))
     }
 
     fn visit_un_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &UnOp) -> Res {

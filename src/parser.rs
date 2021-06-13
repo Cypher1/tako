@@ -80,7 +80,7 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
                         Some(Token {
                             value: close,
                             tok_type: TokenType::CloseBracket,
-                            pos,
+                            pos: _,
                         }),
                     ) => {
                         match (open, close.as_str()) {
