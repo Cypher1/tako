@@ -106,11 +106,11 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
     }
 
     fn visit_sym(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Sym) -> Res {
-        Ok(expr.clone().to_node())
+        Ok(expr.clone().into_node())
     }
 
     fn visit_val(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Val) -> Res {
-        Ok(expr.clone().to_node())
+        Ok(expr.clone().into_node())
     }
 
     fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
@@ -128,7 +128,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
             args,
             info: expr.get_info(),
         }
-        .to_node())
+        .into_node())
     }
 
     fn visit_abs(&mut self, db: &dyn Compiler, state: &mut State, expr: &Abs) -> Res {
@@ -150,7 +150,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
             value,
             info,
         }
-        .to_node())
+        .into_node())
     }
 
     fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
@@ -183,7 +183,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
             args,
             info,
         }
-        .to_node())
+        .into_node())
     }
 
     fn visit_un_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &UnOp) -> Res {
@@ -193,7 +193,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
             inner,
             info: expr.get_info(),
         }
-        .to_node())
+        .into_node())
     }
 
     fn visit_bin_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &BinOp) -> Res {
@@ -205,7 +205,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
             right,
             info: expr.get_info(),
         }
-        .to_node())
+        .into_node())
     }
 
     fn handle_error(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &TError) -> Res {

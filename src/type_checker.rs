@@ -16,14 +16,14 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Val) -> Result<Val, TError> {
             Product(vals) => {
                 let mut tys: BTreeSet<Val> = set![];
                 for val in vals.iter() {
-                    tys.insert(infer(db, &val.clone().to_node(), env)?);
+                    tys.insert(infer(db, &val.clone().into_node(), env)?);
                 }
                 Ok(Product(tys))
             }
             Union(vals) => {
                 let mut tys: BTreeSet<Val> = set![];
                 for val in vals.iter() {
-                    tys.insert(infer(db, &val.clone().to_node(), env)?);
+                    tys.insert(infer(db, &val.clone().into_node(), env)?);
                 }
                 Ok(Union(tys))
             }
@@ -34,7 +34,7 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Val) -> Result<Val, TError> {
             Struct(vals) => {
                 let mut tys: Vec<Val> = vec![];
                 for val in vals.iter() {
-                    tys.push(infer(db, &val.1.clone().to_node(), env)?);
+                    tys.push(infer(db, &val.1.clone().into_node(), env)?);
                 }
                 Ok(record(tys)?)
             }
@@ -49,15 +49,15 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Val) -> Result<Val, TError> {
                     name: name.to_string(),
                     info: info.clone(),
                 }
-                .to_node(),
+                .into_node(),
                 &new_env,
             )?;
             let app = Apply {
-                inner: Box::new(inner_ty.to_node()),
+                inner: Box::new(inner_ty.into_node()),
                 args: vec![Let {
                     name: "it".to_string(),
                     args: None,
-                    value: Box::new(it_ty.to_node()),
+                    value: Box::new(it_ty.into_node()),
                     info: info.clone(),
                 }],
                 info: info.clone(),
@@ -83,22 +83,22 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Val) -> Result<Val, TError> {
                     name: name.to_string(),
                     info: info.clone(),
                 }
-                .to_node(),
+                .into_node(),
                 &new_env,
             )?;
             let app = Apply {
-                inner: Box::new(inner_ty.to_node()),
+                inner: Box::new(inner_ty.into_node()),
                 args: vec![
                     Let {
                         name: "left".to_string(),
                         args: None,
-                        value: Box::new(left_ty.to_node()),
+                        value: Box::new(left_ty.into_node()),
                         info: info.clone(),
                     },
                     Let {
                         name: "right".to_string(),
                         args: None,
-                        value: Box::new(right_ty.to_node()),
+                        value: Box::new(right_ty.into_node()),
                         info: info.clone(),
                     },
                 ],
@@ -125,12 +125,12 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Val) -> Result<Val, TError> {
             let mut arg_tys = vec![];
             let mut let_tys = vec![];
             for arg in args.iter() {
-                let ty = infer(db, &arg.value.clone().to_node(), env)?;
+                let ty = infer(db, &arg.value.clone().into_node(), env)?;
                 let_tys.push((arg.name.clone(), ty.clone()));
                 let ty_let = Let {
                     name: arg.name.clone(),
                     args: None,
-                    value: Box::new(ty.to_node()),
+                    value: Box::new(ty.into_node()),
                     info: info.clone(),
                 };
                 arg_tys.push(ty_let);
@@ -139,7 +139,7 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Val) -> Result<Val, TError> {
             eprintln!("new_env: {}", &new_env);
             let inner_ty = infer(db, inner, &new_env)?;
             let app = Apply {
-                inner: Box::new(inner_ty.to_node()),
+                inner: Box::new(inner_ty.into_node()),
                 args: arg_tys,
                 info: info.clone(),
             };
@@ -151,7 +151,7 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Val) -> Result<Val, TError> {
             value,
             info: _,
         }) => {
-            let ty = infer(db, &value.clone().to_node(), env)?;
+            let ty = infer(db, &value.clone().into_node(), env)?;
             match ty {
                 Function {
                     mut intros,
@@ -178,12 +178,12 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Val) -> Result<Val, TError> {
                 let mut state = vec![HashMap::new()];
                 Interpreter::default().visit(db, &mut state, &ty)?
             } else {
-                infer(db, &value.clone().to_node(), env)?
+                infer(db, &value.clone().into_node(), env)?
             };
             let ty = if let Some(args) = args {
                 let mut arg_tys = rec![];
                 for arg in args.iter() {
-                    let ty = infer(db, &arg.clone().to_node(), env)?;
+                    let ty = infer(db, &arg.clone().into_node(), env)?;
                     arg_tys = arg_tys.merge(ty);
                 }
                 Function {
@@ -247,7 +247,7 @@ mod tests {
     fn infer_type_of_i32() -> Test {
         use crate::primitives::int32;
         let db = DB::default();
-        let num = int32(23).to_node();
+        let num = int32(23).into_node();
         let env = rec![]; // TODO: Track the type env
         assert_eq!(infer(&db, &num, &env), Ok(i32_type()));
         assert_type("23", "I32")

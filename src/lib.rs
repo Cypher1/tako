@@ -72,6 +72,6 @@ pub fn work_on_string<'a>(
         }
         let res = interp.visit_root(db, &root)?;
         use ast::ToNode;
-        PrettyPrint::process(&res.to_node(), db).or_else(|_| panic!("Pretty print failed"))
+        PrettyPrint::process(&res.into_node(), db).or_else(|_| panic!("Pretty print failed"))
     }
 }

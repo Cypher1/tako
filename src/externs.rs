@@ -60,17 +60,17 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
                                         name: "it".to_string(),
                                         info: info.clone(),
                                     }
-                                    .to_node(),
+                                    .into_node(),
                                 ),
-                                right: Box::new(string(name).to_node()),
+                                right: Box::new(string(name).into_node()),
                                 info: info.clone(),
                             }
-                            .to_node(),
+                            .into_node(),
                         ),
-                        right: Box::new(arg.to_node()),
+                        right: Box::new(arg.into_node()),
                         info: info.clone(),
                     }
-                    .to_node(),
+                    .into_node(),
                 )
             }
             if let Some(first) = requirements.first() {
@@ -82,11 +82,11 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
                         right: Box::new(next.clone()),
                         info: info.clone(),
                     }
-                    .to_node();
+                    .into_node();
                 }
                 Ok(Lambda(Box::new(curr)))
             } else {
-                Ok(Lambda(Box::new(Product(set![]).to_node())))
+                Ok(Lambda(Box::new(Product(set![]).into_node())))
             }
         })),
         "." => Some(Box::new(|_db, args, info| {
@@ -95,16 +95,16 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
             use crate::ast::{Apply, Let};
             Ok(Lambda(Box::new(
                 Apply {
-                    inner: Box::new(right.to_node()),
+                    inner: Box::new(right.into_node()),
                     args: vec![Let {
                         name: "it".to_string(),
-                        value: Box::new(left.to_node()),
+                        value: Box::new(left.into_node()),
                         args: None,
                         info: info.clone(),
                     }],
                     info,
                 }
-                .to_node(),
+                .into_node(),
             )))
         })),
         "exit" => Some(Box::new(|_, args, info| {
@@ -244,7 +244,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
             name: "argc".to_string(),
             value: builtin("argc"),
             semantic: Func,
-            ty: i32_type().to_node(),
+            ty: i32_type().into_node(),
             cpp: LangImpl::new("[&argc](){return argc;}"),
         },
         Extern {
@@ -255,7 +255,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
                 results: Box::new(string_type()),
                 intros: dict!(),
                 arguments: Box::new(rec!("it" => i32_type())),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::new("([&argv](const int x){return argv[x];})"),
         },
         Extern {
@@ -269,7 +269,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
                 )),
                 arguments: Box::new(rec! {"it" => string_type()}),
                 intros: dict!(),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::new("std::cerr << ").with_includes("#include <iostream>"),
         },
         Extern {
@@ -280,7 +280,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
                 results: Box::new(void_type()),
                 arguments: Box::new(rec! {"it" => i32_type()}),
                 intros: dict!(),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::new("[](const int code){exit(code);}")
                 .with_includes("#include <stdlib.h>"),
         },
@@ -292,7 +292,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
                 results: Box::new(Union(set![i32_type(), void_type()])),
                 arguments: Box::new(rec! {"it" => string_type()}),
                 intros: dict!(),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::new("std::stoi").with_includes("#include <string>"),
         },
         Extern {
@@ -306,7 +306,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
                 )),
                 arguments: Box::new(rec! {"it" => string_type()}),
                 intros: dict!(),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::new("std::cout << ").with_includes("#include <iostream>"),
         },
         Extern {
@@ -317,7 +317,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
                 results: Box::new(variable("a")),
                 arguments: Box::new(rec! {"it" => variable("Type")}),
                 intros: dict!("a" => variable("Type")),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::new("std::cout << ").with_includes("#include <iostream>"),
         },
         Extern {
@@ -328,7 +328,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
                 results: Box::new(variable("a")),
                 arguments: Box::new(variable("a")),
                 intros: dict!("a" => variable("Type")),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::new("[](const int code){exit(code);}")
                 .with_includes("#include <stdlib.h>"),
         },
@@ -340,7 +340,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
                 intros: dict!("a" => variable("Type"), "b" => variable("Type")),
                 results: Box::new(variable("b")),
                 arguments: Box::new(rec!("left" => variable("a"), "right" => variable("b"))),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::operator(";"),
         },
         Extern {
@@ -351,7 +351,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
                 intros: dict!("a" => variable("Type"), "b" => variable("Type")),
                 results: Box::new(Product(set!(variable("a"), variable("b")))),
                 arguments: Box::new(rec!("left" => variable("a"), "right" => variable("b"))),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::operator(";"),
         },
         Extern {
@@ -362,7 +362,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
                 intros: dict!("a" => variable("Identifier"), "b" => variable("Type")),
                 results: Box::new(variable("b")),
                 arguments: Box::new(rec!("left" => variable("a"), "right" => variable("b"))),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::operator(" = "),
         },
         Extern {
@@ -373,7 +373,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
                 intros: dict!("a" => variable("Type"), "b" => variable("Type")),
                 results: Box::new(Union(set!(variable("a"), variable("b")))),
                 arguments: Box::new(rec!("left" => variable("a"), "right" => variable("b"))),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::operator("?"),
         },
         Extern {
@@ -384,7 +384,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
                 intros: dict!("a" => variable("Type")),
                 results: Box::new(variable("a")),
                 arguments: Box::new(rec!("left" => variable("Type"), "right" => variable("a"))),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::operator("|-"),
         },
         Extern {
@@ -395,7 +395,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
                 intros: dict!("a" => variable("Type")),
                 results: Box::new(variable("a")),
                 arguments: Box::new(rec!("left" => variable("Type"), "right" => variable("a"))),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::operator("-|"),
         },
         Extern {
@@ -406,7 +406,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
                 intros: dict!("a" => variable("Type"), "b" => variable("Type")),
                 results: Box::new(Union(set!(variable("a"), variable("b")))),
                 arguments: Box::new(rec!("left" => variable("a"), "right" => variable("b"))),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::operator("|"),
         },
         Extern {
@@ -417,7 +417,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
                 intros: dict!("a" => variable("Type"), "b" => variable("Type")),
                 results: Box::new(Product(set!(variable("a"), variable("b")))),
                 arguments: Box::new(rec!("left" => variable("a"), "right" => variable("b"))),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::operator("&"),
         },
         Extern {
@@ -428,7 +428,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
                 intros: dict!("a" => variable("Display"), "b" => variable("Display")),
                 results: Box::new(string_type()),
                 arguments: Box::new(rec!("left" => variable("a"), "right" => variable("b"))),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::operator("+")
                 .with_arg_processor("std::to_string")
                 .with_includes(
@@ -459,7 +459,7 @@ string to_string(const bool& t){
                     arguments: Box::new(variable("a")),
                 }),
                 arguments: Box::new(rec!("left" => variable("a"), "right" => variable("b"))),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::operator("???"),
         },
         Extern {
@@ -470,7 +470,7 @@ string to_string(const bool& t){
                 intros: dict!("a" => variable("Number"), "b" => variable("Number")),
                 results: Box::new(bit_type()),
                 arguments: Box::new(rec!("left" => variable("a"), "right" => variable("b"))),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::operator("<"),
         },
         Extern {
@@ -481,7 +481,7 @@ string to_string(const bool& t){
                 intros: dict!("a" => variable("Number"), "b" => variable("Number")),
                 results: Box::new(bit_type()),
                 arguments: Box::new(rec!("left" => variable("a"), "right" => variable("b"))),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::operator("<="),
         },
         Extern {
@@ -492,7 +492,7 @@ string to_string(const bool& t){
                 intros: dict!("a" => variable("Number"), "b" => variable("Number")),
                 results: Box::new(bit_type()),
                 arguments: Box::new(rec!("left" => variable("a"), "right" => variable("b"))),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::operator(">"),
         },
         Extern {
@@ -503,7 +503,7 @@ string to_string(const bool& t){
                 intros: dict!("a" => variable("Number"), "b" => variable("Number")),
                 results: Box::new(bit_type()),
                 arguments: Box::new(rec!("left" => variable("a"), "right" => variable("b"))),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::operator(">="),
         },
         Extern {
@@ -514,7 +514,7 @@ string to_string(const bool& t){
                 intros: dict!("a" => variable("Type"), "b" => variable("Type")),
                 results: Box::new(bit_type()),
                 arguments: Box::new(rec!("left" => variable("a"), "right" => variable("b"))),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::operator("!="),
         },
         Extern {
@@ -525,7 +525,7 @@ string to_string(const bool& t){
                 intros: dict!("a" => variable("Type"), "b" => variable("Type")),
                 results: Box::new(bit_type()),
                 arguments: Box::new(rec!("left" => variable("a"), "right" => variable("b"))),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::operator("=="),
         },
         Extern {
@@ -536,7 +536,7 @@ string to_string(const bool& t){
                 intros: dict!(),
                 results: Box::new(bit_type()),
                 arguments: Box::new(rec!("left" => bit_type(), "right" => bit_type())),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::operator("||"),
         },
         Extern {
@@ -547,7 +547,7 @@ string to_string(const bool& t){
                 intros: dict!(),
                 results: Box::new(bit_type()),
                 arguments: Box::new(rec!("left" => bit_type(), "right" => bit_type())),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::operator("&&"),
         },
         Extern {
@@ -558,7 +558,7 @@ string to_string(const bool& t){
                 intros: dict!(),
                 results: Box::new(bit_type()),
                 arguments: Box::new(bit_type()),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::operator("!"),
         },
         Extern {
@@ -569,7 +569,7 @@ string to_string(const bool& t){
                 intros: dict!("a" => variable("Type")), // TODO: This should unpack a type with a set of named values and put them into scope.
                 results: Box::new(variable("a")),
                 arguments: Box::new(rec!("it" => variable("a"))),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::operator("..."), // TODO: Implement
         },
         Extern {
@@ -580,7 +580,7 @@ string to_string(const bool& t){
                 intros: dict!("a" => variable("Number")),
                 results: Box::new(variable("a")),
                 arguments: Box::new(rec!("it" => variable("a"))),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::operator("-"),
         },
         Extern {
@@ -591,7 +591,7 @@ string to_string(const bool& t){
                 intros: dict!("a" => variable("Number"), "b" => variable("Number")),
                 results: Box::new(variable("a")),
                 arguments: Box::new(rec!("left" => variable("a"), "right" => variable("b"))),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::operator("+"),
         },
         Extern {
@@ -602,7 +602,7 @@ string to_string(const bool& t){
                 intros: dict!("a" => variable("Number"), "b" => variable("Number")),
                 results: Box::new(variable("a")),
                 arguments: Box::new(rec!("left" => variable("a"), "right" => variable("b"))),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::operator("*"),
         },
         Extern {
@@ -613,7 +613,7 @@ string to_string(const bool& t){
                 intros: dict!("a" => variable("Number"), "b" => variable("Number")),
                 results: Box::new(variable("a")),
                 arguments: Box::new(rec!("left" => variable("a"), "right" => variable("b"))),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::operator("%"),
         },
         Extern {
@@ -624,7 +624,7 @@ string to_string(const bool& t){
                 intros: dict!("a" => variable("Number"), "b" => variable("Number")),
                 results: Box::new(variable("a")),
                 arguments: Box::new(rec!("left" => variable("a"), "right" => variable("b"))),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::operator("/"),
         },
         Extern {
@@ -635,7 +635,7 @@ string to_string(const bool& t){
                 intros: dict!("a" => variable("Number"), "b" => variable("Number")),
                 results: Box::new(variable("a")),
                 arguments: Box::new(rec!("left" => variable("a"), "right" => variable("b"))),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::new("pow")
                 .with_includes("#include <cmath>")
                 .with_arg_joiner(", ")
@@ -651,56 +651,56 @@ string to_string(const bool& t){
                 arguments: Box::new(
                     rec!("left" => variable("a"), "right" => Function{intros: dict!(), arguments: Box::new(rec!("it" => variable("a"))), results: Box::new(variable("c"))}),
                 ),
-            }.to_node(),
+            }.into_node(),
             cpp: LangImpl::new("[](const auto l, const auto r){return r(l);}"),
         },
         Extern {
             name: "I32".to_string(),
             value: i32_type(),
             semantic: Func,
-            ty: variable("Type").to_node(),
+            ty: variable("Type").into_node(),
             cpp: LangImpl::new("int32_t"),
         },
         Extern {
             name: "Number".to_string(),
             value: number_type(),
             semantic: Func,
-            ty: variable("Type").to_node(),
+            ty: variable("Type").into_node(),
             cpp: LangImpl::new("usize"),
         },
         Extern {
             name: "String".to_string(),
             value: string_type(),
             semantic: Func,
-            ty: variable("Type").to_node(),
+            ty: variable("Type").into_node(),
             cpp: LangImpl::new("std::string").with_includes("#include <string>"),
         },
         Extern {
             name: "Bit".to_string(),
             value: bit_type(),
             semantic: Func,
-            ty: variable("Type").to_node(),
+            ty: variable("Type").into_node(),
             cpp: LangImpl::new("short"),
         },
         Extern {
             name: "Unit".to_string(),
             value: unit_type(),
             semantic: Func,
-            ty: variable("Type").to_node(),
+            ty: variable("Type").into_node(),
             cpp: LangImpl::new("void"),
         },
         Extern {
             name: "Void".to_string(),
             value: void_type(),
             semantic: Func,
-            ty: variable("Void").to_node(),
+            ty: variable("Void").into_node(),
             cpp: LangImpl::new("/*void: should never happen*/ auto"),
         },
         Extern {
             name: "Type".to_string(),
             value: type_type(),
             semantic: Func,
-            ty: variable("Type").to_node(),
+            ty: variable("Type").into_node(),
             cpp: LangImpl::new("auto"),
         },
     ];

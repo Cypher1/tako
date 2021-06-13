@@ -252,13 +252,13 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
 
     fn visit_sym(&mut self, db: &dyn Compiler, state: &mut State, expr: &Sym) -> Res {
         if db.debug_level() > 1 {
-            eprintln!("evaluating sym {}", expr.clone().to_node());
+            eprintln!("evaluating sym {}", expr.clone().into_node());
         }
         let name = &expr.name;
         let value = find_symbol(&state, name);
         if let Some(prim) = value {
             if db.debug_level() > 0 {
-                eprintln!("{} = (from stack) {}", name, prim.clone().to_node());
+                eprintln!("{} = (from stack) {}", name, prim.clone().into_node());
             }
             return Ok(prim.clone());
         }
@@ -369,7 +369,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
 
     fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
         if db.debug_level() > 1 {
-            eprintln!("evaluating apply {}", expr.clone().to_node());
+            eprintln!("evaluating apply {}", expr.clone().into_node());
         }
         state.push(Frame::new());
         expr.args
@@ -383,7 +383,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
             eprintln!(
                 "apply args {:?} to inner {}",
                 state.last(),
-                inner.clone().to_node()
+                inner.clone().into_node()
             );
         }
         let res = match inner {
@@ -453,7 +453,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
 
     fn visit_abs(&mut self, db: &dyn Compiler, state: &mut State, expr: &Abs) -> Res {
         if db.debug_level() > 1 {
-            eprintln!("introducing abstraction {}", expr.clone().to_node());
+            eprintln!("introducing abstraction {}", expr.clone().into_node());
         }
 
         // Add a new scope
@@ -469,7 +469,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
 
     fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
         if db.debug_level() > 1 {
-            eprintln!("evaluating let {}", expr.clone().to_node());
+            eprintln!("evaluating let {}", expr.clone().into_node());
         }
 
         if expr.args.is_some() {
@@ -492,24 +492,24 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
 
     fn visit_un_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &UnOp) -> Res {
         if db.debug_level() > 1 {
-            eprintln!("evaluating unop {}", expr.clone().to_node());
+            eprintln!("evaluating unop {}", expr.clone().into_node());
         }
         let i = self.visit(db, state, &expr.inner)?;
         let info = expr.clone().get_info();
         match expr.name.as_str() {
             "!" => match i {
                 PrimVal(Bool(n)) => Ok(boolean(!n)),
-                Lambda(_) => Ok(Lambda(Box::new(expr.clone().to_node()))),
+                Lambda(_) => Ok(Lambda(Box::new(expr.clone().into_node()))),
                 _ => Err(TError::TypeMismatch("!".to_string(), Box::new(i), info)),
             },
             "+" => match i {
                 PrimVal(I32(n)) => Ok(int32(n)),
-                Lambda(_) => Ok(Lambda(Box::new(expr.clone().to_node()))),
+                Lambda(_) => Ok(Lambda(Box::new(expr.clone().into_node()))),
                 _ => Err(TError::TypeMismatch("+".to_string(), Box::new(i), info)),
             },
             "-" => match i {
                 PrimVal(I32(n)) => Ok(int32(-n)),
-                Lambda(_) => Ok(Lambda(Box::new(expr.clone().to_node()))),
+                Lambda(_) => Ok(Lambda(Box::new(expr.clone().into_node()))),
                 _ => Err(TError::TypeMismatch("-".to_string(), Box::new(i), info)),
             },
             op => Err(TError::UnknownPrefixOperator(op.to_string(), info)),
@@ -518,7 +518,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
 
     fn visit_bin_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &BinOp) -> Res {
         if db.debug_level() > 1 {
-            eprintln!("evaluating binop {}", expr.clone().to_node());
+            eprintln!("evaluating binop {}", expr.clone().into_node());
         }
         let info = expr.clone().get_info();
         let l = self.visit(db, state, &expr.left);
@@ -554,10 +554,10 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
                     db,
                     state,
                     &Apply {
-                        inner: Box::new(r.to_node()),
+                        inner: Box::new(r.into_node()),
                         args: vec![Let {
                             name: "it".to_string(),
-                            value: Box::new(l.to_node()),
+                            value: Box::new(l.into_node()),
                             args: None,
                             info: info.clone(),
                         }],
@@ -768,7 +768,7 @@ mod tests {
     fn parse_and_eval_struct_empty() {
         assert_eq!(
             eval_str("struct()"),
-            Ok(Lambda(Box::new(Product(set![]).to_node())))
+            Ok(Lambda(Box::new(Product(set![]).into_node())))
         );
     }
 
