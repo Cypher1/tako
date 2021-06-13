@@ -15,7 +15,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         let code = Arc::new("12".to_string());
         let mut db = DB::default();
         db.set_options(Options::default());
-        let prog = black_box(parse_string(&db, &module, &code).unwrap());
+        let prog = black_box(parse_string(&db, &module, &code).expect("should parse"));
         b.iter(|| infer(&db, &prog));
     });
 
@@ -23,10 +23,10 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         let code = Arc::new("12".to_string());
         let mut db = DB::default();
         db.set_options(Options::default());
-        let prog = parse_string(&db, &module, &code).unwrap();
+        let prog = parse_string(&db, &module, &code).expect("should parse");
         infer(&db, &prog);
         b.iter(|| {
-            let prog = black_box(parse_string(&db, &module, &code).unwrap());
+            let prog = black_box(parse_string(&db, &module, &code).expect("should parse"));
             infer(&db, &prog)
         });
     });
@@ -35,7 +35,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         let code = Arc::new("12".to_string());
         let mut db = DB::default();
         db.set_options(Options::default());
-        let prog = black_box(parse_string(&db, &module, &code).unwrap());
+        let prog = black_box(parse_string(&db, &module, &code).expect("should parse"));
         b.iter(|| infer(&db, &prog));
     });
 

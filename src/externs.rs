@@ -9,20 +9,33 @@ use crate::primitives::{
     variable, void_type, Prim::*, Val, Val::*,
 };
 
-pub type FuncImpl = Box<dyn Fn(&dyn Compiler, HashMap<String, Box<dyn Fn() -> Res>>, Info) -> Res>;
+pub type Args = HashMap<String, Box<dyn Fn() -> Res>>;
+pub type FuncImpl = Box<dyn Fn(&dyn Compiler, Args, Info) -> Res>;
+
+fn get_symbol(args: &Args, sym: &str, info: &Info) -> Res {
+    if let Some(val) = args.get(sym) {
+        val()
+    } else {
+        Err(TError::UnknownSymbol(
+            sym.to_string(),
+            info.clone(),
+            "".to_string(),
+        ))
+    }
+}
 
 pub fn get_implementation(name: String) -> Option<FuncImpl> {
     match name.as_str() {
-        "print" => Some(Box::new(|_, args, _info| {
-            let val = args.get("it").unwrap()()?;
+        "print" => Some(Box::new(|_, args, info| {
+            let val = get_symbol(&args, "it", &info)?;
             match val {
                 PrimVal(Str(s)) => print!("{}", s),
                 s => print!("{:?}", s),
             };
             Ok(int32(0))
         })),
-        "eprint" => Some(Box::new(|_, args, _info| {
-            let val = args.get("it").unwrap()()?;
+        "eprint" => Some(Box::new(|_, args, info| {
+            let val = get_symbol(&args, "it", &info)?;
             match val {
                 PrimVal(Str(s)) => eprint!("{}", s),
                 s => eprint!("{:?}", s),
@@ -77,8 +90,8 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
             }
         })),
         "." => Some(Box::new(|_db, args, info| {
-            let left = args.get("left").unwrap()()?;
-            let right = args.get("right").unwrap()()?;
+            let left = get_symbol(&args, "left", &info)?;
+            let right = get_symbol(&args, "right", &info)?;
             use crate::ast::{Apply, Let};
             Ok(Lambda(Box::new(
                 Apply {
@@ -94,8 +107,8 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
                 .to_node(),
             )))
         })),
-        "exit" => Some(Box::new(|_, args, _| {
-            let val = args.get("it").unwrap()()?;
+        "exit" => Some(Box::new(|_, args, info| {
+            let val = get_symbol(&args, "it", &info)?;
             let code = match val {
                 PrimVal(I32(n)) => n,
                 s => {
@@ -106,9 +119,9 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
             std::process::exit(code);
         })),
         "parse_i32" => Some(Box::new(|_, args, info| {
-            let val = args.get("it").unwrap()()?;
+            let val = get_symbol(&args, "it", &info)?;
             match val {
-                PrimVal(Str(n)) => Ok(int32(n.parse::<i32>().unwrap())),
+                PrimVal(Str(n)) => Ok(int32(n.parse::<i32>()?)),
                 s => Err(TError::TypeMismatch(
                     "Expected parse_i32 argument to be a string encoded i32".to_string(),
                     Box::new(s),
@@ -118,15 +131,15 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
         })),
         "++" => Some(Box::new(|_, args, info| {
             prim_add_strs(
-                &args.get("left").unwrap()()?,
-                &args.get("right").unwrap()()?,
+                &get_symbol(&args, "left", &info)?,
+                &get_symbol(&args, "right", &info)?,
                 info,
             )
         })),
         "^" => Some(Box::new(|_, args, info| {
             prim_pow(
-                &args.get("left").unwrap()()?,
-                &args.get("right").unwrap()()?,
+                &get_symbol(&args, "left", &info)?,
+                &get_symbol(&args, "right", &info)?,
                 info,
             )
         })),
@@ -134,7 +147,7 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
             Ok(int32(db.options().interpreter_args.len() as i32))
         })),
         "argv" => Some(Box::new(|db, args, info| {
-            match args.get("it").unwrap()()? {
+            match get_symbol(&args, "it", &info)? {
                 PrimVal(I32(ind)) => Ok(string(&db.options().interpreter_args[ind as usize])),
                 value => Err(TError::TypeMismatch(
                     "Expected index to be of type i32".to_string(),

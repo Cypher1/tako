@@ -31,8 +31,9 @@ impl HasInfo for TError {
             TypeMismatch2(_, _, _, info) => info.clone(),
             RequirementFailure(info) => info.clone(),
             FailedParse(_, info) => info.clone(),
-            InternalError(_, node) => node.get_info(),
+            InternalError(_, info) => info.clone(),
             ExpectedLetNode(node) => node.get_info(),
+            UnknownPath(_, info) => info.clone(),
         }
     }
     fn get_mut_info(&mut self) -> &mut Info {
@@ -51,8 +52,9 @@ impl HasInfo for TError {
             TypeMismatch2(_, _, _, ref mut info) => info,
             RequirementFailure(ref mut info) => info,
             FailedParse(_, ref mut info) => info,
-            InternalError(_, ref mut node) => node.get_mut_info(),
+            InternalError(_, ref mut info) => info,
             ExpectedLetNode(ref mut node) => node.get_mut_info(),
+            UnknownPath(_, ref mut info) => info,
         }
     }
 }
@@ -252,6 +254,12 @@ impl std::fmt::Debug for Info {
             write!(f, " from {:?}", def)?;
         }
         Ok(())
+    }
+}
+
+impl std::fmt::Display for Info {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
     }
 }
 

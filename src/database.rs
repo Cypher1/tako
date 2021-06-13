@@ -305,7 +305,8 @@ fn build_with_gpp(db: &dyn Compiler, module: Path) -> Result<String, TError> {
         .output()
         .expect("could not run g++");
     if !output.status.success() {
-        let s = String::from_utf8(output.stderr).unwrap();
+        let s =
+            String::from_utf8(output.stderr).expect("Illegal utf8 stderr from backend compiler");
         use crate::ast::Info;
         return Err(TError::CppCompilerError(
             s,
@@ -313,7 +314,7 @@ fn build_with_gpp(db: &dyn Compiler, module: Path) -> Result<String, TError> {
             Info::default(),
         ));
     }
-    let s = String::from_utf8(output.stdout).unwrap();
+    let s = String::from_utf8(output.stdout).expect("Illegal utf8 stdout from backend compiler");
     eprintln!("{}", s);
     Ok(res)
 }

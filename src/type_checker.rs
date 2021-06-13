@@ -206,7 +206,9 @@ mod tests {
     use crate::ast::ToNode;
     use crate::database::DB;
 
-    fn assert_type(prog_str: &'static str, type_str: &'static str) {
+    type Test = Result<(), TError>;
+
+    fn assert_type(prog_str: &'static str, type_str: &'static str) -> Test {
         dbg!(&prog_str);
         dbg!(&type_str);
         use crate::ast::Visitor;
@@ -219,116 +221,118 @@ mod tests {
         db.set_file(type_filename.to_owned(), Ok(Arc::new(type_str.to_owned())));
         let type_module = db.module_name(type_filename.to_owned());
 
-        let ty = db.look_up_definitions(type_module).unwrap();
+        let ty = db.look_up_definitions(type_module)?;
         let result_type = Interpreter::default().visit_root(&db, &ty);
         if let Err(err) = &result_type {
             dbg!(format!("{}", &err));
         }
+        let result_type = result_type?;
 
         let prog_filename = "test/prog.tk";
         let prog_module = db.module_name(prog_filename.to_owned());
 
-        let prog = db.parse_str(prog_module, prog_str).unwrap();
+        let prog = db.parse_str(prog_module, prog_str)?;
 
         let env = Variable("test_program".to_string()); // TODO: Track the type env
-        let prog_ty = infer(&db, &prog, &env).unwrap();
+        let prog_ty = infer(&db, &prog, &env)?;
 
         eprintln!("got: {}", prog_ty.clone());
-        eprintln!("expected: {}", result_type.clone().unwrap());
+        eprintln!("expected: {}", &result_type);
         assert_eq!(
             format!("{}", &prog_ty),
-            format!("{}", result_type.clone().unwrap())
+            format!("{}", &result_type)
         );
-        assert_eq!(prog_ty, result_type.unwrap());
+        assert_eq!(prog_ty, result_type);
+        Ok(())
     }
 
     #[test]
-    fn infer_type_of_i32() {
+    fn infer_type_of_i32() -> Test {
         use crate::primitives::int32;
         let db = DB::default();
         let num = int32(23).to_node();
         let env = rec![]; // TODO: Track the type env
         assert_eq!(infer(&db, &num, &env), Ok(i32_type()));
-        assert_type("23", "I32");
+        assert_type("23", "I32")
     }
 
     #[test]
-    fn infer_type_of_str() {
-        assert_type("\"23\"", "String");
+    fn infer_type_of_str() -> Test {
+        assert_type("\"23\"", "String")
     }
 
     #[test]
-    fn infer_type_of_let_i32() {
-        assert_type("x=12", "(x=I32)");
+    fn infer_type_of_let_i32() -> Test {
+        assert_type("x=12", "(x=I32)")
     }
 
     // #[test]
-    fn infer_type_of_let_string_to_i32() {
-        assert_type("x(s: String)=12", "(x=(s=String)->I32)");
+    fn infer_type_of_let_string_to_i32() -> Test {
+        assert_type("x(s: String)=12", "(x=(s=String)->I32)")
     }
 
     #[test]
-    fn infer_type_of_sym_i32() {
-        assert_type("x=12;x", "I32");
+    fn infer_type_of_sym_i32() -> Test {
+        assert_type("x=12;x", "I32")
     }
 
     #[test]
-    fn infer_type_of_sym_str() {
-        assert_type("x=\"12\";x", "String");
+    fn infer_type_of_sym_str() -> Test {
+        assert_type("x=\"12\";x", "String")
     }
 
     //#[test]
-    fn infer_type_of_pair_str_i32() {
-        assert_type("(\"12\",23)", "(String, I32)");
+    fn infer_type_of_pair_str_i32() -> Test {
+        assert_type("(\"12\",23)", "(String, I32)")
     }
 
     #[test]
-    fn infer_type_of_sym_with_extra_lets_i32() {
-        assert_type("x=12,y=4;x", "I32");
+    fn infer_type_of_sym_with_extra_lets_i32() -> Test {
+        assert_type("x=12,y=4;x", "I32")
     }
 
     #[test]
-    fn infer_type_of_sym_with_struct_lets_i32() {
-        assert_type("x=12,y=4,x", "(x=I32,y=I32,it=I32)");
+    fn infer_type_of_sym_with_struct_lets_i32() -> Test {
+        assert_type("x=12,y=4,x", "(x=I32,y=I32,it=I32)")
     }
 
     // #[test]
-    fn infer_type_of_sym_without_let() {
-        assert_type("x", "test_program |- x |- test_program.x");
+    fn infer_type_of_sym_without_let() -> Test {
+        assert_type("x", "test_program |- x |- test_program.x")
     }
 
     // #[test]
-    fn infer_type_of_id() {
-        assert_type("{x}", "a|-(x=a) -> a");
+    fn infer_type_of_id() -> Test {
+        assert_type("{x}", "a|-(x=a) -> a")
     }
 
     #[test]
-    fn infer_type_of_id_apply() {
-        assert_type("{x}(x=12)", "I32");
+    fn infer_type_of_id_apply() -> Test {
+        assert_type("{x}(x=12)", "I32")
     }
 
     #[test]
-    fn infer_type_of_id_apply_it_arg() {
-        assert_type("{it}(12)", "I32");
+    fn infer_type_of_id_apply_it_arg() -> Test {
+        assert_type("{it}(12)", "I32")
     }
 
     #[test]
-    fn infer_type_of_id_apply_explicit_it_arg() {
-        assert_type("{it}(it=12)", "I32");
+    fn infer_type_of_id_apply_explicit_it_arg() -> Test {
+        assert_type("{it}(it=12)", "I32")
     }
 
     #[test]
-    fn infer_type_of_plus_expr() {
-        assert_type("12+32", "I32");
+    fn infer_type_of_plus_expr() -> Test {
+        assert_type("12+32", "I32")
     }
 
     #[test]
-    fn infer_type_of_argc() {
-        assert_type("argc", "I32");
+    fn infer_type_of_argc() -> Test {
+        assert_type("argc", "I32")
     }
 
     #[test]
-    fn infer_type_of_argv() {
-        assert_type("argv", "(it=I32) -> String");
+    fn infer_type_of_argv() -> Test {
+        assert_type("argv", "(it=I32) -> String")
     }
 }
