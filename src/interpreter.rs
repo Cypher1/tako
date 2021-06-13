@@ -281,9 +281,14 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
                     kvs.push(format!("{} = {}", k, v))
                 }
                 eprintln!("variable {}, state: {}", &name, &kvs.join(","));
-                return state.last().expect("Stack frame missing").get(name).cloned().ok_or_else(|| {
-                    TError::OutOfScopeTypeVariable(name.to_string(), Info::default())
-                }); // TODO: Get some info?
+                return state
+                    .last()
+                    .expect("Stack frame missing")
+                    .get(name)
+                    .cloned()
+                    .ok_or_else(|| {
+                        TError::OutOfScopeTypeVariable(name.to_string(), Info::default())
+                    }); // TODO: Get some info?
             }
             Product(tys) => {
                 let mut new_tys = set![];
@@ -392,7 +397,9 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
                         }
                         let frame = || {
                             let mut frame_vals: HashMap<String, Box<dyn Fn() -> Res>> = map!();
-                            for (name, val) in state.last().expect("Stack frame missing").clone().iter() {
+                            for (name, val) in
+                                state.last().expect("Stack frame missing").clone().iter()
+                            {
                                 let val = val.clone();
                                 frame_vals
                                     .insert(name.to_string(), Box::new(move || Ok(val.clone())));
@@ -467,7 +474,10 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
 
         if expr.args.is_some() {
             let val = Val::Lambda(expr.value.clone());
-            state.last_mut().expect("Stack frame missing").insert(expr.name.clone(), val.clone());
+            state
+                .last_mut()
+                .expect("Stack frame missing")
+                .insert(expr.name.clone(), val.clone());
             return Ok(val);
         }
         // Add a new scope

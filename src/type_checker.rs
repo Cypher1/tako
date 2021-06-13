@@ -238,10 +238,7 @@ mod tests {
 
         eprintln!("got: {}", prog_ty.clone());
         eprintln!("expected: {}", &result_type);
-        assert_eq!(
-            format!("{}", &prog_ty),
-            format!("{}", &result_type)
-        );
+        assert_eq!(format!("{}", &prog_ty), format!("{}", &result_type));
         assert_eq!(prog_ty, result_type);
         Ok(())
     }

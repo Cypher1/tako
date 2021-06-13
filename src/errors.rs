@@ -40,7 +40,7 @@ pub enum TError {
     RequirementFailure(Info),
 
     #[error("parse failed, {0} at {1}")]
-    FailedParse(String, Info),
+    ParseError(String, Info),
     #[error("internal error `{0}` at {1}")]
     InternalError(String, Info),
 
