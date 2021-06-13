@@ -67,11 +67,10 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
                 ))
             }
             TokenType::CloseBracket => {
-                panic!(
-                    "Unexpected close bracket {}: {:?}",
-                    head.value,
-                    head.get_info()
-                );
+                Err(TError::FailedParse(
+                        format!("Unexpected close bracket {}", head.value),
+                        head.get_info()
+                ))
             }
             TokenType::OpenBracket => {
                 let (inner, mut new_toks) = expr(db, toks, 0)?;
@@ -91,15 +90,21 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
                             ("[", "]") => {}
                             ("{", "}") => {}
                             (open, chr) => {
-                                panic!(
-                                    "Unexpected closing bracket for {}, found {} at {:?}.",
-                                    open, chr, pos
-                                );
+                                return Err(TError::FailedParse(
+                                    format!(
+                                        "Unexpected closing bracket for {}, found {}",
+                                        open, chr
+                                    ),
+                                    head.get_info()
+                                ));
                             }
                         };
                     }
                     (open, chr) => {
-                        panic!("Unclosed bracket {} found {:?}", open, chr);
+                        return Err(TError::FailedParse(
+                            format!("Unclosed bracket {} found {:?}", open, chr),
+                            head.get_info()
+                        ));
                     }
                 }
                 new_toks.pop_front();
@@ -123,7 +128,10 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
                 ))
             }
             TokenType::Unknown | TokenType::Whitespace => {
-                panic!("Lexer should not produce unknown or whitespace")
+                return Err(TError::FailedParse(
+                    "Lexer should not produce unknown or whitespace".to_string(),
+                    head.get_info()
+                ));
             }
         }
     } else {
