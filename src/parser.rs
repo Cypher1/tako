@@ -125,12 +125,10 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
                     toks,
                 ))
             }
-            TokenType::Unknown | TokenType::Whitespace => {
-                Err(TError::ParseError(
-                    "Lexer should not produce unknown or whitespace".to_string(),
-                    head.get_info(),
-                ))
-            }
+            TokenType::Unknown | TokenType::Whitespace => Err(TError::ParseError(
+                "Lexer should not produce unknown or whitespace".to_string(),
+                head.get_info(),
+            )),
         }
     } else {
         Ok((
@@ -295,12 +293,10 @@ fn led(
                     new_toks,
                 ))
             }
-            TokenType::CloseBracket => {
-                Err(TError::ParseError(
-                    "Unexpected close bracket".to_string(),
-                    head.get_info(),
-                ))
-            }
+            TokenType::CloseBracket => Err(TError::ParseError(
+                "Unexpected close bracket".to_string(),
+                head.get_info(),
+            )),
             TokenType::OpenBracket => {
                 if head.value.as_str() == "("
                     && toks.front().map(|t| &t.value) == Some(&")".to_string())
@@ -361,12 +357,10 @@ fn led(
                     new_toks,
                 ))
             }
-            TokenType::Unknown | TokenType::Whitespace => {
-                Err(TError::ParseError(
-                    "Lexer should not produce unknown or whitespace".to_string(),
-                    head.get_info(),
-                ))
-            }
+            TokenType::Unknown | TokenType::Whitespace => Err(TError::ParseError(
+                "Lexer should not produce unknown or whitespace".to_string(),
+                head.get_info(),
+            )),
         },
     }
 }
