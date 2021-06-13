@@ -1,14 +1,23 @@
 #![allow(unused)]
+#[cfg(feature = "bench")]
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
+#[cfg(feature = "bench")]
 use takolib::cli_options::Options;
+#[cfg(feature = "bench")]
 use takolib::database::Compiler;
+#[cfg(feature = "bench")]
 use takolib::database::DB;
+#[cfg(feature = "bench")]
 use takolib::parser::parse_string;
+#[cfg(feature = "bench")]
 use takolib::primitives::Val::Variable;
+#[cfg(feature = "bench")]
 use takolib::type_checker::infer;
 
+#[cfg(feature = "bench")]
 use std::sync::Arc;
 
+#[cfg(feature = "bench")]
 pub fn criterion_benchmark(c: &mut Criterion) {
     let module = vec![];
 
@@ -54,5 +63,12 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     );*/
 }
 
+#[cfg(feature = "bench")]
 criterion_group!(benches, criterion_benchmark);
+#[cfg(feature = "bench")]
 criterion_main!(benches);
+
+#[cfg(not(feature = "bench"))]
+fn main() {
+    println!("Retry with '--features=bench' to run benchmarks");
+}
