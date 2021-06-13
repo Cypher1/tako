@@ -4,8 +4,8 @@ use takolib::cli_options::Options;
 use takolib::database::Compiler;
 use takolib::database::DB;
 use takolib::parser::parse_string;
-use takolib::type_checker::infer;
 use takolib::primitives::Val::Variable;
+use takolib::type_checker::infer;
 
 use std::sync::Arc;
 
