@@ -89,15 +89,16 @@ fn factor_out(val: Val, reduction: &Val) -> Val {
     }
 }
 
-fn cancel_neighbours(mut tys: TypeSet) -> TypeSet {
-    for ty in tys.clone().iter() {
+fn cancel_neighbours(tys: TypeSet) -> TypeSet {
+    let mut res = tys.clone();
+    for ty in tys.iter() {
         let mut simpl_tys = set![];
-        for other in tys.iter().cloned() {
+        for other in res.iter().cloned() {
             simpl_tys.insert(factor_out(other, &ty));
         }
-        tys = simpl_tys;
+        res = simpl_tys;
     }
-    tys
+    res
 }
 
 fn merge_bit_pattern(
@@ -175,7 +176,7 @@ impl TypeGraph {
         curr
     }
 
-    pub fn get_id_for_path(&mut self, path: &Path) -> Id {
+    pub fn get_id_for_path(&mut self, path: PathRef) -> Id {
         let id = self.symbols.get(path);
         if let Some(id) = id {
             *id
@@ -186,7 +187,7 @@ impl TypeGraph {
         }
     }
 
-    pub fn get_type(&self, path: &Path) -> Result<Val, TError> {
+    pub fn get_type(&self, path: PathRef) -> Result<Val, TError> {
         let id = self.symbols.get(path); // TODO: Use get_id_for_path?
         let ty = id.and_then(|id| self.types.get(id));
         if let Some(ty) = ty {
@@ -423,7 +424,7 @@ impl TypeGraph {
         Ok(())
     }
 
-    pub fn require_assignable(&mut self, path: &Path, ty: &Val) -> Result<(), TError> {
+    pub fn require_assignable(&mut self, path: PathRef, ty: &Val) -> Result<(), TError> {
         let id = self.get_id_for_path(path);
         self.require_assignable_for_id(&id, ty)
     }
@@ -432,7 +433,7 @@ impl TypeGraph {
 #[cfg(test)]
 mod tests {
     use super::{Id, TypeGraph};
-    use crate::ast::{Path, Symbol::*};
+    use crate::ast::{Path, PathRef, Symbol::*};
     use crate::errors::TError;
     use crate::primitives::{
         bit_type, boolean, byte_type, i32_type, int32, number_type, quad_type, record, string,
@@ -442,7 +443,7 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     impl TypeGraph {
-        fn id_for_path(&mut self, path: &Path) -> Option<&Id> {
+        fn id_for_path(&mut self, path: PathRef) -> Option<&Id> {
             self.symbols.get(path).clone()
         }
     }
