@@ -444,7 +444,7 @@ mod tests {
 
     impl TypeGraph {
         fn id_for_path(&mut self, path: PathRef) -> Option<&Id> {
-            self.symbols.get(path).clone()
+            self.symbols.get(path)
         }
     }
 
@@ -510,7 +510,7 @@ mod tests {
 
     #[test]
     fn normalize_type_pair_bit_to_pair_bit() -> Test {
-        let pair_bit: TypeG = || Ok(record(vec![bit_type(), bit_type()])?);
+        let pair_bit: TypeG = || record(vec![bit_type(), bit_type()]);
         let mut tgb = TypeGraph::default();
         assert_eq!(tgb.normalize(pair_bit()?)?, pair_bit()?);
         Ok(())
@@ -526,7 +526,7 @@ mod tests {
 
     #[test]
     fn normalize_type_bit_trit_to_bit_trit() -> Test {
-        let bit_trit: TypeG = || Ok(record(vec![bit_type(), trit_type()])?);
+        let bit_trit: TypeG = || record(vec![bit_type(), trit_type()]);
         let mut tgb = TypeGraph::default();
         assert_eq!(tgb.normalize(bit_trit()?)?, bit_trit()?);
         Ok(())
@@ -534,7 +534,7 @@ mod tests {
 
     #[test]
     fn normalize_type_trit_bit_to_trit_bit() -> Test {
-        let trit_bit: TypeG = || Ok(record(vec![bit_type(), trit_type()])?);
+        let trit_bit: TypeG = || record(vec![bit_type(), trit_type()]);
         let mut tgb = TypeGraph::default();
         assert_eq!(tgb.normalize(trit_bit()?)?, trit_bit()?);
         Ok(())
@@ -542,7 +542,7 @@ mod tests {
 
     #[test]
     fn normalize_type_trit_xor_bit_to_trit_xor_bit() -> Test {
-        let trit_xor_bit: TypeG = || Ok(sum(vec![bit_type(), trit_type()])?);
+        let trit_xor_bit: TypeG = || sum(vec![bit_type(), trit_type()]);
         let mut tgb = TypeGraph::default();
         assert_eq!(tgb.normalize(trit_xor_bit()?)?, trit_xor_bit()?);
         Ok(())
@@ -550,17 +550,17 @@ mod tests {
 
     // #[test]
     fn normalize_type_trit_or_bit_to_simple_trit() -> Test {
-        let trit_or_bit: TypeG = || Ok(Union(set![bit_type(), trit_type()]));
+        let trit_or_bit = || Union(set![bit_type(), trit_type()]);
         let mut tgb = TypeGraph::default();
-        assert_eq!(tgb.normalize(trit_or_bit()?)?, trit_type());
+        assert_eq!(tgb.normalize(trit_or_bit())?, trit_type());
         Ok(())
     }
 
     // #[test]
     fn normalize_type_trit_or_quad_to_simple_quad() -> Test {
-        let trit_or_quad: TypeG = || Ok(Union(set![quad_type(), trit_type()]));
+        let trit_or_quad = || Union(set![quad_type(), trit_type()]);
         let mut tgb = TypeGraph::default();
-        assert_eq!(tgb.normalize(trit_or_quad()?)?, quad_type());
+        assert_eq!(tgb.normalize(trit_or_quad())?, quad_type());
         Ok(())
     }
 
@@ -724,11 +724,11 @@ mod tests {
     fn unifies_trit_or_bit_in_types() -> Test {
         let mut tgb = TypeGraph::default();
         let path = test_path();
-        let trit_or_bit: TypeG = || Ok(Union(set![bit_type(), trit_type()]));
-        tgb.require_assignable(&path, &trit_or_bit()?)?;
-        tgb.require_assignable(&path, &trit_or_bit()?)?;
+        let trit_or_bit = || Union(set![bit_type(), trit_type()]);
+        tgb.require_assignable(&path, &trit_or_bit())?;
+        tgb.require_assignable(&path, &trit_or_bit())?;
 
-        let norm = tgb.normalize(trit_or_bit()?)?;
+        let norm = tgb.normalize(trit_or_bit())?;
         let ty = tgb.get_type(&path)?;
         assert_eq!(ty, norm);
         Ok(())
@@ -1073,7 +1073,7 @@ mod tests {
 
     #[test]
     fn assignment_to_equal_type_pair_bit() -> Test {
-        let pair_bit: TypeG = || Ok(record(vec![bit_type(), bit_type()])?);
+        let pair_bit: TypeG = || record(vec![bit_type(), bit_type()]);
         let mut tgb = TypeGraph::default();
         assert!(tgb.is_assignable_to(&pair_bit()?, &pair_bit()?)?);
         Ok(())

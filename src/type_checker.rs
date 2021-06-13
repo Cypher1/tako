@@ -236,7 +236,7 @@ mod tests {
         let env = Variable("test_program".to_string()); // TODO: Track the type env
         let prog_ty = infer(&db, &prog, &env)?;
 
-        eprintln!("got: {}", prog_ty.clone());
+        eprintln!("got: {}", &prog_ty);
         eprintln!("expected: {}", &result_type);
         assert_eq!(format!("{}", &prog_ty), format!("{}", &result_type));
         assert_eq!(prog_ty, result_type);
