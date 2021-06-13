@@ -57,3 +57,10 @@ impl From<std::fmt::Error> for TError {
         InternalError(error.to_string(), Info::default())
     }
 }
+
+impl From<std::num::ParseIntError> for TError {
+    fn from(error: std::num::ParseIntError) -> Self {
+        use TError::FailedParse;
+        FailedParse(error.to_string(), Info::default())
+    }
+}

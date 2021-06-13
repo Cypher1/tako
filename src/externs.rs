@@ -121,7 +121,7 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
         "parse_i32" => Some(Box::new(|_, args, info| {
             let val = get_symbol(&args, "it", &info)?;
             match val {
-                PrimVal(Str(n)) => Ok(int32(n.parse::<i32>().unwrap())),
+                PrimVal(Str(n)) => Ok(int32(n.parse::<i32>()?)),
                 s => Err(TError::TypeMismatch(
                     "Expected parse_i32 argument to be a string encoded i32".to_string(),
                     Box::new(s),
