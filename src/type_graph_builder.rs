@@ -99,4 +99,35 @@ impl Visitor<State, (), TypeGraph, Path> for TypeGraphBuilder {
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use super::*;
+    use crate::type_graph::TypeGraph;
+    use crate::errors::TError;
+    use crate::primitives::void_type;
+    use pretty_assertions::assert_eq;
+    use crate::database::{Compiler, DB};
+    use crate::cli_options::Options;
+    use std::sync::Arc;
+
+    type Test = Result<(), TError>;
+
+    const FILENAME: &str = "test.tk";
+
+    #[test]
+    fn type_of_empty_program_is_unit() -> Test {
+        let mut db = DB::default();
+        db.set_options(Options::default());
+        let s = "0";
+        db.set_file(FILENAME.to_owned(), Ok(Arc::new(s.to_string())));
+        let mut tgb = TypeGraphBuilder::default();
+
+        let module = db.module_name(FILENAME.to_owned());
+
+        let tg: TypeGraph = tgb.visit_root(&db, &module)?;
+
+        assert_eq!(tg.get_type(&[])?, void_type());
+
+        Ok(())
+    }
+
+}

@@ -469,8 +469,7 @@ pub fn parse(db: &dyn Compiler, module: PathRef) -> Result<Node, TError> {
 pub mod tests {
     use super::parse_string;
     use crate::ast::*;
-    use crate::database::Compiler;
-    use crate::database::DB;
+    use crate::database::{Compiler, DB};
     use crate::primitives::{int32, string};
 
     fn parse(contents: String) -> Node {
