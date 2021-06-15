@@ -377,6 +377,7 @@ impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Symbol::Anon() => write!(f, "?")?,
+            // TODO: Edge case exists here if two files with different extensions are used together
             Symbol::Named(name, _) => write!(f, "{}", name)?,
         }
         Ok(())
@@ -388,10 +389,13 @@ impl Symbol {
         Symbol::Named(name, None)
     }
     pub fn to_name(self: &Symbol) -> String {
+        format!("{}", &self)
+    }
+    pub fn to_filename(self: &Symbol) -> String {
         match self {
             Symbol::Anon() => "".to_owned(),
             // TODO: Edge case exists here if two files with different extensions are used together
-            Symbol::Named(name, _) => name.to_owned(),
+            Symbol::Named(name, ext) => format!("{}{}", name, ext.as_ref().map(|v|format!(".{}", v)).unwrap_or("".to_string())),
         }
     }
 }

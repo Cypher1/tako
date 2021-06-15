@@ -209,6 +209,7 @@ fn prim_or(l: &Val, r: &Val, info: Info) -> Res {
 }
 
 fn prim_type_arrow(l: Val, r: Val, _info: Info) -> Res {
+    // TODO: add existential and forall quantification operators
     Ok(Val::Function {
         intros: dict!(),
         results: Box::new(r),
