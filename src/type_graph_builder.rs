@@ -1,7 +1,8 @@
 use crate::ast::*;
 use crate::database::Compiler;
 use crate::errors::TError;
-use crate::primitives::{Pack, Val, Val::*};
+use crate::primitives::{Prim::*, Val::*, *};
+use std::collections::BTreeSet;
 
 use crate::type_graph::*;
 
@@ -31,7 +32,8 @@ impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
             path: module.clone(),
             graph: TypeGraph::default(),
         };
-        self.visit(db, &mut state, &expr)?;
+        let ty = self.visit(db, &mut state, &expr)?;
+        state.graph.require_assignable(&state.path, &ty)?;
         Ok(state.graph)
     }
 
@@ -47,9 +49,40 @@ impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
         Ok(Variable(format!("typeof({})", expr.name)))
     }
 
-    fn visit_val(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Val) -> Res {
-        // TODO: calculate type
-        Ok(Variable(format!("typeof({})", expr)))
+    fn visit_val(&mut self, db: &dyn Compiler, state: &mut State, expr: &Val) -> Res {
+        match expr {
+            Product(vals) => {
+                let mut tys: BTreeSet<Val> = set![];
+                for val in vals.iter() {
+                    tys.insert(self.visit_val(db, state, &val)?);
+                }
+                Ok(Product(tys))
+            }
+            Union(vals) => {
+                let mut tys: BTreeSet<Val> = set![];
+                for val in vals.iter() {
+                    tys.insert(self.visit_val(db, state, &val)?);
+                }
+                Ok(Union(tys))
+            }
+            PrimVal(I32(_)) => Ok(i32_type()),
+            PrimVal(Bool(_)) => Ok(bit_type()),
+            PrimVal(Str(_)) => Ok(string_type()),
+            Lambda(node) => {
+                state.path.push(Symbol::Anon());
+                let ty = self.visit(db, state, &node);
+                state.path.pop();
+                ty
+            }
+            Struct(vals) => {
+                let mut tys: Vec<(String, Val)> = vec![];
+                for val in vals.iter() {
+                    tys.push((val.0.clone(), self.visit_val(db, state, &val.1)?));
+                }
+                Ok(Struct(tys))
+            }
+            _ty => Ok(Val::Variable("Type".to_string())),
+        }
     }
 
     fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
@@ -81,7 +114,7 @@ impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
         if db.debug_level() > 1 {
             eprintln!("visiting {} {}", path_to_string(&state.path), &expr.name);
         }
-        let path_name = Symbol::new(expr.name.clone());
+        let path_name = Symbol::new(&expr.name);
         state.path.push(path_name);
         let args = if let Some(args) = &expr.args {
             let mut arg_tys = vec![];
@@ -94,7 +127,6 @@ impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
             None
         };
         let val_ty = self.visit(db, state, &expr.value)?;
-        state.path.pop();
         // TODO: consider pushing args into the ty via the Function ty.
         // TODO: put the type in the type graph
         let ty = if let Some(args) = args {
@@ -106,6 +138,8 @@ impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
         } else {
             val_ty
         };
+        state.graph.require_assignable(&state.path, &ty)?;
+        state.path.pop();
         Ok(Struct(vec![(expr.name.clone(), ty)]))
     }
 
@@ -128,14 +162,14 @@ impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::type_graph::TypeGraph;
-    use crate::errors::TError;
-    use crate::primitives::void_type;
-    use pretty_assertions::assert_eq;
-    use crate::database::{Compiler, DB};
-    use crate::cli_options::Options;
-    use std::sync::Arc;
     use crate::ast::Symbol;
+    use crate::cli_options::Options;
+    use crate::database::{Compiler, DB};
+    use crate::errors::TError;
+    use crate::primitives::i32_type;
+    use crate::type_graph::TypeGraph;
+    use pretty_assertions::assert_eq;
+    use std::sync::Arc;
 
     type Test = Result<(), TError>;
 
@@ -148,7 +182,7 @@ mod tests {
     }
 
     #[test]
-    fn type_of_empty_program_is_unit() -> Test {
+    fn type_of_int_literal_is_i32() -> Test {
         let mut db = DB::default();
         db.set_options(Options::default());
         let s = "0";
@@ -159,9 +193,25 @@ mod tests {
 
         let tg: TypeGraph = tgb.visit_root(&db, &module)?;
 
-        assert_eq!(tg.get_type(&[module_root()])?, void_type());
+        assert_eq!(tg.get_type(&[module_root()])?, i32_type());
 
         Ok(())
     }
 
+    #[test]
+    fn type_of_variable_of_int_literal_is_i32() -> Test {
+        let mut db = DB::default();
+        db.set_options(Options::default());
+        let s = "x=0";
+        db.set_file(filename(), Ok(Arc::new(s.to_string())));
+        let mut tgb = TypeGraphBuilder::default();
+
+        let module = db.module_name(filename());
+
+        let tg: TypeGraph = tgb.visit_root(&db, &module)?;
+
+        assert_eq!(tg.get_type(&[module_root(), Symbol::new("x")])?, i32_type());
+
+        Ok(())
+    }
 }

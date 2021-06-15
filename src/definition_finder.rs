@@ -50,7 +50,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
             if let Some(Symbol::Anon()) = search.last() {
                 search.pop(); // Cannot look inside an 'anon'.
             }
-            search.push(Symbol::new(expr.name.clone()));
+            search.push(Symbol::new(&expr.name));
             let node = state.table.find_mut(&search);
             match node {
                 Some(node) => {
@@ -100,7 +100,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
             .map(|arg| {
                 let val = self.visit_let(db, state, &arg)?.as_let();
                 let mut search = state.path.clone();
-                search.push(Symbol::new(arg.name.clone()));
+                search.push(Symbol::new(&arg.name));
                 let node = state.table.find_mut(&search);
                 if let Some(node) = node {
                     node.value.uses.insert(state.path.clone());
@@ -135,7 +135,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
         if db.debug_level() > 1 {
             eprintln!("visiting {} {}", path_to_string(&state.path), &expr.name);
         }
-        let path_name = Symbol::new(expr.name.clone());
+        let path_name = Symbol::new(&expr.name);
         state.path.push(path_name);
         let args = if let Some(args) = &expr.args {
             Some(

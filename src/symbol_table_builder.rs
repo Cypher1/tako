@@ -74,7 +74,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
 
         let mut table = Table::default();
         let mut main_at = module.clone();
-        main_at.push(Symbol::new("main".to_string()));
+        main_at.push(Symbol::new("main"));
 
         let main_symb = table.get_mut(&main_at);
         main_symb.value.uses.insert(module.clone());
@@ -84,7 +84,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
         let globals: Vec<Path> = db
             .get_extern_names()?
             .iter()
-            .map(|x| vec![Symbol::new(x.to_string())])
+            .map(|x| vec![Symbol::new(x)])
             .collect();
         for global in globals {
             table.get_mut(&global);
@@ -138,7 +138,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
 
         // Visit definition.
         let mut info = expr.get_info();
-        state.path.push(Symbol::new(expr.name.clone()));
+        state.path.push(Symbol::new(&expr.name));
         info.defined_at = Some(state.path.clone());
         state.table.get_mut(&state.path);
 
@@ -160,7 +160,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
 
         // Visit definition.
         let mut info = expr.get_info();
-        state.path.push(Symbol::new(expr.name.clone()));
+        state.path.push(Symbol::new(&expr.name));
         info.defined_at = Some(state.path.clone());
         state.table.get_mut(&state.path);
 

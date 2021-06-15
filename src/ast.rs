@@ -385,8 +385,8 @@ impl fmt::Display for Symbol {
 }
 
 impl Symbol {
-    pub fn new(name: String) -> Symbol {
-        Symbol::Named(name, None)
+    pub fn new(name: &str) -> Symbol {
+        Symbol::Named(name.to_string(), None)
     }
     pub fn to_name(self: &Symbol) -> String {
         format!("{}", &self)
@@ -395,7 +395,13 @@ impl Symbol {
         match self {
             Symbol::Anon() => "".to_owned(),
             // TODO: Edge case exists here if two files with different extensions are used together
-            Symbol::Named(name, ext) => format!("{}{}", name, ext.as_ref().map(|v|format!(".{}", v)).unwrap_or("".to_string())),
+            Symbol::Named(name, ext) => format!(
+                "{}{}",
+                name,
+                ext.as_ref()
+                    .map(|v| format!(".{}", v))
+                    .unwrap_or("".to_string())
+            ),
         }
     }
 }
