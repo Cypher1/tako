@@ -600,26 +600,29 @@ mod tests {
     use crate::primitives::{boolean, int32, number_type, string, string_type};
     use Node::*;
 
-    #[test]
-    fn eval_num() {
+    fn get_db() -> DB {
         let mut db = DB::default();
         db.set_options(Options::default());
+        db
+    }
+
+    #[test]
+    fn eval_num() {
+        let db = &mut get_db();
         let tree = ValNode(int32(12), Info::default());
         assert_eq!(
-            Interpreter::default().visit(&db, &mut vec![], &tree),
+            Interpreter::default().visit(db, &mut vec![], &tree),
             Ok(int32(12))
         );
     }
 
-    fn eval_str(s: &str) -> Res {
+    fn eval_str(db: &mut DB, s: &str) -> Res {
         use std::sync::Arc;
-        let mut db = DB::default();
         let filename = "test/file.tk";
         let module_name = db.module_name(filename.to_owned());
         db.set_file(filename.to_owned(), Ok(Arc::new(s.to_string())));
-        db.set_options(Options::default().with_debug(3));
         let root = db.look_up_definitions(module_name)?;
-        Interpreter::default().visit_root(&db, &root)
+        Interpreter::default().visit_root(db, &root)
     }
 
     #[allow(dead_code)]
@@ -633,97 +636,112 @@ mod tests {
 
     #[test]
     fn parse_and_eval_bool() {
-        assert_eq!(eval_str("true"), Ok(boolean(true)));
+        let db = &mut get_db();
+        assert_eq!(eval_str(db, "true"), Ok(boolean(true)));
     }
 
     #[test]
     fn parse_and_eval_bool_and() {
-        assert_eq!(eval_str("true&&true"), Ok(boolean(true)));
-        assert_eq!(eval_str("false&&true"), Ok(boolean(false)));
-        assert_eq!(eval_str("true&&false"), Ok(boolean(false)));
-        assert_eq!(eval_str("false&&false"), Ok(boolean(false)));
+        let db = &mut get_db();
+        assert_eq!(eval_str(db, "true&&true"), Ok(boolean(true)));
+        assert_eq!(eval_str(db, "false&&true"), Ok(boolean(false)));
+        assert_eq!(eval_str(db, "true&&false"), Ok(boolean(false)));
+        assert_eq!(eval_str(db, "false&&false"), Ok(boolean(false)));
     }
 
     #[test]
     fn parse_and_eval_bool_or() {
-        assert_eq!(eval_str("true||true"), Ok(boolean(true)));
-        assert_eq!(eval_str("false||true"), Ok(boolean(true)));
-        assert_eq!(eval_str("true||false"), Ok(boolean(true)));
-        assert_eq!(eval_str("false||false"), Ok(boolean(false)));
+        let db = &mut get_db();
+        assert_eq!(eval_str(db, "true||true"), Ok(boolean(true)));
+        assert_eq!(eval_str(db, "false||true"), Ok(boolean(true)));
+        assert_eq!(eval_str(db, "true||false"), Ok(boolean(true)));
+        assert_eq!(eval_str(db, "false||false"), Ok(boolean(false)));
     }
 
     #[test]
     fn parse_and_eval_bool_eq() {
-        assert_eq!(eval_str("true==true"), Ok(boolean(true)));
-        assert_eq!(eval_str("false==true"), Ok(boolean(false)));
-        assert_eq!(eval_str("true==false"), Ok(boolean(false)));
-        assert_eq!(eval_str("false==false"), Ok(boolean(true)));
+        let db = &mut get_db();
+        assert_eq!(eval_str(db, "true==true"), Ok(boolean(true)));
+        assert_eq!(eval_str(db, "false==true"), Ok(boolean(false)));
+        assert_eq!(eval_str(db, "true==false"), Ok(boolean(false)));
+        assert_eq!(eval_str(db, "false==false"), Ok(boolean(true)));
     }
 
     #[test]
     fn parse_and_eval_i32() {
-        assert_eq!(eval_str("32"), Ok(int32(32)));
+        let db = &mut get_db();
+        assert_eq!(eval_str(db, "32"), Ok(int32(32)));
     }
 
     #[test]
     fn parse_and_eval_i32_eq() {
-        assert_eq!(eval_str("0==0"), Ok(boolean(true)));
-        assert_eq!(eval_str("-1==1"), Ok(boolean(false)));
-        assert_eq!(eval_str("1==123"), Ok(boolean(false)));
-        assert_eq!(eval_str("1302==1302"), Ok(boolean(true)));
+        let db = &mut get_db();
+        assert_eq!(eval_str(db, "0==0"), Ok(boolean(true)));
+        assert_eq!(eval_str(db, "-1==1"), Ok(boolean(false)));
+        assert_eq!(eval_str(db, "1==123"), Ok(boolean(false)));
+        assert_eq!(eval_str(db, "1302==1302"), Ok(boolean(true)));
     }
 
     #[test]
     fn parse_and_eval_i32_pow() {
-        assert_eq!(eval_str("2^3"), Ok(int32(8)));
-        assert_eq!(eval_str("3^2"), Ok(int32(9)));
-        assert_eq!(eval_str("-4^2"), Ok(int32(-16)));
-        assert_eq!(eval_str("(-4)^2"), Ok(int32(16)));
-        assert_eq!(eval_str("2^3^2"), Ok(int32(512)));
+        let db = &mut get_db();
+        assert_eq!(eval_str(db, "2^3"), Ok(int32(8)));
+        assert_eq!(eval_str(db, "3^2"), Ok(int32(9)));
+        assert_eq!(eval_str(db, "-4^2"), Ok(int32(-16)));
+        assert_eq!(eval_str(db, "(-4)^2"), Ok(int32(16)));
+        assert_eq!(eval_str(db, "2^3^2"), Ok(int32(512)));
     }
 
     #[test]
     fn parse_and_eval_str() {
-        assert_eq!(eval_str("\"32\""), Ok(string("32")));
+        let db = &mut get_db();
+        assert_eq!(eval_str(db, "\"32\""), Ok(string("32")));
     }
 
     #[test]
     fn parse_and_eval_let() {
-        assert_eq!(eval_str("x=3;x"), Ok(int32(3)));
+        let db = &mut get_db();
+        assert_eq!(eval_str(db, "x=3;x"), Ok(int32(3)));
     }
 
     #[test]
     fn parse_and_eval_let_with_args() {
-        assert_eq!(eval_str("x(it)=it*2;x(3)"), Ok(int32(6)));
+        let db = &mut get_db();
+        assert_eq!(eval_str(db, "x(it)=it*2;x(3)"), Ok(int32(6)));
     }
 
     #[test]
     fn parse_and_eval_i32_type() {
-        assert_eq!(eval_str("I32"), Ok(crate::primitives::i32_type()));
+        let db = &mut get_db();
+        assert_eq!(eval_str(db, "I32"), Ok(crate::primitives::i32_type()));
     }
 
     #[test]
     fn parse_and_eval_number_type() {
-        assert_eq!(eval_str("Number"), Ok(crate::primitives::number_type()));
+        let db = &mut get_db();
+        assert_eq!(eval_str(db, "Number"), Ok(crate::primitives::number_type()));
     }
 
     #[test]
     fn parse_and_eval_string_type() {
-        assert_eq!(eval_str("String"), Ok(crate::primitives::string_type()));
+        let db = &mut get_db();
+        assert_eq!(eval_str(db, "String"), Ok(crate::primitives::string_type()));
     }
 
     #[test]
     fn parse_and_eval_string_or_number_type() {
+        let db = &mut get_db();
         assert_eq!(
-            eval_str("String | Number"),
+            eval_str(db, "String | Number"),
             Ok(Union(set![number_type(), string_type()]))
         );
     }
 
     #[test]
     fn parse_and_eval_string_and_number_type() {
+        let db = &mut get_db();
         assert_eq!(
-            eval_str("String & Number"),
+            eval_str(db, "String & Number"),
             Ok(Product(set![number_type(), string_type()]))
         );
     }
@@ -731,8 +749,9 @@ mod tests {
     #[test]
     fn parse_and_eval_tagged_string_or_number_type() {
         use crate::primitives::*;
+        let db = &mut get_db();
         assert_eq!(
-            eval_str("String + I32"),
+            eval_str(db, "String + I32"),
             sum(vec![string_type(), i32_type()])
         );
     }
@@ -740,34 +759,42 @@ mod tests {
     #[test]
     fn parse_and_eval_string_times_number_type() {
         use crate::primitives::*;
+        let db = &mut get_db();
         assert_eq!(
-            eval_str("String * I32"),
+            eval_str(db, "String * I32"),
             record(vec![string_type(), i32_type()])
         );
     }
 
     #[test]
     fn parse_and_eval_struct_x4_y5_access_x() {
-        assert_eq!(eval_str("struct(x=4, y=5)(\"x\")"), Ok(int32(4)));
+        let db = &mut get_db();
+        assert_eq!(eval_str(db, "struct(x=4, y=5)(\"x\")"), Ok(int32(4)));
     }
 
     #[test]
     fn parse_and_eval_struct_x4_y5_access_y() {
-        assert_eq!(eval_str("struct(x=4, y=\"Hi\")(\"y\")"), Ok(string("Hi")));
+        let db = &mut get_db();
+        assert_eq!(
+            eval_str(db, "struct(x=4, y=\"Hi\")(\"y\")"),
+            Ok(string("Hi"))
+        );
     }
 
     #[test]
     fn parse_and_eval_struct_x4_y5() {
+        let db = &mut get_db();
         assert_eq!(
-            eval_str("\"\"++struct(x=4, y=\"Hi\")"),
+            eval_str(db, "\"\"++struct(x=4, y=\"Hi\")"),
             Ok(string("(((it==\'x\')-|4)?((it==\'y\')-|\'Hi\'))")) // Ok(Str("struct(x=4, y=\"Hi\")".to_string()))
         );
     }
 
     #[test]
     fn parse_and_eval_struct_empty() {
+        let db = &mut get_db();
         assert_eq!(
-            eval_str("struct()"),
+            eval_str(db, "struct()"),
             Ok(Lambda(Box::new(Product(set![]).into_node())))
         );
     }
@@ -776,12 +803,17 @@ mod tests {
     fn parse_and_eval_print() {
         use crate::primitives::Prim::BuiltIn;
         use crate::primitives::Val::PrimVal;
-        assert_eq!(eval_str("print"), Ok(PrimVal(BuiltIn("print".to_string()))));
+        let db = &mut get_db();
+        assert_eq!(
+            eval_str(db, "print"),
+            Ok(PrimVal(BuiltIn("print".to_string())))
+        );
     }
 
     #[test]
     fn tako_add_eq_rust_eq() {
         use rand::Rng;
+        let db = &mut get_db();
         let mut rng = rand::thread_rng();
         for _ in 0..100 {
             let num1: i32 = rng.gen();
@@ -789,7 +821,7 @@ mod tests {
             let res = num1.wrapping_add(num2);
             eprintln!("mul {:?} + {:?} = {:?}", num1, num2, res);
             assert_eq!(
-                eval_str(&format!("mul(x, y)=x+y;mul(x= {}, y= {})", num1, num2)),
+                eval_str(db, &format!("mul(x, y)=x+y;mul(x= {}, y= {})", num1, num2)),
                 Ok(int32(res))
             );
         }
@@ -798,6 +830,7 @@ mod tests {
     #[test]
     fn tako_mul_eq_rust_eq() {
         use rand::Rng;
+        let db = &mut get_db();
         let mut rng = rand::thread_rng();
         for _ in 0..100 {
             let num1: i32 = rng.gen();
@@ -805,7 +838,7 @@ mod tests {
             let res = num1.wrapping_mul(num2);
             eprintln!("mul {:?} * {:?} = {:?}", num1, num2, res);
             assert_eq!(
-                eval_str(&format!("mul(x, y)=x*y;mul(x= {}, y= {})", num1, num2)),
+                eval_str(db, &format!("mul(x, y)=x*y;mul(x= {}, y= {})", num1, num2)),
                 Ok(int32(res))
             );
         }
