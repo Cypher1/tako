@@ -376,7 +376,7 @@ pub enum Symbol {
 impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Symbol::Anon() => write!(f, "?")?,
+            Symbol::Anon() => write!(f, "_")?,
             // TODO: Edge case exists here if two files with different extensions are used together
             Symbol::Named(name, _) => write!(f, "{}", name)?,
         }
