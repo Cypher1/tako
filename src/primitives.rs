@@ -13,7 +13,7 @@ pub type Offset = usize;
 // A list of types with an offset to get to the first bit (used for padding, frequently 0).
 type Layout = Vec<Val>; // Use a deque
 pub type TypeSet = BTreeSet<Val>;
-type Pack = BTreeSet<(String, Val)>;
+pub type Pack = BTreeSet<(String, Val)>;
 pub type Frame = HashMap<String, Val>;
 
 #[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Hash)]

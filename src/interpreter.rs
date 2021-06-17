@@ -209,6 +209,7 @@ fn prim_or(l: &Val, r: &Val, info: Info) -> Res {
 }
 
 fn prim_type_arrow(l: Val, r: Val, _info: Info) -> Res {
+    // TODO: add existential and forall quantification operators
     Ok(Val::Function {
         intros: dict!(),
         results: Box::new(r),
@@ -591,13 +592,12 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use pretty_assertions::assert_eq;
 
-    use super::super::ast::*;
-    use super::super::cli_options::Options;
-    use super::super::database::{Compiler, DB};
-    use super::super::primitives::{boolean, int32, number_type, string, string_type, Val::*};
-    use super::{Interpreter, Res};
+    use crate::cli_options::Options;
+    use crate::database::{Compiler, DB};
+    use crate::primitives::{boolean, int32, number_type, string, string_type};
     use Node::*;
 
     #[test]
