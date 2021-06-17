@@ -400,7 +400,7 @@ impl Symbol {
                 name,
                 ext.as_ref()
                     .map(|v| format!(".{}", v))
-                    .unwrap_or("".to_string())
+                    .unwrap_or_else(|| "".to_string())
             ),
         }
     }

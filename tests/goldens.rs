@@ -99,10 +99,7 @@ fn compile(file: &str) -> Test {
 }
 
 fn compile_matching_golden(golden: &str, file: &str) -> Test {
-    test_expecting(
-        OutputFile(golden.to_string()),
-        vec![file]
-    )
+    test_expecting(OutputFile(golden.to_string()), vec![file])
 }
 
 fn run(file: &str) -> Test {
@@ -168,42 +165,27 @@ fn comment() -> Test {
 
 #[test]
 fn compile_1_plus_2() -> Test {
-    compile_matching_golden(
-        "goldens/examples_1_plus_2.cc",
-        "examples/1_plus_2.tk",
-    )
+    compile_matching_golden("goldens/examples_1_plus_2.cc", "examples/1_plus_2.tk")
 }
 
 #[test]
 fn compile_arguments() -> Test {
-    compile_matching_golden(
-        "goldens/examples_arguments.cc",
-        "examples/arguments.tk",
-    )
+    compile_matching_golden("goldens/examples_arguments.cc", "examples/arguments.tk")
 }
 
 #[test]
 fn compile_code_reuse() -> Test {
-    compile_matching_golden(
-        "goldens/examples_code_reuse.cc",
-        "examples/code_reuse.tk",
-    )
+    compile_matching_golden("goldens/examples_code_reuse.cc", "examples/code_reuse.tk")
 }
 
 #[test]
 fn compile_comment() -> Test {
-    compile_matching_golden(
-        "goldens/examples_comment.cc",
-        "examples/comment.tk",
-    )
+    compile_matching_golden("goldens/examples_comment.cc", "examples/comment.tk")
 }
 
 #[test]
 fn compile_div() -> Test {
-    compile_matching_golden(
-        "goldens/examples_div.cc",
-        "examples/div.tk",
-    )
+    compile_matching_golden("goldens/examples_div.cc", "examples/div.tk")
 }
 
 #[test]
@@ -216,10 +198,7 @@ fn compile_empty_def_args() -> Test {
 
 #[test]
 fn compile_hello_name() -> Test {
-    compile_matching_golden(
-        "goldens/examples_hello_name.cc",
-        "examples/hello_name.tk",
-    )
+    compile_matching_golden("goldens/examples_hello_name.cc", "examples/hello_name.tk")
 }
 
 #[test]
@@ -232,18 +211,12 @@ fn compile_higher_order() -> Test {
 
 #[test]
 fn compile_ignored_let() -> Test {
-    compile_matching_golden(
-        "goldens/examples_ignored_let.cc",
-        "examples/ignored_let.tk",
-    )
+    compile_matching_golden("goldens/examples_ignored_let.cc", "examples/ignored_let.tk")
 }
 
 #[test]
 fn compile_lambda() -> Test {
-    compile_matching_golden(
-        "goldens/examples_lambda.cc",
-        "examples/lambda.tk",
-    )
+    compile_matching_golden("goldens/examples_lambda.cc", "examples/lambda.tk")
 }
 
 #[test]
@@ -264,18 +237,12 @@ fn compile_multi_comment_nested() -> Test {
 
 #[test]
 fn compile_neg() -> Test {
-    compile_matching_golden(
-        "goldens/examples_neg.cc",
-        "examples/neg.tk",
-    )
+    compile_matching_golden("goldens/examples_neg.cc", "examples/neg.tk")
 }
 
 #[test]
 fn compile_nested() -> Test {
-    compile_matching_golden(
-        "goldens/examples_nested.cc",
-        "examples/nested.tk",
-    )
+    compile_matching_golden("goldens/examples_nested.cc", "examples/nested.tk")
 }
 
 #[test]
@@ -304,10 +271,7 @@ fn compile_non_overlapping_anons() -> Test {
 
 #[test]
 fn compile_not() -> Test {
-    compile_matching_golden(
-        "goldens/examples_not.cc",
-        "examples/not.tk",
-    )
+    compile_matching_golden("goldens/examples_not.cc", "examples/not.tk")
 }
 
 #[test]
@@ -328,26 +292,17 @@ fn compile_order_of_ops() -> Test {
 
 #[test]
 fn compile_paren() -> Test {
-    compile_matching_golden(
-        "goldens/examples_paren.cc",
-        "examples/paren.tk",
-    )
+    compile_matching_golden("goldens/examples_paren.cc", "examples/paren.tk")
 }
 
 #[test]
 fn compile_pow() -> Test {
-    compile_matching_golden(
-        "goldens/examples_pow.cc",
-        "examples/pow.tk",
-    )
+    compile_matching_golden("goldens/examples_pow.cc", "examples/pow.tk")
 }
 
 #[test]
 fn compile_pow_twice() -> Test {
-    compile_matching_golden(
-        "goldens/examples_pow_twice.cc",
-        "examples/pow_twice.tk",
-    )
+    compile_matching_golden("goldens/examples_pow_twice.cc", "examples/pow_twice.tk")
 }
 
 #[test]
@@ -357,50 +312,32 @@ fn compile_shadowing() -> Test {
 
 #[test]
 fn compile_simple() -> Test {
-    compile_matching_golden(
-        "goldens/examples_simple.cc",
-        "examples/simple.tk",
-    )
+    compile_matching_golden("goldens/examples_simple.cc", "examples/simple.tk")
 }
 
 #[test]
 fn compile_simple_call() -> Test {
-    compile_matching_golden(
-        "goldens/examples_simple_call.cc",
-        "examples/simple_call.tk",
-    )
+    compile_matching_golden("goldens/examples_simple_call.cc", "examples/simple_call.tk")
 }
 
 #[test]
 fn compile_sub() -> Test {
-    compile_matching_golden(
-        "goldens/examples_sub.cc",
-        "examples/sub.tk",
-    )
+    compile_matching_golden("goldens/examples_sub.cc", "examples/sub.tk")
 }
 
 #[test]
 fn compile_three_vars() -> Test {
-    compile_matching_golden(
-        "goldens/examples_three_vars.cc",
-        "examples/three_vars.tk",
-    )
+    compile_matching_golden("goldens/examples_three_vars.cc", "examples/three_vars.tk")
 }
 
 #[test]
 fn compile_tmp() -> Test {
-    compile_matching_golden(
-        "goldens/examples_tmp.cc",
-        "examples/tmp.tk",
-    )
+    compile_matching_golden("goldens/examples_tmp.cc", "examples/tmp.tk")
 }
 
 #[test]
 fn compile_x_plus_1() -> Test {
-    compile_matching_golden(
-        "goldens/examples_x_plus_1.cc",
-        "examples/x_plus_1.tk",
-    )
+    compile_matching_golden("goldens/examples_x_plus_1.cc", "examples/x_plus_1.tk")
 }
 
 #[test]
