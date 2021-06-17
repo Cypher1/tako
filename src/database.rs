@@ -298,6 +298,7 @@ fn build_with_gpp(db: &dyn Compiler, module: Path) -> Result<String, TError> {
         .arg("-std=c++14")
         .arg("-Wall")
         .arg("-Werror")
+        .arg("-Wfatal-errors")
         .arg("-O3")
         .arg(outf)
         .arg("-o")
