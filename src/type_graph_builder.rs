@@ -1,6 +1,7 @@
 use crate::ast::*;
 use crate::database::Compiler;
 use crate::errors::TError;
+use crate::interpreter::Interpreter;
 use crate::primitives::{Prim::*, Val::*, *};
 use std::collections::BTreeSet;
 
@@ -144,14 +145,42 @@ impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
     }
 
     fn visit_un_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &UnOp) -> Res {
-        // TODO: apply the op ty to the arg ty
-        self.visit(db, state, &expr.inner)
+        let op = db
+            .get_extern(expr.name.to_string())?
+            .expect("operator should exist");
+        let ty = op.ty;
+        let arg_ty = self.visit(db, state, &expr.inner)?;
+
+        eprintln!("un op {}: {}, {}", &expr.name, &ty, &arg_ty);
+        Interpreter::default().visit_apply(
+            db,
+            &mut vec![],
+            &Apply {
+                inner: Box::new(ty),
+                args: vec![Let::new("it", arg_ty)],
+                info: expr.get_info(),
+            },
+        )
     }
 
     fn visit_bin_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &BinOp) -> Res {
-        // TODO: apply the op ty to the arg tys
-        self.visit(db, state, &expr.left)?;
-        self.visit(db, state, &expr.right)
+        let op = db
+            .get_extern(expr.name.to_string())?
+            .expect("operator should exist");
+        let ty = op.ty;
+        let left_ty = self.visit(db, state, &expr.left)?;
+        let right_ty = self.visit(db, state, &expr.right)?;
+
+        eprintln!("bin op {}: {}, {} {}", &expr.name, &ty, &left_ty, &right_ty);
+        Interpreter::default().visit_apply(
+            db,
+            &mut vec![],
+            &Apply {
+                inner: Box::new(ty),
+                args: vec![Let::new("left", left_ty), Let::new("right", right_ty)],
+                info: expr.get_info(),
+            },
+        )
     }
 
     fn handle_error(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &TError) -> Res {
@@ -166,7 +195,7 @@ mod tests {
     use crate::cli_options::Options;
     use crate::database::{Compiler, DB};
     use crate::errors::TError;
-    use crate::primitives::i32_type;
+    use crate::primitives::{i32_type, string_type};
     use crate::type_graph::TypeGraph;
     use pretty_assertions::assert_eq;
     use std::sync::Arc;
@@ -181,37 +210,65 @@ mod tests {
         Symbol::Named("test".to_owned(), Some("tk".to_owned()))
     }
 
-    #[test]
-    fn type_of_int_literal_is_i32() -> Test {
+    fn get_db() -> DB {
         let mut db = DB::default();
         db.set_options(Options::default());
-        let s = "0";
+        db
+    }
+
+    fn get_tg(s: &str) -> Result<TypeGraph, TError> {
+        let mut db = get_db();
         db.set_file(filename(), Ok(Arc::new(s.to_string())));
-        let mut tgb = TypeGraphBuilder::default();
-
         let module = db.module_name(filename());
-
+        let mut tgb = TypeGraphBuilder::default();
         let tg: TypeGraph = tgb.visit_root(&db, &module)?;
+        Ok(tg)
+    }
 
+    #[test]
+    fn type_of_int_literal_is_i32() -> Test {
+        let tg = &mut get_tg("0")?;
         assert_eq!(tg.get_type(&[module_root()])?, i32_type());
-
         Ok(())
     }
 
     #[test]
     fn type_of_variable_of_int_literal_is_i32() -> Test {
-        let mut db = DB::default();
-        db.set_options(Options::default());
-        let s = "x=0";
-        db.set_file(filename(), Ok(Arc::new(s.to_string())));
-        let mut tgb = TypeGraphBuilder::default();
+        let tg = &mut get_tg("x=0")?;
+        assert_eq!(
+            tg.get_type(&[module_root(), Symbol::new("x")])?,
+            i32_type(),
+            "x has type i32"
+        );
+        assert_eq!(
+            tg.get_type(&[module_root()])?,
+            rec!("x" => i32_type()),
+            "program has type i32"
+        );
+        Ok(())
+    }
 
-        let module = db.module_name(filename());
-
-        let tg: TypeGraph = tgb.visit_root(&db, &module)?;
-
-        assert_eq!(tg.get_type(&[module_root(), Symbol::new("x")])?, i32_type());
-
+    #[test]
+    fn type_of_struct_int_and_string() -> Test {
+        let tg = &mut get_tg("x=0, y='hi'")?;
+        assert_eq!(
+            tg.get_type(&[module_root(), Symbol::new("x")])?,
+            i32_type(),
+            "x has type i32"
+        );
+        assert_eq!(
+            tg.get_type(&[module_root(), Symbol::new("y")])?,
+            string_type(),
+            "y has type str"
+        );
+        assert_eq!(
+            format!("{}", tg.get_type(&[module_root()])?),
+            format!(
+                "{}",
+                Product(set![rec!("x" => i32_type()), rec!("y" => string_type())])
+            ),
+            "program has struct type {{x: i32, y: string}}"
+        );
         Ok(())
     }
 }
