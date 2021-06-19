@@ -164,6 +164,14 @@ impl Let {
             info: self.get_info(),
         }
     }
+    pub fn new(name: &str, value: Val) -> Let {
+        Let {
+            name: name.to_string(),
+            value: Box::new(value.into_node()),
+            args: Some(vec![]),
+            info: Info::default(),
+        }
+    }
 }
 
 impl ToNode for Let {
