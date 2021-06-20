@@ -3,6 +3,7 @@ use crate::errors::TError;
 use crate::primitives::{never_type, Offset, Prim::*, TypeSet, Val, Val::*};
 use bitvec::prelude::*;
 use std::collections::HashMap;
+use crate::tribool::*;
 
 type Id = i32; // TODO: Make this a vec of Id so it can be treated as a stack
 
@@ -213,7 +214,7 @@ impl TypeGraph {
                 let mut new_tys = vec![];
                 for (name, ty) in tys.iter() {
                     let ty = self.normalize(ty.clone())?;
-                    if ty == never_type() {
+                    if ty.is_sat().is_false() {
                         return Ok(never_type());
                     }
                     new_tys.push((name.clone(), ty));
@@ -224,7 +225,7 @@ impl TypeGraph {
                 let mut new_tys = set![];
                 for ty in tys.iter().cloned() {
                     let ty = self.normalize(ty)?;
-                    if ty != never_type() {
+                    if ty.is_sat().maybe_true() {
                         match ty {
                             Union(tys) => new_tys = new_tys.union(&tys).cloned().collect(),
                             ty => {
@@ -240,7 +241,7 @@ impl TypeGraph {
                 let mut new_tys = set![];
                 for ty in tys.iter() {
                     let ty = self.normalize(ty.clone())?;
-                    if ty == never_type() {
+                    if ty.is_sat().is_false() {
                         return Ok(never_type());
                     }
                     // Check for never_type overlap
@@ -279,10 +280,10 @@ impl TypeGraph {
         let to = self.normalize(to.clone())?;
         let v = self.unify_impl(&from, &to)?;
         let v = self.normalize(v)?;
-        if from == to && from != v {
-            panic!("wtf\n{}\n{}\n{:#?}", &from, &to, &v);
-        }
-        // if v != never_type() {
+        // if from == to && from != v {
+            // panic!("wtf\n{}\n{}\n{:#?}", &from, &to, &v);
+        // }
+        // if v.is_sat().maybe_true() {
         // eprintln!("unified:\n     {}\nwith {}\n to {}", &from, &to, &v);
         // } else {
         // eprintln!("couldnt not unify:\n     {}\nwith {}", &from, &to);
@@ -322,7 +323,7 @@ impl TypeGraph {
                 let mut new_tys = set![];
                 for ty in tys.iter() {
                     let ty = self.unify(ty, &t)?;
-                    if ty != never_type() {
+                    if ty.is_sat().maybe_true() {
                         new_tys.insert(ty);
                     }
                 }
@@ -332,7 +333,7 @@ impl TypeGraph {
                 let mut new_tys = set![]; // union find it?
                 for t in s.iter() {
                     let ty = self.unify(ty, &t)?;
-                    if ty == never_type() {
+                    if ty.is_sat().is_false() {
                         return Ok(never_type());
                     }
                     match ty {
@@ -400,14 +401,14 @@ impl TypeGraph {
         })
     }
 
-    pub fn is_assignable_to(&mut self, from: &Val, to: &Val) -> Result<bool, TError> {
+    pub fn is_assignable_to(&mut self, from: &Val, to: &Val) -> Result<Tribool, TError> {
         // To be assignable from and to must unify to the same type as
         // from (i.e. we can't need more from 'from' than it already providee).
         let from = self.normalize(from.clone())?;
         let to = self.normalize(to.clone())?;
         let unified = self.unify(&from, &to)?;
         eprintln!("{}. {}. -> {}", &from, &to, &unified);
-        Ok(unified == from)
+        Ok(unified.is_sat())
     }
 
     fn require_assignable_for_id(&mut self, id: &Id, ty: &Val) -> Result<(), TError> {
@@ -1067,7 +1068,7 @@ mod tests {
     #[test]
     fn assignment_to_equal_type_bit() -> Test {
         let mut tg = TypeGraph::default();
-        assert!(tg.is_assignable_to(&bit_type(), &bit_type())?);
+        assert!(tg.is_assignable_to(&bit_type(), &bit_type())?.is_true());
         Ok(())
     }
 
@@ -1075,28 +1076,28 @@ mod tests {
     fn assignment_to_equal_type_pair_bit() -> Test {
         let pair_bit: TypeG = || record(vec![bit_type(), bit_type()]);
         let mut tg = TypeGraph::default();
-        assert!(tg.is_assignable_to(&pair_bit()?, &pair_bit()?)?);
+        assert!(tg.is_assignable_to(&pair_bit()?, &pair_bit()?)?.is_true());
         Ok(())
     }
 
     #[test]
     fn assignment_to_equal_type_byte() -> Test {
         let mut tg = TypeGraph::default();
-        assert!(tg.is_assignable_to(&byte_type(), &byte_type())?);
+        assert!(tg.is_assignable_to(&byte_type(), &byte_type())?.is_true());
         Ok(())
     }
 
     #[test]
     fn assignment_to_equal_type_str() -> Test {
         let mut tg = TypeGraph::default();
-        assert!(tg.is_assignable_to(&string_type(), &string_type())?);
+        assert!(tg.is_assignable_to(&string_type(), &string_type())?.is_true());
         Ok(())
     }
 
     #[test]
     fn assignment_to_equal_type_i32() -> Test {
         let mut tg = TypeGraph::default();
-        assert!(tg.is_assignable_to(&i32_type(), &i32_type())?);
+        assert!(tg.is_assignable_to(&i32_type(), &i32_type())?.is_true());
         Ok(())
     }
 
@@ -1108,8 +1109,8 @@ mod tests {
         tg.require_assignable(&path, &i32_type())?;
 
         let ty = tg.get_type(&path)?;
-        assert!(tg.is_assignable_to(&ty, &i32_type())?);
-        assert!(tg.is_assignable_to(&ty, &variable("a"))?);
+        assert!(tg.is_assignable_to(&ty, &i32_type())?.is_true());
+        assert!(tg.is_assignable_to(&ty, &variable("a"))?.is_true());
         Ok(())
     }
 }

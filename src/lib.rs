@@ -8,6 +8,7 @@ use std::io::prelude::*;
 use std::sync::Arc;
 
 pub mod ast;
+pub mod tribool;
 pub mod cli_options;
 pub mod database;
 pub mod errors;

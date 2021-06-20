@@ -6,6 +6,8 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt;
 
+use crate::tribool::*;
+
 // i32 here are sizes in bits, not bytes.
 // This means that we don't need to have a separate systems for bit&byte layouts.
 pub type Offset = usize;
@@ -107,6 +109,24 @@ pub fn builtin(name: &str) -> Val {
 }
 
 impl Val {
+    pub fn is_sat(self: &Val) -> Tribool {
+        use Tribool::*;
+        match self {
+            PrimVal(_) => True,
+            Pointer(_size, ty) => ty.is_sat(),
+            Lambda(_) => Unknown,
+            Struct(tys) => all_true(tys.iter().map(|(_name, ty)| ty.is_sat())),
+            Product(tys) => all_true(tys.iter().map(|ty| ty.is_sat())),
+            Union(tys) => any_true(tys.iter().map(|ty| ty.is_sat())),
+            Padded(_, ty) => ty.is_sat(),
+            Function { intros: _, arguments: _, results } => results.is_sat(), // TODO: arguments?
+            App { inner, arguments: _ } => inner.is_sat(),
+            WithRequirement(ty, _reqs) => ty.is_sat(),
+            Variable(_name) => True,
+            BitStr(_len) => True,
+        }
+    }
+
     pub fn into_struct(self: Val) -> Vec<(String, Val)> {
         match self {
             Struct(vals) => vals,
