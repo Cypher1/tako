@@ -5,8 +5,8 @@ use crate::database::Compiler;
 use crate::errors::TError;
 use crate::interpreter::{prim_add_strs, prim_pow, Res};
 use crate::primitives::{
-    bit_type, builtin, i32_type, int32, number_type, string, string_type, type_type, unit_type,
-    variable, never_type, Prim::*, Val, Val::*,
+    bit_type, builtin, i32_type, int32, never_type, number_type, string, string_type, type_type,
+    unit_type, variable, Prim::*, Val, Val::*,
 };
 
 pub type Args = HashMap<String, Box<dyn Fn() -> Res>>;

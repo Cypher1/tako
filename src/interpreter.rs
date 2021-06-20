@@ -2,7 +2,7 @@ use super::ast::*;
 use super::database::Compiler;
 use super::errors::TError;
 use super::primitives::{
-    boolean, int32, merge_vals, string, never_type, Frame, Prim::*, Val, Val::*,
+    boolean, int32, merge_vals, never_type, string, Frame, Prim::*, Val, Val::*,
 };
 use std::collections::HashMap;
 

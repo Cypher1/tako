@@ -436,8 +436,8 @@ mod tests {
     use crate::ast::{Path, PathRef, Symbol::*};
     use crate::errors::TError;
     use crate::primitives::{
-        bit_type, boolean, byte_type, i32_type, int32, number_type, quad_type, record, string,
-        string_type, sum, trit_type, variable, never_type, Prim::Tag, Val, Val::*,
+        bit_type, boolean, byte_type, i32_type, int32, never_type, number_type, quad_type, record,
+        string, string_type, sum, trit_type, variable, Prim::Tag, Val, Val::*,
     };
     use bitvec::prelude::*;
     use pretty_assertions::assert_eq;
