@@ -142,18 +142,18 @@ impl Val {
             PrimVal(Prim::BuiltIn(name)) => {
                 panic!("Built in {} does not currently support introspection", name)
             }
-            BitStr(_) | PrimVal(_) => void_type(),
-            Lambda(_) => void_type(),
+            BitStr(_) | PrimVal(_) => never_type(),
+            Lambda(_) => never_type(),
             Struct(tys) => {
                 for (param, ty) in tys.iter() {
                     if param == name {
                         return ty.clone();
                     }
                 }
-                void_type()
+                never_type()
             }
-            Union(_) => void_type(),   // TODO
-            Product(_) => void_type(), // TODO
+            Union(_) => never_type(),   // TODO
+            Product(_) => never_type(), // TODO
             Padded(_, ty) => ty.access(name),
             Pointer(_, ty) => ty.access(name),
             Function {
@@ -163,12 +163,12 @@ impl Val {
             } => match name {
                 "arguments" => *arguments.clone(),
                 "results" => *results.clone(),
-                _ => void_type(),
+                _ => never_type(),
             },
             App {
                 inner: _,
                 arguments: _,
-            } => void_type(), // TODO
+            } => never_type(), // TODO
             WithRequirement(ty, effs) => WithRequirement(Box::new(ty.access(name)), effs.to_vec()),
             Variable(var) => Variable(format!("{}.{}", var, name)),
         }
@@ -210,7 +210,7 @@ impl std::fmt::Debug for Val {
             }
             Union(s) => {
                 if s.is_empty() {
-                    write!(f, "Void")
+                    write!(f, "Never")
                 } else {
                     let mut out = f.debug_tuple("|");
                     for sty in s {
@@ -403,7 +403,7 @@ pub fn sum(values: Vec<Val>) -> Result<Val, TError> {
     Ok(Union(layout))
 }
 
-pub fn void_type() -> Val {
+pub fn never_type() -> Val {
     Union(set![])
 }
 
@@ -512,9 +512,9 @@ mod tests {
     }
 
     #[test]
-    fn void() -> Res {
-        assert_eq!(card(&void_type()), Ok(0));
-        assert_eq!(size(&void_type()), Ok(0));
+    fn never() -> Res {
+        assert_eq!(card(&never_type()), Ok(0));
+        assert_eq!(size(&never_type()), Ok(0));
         Ok(())
     }
     #[test]

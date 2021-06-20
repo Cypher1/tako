@@ -1,6 +1,6 @@
 use crate::ast::*;
 use crate::errors::TError;
-use crate::primitives::{void_type, Offset, Prim::*, TypeSet, Val, Val::*};
+use crate::primitives::{never_type, Offset, Prim::*, TypeSet, Val, Val::*};
 use bitvec::prelude::*;
 use std::collections::HashMap;
 
@@ -213,8 +213,8 @@ impl TypeGraph {
                 let mut new_tys = vec![];
                 for (name, ty) in tys.iter() {
                     let ty = self.normalize(ty.clone())?;
-                    if ty == void_type() {
-                        return Ok(void_type());
+                    if ty == never_type() {
+                        return Ok(never_type());
                     }
                     new_tys.push((name.clone(), ty));
                 }
@@ -224,7 +224,7 @@ impl TypeGraph {
                 let mut new_tys = set![];
                 for ty in tys.iter().cloned() {
                     let ty = self.normalize(ty)?;
-                    if ty != void_type() {
+                    if ty != never_type() {
                         match ty {
                             Union(tys) => new_tys = new_tys.union(&tys).cloned().collect(),
                             ty => {
@@ -240,10 +240,10 @@ impl TypeGraph {
                 let mut new_tys = set![];
                 for ty in tys.iter() {
                     let ty = self.normalize(ty.clone())?;
-                    if ty == void_type() {
-                        return Ok(void_type());
+                    if ty == never_type() {
+                        return Ok(never_type());
                     }
-                    // Check for void overlap
+                    // Check for never_type overlap
                     match ty {
                         Product(tys) => new_tys = new_tys.union(&tys).cloned().collect(),
                         _ => {
@@ -255,7 +255,7 @@ impl TypeGraph {
                     // Cancel all the neighbours (e.g. (a|b)*b => (a*b)|b
                     only_item_or_build(cancel_neighbours(new_tys), Product)
                 } else {
-                    void_type()
+                    never_type()
                 }
             }
             Padded(n, inner) => match self.normalize(*inner)? {
@@ -282,7 +282,7 @@ impl TypeGraph {
         if from == to && from != v {
             panic!("wtf\n{}\n{}\n{:#?}", &from, &to, &v);
         }
-        // if v != void_type() {
+        // if v != never_type() {
         // eprintln!("unified:\n     {}\nwith {}\n to {}", &from, &to, &v);
         // } else {
         // eprintln!("couldnt not unify:\n     {}\nwith {}", &from, &to);
@@ -322,7 +322,7 @@ impl TypeGraph {
                 let mut new_tys = set![];
                 for ty in tys.iter() {
                     let ty = self.unify(ty, &t)?;
-                    if ty != void_type() {
+                    if ty != never_type() {
                         new_tys.insert(ty);
                     }
                 }
@@ -332,8 +332,8 @@ impl TypeGraph {
                 let mut new_tys = set![]; // union find it?
                 for t in s.iter() {
                     let ty = self.unify(ty, &t)?;
-                    if ty == void_type() {
-                        return Ok(void_type());
+                    if ty == never_type() {
+                        return Ok(never_type());
                     }
                     match ty {
                         Product(tys) => {
@@ -377,26 +377,26 @@ impl TypeGraph {
                 if longer[0..shorter.len()] == shorter[0..] {
                     PrimVal(Tag(longer.clone()))
                 } else {
-                    void_type()
+                    never_type()
                 }
             }
             (PrimVal(p), q) | (q, PrimVal(p)) => {
                 if PrimVal(p.clone()) == *q {
                     PrimVal(p.clone())
                 } else {
-                    void_type()
+                    never_type()
                 }
             }
             (Pointer(k, t1), Pointer(j, t2)) => {
                 if k == j {
                     Pointer(*k, Box::new(self.unify(t1, t2)?))
                 } else {
-                    void_type()
+                    never_type()
                 }
             }
-            (_, Pointer(_, _)) | (Pointer(_, _), _) => void_type(),
-            (_, Lambda(_)) | (Lambda(_), _) => void_type(), // TODO: Work out what this means
-            _ => void_type(),
+            (_, Pointer(_, _)) | (Pointer(_, _), _) => never_type(),
+            (_, Lambda(_)) | (Lambda(_), _) => never_type(), // TODO: Work out what this means
+            _ => never_type(),
         })
     }
 
@@ -437,7 +437,7 @@ mod tests {
     use crate::errors::TError;
     use crate::primitives::{
         bit_type, boolean, byte_type, i32_type, int32, number_type, quad_type, record, string,
-        string_type, sum, trit_type, variable, void_type, Prim::Tag, Val, Val::*,
+        string_type, sum, trit_type, variable, never_type, Prim::Tag, Val, Val::*,
     };
     use bitvec::prelude::*;
     use pretty_assertions::assert_eq;
@@ -608,7 +608,7 @@ mod tests {
             PrimVal(Tag(bitvec![0, 1])),
             PrimVal(Tag(bitvec![0, 1])).padded(1)
         ]);
-        assert_eq!(tg.normalize(bits)?, void_type());
+        assert_eq!(tg.normalize(bits)?, never_type());
         Ok(())
     }
 
@@ -644,7 +644,7 @@ mod tests {
         tg.require_assignable(&path, &PrimVal(Tag(bitvec![0, 1])).padded(1))?;
 
         let ty = tg.get_type(&path)?;
-        assert_eq!(ty, void_type());
+        assert_eq!(ty, never_type());
         Ok(())
     }
 
@@ -661,14 +661,14 @@ mod tests {
     }
 
     #[test]
-    fn unifies_non_equal_bools_in_types_to_void() -> Test {
+    fn unifies_non_equal_bools_in_types_to_never() -> Test {
         let mut tg = TypeGraph::default();
         let path = test_path();
         tg.require_assignable(&path, &boolean(true))?;
         tg.require_assignable(&path, &boolean(false))?;
 
         let ty = tg.get_type(&path)?;
-        assert_eq!(ty, void_type());
+        assert_eq!(ty, never_type());
         Ok(())
     }
 
@@ -705,7 +705,7 @@ mod tests {
     }
 
     #[test]
-    fn unifies_non_equal_tags_to_void() -> Test {
+    fn unifies_non_equal_tags_to_never() -> Test {
         use crate::primitives::{bits, tag};
         let mut tg = TypeGraph::default();
         let path = test_path();
@@ -716,7 +716,7 @@ mod tests {
 
         let ty = tg.get_type(&path)?;
         // therefore there's no valid value
-        assert_eq!(ty, void_type());
+        assert_eq!(ty, never_type());
         Ok(())
     }
 
@@ -747,19 +747,19 @@ mod tests {
     }
 
     #[test]
-    fn unifies_non_equal_i32_in_types_to_void() -> Test {
+    fn unifies_non_equal_i32_in_types_to_never() -> Test {
         let mut tg = TypeGraph::default();
         let path = test_path();
         tg.require_assignable(&path, &int32(4))?;
         tg.require_assignable(&path, &int32(5))?;
 
         let ty = tg.get_type(&path)?;
-        assert_eq!(ty, void_type());
+        assert_eq!(ty, never_type());
         Ok(())
     }
 
     #[test]
-    fn unifies_equal_strs_in_types_to_void() -> Test {
+    fn unifies_equal_strs_in_types_to_never() -> Test {
         let mut tg = TypeGraph::default();
         let path = test_path();
         tg.require_assignable(&path, &string("Woo"))?;
@@ -771,14 +771,14 @@ mod tests {
     }
 
     #[test]
-    fn unifies_non_equal_str_in_types_to_void() -> Test {
+    fn unifies_non_equal_str_in_types_to_never() -> Test {
         let mut tg = TypeGraph::default();
         let path = test_path();
         tg.require_assignable(&path, &string("Yes"))?;
         tg.require_assignable(&path, &string("No"))?;
 
         let ty = tg.get_type(&path)?;
-        assert_eq!(ty, void_type());
+        assert_eq!(ty, never_type());
         Ok(())
     }
 
@@ -827,7 +827,7 @@ mod tests {
     }
 
     #[test]
-    fn unifies_non_equivalent_padded_bools_in_types_to_void() -> Test {
+    fn unifies_non_equivalent_padded_bools_in_types_to_never() -> Test {
         let mut tg = TypeGraph::default();
         let path = test_path();
         let a = Padded(5, Box::new(boolean(false).padded(6))); // Keep the second padding explicit to test normalization.
@@ -836,19 +836,19 @@ mod tests {
         tg.require_assignable(&path, &b)?;
 
         let ty = tg.get_type(&path)?;
-        assert_eq!(ty, void_type());
+        assert_eq!(ty, never_type());
         Ok(())
     }
 
     #[test]
-    fn unifies_non_equal_i32_and_str_in_types_to_void() -> Test {
+    fn unifies_non_equal_i32_and_str_in_types_to_never() -> Test {
         let mut tg = TypeGraph::default();
         let path = test_path();
         tg.require_assignable(&path, &int32(4))?;
         tg.require_assignable(&path, &string("No"))?;
 
         let ty = tg.get_type(&path)?;
-        assert_eq!(ty, void_type());
+        assert_eq!(ty, never_type());
         Ok(())
     }
 
@@ -909,7 +909,7 @@ mod tests {
     }
 
     #[test]
-    fn unifies_non_equivalent_unions_to_void() -> Test {
+    fn unifies_non_equivalent_unions_to_never() -> Test {
         let mut tg = TypeGraph::default();
         let path = test_path();
         let a = Union(set!(int32(3)));
@@ -918,7 +918,7 @@ mod tests {
         tg.require_assignable(&path, &b)?;
 
         let ty = tg.get_type(&path)?;
-        assert_eq!(ty, void_type());
+        assert_eq!(ty, never_type());
         Ok(())
     }
 
@@ -990,7 +990,7 @@ mod tests {
     }
 
     #[test]
-    fn unifies_non_equivalent_products_to_void() -> Test {
+    fn unifies_non_equivalent_products_to_never() -> Test {
         let mut tg = TypeGraph::default();
         let path = test_path();
         let a = Product(set!(int32(3)));
@@ -999,7 +999,7 @@ mod tests {
         tg.require_assignable(&path, &b)?;
 
         let ty = tg.get_type(&path)?;
-        assert_eq!(ty, void_type());
+        assert_eq!(ty, never_type());
         Ok(())
     }
 
@@ -1051,7 +1051,7 @@ mod tests {
     }
 
     #[test]
-    fn unifies_non_equivalent_structs_to_void() -> Test {
+    fn unifies_non_equivalent_structs_to_never() -> Test {
         let mut tg = TypeGraph::default();
         let path = test_path();
         let a = rec!["left" => int32(1), "right" => variable("b")];
@@ -1060,7 +1060,7 @@ mod tests {
         tg.require_assignable(&path, &b)?;
 
         let ty = tg.get_type(&path)?;
-        assert_eq!(ty, void_type());
+        assert_eq!(ty, never_type());
         Ok(())
     }
 

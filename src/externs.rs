@@ -6,7 +6,7 @@ use crate::errors::TError;
 use crate::interpreter::{prim_add_strs, prim_pow, Res};
 use crate::primitives::{
     bit_type, builtin, i32_type, int32, number_type, string, string_type, type_type, unit_type,
-    variable, void_type, Prim::*, Val, Val::*,
+    variable, never_type, Prim::*, Val, Val::*,
 };
 
 pub type Args = HashMap<String, Box<dyn Fn() -> Res>>;
@@ -277,7 +277,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
             value: builtin("exit"),
             semantic: Func,
             ty: Function {
-                results: Box::new(void_type()),
+                results: Box::new(never_type()),
                 arguments: Box::new(rec! {"it" => i32_type()}),
                 intros: dict!(),
             }.into_node(),
@@ -289,7 +289,7 @@ pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError
             value: builtin("parse_i32"),
             semantic: Func,
             ty: Function {
-                results: Box::new(Union(set![i32_type(), void_type()])),
+                results: Box::new(Union(set![i32_type(), never_type()])),
                 arguments: Box::new(rec! {"it" => string_type()}),
                 intros: dict!(),
             }.into_node(),
@@ -690,11 +690,11 @@ string to_string(const bool& t){
             cpp: LangImpl::new("void"),
         },
         Extern {
-            name: "Void".to_string(),
-            value: void_type(),
+            name: "Never".to_string(),
+            value: never_type(),
             semantic: Func,
-            ty: variable("Void").into_node(),
-            cpp: LangImpl::new("/*void: should never happen*/ auto"),
+            ty: variable("Never").into_node(),
+            cpp: LangImpl::new("/*Never: should never happen*/ auto"),
         },
         Extern {
             name: "Type".to_string(),
