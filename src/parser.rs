@@ -430,7 +430,7 @@ pub fn parse_string(
 ) -> Result<Node, TError> {
     let toks = db.lex_string(module.to_vec(), text.clone())?;
     if db.debug_level() > 0 {
-        eprintln!("parsing str... {}", path_to_string(&module));
+        eprintln!("parsing str... {}", path_to_string(module));
     }
     let (root, left_over) = expr(db, toks, 0)?;
 
@@ -449,7 +449,7 @@ pub fn parse_string(
 pub fn parse(db: &dyn Compiler, module: PathRef) -> Result<Node, TError> {
     let toks = db.lex_file(module.to_vec())?;
     if db.debug_level() > 0 {
-        eprintln!("parsing file... {}", path_to_string(&module));
+        eprintln!("parsing file... {}", path_to_string(module));
     }
     let (root, left_over) = expr(db, toks, 0)?;
 

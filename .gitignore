@@ -3,6 +3,7 @@
 **/gen
 **/*.rs.bk
 *.out
+*.out.*
 *.exe
 out.c
 tako

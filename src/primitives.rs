@@ -6,6 +6,8 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt;
 
+use crate::tribool::*;
+
 // i32 here are sizes in bits, not bytes.
 // This means that we don't need to have a separate systems for bit&byte layouts.
 pub type Offset = usize;
@@ -107,6 +109,31 @@ pub fn builtin(name: &str) -> Val {
 }
 
 impl Val {
+    pub fn is_sat(self: &Val) -> Tribool {
+        use Tribool::*;
+        match self {
+            PrimVal(_) => True,
+            Pointer(_size, ty) => ty.is_sat(),
+            Lambda(_) => Unknown,
+            Struct(tys) => all_true(tys.iter().map(|(_name, ty)| ty.is_sat())),
+            Product(tys) => all_true(tys.iter().map(|ty| ty.is_sat())),
+            Union(tys) => any_true(tys.iter().map(|ty| ty.is_sat())),
+            Padded(_, ty) => ty.is_sat(),
+            Function {
+                intros: _,
+                arguments: _,
+                results,
+            } => results.is_sat(), // TODO: arguments?
+            App {
+                inner,
+                arguments: _,
+            } => inner.is_sat(),
+            WithRequirement(ty, _reqs) => ty.is_sat(),
+            Variable(_name) => True,
+            BitStr(_len) => True,
+        }
+    }
+
     pub fn into_struct(self: Val) -> Vec<(String, Val)> {
         match self {
             Struct(vals) => vals,
@@ -142,18 +169,18 @@ impl Val {
             PrimVal(Prim::BuiltIn(name)) => {
                 panic!("Built in {} does not currently support introspection", name)
             }
-            BitStr(_) | PrimVal(_) => void_type(),
-            Lambda(_) => void_type(),
+            BitStr(_) | PrimVal(_) => never_type(),
+            Lambda(_) => never_type(),
             Struct(tys) => {
                 for (param, ty) in tys.iter() {
                     if param == name {
                         return ty.clone();
                     }
                 }
-                void_type()
+                never_type()
             }
-            Union(_) => void_type(),   // TODO
-            Product(_) => void_type(), // TODO
+            Union(_) => never_type(),   // TODO
+            Product(_) => never_type(), // TODO
             Padded(_, ty) => ty.access(name),
             Pointer(_, ty) => ty.access(name),
             Function {
@@ -163,12 +190,12 @@ impl Val {
             } => match name {
                 "arguments" => *arguments.clone(),
                 "results" => *results.clone(),
-                _ => void_type(),
+                _ => never_type(),
             },
             App {
                 inner: _,
                 arguments: _,
-            } => void_type(), // TODO
+            } => never_type(), // TODO
             WithRequirement(ty, effs) => WithRequirement(Box::new(ty.access(name)), effs.to_vec()),
             Variable(var) => Variable(format!("{}.{}", var, name)),
         }
@@ -210,7 +237,7 @@ impl std::fmt::Debug for Val {
             }
             Union(s) => {
                 if s.is_empty() {
-                    write!(f, "Void")
+                    write!(f, "Never")
                 } else {
                     let mut out = f.debug_tuple("|");
                     for sty in s {
@@ -280,19 +307,19 @@ pub fn card(ty: &Val) -> Result<Offset, TError> {
         Union(s) => {
             let mut sum = 0;
             for sty in s {
-                sum += card(&sty)?;
+                sum += card(sty)?;
             }
             Ok(sum)
         }
         Product(s) => {
             let mut prod = 1;
             for sty in s {
-                prod *= card(&sty)?;
+                prod *= card(sty)?;
             }
             Ok(prod)
         }
-        Pointer(_ptr_size, t) => card(&t),
-        Padded(_size, t) => card(&t),
+        Pointer(_ptr_size, t) => card(t),
+        Padded(_size, t) => card(t),
         x => Err(TError::UnknownCardOfAbstractType(
             format!("{:#?}", x),
             Info::default(),
@@ -311,7 +338,7 @@ pub fn size(ty: &Val) -> Result<Offset, TError> {
             let mut res = 0;
             for sty in s.iter() {
                 // This includes padding in size.
-                let c = size(&sty)?;
+                let c = size(sty)?;
                 if res <= c {
                     res = c;
                 }
@@ -321,7 +348,7 @@ pub fn size(ty: &Val) -> Result<Offset, TError> {
         Product(s) => {
             let mut res = 0;
             for sty in s.iter() {
-                let c = size(&sty)?;
+                let c = size(sty)?;
                 if res <= c {
                     res = c;
                 }
@@ -403,7 +430,7 @@ pub fn sum(values: Vec<Val>) -> Result<Val, TError> {
     Ok(Union(layout))
 }
 
-pub fn void_type() -> Val {
+pub fn never_type() -> Val {
     Union(set![])
 }
 
@@ -512,9 +539,9 @@ mod tests {
     }
 
     #[test]
-    fn void() -> Res {
-        assert_eq!(card(&void_type()), Ok(0));
-        assert_eq!(size(&void_type()), Ok(0));
+    fn never() -> Res {
+        assert_eq!(card(&never_type()), Ok(0));
+        assert_eq!(size(&never_type()), Ok(0));
         Ok(())
     }
     #[test]

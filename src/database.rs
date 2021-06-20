@@ -235,7 +235,7 @@ fn to_file_path(context: PathRef) -> Path {
         match module.last() {
             None => panic!(
                 "Couldn't find a file associated with symbol at {}",
-                path_to_string(&context)
+                path_to_string(context)
             ),
             Some(Symbol::Anon()) => {}                   // Skip anons
             Some(Symbol::Named(_, None)) => {}           // Skip regular symbols

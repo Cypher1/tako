@@ -2,7 +2,7 @@ use super::ast::*;
 use super::database::Compiler;
 use super::errors::TError;
 use super::primitives::{
-    boolean, int32, merge_vals, string, void_type, Frame, Prim::*, Val, Val::*,
+    boolean, int32, merge_vals, never_type, string, Frame, Prim::*, Val, Val::*,
 };
 use std::collections::HashMap;
 
@@ -256,7 +256,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
             eprintln!("evaluating sym {}", expr.clone().into_node());
         }
         let name = &expr.name;
-        let value = find_symbol(&state, name);
+        let value = find_symbol(state, name);
         if let Some(prim) = value {
             if db.debug_level() > 0 {
                 eprintln!("{} = (from stack) {}", name, prim.clone().into_node());
@@ -294,7 +294,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
             Product(tys) => {
                 let mut new_tys = set![];
                 for ty in tys.iter() {
-                    let new_ty = self.visit_val(db, state, &ty)?; // Evaluate the type
+                    let new_ty = self.visit_val(db, state, ty)?; // Evaluate the type
                     if new_tys.len() == 1 {
                         let ty = new_tys
                             .iter()
@@ -335,7 +335,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
             Struct(tys) => {
                 let mut new_tys = vec![];
                 for (name, ty) in tys.iter() {
-                    let new_ty = self.visit_val(db, state, &ty)?; // Evaluate the type
+                    let new_ty = self.visit_val(db, state, ty)?; // Evaluate the type
                     new_tys.push((name.clone(), new_ty));
                 }
                 return Ok(Struct(new_tys));
@@ -348,8 +348,8 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
                 if let Some(frame) = state.clone().last() {
                     let mut new_args = vec![];
                     for (arg, ty) in arguments.clone().into_struct().iter() {
-                        let void = void_type();
-                        let arg_ty = &frame.get(arg).unwrap_or(&void);
+                        let never = never_type();
+                        let arg_ty = &frame.get(arg).unwrap_or(&never);
                         eprintln!(">> {}: {} unified with {}", &arg, &ty, &arg_ty);
                         let unified = ty.unify(arg_ty, state)?;
                         eprintln!(">>>> {}", &unified);

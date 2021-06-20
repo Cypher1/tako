@@ -12,6 +12,7 @@ pub mod cli_options;
 pub mod database;
 pub mod errors;
 pub mod primitives;
+pub mod tribool;
 
 pub mod interpreter;
 pub mod parser;

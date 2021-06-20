@@ -151,7 +151,7 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
             "{}const auto {} = {};",
             indent,
             name,
-            pretty_print_block(*value, &indent)
+            pretty_print_block(*value, indent)
         ),
         Code::Empty => "".to_string(),
         Code::If {
@@ -159,9 +159,9 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
             then,
             then_else,
         } => {
-            let cond = pretty_print_block(*condition, &indent);
-            let body = pretty_print_block(*then, &indent);
-            let then_else = pretty_print_block(*then_else, &indent);
+            let cond = pretty_print_block(*condition, indent);
+            let body = pretty_print_block(*then, indent);
+            let then_else = pretty_print_block(*then_else, indent);
             format!(
                 "{indent}if({}) {} else {}",
                 cond,
@@ -371,7 +371,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         let mut args = vec![];
         for arg in expr.args.iter() {
             // TODO: Include lambda head in values
-            let val = self.visit_let(db, state, &arg)?;
+            let val = self.visit_let(db, state, arg)?;
             match val {
                 Code::Assignment(_, val) => args.push(pretty_print_block(*val, "")),
                 val => args.push(pretty_print_block(val, "")),
