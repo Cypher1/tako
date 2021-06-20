@@ -15,7 +15,7 @@ type State = String;
 impl Visitor<State, (), String, Node> for PrettyPrint {
     fn visit_root(&mut self, db: &dyn Compiler, expr: &Node) -> Result<String, TError> {
         let mut state: String = "".to_string();
-        self.visit(db, &mut state, &expr)?;
+        self.visit(db, &mut state, expr)?;
         Ok(state)
     }
 
@@ -44,7 +44,7 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
             } else {
                 write!(state, ", ")?;
             }
-            self.visit_let(db, state, &arg)?;
+            self.visit_let(db, state, arg)?;
         }
         write!(state, ")")?;
         Ok(())
@@ -69,7 +69,7 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
                 if !is_first {
                     write!(state, ", ")?;
                 }
-                self.visit_let(db, state, &arg)?;
+                self.visit_let(db, state, arg)?;
                 is_first = false;
             }
             write!(state, ")")?;

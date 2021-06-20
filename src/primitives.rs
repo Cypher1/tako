@@ -300,19 +300,19 @@ pub fn card(ty: &Val) -> Result<Offset, TError> {
         Union(s) => {
             let mut sum = 0;
             for sty in s {
-                sum += card(&sty)?;
+                sum += card(sty)?;
             }
             Ok(sum)
         }
         Product(s) => {
             let mut prod = 1;
             for sty in s {
-                prod *= card(&sty)?;
+                prod *= card(sty)?;
             }
             Ok(prod)
         }
-        Pointer(_ptr_size, t) => card(&t),
-        Padded(_size, t) => card(&t),
+        Pointer(_ptr_size, t) => card(t),
+        Padded(_size, t) => card(t),
         x => Err(TError::UnknownCardOfAbstractType(
             format!("{:#?}", x),
             Info::default(),
@@ -331,7 +331,7 @@ pub fn size(ty: &Val) -> Result<Offset, TError> {
             let mut res = 0;
             for sty in s.iter() {
                 // This includes padding in size.
-                let c = size(&sty)?;
+                let c = size(sty)?;
                 if res <= c {
                     res = c;
                 }
@@ -341,7 +341,7 @@ pub fn size(ty: &Val) -> Result<Offset, TError> {
         Product(s) => {
             let mut res = 0;
             for sty in s.iter() {
-                let c = size(&sty)?;
+                let c = size(sty)?;
                 if res <= c {
                     res = c;
                 }

@@ -23,7 +23,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
         if db.debug_level() > 0 {
             eprintln!(
                 "looking up definitions in file... {}",
-                path_to_string(&module)
+                path_to_string(module)
             );
         }
         let mut state = State {
@@ -98,7 +98,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
             .args
             .iter()
             .map(|arg| {
-                let val = self.visit_let(db, state, &arg)?.as_let();
+                let val = self.visit_let(db, state, arg)?.as_let();
                 let mut search = state.path.clone();
                 search.push(Symbol::new(&arg.name));
                 let node = state.table.find_mut(&search);
@@ -140,7 +140,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
         let args = if let Some(args) = &expr.args {
             Some(
                 args.iter()
-                    .map(|arg| self.visit_let(db, state, &arg)?.as_let())
+                    .map(|arg| self.visit_let(db, state, arg)?.as_let())
                     .collect::<Result<Vec<Let>, TError>>()?,
             )
         } else {

@@ -26,14 +26,14 @@ impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
         if db.debug_level() > 0 {
             eprintln!(
                 "building symbol table & type graph for file... {}",
-                path_to_string(&module)
+                path_to_string(module)
             );
         }
         let mut state = State {
             path: module.clone(),
             graph: TypeGraph::default(),
         };
-        let ty = self.visit(db, &mut state, &expr)?;
+        let ty = self.visit(db, &mut state, expr)?;
         state.graph.require_assignable(&state.path, &ty)?;
         Ok(state.graph)
     }
@@ -55,14 +55,14 @@ impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
             Product(vals) => {
                 let mut tys: BTreeSet<Val> = set![];
                 for val in vals.iter() {
-                    tys.insert(self.visit_val(db, state, &val)?);
+                    tys.insert(self.visit_val(db, state, val)?);
                 }
                 Ok(Product(tys))
             }
             Union(vals) => {
                 let mut tys: BTreeSet<Val> = set![];
                 for val in vals.iter() {
-                    tys.insert(self.visit_val(db, state, &val)?);
+                    tys.insert(self.visit_val(db, state, val)?);
                 }
                 Ok(Union(tys))
             }
@@ -71,7 +71,7 @@ impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
             PrimVal(Str(_)) => Ok(string_type()),
             Lambda(node) => {
                 state.path.push(Symbol::Anon());
-                let ty = self.visit(db, state, &node);
+                let ty = self.visit(db, state, node);
                 state.path.pop();
                 ty
             }
@@ -90,7 +90,7 @@ impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
         state.path.push(Symbol::Anon());
         let mut arg_tys = vec![];
         for arg in &expr.args {
-            let ty = self.visit_let(db, state, &arg)?;
+            let ty = self.visit_let(db, state, arg)?;
             arg_tys.push((arg.name.clone(), ty));
         }
         let result_ty = self.visit(db, state, &*expr.inner)?;
@@ -120,7 +120,7 @@ impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
         let args = if let Some(args) = &expr.args {
             let mut arg_tys = vec![];
             for arg in args {
-                let ty = self.visit_let(db, state, &arg)?;
+                let ty = self.visit_let(db, state, arg)?;
                 arg_tys.push((arg.name.clone(), ty));
             }
             Some(arg_tys)

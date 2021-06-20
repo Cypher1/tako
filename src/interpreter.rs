@@ -256,7 +256,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
             eprintln!("evaluating sym {}", expr.clone().into_node());
         }
         let name = &expr.name;
-        let value = find_symbol(&state, name);
+        let value = find_symbol(state, name);
         if let Some(prim) = value {
             if db.debug_level() > 0 {
                 eprintln!("{} = (from stack) {}", name, prim.clone().into_node());
@@ -294,7 +294,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
             Product(tys) => {
                 let mut new_tys = set![];
                 for ty in tys.iter() {
-                    let new_ty = self.visit_val(db, state, &ty)?; // Evaluate the type
+                    let new_ty = self.visit_val(db, state, ty)?; // Evaluate the type
                     if new_tys.len() == 1 {
                         let ty = new_tys
                             .iter()
@@ -335,7 +335,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
             Struct(tys) => {
                 let mut new_tys = vec![];
                 for (name, ty) in tys.iter() {
-                    let new_ty = self.visit_val(db, state, &ty)?; // Evaluate the type
+                    let new_ty = self.visit_val(db, state, ty)?; // Evaluate the type
                     new_tys.push((name.clone(), new_ty));
                 }
                 return Ok(Struct(new_tys));

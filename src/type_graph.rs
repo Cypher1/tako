@@ -95,7 +95,7 @@ fn cancel_neighbours(tys: TypeSet) -> TypeSet {
     for ty in tys.iter() {
         let mut simpl_tys = set![];
         for other in res.iter().cloned() {
-            simpl_tys.insert(factor_out(other, &ty));
+            simpl_tys.insert(factor_out(other, ty));
         }
         res = simpl_tys;
     }
@@ -151,7 +151,7 @@ fn merge_bit_patterns(tys: TypeSet) -> Option<TypeSet> {
     for b in bits {
         let mut b = b;
         for other in new_bits.clone().iter() {
-            if let Some(overlap) = merge_bit_pattern(&b, &other) {
+            if let Some(overlap) = merge_bit_pattern(&b, other) {
                 if let Some(overlap) = overlap {
                     // merge them
                     new_bits.remove(other);
@@ -313,7 +313,7 @@ impl TypeGraph {
                             vals.push((name.clone(), t.clone()));
                         }
                         (Some(s), Some(t)) => {
-                            vals.push((name.clone(), self.unify(&s, &t)?));
+                            vals.push((name.clone(), self.unify(s, t)?));
                         }
                     }
                 }
@@ -322,7 +322,7 @@ impl TypeGraph {
             (t, Union(tys)) | (Union(tys), t) => {
                 let mut new_tys = set![];
                 for ty in tys.iter() {
-                    let ty = self.unify(ty, &t)?;
+                    let ty = self.unify(ty, t)?;
                     if ty.is_sat().maybe_true() {
                         new_tys.insert(ty);
                     }
@@ -332,7 +332,7 @@ impl TypeGraph {
             (Product(s), ty) | (ty, Product(s)) => {
                 let mut new_tys = set![]; // union find it?
                 for t in s.iter() {
-                    let ty = self.unify(ty, &t)?;
+                    let ty = self.unify(ty, t)?;
                     if ty.is_sat().is_false() {
                         return Ok(never_type());
                     }

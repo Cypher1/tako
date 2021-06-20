@@ -47,7 +47,7 @@ fn main() -> Result<(), TError> {
     db.set_options(Options::new(&args[1..]));
 
     for f in db.options().files.iter() {
-        handle(work(&mut db, &f, None));
+        handle(work(&mut db, f, None));
     }
 
     use takolib::cli_options::Command;

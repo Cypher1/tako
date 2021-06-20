@@ -15,7 +15,7 @@ impl fmt::Display for Tribool {
 
 use Tribool::*;
 impl Tribool {
-    pub fn not(self: &Self) -> Self {
+    pub fn not(&self) -> Self {
         match self {
             True => False,
             False => True,
@@ -23,7 +23,7 @@ impl Tribool {
         }
     }
 
-    pub fn or(self: &Self, other: &Self) -> Self {
+    pub fn or(&self, other: &Self) -> Self {
         match (self, other) {
             (True, _) | (_, True) => True,
             (Unknown, _) | (_, Unknown) => Unknown,
@@ -31,7 +31,7 @@ impl Tribool {
         }
     }
 
-    pub fn and(self: &Self, other: &Self) -> Self {
+    pub fn and(&self, other: &Self) -> Self {
         match (self, other) {
             (False, _) | (_, False) => False,
             (Unknown, _) | (_, Unknown) => Unknown,
@@ -39,19 +39,19 @@ impl Tribool {
         }
     }
 
-    pub fn is_true(self: &Self) -> bool {
+    pub fn is_true(&self) -> bool {
         self == &True
     }
-    pub fn maybe_true(self: &Self) -> bool {
+    pub fn maybe_true(&self) -> bool {
         self.is_true() || self.is_unknown()
     }
-    pub fn is_false(self: &Self) -> bool {
+    pub fn is_false(&self) -> bool {
         self == &False
     }
-    pub fn maybe_false(self: &Self) -> bool {
+    pub fn maybe_false(&self) -> bool {
         self.is_false() || self.is_unknown()
     }
-    pub fn is_unknown(self: &Self) -> bool {
+    pub fn is_unknown(&self) -> bool {
         self == &Unknown
     }
 }
