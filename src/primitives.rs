@@ -119,8 +119,15 @@ impl Val {
             Product(tys) => all_true(tys.iter().map(|ty| ty.is_sat())),
             Union(tys) => any_true(tys.iter().map(|ty| ty.is_sat())),
             Padded(_, ty) => ty.is_sat(),
-            Function { intros: _, arguments: _, results } => results.is_sat(), // TODO: arguments?
-            App { inner, arguments: _ } => inner.is_sat(),
+            Function {
+                intros: _,
+                arguments: _,
+                results,
+            } => results.is_sat(), // TODO: arguments?
+            App {
+                inner,
+                arguments: _,
+            } => inner.is_sat(),
             WithRequirement(ty, _reqs) => ty.is_sat(),
             Variable(_name) => True,
             BitStr(_len) => True,

@@ -58,7 +58,8 @@ impl Tribool {
 
 pub fn any_true<I>(vals: I) -> Tribool
 where
-    I: Iterator<Item = Tribool> {
+    I: Iterator<Item = Tribool>,
+{
     let mut st = False;
     for i in vals {
         st = st.or(&i);
@@ -68,7 +69,8 @@ where
 
 pub fn all_true<I>(vals: I) -> Tribool
 where
-    I: Iterator<Item = Tribool> {
+    I: Iterator<Item = Tribool>,
+{
     let mut st = True;
     for i in vals {
         st = st.and(&i);

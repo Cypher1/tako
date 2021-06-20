@@ -1,9 +1,9 @@
 use crate::ast::*;
 use crate::errors::TError;
 use crate::primitives::{never_type, Offset, Prim::*, TypeSet, Val, Val::*};
+use crate::tribool::*;
 use bitvec::prelude::*;
 use std::collections::HashMap;
-use crate::tribool::*;
 
 type Id = i32; // TODO: Make this a vec of Id so it can be treated as a stack
 
@@ -281,7 +281,7 @@ impl TypeGraph {
         let v = self.unify_impl(&from, &to)?;
         let v = self.normalize(v)?;
         // if from == to && from != v {
-            // panic!("wtf\n{}\n{}\n{:#?}", &from, &to, &v);
+        // panic!("wtf\n{}\n{}\n{:#?}", &from, &to, &v);
         // }
         // if v.is_sat().maybe_true() {
         // eprintln!("unified:\n     {}\nwith {}\n to {}", &from, &to, &v);
@@ -1090,7 +1090,9 @@ mod tests {
     #[test]
     fn assignment_to_equal_type_str() -> Test {
         let mut tg = TypeGraph::default();
-        assert!(tg.is_assignable_to(&string_type(), &string_type())?.is_true());
+        assert!(tg
+            .is_assignable_to(&string_type(), &string_type())?
+            .is_true());
         Ok(())
     }
 
