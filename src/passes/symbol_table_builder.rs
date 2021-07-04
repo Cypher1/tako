@@ -2,90 +2,66 @@ use crate::ast::*;
 use crate::database::Compiler;
 use crate::errors::TError;
 use crate::primitives::Val;
-use crate::symbol_table_builder::State;
+use crate::symbol_table::*;
 
 // Walks the AST interpreting it.
 #[derive(Default)]
-pub struct DefinitionFinder {}
+pub struct SymbolTableBuilder {}
 
 // TODO: Return nodes.
 type Res = Result<Node, TError>;
 
 #[derive(Debug, Clone)]
-pub struct Namespace {
-    name: Symbol,
-    info: Entry,
+pub struct State {
+    pub table: Table,
+    pub path: Vec<Symbol>,
 }
 
-impl Visitor<State, Node, Root, Path> for DefinitionFinder {
+impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
     fn visit_root(&mut self, db: &dyn Compiler, module: &Path) -> Result<Root, TError> {
-        let expr = db.build_symbol_table(module.clone())?;
+        let expr = &db.parse_file(module.clone())?;
         if db.debug_level() > 0 {
             eprintln!(
-                "looking up definitions in file... {}",
+                "building symbol table for file... {}",
                 path_to_string(module)
             );
         }
+
+        let mut table = Table::default();
+        let mut main_at = module.clone();
+        main_at.push(Symbol::new("main"));
+
+        let main_symb = table.get_mut(&main_at);
+        main_symb.value.uses.insert(module.clone());
+
+        // Add in the globals here!
+        // TODO: Inject needs for bootstrapping here (e.g. import function).
+        let globals: Vec<Path> = db
+            .get_extern_names()?
+            .iter()
+            .map(|x| vec![Symbol::new(x)])
+            .collect();
+        for global in globals {
+            table.get_mut(&global);
+        }
+
         let mut state = State {
+            table,
             path: module.clone(),
-            table: expr.table.clone(),
         };
-        let ast = self.visit(db, &mut state, &expr.ast)?;
+
+        if db.debug_level() > 0 {
+            eprintln!("table: {:?}", state.table);
+        }
+
         Ok(Root {
-            ast,
+            ast: self.visit(db, &mut state, expr)?,
             table: state.table,
         })
     }
 
-    fn visit_sym(&mut self, db: &dyn Compiler, state: &mut State, expr: &Sym) -> Res {
-        if db.debug_level() > 1 {
-            eprintln!(
-                "visiting sym {} {}",
-                path_to_string(&state.path),
-                &expr.name
-            );
-        }
-        let mut search: Vec<Symbol> = state.path.clone();
-        loop {
-            if let Some(Symbol::Anon()) = search.last() {
-                search.pop(); // Cannot look inside an 'anon'.
-            }
-            search.push(Symbol::new(&expr.name));
-            let node = state.table.find_mut(&search);
-            match node {
-                Some(node) => {
-                    node.value.uses.insert(state.path.clone());
-                    if db.debug_level() > 1 {
-                        eprintln!(
-                            "FOUND {} at {}\n",
-                            expr.name.clone(),
-                            path_to_string(&search)
-                        );
-                    }
-                    let mut res = expr.clone();
-                    res.info.defined_at = Some(search);
-                    return Ok(res.into_node());
-                }
-                None => {
-                    search.pop(); // Strip the name off.
-                    if db.debug_level() > 1 {
-                        eprintln!(
-                            "   not found {} at {}",
-                            expr.name.clone(),
-                            path_to_string(&search)
-                        );
-                    }
-                    if search.is_empty() {
-                        return Err(TError::UnknownSymbol(
-                            expr.name.clone(),
-                            expr.get_info(),
-                            path_to_string(&state.path),
-                        ));
-                    }
-                    search.pop(); // Up one, go again.
-                }
-            }
-        }
+    fn visit_sym(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Sym) -> Res {
+        Ok(expr.clone().into_node())
     }
 
     fn visit_val(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Val) -> Res {
@@ -97,19 +73,11 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
         let args = expr
             .args
             .iter()
-            .map(|arg| {
-                let val = self.visit_let(db, state, arg)?.as_let();
-                let mut search = state.path.clone();
-                search.push(Symbol::new(&arg.name));
-                let node = state.table.find_mut(&search);
-                if let Some(node) = node {
-                    node.value.uses.insert(state.path.clone());
-                }
-                val
-            })
-            .collect::<Result<Vec<Let>, TError>>()?;
+            .map(|arg| self.visit_let(db, state, arg)?.as_let())
+            .collect::<Result<_, _>>()?;
         let inner = Box::new(self.visit(db, state, &*expr.inner)?);
         state.path.pop();
+
         Ok(Apply {
             inner,
             args,
@@ -122,11 +90,20 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
         if db.debug_level() > 1 {
             eprintln!("visiting {} {}", path_to_string(&state.path), &expr.name);
         }
+
+        // Visit definition.
+        let mut info = expr.get_info();
+        state.path.push(Symbol::new(&expr.name));
+        info.defined_at = Some(state.path.clone());
+        state.table.get_mut(&state.path);
+
         let value = Box::new(self.visit(db, state, &expr.value)?);
+        state.path.pop();
+
         Ok(Abs {
             name: expr.name.clone(),
             value,
-            info: expr.info.clone(),
+            info,
         }
         .into_node())
     }
@@ -135,24 +112,31 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
         if db.debug_level() > 1 {
             eprintln!("visiting {} {}", path_to_string(&state.path), &expr.name);
         }
-        let path_name = Symbol::new(&expr.name);
-        state.path.push(path_name);
+
+        // Visit definition.
+        let mut info = expr.get_info();
+        state.path.push(Symbol::new(&expr.name));
+        info.defined_at = Some(state.path.clone());
+        state.table.get_mut(&state.path);
+
+        // Consider the function arguments defined in this scope.
         let args = if let Some(args) = &expr.args {
             Some(
                 args.iter()
                     .map(|arg| self.visit_let(db, state, arg)?.as_let())
-                    .collect::<Result<Vec<Let>, TError>>()?,
+                    .collect::<Result<_, _>>()?,
             )
         } else {
             None
         };
         let value = Box::new(self.visit(db, state, &expr.value)?);
         state.path.pop();
+
         Ok(Let {
             name: expr.name.clone(),
-            args,
             value,
-            info: expr.info.clone(),
+            args,
+            info,
         }
         .into_node())
     }

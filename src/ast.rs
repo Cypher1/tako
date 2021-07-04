@@ -7,7 +7,7 @@ use crate::database::DB;
 use crate::errors::TError;
 use crate::location::*;
 use crate::primitives::{unit_type, Val};
-use crate::tree::*;
+use crate::symbol_table::Table;
 
 impl ToNode for TError {
     fn into_node(self) -> Node {
@@ -442,8 +442,6 @@ impl Default for Entry {
         }
     }
 }
-
-pub type Table = HashTree<Symbol, Entry>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Root {

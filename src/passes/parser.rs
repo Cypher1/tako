@@ -1,13 +1,13 @@
 use std::collections::VecDeque;
 use std::sync::Arc;
 
-use super::ast::*;
-use super::database::Compiler;
-use super::errors::TError;
-use super::externs::{Direction, Semantic};
-use super::location::*;
-use super::primitives::{int32, string, Prim, Val};
-use super::tokens::*;
+use crate::ast::*;
+use crate::database::Compiler;
+use crate::errors::TError;
+use crate::externs::{Direction, Semantic};
+use crate::location::*;
+use crate::primitives::{int32, string, Prim, Val};
+use crate::tokens::*;
 
 fn binding(db: &dyn Compiler, tok: &Token) -> Result<Semantic, TError> {
     db.get_extern_operator(tok.value.to_owned())
