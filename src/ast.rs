@@ -2,8 +2,7 @@ use std::collections::HashSet;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
-use crate::database::Compiler;
-use crate::database::DB;
+use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::location::*;
 use crate::primitives::{unit_type, Val};
@@ -307,8 +306,8 @@ impl std::fmt::Debug for Node {
 impl fmt::Display for Node {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use super::PrettyPrint;
-        let db = DB::default();
-        match PrettyPrint::default().visit_root(&db, self) {
+        // TODO worry about unsafe default here
+        match PrettyPrint::default().visit_root(&mut DBStorage::default(), self) {
             Ok(res) => write!(f, "{}", res),
             Err(err) => write!(f, "{:#?}", err),
         }
@@ -449,49 +448,77 @@ impl fmt::Display for Root {
 }
 
 pub trait Visitor<State, Res, Final, Start = Root> {
-    fn visit_root(&mut self, db: &dyn Compiler, e: &Start) -> Result<Final, TError>;
+    fn visit_root(&mut self, storage: &mut DBStorage, e: &Start) -> Result<Final, TError>;
 
-    fn visit_sym(&mut self, db: &dyn Compiler, state: &mut State, e: &Sym) -> Result<Res, TError>;
-    fn visit_val(&mut self, db: &dyn Compiler, state: &mut State, e: &Val) -> Result<Res, TError>;
+    fn visit_sym(
+        &mut self,
+        storage: &mut DBStorage,
+        state: &mut State,
+        e: &Sym,
+    ) -> Result<Res, TError>;
+    fn visit_val(
+        &mut self,
+        storage: &mut DBStorage,
+        state: &mut State,
+        e: &Val,
+    ) -> Result<Res, TError>;
     fn visit_apply(
         &mut self,
-        db: &dyn Compiler,
+
+        storage: &mut DBStorage,
         state: &mut State,
         e: &Apply,
     ) -> Result<Res, TError>;
-    fn visit_abs(&mut self, db: &dyn Compiler, state: &mut State, e: &Abs) -> Result<Res, TError>;
-    fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, e: &Let) -> Result<Res, TError>;
+    fn visit_abs(
+        &mut self,
+        storage: &mut DBStorage,
+        state: &mut State,
+        e: &Abs,
+    ) -> Result<Res, TError>;
+    fn visit_let(
+        &mut self,
+        storage: &mut DBStorage,
+        state: &mut State,
+        e: &Let,
+    ) -> Result<Res, TError>;
     fn visit_un_op(
         &mut self,
-        db: &dyn Compiler,
+
+        storage: &mut DBStorage,
         state: &mut State,
         e: &UnOp,
     ) -> Result<Res, TError>;
     fn visit_bin_op(
         &mut self,
-        db: &dyn Compiler,
+
+        storage: &mut DBStorage,
         state: &mut State,
         e: &BinOp,
     ) -> Result<Res, TError>;
 
-    fn visit(&mut self, db: &dyn Compiler, state: &mut State, e: &Node) -> Result<Res, TError> {
+    fn visit(
+        &mut self,
+        storage: &mut DBStorage,
+        state: &mut State,
+        e: &Node,
+    ) -> Result<Res, TError> {
         use Node::*;
         match e {
-            SymNode(n) => self.visit_sym(db, state, n),
-            ValNode(n, _) => self.visit_val(db, state, n),
-            ApplyNode(n) => self.visit_apply(db, state, n),
-            AbsNode(n) => self.visit_abs(db, state, n),
-            LetNode(n) => self.visit_let(db, state, n),
-            UnOpNode(n) => self.visit_un_op(db, state, n),
-            BinOpNode(n) => self.visit_bin_op(db, state, n),
+            SymNode(n) => self.visit_sym(storage, state, n),
+            ValNode(n, _) => self.visit_val(storage, state, n),
+            ApplyNode(n) => self.visit_apply(storage, state, n),
+            AbsNode(n) => self.visit_abs(storage, state, n),
+            LetNode(n) => self.visit_let(storage, state, n),
+            UnOpNode(n) => self.visit_un_op(storage, state, n),
+            BinOpNode(n) => self.visit_bin_op(storage, state, n),
         }
     }
 
-    fn process(root: &Start, db: &dyn Compiler) -> Result<Final, TError>
+    fn process(root: &Start, storage: &mut DBStorage) -> Result<Final, TError>
     where
         Self: Sized,
         Self: Default,
     {
-        Self::default().visit_root(db, root)
+        Self::default().visit_root(storage, root)
     }
 }

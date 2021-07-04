@@ -1,214 +1,21 @@
-use std::sync::Arc;
-
+use specs::prelude::*;
+use specs::World;
 use std::collections::{HashMap, HashSet};
-
-use std::io::prelude::*;
+use std::io::Write;
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::Arc;
 
 use directories::ProjectDirs;
 
 use crate::ast::{path_to_string, Node, Path, PathRef, Root, Symbol, Visitor};
 use crate::cli_options::Options;
+use crate::components::*;
 use crate::errors::TError;
+use crate::externs::get_externs;
 use crate::externs::{Extern, Semantic};
 use crate::primitives::Val;
 use crate::symbol_table::Table;
-
-#[salsa::query_group(CompilerStorage)]
-pub trait Compiler {
-    #[salsa::input]
-    fn file(&self, filename: String) -> Result<Arc<String>, TError>;
-
-    #[salsa::input]
-    fn options(&self) -> Options;
-    #[salsa::input]
-    fn project_dirs(&self) -> Option<ProjectDirs>;
-
-    fn debug_level(&self) -> i32;
-    fn files(&self) -> Vec<String>;
-    fn history_file(&self) -> PathBuf;
-    fn config_dir(&self) -> PathBuf;
-
-    fn get_externs(&self) -> Result<HashMap<String, Extern>, TError>;
-    fn get_extern_names(&self) -> Result<Vec<String>, TError>;
-    fn get_extern(&self, name: String) -> Result<Option<Extern>, TError>;
-    fn get_extern_operator(&self, name: String) -> Result<Semantic, TError>;
-
-    fn module_name(&self, filename: String) -> Path;
-    fn filename(&self, module: Path) -> String;
-
-    // Parsing and building symbol tables are currently done one whole file at a time.
-    fn parse_string(&self, module: Path, contents: Arc<String>) -> Result<Node, TError>;
-    fn parse_str(&self, module: Path, contents: &'static str) -> Result<Node, TError>;
-    fn parse_file(&self, module: Path) -> Result<Node, TError>;
-    fn build_symbol_table(&self, module: Path) -> Result<Root, TError>;
-    fn find_symbol(&self, mut context: Path, path: Path) -> Result<Option<Table>, TError>;
-    fn find_symbol_uses(&self, path: Path) -> Result<HashSet<Path>, TError>;
-
-    fn look_up_definitions(&self, context: Path) -> Result<Root, TError>;
-
-    fn infer(&self, expr: Node, env: Val) -> Result<Val, TError>;
-
-    fn compile_to_cpp(&self, module: Path) -> Result<(String, HashSet<String>), TError>;
-    fn build_with_gpp(&self, module: Path) -> Result<String, TError>;
-}
-
-fn config_dir(db: &dyn Compiler) -> PathBuf {
-    let project_dirs = db.project_dirs();
-    if let Some(project_dirs) = project_dirs {
-        project_dirs.config_dir().to_path_buf()
-    } else {
-        PathBuf::new()
-    }
-}
-
-fn history_file(db: &dyn Compiler) -> PathBuf {
-    db.config_dir().join("tako_history")
-}
-
-fn debug_level(db: &dyn Compiler) -> i32 {
-    db.options().debug_level
-}
-
-fn files(db: &dyn Compiler) -> Vec<String> {
-    db.options().files
-}
-
-pub fn module_name(_db: &dyn Compiler, filename: String) -> Path {
-    filename
-        .replace("\\", "/")
-        .split('/')
-        .map(|part| {
-            let name: Vec<&str> = part.split('.').collect();
-            Symbol::Named(
-                name[0].to_owned(),
-                if name.len() > 1 {
-                    Some(name[1..].join("."))
-                } else {
-                    None
-                },
-            )
-        })
-        .collect()
-}
-
-pub fn filename(db: &dyn Compiler, module: Path) -> String {
-    let parts: Vec<String> = module
-        .iter()
-        .map(|sym| match sym {
-            Symbol::Named(sym, None) => sym.to_owned(),
-            Symbol::Named(sym, Some(ext)) => format!("{}.{}", sym, ext),
-            Symbol::Anon() => "?".to_owned(),
-        })
-        .collect();
-    let file_name = parts.join("/");
-    if db.debug_level() > 0 {
-        eprintln!(
-            "Getting filename for {}, {}",
-            path_to_string(&module),
-            file_name
-        );
-    }
-    file_name
-}
-
-fn get_externs(db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError> {
-    crate::externs::get_externs(db)
-}
-
-fn get_extern_names(db: &dyn Compiler) -> Result<Vec<String>, TError> {
-    Ok(db.get_externs()?.keys().cloned().collect())
-}
-
-fn get_extern(db: &dyn Compiler, name: String) -> Result<Option<Extern>, TError> {
-    Ok(db.get_externs()?.get(&name).cloned())
-}
-
-fn get_extern_operator(db: &dyn Compiler, name: String) -> Result<Semantic, TError> {
-    Ok(db
-        .get_extern(name)?
-        .map(|x| x.semantic)
-        .unwrap_or(Semantic::Func))
-}
-
-fn parse_string(db: &dyn Compiler, module: Path, contents: Arc<String>) -> Result<Node, TError> {
-    use crate::passes::parser;
-    parser::parse_string(db, &module, &contents)
-}
-
-fn parse_str(db: &dyn Compiler, module: Path, contents: &'static str) -> Result<Node, TError> {
-    db.parse_string(module, Arc::new(contents.to_string()))
-}
-
-fn parse_file(db: &dyn Compiler, module: Path) -> Result<Node, TError> {
-    if db.debug_level() > 0 {
-        eprintln!("parsing file... {}", path_to_string(&module));
-    }
-    let filename = db.filename(module.clone());
-    parse_string(db, module, db.file(filename)?)
-}
-
-fn build_symbol_table(db: &dyn Compiler, module: Path) -> Result<Root, TError> {
-    use crate::passes::symbol_table_builder::SymbolTableBuilder;
-    SymbolTableBuilder::process(&module, db)
-}
-
-fn find_symbol(db: &dyn Compiler, mut context: Path, path: Path) -> Result<Option<Table>, TError> {
-    if db.debug_level() > 1 {
-        eprintln!(
-            ">>> looking for symbol {} in {}",
-            path_to_string(&path),
-            path_to_string(&context)
-        );
-    }
-    let table = db.look_up_definitions(context.clone())?.table;
-    loop {
-        if let Some(Symbol::Anon()) = context.last() {
-            context.pop(); // Cannot look inside an 'anon'.
-        }
-        let mut search: Vec<Symbol> = context.clone();
-        search.extend(path.clone());
-        if let Some(node) = table.find(&search) {
-            if db.debug_level() > 1 {
-                eprintln!(
-                    "FOUND INSIDE {} {}",
-                    path_to_string(&context),
-                    path_to_string(&search)
-                );
-            }
-            return Ok(Some(node.clone()));
-        }
-        if db.debug_level() > 1 {
-            eprintln!(
-                "   not found {} at {}",
-                path_to_string(&path),
-                path_to_string(&search)
-            );
-        }
-        if context.is_empty() {
-            eprintln!(
-                "   not found {} at {}",
-                path_to_string(&path),
-                path_to_string(&search)
-            );
-            return Ok(None);
-        }
-        context.pop(); // Up one, go again.
-    }
-}
-
-fn find_symbol_uses(db: &dyn Compiler, path: Path) -> Result<HashSet<Path>, TError> {
-    if let Some(symb) = db.find_symbol(path.clone(), Vec::new())? {
-        return Ok(symb.value.uses);
-    }
-    use crate::ast::Info;
-    Err(TError::UnknownSymbol(
-        path_to_string(&path),
-        Info::default(),
-        "".to_string(),
-    ))
-}
 
 fn to_file_path(context: PathRef) -> Path {
     let mut module = context.to_vec();
@@ -227,84 +34,372 @@ fn to_file_path(context: PathRef) -> Path {
     module
 }
 
-fn look_up_definitions(db: &dyn Compiler, context: Path) -> Result<Root, TError> {
-    use crate::passes::definition_finder::DefinitionFinder;
-    let module = to_file_path(&context);
-    if db.debug_level() > 0 {
-        eprintln!("look up definitions >> {}", path_to_string(&module));
-    }
-    DefinitionFinder::process(&module, db)
+pub struct DBStorage {
+    world: World,
+    project_dirs: Option<ProjectDirs>,
+    pub options: Options,
+    ast_to_entity: HashMap<AstNode, Entity>,
+    defined_at: HashMap<Entity, HashSet<Loc>>,
+    // refers_to: HashMap<Loc, Entity>,
+    instance_at: HashMap<Entity, HashSet<Loc>>,
+    file_contents: HashMap<String, Arc<String>>,
 }
 
-fn infer(db: &dyn Compiler, expr: Node, env: Val) -> Result<Val, TError> {
-    use crate::passes::type_checker::infer;
-    if db.debug_level() > 0 {
-        eprintln!("infering type for ... {}", &expr);
+impl Default for DBStorage {
+    fn default() -> Self {
+        let mut world = World::new();
+        use crate::components::*;
+        world.register::<Token>();
+        world.register::<Untyped>();
+        world.register::<Typed>();
+        world.register::<HasErrors>();
+        world.register::<HasValue>();
+        world.register::<HasChildren>();
+        world.register::<HasSymbol>();
+        world.register::<IsSymbol>();
+        world.register::<IsDefinition>();
+        world.register::<HasInner>();
+        world.register::<HasArguments>();
+
+        let project_dirs = ProjectDirs::from("systems", "mimir", "tako");
+        Self {
+            world,
+            project_dirs,
+            options: Options::default(),
+            file_contents: HashMap::default(),
+            ast_to_entity: HashMap::default(),
+            defined_at: HashMap::default(),
+            // refers_to: HashMap::default(),
+            instance_at: HashMap::default(),
+        }
     }
-    infer(db, &expr, &env)
 }
 
-fn compile_to_cpp(db: &dyn Compiler, module: Path) -> Result<(String, HashSet<String>), TError> {
-    use crate::passes::to_cpp::CodeGenerator;
-    if db.debug_level() > 0 {
-        eprintln!("generating code for file ... {}", path_to_string(&module));
-    }
-    CodeGenerator::process(&module, db)
-}
-
-fn build_with_gpp(db: &dyn Compiler, module: Path) -> Result<String, TError> {
-    let (res, flags) = db.compile_to_cpp(module.clone())?;
-    if db.debug_level() > 0 {
-        eprintln!("building file with g++ ... {}", path_to_string(&module));
+use crate::location::Loc;
+impl DBStorage {
+    pub fn config_dir(&self) -> PathBuf {
+        if let Some(project_dirs) = &self.project_dirs {
+            project_dirs.config_dir().to_path_buf()
+        } else {
+            PathBuf::new()
+        }
     }
 
-    let name: String = module
-        .iter()
-        .map(|s| s.to_name())
-        .collect::<Vec<String>>()
-        .join("_");
-
-    let outf = format!("build/{}.cc", name);
-    let execf = format!("build/{}", name);
-    let destination = std::path::Path::new(&outf);
-    std::fs::create_dir_all("build").expect("could not create build directory");
-    let mut f = std::fs::File::create(&destination).expect("could not open output file");
-    write!(f, "{}", res).expect("couldn't write to file");
-
-    let mut cmd = Command::new("g++");
-    for arg in flags.iter() {
-        cmd.arg(arg);
+    pub fn history_file(&self) -> PathBuf {
+        self.config_dir().join("tako_history")
     }
-    let output = cmd
-        .arg("-std=c++14")
-        .arg("-Wall")
-        .arg("-Werror")
-        .arg("-Wfatal-errors")
-        .arg("-O3")
-        .arg(outf)
-        .arg("-o")
-        .arg(execf)
-        .output()
-        .expect("could not run g++");
-    if !output.status.success() {
+
+    pub fn debug_level(&self) -> i32 {
+        self.options.debug_level
+    }
+
+    pub fn file(&mut self, filename: &str) -> Option<&Arc<String>> {
+        self.file_contents.get(filename)
+    }
+
+    pub fn set_file(&mut self, filename: &str, contents: String) {
+        self.file_contents
+            .insert(filename.to_owned(), Arc::new(contents));
+    }
+
+    pub fn module_name(&self, filename: String) -> Path {
+        filename
+            .replace("\\", "/")
+            .split('/')
+            .map(|part| {
+                let name: Vec<&str> = part.split('.').collect();
+                Symbol::Named(
+                    name[0].to_owned(),
+                    if name.len() > 1 {
+                        Some(name[1..].join("."))
+                    } else {
+                        None
+                    },
+                )
+            })
+            .collect()
+    }
+
+    pub fn filename(&self, module: Path) -> String {
+        let parts: Vec<String> = module
+            .iter()
+            .map(|sym| match sym {
+                Symbol::Named(sym, None) => sym.to_owned(),
+                Symbol::Named(sym, Some(ext)) => format!("{}.{}", sym, ext),
+                Symbol::Anon() => "?".to_owned(),
+            })
+            .collect();
+        let file_name = parts.join("/");
+        if self.debug_level() > 0 {
+            eprintln!(
+                "Getting filename for {}, {}",
+                path_to_string(&module),
+                file_name
+            );
+        }
+        file_name
+    }
+
+    pub fn get_externs(&self) -> Result<HashMap<String, Extern>, TError> {
+        get_externs()
+    }
+
+    pub fn get_extern_names(&self) -> Result<Vec<String>, TError> {
+        Ok(get_externs()?.keys().cloned().collect())
+    }
+
+    pub fn get_extern(&self, name: String) -> Result<Option<Extern>, TError> {
+        Ok(get_externs()?.get(&name).cloned())
+    }
+
+    pub fn get_extern_operator(&self, name: String) -> Result<Semantic, TError> {
+        Ok(self
+            .get_extern(name)?
+            .map(|x| x.semantic)
+            .unwrap_or(Semantic::Func))
+    }
+
+    pub fn parse_string(&mut self, module: Path, contents: Arc<String>) -> Result<Node, TError> {
+        use crate::passes::parser;
+        parser::parse_string(self, &module, &contents)
+    }
+
+    pub fn parse_str(&mut self, module: Path, contents: &'static str) -> Result<Node, TError> {
+        self.parse_string(module, Arc::new(contents.to_string()))
+    }
+
+    pub fn parse_file(&mut self, module: Path) -> Result<Node, TError> {
+        if self.debug_level() > 0 {
+            eprintln!("parsing file... {}", path_to_string(&module));
+        }
+        let filename = self.filename(module.clone());
+        let contents = if let Some(contents) = self.file_contents.get(&filename) {
+            contents.clone()
+        } else {
+            // Load the file
+            let raw_contents = std::fs::read_to_string(&filename)?;
+            let contents = Arc::new(raw_contents);
+            self.file_contents.insert(filename, contents.clone());
+            contents
+        };
+        self.parse_string(module, contents)
+    }
+    pub fn infer(&mut self, expr: Node, env: Val) -> Result<Val, TError> {
+        use crate::passes::type_checker::infer;
+        if self.debug_level() > 0 {
+            eprintln!("infering type for ... {}", &expr);
+        }
+        infer(self, &expr, &env)
+    }
+
+    pub fn look_up_definitions(&mut self, context: Path) -> Result<Root, TError> {
+        use crate::passes::definition_finder::DefinitionFinder;
+        let module = to_file_path(&context);
+        if self.debug_level() > 0 {
+            eprintln!("look up definitions >> {}", path_to_string(&module));
+        }
+        DefinitionFinder::process(&module, self)
+    }
+
+    pub fn compile_to_cpp(&mut self, module: Path) -> Result<(String, HashSet<String>), TError> {
+        use crate::passes::to_cpp::CodeGenerator;
+        if self.debug_level() > 0 {
+            eprintln!("generating code for file ... {}", path_to_string(&module));
+        }
+        CodeGenerator::process(&module, self)
+    }
+
+    pub fn build_with_gpp(&mut self, module: Path) -> Result<String, TError> {
+        let (res, flags) = self.compile_to_cpp(module.clone())?;
+        if self.debug_level() > 0 {
+            eprintln!("building file with g++ ... {}", path_to_string(&module));
+        }
+
+        let name: String = module
+            .iter()
+            .map(|s| s.to_name())
+            .collect::<Vec<String>>()
+            .join("_");
+
+        let outf = format!("build/{}.cc", name);
+        let execf = format!("build/{}", name);
+        let destination = std::path::Path::new(&outf);
+        std::fs::create_dir_all("build").expect("could not create build directory");
+        let mut f = std::fs::File::create(&destination).expect("could not open output file");
+        write!(f, "{}", res).expect("couldn't write to file");
+
+        let mut cmd = Command::new("g++");
+        for arg in flags.iter() {
+            cmd.arg(arg);
+        }
+        let output = cmd
+            .arg("-std=c++14")
+            .arg("-Wall")
+            .arg("-Werror")
+            .arg("-Wfatal-errors")
+            .arg("-O3")
+            .arg(outf)
+            .arg("-o")
+            .arg(execf)
+            .output()
+            .expect("could not run g++");
+        if !output.status.success() {
+            let s = String::from_utf8(output.stderr)
+                .expect("Illegal utf8 stderr from backend compiler");
+            use crate::ast::Info;
+            return Err(TError::CppCompilerError(
+                s,
+                output.status.code(),
+                Info::default(),
+            ));
+        }
         let s =
-            String::from_utf8(output.stderr).expect("Illegal utf8 stderr from backend compiler");
-        use crate::ast::Info;
-        return Err(TError::CppCompilerError(
-            s,
-            output.status.code(),
-            Info::default(),
-        ));
+            String::from_utf8(output.stdout).expect("Illegal utf8 stdout from backend compiler");
+        eprintln!("{}", s);
+        Ok(res)
     }
-    let s = String::from_utf8(output.stdout).expect("Illegal utf8 stdout from backend compiler");
-    eprintln!("{}", s);
-    Ok(res)
+
+    pub fn find_symbol_uses(&mut self, path: Path) -> Result<HashSet<Path>, TError> {
+        if let Some(symb) = self.find_symbol(path.clone(), Vec::new())? {
+            return Ok(symb.value.uses);
+        }
+        use crate::ast::Info;
+        Err(TError::UnknownSymbol(
+            path_to_string(&path),
+            Info::default(),
+            "".to_string(),
+        ))
+    }
+
+    pub fn build_symbol_table(&mut self, module: Path) -> Result<Root, TError> {
+        use crate::passes::symbol_table_builder::SymbolTableBuilder;
+        SymbolTableBuilder::process(&module, self)
+    }
+
+    pub fn find_symbol(&mut self, mut context: Path, path: Path) -> Result<Option<Table>, TError> {
+        if self.debug_level() > 1 {
+            eprintln!(
+                ">>> looking for symbol {} in {}",
+                path_to_string(&path),
+                path_to_string(&context)
+            );
+        }
+        let table = self.look_up_definitions(context.clone())?.table;
+        loop {
+            if let Some(Symbol::Anon()) = context.last() {
+                context.pop(); // Cannot look inside an 'anon'.
+            }
+            let mut search: Vec<Symbol> = context.clone();
+            search.extend(path.clone());
+            if let Some(node) = table.find(&search) {
+                if self.debug_level() > 1 {
+                    eprintln!(
+                        "FOUND INSIDE {} {}",
+                        path_to_string(&context),
+                        path_to_string(&search)
+                    );
+                }
+                return Ok(Some(node.clone()));
+            }
+            if self.debug_level() > 1 {
+                eprintln!(
+                    "   not found {} at {}",
+                    path_to_string(&path),
+                    path_to_string(&search)
+                );
+            }
+            if context.is_empty() {
+                eprintln!(
+                    "   not found {} at {}",
+                    path_to_string(&path),
+                    path_to_string(&search)
+                );
+                return Ok(None);
+            }
+            context.pop(); // Up one, go again.
+        }
+    }
+
+    fn entity_for_ast(self: &Self, node: &AstNode) -> Option<Entity> {
+        self.ast_to_entity.get(node).cloned()
+    }
+
+    fn set_entity_for_ast(self: &mut Self, node: AstNode, entity: Entity) {
+        self.ast_to_entity.insert(node, entity);
+    }
+
+    fn add_location_for_entity(self: &mut Self, loc: Loc, entity: Entity) {
+        self.instance_at
+            .entry(entity)
+            .or_insert(HashSet::new())
+            .insert(loc);
+    }
+
+    fn add_location_for_definition(self: &mut Self, loc: Loc, entity: Entity) {
+        self.defined_at
+            .entry(entity)
+            .or_insert(HashSet::new())
+            .insert(loc);
+    }
 }
 
-#[salsa::database(CompilerStorage)]
-#[derive(Default)]
-pub struct DB {
-    storage: salsa::Storage<Self>,
+#[derive(Debug, PartialEq, Eq, Clone, Hash, PartialOrd, Ord)]
+pub enum AstNode {
+    Value(Val),
+    Symbol(String),
+    Apply {
+        inner: Entity,
+        children: Vec<Entity>,
+    },
+    Definition {
+        name: String,
+        args: Option<Vec<Entity>>,
+        implementations: Vec<Entity>,
+    },
 }
 
-impl salsa::Database for DB {}
+impl DBStorage {
+    pub fn store_node_set(&mut self, node: AstNode) -> Vec<Entity> {
+        match node {
+            _ => vec![self.store_node(node, Loc::default())], // TODO
+        }
+    }
+
+    pub fn store_node(&mut self, node: AstNode, loc: Loc) -> Entity {
+        let lookup: Option<Entity> = self.entity_for_ast(&node);
+        let entity = if let Some(entity) = lookup {
+            entity
+        } else {
+            let entity = {
+                let mut entity = self.world.create_entity();
+                let entity = match node.clone() {
+                    AstNode::Definition {
+                        name,
+                        args,
+                        implementations,
+                    } => entity
+                        .with(HasSymbol(name))
+                        .with(HasArguments(args))
+                        .with(HasChildren(implementations))
+                        .with(IsDefinition),
+                    AstNode::Value(value) => entity.with(HasValue(value)),
+                    AstNode::Symbol(name) => entity.with(HasSymbol(name)).with(IsSymbol),
+                    AstNode::Apply { inner, children } => {
+                        if !children.is_empty() {
+                            entity = entity.with(HasChildren(children));
+                        }
+                        entity.with(HasInner(inner))
+                    }
+                };
+                entity.build()
+            };
+            if let AstNode::Definition { .. } = &node {
+                self.add_location_for_definition(loc.clone(), entity);
+            }
+            self.set_entity_for_ast(node, entity);
+            entity
+        };
+        self.add_location_for_entity(loc, entity);
+        entity
+    }
+}

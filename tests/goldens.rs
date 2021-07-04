@@ -3,7 +3,7 @@ use std::fs::read_to_string;
 
 use pretty_assertions::assert_eq;
 use takolib::cli_options::Options;
-use takolib::database::{Compiler, DB};
+use takolib::database::DBStorage;
 use takolib::errors::TError;
 
 #[derive(Debug, PartialEq)]
@@ -25,17 +25,15 @@ pub struct TestOptions {
 type Test = Result<(), TError>;
 
 fn test_expecting(expected: TestResult, options: Vec<&str>) -> Test {
-    let options = Options::new(options);
-    let mut db = DB::default();
-    db.set_options(options);
-
+    let mut storage = DBStorage::default();
+    storage.options = Options::new(options);
     let mut stdout: Vec<String> = vec![];
     let result = {
         use takolib::externs::Res;
         use takolib::primitives::Prim::{Str, I32};
         use takolib::primitives::Val::PrimVal;
         let mut print_impl =
-            &mut |_: &dyn Compiler,
+            &mut |_: &mut DBStorage,
                   args: HashMap<String, Box<dyn Fn() -> takolib::externs::Res>>,
                   _: takolib::ast::Info|
              -> Res {
@@ -47,11 +45,11 @@ fn test_expecting(expected: TestResult, options: Vec<&str>) -> Test {
                 );
                 Ok(PrimVal(I32(0)))
             };
-        let files = db.files();
+        let files = storage.options.files.clone();
         if files.len() != 1 {
             panic!("Tests currently only support a single file.");
         }
-        takolib::work(&mut db, &files[0], Some(&mut print_impl))
+        takolib::work(&mut storage, &files[0], Some(&mut print_impl))
     };
 
     match (result, expected) {

@@ -22,13 +22,13 @@ name = "tako_bench"
 harness = false
 
 [dependencies]
-salsa = "0.15.0"
 thiserror = "1.0.20"
 derivative = "2.1.1"
 rustyline = "6.3.0"
 directories = "3.0"
 termcolor = "1.1"
 bitvec = "0.20"
+specs = { version = "0.16.0", features = ["specs-derive"] }
 criterion = { version = "0.3", optional = true }
 
 [dev-dependencies]

@@ -244,8 +244,7 @@ mod tests {
             pos,
             Loc {
                 filename: None,
-                line: 2,
-                col: 3
+                pos: Pos { line: 2, col: 3 }
             }
         );
     }
@@ -260,8 +259,7 @@ mod tests {
             pos,
             Loc {
                 filename: None,
-                line: 2,
-                col: 3
+                pos: Pos { line: 2, col: 3 }
             }
         );
     }
@@ -277,8 +275,7 @@ mod tests {
             pos,
             Loc {
                 filename: None,
-                line: 2,
-                col: 3
+                pos: Pos { line: 2, col: 3 }
             }
         );
     }

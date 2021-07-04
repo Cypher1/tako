@@ -1,5 +1,5 @@
 use crate::ast::*;
-use crate::database::Compiler;
+use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::externs::{prim_add_strs, prim_pow, Res};
 use crate::primitives::{
@@ -8,9 +8,9 @@ use crate::primitives::{
 use std::collections::HashMap;
 
 pub type ImplFn<'a> =
-    &'a mut dyn FnMut(&dyn Compiler, HashMap<String, Box<dyn Fn() -> Res>>, Info) -> Res;
+    &'a mut dyn FnMut(&mut DBStorage, HashMap<String, Box<dyn Fn() -> Res>>, Info) -> Res;
 pub type PureImplFn<'a> =
-    &'a dyn Fn(&dyn Compiler, HashMap<String, Box<dyn Fn() -> Res>>, Info) -> Res;
+    &'a dyn Fn(&DBStorage, HashMap<String, Box<dyn Fn() -> Res>>, Info) -> Res;
 
 // Walks the AST interpreting it.
 pub struct Interpreter<'a> {
@@ -218,23 +218,23 @@ fn prim_type_or(l: Val, r: Val, _info: Info) -> Res {
 // TODO: Return nodes.
 type State = Vec<Frame>;
 impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
-    fn visit_root(&mut self, db: &dyn Compiler, root: &Root) -> Res {
+    fn visit_root(&mut self, storage: &mut DBStorage, root: &Root) -> Res {
         let mut base_frame = map! {};
-        for (name, ext) in db.get_externs()?.iter() {
+        for (name, ext) in storage.get_externs()?.iter() {
             base_frame.insert(name.to_owned(), ext.value.clone());
         }
         let mut state = vec![base_frame];
-        self.visit(db, &mut state, &root.ast)
+        self.visit(storage, &mut state, &root.ast)
     }
 
-    fn visit_sym(&mut self, db: &dyn Compiler, state: &mut State, expr: &Sym) -> Res {
-        if db.debug_level() > 1 {
+    fn visit_sym(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Sym) -> Res {
+        if storage.debug_level() > 1 {
             eprintln!("evaluating sym {}", expr.clone().into_node());
         }
         let name = &expr.name;
         let value = find_symbol(state, name);
         if let Some(prim) = value {
-            if db.debug_level() > 0 {
+            if storage.debug_level() > 0 {
                 eprintln!("{} = (from stack) {}", name, prim.clone().into_node());
             }
             return Ok(prim.clone());
@@ -246,8 +246,8 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
         ))
     }
 
-    fn visit_val(&mut self, db: &dyn Compiler, state: &mut State, expr: &Val) -> Res {
-        if db.debug_level() > 2 {
+    fn visit_val(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Val) -> Res {
+        if storage.debug_level() > 2 {
             eprintln!("visiting prim {}", &expr);
         }
         match expr {
@@ -270,7 +270,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
             Product(tys) => {
                 let mut new_tys = set![];
                 for ty in tys.iter() {
-                    let new_ty = self.visit_val(db, state, ty)?; // Evaluate the type
+                    let new_ty = self.visit_val(storage, state, ty)?; // Evaluate the type
                     if new_tys.len() == 1 {
                         let ty = new_tys
                             .iter()
@@ -311,7 +311,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
             Struct(tys) => {
                 let mut new_tys = vec![];
                 for (name, ty) in tys.iter() {
-                    let new_ty = self.visit_val(db, state, ty)?; // Evaluate the type
+                    let new_ty = self.visit_val(storage, state, ty)?; // Evaluate the type
                     new_tys.push((name.clone(), new_ty));
                 }
                 return Ok(Struct(new_tys));
@@ -331,7 +331,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
                         eprintln!(">>>> {}", &unified);
                         new_args.push((arg.clone(), unified));
                     }
-                    let results = self.visit_val(db, state, results)?;
+                    let results = self.visit_val(storage, state, results)?;
                     return Ok(Function {
                         intros: dict!(),
                         arguments: Box::new(Struct(new_args)),
@@ -344,19 +344,19 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
         Ok(expr.clone())
     }
 
-    fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
-        if db.debug_level() > 1 {
+    fn visit_apply(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Apply) -> Res {
+        if storage.debug_level() > 1 {
             eprintln!("evaluating apply {}", expr.clone().into_node());
         }
         state.push(Frame::new());
         expr.args
             .iter()
-            .map(|arg| self.visit_let(db, state, arg))
+            .map(|arg| self.visit_let(storage, state, arg))
             .collect::<Result<Vec<Val>, TError>>()?;
         // Retrive the inner
-        let inner = self.visit(db, state, &*expr.inner)?;
+        let inner = self.visit(storage, state, &*expr.inner)?;
         // Run the inner
-        if db.debug_level() > 2 {
+        if storage.debug_level() > 2 {
             eprintln!(
                 "apply args {:?} to inner {}",
                 state.last(),
@@ -364,12 +364,12 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
             );
         }
         let res = match inner {
-            Val::Lambda(func) => self.visit(db, state, &*func)?,
+            Val::Lambda(func) => self.visit(storage, state, &*func)?,
             Val::PrimVal(prim) => {
                 use crate::primitives::Prim;
                 match prim {
                     Prim::BuiltIn(name) => {
-                        if db.debug_level() > 2 {
+                        if storage.debug_level() > 2 {
                             eprintln!("looking up interpreter impl {}", name);
                         }
                         let frame = || {
@@ -384,15 +384,15 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
                             frame_vals
                         };
                         if let Some(extern_impl) = &mut self.impls.get_mut(&name) {
-                            return extern_impl(db, frame(), expr.get_info());
+                            return extern_impl(storage, frame(), expr.get_info());
                         }
-                        if db.debug_level() > 2 {
+                        if storage.debug_level() > 2 {
                             eprintln!("looking up default impl {}", &name);
                         }
                         if let Some(default_impl) =
                             crate::externs::get_implementation(name.to_owned())
                         {
-                            return default_impl(db, frame(), expr.get_info());
+                            return default_impl(storage, frame(), expr.get_info());
                         }
                         panic!("Built a 'Built in' with unknown built in named {}", name);
                     }
@@ -412,7 +412,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
                 } else {
                     frame.insert("it".to_string(), *arguments);
                 }
-                self.visit_val(db, state, &*results)?
+                self.visit_val(storage, state, &*results)?
             }
             val => val,
         };
@@ -420,7 +420,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
         match res {
             Function { results, .. } => Ok(*results),
             res => {
-                if db.debug_level() > 1 {
+                if storage.debug_level() > 1 {
                     eprintln!("unexpected, apply on a {}", res);
                 }
                 Ok(res)
@@ -428,8 +428,8 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
         }
     }
 
-    fn visit_abs(&mut self, db: &dyn Compiler, state: &mut State, expr: &Abs) -> Res {
-        if db.debug_level() > 1 {
+    fn visit_abs(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Abs) -> Res {
+        if storage.debug_level() > 1 {
             eprintln!("introducing abstraction {}", expr.clone().into_node());
         }
 
@@ -437,15 +437,15 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
         let mut frame = Frame::new();
         frame.insert(expr.name.clone(), Variable(expr.name.clone()));
         state.push(frame);
-        let result = self.visit(db, state, &expr.value)?;
+        let result = self.visit(storage, state, &expr.value)?;
         // Drop the finished scope
         state.pop();
         // TODO: Rewrap in the abstraction
         Ok(result)
     }
 
-    fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
-        if db.debug_level() > 1 {
+    fn visit_let(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Let) -> Res {
+        if storage.debug_level() > 1 {
             eprintln!("evaluating let {}", expr.clone().into_node());
         }
 
@@ -459,7 +459,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
         }
         // Add a new scope
         state.push(Frame::new());
-        let result = self.visit(db, state, &expr.value)?;
+        let result = self.visit(storage, state, &expr.value)?;
         // Drop the finished scope
         state.pop();
         let frame = state.last_mut().expect("Stack frame missing");
@@ -467,11 +467,11 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
         Ok(Val::Struct(vec![(expr.name.clone(), result)]))
     }
 
-    fn visit_un_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &UnOp) -> Res {
-        if db.debug_level() > 1 {
+    fn visit_un_op(&mut self, storage: &mut DBStorage, state: &mut State, expr: &UnOp) -> Res {
+        if storage.debug_level() > 1 {
             eprintln!("evaluating unop {}", expr.clone().into_node());
         }
-        let i = self.visit(db, state, &expr.inner)?;
+        let i = self.visit(storage, state, &expr.inner)?;
         let info = expr.clone().get_info();
         match expr.name.as_str() {
             "!" => match i {
@@ -493,13 +493,13 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
         }
     }
 
-    fn visit_bin_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &BinOp) -> Res {
-        if db.debug_level() > 1 {
+    fn visit_bin_op(&mut self, storage: &mut DBStorage, state: &mut State, expr: &BinOp) -> Res {
+        if storage.debug_level() > 1 {
             eprintln!("evaluating binop {}", expr.clone().into_node());
         }
         let info = expr.clone().get_info();
-        let l = self.visit(db, state, &expr.left);
-        let mut r = || self.visit(db, state, &expr.right);
+        let l = self.visit(storage, state, &expr.left);
+        let mut r = || self.visit(storage, state, &expr.right);
         match expr.name.as_str() {
             "+" => prim_add(&l?, &r()?, info),
             "++" => prim_add_strs(&l?, &r()?, info),
@@ -528,7 +528,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
                 let l = l?;
                 let r = r()?;
                 self.visit_apply(
-                    db,
+                    storage,
                     state,
                     &Apply {
                         inner: Box::new(r.into_node()),
@@ -565,36 +565,30 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pretty_assertions::assert_eq;
-
-    use crate::cli_options::Options;
-    use crate::database::{Compiler, DB};
     use crate::primitives::{boolean, int32, number_type, string, string_type};
+    use pretty_assertions::assert_eq;
     use Node::*;
 
-    fn get_db() -> DB {
-        let mut db = DB::default();
-        db.set_options(Options::default());
-        db
+    fn get_db() -> DBStorage {
+        DBStorage::default()
     }
 
     #[test]
     fn eval_num() {
-        let db = &mut get_db();
+        let mut storage = get_db();
         let tree = ValNode(int32(12), Info::default());
         assert_eq!(
-            Interpreter::default().visit(db, &mut vec![], &tree),
+            Interpreter::default().visit(&mut storage, &mut vec![], &tree),
             Ok(int32(12))
         );
     }
 
-    fn eval_str(db: &mut DB, s: &str) -> Res {
-        use std::sync::Arc;
+    fn eval_str(storage: &mut DBStorage, s: &str) -> Res {
         let filename = "test/file.tk";
-        let module_name = db.module_name(filename.to_owned());
-        db.set_file(filename.to_owned(), Ok(Arc::new(s.to_string())));
-        let root = db.look_up_definitions(module_name)?;
-        Interpreter::default().visit_root(db, &root)
+        let module_name = storage.module_name(filename.to_owned());
+        storage.set_file(filename, s.to_string());
+        let root = storage.look_up_definitions(module_name)?;
+        Interpreter::default().visit_root(storage, &root)
     }
 
     #[allow(dead_code)]

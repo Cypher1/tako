@@ -5,15 +5,14 @@ pub mod data_structures;
 
 use std::fs::File;
 use std::io::prelude::*;
-use std::sync::Arc;
 
 pub mod ast;
 pub mod cli_options;
 pub mod database;
 pub mod errors;
+pub mod externs;
 pub mod primitives;
 
-pub mod externs;
 mod location;
 mod symbol_table;
 mod tokens;
@@ -25,16 +24,17 @@ mod experimental;
 // This is where all the compiler passes (rather than shared infrastructure) gors.
 pub mod passes;
 
+mod components;
 use ast::Visitor;
 use passes::interpreter::Interpreter;
 use passes::pretty_print::PrettyPrint;
 
-use database::{Compiler, DB};
+use database::DBStorage;
 use errors::TError;
 use passes::interpreter::ImplFn;
 
 pub fn work<'a>(
-    db: &mut DB,
+    storage: &mut DBStorage,
     filename: &str,
     print_impl: Option<ImplFn<'a>>,
 ) -> Result<String, TError> {
@@ -42,29 +42,29 @@ pub fn work<'a>(
     let mut file = File::open(filename.to_owned())?;
     file.read_to_string(&mut contents)?;
 
-    work_on_string(db, contents, filename, print_impl)
+    work_on_string(storage, contents, filename, print_impl)
 }
 
 pub fn work_on_string<'a>(
-    db: &mut DB,
+    storage: &mut DBStorage,
     contents: String,
     filename: &str,
     print_impl: Option<ImplFn<'a>>,
 ) -> Result<String, TError> {
-    let module_name = db.module_name(filename.to_owned());
-    db.set_file(filename.to_owned(), Ok(Arc::new(contents)));
+    let module_name = storage.module_name(filename.to_owned());
+    storage.set_file(filename, contents);
 
     use cli_options::Command;
-    if db.options().cmd == Command::Build {
-        db.build_with_gpp(module_name)
+    if storage.options.cmd == Command::Build {
+        storage.build_with_gpp(module_name)
     } else {
-        let root = db.look_up_definitions(module_name)?;
+        let root = storage.look_up_definitions(module_name)?;
         let mut interp = Interpreter::default();
         if let Some(print_impl) = print_impl {
             interp.impls.insert("print".to_string(), print_impl);
         }
-        let res = interp.visit_root(db, &root)?;
+        let res = interp.visit_root(storage, &root)?;
         use ast::ToNode;
-        PrettyPrint::process(&res.into_node(), db).or_else(|_| panic!("Pretty print failed"))
+        PrettyPrint::process(&res.into_node(), storage).or_else(|_| panic!("Pretty print failed"))
     }
 }

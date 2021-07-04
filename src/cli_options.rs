@@ -38,6 +38,12 @@ impl Options {
         }
     }
 
+    pub fn with_file(self: Options, filename: &str) -> Options {
+        let mut files = self.files;
+        files.push(filename.to_owned());
+        Options { files, ..self }
+    }
+
     pub fn new<I, T>(args: I) -> Options
     where
         I: IntoIterator<Item = T>,
