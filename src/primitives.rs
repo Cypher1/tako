@@ -46,69 +46,50 @@ impl std::fmt::Debug for Prim {
     }
 }
 
+// use std::sync::Arc;
+type InnerVal = Box<Val>;
+
 #[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Hash)]
 pub enum Val {
     PrimVal(Prim),
     // Complex types
-    Pointer(Offset, Box<Val>), // Defaults to 8 bytes (64 bit)
+    Pointer(Offset, InnerVal), // Defaults to 8 bytes (64 bit)
     Lambda(Box<Node>),
     Struct(Vec<(String, Val)>), // Should really just store values, but we can't do that yet.
     Union(TypeSet),
     Product(TypeSet),
-    Padded(Offset, Box<Val>),
+    Padded(Offset, InnerVal),
     Function {
         intros: Pack,
-        arguments: Box<Val>,
-        results: Box<Val>,
+        arguments: InnerVal,
+        results: InnerVal,
     },
     App {
-        inner: Box<Val>,
-        arguments: Box<Val>,
+        inner: InnerVal,
+        arguments: InnerVal,
     },
     // The following should be eliminated during lowering
-    WithRequirement(Box<Val>, Vec<String>),
+    WithRequirement(InnerVal, Vec<String>),
     Variable(String),
     BitStr(Offset),
 }
 
-pub fn merge_vals(left: Vec<(String, Val)>, right: Vec<(String, Val)>) -> Vec<(String, Val)> {
-    let mut names = HashSet::<String>::new();
-    for pair in right.iter() {
-        names.insert(pair.0.clone());
-    }
-    let mut items = vec![];
-    for pair in left.iter() {
-        if !names.contains(&pair.0) {
-            items.push(pair.clone());
-        }
-    }
-    for pair in right.iter() {
-        items.push(pair.clone());
-    }
-    items
-}
-
-pub fn tag(bits: BitVec) -> Val {
-    Val::PrimVal(Prim::Tag(bits))
-}
-
-pub fn boolean(b: bool) -> Val {
-    Val::PrimVal(Prim::Bool(b))
-}
-
-pub fn string(s: &str) -> Val {
-    Val::PrimVal(Prim::Str(s.to_string()))
-}
-
-pub fn int32(i: i32) -> Val {
-    Val::PrimVal(Prim::I32(i))
-}
-
-pub fn builtin(name: &str) -> Val {
-    Val::PrimVal(Prim::BuiltIn(name.to_string()))
-}
+use Val::*;
 
 impl Val {
+    pub fn ptr(self: Val) -> Val {
+        Pointer(8 * byte_size(), Box::new(self))
+    }
+    pub fn padded(self: Val, size: Offset) -> Val {
+        if size == 0 {
+            return self;
+        }
+        if let Padded(n, t) = self {
+            return Padded(n + size, t);
+        }
+        Padded(size, Box::new(self))
+    }
+
     pub fn is_sat(self: &Val) -> Tribool {
         use Tribool::*;
         match self {
@@ -280,21 +261,41 @@ impl std::fmt::Debug for Val {
     }
 }
 
-use Val::*;
+pub fn merge_vals(left: Vec<(String, Val)>, right: Vec<(String, Val)>) -> Vec<(String, Val)> {
+    let mut names = HashSet::<String>::new();
+    for pair in right.iter() {
+        names.insert(pair.0.clone());
+    }
+    let mut items = vec![];
+    for pair in left.iter() {
+        if !names.contains(&pair.0) {
+            items.push(pair.clone());
+        }
+    }
+    for pair in right.iter() {
+        items.push(pair.clone());
+    }
+    items
+}
 
-impl Val {
-    pub fn ptr(self: Val) -> Val {
-        Pointer(8 * byte_size(), Box::new(self))
-    }
-    pub fn padded(self: Val, size: Offset) -> Val {
-        if size == 0 {
-            return self;
-        }
-        if let Padded(n, t) = self {
-            return Padded(n + size, t);
-        }
-        Padded(size, Box::new(self))
-    }
+pub fn tag(bits: BitVec) -> Val {
+    Val::PrimVal(Prim::Tag(bits))
+}
+
+pub fn boolean(b: bool) -> Val {
+    Val::PrimVal(Prim::Bool(b))
+}
+
+pub fn string(s: &str) -> Val {
+    Val::PrimVal(Prim::Str(s.to_string()))
+}
+
+pub fn int32(i: i32) -> Val {
+    Val::PrimVal(Prim::I32(i))
+}
+
+pub fn builtin(name: &str) -> Val {
+    Val::PrimVal(Prim::BuiltIn(name.to_string()))
 }
 
 #[allow(dead_code)]
