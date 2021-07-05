@@ -8,11 +8,11 @@ use takolib::database::Compiler;
 #[cfg(feature = "bench")]
 use takolib::database::DB;
 #[cfg(feature = "bench")]
-use takolib::parser::parse_string;
+use takolib::passes::parser::parse_string;
+#[cfg(feature = "bench")]
+use takolib::passes::type_checker::infer;
 #[cfg(feature = "bench")]
 use takolib::primitives::Val::Variable;
-#[cfg(feature = "bench")]
-use takolib::type_checker::infer;
 
 #[cfg(feature = "bench")]
 use std::sync::Arc;
