@@ -1,11 +1,11 @@
 use crate::ast::*;
 use crate::database::Compiler;
 use crate::errors::TError;
-use crate::interpreter::Interpreter;
+use crate::passes::interpreter::Interpreter;
 use crate::primitives::{Prim::*, Val::*, *};
 use std::collections::BTreeSet;
 
-use crate::type_graph::*;
+use crate::experimental::type_graph::*;
 
 // Walks the AST interpreting it.
 #[derive(Default)]
@@ -195,8 +195,8 @@ mod tests {
     use crate::cli_options::Options;
     use crate::database::{Compiler, DB};
     use crate::errors::TError;
+    use crate::experimental::type_graph::TypeGraph;
     use crate::primitives::{i32_type, string_type};
-    use crate::type_graph::TypeGraph;
     use pretty_assertions::assert_eq;
     use std::sync::Arc;
 

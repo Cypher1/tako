@@ -8,12 +8,13 @@ use std::process::Command;
 
 use directories::ProjectDirs;
 
-use super::ast::{path_to_string, Node, Path, PathRef, Root, Symbol, Table, Visitor};
-use super::cli_options::Options;
-use super::errors::TError;
-use super::externs::{Extern, Semantic};
-use super::primitives::Val;
-use super::tokens::Token;
+use crate::ast::{path_to_string, Node, Path, PathRef, Root, Symbol, Visitor};
+use crate::cli_options::Options;
+use crate::errors::TError;
+use crate::externs::{Extern, Semantic};
+use crate::primitives::Val;
+use crate::symbol_table::Table;
+use crate::tokens::Token;
 
 #[salsa::query_group(CompilerStorage)]
 pub trait Compiler {
@@ -139,7 +140,7 @@ fn lex_string(
     module: Path,
     contents: Arc<String>,
 ) -> Result<VecDeque<Token>, TError> {
-    use crate::parser;
+    use crate::passes::parser;
     if db.debug_level() > 0 {
         eprintln!("lexing file... {}", path_to_string(&module));
     }
@@ -147,7 +148,7 @@ fn lex_string(
 }
 
 fn lex_file(db: &dyn Compiler, module: Path) -> Result<VecDeque<Token>, TError> {
-    use crate::parser;
+    use crate::passes::parser;
     if db.debug_level() > 0 {
         eprintln!("lexing file... {}", path_to_string(&module));
     }
@@ -155,7 +156,7 @@ fn lex_file(db: &dyn Compiler, module: Path) -> Result<VecDeque<Token>, TError> 
 }
 
 fn parse_string(db: &dyn Compiler, module: Path, contents: Arc<String>) -> Result<Node, TError> {
-    use crate::parser;
+    use crate::passes::parser;
     parser::parse_string(db, &module, &contents)
 }
 
@@ -164,12 +165,12 @@ fn parse_str(db: &dyn Compiler, module: Path, contents: &'static str) -> Result<
 }
 
 fn parse_file(db: &dyn Compiler, module: Path) -> Result<Node, TError> {
-    use crate::parser;
+    use crate::passes::parser;
     parser::parse(db, &module)
 }
 
 fn build_symbol_table(db: &dyn Compiler, module: Path) -> Result<Root, TError> {
-    use crate::symbol_table_builder::SymbolTableBuilder;
+    use crate::passes::symbol_table_builder::SymbolTableBuilder;
     SymbolTableBuilder::process(&module, db)
 }
 
@@ -247,7 +248,7 @@ fn to_file_path(context: PathRef) -> Path {
 }
 
 fn look_up_definitions(db: &dyn Compiler, context: Path) -> Result<Root, TError> {
-    use crate::definition_finder::DefinitionFinder;
+    use crate::passes::definition_finder::DefinitionFinder;
     let module = to_file_path(&context);
     if db.debug_level() > 0 {
         eprintln!("look up definitions >> {}", path_to_string(&module));
@@ -256,7 +257,7 @@ fn look_up_definitions(db: &dyn Compiler, context: Path) -> Result<Root, TError>
 }
 
 fn infer(db: &dyn Compiler, expr: Node, env: Val) -> Result<Val, TError> {
-    use crate::type_checker::infer;
+    use crate::passes::type_checker::infer;
     if db.debug_level() > 0 {
         eprintln!("infering type for ... {}", &expr);
     }
@@ -264,7 +265,7 @@ fn infer(db: &dyn Compiler, expr: Node, env: Val) -> Result<Val, TError> {
 }
 
 fn compile_to_cpp(db: &dyn Compiler, module: Path) -> Result<(String, HashSet<String>), TError> {
-    use crate::to_cpp::CodeGenerator;
+    use crate::passes::to_cpp::CodeGenerator;
     if db.debug_level() > 0 {
         eprintln!("generating code for file ... {}", path_to_string(&module));
     }

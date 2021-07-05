@@ -1,7 +1,8 @@
-use super::ast::*;
-use super::database::Compiler;
-use super::errors::TError;
-use super::primitives::{
+use crate::ast::*;
+use crate::database::Compiler;
+use crate::errors::TError;
+use crate::externs::{prim_add_strs, prim_pow, Res};
+use crate::primitives::{
     boolean, int32, merge_vals, never_type, string, Frame, Prim::*, Val, Val::*,
 };
 use std::collections::HashMap;
@@ -35,7 +36,7 @@ fn find_symbol<'a>(state: &'a [Frame], name: &str) -> Option<&'a Val> {
 }
 
 fn prim_add(l: &Val, r: &Val, _info: Info) -> Res {
-    use super::primitives::sum;
+    use crate::primitives::sum;
     match (l, r) {
         (PrimVal(Bool(l)), PrimVal(Bool(r))) => {
             Ok(int32(if *l { 1 } else { 0 } + if *r { 1 } else { 0 }))
@@ -56,17 +57,6 @@ fn prim_add(l: &Val, r: &Val, _info: Info) -> Res {
         //info,
         //)),
     }
-}
-
-pub fn prim_add_strs(l: &Val, r: &Val, _info: Info) -> Res {
-    let to_str = |v: &Val| {
-        if let PrimVal(Str(s)) = v {
-            s.to_string()
-        } else {
-            format!("{}", v)
-        }
-    };
-    Ok(PrimVal(Str(format!("{}{}", to_str(l), to_str(r)))))
 }
 
 fn prim_eq(l: &Val, r: &Val, info: Info) -> Res {
@@ -139,7 +129,7 @@ fn prim_sub(l: &Val, r: &Val, info: Info) -> Res {
 }
 
 fn prim_mul(l: &Val, r: &Val, info: Info) -> Res {
-    use super::primitives::record;
+    use crate::primitives::record;
     let fail = || {
         Err(TError::TypeMismatch2(
             "*".to_string(),
@@ -225,21 +215,7 @@ fn prim_type_or(l: Val, r: Val, _info: Info) -> Res {
     Ok(Val::Union(set!(l, r)))
 }
 
-pub fn prim_pow(l: &Val, r: &Val, info: Info) -> Res {
-    match (l, r) {
-        (PrimVal(I32(l)), PrimVal(Bool(r))) => Ok(int32(if *r { *l } else { 1 })),
-        (PrimVal(I32(l)), PrimVal(I32(r))) => Ok(int32(i32::pow(*l, *r as u32))), // TODO: require pos pow
-        (l, r) => Err(TError::TypeMismatch2(
-            "^".to_string(),
-            Box::new((*l).clone()),
-            Box::new((*r).clone()),
-            info,
-        )),
-    }
-}
-
 // TODO: Return nodes.
-pub type Res = Result<Val, TError>;
 type State = Vec<Frame>;
 impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
     fn visit_root(&mut self, db: &dyn Compiler, root: &Root) -> Res {

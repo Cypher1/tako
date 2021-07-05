@@ -1,7 +1,7 @@
 #![deny(clippy::all)]
 
 #[macro_use]
-mod map_macros;
+pub mod data_structures;
 
 use std::fs::File;
 use std::io::prelude::*;
@@ -12,34 +12,26 @@ pub mod cli_options;
 pub mod database;
 pub mod errors;
 pub mod primitives;
-pub mod tribool;
 
-pub mod interpreter;
-pub mod parser;
-pub mod type_checker;
-pub mod type_graph;
-pub mod type_graph_builder;
-
-mod externs;
+pub mod externs;
 mod location;
+mod symbol_table;
 mod tokens;
-mod tree;
 
-mod definition_finder;
-mod pretty_print;
-mod symbol_table_builder;
-mod to_cpp;
-
+// This is where the fun, but currently unused stuff goes
 #[allow(dead_code)]
-mod experimental; // This is where the fun, but currently unused stuff goes
+mod experimental;
+
+// This is where all the compiler passes (rather than shared infrastructure) gors.
+pub mod passes;
 
 use ast::Visitor;
-use interpreter::Interpreter;
-use pretty_print::PrettyPrint;
+use passes::interpreter::Interpreter;
+use passes::pretty_print::PrettyPrint;
 
 use database::{Compiler, DB};
 use errors::TError;
-use interpreter::ImplFn;
+use passes::interpreter::ImplFn;
 
 pub fn work<'a>(
     db: &mut DB,

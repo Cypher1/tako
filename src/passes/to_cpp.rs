@@ -1,5 +1,6 @@
 use crate::ast::*;
 use crate::primitives::{Prim, Val};
+use crate::symbol_table::*;
 use crate::{database::Compiler, errors::TError};
 use std::collections::HashSet;
 

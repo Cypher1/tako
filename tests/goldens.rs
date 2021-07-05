@@ -31,12 +31,12 @@ fn test_expecting(expected: TestResult, options: Vec<&str>) -> Test {
 
     let mut stdout: Vec<String> = vec![];
     let result = {
-        use takolib::interpreter::Res;
+        use takolib::externs::Res;
         use takolib::primitives::Prim::{Str, I32};
         use takolib::primitives::Val::PrimVal;
         let mut print_impl =
             &mut |_: &dyn Compiler,
-                  args: HashMap<String, Box<dyn Fn() -> takolib::interpreter::Res>>,
+                  args: HashMap<String, Box<dyn Fn() -> takolib::externs::Res>>,
                   _: takolib::ast::Info|
              -> Res {
                 stdout.push(

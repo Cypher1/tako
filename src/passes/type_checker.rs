@@ -1,7 +1,7 @@
 use crate::ast::{Node, Node::*};
 use crate::database::Compiler;
 use crate::errors::TError;
-use crate::interpreter::Interpreter;
+use crate::passes::interpreter::Interpreter;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 

@@ -3,11 +3,36 @@ use std::collections::HashMap;
 use crate::ast::{Info, Node, ToNode};
 use crate::database::Compiler;
 use crate::errors::TError;
-use crate::interpreter::{prim_add_strs, prim_pow, Res};
 use crate::primitives::{
     bit_type, builtin, i32_type, int32, never_type, number_type, string, string_type, type_type,
     unit_type, variable, Prim::*, Val, Val::*,
 };
+
+pub type Res = Result<Val, TError>;
+
+pub fn prim_add_strs(l: &Val, r: &Val, _info: Info) -> Res {
+    let to_str = |v: &Val| {
+        if let PrimVal(Str(s)) = v {
+            s.to_string()
+        } else {
+            format!("{}", v)
+        }
+    };
+    Ok(PrimVal(Str(format!("{}{}", to_str(l), to_str(r)))))
+}
+
+pub fn prim_pow(l: &Val, r: &Val, info: Info) -> Res {
+    match (l, r) {
+        (PrimVal(I32(l)), PrimVal(Bool(r))) => Ok(int32(if *r { *l } else { 1 })),
+        (PrimVal(I32(l)), PrimVal(I32(r))) => Ok(int32(i32::pow(*l, *r as u32))), // TODO: require pos pow
+        (l, r) => Err(TError::TypeMismatch2(
+            "^".to_string(),
+            Box::new((*l).clone()),
+            Box::new((*r).clone()),
+            info,
+        )),
+    }
+}
 
 pub type Args = HashMap<String, Box<dyn Fn() -> Res>>;
 pub type FuncImpl = Box<dyn Fn(&dyn Compiler, Args, Info) -> Res>;
