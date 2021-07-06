@@ -131,9 +131,10 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
             )),
         }
     } else {
-        Err(
-            TError::ParseError("Unexpected eof, expected expr".to_string(), Info::default())
-        )
+        Err(TError::ParseError(
+            "Unexpected eof, expected expr".to_string(),
+            Info::default(),
+        ))
     }
 }
 
@@ -176,18 +177,17 @@ fn led(
         ..
     }) = toks.front()
     {
-        return Err(
-            TError::ParseError("Expected Close bracket".to_string(), pos.clone().get_info())
-        );
+        return Err(TError::ParseError(
+            "Expected Close bracket".to_string(),
+            pos.clone().get_info(),
+        ));
     }
 
     match toks.pop_front() {
-        None => Err(
-            TError::ParseError(
-                "Unexpected eof, expected expr tail".to_string(),
-                left.get_info(),
-            )
-        ),
+        None => Err(TError::ParseError(
+            "Unexpected eof, expected expr tail".to_string(),
+            left.get_info(),
+        )),
         Some(head) => match head.tok_type {
             TokenType::NumLit | TokenType::StringLit | TokenType::Sym => {
                 let pos = head.pos.clone();
@@ -441,8 +441,8 @@ pub fn parse_string(
 pub mod tests {
     use super::parse_string;
     use crate::ast::*;
-    use crate::errors::TError;
     use crate::database::{Compiler, DB};
+    use crate::errors::TError;
     use crate::primitives::{int32, string};
 
     type Test = Result<(), TError>;
@@ -473,10 +473,7 @@ pub mod tests {
 
     #[test]
     fn parse_str() -> Test {
-        assert_eq!(
-            parse("\"hello world\"")?,
-            string("hello world").into_node()
-        );
+        assert_eq!(parse("\"hello world\"")?, string("hello world").into_node());
         Ok(())
     }
 
