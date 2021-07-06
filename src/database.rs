@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 
 use std::io::prelude::*;
 use std::path::PathBuf;
@@ -14,7 +14,6 @@ use crate::errors::TError;
 use crate::externs::{Extern, Semantic};
 use crate::primitives::Val;
 use crate::symbol_table::Table;
-use crate::tokens::Token;
 
 #[salsa::query_group(CompilerStorage)]
 pub trait Compiler {
@@ -39,9 +38,7 @@ pub trait Compiler {
     fn module_name(&self, filename: String) -> Path;
     fn filename(&self, module: Path) -> String;
 
-    // Lexing, parsing and building symbol tables are currently done one whole file at a time.
-    fn lex_string(&self, module: Path, contents: Arc<String>) -> Result<VecDeque<Token>, TError>;
-    fn lex_file(&self, module: Path) -> Result<VecDeque<Token>, TError>;
+    // Parsing and building symbol tables are currently done one whole file at a time.
     fn parse_string(&self, module: Path, contents: Arc<String>) -> Result<Node, TError>;
     fn parse_str(&self, module: Path, contents: &'static str) -> Result<Node, TError>;
     fn parse_file(&self, module: Path) -> Result<Node, TError>;
@@ -135,26 +132,6 @@ fn get_extern_operator(db: &dyn Compiler, name: String) -> Result<Semantic, TErr
         .unwrap_or(Semantic::Func))
 }
 
-fn lex_string(
-    db: &dyn Compiler,
-    module: Path,
-    contents: Arc<String>,
-) -> Result<VecDeque<Token>, TError> {
-    use crate::passes::parser;
-    if db.debug_level() > 0 {
-        eprintln!("lexing file... {}", path_to_string(&module));
-    }
-    parser::lex_string(db, &module, &contents)
-}
-
-fn lex_file(db: &dyn Compiler, module: Path) -> Result<VecDeque<Token>, TError> {
-    use crate::passes::parser;
-    if db.debug_level() > 0 {
-        eprintln!("lexing file... {}", path_to_string(&module));
-    }
-    parser::lex(db, &module)
-}
-
 fn parse_string(db: &dyn Compiler, module: Path, contents: Arc<String>) -> Result<Node, TError> {
     use crate::passes::parser;
     parser::parse_string(db, &module, &contents)
@@ -165,8 +142,11 @@ fn parse_str(db: &dyn Compiler, module: Path, contents: &'static str) -> Result<
 }
 
 fn parse_file(db: &dyn Compiler, module: Path) -> Result<Node, TError> {
-    use crate::passes::parser;
-    parser::parse(db, &module)
+    if db.debug_level() > 0 {
+        eprintln!("parsing file... {}", path_to_string(&module));
+    }
+    let filename = db.filename(module.clone());
+    parse_string(db, module, db.file(filename)?)
 }
 
 fn build_symbol_table(db: &dyn Compiler, module: Path) -> Result<Root, TError> {
