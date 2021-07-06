@@ -560,10 +560,6 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
             op => Err(TError::UnknownInfixOperator(op.to_string(), info)),
         }
     }
-
-    fn handle_error(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &TError) -> Res {
-        Err(expr.clone())
-    }
 }
 
 #[cfg(test)]

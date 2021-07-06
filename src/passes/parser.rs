@@ -131,11 +131,9 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
             )),
         }
     } else {
-        Ok((
+        Err(
             TError::ParseError("Unexpected eof, expected expr".to_string(), Info::default())
-                .into_node(),
-            toks,
-        ))
+        )
     }
 }
 
@@ -184,14 +182,12 @@ fn led(
     }
 
     match toks.pop_front() {
-        None => Ok((
+        None => Err(
             TError::ParseError(
                 "Unexpected eof, expected expr tail".to_string(),
                 left.get_info(),
             )
-            .into_node(),
-            toks,
-        )),
+        ),
         Some(head) => match head.tok_type {
             TokenType::NumLit | TokenType::StringLit | TokenType::Sym => {
                 let pos = head.pos.clone();

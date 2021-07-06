@@ -9,11 +9,6 @@ use crate::location::*;
 use crate::primitives::{unit_type, Val};
 use crate::symbol_table::Table;
 
-impl ToNode for TError {
-    fn into_node(self) -> Node {
-        Node::Error(self)
-    }
-}
 impl HasInfo for TError {
     fn get_info(&self) -> Info {
         use TError::*;
@@ -285,7 +280,6 @@ impl Hash for Info {
 // #[derive(Debug)]
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub enum Node {
-    Error(TError),
     SymNode(Sym),
     ValNode(Val, Info),
     ApplyNode(Apply),
@@ -299,7 +293,6 @@ impl std::fmt::Debug for Node {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use Node::*;
         match self {
-            Error(n) => n.fmt(f),
             SymNode(n) => n.fmt(f),
             ValNode(n, _) => n.fmt(f),
             ApplyNode(n) => n.fmt(f),
@@ -331,7 +324,6 @@ impl HasInfo for Node {
     fn get_info(&self) -> Info {
         use Node::*;
         match self {
-            Error(n) => n.get_info(),
             SymNode(n) => n.get_info(),
             ValNode(_n, info) => info.clone(),
             ApplyNode(n) => n.get_info(),
@@ -344,7 +336,6 @@ impl HasInfo for Node {
     fn get_mut_info(&mut self) -> &mut Info {
         use Node::*;
         match self {
-            Error(ref mut n) => n.get_mut_info(),
             SymNode(ref mut n) => n.get_mut_info(),
             ValNode(_, ref mut info) => info,
             ApplyNode(ref mut n) => n.get_mut_info(),
@@ -460,12 +451,6 @@ impl fmt::Display for Root {
 pub trait Visitor<State, Res, Final, Start = Root> {
     fn visit_root(&mut self, db: &dyn Compiler, e: &Start) -> Result<Final, TError>;
 
-    fn handle_error(
-        &mut self,
-        db: &dyn Compiler,
-        state: &mut State,
-        e: &TError,
-    ) -> Result<Res, TError>;
     fn visit_sym(&mut self, db: &dyn Compiler, state: &mut State, e: &Sym) -> Result<Res, TError>;
     fn visit_val(&mut self, db: &dyn Compiler, state: &mut State, e: &Val) -> Result<Res, TError>;
     fn visit_apply(
@@ -492,7 +477,6 @@ pub trait Visitor<State, Res, Final, Start = Root> {
     fn visit(&mut self, db: &dyn Compiler, state: &mut State, e: &Node) -> Result<Res, TError> {
         use Node::*;
         match e {
-            Error(n) => self.handle_error(db, state, n),
             SymNode(n) => self.visit_sym(db, state, n),
             ValNode(n, _) => self.visit_val(db, state, n),
             ApplyNode(n) => self.visit_apply(db, state, n),

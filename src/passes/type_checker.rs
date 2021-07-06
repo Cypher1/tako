@@ -196,7 +196,6 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Val) -> Result<Val, TError> {
             };
             Ok(Val::Struct(vec![(name.clone(), ty)]))
         }
-        Error(err) => Err(err.clone()),
     }
 }
 

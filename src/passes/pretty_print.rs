@@ -93,10 +93,6 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
         write!(state, ")")?;
         Ok(())
     }
-
-    fn handle_error(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &TError) -> Res {
-        Err(expr.clone())
-    }
 }
 
 #[cfg(test)]
