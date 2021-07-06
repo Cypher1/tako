@@ -178,10 +178,6 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
         }
         .into_node())
     }
-
-    fn handle_error(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &TError) -> Res {
-        Err(expr.clone())
-    }
 }
 
 #[cfg(test)]

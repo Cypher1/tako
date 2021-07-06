@@ -131,10 +131,9 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
             )),
         }
     } else {
-        Ok((
-            TError::ParseError("Unexpected eof, expected expr".to_string(), Info::default())
-                .into_node(),
-            toks,
+        Err(TError::ParseError(
+            "Unexpected eof, expected expr".to_string(),
+            Info::default(),
         ))
     }
 }
@@ -178,21 +177,16 @@ fn led(
         ..
     }) = toks.front()
     {
-        return Ok((
-            TError::ParseError("Exected Close bracket".to_string(), pos.clone().get_info())
-                .into_node(),
-            toks,
+        return Err(TError::ParseError(
+            "Expected Close bracket".to_string(),
+            pos.clone().get_info(),
         ));
     }
 
     match toks.pop_front() {
-        None => Ok((
-            TError::ParseError(
-                "Unexpected eof, expected expr tail".to_string(),
-                left.get_info(),
-            )
-            .into_node(),
-            toks,
+        None => Err(TError::ParseError(
+            "Unexpected eof, expected expr tail".to_string(),
+            left.get_info(),
         )),
         Some(head) => match head.tok_type {
             TokenType::NumLit | TokenType::StringLit | TokenType::Sym => {
@@ -383,22 +377,19 @@ fn expr(
                 }
             }
         }
-        let update = led(db, toks, left.clone())?;
-        if let (Node::Error(_), new_toks) = update {
-            return Ok((left, new_toks));
+        let update = led(db, toks.clone(), left.clone());
+        // TODO: Only retry on parse failures...
+        if let Ok(update) = update {
+            left = update.0;
+            toks = update.1;
+        } else {
+            return Ok((left, toks));
         }
-        left = update.0;
-        toks = update.1;
     }
     Ok((left, toks))
 }
 
-pub fn lex(db: &dyn Compiler, module: PathRef) -> Result<VecDeque<Token>, TError> {
-    let filename = db.filename(module.to_vec());
-    lex_string(db, module, &db.file(filename)?.to_string())
-}
-
-pub fn lex_string(
+fn lex_string(
     db: &dyn Compiler,
     module: PathRef,
     contents: &str,
@@ -428,28 +419,9 @@ pub fn parse_string(
     module: PathRef,
     text: &Arc<String>,
 ) -> Result<Node, TError> {
-    let toks = db.lex_string(module.to_vec(), text.clone())?;
+    let toks = lex_string(db, module, text)?;
     if db.debug_level() > 0 {
         eprintln!("parsing str... {}", path_to_string(module));
-    }
-    let (root, left_over) = expr(db, toks, 0)?;
-
-    if let Some(head) = left_over.front() {
-        return Err(TError::ParseError(
-            format!("Oh no: Left over tokens {:?}", left_over),
-            head.get_info(),
-        ));
-    }
-    if db.options().show_ast {
-        eprintln!("ast: {}", root);
-    }
-    Ok(root)
-}
-
-pub fn parse(db: &dyn Compiler, module: PathRef) -> Result<Node, TError> {
-    let toks = db.lex_file(module.to_vec())?;
-    if db.debug_level() > 0 {
-        eprintln!("parsing file... {}", path_to_string(module));
     }
     let (root, left_over) = expr(db, toks, 0)?;
 
@@ -470,16 +442,19 @@ pub mod tests {
     use super::parse_string;
     use crate::ast::*;
     use crate::database::{Compiler, DB};
+    use crate::errors::TError;
     use crate::primitives::{int32, string};
 
-    fn parse(contents: String) -> Node {
+    type Test = Result<(), TError>;
+
+    fn parse(contents: &str) -> Result<Node, TError> {
         use crate::cli_options::Options;
         use std::sync::Arc;
         let mut db = DB::default();
         let filename = "test.tk";
         db.set_options(Options::default());
         let module = db.module_name(filename.to_owned());
-        parse_string(&db, &module, &Arc::new(contents)).expect("failed to parse string")
+        parse_string(&db, &module, &Arc::new(contents.to_string()))
     }
 
     fn num_lit(x: i32) -> Box<Node> {
@@ -491,22 +466,21 @@ pub mod tests {
     }
 
     #[test]
-    fn parse_num() {
-        assert_eq!(parse("12".to_string()), int32(12).into_node());
+    fn parse_num() -> Test {
+        assert_eq!(parse("12")?, int32(12).into_node());
+        Ok(())
     }
 
     #[test]
-    fn parse_str() {
-        assert_eq!(
-            parse("\"hello world\"".to_string()),
-            string("hello world").into_node()
-        );
+    fn parse_str() -> Test {
+        assert_eq!(parse("\"hello world\"")?, string("hello world").into_node());
+        Ok(())
     }
 
     #[test]
-    fn parse_un_op() {
+    fn parse_un_op() -> Test {
         assert_eq!(
-            parse("-12".to_string()),
+            parse("-12")?,
             UnOp {
                 name: "-".to_string(),
                 inner: Box::new(int32(12).into_node()),
@@ -514,12 +488,13 @@ pub mod tests {
             }
             .into_node()
         );
+        Ok(())
     }
 
     #[test]
-    fn parse_min_op() {
+    fn parse_min_op() -> Test {
         assert_eq!(
-            parse("14-12".to_string()),
+            parse("14-12")?,
             BinOp {
                 name: "-".to_string(),
                 left: num_lit(14),
@@ -528,12 +503,13 @@ pub mod tests {
             }
             .into_node()
         );
+        Ok(())
     }
 
     #[test]
-    fn parse_mul_op() {
+    fn parse_mul_op() -> Test {
         assert_eq!(
-            parse("14*12".to_string()),
+            parse("14*12")?,
             BinOp {
                 name: "*".to_string(),
                 left: num_lit(14),
@@ -542,12 +518,13 @@ pub mod tests {
             }
             .into_node()
         );
+        Ok(())
     }
 
     #[test]
-    fn parse_add_mul_precedence() {
+    fn parse_add_mul_precedence() -> Test {
         assert_eq!(
-            parse("3+2*4".to_string()),
+            parse("3+2*4")?,
             BinOp {
                 name: "+".to_string(),
                 left: num_lit(3),
@@ -564,12 +541,13 @@ pub mod tests {
             }
             .into_node()
         );
+        Ok(())
     }
 
     #[test]
-    fn parse_mul_add_precedence() {
+    fn parse_mul_add_precedence() -> Test {
         assert_eq!(
-            parse("3*2+4".to_string()),
+            parse("3*2+4")?,
             BinOp {
                 name: "+".to_string(),
                 left: Box::new(
@@ -586,12 +564,13 @@ pub mod tests {
             }
             .into_node()
         );
+        Ok(())
     }
 
     #[test]
-    fn parse_mul_add_parens() {
+    fn parse_mul_add_parens() -> Test {
         assert_eq!(
-            parse("3*(2+4)".to_string()),
+            parse("3*(2+4)")?,
             BinOp {
                 name: "*".to_string(),
                 left: num_lit(3),
@@ -608,12 +587,13 @@ pub mod tests {
             }
             .into_node()
         );
+        Ok(())
     }
 
     #[test]
-    fn parse_add_str() {
+    fn parse_add_str() -> Test {
         assert_eq!(
-            parse("\"hello\"+\" world\"".to_string()),
+            parse("\"hello\"+\" world\"")?,
             BinOp {
                 name: "+".to_string(),
                 left: str_lit("hello"),
@@ -622,12 +602,13 @@ pub mod tests {
             }
             .into_node()
         );
+        Ok(())
     }
 
     #[test]
-    fn parse_strings_followed_by_raw_values() {
+    fn parse_strings_followed_by_raw_values() -> Test {
         assert_eq!(
-            parse("\"hello world\"\n7".to_string()),
+            parse("\"hello world\"\n7")?,
             BinOp {
                 name: ",".to_string(),
                 left: Box::new(str_lit("hello world").into_node()),
@@ -636,12 +617,13 @@ pub mod tests {
             }
             .into_node()
         );
+        Ok(())
     }
 
     #[test]
-    fn parse_strings_with_operators_and_trailing_values_in_let() {
+    fn parse_strings_with_operators_and_trailing_values_in_let() -> Test {
         assert_eq!(
-            parse("x()= !\"hello world\";\n7".to_string()),
+            parse("x()= !\"hello world\";\n7")?,
             BinOp {
                 name: ";".to_string(),
                 left: Box::new(
@@ -665,5 +647,6 @@ pub mod tests {
             }
             .into_node()
         );
+        Ok(())
     }
 }

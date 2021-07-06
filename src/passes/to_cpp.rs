@@ -519,8 +519,4 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         }
         Err(TError::UnknownInfixOperator(op.to_string(), info))
     }
-
-    fn handle_error(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &TError) -> Res {
-        Err(expr.clone())
-    }
 }
