@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use std::sync::Arc;
 
 use crate::ast::*;
-use crate::database::{AstNode, DBStorage};
+use crate::database::{AstNode, AstNodeData, DBStorage};
 use crate::errors::TError;
 use crate::externs::{Direction, Semantic};
 use crate::location::*;
@@ -46,14 +46,14 @@ impl Loc {
 fn nud(
     storage: &mut DBStorage,
     mut toks: VecDeque<Token>,
-) -> Result<(Node, AstNode, VecDeque<Token>), TError> {
+) -> Result<(Node, AstNodeData, VecDeque<Token>), TError> {
     if let Some(head) = toks.pop_front() {
         match head.tok_type {
             TokenType::NumLit => {
                 let val = int32(head.value.parse().expect("Unexpected numeric character"));
                 Ok((
                     Node::ValNode(val.clone(), head.get_info()),
-                    AstNode::Value(val),
+                    AstNode::Value(val).to_data(head.pos),
                     toks,
                 ))
             }
@@ -61,7 +61,7 @@ fn nud(
                 let val = string(&head.value);
                 Ok((
                     Node::ValNode(val.clone(), head.get_info()),
-                    AstNode::Value(val),
+                    AstNode::Value(val).to_data(head.pos),
                     toks,
                 ))
             }
@@ -69,9 +69,9 @@ fn nud(
                 let lbp = binding_power(storage, &head)?;
                 let (right, right_node, new_toks) = expr(storage, toks, lbp)?;
                 let right_entity =
-                    storage.store_node(right_node, head.get_info().loc.unwrap_or_default());
-                let inner_node = AstNode::Symbol(head.value.clone());
-                let inner = storage.store_node(inner_node, head.get_info().loc.unwrap_or_default());
+                    storage.store_node(right_node);
+                let inner_node = AstNode::Symbol(head.value.clone()).to_data(head.pos.clone());
+                let inner = storage.store_node(inner_node);
                 Ok((
                     UnOp {
                         name: head.value.clone(),
@@ -82,7 +82,7 @@ fn nud(
                     AstNode::Apply {
                         inner,
                         children: vec![right_entity],
-                    },
+                    }.to_data(head.pos),
                     new_toks,
                 ))
             }
@@ -132,7 +132,7 @@ fn nud(
                 // TODO: Consider making these globals.
                 if head.value == "true" || head.value == "false" {
                     let val = Val::PrimVal(Prim::Bool(head.value == "true"));
-                    return Ok((val.clone().into_node(), AstNode::Value(val), toks));
+                    return Ok((val.clone().into_node(), AstNode::Value(val).to_data(head.pos), toks));
                 }
                 Ok((
                     Sym {
@@ -140,7 +140,7 @@ fn nud(
                         info: head.get_info(),
                     }
                     .into_node(),
-                    AstNode::Symbol(head.value),
+                    AstNode::Symbol(head.value).to_data(head.pos),
                     toks,
                 ))
             }
@@ -189,8 +189,8 @@ fn led(
     storage: &mut DBStorage,
     mut toks: VecDeque<Token>,
     mut left: Node,
-    left_node: AstNode,
-) -> Result<(Node, AstNode, VecDeque<Token>), TError> {
+    left_node: AstNodeData,
+) -> Result<(Node, AstNodeData, VecDeque<Token>), TError> {
     if let Some(Token {
         tok_type: TokenType::CloseBracket,
         pos,
@@ -231,7 +231,7 @@ fn led(
                     },
                 )?;
                 let right_entity =
-                    storage.store_node(right_node, head.get_info().loc.unwrap_or_default());
+                    storage.store_node(right_node);
                 match head.value.as_str() {
                     ":" => {
                         left.get_mut_info().ty = Some(Box::new(right));
@@ -247,17 +247,14 @@ fn led(
                                 right: Box::new(right),
                             }
                             .into_node(),
-                            match left_node {
+                            match left_node.node {
                                 AstNode::Chain(mut left) => {
                                     left.push(right_entity);
-                                    AstNode::Chain(left)
+                                    AstNode::Chain(left).to_data(head.pos)
                                 }
-                                left_node => {
-                                    let left_entity = storage.store_node(
-                                        left_node,
-                                        head.get_info().loc.unwrap_or_default(),
-                                    );
-                                    AstNode::Chain(vec![left_entity, right_entity])
+                                _ => {
+                                    let left_entity = storage.store_node(left_node);
+                                    AstNode::Chain(vec![left_entity, right_entity]).to_data(head.pos)
                                 }
                             },
                             new_toks,
@@ -266,11 +263,8 @@ fn led(
                     "|-" => match left {
                         Node::SymNode(s) => {
                             let left_entity = storage
-                                .store_node(left_node, head.get_info().loc.unwrap_or_default());
-                            let inner = storage.store_node(
-                                AstNode::Symbol(head.value.clone()),
-                                head.get_info().loc.unwrap_or_default(),
-                            );
+                                .store_node(left_node);
+                            let inner = storage.store_node(AstNode::Symbol(head.value.clone()).to_data(head.pos.clone()));
                             return Ok((
                                 Abs {
                                     name: s.name,
@@ -281,7 +275,7 @@ fn led(
                                 AstNode::Apply {
                                     inner,
                                     children: vec![left_entity, right_entity],
-                                },
+                                }.to_data(head.pos),
                                 new_toks,
                             ));
                         }
@@ -306,7 +300,7 @@ fn led(
                                     name: s.name,
                                     args: None,
                                     implementations: vec![right_entity],
-                                },
+                                }.to_data(head.pos),
                                 new_toks,
                             ))
                         }
@@ -324,7 +318,7 @@ fn led(
                                         name: s.name,
                                         args: Some(storage.store_node_set(left_node)),
                                         implementations: vec![right_entity],
-                                    },
+                                    }.to_data(head.pos),
                                     new_toks,
                                 ))
                             }
@@ -345,11 +339,8 @@ fn led(
                     _ => {}
                 }
                 let left_entity =
-                    storage.store_node(left_node, head.get_info().loc.unwrap_or_default());
-                let inner = storage.store_node(
-                    AstNode::Symbol(head.value.clone()),
-                    head.get_info().loc.unwrap_or_default(),
-                );
+                    storage.store_node(left_node);
+                let inner = storage.store_node(AstNode::Symbol(head.value.clone()).to_data(head.pos.clone()));
                 Ok((
                     BinOp {
                         info: head.get_info(),
@@ -361,7 +352,7 @@ fn led(
                     AstNode::Apply {
                         inner,
                         children: vec![left_entity, right_entity],
-                    },
+                    }.to_data(head.pos),
                     new_toks,
                 ))
             }
@@ -429,9 +420,9 @@ fn led(
                     .into_node(),
                     AstNode::Apply {
                         inner: storage
-                            .store_node(left_node, head.get_info().loc.unwrap_or_default()),
+                            .store_node(left_node),
                         children: storage.store_node_set(args_node),
-                    },
+                    }.to_data(head.pos),
                     new_toks,
                 ))
             }
@@ -447,7 +438,7 @@ fn expr(
     storage: &mut DBStorage,
     init_toks: VecDeque<Token>,
     init_lbp: i32,
-) -> Result<(Node, AstNode, VecDeque<Token>), TError> {
+) -> Result<(Node, AstNodeData, VecDeque<Token>), TError> {
     // TODO: Name update's fields, this is confusing (0 is tree, 1 is toks)
     let init_update = nud(storage, init_toks)?;
     let mut left: Node = init_update.0;
@@ -510,7 +501,7 @@ pub fn parse_string(
         eprintln!("parsing str... {}", path_to_string(module));
     }
     let (root, root_node, left_over) = expr(storage, toks, 0)?;
-    let root_entity = storage.store_node(root_node, root.get_info().loc.unwrap_or_default());
+    let root_entity = storage.store_node(root_node);
 
     if let Some(head) = left_over.front() {
         return Err(TError::ParseError(
@@ -544,13 +535,7 @@ pub mod tests {
         Ok(parse_impl(&mut storage, contents)?.0)
     }
 
-    fn dbg_parse_entity(contents: &str) -> Result<String, TError> {
-        let mut storage = DBStorage::default();
-        let out = parse_impl(&mut storage, contents)?.1;
-        Ok(storage.format_entity(out))
-    }
-
-    fn dbg_parse_entities(contents: &str) -> Result<Vec<String>, TError> {
+    fn dbg_parse_entities(contents: &str) -> Result<String, TError> {
         let mut storage = DBStorage::default();
         let _out = parse_impl(&mut storage, contents)?.1;
         Ok(storage.format_entities())
@@ -753,10 +738,10 @@ pub mod tests {
     fn entity_parse_num() -> Test {
         assert_str_eq!(
             dbg_parse_entities("12")?,
-            vec!["Entity 0:
+            "\
+Entity 0:
  - AtLoc(test.tk at line 1, column 1)
  - HasValue(12)"
-                .to_string()]
         );
         Ok(())
     }
@@ -764,33 +749,30 @@ pub mod tests {
     fn entity_parse_str() -> Test {
         assert_str_eq!(
             dbg_parse_entities("\"hello world\"")?,
-            vec!["Entity 0:
+            "\
+Entity 0:
  - AtLoc(test.tk at line 1, column 1)
  - HasValue('hello world')"
-                .to_string()]
         );
         Ok(())
     }
 
     #[test]
     fn entity_parse_un_op() -> Test {
-        // TODO: Fix source locations
         assert_str_eq!(
             dbg_parse_entities("-12")?,
-            vec!["Entity 0:
+            "\
+Entity 0:
  - AtLoc(test.tk at line 1, column 2)
- - HasValue(12)"
-                .to_string(),
-            "Entity 1:
+ - HasValue(12)
+Entity 1:
  - AtLoc(test.tk at line 1, column 1)
  - HasSymbol(\"-\")
- - IsSymbol"
-                .to_string(),
-            "Entity 2:
+ - IsSymbol
+Entity 2:
  - AtLoc(test.tk at line 1, column 1)
  - HasChildren([Entity(0, Generation(1))])
  - HasInner(Entity(1, Generation(1)))"
-                .to_string()]
         );
         Ok(())
     }

@@ -64,12 +64,11 @@ macro_rules! define_components {
         }
 
         fn print_entity(world: &World, entity: Entity) {
-            println!("{}", format_entity(world, entity));
+            print!("{}", format_entity(world, entity));
         }
     }
 }
 
-use crate::components::*;
 define_components!(
     AtLoc,
     HasArguments,
@@ -129,7 +128,7 @@ impl DBStorage {
         format_entity(&self.world, entity)
     }
 
-    pub fn format_entities(&self) -> Vec<String> {
+    pub fn format_entities(&self) -> String {
         let f = |entity| format_entity(&self.world, entity);
         let mut mapper = DebugSystem::<String> {
             f: &f,
@@ -137,7 +136,7 @@ impl DBStorage {
         };
         mapper.run_now(&self.world);
         // self.world.maintain(); // Nah?
-        mapper.results
+        mapper.results.join("\n")
     }
 
     pub fn config_dir(&self) -> PathBuf {
@@ -422,10 +421,19 @@ pub enum AstNode {
     },
 }
 
+impl AstNode {
+    pub fn to_data(self, loc: Loc) -> AstNodeData {
+        AstNodeData {
+            node: self,
+            loc,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct AstNodeData {
-    node: AstNode,
-    loc: Loc,
+    pub node: AstNode,
+    pub loc: Loc,
 }
 
 impl DBStorage {

@@ -19,31 +19,18 @@ mod pretty_assertions {
         }
     }
 
-    impl<'a> std::fmt::Debug for MultiPretty<Vec<&'a str>> {
+    impl std::fmt::Debug for MultiPretty<String> {
         fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-            for s in self.0.iter() {
-                f.write_str(s)?;
-                f.write_str("\n")?;
-            }
-            Ok(())
-        }
-    }
-
-    impl<'a> std::fmt::Debug for MultiPretty<Vec<String>> {
-        fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-            for s in self.0.iter() {
-                f.write_str(&s)?;
-                f.write_str("\n")?;
-            }
-            Ok(())
+            f.write_str(&self.0)
         }
     }
 
     macro_rules! assert_str_eq {
         ($left:expr, $right:expr) => {
+            dbg!($left, $right);
             pretty_assertions::assert_eq!(
                 crate::pretty_assertions::MultiPretty($left),
-                crate::pretty_assertions::MultiPretty($right)
+                crate::pretty_assertions::MultiPretty($right.to_string())
             );
         };
     }
