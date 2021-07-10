@@ -45,21 +45,49 @@ pub struct DBStorage {
     file_contents: HashMap<String, Arc<String>>,
 }
 
+macro_rules! define_components {
+    ( $($component:ty),* ) => {
+        /// Register all components with the world.
+        fn register_components(world: &mut World) {
+            $( world.register::<$component>(); )*
+        }
+
+        /// Print all the components that are associated with an entity.
+        fn format_entity(world: &World, entity: Entity) -> String {
+            let mut out = format!("Entity {}:", entity.id());
+            $(
+                if let Some(component) = world.read_storage::<$component>().get(entity) {
+                    out = format!("{}\n - {:?}", out, component);
+                }
+            )*
+            out
+        }
+
+        fn print_entity(world: &World, entity: Entity) {
+            print!("{}", format_entity(world, entity));
+        }
+    }
+}
+
+define_components!(
+    AtLoc,
+    HasArguments,
+    HasChildren,
+    HasErrors,
+    HasInner,
+    HasSymbol,
+    HasValue,
+    IsDefinition,
+    IsSymbol,
+    Token,
+    Typed,
+    Untyped
+);
+
 impl Default for DBStorage {
     fn default() -> Self {
         let mut world = World::new();
-        use crate::components::*;
-        world.register::<Token>();
-        world.register::<Untyped>();
-        world.register::<Typed>();
-        world.register::<HasErrors>();
-        world.register::<HasValue>();
-        world.register::<HasChildren>();
-        world.register::<HasSymbol>();
-        world.register::<IsSymbol>();
-        world.register::<IsDefinition>();
-        world.register::<HasInner>();
-        world.register::<HasArguments>();
+        register_components(&mut world);
 
         let project_dirs = ProjectDirs::from("systems", "mimir", "tako");
         Self {
@@ -75,8 +103,42 @@ impl Default for DBStorage {
     }
 }
 
+struct DebugSystem<'a, T> {
+    f: &'a dyn Fn(Entity) -> T,
+    results: Vec<T>,
+}
+
+impl<'a, T> System<'a> for DebugSystem<'a, T> {
+    type SystemData = (Entities<'a>, ReadStorage<'a, AtLoc>);
+
+    fn run(&mut self, (entities, at_loc_storage): Self::SystemData) {
+        for (ent, _) in (&*entities, &at_loc_storage).join() {
+            self.results.push((self.f)(ent));
+        }
+    }
+}
+
 use crate::location::Loc;
 impl DBStorage {
+    pub fn print_entity(&self, entity: Entity) {
+        print_entity(&self.world, entity);
+    }
+
+    pub fn format_entity(&self, entity: Entity) -> String {
+        format_entity(&self.world, entity)
+    }
+
+    pub fn format_entities(&self) -> String {
+        let f = |entity| format_entity(&self.world, entity);
+        let mut mapper = DebugSystem::<String> {
+            f: &f,
+            results: Vec::new(),
+        };
+        mapper.run_now(&self.world);
+        // self.world.maintain(); // Nah?
+        mapper.results.join("\n")
+    }
+
     pub fn config_dir(&self) -> PathBuf {
         if let Some(project_dirs) = &self.project_dirs {
             project_dirs.config_dir().to_path_buf()
@@ -161,7 +223,7 @@ impl DBStorage {
 
     pub fn parse_string(&mut self, module: Path, contents: Arc<String>) -> Result<Node, TError> {
         use crate::passes::parser;
-        parser::parse_string(self, &module, &contents)
+        Ok(parser::parse_string(self, &module, &contents)?.0)
     }
 
     pub fn parse_str(&mut self, module: Path, contents: &'static str) -> Result<Node, TError> {
@@ -359,22 +421,37 @@ pub enum AstNode {
     },
 }
 
+impl AstNode {
+    pub fn into_data(self, loc: Loc) -> AstNodeData {
+        AstNodeData { node: self, loc }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct AstNodeData {
+    pub node: AstNode,
+    pub loc: Loc,
+}
+
 impl DBStorage {
-    pub fn store_node_set(&mut self, node: AstNode) -> Vec<Entity> {
-        match node {
+    pub fn store_node_set(&mut self, node: AstNodeData) -> Vec<Entity> {
+        match node.node {
             AstNode::Chain(args) => args,
-            _ => vec![self.store_node(node, Loc::default())], // TODO
+            _ => vec![self.store_node(AstNodeData {
+                node: node.node,
+                loc: node.loc,
+            })], // TODO
         }
     }
 
-    pub fn store_node(&mut self, node: AstNode, loc: Loc) -> Entity {
-        let lookup: Option<Entity> = self.entity_for_ast(&node);
+    pub fn store_node(&mut self, node: AstNodeData) -> Entity {
+        let lookup: Option<Entity> = self.entity_for_ast(&node.node);
         let entity = if let Some(entity) = lookup {
             entity
         } else {
             let entity = {
                 let mut entity = self.world.create_entity();
-                let entity = match node.clone() {
+                let entity = match node.node.clone() {
                     AstNode::Definition {
                         name,
                         args,
@@ -397,15 +474,15 @@ impl DBStorage {
                         entity.with(HasChildren(children))
                     }
                 };
-                entity.build()
+                entity.with(AtLoc(node.loc.clone())).build()
             };
-            if let AstNode::Definition { .. } = &node {
-                self.add_location_for_definition(loc.clone(), entity);
+            if let AstNode::Definition { .. } = &node.node {
+                self.add_location_for_definition(node.loc.clone(), entity);
             }
-            self.set_entity_for_ast(node, entity);
+            self.set_entity_for_ast(node.node, entity);
             entity
         };
-        self.add_location_for_entity(loc, entity);
+        self.add_location_for_entity(node.loc, entity);
         entity
     }
 }
