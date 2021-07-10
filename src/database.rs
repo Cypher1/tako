@@ -45,21 +45,44 @@ pub struct DBStorage {
     file_contents: HashMap<String, Arc<String>>,
 }
 
+macro_rules! define_components {
+    ( $($component:ty),* ) => {
+        /// Register all components with the world.
+        fn register_components(world: &mut World) {
+            $( world.register::<$component>(); )*
+        }
+
+        /// Print all the components that are associated with an entity.
+        fn print_entity(world: &World, entity: Entity) {
+            println!("Entity {}:", entity.id());
+            $( 
+                if let Some(component) = world.read_storage::<$component>().get(entity) {
+                    println!(" - {}: {:?}", stringify!($component), component);
+                }
+            )*
+        }
+    }
+}
+
+use crate::components::*;
+define_components!(
+    Token,
+    Untyped,
+    Typed,
+    HasErrors,
+    HasValue,
+    HasChildren,
+    HasSymbol,
+    IsSymbol,
+    IsDefinition,
+    HasInner,
+    HasArguments
+);
+
 impl Default for DBStorage {
     fn default() -> Self {
         let mut world = World::new();
-        use crate::components::*;
-        world.register::<Token>();
-        world.register::<Untyped>();
-        world.register::<Typed>();
-        world.register::<HasErrors>();
-        world.register::<HasValue>();
-        world.register::<HasChildren>();
-        world.register::<HasSymbol>();
-        world.register::<IsSymbol>();
-        world.register::<IsDefinition>();
-        world.register::<HasInner>();
-        world.register::<HasArguments>();
+        register_components(&mut world);
 
         let project_dirs = ProjectDirs::from("systems", "mimir", "tako");
         Self {
@@ -77,6 +100,10 @@ impl Default for DBStorage {
 
 use crate::location::Loc;
 impl DBStorage {
+    pub fn print_entity(&self, entity: Entity) {
+        print_entity(&self.world, entity);
+    }
+
     pub fn config_dir(&self) -> PathBuf {
         if let Some(project_dirs) = &self.project_dirs {
             project_dirs.config_dir().to_path_buf()
