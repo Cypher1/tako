@@ -320,25 +320,25 @@ impl DBStorage {
         }
     }
 
-    fn entity_for_ast(self: &Self, node: &AstNode) -> Option<Entity> {
+    fn entity_for_ast(&self, node: &AstNode) -> Option<Entity> {
         self.ast_to_entity.get(node).cloned()
     }
 
-    fn set_entity_for_ast(self: &mut Self, node: AstNode, entity: Entity) {
+    fn set_entity_for_ast(&mut self, node: AstNode, entity: Entity) {
         self.ast_to_entity.insert(node, entity);
     }
 
-    fn add_location_for_entity(self: &mut Self, loc: Loc, entity: Entity) {
+    fn add_location_for_entity(&mut self, loc: Loc, entity: Entity) {
         self.instance_at
             .entry(entity)
-            .or_insert(HashSet::new())
+            .or_insert_with(HashSet::new)
             .insert(loc);
     }
 
-    fn add_location_for_definition(self: &mut Self, loc: Loc, entity: Entity) {
+    fn add_location_for_definition(&mut self, loc: Loc, entity: Entity) {
         self.defined_at
             .entry(entity)
-            .or_insert(HashSet::new())
+            .or_insert_with(HashSet::new)
             .insert(loc);
     }
 }
@@ -347,6 +347,7 @@ impl DBStorage {
 pub enum AstNode {
     Value(Val),
     Symbol(String),
+    Chain(Vec<Entity>), // TODO: Inline the vec somehow?
     Apply {
         inner: Entity,
         children: Vec<Entity>,
@@ -361,6 +362,7 @@ pub enum AstNode {
 impl DBStorage {
     pub fn store_node_set(&mut self, node: AstNode) -> Vec<Entity> {
         match node {
+            AstNode::Chain(args) => args,
             _ => vec![self.store_node(node, Loc::default())], // TODO
         }
     }
@@ -389,6 +391,10 @@ impl DBStorage {
                             entity = entity.with(HasChildren(children));
                         }
                         entity.with(HasInner(inner))
+                    }
+                    AstNode::Chain(children) => {
+                        // TODO: We assume this is a tuple, review this.
+                        entity.with(HasChildren(children))
                     }
                 };
                 entity.build()

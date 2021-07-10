@@ -1,11 +1,9 @@
 #![deny(clippy::all)]
 
-use std::env;
-use std::error::Error;
-
-use directories::ProjectDirs;
 use rustyline::error::ReadlineError;
 use rustyline::{config::Config, Editor};
+use std::env;
+use std::error::Error;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 use takolib::cli_options::{print_cli_info, Options};

@@ -139,7 +139,7 @@ fn nud(
                         info: head.get_info(),
                     }
                     .into_node(),
-                    AstNode::Symbol(head.value.clone()),
+                    AstNode::Symbol(head.value),
                     toks,
                 ))
             }
