@@ -53,7 +53,7 @@ fn nud(
                 let val = int32(head.value.parse().expect("Unexpected numeric character"));
                 Ok((
                     Node::ValNode(val.clone(), head.get_info()),
-                    AstNode::Value(val).to_data(head.pos),
+                    AstNode::Value(val).into_data(head.pos),
                     toks,
                 ))
             }
@@ -61,16 +61,15 @@ fn nud(
                 let val = string(&head.value);
                 Ok((
                     Node::ValNode(val.clone(), head.get_info()),
-                    AstNode::Value(val).to_data(head.pos),
+                    AstNode::Value(val).into_data(head.pos),
                     toks,
                 ))
             }
             TokenType::Op => {
                 let lbp = binding_power(storage, &head)?;
                 let (right, right_node, new_toks) = expr(storage, toks, lbp)?;
-                let right_entity =
-                    storage.store_node(right_node);
-                let inner_node = AstNode::Symbol(head.value.clone()).to_data(head.pos.clone());
+                let right_entity = storage.store_node(right_node);
+                let inner_node = AstNode::Symbol(head.value.clone()).into_data(head.pos.clone());
                 let inner = storage.store_node(inner_node);
                 Ok((
                     UnOp {
@@ -82,7 +81,8 @@ fn nud(
                     AstNode::Apply {
                         inner,
                         children: vec![right_entity],
-                    }.to_data(head.pos),
+                    }
+                    .into_data(head.pos),
                     new_toks,
                 ))
             }
@@ -132,7 +132,11 @@ fn nud(
                 // TODO: Consider making these globals.
                 if head.value == "true" || head.value == "false" {
                     let val = Val::PrimVal(Prim::Bool(head.value == "true"));
-                    return Ok((val.clone().into_node(), AstNode::Value(val).to_data(head.pos), toks));
+                    return Ok((
+                        val.clone().into_node(),
+                        AstNode::Value(val).into_data(head.pos),
+                        toks,
+                    ));
                 }
                 Ok((
                     Sym {
@@ -140,7 +144,7 @@ fn nud(
                         info: head.get_info(),
                     }
                     .into_node(),
-                    AstNode::Symbol(head.value).to_data(head.pos),
+                    AstNode::Symbol(head.value).into_data(head.pos),
                     toks,
                 ))
             }
@@ -230,8 +234,7 @@ fn led(
                         Direction::Right => 1,
                     },
                 )?;
-                let right_entity =
-                    storage.store_node(right_node);
+                let right_entity = storage.store_node(right_node);
                 match head.value.as_str() {
                     ":" => {
                         left.get_mut_info().ty = Some(Box::new(right));
@@ -241,7 +244,7 @@ fn led(
                     "," => {
                         return Ok((
                             BinOp {
-                                info: head.get_info().clone(),
+                                info: head.get_info(),
                                 name: head.value.clone(),
                                 left: Box::new(left),
                                 right: Box::new(right),
@@ -250,11 +253,12 @@ fn led(
                             match left_node.node {
                                 AstNode::Chain(mut left) => {
                                     left.push(right_entity);
-                                    AstNode::Chain(left).to_data(head.pos)
+                                    AstNode::Chain(left).into_data(head.pos)
                                 }
                                 _ => {
                                     let left_entity = storage.store_node(left_node);
-                                    AstNode::Chain(vec![left_entity, right_entity]).to_data(head.pos)
+                                    AstNode::Chain(vec![left_entity, right_entity])
+                                        .into_data(head.pos)
                                 }
                             },
                             new_toks,
@@ -262,9 +266,10 @@ fn led(
                     }
                     "|-" => match left {
                         Node::SymNode(s) => {
-                            let left_entity = storage
-                                .store_node(left_node);
-                            let inner = storage.store_node(AstNode::Symbol(head.value.clone()).to_data(head.pos.clone()));
+                            let left_entity = storage.store_node(left_node);
+                            let inner = storage.store_node(
+                                AstNode::Symbol(head.value.clone()).into_data(head.pos.clone()),
+                            );
                             return Ok((
                                 Abs {
                                     name: s.name,
@@ -275,7 +280,8 @@ fn led(
                                 AstNode::Apply {
                                     inner,
                                     children: vec![left_entity, right_entity],
-                                }.to_data(head.pos),
+                                }
+                                .into_data(head.pos),
                                 new_toks,
                             ));
                         }
@@ -300,7 +306,8 @@ fn led(
                                     name: s.name,
                                     args: None,
                                     implementations: vec![right_entity],
-                                }.to_data(head.pos),
+                                }
+                                .into_data(head.pos),
                                 new_toks,
                             ))
                         }
@@ -318,7 +325,8 @@ fn led(
                                         name: s.name,
                                         args: Some(storage.store_node_set(left_node)),
                                         implementations: vec![right_entity],
-                                    }.to_data(head.pos),
+                                    }
+                                    .into_data(head.pos),
                                     new_toks,
                                 ))
                             }
@@ -338,9 +346,9 @@ fn led(
                     },
                     _ => {}
                 }
-                let left_entity =
-                    storage.store_node(left_node);
-                let inner = storage.store_node(AstNode::Symbol(head.value.clone()).to_data(head.pos.clone()));
+                let left_entity = storage.store_node(left_node);
+                let inner = storage
+                    .store_node(AstNode::Symbol(head.value.clone()).into_data(head.pos.clone()));
                 Ok((
                     BinOp {
                         info: head.get_info(),
@@ -352,7 +360,8 @@ fn led(
                     AstNode::Apply {
                         inner,
                         children: vec![left_entity, right_entity],
-                    }.to_data(head.pos),
+                    }
+                    .into_data(head.pos),
                     new_toks,
                 ))
             }
@@ -419,10 +428,10 @@ fn led(
                     }
                     .into_node(),
                     AstNode::Apply {
-                        inner: storage
-                            .store_node(left_node),
+                        inner: storage.store_node(left_node),
                         children: storage.store_node_set(args_node),
-                    }.to_data(head.pos),
+                    }
+                    .into_data(head.pos),
                     new_toks,
                 ))
             }

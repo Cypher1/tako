@@ -422,11 +422,8 @@ pub enum AstNode {
 }
 
 impl AstNode {
-    pub fn to_data(self, loc: Loc) -> AstNodeData {
-        AstNodeData {
-            node: self,
-            loc,
-        }
+    pub fn into_data(self, loc: Loc) -> AstNodeData {
+        AstNodeData { node: self, loc }
     }
 }
 
@@ -440,7 +437,10 @@ impl DBStorage {
     pub fn store_node_set(&mut self, node: AstNodeData) -> Vec<Entity> {
         match node.node {
             AstNode::Chain(args) => args,
-            _ => vec![self.store_node(AstNodeData{ node: node.node, loc: node.loc})], // TODO
+            _ => vec![self.store_node(AstNodeData {
+                node: node.node,
+                loc: node.loc,
+            })], // TODO
         }
     }
 
