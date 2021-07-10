@@ -422,22 +422,28 @@ pub enum AstNode {
     },
 }
 
+#[derive(Debug, Clone)]
+pub struct AstNodeData {
+    node: AstNode,
+    loc: Loc,
+}
+
 impl DBStorage {
-    pub fn store_node_set(&mut self, node: AstNode) -> Vec<Entity> {
-        match node {
+    pub fn store_node_set(&mut self, node: AstNodeData) -> Vec<Entity> {
+        match node.node {
             AstNode::Chain(args) => args,
-            _ => vec![self.store_node(node, Loc::default())], // TODO
+            _ => vec![self.store_node(AstNodeData{ node: node.node, loc: node.loc})], // TODO
         }
     }
 
-    pub fn store_node(&mut self, node: AstNode, loc: Loc) -> Entity {
-        let lookup: Option<Entity> = self.entity_for_ast(&node);
+    pub fn store_node(&mut self, node: AstNodeData) -> Entity {
+        let lookup: Option<Entity> = self.entity_for_ast(&node.node);
         let entity = if let Some(entity) = lookup {
             entity
         } else {
             let entity = {
                 let mut entity = self.world.create_entity();
-                let entity = match node.clone() {
+                let entity = match node.node.clone() {
                     AstNode::Definition {
                         name,
                         args,
@@ -460,15 +466,15 @@ impl DBStorage {
                         entity.with(HasChildren(children))
                     }
                 };
-                entity.with(AtLoc(loc.clone())).build()
+                entity.with(AtLoc(node.loc.clone())).build()
             };
-            if let AstNode::Definition { .. } = &node {
-                self.add_location_for_definition(loc.clone(), entity);
+            if let AstNode::Definition { .. } = &node.node {
+                self.add_location_for_definition(node.loc.clone(), entity);
             }
-            self.set_entity_for_ast(node, entity);
+            self.set_entity_for_ast(node.node, entity);
             entity
         };
-        self.add_location_for_entity(loc, entity);
+        self.add_location_for_entity(node.loc, entity);
         entity
     }
 }

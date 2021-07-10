@@ -23,6 +23,7 @@ mod pretty_assertions {
         fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
             for s in self.0.iter() {
                 f.write_str(s)?;
+                f.write_str("\n")?;
             }
             Ok(())
         }
@@ -32,6 +33,7 @@ mod pretty_assertions {
         fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
             for s in self.0.iter() {
                 f.write_str(&s)?;
+                f.write_str("\n")?;
             }
             Ok(())
         }

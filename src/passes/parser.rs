@@ -772,25 +772,34 @@ pub mod tests {
         Ok(())
     }
 
-    /*
     #[test]
     fn entity_parse_un_op() -> Test {
+        // TODO: Fix source locations
         assert_str_eq!(
-            dbg_parse_entity("-12")?,
-            UnOp {
-                name: "-".to_string(),
-                inner: Box::new(int32(12).into_node()),
-                info: Info::default()
-            }
-            .into_node()
+            dbg_parse_entities("-12")?,
+            vec!["Entity 0:
+ - AtLoc(test.tk at line 1, column 2)
+ - HasValue(12)"
+                .to_string(),
+            "Entity 1:
+ - AtLoc(test.tk at line 1, column 1)
+ - HasSymbol(\"-\")
+ - IsSymbol"
+                .to_string(),
+            "Entity 2:
+ - AtLoc(test.tk at line 1, column 1)
+ - HasChildren([Entity(0, Generation(1))])
+ - HasInner(Entity(1, Generation(1)))"
+                .to_string()]
         );
         Ok(())
     }
 
+    /*
     #[test]
     fn entity_parse_min_op() -> Test {
         assert_str_eq!(
-            dbg_parse_entity("14-12")?,
+            dbg_parse_entities("14-12")?,
             BinOp {
                 name: "-".to_string(),
                 left: num_lit(14),
@@ -805,7 +814,7 @@ pub mod tests {
     #[test]
     fn entity_parse_mul_op() -> Test {
         assert_str_eq!(
-            dbg_parse_entity("14*12")?,
+            dbg_parse_entities("14*12")?,
             BinOp {
                 name: "*".to_string(),
                 left: num_lit(14),
@@ -820,7 +829,7 @@ pub mod tests {
     #[test]
     fn entity_parse_add_mul_precedence() -> Test {
         assert_str_eq!(
-            dbg_parse_entity("3+2*4")?,
+            dbg_parse_entities("3+2*4")?,
             BinOp {
                 name: "+".to_string(),
                 left: num_lit(3),
@@ -843,7 +852,7 @@ pub mod tests {
     #[test]
     fn entity_parse_mul_add_precedence() -> Test {
         assert_str_eq!(
-            dbg_parse_entity("3*2+4")?,
+            dbg_parse_entities("3*2+4")?,
             BinOp {
                 name: "+".to_string(),
                 left: Box::new(
@@ -866,7 +875,7 @@ pub mod tests {
     #[test]
     fn entity_parse_mul_add_parens() -> Test {
         assert_str_eq!(
-            dbg_parse_entity("3*(2+4)")?,
+            dbg_parse_entities("3*(2+4)")?,
             BinOp {
                 name: "*".to_string(),
                 left: num_lit(3),
@@ -889,7 +898,7 @@ pub mod tests {
     #[test]
     fn entity_parse_add_str() -> Test {
         assert_str_eq!(
-            dbg_parse_entity("\"hello\"+\" world\"")?,
+            dbg_parse_entities("\"hello\"+\" world\"")?,
             BinOp {
                 name: "+".to_string(),
                 left: str_lit("hello"),
@@ -904,7 +913,7 @@ pub mod tests {
     #[test]
     fn entity_parse_strings_followed_by_raw_values() -> Test {
         assert_str_eq!(
-            dbg_parse_entity("\"hello world\"\n7")?,
+            dbg_parse_entities("\"hello world\"\n7")?,
             BinOp {
                 name: ",".to_string(),
                 left: Box::new(str_lit("hello world").into_node()),
@@ -919,7 +928,7 @@ pub mod tests {
     #[test]
     fn entity_parse_strings_with_operators_and_trailing_values_in_let() -> Test {
         assert_str_eq!(
-            dbg_parse_entity("x()= !\"hello world\";\n7")?,
+            dbg_parse_entities("x()= !\"hello world\";\n7")?,
             BinOp {
                 name: ";".to_string(),
                 left: Box::new(
