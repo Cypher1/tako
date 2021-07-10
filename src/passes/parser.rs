@@ -1,3 +1,4 @@
+use specs::Entity;
 use std::collections::VecDeque;
 use std::sync::Arc;
 
@@ -236,6 +237,31 @@ fn led(
                         left.get_mut_info().ty = Some(Box::new(right));
                         // TODO: Add the type for the entity
                         return Ok((left, left_node, new_toks));
+                    }
+                    "," => {
+                        return Ok((
+                            BinOp {
+                                info: head.get_info().clone(),
+                                name: head.value.clone(),
+                                left: Box::new(left),
+                                right: Box::new(right),
+                            }
+                            .into_node(),
+                            match left_node {
+                                AstNode::Chain(mut left) => {
+                                    left.push(right_entity);
+                                    AstNode::Chain(left)
+                                }
+                                left_node => {
+                                    let left_entity = storage.store_node(
+                                        left_node,
+                                        head.get_info().loc.unwrap_or_default(),
+                                    );
+                                    AstNode::Chain(vec![left_entity, right_entity])
+                                }
+                            },
+                            new_toks,
+                        ));
                     }
                     "|-" => match left {
                         Node::SymNode(s) => {
@@ -478,13 +504,13 @@ pub fn parse_string(
     storage: &mut DBStorage,
     module: PathRef,
     text: &Arc<String>,
-) -> Result<Node, TError> {
+) -> Result<(Node, Entity), TError> {
     let toks = lex_string(storage, module, text)?;
     if storage.debug_level() > 0 {
         eprintln!("parsing str... {}", path_to_string(module));
     }
-    let (root, root_entity, left_over) = expr(storage, toks, 0)?;
-    storage.store_node(root_entity, root.get_info().loc.unwrap_or_default());
+    let (root, root_node, left_over) = expr(storage, toks, 0)?;
+    let root_entity = storage.store_node(root_node, root.get_info().loc.unwrap_or_default());
 
     if let Some(head) = left_over.front() {
         return Err(TError::ParseError(
@@ -495,7 +521,7 @@ pub fn parse_string(
     if storage.options.show_ast {
         eprintln!("ast: {}", root);
     }
-    Ok(root)
+    Ok((root, root_entity))
 }
 
 #[cfg(test)]
@@ -503,14 +529,31 @@ pub mod tests {
     use super::*;
     use crate::errors::TError;
     use crate::primitives::{int32, string};
+    use pretty_assertions::assert_eq;
 
     type Test = Result<(), TError>;
 
-    fn parse(contents: &str) -> Result<Node, TError> {
-        let mut storage = DBStorage::default();
+    fn parse_impl(storage: &mut DBStorage, contents: &str) -> Result<(Node, Entity), TError> {
         let filename = "test.tk";
         let module = storage.module_name(filename.to_owned());
-        parse_string(&mut storage, &module, &Arc::new(contents.to_string()))
+        parse_string(storage, &module, &Arc::new(contents.to_string()))
+    }
+
+    fn parse(contents: &str) -> Result<Node, TError> {
+        let mut storage = DBStorage::default();
+        Ok(parse_impl(&mut storage, contents)?.0)
+    }
+
+    fn dbg_parse_entity(contents: &str) -> Result<String, TError> {
+        let mut storage = DBStorage::default();
+        let out = parse_impl(&mut storage, contents)?.1;
+        Ok(storage.format_entity(out))
+    }
+
+    fn dbg_parse_entities(contents: &str) -> Result<Vec<String>, TError> {
+        let mut storage = DBStorage::default();
+        let _out = parse_impl(&mut storage, contents)?.1;
+        Ok(storage.format_entities())
     }
 
     fn num_lit(x: i32) -> Box<Node> {
@@ -705,4 +748,202 @@ pub mod tests {
         );
         Ok(())
     }
+
+    #[test]
+    fn entity_parse_num() -> Test {
+        assert_str_eq!(
+            dbg_parse_entities("12")?,
+            vec!["Entity 0:
+ - AtLoc(test.tk at line 1, column 1)
+ - HasValue(12)"
+                .to_string()]
+        );
+        Ok(())
+    }
+    #[test]
+    fn entity_parse_str() -> Test {
+        assert_str_eq!(
+            dbg_parse_entities("\"hello world\"")?,
+            vec!["Entity 0:
+ - AtLoc(test.tk at line 1, column 1)
+ - HasValue('hello world')"
+                .to_string()]
+        );
+        Ok(())
+    }
+
+    /*
+    #[test]
+    fn entity_parse_un_op() -> Test {
+        assert_str_eq!(
+            dbg_parse_entity("-12")?,
+            UnOp {
+                name: "-".to_string(),
+                inner: Box::new(int32(12).into_node()),
+                info: Info::default()
+            }
+            .into_node()
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn entity_parse_min_op() -> Test {
+        assert_str_eq!(
+            dbg_parse_entity("14-12")?,
+            BinOp {
+                name: "-".to_string(),
+                left: num_lit(14),
+                right: num_lit(12),
+                info: Info::default()
+            }
+            .into_node()
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn entity_parse_mul_op() -> Test {
+        assert_str_eq!(
+            dbg_parse_entity("14*12")?,
+            BinOp {
+                name: "*".to_string(),
+                left: num_lit(14),
+                right: num_lit(12),
+                info: Info::default()
+            }
+            .into_node()
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn entity_parse_add_mul_precedence() -> Test {
+        assert_str_eq!(
+            dbg_parse_entity("3+2*4")?,
+            BinOp {
+                name: "+".to_string(),
+                left: num_lit(3),
+                right: Box::new(
+                    BinOp {
+                        name: "*".to_string(),
+                        left: num_lit(2),
+                        right: num_lit(4),
+                        info: Info::default()
+                    }
+                    .into_node()
+                ),
+                info: Info::default()
+            }
+            .into_node()
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn entity_parse_mul_add_precedence() -> Test {
+        assert_str_eq!(
+            dbg_parse_entity("3*2+4")?,
+            BinOp {
+                name: "+".to_string(),
+                left: Box::new(
+                    BinOp {
+                        name: "*".to_string(),
+                        left: num_lit(3),
+                        right: num_lit(2),
+                        info: Info::default()
+                    }
+                    .into_node()
+                ),
+                right: num_lit(4),
+                info: Info::default()
+            }
+            .into_node()
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn entity_parse_mul_add_parens() -> Test {
+        assert_str_eq!(
+            dbg_parse_entity("3*(2+4)")?,
+            BinOp {
+                name: "*".to_string(),
+                left: num_lit(3),
+                right: Box::new(
+                    BinOp {
+                        name: "+".to_string(),
+                        left: num_lit(2),
+                        right: num_lit(4),
+                        info: Info::default()
+                    }
+                    .into_node()
+                ),
+                info: Info::default()
+            }
+            .into_node()
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn entity_parse_add_str() -> Test {
+        assert_str_eq!(
+            dbg_parse_entity("\"hello\"+\" world\"")?,
+            BinOp {
+                name: "+".to_string(),
+                left: str_lit("hello"),
+                right: str_lit(" world"),
+                info: Info::default()
+            }
+            .into_node()
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn entity_parse_strings_followed_by_raw_values() -> Test {
+        assert_str_eq!(
+            dbg_parse_entity("\"hello world\"\n7")?,
+            BinOp {
+                name: ",".to_string(),
+                left: Box::new(str_lit("hello world").into_node()),
+                right: num_lit(7),
+                info: Info::default()
+            }
+            .into_node()
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn entity_parse_strings_with_operators_and_trailing_values_in_let() -> Test {
+        assert_str_eq!(
+            dbg_parse_entity("x()= !\"hello world\";\n7")?,
+            BinOp {
+                name: ";".to_string(),
+                left: Box::new(
+                    Let {
+                        name: "x".to_string(),
+                        args: Some(vec![]),
+                        value: Box::new(
+                            UnOp {
+                                name: "!".to_string(),
+                                inner: str_lit("hello world"),
+                                info: Info::default(),
+                            }
+                            .into_node()
+                        ),
+                        info: Info::default(),
+                    }
+                    .into_node()
+                ),
+                right: num_lit(7),
+                info: Info::default()
+            }
+            .into_node()
+        );
+        Ok(())
+    }
+    */
 }

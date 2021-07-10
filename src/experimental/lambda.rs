@@ -119,7 +119,6 @@ mod util {
 mod test {
     use super::util::*;
     use super::*;
-    use pretty_assertions::assert_eq;
 
     #[test]
     fn basic_shift() {

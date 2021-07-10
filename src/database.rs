@@ -53,30 +53,36 @@ macro_rules! define_components {
         }
 
         /// Print all the components that are associated with an entity.
-        fn print_entity(world: &World, entity: Entity) {
-            println!("Entity {}:", entity.id());
-            $( 
+        fn format_entity(world: &World, entity: Entity) -> String {
+            let mut out = format!("Entity {}:", entity.id());
+            $(
                 if let Some(component) = world.read_storage::<$component>().get(entity) {
-                    println!(" - {}: {:?}", stringify!($component), component);
+                    out = format!("{}\n - {:?}", out, component);
                 }
             )*
+            out
+        }
+
+        fn print_entity(world: &World, entity: Entity) {
+            println!("{}", format_entity(world, entity));
         }
     }
 }
 
 use crate::components::*;
 define_components!(
-    Token,
-    Untyped,
-    Typed,
-    HasErrors,
-    HasValue,
+    AtLoc,
+    HasArguments,
     HasChildren,
-    HasSymbol,
-    IsSymbol,
-    IsDefinition,
+    HasErrors,
     HasInner,
-    HasArguments
+    HasSymbol,
+    HasValue,
+    IsDefinition,
+    IsSymbol,
+    Token,
+    Typed,
+    Untyped
 );
 
 impl Default for DBStorage {
@@ -98,10 +104,40 @@ impl Default for DBStorage {
     }
 }
 
+struct DebugSystem<'a, T> {
+    f: &'a dyn Fn(Entity) -> T,
+    results: Vec<T>,
+}
+
+impl<'a, T> System<'a> for DebugSystem<'a, T> {
+    type SystemData = (Entities<'a>, ReadStorage<'a, AtLoc>);
+
+    fn run(&mut self, (entities, at_loc_storage): Self::SystemData) {
+        for (ent, _) in (&*entities, &at_loc_storage).join() {
+            self.results.push((self.f)(ent));
+        }
+    }
+}
+
 use crate::location::Loc;
 impl DBStorage {
     pub fn print_entity(&self, entity: Entity) {
         print_entity(&self.world, entity);
+    }
+
+    pub fn format_entity(&self, entity: Entity) -> String {
+        format_entity(&self.world, entity)
+    }
+
+    pub fn format_entities(&self) -> Vec<String> {
+        let f = |entity| format_entity(&self.world, entity);
+        let mut mapper = DebugSystem::<String> {
+            f: &f,
+            results: Vec::new(),
+        };
+        mapper.run_now(&self.world);
+        // self.world.maintain(); // Nah?
+        mapper.results
     }
 
     pub fn config_dir(&self) -> PathBuf {
@@ -188,7 +224,7 @@ impl DBStorage {
 
     pub fn parse_string(&mut self, module: Path, contents: Arc<String>) -> Result<Node, TError> {
         use crate::passes::parser;
-        parser::parse_string(self, &module, &contents)
+        Ok(parser::parse_string(self, &module, &contents)?.0)
     }
 
     pub fn parse_str(&mut self, module: Path, contents: &'static str) -> Result<Node, TError> {
@@ -424,7 +460,7 @@ impl DBStorage {
                         entity.with(HasChildren(children))
                     }
                 };
-                entity.build()
+                entity.with(AtLoc(loc.clone())).build()
             };
             if let AstNode::Definition { .. } = &node {
                 self.add_location_for_definition(loc.clone(), entity);

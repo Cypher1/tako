@@ -566,7 +566,6 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
 mod tests {
     use super::*;
     use crate::primitives::{boolean, int32, number_type, string, string_type};
-    use pretty_assertions::assert_eq;
     use Node::*;
 
     fn get_db() -> DBStorage {
