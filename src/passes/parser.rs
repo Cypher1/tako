@@ -2,26 +2,26 @@ use std::collections::VecDeque;
 use std::sync::Arc;
 
 use crate::ast::*;
-use crate::database::Compiler;
+use crate::database::{AstNode, DBStorage};
 use crate::errors::TError;
 use crate::externs::{Direction, Semantic};
 use crate::location::*;
 use crate::primitives::{int32, string, Prim, Val};
 use crate::tokens::*;
 
-fn binding(db: &dyn Compiler, tok: &Token) -> Result<Semantic, TError> {
-    db.get_extern_operator(tok.value.to_owned())
+fn binding(storage: &mut DBStorage, tok: &Token) -> Result<Semantic, TError> {
+    storage.get_extern_operator(tok.value.to_owned())
 }
 
-fn binding_dir(db: &dyn Compiler, tok: &Token) -> Result<Direction, TError> {
-    Ok(match binding(db, tok)? {
+fn binding_dir(storage: &mut DBStorage, tok: &Token) -> Result<Direction, TError> {
+    Ok(match binding(storage, tok)? {
         Semantic::Operator { assoc, .. } => assoc,
         Semantic::Func => Direction::Left,
     })
 }
 
-fn binding_power(db: &dyn Compiler, tok: &Token) -> Result<i32, TError> {
-    Ok(match binding(db, tok)? {
+fn binding_power(storage: &mut DBStorage, tok: &Token) -> Result<i32, TError> {
+    Ok(match binding(storage, tok)? {
         Semantic::Operator { binding, .. } => binding,
         Semantic::Func => 1000,
     })
@@ -42,20 +42,35 @@ impl Loc {
     }
 }
 
-fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<Token>), TError> {
+fn nud(
+    storage: &mut DBStorage,
+    mut toks: VecDeque<Token>,
+) -> Result<(Node, AstNode, VecDeque<Token>), TError> {
     if let Some(head) = toks.pop_front() {
         match head.tok_type {
-            TokenType::NumLit => Ok((
-                Node::ValNode(
-                    int32(head.value.parse().expect("Unexpected numeric character")),
-                    head.get_info(),
-                ),
-                toks,
-            )),
-            TokenType::StringLit => Ok((Node::ValNode(string(&head.value), head.get_info()), toks)),
+            TokenType::NumLit => {
+                let val = int32(head.value.parse().expect("Unexpected numeric character"));
+                Ok((
+                    Node::ValNode(val.clone(), head.get_info()),
+                    AstNode::Value(val),
+                    toks,
+                ))
+            }
+            TokenType::StringLit => {
+                let val = string(&head.value);
+                Ok((
+                    Node::ValNode(val.clone(), head.get_info()),
+                    AstNode::Value(val),
+                    toks,
+                ))
+            }
             TokenType::Op => {
-                let lbp = binding_power(db, &head)?;
-                let (right, new_toks) = expr(db, toks, lbp)?;
+                let lbp = binding_power(storage, &head)?;
+                let (right, right_node, new_toks) = expr(storage, toks, lbp)?;
+                let right_entity =
+                    storage.store_node(right_node, head.get_info().loc.unwrap_or_default());
+                let inner_node = AstNode::Symbol(head.value.clone());
+                let inner = storage.store_node(inner_node, head.get_info().loc.unwrap_or_default());
                 Ok((
                     UnOp {
                         name: head.value.clone(),
@@ -63,6 +78,10 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
                         info: head.get_info(),
                     }
                     .into_node(),
+                    AstNode::Apply {
+                        inner,
+                        children: vec![right_entity],
+                    },
                     new_toks,
                 ))
             }
@@ -71,7 +90,7 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
                 head.get_info(),
             )),
             TokenType::OpenBracket => {
-                let (inner, mut new_toks) = expr(db, toks, 0)?;
+                let (inner, inner_node, mut new_toks) = expr(storage, toks, 0)?;
                 // TODO require close bracket.
                 let close = new_toks.front();
                 match (head.value.as_str(), close) {
@@ -106,15 +125,13 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
                     }
                 }
                 new_toks.pop_front();
-                Ok((inner, new_toks))
+                Ok((inner, inner_node, new_toks))
             }
             TokenType::Sym => {
                 // TODO: Consider making these globals.
-                if head.value == "true" {
-                    return Ok((Val::PrimVal(Prim::Bool(true)).into_node(), toks));
-                }
-                if head.value == "false" {
-                    return Ok((Val::PrimVal(Prim::Bool(false)).into_node(), toks));
+                if head.value == "true" || head.value == "false" {
+                    let val = Val::PrimVal(Prim::Bool(head.value == "true"));
+                    return Ok((val.clone().into_node(), AstNode::Value(val), toks));
                 }
                 Ok((
                     Sym {
@@ -122,6 +139,7 @@ fn nud(db: &dyn Compiler, mut toks: VecDeque<Token>) -> Result<(Node, VecDeque<T
                         info: head.get_info(),
                     }
                     .into_node(),
+                    AstNode::Symbol(head.value),
                     toks,
                 ))
             }
@@ -167,10 +185,11 @@ fn get_defs(args: Node) -> Vec<Let> {
 }
 
 fn led(
-    db: &dyn Compiler,
+    storage: &mut DBStorage,
     mut toks: VecDeque<Token>,
     mut left: Node,
-) -> Result<(Node, VecDeque<Token>), TError> {
+    left_node: AstNode,
+) -> Result<(Node, AstNode, VecDeque<Token>), TError> {
     if let Some(Token {
         tok_type: TokenType::CloseBracket,
         pos,
@@ -197,26 +216,35 @@ fn led(
                     value: ",".to_string(),
                     pos,
                 });
-                Ok((left, toks))
+                Ok((left, left_node, toks))
             }
             TokenType::Op => {
-                let lbp = binding_power(db, &head)?;
-                let assoc = binding_dir(db, &head)?;
-                let (right, new_toks) = expr(
-                    db,
+                let lbp = binding_power(storage, &head)?;
+                let assoc = binding_dir(storage, &head)?;
+                let (right, right_node, new_toks) = expr(
+                    storage,
                     toks,
                     lbp - match assoc {
                         Direction::Left => 0,
                         Direction::Right => 1,
                     },
                 )?;
+                let right_entity =
+                    storage.store_node(right_node, head.get_info().loc.unwrap_or_default());
                 match head.value.as_str() {
                     ":" => {
                         left.get_mut_info().ty = Some(Box::new(right));
-                        return Ok((left, new_toks));
+                        // TODO: Add the type for the entity
+                        return Ok((left, left_node, new_toks));
                     }
                     "|-" => match left {
                         Node::SymNode(s) => {
+                            let left_entity = storage
+                                .store_node(left_node, head.get_info().loc.unwrap_or_default());
+                            let inner = storage.store_node(
+                                AstNode::Symbol(head.value.clone()),
+                                head.get_info().loc.unwrap_or_default(),
+                            );
                             return Ok((
                                 Abs {
                                     name: s.name,
@@ -224,8 +252,12 @@ fn led(
                                     info: head.get_info(),
                                 }
                                 .into_node(),
+                                AstNode::Apply {
+                                    inner,
+                                    children: vec![left_entity, right_entity],
+                                },
                                 new_toks,
-                            ))
+                            ));
                         }
                         _ => {
                             return Err(TError::ParseError(
@@ -238,12 +270,17 @@ fn led(
                         Node::SymNode(s) => {
                             return Ok((
                                 Let {
-                                    name: s.name,
+                                    name: s.name.clone(),
                                     args: None,
                                     value: Box::new(right),
                                     info: head.get_info(),
                                 }
                                 .into_node(),
+                                AstNode::Definition {
+                                    name: s.name,
+                                    args: None,
+                                    implementations: vec![right_entity],
+                                },
                                 new_toks,
                             ))
                         }
@@ -251,12 +288,17 @@ fn led(
                             Node::SymNode(s) => {
                                 return Ok((
                                     Let {
-                                        name: s.name,
+                                        name: s.name.clone(),
                                         args: Some(a.args),
                                         value: Box::new(right),
                                         info: head.get_info(),
                                     }
                                     .into_node(),
+                                    AstNode::Definition {
+                                        name: s.name,
+                                        args: Some(storage.store_node_set(left_node)),
+                                        implementations: vec![right_entity],
+                                    },
                                     new_toks,
                                 ))
                             }
@@ -276,6 +318,12 @@ fn led(
                     },
                     _ => {}
                 }
+                let left_entity =
+                    storage.store_node(left_node, head.get_info().loc.unwrap_or_default());
+                let inner = storage.store_node(
+                    AstNode::Symbol(head.value.clone()),
+                    head.get_info().loc.unwrap_or_default(),
+                );
                 Ok((
                     BinOp {
                         info: head.get_info(),
@@ -284,6 +332,10 @@ fn led(
                         right: Box::new(right),
                     }
                     .into_node(),
+                    AstNode::Apply {
+                        inner,
+                        children: vec![left_entity, right_entity],
+                    },
                     new_toks,
                 ))
             }
@@ -303,10 +355,11 @@ fn led(
                             info: head.get_info(),
                         }
                         .into_node(),
+                        left_node,
                         toks,
                     ));
                 }
-                let (args, mut new_toks) = expr(db, toks, 0)?;
+                let (args, args_node, mut new_toks) = expr(storage, toks, 0)?;
                 let close = new_toks.front();
                 match (head.value.as_str(), close) {
                     (
@@ -348,6 +401,11 @@ fn led(
                         info: head.get_info(),
                     }
                     .into_node(),
+                    AstNode::Apply {
+                        inner: storage
+                            .store_node(left_node, head.get_info().loc.unwrap_or_default()),
+                        children: storage.store_node_set(args_node),
+                    },
                     new_toks,
                 ))
             }
@@ -360,41 +418,43 @@ fn led(
 }
 
 fn expr(
-    db: &dyn Compiler,
+    storage: &mut DBStorage,
     init_toks: VecDeque<Token>,
     init_lbp: i32,
-) -> Result<(Node, VecDeque<Token>), TError> {
+) -> Result<(Node, AstNode, VecDeque<Token>), TError> {
     // TODO: Name update's fields, this is confusing (0 is tree, 1 is toks)
-    let init_update = nud(db, init_toks)?;
+    let init_update = nud(storage, init_toks)?;
     let mut left: Node = init_update.0;
-    let mut toks: VecDeque<Token> = init_update.1;
+    let mut left_node = init_update.1;
+    let mut toks: VecDeque<Token> = init_update.2;
     loop {
         match toks.front() {
             None => break,
             Some(token) => {
-                if init_lbp >= binding_power(db, token)? {
+                if init_lbp >= binding_power(storage, token)? {
                     break;
                 }
             }
         }
-        let update = led(db, toks.clone(), left.clone());
+        let update = led(storage, toks.clone(), left.clone(), left_node.clone());
         // TODO: Only retry on parse failures...
         if let Ok(update) = update {
             left = update.0;
-            toks = update.1;
+            left_node = update.1;
+            toks = update.2;
         } else {
-            return Ok((left, toks));
+            return Ok((left, left_node, toks));
         }
     }
-    Ok((left, toks))
+    Ok((left, left_node, toks))
 }
 
 fn lex_string(
-    db: &dyn Compiler,
+    storage: &mut DBStorage,
     module: PathRef,
     contents: &str,
 ) -> Result<VecDeque<Token>, TError> {
-    let filename = db.filename(module.to_vec());
+    let filename = storage.filename(module.to_vec());
     let mut toks: VecDeque<Token> = VecDeque::new();
 
     let mut pos = Loc {
@@ -415,15 +475,16 @@ fn lex_string(
 }
 
 pub fn parse_string(
-    db: &dyn Compiler,
+    storage: &mut DBStorage,
     module: PathRef,
     text: &Arc<String>,
 ) -> Result<Node, TError> {
-    let toks = lex_string(db, module, text)?;
-    if db.debug_level() > 0 {
+    let toks = lex_string(storage, module, text)?;
+    if storage.debug_level() > 0 {
         eprintln!("parsing str... {}", path_to_string(module));
     }
-    let (root, left_over) = expr(db, toks, 0)?;
+    let (root, root_entity, left_over) = expr(storage, toks, 0)?;
+    storage.store_node(root_entity, root.get_info().loc.unwrap_or_default());
 
     if let Some(head) = left_over.front() {
         return Err(TError::ParseError(
@@ -431,7 +492,7 @@ pub fn parse_string(
             head.get_info(),
         ));
     }
-    if db.options().show_ast {
+    if storage.options.show_ast {
         eprintln!("ast: {}", root);
     }
     Ok(root)
@@ -439,22 +500,17 @@ pub fn parse_string(
 
 #[cfg(test)]
 pub mod tests {
-    use super::parse_string;
-    use crate::ast::*;
-    use crate::database::{Compiler, DB};
+    use super::*;
     use crate::errors::TError;
     use crate::primitives::{int32, string};
 
     type Test = Result<(), TError>;
 
     fn parse(contents: &str) -> Result<Node, TError> {
-        use crate::cli_options::Options;
-        use std::sync::Arc;
-        let mut db = DB::default();
+        let mut storage = DBStorage::default();
         let filename = "test.tk";
-        db.set_options(Options::default());
-        let module = db.module_name(filename.to_owned());
-        parse_string(&db, &module, &Arc::new(contents.to_string()))
+        let module = storage.module_name(filename.to_owned());
+        parse_string(&mut storage, &module, &Arc::new(contents.to_string()))
     }
 
     fn num_lit(x: i32) -> Box<Node> {

@@ -1,5 +1,5 @@
 use crate::ast::*;
-use crate::database::Compiler;
+use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::passes::symbol_table_builder::State;
 use crate::primitives::Val;
@@ -18,9 +18,9 @@ pub struct Namespace {
 }
 
 impl Visitor<State, Node, Root, Path> for DefinitionFinder {
-    fn visit_root(&mut self, db: &dyn Compiler, module: &Path) -> Result<Root, TError> {
-        let expr = db.build_symbol_table(module.clone())?;
-        if db.debug_level() > 0 {
+    fn visit_root(&mut self, storage: &mut DBStorage, module: &Path) -> Result<Root, TError> {
+        let expr = storage.build_symbol_table(module.clone())?;
+        if storage.debug_level() > 0 {
             eprintln!(
                 "looking up definitions in file... {}",
                 path_to_string(module)
@@ -30,15 +30,15 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
             path: module.clone(),
             table: expr.table.clone(),
         };
-        let ast = self.visit(db, &mut state, &expr.ast)?;
+        let ast = self.visit(storage, &mut state, &expr.ast)?;
         Ok(Root {
             ast,
             table: state.table,
         })
     }
 
-    fn visit_sym(&mut self, db: &dyn Compiler, state: &mut State, expr: &Sym) -> Res {
-        if db.debug_level() > 1 {
+    fn visit_sym(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Sym) -> Res {
+        if storage.debug_level() > 1 {
             eprintln!(
                 "visiting sym {} {}",
                 path_to_string(&state.path),
@@ -55,7 +55,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
             match node {
                 Some(node) => {
                     node.value.uses.insert(state.path.clone());
-                    if db.debug_level() > 1 {
+                    if storage.debug_level() > 1 {
                         eprintln!(
                             "FOUND {} at {}\n",
                             expr.name.clone(),
@@ -68,7 +68,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
                 }
                 None => {
                     search.pop(); // Strip the name off.
-                    if db.debug_level() > 1 {
+                    if storage.debug_level() > 1 {
                         eprintln!(
                             "   not found {} at {}",
                             expr.name.clone(),
@@ -88,17 +88,17 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
         }
     }
 
-    fn visit_val(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Val) -> Res {
+    fn visit_val(&mut self, _storage: &mut DBStorage, _state: &mut State, expr: &Val) -> Res {
         Ok(expr.clone().into_node())
     }
 
-    fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
+    fn visit_apply(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Apply) -> Res {
         state.path.push(Symbol::Anon());
         let args = expr
             .args
             .iter()
             .map(|arg| {
-                let val = self.visit_let(db, state, arg)?.as_let();
+                let val = self.visit_let(storage, state, arg)?.as_let();
                 let mut search = state.path.clone();
                 search.push(Symbol::new(&arg.name));
                 let node = state.table.find_mut(&search);
@@ -108,7 +108,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
                 val
             })
             .collect::<Result<Vec<Let>, TError>>()?;
-        let inner = Box::new(self.visit(db, state, &*expr.inner)?);
+        let inner = Box::new(self.visit(storage, state, &*expr.inner)?);
         state.path.pop();
         Ok(Apply {
             inner,
@@ -118,11 +118,11 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
         .into_node())
     }
 
-    fn visit_abs(&mut self, db: &dyn Compiler, state: &mut State, expr: &Abs) -> Res {
-        if db.debug_level() > 1 {
+    fn visit_abs(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Abs) -> Res {
+        if storage.debug_level() > 1 {
             eprintln!("visiting {} {}", path_to_string(&state.path), &expr.name);
         }
-        let value = Box::new(self.visit(db, state, &expr.value)?);
+        let value = Box::new(self.visit(storage, state, &expr.value)?);
         Ok(Abs {
             name: expr.name.clone(),
             value,
@@ -131,8 +131,8 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
         .into_node())
     }
 
-    fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
-        if db.debug_level() > 1 {
+    fn visit_let(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Let) -> Res {
+        if storage.debug_level() > 1 {
             eprintln!("visiting {} {}", path_to_string(&state.path), &expr.name);
         }
         let path_name = Symbol::new(&expr.name);
@@ -140,13 +140,13 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
         let args = if let Some(args) = &expr.args {
             Some(
                 args.iter()
-                    .map(|arg| self.visit_let(db, state, arg)?.as_let())
+                    .map(|arg| self.visit_let(storage, state, arg)?.as_let())
                     .collect::<Result<Vec<Let>, TError>>()?,
             )
         } else {
             None
         };
-        let value = Box::new(self.visit(db, state, &expr.value)?);
+        let value = Box::new(self.visit(storage, state, &expr.value)?);
         state.path.pop();
         Ok(Let {
             name: expr.name.clone(),
@@ -157,8 +157,8 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
         .into_node())
     }
 
-    fn visit_un_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &UnOp) -> Res {
-        let inner = Box::new(self.visit(db, state, &expr.inner)?);
+    fn visit_un_op(&mut self, storage: &mut DBStorage, state: &mut State, expr: &UnOp) -> Res {
+        let inner = Box::new(self.visit(storage, state, &expr.inner)?);
         Ok(UnOp {
             name: expr.name.clone(),
             inner,
@@ -167,9 +167,9 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
         .into_node())
     }
 
-    fn visit_bin_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &BinOp) -> Res {
-        let left = Box::new(self.visit(db, state, &expr.left)?);
-        let right = Box::new(self.visit(db, state, &expr.right)?);
+    fn visit_bin_op(&mut self, storage: &mut DBStorage, state: &mut State, expr: &BinOp) -> Res {
+        let left = Box::new(self.visit(storage, state, &expr.left)?);
+        let right = Box::new(self.visit(storage, state, &expr.right)?);
         Ok(BinOp {
             name: expr.name.clone(),
             left,

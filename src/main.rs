@@ -1,15 +1,13 @@
 #![deny(clippy::all)]
 
-use std::env;
-use std::error::Error;
-
-use directories::ProjectDirs;
 use rustyline::error::ReadlineError;
 use rustyline::{config::Config, Editor};
+use std::env;
+use std::error::Error;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 use takolib::cli_options::{print_cli_info, Options};
-use takolib::database::{Compiler, DB};
+use takolib::database::DBStorage;
 use takolib::errors::TError;
 use takolib::{work, work_on_string};
 
@@ -36,35 +34,34 @@ fn handle(res: Result<String, TError>) {
 }
 
 fn main() -> Result<(), TError> {
-    let mut db = DB::default();
+    let mut storage = DBStorage::default();
+    {
+        let args: Vec<String> = env::args().collect();
+        storage.options = Options::new(&args[1..]); // replace options
+        std::fs::create_dir_all(&storage.config_dir()).expect("Could not create config directory");
+    }
 
-    let args: Vec<String> = env::args().collect();
-    let project_dirs = ProjectDirs::from("systems", "mimir", "tako");
-    db.set_project_dirs(project_dirs);
+    let files = storage.options.files.clone();
 
-    std::fs::create_dir_all(&db.config_dir()).expect("Could not create config directory");
-
-    db.set_options(Options::new(&args[1..]));
-
-    for f in db.options().files.iter() {
-        handle(work(&mut db, f, None));
+    for f in files.iter() {
+        handle(work(&mut storage, f, None));
     }
 
     use takolib::cli_options::Command;
-    if db.options().cmd == Command::Repl {
-        repl(&mut db)
+    if storage.options.cmd == Command::Repl {
+        repl(&mut storage)
     } else {
         Ok(())
     }
 }
 
-fn repl(db: &mut DB) -> Result<(), TError> {
+fn repl(storage: &mut DBStorage) -> Result<(), TError> {
     print_cli_info();
     // `()` can be used when no completer is required
     let rl_config = Config::builder().tab_stop(2).build();
 
     let mut rl = Editor::<()>::with_config(rl_config);
-    if let Err(err) = rl.load_history(&db.history_file()) {
+    if let Err(err) = rl.load_history(&storage.history_file()) {
         eprintln!("{:?}", err);
     }
     let mut last_cmd_was_interrupt = false;
@@ -78,7 +75,7 @@ fn repl(db: &mut DB) -> Result<(), TError> {
                         break;
                     }
                     rl.add_history_entry(line.as_str());
-                    handle(work_on_string(db, line, "repl.tk", None));
+                    handle(work_on_string(storage, line, "repl.tk", None));
                 }
             }
             Err(ReadlineError::Interrupted) => {
@@ -96,7 +93,7 @@ fn repl(db: &mut DB) -> Result<(), TError> {
         }
         last_cmd_was_interrupt = cmd_was_interrupt;
     }
-    rl.save_history(&db.history_file())
+    rl.save_history(&storage.history_file())
         .expect("Could not save history");
     Ok(())
 }

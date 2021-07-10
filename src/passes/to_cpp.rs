@@ -1,7 +1,7 @@
 use crate::ast::*;
 use crate::primitives::{Prim, Val};
 use crate::symbol_table::*;
-use crate::{database::Compiler, errors::TError};
+use crate::{database::DBStorage, errors::TError};
 use std::collections::HashSet;
 
 // Walks the AST compiling it to wasm.
@@ -235,8 +235,8 @@ impl CodeGenerator {
 }
 
 impl Visitor<State, Code, Out, Path> for CodeGenerator {
-    fn visit_root(&mut self, db: &dyn Compiler, module: &Path) -> Result<Out, TError> {
-        let root = db.look_up_definitions(module.clone())?;
+    fn visit_root(&mut self, storage: &mut DBStorage, module: &Path) -> Result<Out, TError> {
+        let root = storage.look_up_definitions(module.clone())?;
         let mut main_info = root.ast.get_info();
         let mut main_at = module.clone();
         main_at.push(Symbol::new("main"));
@@ -248,10 +248,10 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             args: Some(vec![]),
         };
         let mut table = root.table; // TODO: Shouldn't be mut
-        if db.debug_level() > 1 {
+        if storage.debug_level() > 1 {
             eprintln!("table {:?}", table);
         }
-        let main = match self.visit_let(db, &mut table, &main_let)? {
+        let main = match self.visit_let(storage, &mut table, &main_let)? {
             Code::Assignment(_, val) => match *val {
                 Code::Func {
                     name: _,
@@ -303,7 +303,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         Ok((code + "\n", self.flags.clone()))
     }
 
-    fn visit_sym(&mut self, db: &dyn Compiler, _state: &mut State, expr: &Sym) -> Res {
+    fn visit_sym(&mut self, storage: &mut DBStorage, _state: &mut State, expr: &Sym) -> Res {
         // eprintln!(
         //   "to_c: visit {}, {:?}",
         // expr.name,
@@ -314,7 +314,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 .defined_at
                 .expect("Could not find definition for symbol"),
         );
-        if let Some(info) = db.get_extern(name.clone())? {
+        if let Some(info) = storage.get_extern(name.clone())? {
             self.includes.insert(info.cpp.includes);
             self.flags.extend(info.cpp.flags);
             // arg_processor
@@ -323,7 +323,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         Ok(Code::Expr(name))
     }
 
-    fn visit_val(&mut self, db: &dyn Compiler, state: &mut State, expr: &Val) -> Res {
+    fn visit_val(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Val) -> Res {
         use Val::*;
         match expr {
             Product(tys) => {
@@ -353,12 +353,12 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                     }
                 }
             }
-            Lambda(node) => self.visit(db, state, node),
+            Lambda(node) => self.visit(storage, state, node),
             Struct(vals) => {
                 // TODO: Struct C++
                 let mut val_code = vec![];
                 for val in vals.iter() {
-                    val_code.push(self.visit_val(db, state, &val.1)?);
+                    val_code.push(self.visit_val(storage, state, &val.1)?);
                 }
                 Ok(Code::Struct(val_code))
             }
@@ -366,19 +366,19 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         }
     }
 
-    fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
+    fn visit_apply(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Apply) -> Res {
         // eprintln!("apply here: {:?}", expr);
         // Build the 'struct' of args
         let mut args = vec![];
         for arg in expr.args.iter() {
             // TODO: Include lambda head in values
-            let val = self.visit_let(db, state, arg)?;
+            let val = self.visit_let(storage, state, arg)?;
             match val {
                 Code::Assignment(_, val) => args.push(pretty_print_block(*val, "")),
                 val => args.push(pretty_print_block(val, "")),
             };
         }
-        let inner = self.visit(db, state, &expr.inner)?;
+        let inner = self.visit(storage, state, &expr.inner)?;
         match inner {
             Code::Expr(expr) => {
                 let with_args = format!("{}({})", expr, args.join(", "));
@@ -388,7 +388,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         }
     }
 
-    fn visit_abs(&mut self, db: &dyn Compiler, state: &mut State, expr: &Abs) -> Res {
+    fn visit_abs(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Abs) -> Res {
         // eprintln!(
         //     "abs here: {:?}, {:?}",
         //     expr.get_info().defined_at,
@@ -400,11 +400,11 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             .expect("Could not find definition for abs");
 
         let name = make_name(path);
-        let body = self.visit(db, state, &expr.value)?;
+        let body = self.visit(storage, state, &expr.value)?;
         Ok(Code::Template(name, Box::new(body)))
     }
 
-    fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
+    fn visit_let(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Let) -> Res {
         // eprintln!(
         //     "let here: {:?}, {:?}",
         //     expr.get_info().defined_at,
@@ -415,12 +415,12 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             .defined_at
             .expect("Could not find definition for let");
 
-        let uses = db.find_symbol_uses(path.clone())?;
+        let uses = storage.find_symbol_uses(path.clone())?;
         if uses.is_empty() {
             return Ok(Code::Empty);
         }
         let name = make_name(path);
-        let body = self.visit(db, state, &expr.value)?;
+        let body = self.visit(storage, state, &expr.value)?;
         if let Some(eargs) = &expr.args {
             let mut args = vec![];
             for arg in eargs.iter() {
@@ -459,11 +459,11 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         Ok(Code::Assignment(name, Box::new(body)))
     }
 
-    fn visit_un_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &UnOp) -> Res {
-        let code = self.visit(db, state, &expr.inner)?;
+    fn visit_un_op(&mut self, storage: &mut DBStorage, state: &mut State, expr: &UnOp) -> Res {
+        let code = self.visit(storage, state, &expr.inner)?;
         let info = expr.get_info();
         let op = expr.name.as_str();
-        if let Some(info) = db.get_extern(op.to_string())? {
+        if let Some(info) = storage.get_extern(op.to_string())? {
             self.includes.insert(info.cpp.includes);
             self.flags.extend(info.cpp.flags);
             let code = if info.cpp.arg_processor.as_str() == "" {
@@ -476,10 +476,10 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         Err(TError::UnknownPrefixOperator(op.to_string(), info))
     }
 
-    fn visit_bin_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &BinOp) -> Res {
+    fn visit_bin_op(&mut self, storage: &mut DBStorage, state: &mut State, expr: &BinOp) -> Res {
         let info = expr.get_info();
-        let left = self.visit(db, state, &expr.left.clone())?;
-        let right = self.visit(db, state, &expr.right.clone())?;
+        let left = self.visit(storage, state, &expr.left.clone())?;
+        let right = self.visit(storage, state, &expr.right.clone())?;
         // TODO: require 2 children
         // TODO: Short circuiting of deps.
         let op = expr.name.as_str();
@@ -499,7 +499,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             }
             _ => {}
         }
-        if let Some(info) = db.get_extern(op.to_string())? {
+        if let Some(info) = storage.get_extern(op.to_string())? {
             self.includes.insert(info.cpp.includes);
             self.flags.extend(info.cpp.flags);
             let (left, right) = if info.cpp.arg_processor.as_str() == "" {

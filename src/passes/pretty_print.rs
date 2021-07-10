@@ -1,5 +1,5 @@
 use crate::ast::*;
-use crate::database::Compiler;
+use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::primitives::Val;
 use std::fmt::Write;
@@ -13,13 +13,13 @@ type Res = Result<(), TError>;
 type State = String;
 
 impl Visitor<State, (), String, Node> for PrettyPrint {
-    fn visit_root(&mut self, db: &dyn Compiler, expr: &Node) -> Result<String, TError> {
+    fn visit_root(&mut self, storage: &mut DBStorage, expr: &Node) -> Result<String, TError> {
         let mut state: String = "".to_string();
-        self.visit(db, &mut state, expr)?;
+        self.visit(storage, &mut state, expr)?;
         Ok(state)
     }
 
-    fn visit_sym(&mut self, _db: &dyn Compiler, state: &mut State, expr: &Sym) -> Res {
+    fn visit_sym(&mut self, _storage: &mut DBStorage, state: &mut State, expr: &Sym) -> Res {
         if let Some(def_at) = expr.get_info().defined_at {
             write!(state, ".{}", path_to_string(&def_at))?;
         } else {
@@ -28,14 +28,14 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
         Ok(())
     }
 
-    fn visit_val(&mut self, _db: &dyn Compiler, state: &mut State, expr: &Val) -> Res {
+    fn visit_val(&mut self, _storage: &mut DBStorage, state: &mut State, expr: &Val) -> Res {
         write!(state, "{}", &expr)?;
         Ok(())
     }
 
-    fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
+    fn visit_apply(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Apply) -> Res {
         write!(state, "(")?;
-        self.visit(db, state, &*expr.inner)?;
+        self.visit(storage, state, &*expr.inner)?;
         write!(state, ")(")?;
         let mut is_first = true;
         for arg in expr.args.iter() {
@@ -44,18 +44,18 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
             } else {
                 write!(state, ", ")?;
             }
-            self.visit_let(db, state, arg)?;
+            self.visit_let(storage, state, arg)?;
         }
         write!(state, ")")?;
         Ok(())
     }
 
-    fn visit_abs(&mut self, db: &dyn Compiler, state: &mut State, expr: &Abs) -> Res {
+    fn visit_abs(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Abs) -> Res {
         write!(state, "{}|-", expr.name)?;
-        self.visit(db, state, &*expr.value)
+        self.visit(storage, state, &*expr.value)
     }
 
-    fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
+    fn visit_let(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Let) -> Res {
         if let Some(def_at) = expr.get_info().defined_at {
             write!(state, ".{}", path_to_string(&def_at))?;
         } else {
@@ -69,27 +69,27 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
                 if !is_first {
                     write!(state, ", ")?;
                 }
-                self.visit_let(db, state, arg)?;
+                self.visit_let(storage, state, arg)?;
                 is_first = false;
             }
             write!(state, ")")?;
         }
         write!(state, "=")?;
-        self.visit(db, state, &*expr.value)
+        self.visit(storage, state, &*expr.value)
     }
 
-    fn visit_un_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &UnOp) -> Res {
+    fn visit_un_op(&mut self, storage: &mut DBStorage, state: &mut State, expr: &UnOp) -> Res {
         write!(state, "({}", expr.name)?;
-        self.visit(db, state, &*expr.inner)?;
+        self.visit(storage, state, &*expr.inner)?;
         write!(state, ")")?;
         Ok(())
     }
 
-    fn visit_bin_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &BinOp) -> Res {
+    fn visit_bin_op(&mut self, storage: &mut DBStorage, state: &mut State, expr: &BinOp) -> Res {
         write!(state, "(")?;
-        self.visit(db, state, &*expr.left)?;
+        self.visit(storage, state, &*expr.left)?;
         write!(state, "{}", expr.name)?;
-        self.visit(db, state, &*expr.right)?;
+        self.visit(storage, state, &*expr.right)?;
         write!(state, ")")?;
         Ok(())
     }

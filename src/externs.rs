@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::ast::{Info, Node, ToNode};
-use crate::database::Compiler;
+use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::primitives::{
     bit_type, builtin, i32_type, int32, never_type, number_type, string, string_type, type_type,
@@ -35,7 +35,7 @@ pub fn prim_pow(l: &Val, r: &Val, info: Info) -> Res {
 }
 
 pub type Args = HashMap<String, Box<dyn Fn() -> Res>>;
-pub type FuncImpl = Box<dyn Fn(&dyn Compiler, Args, Info) -> Res>;
+pub type FuncImpl = Box<dyn Fn(&DBStorage, Args, Info) -> Res>;
 
 fn get_symbol(args: &Args, sym: &str, info: &Info) -> Res {
     if let Some(val) = args.get(sym) {
@@ -169,11 +169,11 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
             )
         })),
         "argc" => Some(Box::new(|db, _, _info| {
-            Ok(int32(db.options().interpreter_args.len() as i32))
+            Ok(int32(db.options.interpreter_args.len() as i32))
         })),
         "argv" => Some(Box::new(|db, args, info| {
             match get_symbol(&args, "it", &info)? {
-                PrimVal(I32(ind)) => Ok(string(&db.options().interpreter_args[ind as usize])),
+                PrimVal(I32(ind)) => Ok(string(&db.options.interpreter_args[ind as usize])),
                 value => Err(TError::TypeMismatch(
                     "Expected index to be of type i32".to_string(),
                     Box::new(value),
@@ -261,7 +261,7 @@ impl LangImpl {
     }
 }
 
-pub fn get_externs(_db: &dyn Compiler) -> Result<HashMap<String, Extern>, TError> {
+pub fn get_externs() -> Result<HashMap<String, Extern>, TError> {
     use Direction::*;
     use Semantic::Func;
     let mut externs = vec![

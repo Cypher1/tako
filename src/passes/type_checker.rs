@@ -1,5 +1,5 @@
 use crate::ast::{Node, Node::*};
-use crate::database::Compiler;
+use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::passes::interpreter::Interpreter;
 use std::collections::BTreeSet;
@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 use crate::primitives::{bit_type, i32_type, record, string_type, Prim::*, Val, Val::*};
 
-pub fn infer(db: &dyn Compiler, expr: &Node, env: &Val) -> Result<Val, TError> {
+pub fn infer(storage: &mut DBStorage, expr: &Node, env: &Val) -> Result<Val, TError> {
     // Infer that expression t has type A, t => A
     // See https://ncatlab.org/nlab/show/bidirectional+typechecking
     use crate::ast::*;
@@ -16,35 +16,35 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Val) -> Result<Val, TError> {
             Product(vals) => {
                 let mut tys: BTreeSet<Val> = set![];
                 for val in vals.iter() {
-                    tys.insert(infer(db, &val.clone().into_node(), env)?);
+                    tys.insert(infer(storage, &val.clone().into_node(), env)?);
                 }
                 Ok(Product(tys))
             }
             Union(vals) => {
                 let mut tys: BTreeSet<Val> = set![];
                 for val in vals.iter() {
-                    tys.insert(infer(db, &val.clone().into_node(), env)?);
+                    tys.insert(infer(storage, &val.clone().into_node(), env)?);
                 }
                 Ok(Union(tys))
             }
             PrimVal(I32(_)) => Ok(i32_type()),
             PrimVal(Bool(_)) => Ok(bit_type()),
             PrimVal(Str(_)) => Ok(string_type()),
-            Lambda(node) => infer(db, node.as_ref(), env), // TODO: abstraction
+            Lambda(node) => infer(storage, node.as_ref(), env), // TODO: abstraction
             Struct(vals) => {
                 let mut tys: Vec<Val> = vec![];
                 for val in vals.iter() {
-                    tys.push(infer(db, &val.1.clone().into_node(), env)?);
+                    tys.push(infer(storage, &val.1.clone().into_node(), env)?);
                 }
                 Ok(record(tys)?)
             }
             _ty => Ok(Val::Variable("Type".to_string())),
         },
         UnOpNode(UnOp { name, inner, info }) => {
-            let it_ty = infer(db, inner, env)?;
+            let it_ty = infer(storage, inner, env)?;
             let new_env = env.clone().merge(rec! {"it" => it_ty.clone()});
             let inner_ty = infer(
-                db,
+                storage,
                 &Sym {
                     name: name.to_string(),
                     info: info.clone(),
@@ -63,7 +63,7 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Val) -> Result<Val, TError> {
                 info: info.clone(),
             };
             let mut state = vec![];
-            Interpreter::default().visit_apply(db, &mut state, &app)
+            Interpreter::default().visit_apply(storage, &mut state, &app)
         }
         BinOpNode(BinOp {
             name,
@@ -71,14 +71,14 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Val) -> Result<Val, TError> {
             right,
             info,
         }) => {
-            let left_ty = infer(db, left, env)?;
+            let left_ty = infer(storage, left, env)?;
             let tmp_env = env.clone().merge(left_ty.clone());
-            let right_ty = infer(db, right, &tmp_env)?;
+            let right_ty = infer(storage, right, &tmp_env)?;
             let new_env = env
                 .clone()
                 .merge(rec! {"left" => left_ty.clone(), "right" => right_ty.clone()});
             let inner_ty = infer(
-                db,
+                storage,
                 &Sym {
                     name: name.to_string(),
                     info: info.clone(),
@@ -105,17 +105,17 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Val) -> Result<Val, TError> {
                 info: info.clone(),
             };
             let mut state = vec![];
-            Interpreter::default().visit_apply(db, &mut state, &app)
+            Interpreter::default().visit_apply(storage, &mut state, &app)
         }
         SymNode(Sym { name, info: _ }) => {
-            if let Some(ext) = db.get_extern(name.to_string())? {
+            if let Some(ext) = storage.get_extern(name.to_string())? {
                 // TODO intros
                 let mut frame = HashMap::new();
                 for (name, ty) in env.clone().into_struct().iter() {
                     frame.insert(name.clone(), ty.clone());
                 }
                 let mut state = vec![frame];
-                return Interpreter::default().visit(db, &mut state, &ext.ty);
+                return Interpreter::default().visit(storage, &mut state, &ext.ty);
             }
             eprintln!("access sym: {}", name);
             eprintln!("env sym: {}", env);
@@ -125,7 +125,7 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Val) -> Result<Val, TError> {
             let mut arg_tys = vec![];
             let mut let_tys = vec![];
             for arg in args.iter() {
-                let ty = infer(db, &arg.value.clone().into_node(), env)?;
+                let ty = infer(storage, &arg.value.clone().into_node(), env)?;
                 let_tys.push((arg.name.clone(), ty.clone()));
                 let ty_let = Let {
                     name: arg.name.clone(),
@@ -137,21 +137,21 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Val) -> Result<Val, TError> {
             }
             let new_env = env.clone().merge(Struct(let_tys));
             eprintln!("new_env: {}", &new_env);
-            let inner_ty = infer(db, inner, &new_env)?;
+            let inner_ty = infer(storage, inner, &new_env)?;
             let app = Apply {
                 inner: Box::new(inner_ty.into_node()),
                 args: arg_tys,
                 info: info.clone(),
             };
             let mut state = vec![HashMap::new()];
-            Interpreter::default().visit_apply(db, &mut state, &app)
+            Interpreter::default().visit_apply(storage, &mut state, &app)
         }
         AbsNode(Abs {
             name,
             value,
             info: _,
         }) => {
-            let ty = infer(db, &value.clone().into_node(), env)?;
+            let ty = infer(storage, &value.clone().into_node(), env)?;
             match ty {
                 Function {
                     mut intros,
@@ -176,14 +176,14 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Val) -> Result<Val, TError> {
         }) => {
             let ty = if let Some(ty) = info.ty.clone() {
                 let mut state = vec![HashMap::new()];
-                Interpreter::default().visit(db, &mut state, &ty)?
+                Interpreter::default().visit(storage, &mut state, &ty)?
             } else {
-                infer(db, &value.clone().into_node(), env)?
+                infer(storage, &value.clone().into_node(), env)?
             };
             let ty = if let Some(args) = args {
                 let mut arg_tys = rec![];
                 for arg in args.iter() {
-                    let ty = infer(db, &arg.clone().into_node(), env)?;
+                    let ty = infer(storage, &arg.clone().into_node(), env)?;
                     arg_tys = arg_tys.merge(ty);
                 }
                 Function {
@@ -203,7 +203,7 @@ pub fn infer(db: &dyn Compiler, expr: &Node, env: &Val) -> Result<Val, TError> {
 mod tests {
     use super::*;
     use crate::ast::ToNode;
-    use crate::database::DB;
+    use crate::database::DBStorage;
 
     type Test = Result<(), TError>;
 
@@ -211,29 +211,27 @@ mod tests {
         dbg!(&prog_str);
         dbg!(&type_str);
         use crate::ast::Visitor;
-        use crate::cli_options::Options;
-        use std::sync::Arc;
-        let mut db = DB::default();
-        db.set_options(Options::default().with_debug(3));
+        let mut storage = DBStorage::default();
+        storage.options.debug_level = 3;
 
         let type_filename = "test/type.tk";
-        db.set_file(type_filename.to_owned(), Ok(Arc::new(type_str.to_owned())));
-        let type_module = db.module_name(type_filename.to_owned());
+        storage.set_file(type_filename, type_str.to_owned());
+        let type_module = storage.module_name(type_filename.to_owned());
 
-        let ty = db.look_up_definitions(type_module)?;
-        let result_type = Interpreter::default().visit_root(&db, &ty);
+        let ty = storage.look_up_definitions(type_module)?;
+        let result_type = Interpreter::default().visit_root(&mut storage, &ty);
         if let Err(err) = &result_type {
             dbg!(format!("{}", &err));
         }
         let result_type = result_type?;
 
         let prog_filename = "test/prog.tk";
-        let prog_module = db.module_name(prog_filename.to_owned());
+        let prog_module = storage.module_name(prog_filename.to_owned());
 
-        let prog = db.parse_str(prog_module, prog_str)?;
+        let prog = storage.parse_str(prog_module, prog_str)?;
 
         let env = Variable("test_program".to_string()); // TODO: Track the type env
-        let prog_ty = infer(&db, &prog, &env)?;
+        let prog_ty = infer(&mut storage, &prog, &env)?;
 
         eprintln!("got: {}", &prog_ty);
         eprintln!("expected: {}", &result_type);
@@ -245,10 +243,10 @@ mod tests {
     #[test]
     fn infer_type_of_i32() -> Test {
         use crate::primitives::int32;
-        let db = DB::default();
+        let mut storage = DBStorage::default();
         let num = int32(23).into_node();
         let env = rec![]; // TODO: Track the type env
-        assert_eq!(infer(&db, &num, &env), Ok(i32_type()));
+        assert_eq!(infer(&mut storage, &num, &env), Ok(i32_type()));
         assert_type("23", "I32")
     }
 

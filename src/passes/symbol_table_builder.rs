@@ -1,5 +1,5 @@
 use crate::ast::*;
-use crate::database::Compiler;
+use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::primitives::Val;
 use crate::symbol_table::*;
@@ -18,9 +18,9 @@ pub struct State {
 }
 
 impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
-    fn visit_root(&mut self, db: &dyn Compiler, module: &Path) -> Result<Root, TError> {
-        let expr = &db.parse_file(module.clone())?;
-        if db.debug_level() > 0 {
+    fn visit_root(&mut self, storage: &mut DBStorage, module: &Path) -> Result<Root, TError> {
+        let expr = &storage.parse_file(module.clone())?;
+        if storage.debug_level() > 0 {
             eprintln!(
                 "building symbol table for file... {}",
                 path_to_string(module)
@@ -36,7 +36,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
 
         // Add in the globals here!
         // TODO: Inject needs for bootstrapping here (e.g. import function).
-        let globals: Vec<Path> = db
+        let globals: Vec<Path> = storage
             .get_extern_names()?
             .iter()
             .map(|x| vec![Symbol::new(x)])
@@ -50,32 +50,32 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
             path: module.clone(),
         };
 
-        if db.debug_level() > 0 {
+        if storage.debug_level() > 0 {
             eprintln!("table: {:?}", state.table);
         }
 
         Ok(Root {
-            ast: self.visit(db, &mut state, expr)?,
+            ast: self.visit(storage, &mut state, expr)?,
             table: state.table,
         })
     }
 
-    fn visit_sym(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Sym) -> Res {
+    fn visit_sym(&mut self, _storage: &mut DBStorage, _state: &mut State, expr: &Sym) -> Res {
         Ok(expr.clone().into_node())
     }
 
-    fn visit_val(&mut self, _db: &dyn Compiler, _state: &mut State, expr: &Val) -> Res {
+    fn visit_val(&mut self, _storage: &mut DBStorage, _state: &mut State, expr: &Val) -> Res {
         Ok(expr.clone().into_node())
     }
 
-    fn visit_apply(&mut self, db: &dyn Compiler, state: &mut State, expr: &Apply) -> Res {
+    fn visit_apply(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Apply) -> Res {
         state.path.push(Symbol::Anon());
         let args = expr
             .args
             .iter()
-            .map(|arg| self.visit_let(db, state, arg)?.as_let())
+            .map(|arg| self.visit_let(storage, state, arg)?.as_let())
             .collect::<Result<_, _>>()?;
-        let inner = Box::new(self.visit(db, state, &*expr.inner)?);
+        let inner = Box::new(self.visit(storage, state, &*expr.inner)?);
         state.path.pop();
 
         Ok(Apply {
@@ -86,8 +86,8 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
         .into_node())
     }
 
-    fn visit_abs(&mut self, db: &dyn Compiler, state: &mut State, expr: &Abs) -> Res {
-        if db.debug_level() > 1 {
+    fn visit_abs(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Abs) -> Res {
+        if storage.debug_level() > 1 {
             eprintln!("visiting {} {}", path_to_string(&state.path), &expr.name);
         }
 
@@ -97,7 +97,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
         info.defined_at = Some(state.path.clone());
         state.table.get_mut(&state.path);
 
-        let value = Box::new(self.visit(db, state, &expr.value)?);
+        let value = Box::new(self.visit(storage, state, &expr.value)?);
         state.path.pop();
 
         Ok(Abs {
@@ -108,8 +108,8 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
         .into_node())
     }
 
-    fn visit_let(&mut self, db: &dyn Compiler, state: &mut State, expr: &Let) -> Res {
-        if db.debug_level() > 1 {
+    fn visit_let(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Let) -> Res {
+        if storage.debug_level() > 1 {
             eprintln!("visiting {} {}", path_to_string(&state.path), &expr.name);
         }
 
@@ -123,13 +123,13 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
         let args = if let Some(args) = &expr.args {
             Some(
                 args.iter()
-                    .map(|arg| self.visit_let(db, state, arg)?.as_let())
+                    .map(|arg| self.visit_let(storage, state, arg)?.as_let())
                     .collect::<Result<_, _>>()?,
             )
         } else {
             None
         };
-        let value = Box::new(self.visit(db, state, &expr.value)?);
+        let value = Box::new(self.visit(storage, state, &expr.value)?);
         state.path.pop();
 
         Ok(Let {
@@ -141,8 +141,8 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
         .into_node())
     }
 
-    fn visit_un_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &UnOp) -> Res {
-        let inner = Box::new(self.visit(db, state, &expr.inner)?);
+    fn visit_un_op(&mut self, storage: &mut DBStorage, state: &mut State, expr: &UnOp) -> Res {
+        let inner = Box::new(self.visit(storage, state, &expr.inner)?);
         Ok(UnOp {
             name: expr.name.clone(),
             inner,
@@ -151,9 +151,9 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
         .into_node())
     }
 
-    fn visit_bin_op(&mut self, db: &dyn Compiler, state: &mut State, expr: &BinOp) -> Res {
-        let left = Box::new(self.visit(db, state, &expr.left)?);
-        let right = Box::new(self.visit(db, state, &expr.right)?);
+    fn visit_bin_op(&mut self, storage: &mut DBStorage, state: &mut State, expr: &BinOp) -> Res {
+        let left = Box::new(self.visit(storage, state, &expr.left)?);
+        let right = Box::new(self.visit(storage, state, &expr.right)?);
         Ok(BinOp {
             name: expr.name.clone(),
             left,
