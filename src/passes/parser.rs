@@ -749,7 +749,6 @@ pub mod tests {
             dbg_parse_entities("12")?,
             "\
 Entity 0:
- - AtLoc(test.tk at line 1, column 1)
  - HasValue(12)"
         );
         Ok(())
@@ -760,7 +759,6 @@ Entity 0:
             dbg_parse_entities("\"hello world\"")?,
             "\
 Entity 0:
- - AtLoc(test.tk at line 1, column 1)
  - HasValue('hello world')"
         );
         Ok(())
@@ -772,32 +770,32 @@ Entity 0:
             dbg_parse_entities("-12")?,
             "\
 Entity 0:
- - AtLoc(test.tk at line 1, column 2)
  - HasValue(12)
 Entity 1:
- - AtLoc(test.tk at line 1, column 1)
  - HasSymbol(\"-\")
  - IsSymbol
 Entity 2:
- - AtLoc(test.tk at line 1, column 1)
  - HasChildren([Entity(0, Generation(1))])
  - HasInner(Entity(1, Generation(1)))"
         );
         Ok(())
     }
 
-    /*
     #[test]
     fn entity_parse_min_op() -> Test {
         assert_str_eq!(
             dbg_parse_entities("14-12")?,
-            BinOp {
-                name: "-".to_string(),
-                left: num_lit(14),
-                right: num_lit(12),
-                info: Info::default()
-            }
-            .into_node()
+            "\
+Entity 0:
+ - HasValue(12)
+Entity 1:
+ - HasValue(14)
+Entity 2:
+ - HasSymbol(\"-\")
+ - IsSymbol
+Entity 3:
+ - HasChildren([Entity(1, Generation(1)), Entity(0, Generation(1))])
+ - HasInner(Entity(2, Generation(1)))"
         );
         Ok(())
     }
@@ -806,13 +804,17 @@ Entity 2:
     fn entity_parse_mul_op() -> Test {
         assert_str_eq!(
             dbg_parse_entities("14*12")?,
-            BinOp {
-                name: "*".to_string(),
-                left: num_lit(14),
-                right: num_lit(12),
-                info: Info::default()
-            }
-            .into_node()
+            "\
+Entity 0:
+ - HasValue(12)
+Entity 1:
+ - HasValue(14)
+Entity 2:
+ - HasSymbol(\"*\")
+ - IsSymbol
+Entity 3:
+ - HasChildren([Entity(1, Generation(1)), Entity(0, Generation(1))])
+ - HasInner(Entity(2, Generation(1)))"
         );
         Ok(())
     }
@@ -821,21 +823,25 @@ Entity 2:
     fn entity_parse_add_mul_precedence() -> Test {
         assert_str_eq!(
             dbg_parse_entities("3+2*4")?,
-            BinOp {
-                name: "+".to_string(),
-                left: num_lit(3),
-                right: Box::new(
-                    BinOp {
-                        name: "*".to_string(),
-                        left: num_lit(2),
-                        right: num_lit(4),
-                        info: Info::default()
-                    }
-                    .into_node()
-                ),
-                info: Info::default()
-            }
-            .into_node()
+            "\
+Entity 0:
+ - HasValue(4)
+Entity 1:
+ - HasValue(2)
+Entity 2:
+ - HasSymbol(\"*\")
+ - IsSymbol
+Entity 3:
+ - HasChildren([Entity(1, Generation(1)), Entity(0, Generation(1))])
+ - HasInner(Entity(2, Generation(1)))
+Entity 4:
+ - HasValue(3)
+Entity 5:
+ - HasSymbol(\"+\")
+ - IsSymbol
+Entity 6:
+ - HasChildren([Entity(4, Generation(1)), Entity(3, Generation(1))])
+ - HasInner(Entity(5, Generation(1)))"
         );
         Ok(())
     }
@@ -844,21 +850,25 @@ Entity 2:
     fn entity_parse_mul_add_precedence() -> Test {
         assert_str_eq!(
             dbg_parse_entities("3*2+4")?,
-            BinOp {
-                name: "+".to_string(),
-                left: Box::new(
-                    BinOp {
-                        name: "*".to_string(),
-                        left: num_lit(3),
-                        right: num_lit(2),
-                        info: Info::default()
-                    }
-                    .into_node()
-                ),
-                right: num_lit(4),
-                info: Info::default()
-            }
-            .into_node()
+            "\
+Entity 0:
+ - HasValue(2)
+Entity 1:
+ - HasValue(3)
+Entity 2:
+ - HasSymbol(\"*\")
+ - IsSymbol
+Entity 3:
+ - HasValue(4)
+Entity 4:
+ - HasChildren([Entity(1, Generation(1)), Entity(0, Generation(1))])
+ - HasInner(Entity(2, Generation(1)))
+Entity 5:
+ - HasSymbol(\"+\")
+ - IsSymbol
+Entity 6:
+ - HasChildren([Entity(4, Generation(1)), Entity(3, Generation(1))])
+ - HasInner(Entity(5, Generation(1)))"
         );
         Ok(())
     }
@@ -867,22 +877,26 @@ Entity 2:
     fn entity_parse_mul_add_parens() -> Test {
         assert_str_eq!(
             dbg_parse_entities("3*(2+4)")?,
-            BinOp {
-                name: "*".to_string(),
-                left: num_lit(3),
-                right: Box::new(
-                    BinOp {
-                        name: "+".to_string(),
-                        left: num_lit(2),
-                        right: num_lit(4),
-                        info: Info::default()
-                    }
-                    .into_node()
-                ),
-                info: Info::default()
-            }
-            .into_node()
-        );
+            "\
+Entity 0:
+ - HasValue(4)
+Entity 1:
+ - HasValue(2)
+Entity 2:
+ - HasSymbol(\"+\")
+ - IsSymbol
+Entity 3:
+ - HasChildren([Entity(1, Generation(1)), Entity(0, Generation(1))])
+ - HasInner(Entity(2, Generation(1)))
+Entity 4:
+ - HasValue(3)
+Entity 5:
+ - HasSymbol(\"*\")
+ - IsSymbol
+Entity 6:
+ - HasChildren([Entity(4, Generation(1)), Entity(3, Generation(1))])
+ - HasInner(Entity(5, Generation(1)))"
+    );
         Ok(())
     }
 
@@ -890,13 +904,17 @@ Entity 2:
     fn entity_parse_add_str() -> Test {
         assert_str_eq!(
             dbg_parse_entities("\"hello\"+\" world\"")?,
-            BinOp {
-                name: "+".to_string(),
-                left: str_lit("hello"),
-                right: str_lit(" world"),
-                info: Info::default()
-            }
-            .into_node()
+            "\
+Entity 0:
+ - HasValue(' world')
+Entity 1:
+ - HasValue('hello')
+Entity 2:
+ - HasSymbol(\"+\")
+ - IsSymbol
+Entity 3:
+ - HasChildren([Entity(1, Generation(1)), Entity(0, Generation(1))])
+ - HasInner(Entity(2, Generation(1)))"
         );
         Ok(())
     }
@@ -905,13 +923,13 @@ Entity 2:
     fn entity_parse_strings_followed_by_raw_values() -> Test {
         assert_str_eq!(
             dbg_parse_entities("\"hello world\"\n7")?,
-            BinOp {
-                name: ",".to_string(),
-                left: Box::new(str_lit("hello world").into_node()),
-                right: num_lit(7),
-                info: Info::default()
-            }
-            .into_node()
+            "\
+Entity 0:
+ - HasValue(7)
+Entity 1:
+ - HasValue('hello world')
+Entity 2:
+ - HasChildren([Entity(1, Generation(1)), Entity(0, Generation(1))])"
         );
         Ok(())
     }
@@ -920,30 +938,32 @@ Entity 2:
     fn entity_parse_strings_with_operators_and_trailing_values_in_let() -> Test {
         assert_str_eq!(
             dbg_parse_entities("x()= !\"hello world\";\n7")?,
-            BinOp {
-                name: ";".to_string(),
-                left: Box::new(
-                    Let {
-                        name: "x".to_string(),
-                        args: Some(vec![]),
-                        value: Box::new(
-                            UnOp {
-                                name: "!".to_string(),
-                                inner: str_lit("hello world"),
-                                info: Info::default(),
-                            }
-                            .into_node()
-                        ),
-                        info: Info::default(),
-                    }
-                    .into_node()
-                ),
-                right: num_lit(7),
-                info: Info::default()
-            }
-            .into_node()
+            "\
+Entity 0:
+ - HasValue('hello world')
+Entity 1:
+ - HasSymbol(\"!\")
+ - IsSymbol
+Entity 2:
+ - HasChildren([Entity(0, Generation(1))])
+ - HasInner(Entity(1, Generation(1)))
+Entity 3:
+ - HasSymbol(\"x\")
+ - IsSymbol
+Entity 4:
+ - HasValue(7)
+Entity 5:
+ - HasArguments(Some([Entity(3, Generation(1))]))
+ - HasChildren([Entity(2, Generation(1))])
+ - HasSymbol(\"x\")
+ - IsDefinition
+Entity 6:
+ - HasSymbol(\";\")
+ - IsSymbol
+Entity 7:
+ - HasChildren([Entity(5, Generation(1)), Entity(4, Generation(1))])
+ - HasInner(Entity(6, Generation(1)))"
         );
         Ok(())
     }
-    */
 }
