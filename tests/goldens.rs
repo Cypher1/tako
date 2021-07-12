@@ -168,12 +168,18 @@ fn compile_1_plus_2() -> Test {
 
 #[test]
 fn compile_arguments() -> Test {
-    compile_matching_golden("tests/goldens/examples_arguments.cc", "examples/arguments.tk")
+    compile_matching_golden(
+        "tests/goldens/examples_arguments.cc",
+        "examples/arguments.tk",
+    )
 }
 
 #[test]
 fn compile_code_reuse() -> Test {
-    compile_matching_golden("tests/goldens/examples_code_reuse.cc", "examples/code_reuse.tk")
+    compile_matching_golden(
+        "tests/goldens/examples_code_reuse.cc",
+        "examples/code_reuse.tk",
+    )
 }
 
 #[test]
@@ -196,7 +202,10 @@ fn compile_empty_def_args() -> Test {
 
 #[test]
 fn compile_hello_name() -> Test {
-    compile_matching_golden("tests/goldens/examples_hello_name.cc", "examples/hello_name.tk")
+    compile_matching_golden(
+        "tests/goldens/examples_hello_name.cc",
+        "examples/hello_name.tk",
+    )
 }
 
 #[test]
@@ -209,7 +218,10 @@ fn compile_higher_order() -> Test {
 
 #[test]
 fn compile_ignored_let() -> Test {
-    compile_matching_golden("tests/goldens/examples_ignored_let.cc", "examples/ignored_let.tk")
+    compile_matching_golden(
+        "tests/goldens/examples_ignored_let.cc",
+        "examples/ignored_let.tk",
+    )
 }
 
 #[test]
@@ -300,7 +312,10 @@ fn compile_pow() -> Test {
 
 #[test]
 fn compile_pow_twice() -> Test {
-    compile_matching_golden("tests/goldens/examples_pow_twice.cc", "examples/pow_twice.tk")
+    compile_matching_golden(
+        "tests/goldens/examples_pow_twice.cc",
+        "examples/pow_twice.tk",
+    )
 }
 
 #[test]
@@ -315,7 +330,10 @@ fn compile_simple() -> Test {
 
 #[test]
 fn compile_simple_call() -> Test {
-    compile_matching_golden("tests/goldens/examples_simple_call.cc", "examples/simple_call.tk")
+    compile_matching_golden(
+        "tests/goldens/examples_simple_call.cc",
+        "examples/simple_call.tk",
+    )
 }
 
 #[test]
@@ -325,7 +343,10 @@ fn compile_sub() -> Test {
 
 #[test]
 fn compile_three_vars() -> Test {
-    compile_matching_golden("tests/goldens/examples_three_vars.cc", "examples/three_vars.tk")
+    compile_matching_golden(
+        "tests/goldens/examples_three_vars.cc",
+        "examples/three_vars.tk",
+    )
 }
 
 #[test]
