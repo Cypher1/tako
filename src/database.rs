@@ -70,13 +70,13 @@ macro_rules! define_components {
 }
 
 define_components!(
-    AtLoc,
     HasArguments,
     HasChildren,
     HasErrors,
     HasInner,
     HasSymbol,
     HasValue,
+    IsAst,
     IsDefinition,
     IsSymbol,
     Token,
@@ -109,10 +109,10 @@ struct DebugSystem<'a, T> {
 }
 
 impl<'a, T> System<'a> for DebugSystem<'a, T> {
-    type SystemData = (Entities<'a>, ReadStorage<'a, AtLoc>);
+    type SystemData = Entities<'a>;
 
-    fn run(&mut self, (entities, at_loc_storage): Self::SystemData) {
-        for (ent, _) in (&*entities, &at_loc_storage).join() {
+    fn run(&mut self, entities: Self::SystemData) {
+        for ent in (&*entities).join() {
             self.results.push((self.f)(ent));
         }
     }
@@ -474,7 +474,8 @@ impl DBStorage {
                         entity.with(HasChildren(children))
                     }
                 };
-                entity.with(AtLoc(node.loc.clone())).build()
+                // entity.with(IsAst).build()
+                entity.build()
             };
             if let AstNode::Definition { .. } = &node.node {
                 self.add_location_for_definition(node.loc.clone(), entity);

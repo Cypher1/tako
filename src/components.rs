@@ -3,13 +3,8 @@ use specs::Component;
 
 use crate::ast::Path;
 use crate::errors::TError;
-use crate::location::Loc;
 use crate::primitives::Val;
 use crate::tokens::TokenType;
-
-#[derive(Component, Clone, Debug)]
-#[storage(VecStorage)]
-pub struct AtLoc(pub Loc);
 
 #[derive(Component, Clone, Debug)]
 #[storage(VecStorage)]
@@ -57,6 +52,10 @@ pub struct HasArguments(pub Option<Vec<Entity>>); // TODO: Short vec
 #[derive(Component, Clone, Default, Debug)]
 #[storage(NullStorage)]
 pub struct IsSymbol;
+
+#[derive(Component, Clone, Default, Debug)]
+#[storage(NullStorage)]
+pub struct IsAst;
 
 #[derive(Component, Clone, Default, Debug)]
 #[storage(NullStorage)]

@@ -24,7 +24,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         let mut db = DBStorage::default();
         let prog = black_box(parse_string(&mut db, &module, &code).expect("should parse"));
         let env = Variable("test_program".to_string()); // TODO: Track the type env
-        b.iter(|| infer(&mut db, &prog, &env));
+        b.iter(|| infer(&mut db, &prog.0, &env));
     });
 
     c.bench_function("microbench_parse_and_type_of_i32_pre_cache", |b| {
@@ -32,10 +32,10 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         let mut db = DBStorage::default();
         let prog = parse_string(&mut db, &module, &code).expect("should parse");
         let env = Variable("test_program".to_string()); // TODO: Track the type env
-        infer(&mut db, &prog, &env);
+        infer(&mut db, &prog.0, &env);
         b.iter(|| {
             let prog = black_box(parse_string(&mut db, &module, &code).expect("should parse"));
-            infer(&mut db, &prog, &env)
+            infer(&mut db, &prog.0, &env)
         });
     });
 
@@ -44,7 +44,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         let mut db = DBStorage::default();
         let prog = black_box(parse_string(&mut db, &module, &code).expect("should parse"));
         let env = Variable("test_program".to_string()); // TODO: Track the type env
-        b.iter(|| infer(&mut db, &prog, &env));
+        b.iter(|| infer(&mut db, &prog.0, &env));
     });
 
     /* c.bench_function(
@@ -52,7 +52,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         |b| {
             let mut db = DBStorage::default();
             let prog = black_box(parse_string(&mut db, "12+32".to_string()));
-            b.iter(|| infer(&mut db, &prog, &env));
+            b.iter(|| infer(&mut db, &prog.0, &env));
         }
     );*/
 }
