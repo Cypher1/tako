@@ -251,7 +251,7 @@ fn led(
                             .into_node(),
                             match left_node.node {
                                 AstNode::Chain(mut left) => {
-                                let right_entity = storage.store_node(right_node);
+                                    let right_entity = storage.store_node(right_node);
                                     left.push(right_entity);
                                     AstNode::Chain(left).into_data(head.pos)
                                 }
@@ -348,7 +348,7 @@ fn led(
                                 ))
                             }
                         }
-                    },
+                    }
                     _ => {}
                 }
                 let left_entity = storage.store_node(left_node);
@@ -902,7 +902,7 @@ Entity 5:
 Entity 6:
  - HasChildren([Entity(3, Generation(1)), Entity(5, Generation(1))])
  - HasInner(Entity(4, Generation(1)))"
-    );
+        );
         Ok(())
     }
 
