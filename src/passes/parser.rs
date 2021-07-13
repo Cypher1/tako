@@ -68,9 +68,9 @@ fn nud(
             TokenType::Op => {
                 let lbp = binding_power(storage, &head)?;
                 let (right, right_node, new_toks) = expr(storage, toks, lbp)?;
-                let right_entity = storage.store_node(right_node);
                 let inner_node = AstNode::Symbol(head.value.clone()).into_data(head.pos.clone());
                 let inner = storage.store_node(inner_node);
+                let right_entity = storage.store_node(right_node);
                 Ok((
                     UnOp {
                         name: head.value.clone(),
@@ -234,7 +234,6 @@ fn led(
                         Direction::Right => 1,
                     },
                 )?;
-                let right_entity = storage.store_node(right_node);
                 match head.value.as_str() {
                     ":" => {
                         left.get_mut_info().ty = Some(Box::new(right));
@@ -252,11 +251,13 @@ fn led(
                             .into_node(),
                             match left_node.node {
                                 AstNode::Chain(mut left) => {
+                                let right_entity = storage.store_node(right_node);
                                     left.push(right_entity);
                                     AstNode::Chain(left).into_data(head.pos)
                                 }
                                 _ => {
                                     let left_entity = storage.store_node(left_node);
+                                    let right_entity = storage.store_node(right_node);
                                     AstNode::Chain(vec![left_entity, right_entity])
                                         .into_data(head.pos)
                                 }
@@ -270,6 +271,7 @@ fn led(
                             let inner = storage.store_node(
                                 AstNode::Symbol(head.value.clone()).into_data(head.pos.clone()),
                             );
+                            let right_entity = storage.store_node(right_node);
                             return Ok((
                                 Abs {
                                     name: s.name,
@@ -292,56 +294,59 @@ fn led(
                             ))
                         }
                     },
-                    "=" => match left {
-                        Node::SymNode(s) => {
-                            return Ok((
-                                Let {
-                                    name: s.name.clone(),
-                                    args: None,
-                                    value: Box::new(right),
-                                    info: head.get_info(),
-                                }
-                                .into_node(),
-                                AstNode::Definition {
-                                    name: s.name,
-                                    args: None,
-                                    implementations: vec![right_entity],
-                                }
-                                .into_data(head.pos),
-                                new_toks,
-                            ))
-                        }
-                        Node::ApplyNode(a) => match *a.inner {
+                    "=" => {
+                        let right_entity = storage.store_node(right_node);
+                        match left {
                             Node::SymNode(s) => {
                                 return Ok((
                                     Let {
                                         name: s.name.clone(),
-                                        args: Some(a.args),
+                                        args: None,
                                         value: Box::new(right),
                                         info: head.get_info(),
                                     }
                                     .into_node(),
                                     AstNode::Definition {
                                         name: s.name,
-                                        args: Some(storage.store_node_set(left_node)),
+                                        args: None,
                                         implementations: vec![right_entity],
                                     }
                                     .into_data(head.pos),
                                     new_toks,
                                 ))
                             }
+                            Node::ApplyNode(a) => match *a.inner {
+                                Node::SymNode(s) => {
+                                    return Ok((
+                                        Let {
+                                            name: s.name.clone(),
+                                            args: Some(a.args),
+                                            value: Box::new(right),
+                                            info: head.get_info(),
+                                        }
+                                        .into_node(),
+                                        AstNode::Definition {
+                                            name: s.name,
+                                            args: Some(storage.store_node_set(left_node)),
+                                            implementations: vec![right_entity],
+                                        }
+                                        .into_data(head.pos),
+                                        new_toks,
+                                    ))
+                                }
+                                _ => {
+                                    return Err(TError::ParseError(
+                                        format!("Cannot assign to {}", a.into_node()),
+                                        head.get_info(),
+                                    ))
+                                }
+                            },
                             _ => {
                                 return Err(TError::ParseError(
-                                    format!("Cannot assign to {}", a.into_node()),
+                                    format!("Cannot assign to {}", left),
                                     head.get_info(),
                                 ))
                             }
-                        },
-                        _ => {
-                            return Err(TError::ParseError(
-                                format!("Cannot assign to {}", left),
-                                head.get_info(),
-                            ))
                         }
                     },
                     _ => {}
@@ -349,6 +354,7 @@ fn led(
                 let left_entity = storage.store_node(left_node);
                 let inner = storage
                     .store_node(AstNode::Symbol(head.value.clone()).into_data(head.pos.clone()));
+                let right_entity = storage.store_node(right_node);
                 Ok((
                     BinOp {
                         info: head.get_info(),
@@ -770,13 +776,13 @@ Entity 0:
             dbg_parse_entities("-12")?,
             "\
 Entity 0:
- - HasValue(12)
-Entity 1:
  - HasSymbol(\"-\")
  - IsSymbol
+Entity 1:
+ - HasValue(12)
 Entity 2:
- - HasChildren([Entity(0, Generation(1))])
- - HasInner(Entity(1, Generation(1)))"
+ - HasChildren([Entity(1, Generation(1))])
+ - HasInner(Entity(0, Generation(1)))"
         );
         Ok(())
     }
@@ -787,15 +793,15 @@ Entity 2:
             dbg_parse_entities("14-12")?,
             "\
 Entity 0:
- - HasValue(12)
-Entity 1:
  - HasValue(14)
-Entity 2:
+Entity 1:
  - HasSymbol(\"-\")
  - IsSymbol
+Entity 2:
+ - HasValue(12)
 Entity 3:
- - HasChildren([Entity(1, Generation(1)), Entity(0, Generation(1))])
- - HasInner(Entity(2, Generation(1)))"
+ - HasChildren([Entity(0, Generation(1)), Entity(2, Generation(1))])
+ - HasInner(Entity(1, Generation(1)))"
         );
         Ok(())
     }
@@ -806,15 +812,15 @@ Entity 3:
             dbg_parse_entities("14*12")?,
             "\
 Entity 0:
- - HasValue(12)
-Entity 1:
  - HasValue(14)
-Entity 2:
+Entity 1:
  - HasSymbol(\"*\")
  - IsSymbol
+Entity 2:
+ - HasValue(12)
 Entity 3:
- - HasChildren([Entity(1, Generation(1)), Entity(0, Generation(1))])
- - HasInner(Entity(2, Generation(1)))"
+ - HasChildren([Entity(0, Generation(1)), Entity(2, Generation(1))])
+ - HasInner(Entity(1, Generation(1)))"
         );
         Ok(())
     }
@@ -825,23 +831,23 @@ Entity 3:
             dbg_parse_entities("3+2*4")?,
             "\
 Entity 0:
- - HasValue(4)
-Entity 1:
  - HasValue(2)
-Entity 2:
+Entity 1:
  - HasSymbol(\"*\")
  - IsSymbol
+Entity 2:
+ - HasValue(4)
 Entity 3:
- - HasChildren([Entity(1, Generation(1)), Entity(0, Generation(1))])
- - HasInner(Entity(2, Generation(1)))
-Entity 4:
  - HasValue(3)
-Entity 5:
+Entity 4:
  - HasSymbol(\"+\")
  - IsSymbol
+Entity 5:
+ - HasChildren([Entity(0, Generation(1)), Entity(2, Generation(1))])
+ - HasInner(Entity(1, Generation(1)))
 Entity 6:
- - HasChildren([Entity(4, Generation(1)), Entity(3, Generation(1))])
- - HasInner(Entity(5, Generation(1)))"
+ - HasChildren([Entity(3, Generation(1)), Entity(5, Generation(1))])
+ - HasInner(Entity(4, Generation(1)))"
         );
         Ok(())
     }
@@ -852,23 +858,23 @@ Entity 6:
             dbg_parse_entities("3*2+4")?,
             "\
 Entity 0:
- - HasValue(2)
-Entity 1:
  - HasValue(3)
-Entity 2:
+Entity 1:
  - HasSymbol(\"*\")
  - IsSymbol
+Entity 2:
+ - HasValue(2)
 Entity 3:
- - HasValue(4)
+ - HasChildren([Entity(0, Generation(1)), Entity(2, Generation(1))])
+ - HasInner(Entity(1, Generation(1)))
 Entity 4:
- - HasChildren([Entity(1, Generation(1)), Entity(0, Generation(1))])
- - HasInner(Entity(2, Generation(1)))
-Entity 5:
  - HasSymbol(\"+\")
  - IsSymbol
+Entity 5:
+ - HasValue(4)
 Entity 6:
- - HasChildren([Entity(4, Generation(1)), Entity(3, Generation(1))])
- - HasInner(Entity(5, Generation(1)))"
+ - HasChildren([Entity(3, Generation(1)), Entity(5, Generation(1))])
+ - HasInner(Entity(4, Generation(1)))"
         );
         Ok(())
     }
@@ -879,23 +885,23 @@ Entity 6:
             dbg_parse_entities("3*(2+4)")?,
             "\
 Entity 0:
- - HasValue(4)
-Entity 1:
  - HasValue(2)
-Entity 2:
+Entity 1:
  - HasSymbol(\"+\")
  - IsSymbol
+Entity 2:
+ - HasValue(4)
 Entity 3:
- - HasChildren([Entity(1, Generation(1)), Entity(0, Generation(1))])
- - HasInner(Entity(2, Generation(1)))
-Entity 4:
  - HasValue(3)
-Entity 5:
+Entity 4:
  - HasSymbol(\"*\")
  - IsSymbol
+Entity 5:
+ - HasChildren([Entity(0, Generation(1)), Entity(2, Generation(1))])
+ - HasInner(Entity(1, Generation(1)))
 Entity 6:
- - HasChildren([Entity(4, Generation(1)), Entity(3, Generation(1))])
- - HasInner(Entity(5, Generation(1)))"
+ - HasChildren([Entity(3, Generation(1)), Entity(5, Generation(1))])
+ - HasInner(Entity(4, Generation(1)))"
     );
         Ok(())
     }
@@ -906,15 +912,15 @@ Entity 6:
             dbg_parse_entities("\"hello\"+\" world\"")?,
             "\
 Entity 0:
- - HasValue(' world')
-Entity 1:
  - HasValue('hello')
-Entity 2:
+Entity 1:
  - HasSymbol(\"+\")
  - IsSymbol
+Entity 2:
+ - HasValue(' world')
 Entity 3:
- - HasChildren([Entity(1, Generation(1)), Entity(0, Generation(1))])
- - HasInner(Entity(2, Generation(1)))"
+ - HasChildren([Entity(0, Generation(1)), Entity(2, Generation(1))])
+ - HasInner(Entity(1, Generation(1)))"
         );
         Ok(())
     }
@@ -925,11 +931,11 @@ Entity 3:
             dbg_parse_entities("\"hello world\"\n7")?,
             "\
 Entity 0:
- - HasValue(7)
-Entity 1:
  - HasValue('hello world')
+Entity 1:
+ - HasValue(7)
 Entity 2:
- - HasChildren([Entity(1, Generation(1)), Entity(0, Generation(1))])"
+ - HasChildren([Entity(0, Generation(1)), Entity(1, Generation(1))])"
         );
         Ok(())
     }
@@ -940,29 +946,29 @@ Entity 2:
             dbg_parse_entities("x()= !\"hello world\";\n7")?,
             "\
 Entity 0:
- - HasValue('hello world')
-Entity 1:
  - HasSymbol(\"!\")
  - IsSymbol
+Entity 1:
+ - HasValue('hello world')
 Entity 2:
- - HasChildren([Entity(0, Generation(1))])
- - HasInner(Entity(1, Generation(1)))
+ - HasChildren([Entity(1, Generation(1))])
+ - HasInner(Entity(0, Generation(1)))
 Entity 3:
  - HasSymbol(\"x\")
  - IsSymbol
 Entity 4:
- - HasValue(7)
-Entity 5:
  - HasArguments(Some([Entity(3, Generation(1))]))
  - HasChildren([Entity(2, Generation(1))])
  - HasSymbol(\"x\")
  - IsDefinition
-Entity 6:
+Entity 5:
  - HasSymbol(\";\")
  - IsSymbol
+Entity 6:
+ - HasValue(7)
 Entity 7:
- - HasChildren([Entity(5, Generation(1)), Entity(4, Generation(1))])
- - HasInner(Entity(6, Generation(1)))"
+ - HasChildren([Entity(4, Generation(1)), Entity(6, Generation(1))])
+ - HasInner(Entity(5, Generation(1)))"
         );
         Ok(())
     }
