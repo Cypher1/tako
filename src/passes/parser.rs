@@ -46,6 +46,7 @@ impl Loc {
 fn nud(
     storage: &mut DBStorage,
     mut toks: VecDeque<Token>,
+    path: PathRef,
 ) -> Result<(Node, AstNodeData, VecDeque<Token>), TError> {
     if let Some(head) = toks.pop_front() {
         match head.tok_type {
@@ -67,9 +68,9 @@ fn nud(
             }
             TokenType::Op => {
                 let lbp = binding_power(storage, &head)?;
-                let (right, right_node, new_toks) = expr(storage, toks, lbp)?;
                 let inner_node = AstNode::Symbol(head.value.clone()).into_data(head.pos.clone());
                 let inner = storage.store_node(inner_node);
+                let (right, right_node, new_toks) = expr(storage, toks, lbp, path)?;
                 let right_entity = storage.store_node(right_node);
                 Ok((
                     UnOp {
@@ -91,7 +92,7 @@ fn nud(
                 head.get_info(),
             )),
             TokenType::OpenBracket => {
-                let (inner, inner_node, mut new_toks) = expr(storage, toks, 0)?;
+                let (inner, inner_node, mut new_toks) = expr(storage, toks, 0, path)?;
                 // TODO require close bracket.
                 let close = new_toks.front();
                 match (head.value.as_str(), close) {
@@ -194,6 +195,7 @@ fn led(
     mut toks: VecDeque<Token>,
     mut left: Node,
     left_node: AstNodeData,
+    path: PathRef,
 ) -> Result<(Node, AstNodeData, VecDeque<Token>), TError> {
     if let Some(Token {
         tok_type: TokenType::CloseBracket,
@@ -233,6 +235,7 @@ fn led(
                         Direction::Left => 0,
                         Direction::Right => 1,
                     },
+                    path
                 )?;
                 match head.value.as_str() {
                     ":" => {
@@ -310,6 +313,7 @@ fn led(
                                         name: s.name,
                                         args: None,
                                         implementations: vec![right_entity],
+                                        path: path.to_vec(),
                                     }
                                     .into_data(head.pos),
                                     new_toks,
@@ -329,6 +333,7 @@ fn led(
                                             name: s.name,
                                             args: Some(storage.store_node_set(left_node)),
                                             implementations: vec![right_entity],
+                                            path: path.to_vec(),
                                         }
                                         .into_data(head.pos),
                                         new_toks,
@@ -391,7 +396,7 @@ fn led(
                         toks,
                     ));
                 }
-                let (args, args_node, mut new_toks) = expr(storage, toks, 0)?;
+                let (args, args_node, mut new_toks) = expr(storage, toks, 0, path)?;
                 let close = new_toks.front();
                 match (head.value.as_str(), close) {
                     (
@@ -453,9 +458,10 @@ fn expr(
     storage: &mut DBStorage,
     init_toks: VecDeque<Token>,
     init_lbp: i32,
+    path: PathRef,
 ) -> Result<(Node, AstNodeData, VecDeque<Token>), TError> {
     // TODO: Name update's fields, this is confusing (0 is tree, 1 is toks)
-    let init_update = nud(storage, init_toks)?;
+    let init_update = nud(storage, init_toks, path)?;
     let mut left: Node = init_update.0;
     let mut left_node = init_update.1;
     let mut toks: VecDeque<Token> = init_update.2;
@@ -468,7 +474,7 @@ fn expr(
                 }
             }
         }
-        let update = led(storage, toks.clone(), left.clone(), left_node.clone());
+        let update = led(storage, toks.clone(), left.clone(), left_node.clone(), path);
         // TODO: Only retry on parse failures...
         if let Ok(update) = update {
             left = update.0;
@@ -515,7 +521,7 @@ pub fn parse_string(
     if storage.debug_level() > 0 {
         eprintln!("parsing str... {}", path_to_string(module));
     }
-    let (root, root_node, left_over) = expr(storage, toks, 0)?;
+    let (root, root_node, left_over) = expr(storage, toks, 0, module)?;
     let root_entity = storage.store_node(root_node);
 
     if let Some(head) = left_over.front() {
@@ -960,7 +966,7 @@ Entity 4:
  - HasArguments(Some([Entity(3, Generation(1))]))
  - HasChildren([Entity(2, Generation(1))])
  - HasSymbol(\"x\")
- - IsDefinition
+ - IsDefinition([Named(\"test\", Some(\"tk\")), Named(\"x\", None)])
 Entity 5:
  - HasSymbol(\";\")
  - IsSymbol

@@ -8,7 +8,7 @@ use crate::tokens::TokenType;
 
 #[derive(Component, Clone, Debug)]
 #[storage(VecStorage)]
-pub struct AtPath(pub Path);
+pub struct DefinedAt(pub Entity);
 
 #[derive(Component, Clone, Debug)]
 #[storage(VecStorage)]
@@ -58,5 +58,5 @@ pub struct IsSymbol;
 pub struct IsAst;
 
 #[derive(Component, Clone, Default, Debug)]
-#[storage(NullStorage)]
-pub struct IsDefinition;
+#[storage(VecStorage)]
+pub struct IsDefinition(pub Path);

@@ -39,10 +39,10 @@ pub struct DBStorage {
     project_dirs: Option<ProjectDirs>,
     pub options: Options,
     ast_to_entity: HashMap<AstNode, Entity>,
-    defined_at: HashMap<Entity, HashSet<Loc>>,
-    // refers_to: HashMap<Loc, Entity>,
-    instance_at: HashMap<Entity, HashSet<Loc>>,
     file_contents: HashMap<String, Arc<String>>,
+    // TODO: Make entities & components
+    defined_at: HashMap<Entity, HashSet<Loc>>,
+    instance_at: HashMap<Entity, HashSet<Loc>>,
 }
 
 macro_rules! define_components {
@@ -70,6 +70,7 @@ macro_rules! define_components {
 }
 
 define_components!(
+    DefinedAt,
     HasArguments,
     HasChildren,
     HasErrors,
@@ -418,6 +419,7 @@ pub enum AstNode {
         name: String,
         args: Option<Vec<Entity>>,
         implementations: Vec<Entity>,
+        path: Path,
     },
 }
 
@@ -455,12 +457,13 @@ impl DBStorage {
                     AstNode::Definition {
                         name,
                         args,
+                        path,
                         implementations,
                     } => entity
                         .with(HasSymbol(name))
                         .with(HasArguments(args))
                         .with(HasChildren(implementations))
-                        .with(IsDefinition),
+                        .with(IsDefinition(path)),
                     AstNode::Value(value) => entity.with(HasValue(value)),
                     AstNode::Symbol(name) => entity.with(HasSymbol(name)).with(IsSymbol),
                     AstNode::Apply { inner, children } => {
