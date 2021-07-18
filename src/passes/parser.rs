@@ -70,7 +70,9 @@ fn nud(
                 let lbp = binding_power(storage, &head)?;
                 let inner_node = AstNode::Symbol(head.value.clone()).into_data(head.pos.clone());
                 let inner = storage.store_node(inner_node);
-                let (right, right_node, new_toks) = expr(storage, toks, lbp, path)?;
+                let mut path = path.to_vec();
+                path.push(Symbol::new("right"));
+                let (right, right_node, new_toks) = expr(storage, toks, lbp, &path)?;
                 let right_entity = storage.store_node(right_node);
                 Ok((
                     UnOp {
@@ -92,7 +94,9 @@ fn nud(
                 head.get_info(),
             )),
             TokenType::OpenBracket => {
-                let (inner, inner_node, mut new_toks) = expr(storage, toks, 0, path)?;
+                let mut path = path.to_vec();
+                path.push(Symbol::Anon());
+                let (inner, inner_node, mut new_toks) = expr(storage, toks, 0, &path)?;
                 // TODO require close bracket.
                 let close = new_toks.front();
                 match (head.value.as_str(), close) {
@@ -228,6 +232,12 @@ fn led(
             TokenType::Op => {
                 let lbp = binding_power(storage, &head)?;
                 let assoc = binding_dir(storage, &head)?;
+                let mut new_path = path.to_vec();
+                if head.value.as_str() == "=" {
+                    new_path.push(Symbol::new("testing"));
+                } else {
+                    new_path.push(Symbol::new("right"));
+                }
                 let (right, right_node, new_toks) = expr(
                     storage,
                     toks,
@@ -235,7 +245,7 @@ fn led(
                         Direction::Left => 0,
                         Direction::Right => 1,
                     },
-                    path
+                    &new_path
                 )?;
                 match head.value.as_str() {
                     ":" => {
@@ -301,6 +311,8 @@ fn led(
                         let right_entity = storage.store_node(right_node);
                         match left {
                             Node::SymNode(s) => {
+                                let mut def_path = path.to_vec();
+                                def_path.push(Symbol::new(&s.name));
                                 return Ok((
                                     Let {
                                         name: s.name.clone(),
@@ -313,7 +325,7 @@ fn led(
                                         name: s.name,
                                         args: None,
                                         implementations: vec![right_entity],
-                                        path: path.to_vec(),
+                                        path: def_path,
                                     }
                                     .into_data(head.pos),
                                     new_toks,
@@ -321,6 +333,8 @@ fn led(
                             }
                             Node::ApplyNode(a) => match *a.inner {
                                 Node::SymNode(s) => {
+                                    let mut def_path = path.to_vec();
+                                    def_path.push(Symbol::new(&s.name));
                                     return Ok((
                                         Let {
                                             name: s.name.clone(),
@@ -333,7 +347,7 @@ fn led(
                                             name: s.name,
                                             args: Some(storage.store_node_set(left_node)),
                                             implementations: vec![right_entity],
-                                            path: path.to_vec(),
+                                            path: def_path,
                                         }
                                         .into_data(head.pos),
                                         new_toks,
