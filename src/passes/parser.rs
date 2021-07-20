@@ -808,9 +808,31 @@ Entity 2:
     }
 
     #[test]
-    fn entity_parse_expr_containing_value_with_type_annotation() -> Test {
+    fn entity_parse_expr_with_type_annotation() -> Test {
         assert_str_eq!(
             dbg_parse_entities("3 * 4 : Int")?,
+            "\
+Entity 0:
+ - HasValue(3)
+Entity 1:
+ - SymbolRef(\"*\")
+Entity 2:
+ - HasValue(4)
+Entity 3:
+ - HasChildren([Entity(0, Generation(1)), Entity(2, Generation(1))])
+ - HasInner(Entity(1, Generation(1)))
+Entity 4:
+ - SymbolRef(\"Int\")
+Entity 5:
+ - TypeAnnotation(Entity(3, Generation(1)), Entity(4, Generation(1)))"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn entity_parse_expr_containing_value_with_type_annotation() -> Test {
+        assert_str_eq!(
+            dbg_parse_entities("3 * (4 : Int)")?,
             "\
 Entity 0:
  - HasValue(3)

@@ -369,6 +369,17 @@ pub fn get_externs() -> Result<HashMap<String, Extern>, TError> {
             cpp: LangImpl::operator(";"),
         },
         Extern {
+            name: ":".to_string(),
+            value: builtin(":"),
+            semantic: operator(21, Left),
+            ty: Function {
+                intros: dict!("a" => variable("Type")),
+                results: Box::new(variable("b")),
+                arguments: Box::new(rec!("left" => variable("a"), "right" => variable("a"))),
+            }.into_node(),
+            cpp: LangImpl::operator(":"),
+        },
+        Extern {
             name: ",".to_string(),
             value: builtin(","),
             semantic: operator(30, Left),
