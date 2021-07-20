@@ -465,9 +465,7 @@ impl DBStorage {
                         .with(Definition(name, path)),
                     AstNode::Value(value) => entity.with(HasValue(value)),
                     AstNode::Symbol(name) => entity.with(SymbolRef(name)),
-                    AstNode::TypeAnnotation { inner, ty } => {
-                        entity.with(TypeAnnotation(inner, ty))
-                    }
+                    AstNode::TypeAnnotation { inner, ty } => entity.with(TypeAnnotation(inner, ty)),
                     AstNode::Apply { inner, children } => {
                         if !children.is_empty() {
                             entity = entity.with(HasChildren(children));

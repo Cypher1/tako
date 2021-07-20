@@ -254,7 +254,8 @@ fn led(
                             AstNode::TypeAnnotation {
                                 inner: left_entity,
                                 ty: right_entity,
-                            }.into_data(head.pos),
+                            }
+                            .into_data(head.pos),
                             new_toks,
                         ));
                     }
