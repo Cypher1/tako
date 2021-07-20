@@ -232,28 +232,34 @@ fn led(
             TokenType::Op => {
                 let lbp = binding_power(storage, &head)?;
                 let assoc = binding_dir(storage, &head)?;
-                let mut new_path = path.to_vec();
-                if head.value.as_str() == "=" {
-                    new_path.push(Symbol::new("testing"));
-                } else {
-                    new_path.push(Symbol::new("right"));
-                }
-                let (right, right_node, new_toks) = expr(
-                    storage,
-                    toks,
-                    lbp - match assoc {
-                        Direction::Left => 0,
-                        Direction::Right => 1,
-                    },
-                    &new_path
-                )?;
+                let parse_right = |storage, path| {
+                    expr(
+                        storage,
+                        toks,
+                        lbp - match assoc {
+                            Direction::Left => 0,
+                            Direction::Right => 1,
+                        },
+                        path,
+                    )
+                };
                 match head.value.as_str() {
                     ":" => {
+                        let (right, right_node, new_toks) = parse_right(storage, path)?;
                         left.get_mut_info().ty = Some(Box::new(right));
-                        // TODO: Add the type for the entity
-                        return Ok((left, left_node, new_toks));
+                        let left_entity = storage.store_node(left_node);
+                        let right_entity = storage.store_node(right_node);
+                        return Ok((
+                            left,
+                            AstNode::TypeAnnotation {
+                                inner: left_entity,
+                                ty: right_entity,
+                            }.into_data(head.pos),
+                            new_toks,
+                        ));
                     }
                     "," => {
+                        let (right, right_node, new_toks) = parse_right(storage, path)?;
                         return Ok((
                             BinOp {
                                 info: head.get_info(),
@@ -284,6 +290,7 @@ fn led(
                             let inner = storage.store_node(
                                 AstNode::Symbol(head.value.clone()).into_data(head.pos.clone()),
                             );
+                            let (right, right_node, new_toks) = parse_right(storage, path)?;
                             let right_entity = storage.store_node(right_node);
                             return Ok((
                                 Abs {
@@ -308,6 +315,9 @@ fn led(
                         }
                     },
                     "=" => {
+                        let mut new_path = path.to_vec();
+                        new_path.push(Symbol::new(head.value.as_str()));
+                        let (right, right_node, new_toks) = parse_right(storage, &new_path)?;
                         let right_entity = storage.store_node(right_node);
                         match left {
                             Node::SymNode(s) => {
@@ -329,7 +339,7 @@ fn led(
                                     }
                                     .into_data(head.pos),
                                     new_toks,
-                                ))
+                                ));
                             }
                             Node::ApplyNode(a) => match *a.inner {
                                 Node::SymNode(s) => {
@@ -351,7 +361,7 @@ fn led(
                                         }
                                         .into_data(head.pos),
                                         new_toks,
-                                    ))
+                                    ));
                                 }
                                 _ => {
                                     return Err(TError::ParseError(
@@ -370,6 +380,7 @@ fn led(
                     }
                     _ => {}
                 }
+                let (right, right_node, new_toks) = parse_right(storage, path)?;
                 let left_entity = storage.store_node(left_node);
                 let inner = storage
                     .store_node(AstNode::Symbol(head.value.clone()).into_data(head.pos.clone()));
@@ -791,13 +802,28 @@ Entity 0:
     }
 
     #[test]
+    fn entity_parse_str_with_type_annotation() -> Test {
+        assert_str_eq!(
+            dbg_parse_entities("\"hello world\" : String")?,
+            "\
+Entity 0:
+ - HasValue('hello world')
+Entity 1:
+ - SymbolRef(\"String\")
+Entity 2:
+ - HasInner(Entity(0, Generation(1)))
+ - HasType(Entity(1, Generation(1)))"
+        );
+        Ok(())
+    }
+
+    #[test]
     fn entity_parse_un_op() -> Test {
         assert_str_eq!(
             dbg_parse_entities("-12")?,
             "\
 Entity 0:
- - HasSymbol(\"-\")
- - IsSymbol
+ - SymbolRef(\"-\")
 Entity 1:
  - HasValue(12)
 Entity 2:
@@ -815,8 +841,7 @@ Entity 2:
 Entity 0:
  - HasValue(14)
 Entity 1:
- - HasSymbol(\"-\")
- - IsSymbol
+ - SymbolRef(\"-\")
 Entity 2:
  - HasValue(12)
 Entity 3:
@@ -834,8 +859,7 @@ Entity 3:
 Entity 0:
  - HasValue(14)
 Entity 1:
- - HasSymbol(\"*\")
- - IsSymbol
+ - SymbolRef(\"*\")
 Entity 2:
  - HasValue(12)
 Entity 3:
@@ -853,15 +877,13 @@ Entity 3:
 Entity 0:
  - HasValue(2)
 Entity 1:
- - HasSymbol(\"*\")
- - IsSymbol
+ - SymbolRef(\"*\")
 Entity 2:
  - HasValue(4)
 Entity 3:
  - HasValue(3)
 Entity 4:
- - HasSymbol(\"+\")
- - IsSymbol
+ - SymbolRef(\"+\")
 Entity 5:
  - HasChildren([Entity(0, Generation(1)), Entity(2, Generation(1))])
  - HasInner(Entity(1, Generation(1)))
@@ -880,16 +902,14 @@ Entity 6:
 Entity 0:
  - HasValue(3)
 Entity 1:
- - HasSymbol(\"*\")
- - IsSymbol
+ - SymbolRef(\"*\")
 Entity 2:
  - HasValue(2)
 Entity 3:
  - HasChildren([Entity(0, Generation(1)), Entity(2, Generation(1))])
  - HasInner(Entity(1, Generation(1)))
 Entity 4:
- - HasSymbol(\"+\")
- - IsSymbol
+ - SymbolRef(\"+\")
 Entity 5:
  - HasValue(4)
 Entity 6:
@@ -907,15 +927,13 @@ Entity 6:
 Entity 0:
  - HasValue(2)
 Entity 1:
- - HasSymbol(\"+\")
- - IsSymbol
+ - SymbolRef(\"+\")
 Entity 2:
  - HasValue(4)
 Entity 3:
  - HasValue(3)
 Entity 4:
- - HasSymbol(\"*\")
- - IsSymbol
+ - SymbolRef(\"*\")
 Entity 5:
  - HasChildren([Entity(0, Generation(1)), Entity(2, Generation(1))])
  - HasInner(Entity(1, Generation(1)))
@@ -934,8 +952,7 @@ Entity 6:
 Entity 0:
  - HasValue('hello')
 Entity 1:
- - HasSymbol(\"+\")
- - IsSymbol
+ - SymbolRef(\"+\")
 Entity 2:
  - HasValue(' world')
 Entity 3:
@@ -966,24 +983,20 @@ Entity 2:
             dbg_parse_entities("x()= !\"hello world\";\n7")?,
             "\
 Entity 0:
- - HasSymbol(\"!\")
- - IsSymbol
+ - SymbolRef(\"!\")
 Entity 1:
  - HasValue('hello world')
 Entity 2:
  - HasChildren([Entity(1, Generation(1))])
  - HasInner(Entity(0, Generation(1)))
 Entity 3:
- - HasSymbol(\"x\")
- - IsSymbol
+ - SymbolRef(\"x\")
 Entity 4:
+ - Definition(\"x\", [Named(\"test\", Some(\"tk\")), Named(\"x\", None)])
  - HasArguments(Some([Entity(3, Generation(1))]))
  - HasChildren([Entity(2, Generation(1))])
- - HasSymbol(\"x\")
- - IsDefinition([Named(\"test\", Some(\"tk\")), Named(\"x\", None)])
 Entity 5:
- - HasSymbol(\";\")
- - IsSymbol
+ - SymbolRef(\";\")
 Entity 6:
  - HasValue(7)
 Entity 7:
