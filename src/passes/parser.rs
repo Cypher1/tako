@@ -809,7 +809,7 @@ Entity 2:
     #[test]
     fn entity_parse_expr_containing_value_with_type_annotation() -> Test {
         assert_str_eq!(
-            dbg_parse_entities("3 * 4 : 12")?,
+            dbg_parse_entities("3 * 4 : Int")?,
             "\
 Entity 0:
  - HasValue(3)
@@ -818,7 +818,7 @@ Entity 1:
 Entity 2:
  - HasValue(4)
 Entity 3:
- - HasValue(12)
+ - SymbolRef(\"Int\")
 Entity 4:
  - TypeAnnotation(Entity(2, Generation(1)), Entity(3, Generation(1)))
 Entity 5:
