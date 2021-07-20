@@ -27,7 +27,7 @@ pub struct Untyped;
 
 #[derive(Component, Clone, Debug)]
 #[storage(VecStorage)]
-pub struct HasType(pub Entity);
+pub struct TypeAnnotation(pub Entity, pub Entity);
 
 #[derive(Component, Clone, Debug)]
 #[storage(VecStorage)]

@@ -245,9 +245,9 @@ fn led(
                 };
                 match head.value.as_str() {
                     ":" => {
+                        let left_entity = storage.store_node(left_node);
                         let (right, right_node, new_toks) = parse_right(storage, path)?;
                         left.get_mut_info().ty = Some(Box::new(right));
-                        let left_entity = storage.store_node(left_node);
                         let right_entity = storage.store_node(right_node);
                         return Ok((
                             left,
@@ -380,10 +380,10 @@ fn led(
                     }
                     _ => {}
                 }
-                let (right, right_node, new_toks) = parse_right(storage, path)?;
                 let left_entity = storage.store_node(left_node);
                 let inner = storage
                     .store_node(AstNode::Symbol(head.value.clone()).into_data(head.pos.clone()));
+                let (right, right_node, new_toks) = parse_right(storage, path)?;
                 let right_entity = storage.store_node(right_node);
                 Ok((
                     BinOp {
@@ -790,6 +790,66 @@ Entity 0:
         );
         Ok(())
     }
+
+    #[test]
+    fn entity_parse_num_with_type_annotation() -> Test {
+        assert_str_eq!(
+            dbg_parse_entities("12 : Int")?,
+            "\
+Entity 0:
+ - HasValue(12)
+Entity 1:
+ - SymbolRef(\"Int\")
+Entity 2:
+ - TypeAnnotation(Entity(0, Generation(1)), Entity(1, Generation(1)))"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn entity_parse_expr_containing_value_with_type_annotation() -> Test {
+        assert_str_eq!(
+            dbg_parse_entities("3 * 4 : 12")?,
+            "\
+Entity 0:
+ - HasValue(3)
+Entity 1:
+ - SymbolRef(\"*\")
+Entity 2:
+ - HasValue(4)
+Entity 3:
+ - HasValue(12)
+Entity 4:
+ - TypeAnnotation(Entity(2, Generation(1)), Entity(3, Generation(1)))
+Entity 5:
+ - HasChildren([Entity(0, Generation(1)), Entity(4, Generation(1))])
+ - HasInner(Entity(1, Generation(1)))"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn entity_parse_expr_with_value_type_annotation() -> Test {
+        assert_str_eq!(
+            dbg_parse_entities("(3 * 4) : 12")?,
+            "\
+Entity 0:
+ - HasValue(3)
+Entity 1:
+ - SymbolRef(\"*\")
+Entity 2:
+ - HasValue(4)
+Entity 3:
+ - HasChildren([Entity(0, Generation(1)), Entity(2, Generation(1))])
+ - HasInner(Entity(1, Generation(1)))
+Entity 4:
+ - HasValue(12)
+Entity 5:
+ - TypeAnnotation(Entity(3, Generation(1)), Entity(4, Generation(1)))"
+        );
+        Ok(())
+    }
+
     #[test]
     fn entity_parse_str() -> Test {
         assert_str_eq!(
@@ -811,8 +871,7 @@ Entity 0:
 Entity 1:
  - SymbolRef(\"String\")
 Entity 2:
- - HasInner(Entity(0, Generation(1)))
- - HasType(Entity(1, Generation(1)))"
+ - TypeAnnotation(Entity(0, Generation(1)), Entity(1, Generation(1)))"
         );
         Ok(())
     }
@@ -875,21 +934,21 @@ Entity 3:
             dbg_parse_entities("3+2*4")?,
             "\
 Entity 0:
- - HasValue(2)
-Entity 1:
- - SymbolRef(\"*\")
-Entity 2:
- - HasValue(4)
-Entity 3:
  - HasValue(3)
-Entity 4:
+Entity 1:
  - SymbolRef(\"+\")
+Entity 2:
+ - HasValue(2)
+Entity 3:
+ - SymbolRef(\"*\")
+Entity 4:
+ - HasValue(4)
 Entity 5:
- - HasChildren([Entity(0, Generation(1)), Entity(2, Generation(1))])
- - HasInner(Entity(1, Generation(1)))
+ - HasChildren([Entity(2, Generation(1)), Entity(4, Generation(1))])
+ - HasInner(Entity(3, Generation(1)))
 Entity 6:
- - HasChildren([Entity(3, Generation(1)), Entity(5, Generation(1))])
- - HasInner(Entity(4, Generation(1)))"
+ - HasChildren([Entity(0, Generation(1)), Entity(5, Generation(1))])
+ - HasInner(Entity(1, Generation(1)))"
         );
         Ok(())
     }
@@ -925,21 +984,21 @@ Entity 6:
             dbg_parse_entities("3*(2+4)")?,
             "\
 Entity 0:
- - HasValue(2)
-Entity 1:
- - SymbolRef(\"+\")
-Entity 2:
- - HasValue(4)
-Entity 3:
  - HasValue(3)
-Entity 4:
+Entity 1:
  - SymbolRef(\"*\")
+Entity 2:
+ - HasValue(2)
+Entity 3:
+ - SymbolRef(\"+\")
+Entity 4:
+ - HasValue(4)
 Entity 5:
- - HasChildren([Entity(0, Generation(1)), Entity(2, Generation(1))])
- - HasInner(Entity(1, Generation(1)))
+ - HasChildren([Entity(2, Generation(1)), Entity(4, Generation(1))])
+ - HasInner(Entity(3, Generation(1)))
 Entity 6:
- - HasChildren([Entity(3, Generation(1)), Entity(5, Generation(1))])
- - HasInner(Entity(4, Generation(1)))"
+ - HasChildren([Entity(0, Generation(1)), Entity(5, Generation(1))])
+ - HasInner(Entity(1, Generation(1)))"
         );
         Ok(())
     }

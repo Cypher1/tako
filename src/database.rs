@@ -76,11 +76,11 @@ define_components!(
     HasChildren,
     HasErrors,
     HasInner,
-    HasType,
     HasValue,
     IsAst,
     SymbolRef,
     Token,
+    TypeAnnotation,
     Untyped
 );
 
@@ -466,9 +466,7 @@ impl DBStorage {
                     AstNode::Value(value) => entity.with(HasValue(value)),
                     AstNode::Symbol(name) => entity.with(SymbolRef(name)),
                     AstNode::TypeAnnotation { inner, ty } => {
-                        entity
-                            .with(HasType(ty))
-                            .with(HasInner(inner))
+                        entity.with(TypeAnnotation(inner, ty))
                     }
                     AstNode::Apply { inner, children } => {
                         if !children.is_empty() {
