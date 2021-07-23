@@ -47,7 +47,10 @@ pub struct HasArguments(pub Option<Vec<Entity>>); // TODO: Short vec
 
 #[derive(Component, Clone, Default, Debug)]
 #[storage(VecStorage)]
-pub struct SymbolRef(pub String);
+pub struct SymbolRef {
+    pub name: String, //Path
+    pub context: Path,
+}
 
 #[derive(Component, Clone, Default, Debug)]
 #[storage(NullStorage)]

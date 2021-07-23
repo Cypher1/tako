@@ -68,7 +68,11 @@ fn nud(
             }
             TokenType::Op => {
                 let lbp = binding_power(storage, &head)?;
-                let inner_node = AstNode::Symbol(head.value.clone()).into_data(head.pos.clone());
+                let inner_node = AstNode::Symbol {
+                    name: head.value.clone(),
+                    context: path.to_vec(),
+                }
+                .into_data(head.pos.clone());
                 let inner = storage.store_node(inner_node);
                 let mut path = path.to_vec();
                 path.push(Symbol::new("right"));
@@ -94,9 +98,7 @@ fn nud(
                 head.get_info(),
             )),
             TokenType::OpenBracket => {
-                let mut path = path.to_vec();
-                path.push(Symbol::Anon());
-                let (inner, inner_node, mut new_toks) = expr(storage, toks, 0, &path)?;
+                let (inner, inner_node, mut new_toks) = expr(storage, toks, 0, &&path)?;
                 // TODO require close bracket.
                 let close = new_toks.front();
                 match (head.value.as_str(), close) {
@@ -149,7 +151,11 @@ fn nud(
                         info: head.get_info(),
                     }
                     .into_node(),
-                    AstNode::Symbol(head.value).into_data(head.pos),
+                    AstNode::Symbol {
+                        name: head.value,
+                        context: path.to_vec(),
+                    }
+                    .into_data(head.pos),
                     toks,
                 ))
             }
@@ -289,7 +295,11 @@ fn led(
                         Node::SymNode(s) => {
                             let left_entity = storage.store_node(left_node);
                             let inner = storage.store_node(
-                                AstNode::Symbol(head.value.clone()).into_data(head.pos.clone()),
+                                AstNode::Symbol {
+                                    name: head.value.clone(),
+                                    context: path.to_vec(),
+                                }
+                                .into_data(head.pos.clone()),
                             );
                             let (right, right_node, new_toks) = parse_right(storage, path)?;
                             let right_entity = storage.store_node(right_node);
@@ -315,26 +325,48 @@ fn led(
                             ))
                         }
                     },
-                    "=" => {
-                        let mut new_path = path.to_vec();
-                        new_path.push(Symbol::new(head.value.as_str()));
-                        let (right, right_node, new_toks) = parse_right(storage, &new_path)?;
-                        let right_entity = storage.store_node(right_node);
-                        match left {
+                    "=" => match left {
+                        Node::SymNode(s) => {
+                            let mut def_path = path.to_vec();
+                            def_path.push(Symbol::new(&s.name));
+                            let (right, right_node, new_toks) = parse_right(storage, &def_path)?;
+                            let right_entity = storage.store_node(right_node);
+                            return Ok((
+                                Let {
+                                    name: s.name.clone(),
+                                    args: None,
+                                    value: Box::new(right),
+                                    info: head.get_info(),
+                                }
+                                .into_node(),
+                                AstNode::Definition {
+                                    name: s.name,
+                                    args: None,
+                                    implementations: vec![right_entity],
+                                    path: def_path,
+                                }
+                                .into_data(head.pos),
+                                new_toks,
+                            ));
+                        }
+                        Node::ApplyNode(a) => match *a.inner {
                             Node::SymNode(s) => {
                                 let mut def_path = path.to_vec();
                                 def_path.push(Symbol::new(&s.name));
+                                let (right, right_node, new_toks) =
+                                    parse_right(storage, &def_path)?;
+                                let right_entity = storage.store_node(right_node);
                                 return Ok((
                                     Let {
                                         name: s.name.clone(),
-                                        args: None,
+                                        args: Some(a.args),
                                         value: Box::new(right),
                                         info: head.get_info(),
                                     }
                                     .into_node(),
                                     AstNode::Definition {
                                         name: s.name,
-                                        args: None,
+                                        args: Some(storage.store_node_set(left_node)),
                                         implementations: vec![right_entity],
                                         path: def_path,
                                     }
@@ -342,48 +374,30 @@ fn led(
                                     new_toks,
                                 ));
                             }
-                            Node::ApplyNode(a) => match *a.inner {
-                                Node::SymNode(s) => {
-                                    let mut def_path = path.to_vec();
-                                    def_path.push(Symbol::new(&s.name));
-                                    return Ok((
-                                        Let {
-                                            name: s.name.clone(),
-                                            args: Some(a.args),
-                                            value: Box::new(right),
-                                            info: head.get_info(),
-                                        }
-                                        .into_node(),
-                                        AstNode::Definition {
-                                            name: s.name,
-                                            args: Some(storage.store_node_set(left_node)),
-                                            implementations: vec![right_entity],
-                                            path: def_path,
-                                        }
-                                        .into_data(head.pos),
-                                        new_toks,
-                                    ));
-                                }
-                                _ => {
-                                    return Err(TError::ParseError(
-                                        format!("Cannot assign to {}", a.into_node()),
-                                        head.get_info(),
-                                    ))
-                                }
-                            },
                             _ => {
                                 return Err(TError::ParseError(
-                                    format!("Cannot assign to {}", left),
+                                    format!("Cannot assign to {}", a.into_node()),
                                     head.get_info(),
                                 ))
                             }
+                        },
+                        _ => {
+                            return Err(TError::ParseError(
+                                format!("Cannot assign to {}", left),
+                                head.get_info(),
+                            ))
                         }
-                    }
+                    },
                     _ => {}
                 }
                 let left_entity = storage.store_node(left_node);
-                let inner = storage
-                    .store_node(AstNode::Symbol(head.value.clone()).into_data(head.pos.clone()));
+                let inner = storage.store_node(
+                    AstNode::Symbol {
+                        name: head.value.clone(),
+                        context: path.to_vec(),
+                    }
+                    .into_data(head.pos.clone()),
+                );
                 let (right, right_node, new_toks) = parse_right(storage, path)?;
                 let right_entity = storage.store_node(right_node);
                 Ok((
@@ -422,7 +436,9 @@ fn led(
                         toks,
                     ));
                 }
-                let (args, args_node, mut new_toks) = expr(storage, toks, 0, path)?;
+                let mut arg_path = path.to_vec();
+                arg_path.push(Symbol::Anon());
+                let (args, args_node, mut new_toks) = expr(storage, toks, 0, &arg_path)?;
                 let close = new_toks.front();
                 match (head.value.as_str(), close) {
                     (
@@ -800,7 +816,7 @@ Entity 0:
 Entity 0:
  - HasValue(12)
 Entity 1:
- - SymbolRef(\"Int\")
+ - SymbolRef { name: \"Int\", context: [Named(\"test\", Some(\"tk\"))] }
 Entity 2:
  - TypeAnnotation(Entity(0, Generation(1)), Entity(1, Generation(1)))"
         );
@@ -815,14 +831,14 @@ Entity 2:
 Entity 0:
  - HasValue(3)
 Entity 1:
- - SymbolRef(\"*\")
+ - SymbolRef { name: \"*\", context: [Named(\"test\", Some(\"tk\"))] }
 Entity 2:
  - HasValue(4)
 Entity 3:
  - HasChildren([Entity(0, Generation(1)), Entity(2, Generation(1))])
  - HasInner(Entity(1, Generation(1)))
 Entity 4:
- - SymbolRef(\"Int\")
+ - SymbolRef { name: \"Int\", context: [Named(\"test\", Some(\"tk\"))] }
 Entity 5:
  - TypeAnnotation(Entity(3, Generation(1)), Entity(4, Generation(1)))"
         );
@@ -837,11 +853,11 @@ Entity 5:
 Entity 0:
  - HasValue(3)
 Entity 1:
- - SymbolRef(\"*\")
+ - SymbolRef { name: \"*\", context: [Named(\"test\", Some(\"tk\"))] }
 Entity 2:
  - HasValue(4)
 Entity 3:
- - SymbolRef(\"Int\")
+ - SymbolRef { name: \"Int\", context: [Named(\"test\", Some(\"tk\"))] }
 Entity 4:
  - TypeAnnotation(Entity(2, Generation(1)), Entity(3, Generation(1)))
 Entity 5:
@@ -859,7 +875,7 @@ Entity 5:
 Entity 0:
  - HasValue(3)
 Entity 1:
- - SymbolRef(\"*\")
+ - SymbolRef { name: \"*\", context: [Named(\"test\", Some(\"tk\"))] }
 Entity 2:
  - HasValue(4)
 Entity 3:
@@ -892,7 +908,7 @@ Entity 0:
 Entity 0:
  - HasValue('hello world')
 Entity 1:
- - SymbolRef(\"String\")
+ - SymbolRef { name: \"String\", context: [Named(\"test\", Some(\"tk\"))] }
 Entity 2:
  - TypeAnnotation(Entity(0, Generation(1)), Entity(1, Generation(1)))"
         );
@@ -905,7 +921,7 @@ Entity 2:
             dbg_parse_entities("-12")?,
             "\
 Entity 0:
- - SymbolRef(\"-\")
+ - SymbolRef { name: \"-\", context: [Named(\"test\", Some(\"tk\"))] }
 Entity 1:
  - HasValue(12)
 Entity 2:
@@ -923,7 +939,7 @@ Entity 2:
 Entity 0:
  - HasValue(14)
 Entity 1:
- - SymbolRef(\"-\")
+ - SymbolRef { name: \"-\", context: [Named(\"test\", Some(\"tk\"))] }
 Entity 2:
  - HasValue(12)
 Entity 3:
@@ -941,7 +957,7 @@ Entity 3:
 Entity 0:
  - HasValue(14)
 Entity 1:
- - SymbolRef(\"*\")
+ - SymbolRef { name: \"*\", context: [Named(\"test\", Some(\"tk\"))] }
 Entity 2:
  - HasValue(12)
 Entity 3:
@@ -959,11 +975,11 @@ Entity 3:
 Entity 0:
  - HasValue(3)
 Entity 1:
- - SymbolRef(\"+\")
+ - SymbolRef { name: \"+\", context: [Named(\"test\", Some(\"tk\"))] }
 Entity 2:
  - HasValue(2)
 Entity 3:
- - SymbolRef(\"*\")
+ - SymbolRef { name: \"*\", context: [Named(\"test\", Some(\"tk\"))] }
 Entity 4:
  - HasValue(4)
 Entity 5:
@@ -984,14 +1000,14 @@ Entity 6:
 Entity 0:
  - HasValue(3)
 Entity 1:
- - SymbolRef(\"*\")
+ - SymbolRef { name: \"*\", context: [Named(\"test\", Some(\"tk\"))] }
 Entity 2:
  - HasValue(2)
 Entity 3:
  - HasChildren([Entity(0, Generation(1)), Entity(2, Generation(1))])
  - HasInner(Entity(1, Generation(1)))
 Entity 4:
- - SymbolRef(\"+\")
+ - SymbolRef { name: \"+\", context: [Named(\"test\", Some(\"tk\"))] }
 Entity 5:
  - HasValue(4)
 Entity 6:
@@ -1009,11 +1025,11 @@ Entity 6:
 Entity 0:
  - HasValue(3)
 Entity 1:
- - SymbolRef(\"*\")
+ - SymbolRef { name: \"*\", context: [Named(\"test\", Some(\"tk\"))] }
 Entity 2:
  - HasValue(2)
 Entity 3:
- - SymbolRef(\"+\")
+ - SymbolRef { name: \"+\", context: [Named(\"test\", Some(\"tk\"))] }
 Entity 4:
  - HasValue(4)
 Entity 5:
@@ -1034,7 +1050,7 @@ Entity 6:
 Entity 0:
  - HasValue('hello')
 Entity 1:
- - SymbolRef(\"+\")
+ - SymbolRef { name: \"+\", context: [Named(\"test\", Some(\"tk\"))] }
 Entity 2:
  - HasValue(' world')
 Entity 3:
@@ -1060,25 +1076,45 @@ Entity 2:
     }
 
     #[test]
+    fn entity_parse_kwargs() -> Test {
+        assert_str_eq!(
+            dbg_parse_entities("f(arg=\"hello world\")")?,
+            "\
+Entity 0:
+ - HasValue('hello world')
+Entity 1:
+ - SymbolRef { name: \"f\", context: [Named(\"test\", Some(\"tk\"))] }
+Entity 2:
+ - Definition(\"arg\", [Named(\"test\", Some(\"tk\")), Anon, Named(\"arg\", None)])
+ - HasArguments(None)
+ - HasChildren([Entity(0, Generation(1))])
+Entity 3:
+ - HasChildren([Entity(2, Generation(1))])
+ - HasInner(Entity(1, Generation(1)))"
+        );
+        Ok(())
+    }
+
+    #[test]
     fn entity_parse_strings_with_operators_and_trailing_values_in_let() -> Test {
         assert_str_eq!(
             dbg_parse_entities("x()= !\"hello world\";\n7")?,
             "\
 Entity 0:
- - SymbolRef(\"!\")
+ - SymbolRef { name: \"!\", context: [Named(\"test\", Some(\"tk\")), Named(\"x\", None)] }
 Entity 1:
  - HasValue('hello world')
 Entity 2:
  - HasChildren([Entity(1, Generation(1))])
  - HasInner(Entity(0, Generation(1)))
 Entity 3:
- - SymbolRef(\"x\")
+ - SymbolRef { name: \"x\", context: [Named(\"test\", Some(\"tk\"))] }
 Entity 4:
  - Definition(\"x\", [Named(\"test\", Some(\"tk\")), Named(\"x\", None)])
  - HasArguments(Some([Entity(3, Generation(1))]))
  - HasChildren([Entity(2, Generation(1))])
 Entity 5:
- - SymbolRef(\";\")
+ - SymbolRef { name: \";\", context: [Named(\"test\", Some(\"tk\"))] }
 Entity 6:
  - HasValue(7)
 Entity 7:

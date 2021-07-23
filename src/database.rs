@@ -408,7 +408,10 @@ impl DBStorage {
 #[derive(Debug, PartialEq, Eq, Clone, Hash, PartialOrd, Ord)]
 pub enum AstNode {
     Value(Val),
-    Symbol(String),
+    Symbol {
+        name: String,
+        context: Path,
+    },
     Chain(Vec<Entity>), // TODO: Inline the vec somehow?
     Apply {
         inner: Entity,
@@ -464,7 +467,7 @@ impl DBStorage {
                         .with(HasChildren(implementations))
                         .with(Definition(name, path)),
                     AstNode::Value(value) => entity.with(HasValue(value)),
-                    AstNode::Symbol(name) => entity.with(SymbolRef(name)),
+                    AstNode::Symbol { name, context } => entity.with(SymbolRef { name, context }),
                     AstNode::TypeAnnotation { inner, ty } => entity.with(TypeAnnotation(inner, ty)),
                     AstNode::Apply { inner, children } => {
                         if !children.is_empty() {
