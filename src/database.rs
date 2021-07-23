@@ -39,10 +39,10 @@ pub struct DBStorage {
     project_dirs: Option<ProjectDirs>,
     pub options: Options,
     ast_to_entity: HashMap<AstNode, Entity>,
-    defined_at: HashMap<Entity, HashSet<Loc>>,
-    // refers_to: HashMap<Loc, Entity>,
-    instance_at: HashMap<Entity, HashSet<Loc>>,
     file_contents: HashMap<String, Arc<String>>,
+    // TODO: Make entities & components
+    defined_at: HashMap<Entity, HashSet<Loc>>,
+    instance_at: HashMap<Entity, HashSet<Loc>>,
 }
 
 macro_rules! define_components {
@@ -70,17 +70,17 @@ macro_rules! define_components {
 }
 
 define_components!(
+    DefinedAt,
+    Definition,
     HasArguments,
     HasChildren,
     HasErrors,
     HasInner,
-    HasSymbol,
     HasValue,
     IsAst,
-    IsDefinition,
-    IsSymbol,
+    SymbolRef,
     Token,
-    Typed,
+    TypeAnnotation,
     Untyped
 );
 
@@ -408,16 +408,24 @@ impl DBStorage {
 #[derive(Debug, PartialEq, Eq, Clone, Hash, PartialOrd, Ord)]
 pub enum AstNode {
     Value(Val),
-    Symbol(String),
+    Symbol {
+        name: String,
+        context: Path,
+    },
     Chain(Vec<Entity>), // TODO: Inline the vec somehow?
     Apply {
         inner: Entity,
         children: Vec<Entity>,
     },
+    TypeAnnotation {
+        inner: Entity,
+        ty: Entity,
+    },
     Definition {
         name: String,
         args: Option<Vec<Entity>>,
         implementations: Vec<Entity>,
+        path: Path,
     },
 }
 
@@ -437,32 +445,30 @@ impl DBStorage {
     pub fn store_node_set(&mut self, node: AstNodeData) -> Vec<Entity> {
         match node.node {
             AstNode::Chain(args) => args,
-            _ => vec![self.store_node(AstNodeData {
-                node: node.node,
-                loc: node.loc,
-            })], // TODO
+            _ => vec![self.store_node(node)],
         }
     }
 
-    pub fn store_node(&mut self, node: AstNodeData) -> Entity {
-        let lookup: Option<Entity> = self.entity_for_ast(&node.node);
+    pub fn store_node(&mut self, entry: AstNodeData) -> Entity {
+        let lookup: Option<Entity> = self.entity_for_ast(&entry.node);
         let entity = if let Some(entity) = lookup {
             entity
         } else {
             let entity = {
                 let mut entity = self.world.create_entity();
-                let entity = match node.node.clone() {
+                let entity = match entry.node.clone() {
                     AstNode::Definition {
                         name,
                         args,
+                        path,
                         implementations,
                     } => entity
-                        .with(HasSymbol(name))
                         .with(HasArguments(args))
                         .with(HasChildren(implementations))
-                        .with(IsDefinition),
+                        .with(Definition(name, path)),
                     AstNode::Value(value) => entity.with(HasValue(value)),
-                    AstNode::Symbol(name) => entity.with(HasSymbol(name)).with(IsSymbol),
+                    AstNode::Symbol { name, context } => entity.with(SymbolRef { name, context }),
+                    AstNode::TypeAnnotation { inner, ty } => entity.with(TypeAnnotation(inner, ty)),
                     AstNode::Apply { inner, children } => {
                         if !children.is_empty() {
                             entity = entity.with(HasChildren(children));
@@ -477,13 +483,13 @@ impl DBStorage {
                 // entity.with(IsAst).build()
                 entity.build()
             };
-            if let AstNode::Definition { .. } = &node.node {
-                self.add_location_for_definition(node.loc.clone(), entity);
+            if let AstNode::Definition { .. } = &entry.node {
+                self.add_location_for_definition(entry.loc.clone(), entity);
             }
-            self.set_entity_for_ast(node.node, entity);
+            self.set_entity_for_ast(entry.node, entity);
             entity
         };
-        self.add_location_for_entity(node.loc, entity);
+        self.add_location_for_entity(entry.loc, entity);
         entity
     }
 }

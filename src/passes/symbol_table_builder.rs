@@ -1,8 +1,11 @@
-use crate::ast::*;
+use crate::ast::{
+    path_to_string, Abs, Apply, BinOp, HasInfo, Let, Node, Path, Root, Sym, Symbol, ToNode, UnOp,
+    Visitor,
+};
 use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::primitives::Val;
-use crate::symbol_table::*;
+use crate::symbol_table::Table;
 
 // Walks the AST interpreting it.
 #[derive(Default)]

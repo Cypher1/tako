@@ -1,4 +1,4 @@
-use crate::ast::*;
+use crate::ast::{Entry, Symbol};
 use crate::data_structures::tree::{to_hash_root, HashTree};
 
 pub type Table = HashTree<Symbol, Entry>;

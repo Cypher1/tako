@@ -8,7 +8,7 @@ use crate::tokens::TokenType;
 
 #[derive(Component, Clone, Debug)]
 #[storage(VecStorage)]
-pub struct AtPath(pub Path);
+pub struct DefinedAt(pub Entity);
 
 #[derive(Component, Clone, Debug)]
 #[storage(VecStorage)]
@@ -21,17 +21,13 @@ pub struct Token {
 #[storage(VecStorage)]
 pub struct HasValue(pub Val);
 
-#[derive(Component, Clone, Debug)]
-#[storage(VecStorage)]
-pub struct HasSymbol(pub String);
-
 #[derive(Component, Default, Debug)]
 #[storage(NullStorage)]
 pub struct Untyped;
 
 #[derive(Component, Clone, Debug)]
 #[storage(VecStorage)]
-pub struct Typed(pub Val);
+pub struct TypeAnnotation(pub Entity, pub Entity);
 
 #[derive(Component, Clone, Debug)]
 #[storage(VecStorage)]
@@ -50,13 +46,16 @@ pub struct HasChildren(pub Vec<Entity>); // TODO: Short vec
 pub struct HasArguments(pub Option<Vec<Entity>>); // TODO: Short vec
 
 #[derive(Component, Clone, Default, Debug)]
-#[storage(NullStorage)]
-pub struct IsSymbol;
+#[storage(VecStorage)]
+pub struct SymbolRef {
+    pub name: String, //Path
+    pub context: Path,
+}
 
 #[derive(Component, Clone, Default, Debug)]
 #[storage(NullStorage)]
 pub struct IsAst;
 
 #[derive(Component, Clone, Default, Debug)]
-#[storage(NullStorage)]
-pub struct IsDefinition;
+#[storage(VecStorage)]
+pub struct Definition(pub String, pub Path);
