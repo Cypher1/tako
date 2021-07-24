@@ -1,11 +1,12 @@
-/target
+**/*.rs.bk
 **/build
 **/gen
-**/*.rs.bk
+*.exe
 *.out
 *.out.*
-*.exe
+*.rlib
+.cargo
+/target
+cargo-timing*.html
 out.c
 tako
-*.rlib
-cargo-timing*.html
