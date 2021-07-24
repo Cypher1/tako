@@ -2,7 +2,7 @@ use super::location::*;
 use std::collections::VecDeque;
 use std::fmt;
 
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum TokenType {
     Op,
     OpenBracket,
@@ -14,7 +14,7 @@ pub enum TokenType {
     Whitespace,
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Token {
     pub tok_type: TokenType,
     // TODO: Use enum types to convert tokens to literals and symbols.

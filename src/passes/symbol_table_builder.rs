@@ -34,8 +34,8 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
         let mut main_at = module.clone();
         main_at.push(Symbol::new("main"));
 
-        let main_symb = table.get_mut(&main_at);
-        main_symb.value.uses.insert(module.clone());
+        let main_symbol = table.get_mut(&main_at);
+        main_symbol.value.uses.insert(module.clone());
 
         // Add in the globals here!
         // TODO: Inject needs for bootstrapping here (e.g. import function).
@@ -72,7 +72,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
     }
 
     fn visit_apply(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Apply) -> Res {
-        state.path.push(Symbol::Anon());
+        state.path.push(Symbol::Anon);
         let args = expr
             .args
             .iter()

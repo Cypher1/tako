@@ -25,9 +25,8 @@ fn to_file_path(context: PathRef) -> Path {
                 "Couldn't find a file associated with symbol at {}",
                 path_to_string(context)
             ),
-            Some(Symbol::Anon()) => {}                   // Skip anons
-            Some(Symbol::Named(_, None)) => {}           // Skip regular symbols
             Some(Symbol::Named(_, Some(_ext))) => break, // Found the file
+            _ => {}                                      // Skip anons and regular symbols
         }
         module.pop();
     }
@@ -35,10 +34,11 @@ fn to_file_path(context: PathRef) -> Path {
 }
 
 pub struct DBStorage {
-    world: World,
+    pub world: World,
     project_dirs: Option<ProjectDirs>,
     pub options: Options,
-    ast_to_entity: HashMap<AstNode, Entity>,
+    ast_to_entity: HashMap<AstTerm, Entity>,
+    pub path_to_entity: HashMap<Path, Entity>,
     file_contents: HashMap<String, Arc<String>>,
     // TODO: Make entities & components
     defined_at: HashMap<Entity, HashSet<Loc>>,
@@ -70,18 +70,7 @@ macro_rules! define_components {
 }
 
 define_components!(
-    DefinedAt,
-    Definition,
-    HasArguments,
-    HasChildren,
-    HasErrors,
-    HasInner,
-    HasValue,
-    IsAst,
-    SymbolRef,
-    Token,
-    TypeAnnotation,
-    Untyped
+    Call, DefinedAt, Definition, HasErrors, HasType, HasValue, Sequence, SymbolRef, Token, Untyped
 );
 
 impl Default for DBStorage {
@@ -96,6 +85,7 @@ impl Default for DBStorage {
             options: Options::default(),
             file_contents: HashMap::default(),
             ast_to_entity: HashMap::default(),
+            path_to_entity: HashMap::default(),
             defined_at: HashMap::default(),
             // refers_to: HashMap::default(),
             instance_at: HashMap::default(),
@@ -183,14 +173,7 @@ impl DBStorage {
     }
 
     pub fn filename(&self, module: Path) -> String {
-        let parts: Vec<String> = module
-            .iter()
-            .map(|sym| match sym {
-                Symbol::Named(sym, None) => sym.to_owned(),
-                Symbol::Named(sym, Some(ext)) => format!("{}.{}", sym, ext),
-                Symbol::Anon() => "?".to_owned(),
-            })
-            .collect();
+        let parts: Vec<String> = module.iter().map(|sym| format!("{:?}", sym)).collect();
         let file_name = parts.join("/");
         if self.debug_level() > 0 {
             eprintln!(
@@ -283,9 +266,9 @@ impl DBStorage {
             .collect::<Vec<String>>()
             .join("_");
 
-        let outf = format!("build/{}.cc", name);
-        let execf = format!("build/{}", name);
-        let destination = std::path::Path::new(&outf);
+        let out_file = format!("build/{}.cc", name);
+        let exec_file = format!("build/{}", name);
+        let destination = std::path::Path::new(&out_file);
         std::fs::create_dir_all("build").expect("could not create build directory");
         let mut f = std::fs::File::create(&destination).expect("could not open output file");
         write!(f, "{}", res).expect("couldn't write to file");
@@ -300,9 +283,9 @@ impl DBStorage {
             .arg("-Werror")
             .arg("-Wfatal-errors")
             .arg("-O3")
-            .arg(outf)
+            .arg(out_file)
             .arg("-o")
-            .arg(execf)
+            .arg(exec_file)
             .output()
             .expect("could not run g++");
         if !output.status.success() {
@@ -322,8 +305,8 @@ impl DBStorage {
     }
 
     pub fn find_symbol_uses(&mut self, path: Path) -> Result<HashSet<Path>, TError> {
-        if let Some(symb) = self.find_symbol(path.clone(), Vec::new())? {
-            return Ok(symb.value.uses);
+        if let Some(symbol) = self.find_symbol(path.clone(), Vec::new())? {
+            return Ok(symbol.value.uses);
         }
         use crate::ast::Info;
         Err(TError::UnknownSymbol(
@@ -348,7 +331,7 @@ impl DBStorage {
         }
         let table = self.look_up_definitions(context.clone())?.table;
         loop {
-            if let Some(Symbol::Anon()) = context.last() {
+            if let Some(Symbol::Anon) = context.last() {
                 context.pop(); // Cannot look inside an 'anon'.
             }
             let mut search: Vec<Symbol> = context.clone();
@@ -382,12 +365,23 @@ impl DBStorage {
         }
     }
 
-    fn entity_for_ast(&self, node: &AstNode) -> Option<Entity> {
+    fn entity_for_ast(&self, node: &AstTerm) -> Option<Entity> {
         self.ast_to_entity.get(node).cloned()
     }
 
-    fn set_entity_for_ast(&mut self, node: AstNode, entity: Entity) {
-        self.ast_to_entity.insert(node, entity);
+    fn set_entity_for_ast(&mut self, term: AstTerm, entity: Entity) {
+        self.ast_to_entity.insert(term, entity);
+    }
+
+    fn entity_for_path(&self, path: PathRef) -> Option<Entity> {
+        self.path_to_entity.get(path).cloned()
+    }
+
+    fn set_entity_for_path(&mut self, path: PathRef, entity: Entity) {
+        if let Some(_old_entity) = self.entity_for_path(path) {
+            // panic!("Internal error, conflicting entities for path: {:?}. {:?} and {:?}", &path, &entity, &old_entity);
+        }
+        self.path_to_entity.insert(path.to_vec(), entity);
     }
 
     fn add_location_for_entity(&mut self, loc: Loc, entity: Entity) {
@@ -406,87 +400,159 @@ impl DBStorage {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash, PartialOrd, Ord)]
-pub enum AstNode {
+pub struct DefinitionHead {
+    pub name: Path,
+    pub params: Option<Vec<Entity>>, // TODO: Restrict to valid def-args (variables and functions with optional default values)
+    pub path: Path,
+}
+
+impl DefinitionHead {
+    pub fn into_call(self, storage: &mut DBStorage, loc: Loc, ty: Option<Entity>) -> AstNode {
+        let name = AstTerm::Symbol {
+            name: self.name,
+            context: self.path,
+        }
+        .into_node(loc.clone(), None);
+        if let Some(children) = self.params {
+            let inner = storage.store_node(name);
+            AstTerm::Call { inner, children }.into_node(loc, ty)
+        } else {
+            name
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Hash, PartialOrd, Ord)]
+pub enum AstTerm {
     Value(Val),
     Symbol {
-        name: String,
+        name: Path,
         context: Path,
     },
-    Chain(Vec<Entity>), // TODO: Inline the vec somehow?
-    Apply {
+    Sequence(Vec<Entity>), // TODO: Inline the vec somehow? Use a non empty vec?
+    Call {
         inner: Entity,
         children: Vec<Entity>,
     },
-    TypeAnnotation {
-        inner: Entity,
-        ty: Entity,
-    },
     Definition {
-        name: String,
-        args: Option<Vec<Entity>>,
+        head: DefinitionHead,
         implementations: Vec<Entity>,
-        path: Path,
     },
+    DefinitionHead(DefinitionHead),
 }
 
-impl AstNode {
-    pub fn into_data(self, loc: Loc) -> AstNodeData {
-        AstNodeData { node: self, loc }
+impl AstTerm {
+    pub fn into_node(self, loc: Loc, ty: Option<Entity>) -> AstNode {
+        AstNode {
+            term: self,
+            loc,
+            ty,
+        }
+    }
+
+    pub fn into_definition(
+        self,
+        _storage: &mut DBStorage,
+        right: Entity,
+        loc: Loc,
+    ) -> Result<AstNode, TError> {
+        Ok(match self {
+            AstTerm::Symbol { name, context } => AstTerm::Definition {
+                head: DefinitionHead {
+                    name,
+                    params: None,
+                    path: context,
+                },
+                implementations: vec![right],
+            },
+            AstTerm::DefinitionHead(head) => AstTerm::Definition {
+                head,
+                implementations: vec![right],
+            },
+            _ => {
+                return Err(TError::ParseError(
+                    format!("Cannot assign to {:?}", self),
+                    loc.get_info(),
+                ));
+            }
+        }
+        .into_node(loc, None))
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct AstNodeData {
-    pub node: AstNode,
+pub struct AstNode {
+    pub term: AstTerm,
     pub loc: Loc,
+    pub ty: Option<Entity>,
+}
+
+impl AstNode {
+    pub fn into_definition(
+        self,
+        storage: &mut DBStorage,
+        right: Entity,
+        loc: Loc,
+    ) -> Result<AstNode, TError> {
+        Ok(AstNode {
+            ty: self.ty,
+            ..self.term.into_definition(storage, right, loc)?
+        })
+    }
 }
 
 impl DBStorage {
-    pub fn store_node_set(&mut self, node: AstNodeData) -> Vec<Entity> {
-        match node.node {
-            AstNode::Chain(args) => args,
+    pub fn store_node_set(&mut self, node: AstNode) -> Vec<Entity> {
+        match node.term {
+            AstTerm::Sequence(args) => args,
             _ => vec![self.store_node(node)],
         }
     }
 
-    pub fn store_node(&mut self, entry: AstNodeData) -> Entity {
-        let lookup: Option<Entity> = self.entity_for_ast(&entry.node);
+    pub fn store_node(&mut self, entry: AstNode) -> Entity {
+        let lookup: Option<Entity> = self.entity_for_ast(&entry.term);
         let entity = if let Some(entity) = lookup {
             entity
         } else {
+            if let AstTerm::DefinitionHead(head) = entry.term {
+                let call = head.into_call(self, entry.loc, entry.ty);
+                return self.store_node(call);
+            }
             let entity = {
                 let mut entity = self.world.create_entity();
-                let entity = match entry.node.clone() {
-                    AstNode::Definition {
-                        name,
-                        args,
-                        path,
+                if let Some(ty) = entry.ty {
+                    entity = entity.with(HasType(ty));
+                }
+                let entity = match entry.term.clone() {
+                    AstTerm::DefinitionHead(_) => unreachable!(),
+                    AstTerm::Definition {
+                        head,
                         implementations,
-                    } => entity
-                        .with(HasArguments(args))
-                        .with(HasChildren(implementations))
-                        .with(Definition(name, path)),
-                    AstNode::Value(value) => entity.with(HasValue(value)),
-                    AstNode::Symbol { name, context } => entity.with(SymbolRef { name, context }),
-                    AstNode::TypeAnnotation { inner, ty } => entity.with(TypeAnnotation(inner, ty)),
-                    AstNode::Apply { inner, children } => {
-                        if !children.is_empty() {
-                            entity = entity.with(HasChildren(children));
-                        }
-                        entity.with(HasInner(inner))
-                    }
-                    AstNode::Chain(children) => {
+                    } => entity.with(Definition {
+                        implementations,
+                        names: vec![head.name],
+                        params: head.params,
+                        path: head.path,
+                    }),
+                    AstTerm::Value(value) => entity.with(HasValue(value)),
+                    AstTerm::Symbol { name, context } => entity
+                        .with(SymbolRef { name, context })
+                        .with(DefinedAt(None)),
+                    AstTerm::Call { inner, children } => entity.with(Call(inner, children)),
+                    AstTerm::Sequence(children) => {
                         // TODO: We assume this is a tuple, review this.
-                        entity.with(HasChildren(children))
+                        entity.with(Sequence(children))
                     }
                 };
-                // entity.with(IsAst).build()
                 entity.build()
             };
-            if let AstNode::Definition { .. } = &entry.node {
+            if let AstTerm::Definition { head, .. } = &entry.term {
                 self.add_location_for_definition(entry.loc.clone(), entity);
+                let mut sub_path = head.path.clone();
+                sub_path.extend(head.name.clone());
+                self.set_entity_for_path(&sub_path, entity);
             }
-            self.set_entity_for_ast(entry.node, entity);
+            self.set_entity_for_ast(entry.term, entity);
             entity
         };
         self.add_location_for_entity(entry.loc, entity);

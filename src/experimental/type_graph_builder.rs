@@ -70,7 +70,7 @@ impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
             PrimVal(Bool(_)) => Ok(bit_type()),
             PrimVal(Str(_)) => Ok(string_type()),
             Lambda(node) => {
-                state.path.push(Symbol::Anon());
+                state.path.push(Symbol::Anon);
                 let ty = self.visit(storage, state, node);
                 state.path.pop();
                 ty
@@ -87,7 +87,7 @@ impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
     }
 
     fn visit_apply(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Apply) -> Res {
-        state.path.push(Symbol::Anon());
+        state.path.push(Symbol::Anon);
         let mut arg_tys = vec![];
         for arg in &expr.args {
             let ty = self.visit_let(storage, state, arg)?;

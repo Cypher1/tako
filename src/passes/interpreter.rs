@@ -228,16 +228,30 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
     }
 
     fn visit_sym(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Sym) -> Res {
-        if storage.debug_level() > 1 {
-            eprintln!("evaluating sym {}", expr.clone().into_node());
-        }
         let name = &expr.name;
+        if storage.debug_level() > 1 {
+            eprintln!("evaluating sym '{}'", name);
+        }
         let value = find_symbol(state, name);
         if let Some(prim) = value {
             if storage.debug_level() > 0 {
                 eprintln!("{} = (from stack) {}", name, prim.clone().into_node());
             }
             return Ok(prim.clone());
+        }
+        if let Some(ext) = crate::externs::get_implementation(name) {
+            if storage.debug_level() > 0 {
+                eprintln!("{} = (from externs)", name);
+            }
+            let frame = || {
+                let mut frame_vals: HashMap<String, Box<dyn Fn() -> Res>> = map!();
+                for (name, val) in state.last().expect("Stack frame missing").clone().iter() {
+                    let val = val.clone();
+                    frame_vals.insert(name.to_string(), Box::new(move || Ok(val.clone())));
+                }
+                frame_vals
+            };
+            return ext(storage, frame(), expr.get_info());
         }
         Err(TError::UnknownSymbol(
             name.to_string(),
@@ -389,9 +403,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
                         if storage.debug_level() > 2 {
                             eprintln!("looking up default impl {}", &name);
                         }
-                        if let Some(default_impl) =
-                            crate::externs::get_implementation(name.to_owned())
-                        {
+                        if let Some(default_impl) = crate::externs::get_implementation(&name) {
                             return default_impl(storage, frame(), expr.get_info());
                         }
                         panic!("Built a 'Built in' with unknown built in named {}", name);
@@ -784,7 +796,7 @@ mod tests {
             let num1: i32 = rng.gen();
             let num2: i32 = rng.gen();
             let res = num1.wrapping_add(num2);
-            eprintln!("mul {:?} + {:?} = {:?}", num1, num2, res);
+            eprintln!("mul {:?} + {:?} => {:?}", num1, num2, res);
             assert_eq!(
                 eval_str(db, &format!("mul(x, y)=x+y;mul(x= {}, y= {})", num1, num2)),
                 Ok(int32(res))
@@ -801,7 +813,7 @@ mod tests {
             let num1: i32 = rng.gen();
             let num2: i32 = rng.gen();
             let res = num1.wrapping_mul(num2);
-            eprintln!("mul {:?} * {:?} = {:?}", num1, num2, res);
+            eprintln!("mul {:?} * {:?} => {:?}", num1, num2, res);
             assert_eq!(
                 eval_str(db, &format!("mul(x, y)=x*y;mul(x= {}, y= {})", num1, num2)),
                 Ok(int32(res))

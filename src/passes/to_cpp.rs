@@ -160,12 +160,12 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
             then,
             then_else,
         } => {
-            let cond = pretty_print_block(*condition, indent);
+            let condition = pretty_print_block(*condition, indent);
             let body = pretty_print_block(*then, indent);
             let then_else = pretty_print_block(*then_else, indent);
             format!(
                 "{indent}if({}) {} else {}",
-                cond,
+                condition,
                 body,
                 then_else,
                 indent = indent,
@@ -421,9 +421,9 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         }
         let name = make_name(path);
         let body = self.visit(storage, state, &expr.value)?;
-        if let Some(eargs) = &expr.args {
+        if let Some(e_args) = &expr.args {
             let mut args = vec![];
-            for arg in eargs.iter() {
+            for arg in e_args.iter() {
                 let path = arg
                     .get_info()
                     .defined_at
@@ -481,11 +481,11 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         let left = self.visit(storage, state, &expr.left.clone())?;
         let right = self.visit(storage, state, &expr.right.clone())?;
         // TODO: require 2 children
-        // TODO: Short circuiting of deps.
+        // TODO: Short circuiting of dependencies.
         let op = expr.name.as_str();
         match op {
             "-|" => {
-                // TODO: handle 'error' values more widly.
+                // TODO: handle 'error' values more widely.
                 let done = Code::If {
                     condition: Box::new(left),
                     then: Box::new(right),
@@ -494,7 +494,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 return Ok(done);
             }
             "," | ";" => {
-                // TODO: handle 'error' values more widly.
+                // TODO: handle 'error' values more widely.
                 return Ok(left.merge(right));
             }
             _ => {}
