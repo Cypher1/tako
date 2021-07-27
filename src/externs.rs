@@ -49,8 +49,8 @@ fn get_symbol(args: &Args, sym: &str, info: &Info) -> Res {
     }
 }
 
-pub fn get_implementation(name: String) -> Option<FuncImpl> {
-    match name.as_str() {
+pub fn get_implementation(name: &str) -> Option<FuncImpl> {
+    match name {
         "print" => Some(Box::new(|_, args, info| {
             let val = get_symbol(&args, "it", &info)?;
             match val {
@@ -181,6 +181,8 @@ pub fn get_implementation(name: String) -> Option<FuncImpl> {
                 )),
             }
         })),
+        "String" => Some(Box::new(|_db, _args, _info| Ok(string_type()))),
+        "Int" => Some(Box::new(|_db, _args, _info| Ok(i32_type()))),
         _ => None,
     }
 }

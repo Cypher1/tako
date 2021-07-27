@@ -365,16 +365,28 @@ pub trait HasInfo {
     fn get_mut_info(&mut self) -> &mut Info;
 }
 
-#[derive(Debug, Clone, Ord, PartialOrd, Hash, PartialEq, Eq)]
+#[derive(Clone, Ord, PartialOrd, Hash, PartialEq, Eq)]
 pub enum Symbol {
-    Anon(),
+    Anon,
     Named(String, Option<String>), // name, (and for files) an optional extension
+}
+
+impl fmt::Debug for Symbol {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Symbol::Anon => write!(f, "_")?,
+            // TODO: Edge case exists here if two files with different extensions are used together
+            Symbol::Named(name, None) => write!(f, "{}", name)?,
+            Symbol::Named(name, Some(ext)) => write!(f, "{}.{}", name, ext)?,
+        }
+        Ok(())
+    }
 }
 
 impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Symbol::Anon() => write!(f, "_")?,
+            Symbol::Anon => write!(f, "_")?,
             // TODO: Edge case exists here if two files with different extensions are used together
             Symbol::Named(name, _) => write!(f, "{}", name)?,
         }
@@ -391,7 +403,7 @@ impl Symbol {
     }
     pub fn to_filename(self: &Symbol) -> String {
         match self {
-            Symbol::Anon() => "".to_owned(),
+            Symbol::Anon => "".to_owned(),
             // TODO: Edge case exists here if two files with different extensions are used together
             Symbol::Named(name, ext) => format!(
                 "{}{}",

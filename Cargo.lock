@@ -370,7 +370,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "93a1bb8316a44459a7d14253c4d28dd7395cbd23cc04a68c46e851b8e46d64b1"
 dependencies = [
  "atom",
- "rayon",
 ]
 
 [[package]]
@@ -809,7 +808,6 @@ dependencies = [
  "arrayvec",
  "hashbrown",
  "mopa",
- "rayon",
  "smallvec",
  "tynm",
 ]
@@ -836,7 +834,6 @@ dependencies = [
  "hashbrown",
  "hibitset",
  "log",
- "rayon",
  "shred",
  "shrev",
  "specs-derive",

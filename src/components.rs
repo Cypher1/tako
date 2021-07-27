@@ -6,56 +6,57 @@ use crate::errors::TError;
 use crate::primitives::Val;
 use crate::tokens::TokenType;
 
-#[derive(Component, Clone, Debug)]
+#[derive(Component, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[storage(VecStorage)]
-pub struct DefinedAt(pub Entity);
+pub struct DefinedAt(pub Option<Path>);
 
-#[derive(Component, Clone, Debug)]
+#[derive(Component, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[storage(VecStorage)]
 pub struct Token {
     pub token: TokenType,
     pub value: String,
 }
 
-#[derive(Component, Clone, Debug)]
+#[derive(Component, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[storage(VecStorage)]
 pub struct HasValue(pub Val);
 
-#[derive(Component, Default, Debug)]
+#[derive(Component, Default, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[storage(NullStorage)]
 pub struct Untyped;
 
-#[derive(Component, Clone, Debug)]
+#[derive(Component, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[storage(VecStorage)]
-pub struct TypeAnnotation(pub Entity, pub Entity);
+pub struct HasType(pub Entity);
 
-#[derive(Component, Clone, Debug)]
+#[derive(Component, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[storage(VecStorage)]
 pub struct HasErrors(pub Vec<TError>);
 
-#[derive(Component, Clone, Debug)]
+#[derive(Component, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[storage(VecStorage)]
-pub struct HasInner(pub Entity);
+pub struct Call(pub Entity, pub Vec<Entity>); // TODO: Short vec
 
-#[derive(Component, Clone, Debug)]
+#[derive(Component, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[storage(VecStorage)]
-pub struct HasChildren(pub Vec<Entity>); // TODO: Short vec
+pub struct Sequence(pub Vec<Entity>); // TODO: Short vec
 
-#[derive(Component, Clone, Debug)]
-#[storage(VecStorage)]
-pub struct HasArguments(pub Option<Vec<Entity>>); // TODO: Short vec
-
-#[derive(Component, Clone, Default, Debug)]
+#[derive(Component, Clone, Default, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[storage(VecStorage)]
 pub struct SymbolRef {
-    pub name: String, //Path
+    pub name: Path,
     pub context: Path,
 }
 
-#[derive(Component, Clone, Default, Debug)]
+#[derive(Component, Clone, Default, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[storage(NullStorage)]
 pub struct IsAst;
 
-#[derive(Component, Clone, Default, Debug)]
+#[derive(Component, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[storage(VecStorage)]
-pub struct Definition(pub String, pub Path);
+pub struct Definition {
+    pub names: Vec<Path>,
+    pub params: Option<Vec<Entity>>,
+    pub implementations: Vec<Entity>,
+    pub path: Path,
+}

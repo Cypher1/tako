@@ -1,8 +1,12 @@
 use crate::ast::*;
+use crate::components::{DefinedAt, SymbolRef};
 use crate::database::DBStorage;
 use crate::errors::TError;
+use crate::externs::get_externs;
 use crate::passes::symbol_table_builder::State;
 use crate::primitives::Val;
+use specs::prelude::*;
+use std::collections::HashMap;
 
 // Walks the AST interpreting it.
 #[derive(Default)]
@@ -17,6 +21,48 @@ pub struct Namespace {
     info: Entry,
 }
 
+struct DefinitionFinderSystem {
+    path_to_entity: HashMap<Path, Entity>,
+}
+
+impl<'a> System<'a> for DefinitionFinderSystem {
+    type SystemData = (ReadStorage<'a, SymbolRef>, WriteStorage<'a, DefinedAt>);
+
+    fn run(&mut self, (symbols, mut defined_at_map): Self::SystemData) {
+        // dbg!(&self.path_to_entity);
+        for (symbol, defined_at) in (&symbols, &mut defined_at_map).join() {
+            let get_entity = || {
+                let mut context = symbol.context.clone();
+                loop {
+                    let mut search_path = context.clone();
+                    search_path.extend(symbol.name.clone());
+                    if let Some(entity) = self.path_to_entity.get(&search_path) {
+                        return Some((entity, search_path));
+                    }
+                    if context.is_empty() {
+                        return None;
+                    }
+                    context.pop(); // go back
+                }
+            };
+            if defined_at.0 != None {
+                continue; // this one is 'pre' defined
+            }
+            if let Some((entity, found_path)) = get_entity() {
+                eprintln!(
+                    "Found symbol: {:?} -> {:?} @ {:?}",
+                    &symbol, &entity, &found_path
+                );
+                defined_at.0 = Some(found_path);
+            } else if let Some(ext) = get_externs().unwrap().get(&path_to_string(&symbol.name)) {
+                eprintln!("Found extern: {:?} -> {:?}", &symbol, &ext);
+            } else {
+                eprintln!("Couldn't find symbol: {:?}", &symbol);
+            }
+        }
+    }
+}
+
 impl Visitor<State, Node, Root, Path> for DefinitionFinder {
     fn visit_root(&mut self, storage: &mut DBStorage, module: &Path) -> Result<Root, TError> {
         let expr = storage.build_symbol_table(module.clone())?;
@@ -26,6 +72,11 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
                 path_to_string(module)
             );
         }
+        let mut definition_finder = DefinitionFinderSystem {
+            path_to_entity: storage.path_to_entity.clone(),
+        };
+        definition_finder.run_now(&storage.world);
+
         let mut state = State {
             path: module.clone(),
             table: expr.table.clone(),
@@ -47,7 +98,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
         }
         let mut search: Vec<Symbol> = state.path.clone();
         loop {
-            if let Some(Symbol::Anon()) = search.last() {
+            if let Some(Symbol::Anon) = search.last() {
                 search.pop(); // Cannot look inside an 'anon'.
             }
             search.push(Symbol::new(&expr.name));
@@ -93,7 +144,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
     }
 
     fn visit_apply(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Apply) -> Res {
-        state.path.push(Symbol::Anon());
+        state.path.push(Symbol::Anon);
         let args = expr
             .args
             .iter()
