@@ -27,7 +27,6 @@ mod pretty_assertions {
 
     macro_rules! assert_str_eq {
         ($left:expr, $right:expr) => {
-            dbg!($left, $right);
             pretty_assertions::assert_eq!(
                 crate::pretty_assertions::MultiPretty($left),
                 crate::pretty_assertions::MultiPretty($right.to_string())

@@ -42,14 +42,14 @@ macro_rules! dict(
 
 #[macro_export]
 macro_rules! rec(
-    {} => {Struct(::std::vec::Vec::new())};
+    {} => {crate::primitives::Val::Struct(::std::vec::Vec::new())};
     { $($key:expr => $value:expr),* } => {
         {
             let m = vec![
             $(
                 ($key.to_string(), $value),
             )*];
-            Struct(m)
+            crate::primitives::Val::Struct(m)
         }
      };
 );

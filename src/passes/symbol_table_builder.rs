@@ -25,7 +25,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
     fn visit_root(&mut self, storage: &mut DBStorage, module: &Path) -> Result<Root, TError> {
         let expr = &storage.parse_file(module.clone())?;
         info!(
-            "building symbol table for file... {}",
+            "Building symbol table... {}",
             path_to_string(module)
         );
 
@@ -53,7 +53,6 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
         };
 
         debug!("table: {:?}", state.table);
-
         Ok(Root {
             ast: self.visit(storage, &mut state, expr)?,
             table: state.table,
