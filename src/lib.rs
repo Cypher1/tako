@@ -36,6 +36,11 @@ mod pretty_assertions {
     }
 }
 
+#[cfg(test)]
+fn init() {
+    let _ = env_logger::builder().is_test(true).try_init();
+}
+
 use std::fs::File;
 use std::io::prelude::*;
 

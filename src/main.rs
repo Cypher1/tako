@@ -34,6 +34,8 @@ fn handle(res: Result<String, TError>) {
 }
 
 fn main() -> Result<(), TError> {
+    env_logger::init_from_env("TAKO_LOG"); // TODO: Handle this error as a TError
+
     let mut storage = DBStorage::default();
     {
         let args: Vec<String> = env::args().collect();
