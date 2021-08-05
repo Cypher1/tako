@@ -35,7 +35,14 @@ fn handle(res: Result<String, TError>) {
 }
 
 fn main() -> Result<(), TError> {
-    env_logger::init_from_env("TAKO_LOG"); // TODO: Handle this error as a TError
+    use env_logger::Env;
+    env_logger::Builder::from_env(
+        Env::default()
+            .filter_or("TAKO_LOG", "warn")
+            .write_style_or("TAKO_LOG_STYLE", "AUTO")
+    )
+    .format_timestamp(None)
+    .init();
 
     let mut storage = DBStorage::default();
     {
@@ -85,7 +92,7 @@ fn repl(storage: &mut DBStorage) -> Result<(), TError> {
                 if last_cmd_was_interrupt {
                     break;
                 }
-                info!("(To exit, press ^C again or type :exit)");
+                error!("(To exit, press ^C again or type :exit)");
                 cmd_was_interrupt = true;
             }
             Err(ReadlineError::Eof) => break,

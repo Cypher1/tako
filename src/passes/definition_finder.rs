@@ -58,7 +58,7 @@ impl<'a> System<'a> for DefinitionFinderSystem {
             } else if let Some(ext) = get_externs().unwrap().get(&path_to_string(&symbol.name)) {
                 debug!("Found extern: {:?} -> {:?}", &symbol, &ext);
             } else {
-                warn!("Couldn't find symbol: {:?}", &symbol);
+                debug!("Couldn't find symbol: {:?}", &symbol);
             }
         }
     }
