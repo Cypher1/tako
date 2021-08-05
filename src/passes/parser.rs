@@ -92,7 +92,7 @@ fn nud(
                 head.get_info(),
             )),
             TokenType::OpenBracket => {
-                let (inner, inner_node, mut new_toks) = expr(storage, toks, 0, &&path)?;
+                let (inner, inner_node, mut new_toks) = expr(storage, toks, 0, path)?;
                 // TODO require close bracket.
                 let close = new_toks.front();
                 match (head.value.as_str(), close) {
