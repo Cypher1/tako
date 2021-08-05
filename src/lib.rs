@@ -36,9 +36,17 @@ mod pretty_assertions {
     }
 }
 
-#[cfg(test)]
-fn init() {
-    let _ = env_logger::builder().is_test(true).try_init();
+pub fn build_logger(finish: impl FnOnce(&mut env_logger::Builder)) {
+    finish(env_logger::Builder::from_env(
+        env_logger::Env::default()
+            .filter_or("TAKO_LOG", "warn")
+            .write_style_or("TAKO_LOG_STYLE", "AUTO")
+    )
+    .format_timestamp(None))
+}
+
+pub fn init_for_test() {
+    let _ = build_logger(|env| env.is_test(true).try_init().expect("Couldn't initialize logger"));
 }
 
 use std::fs::File;

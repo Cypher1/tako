@@ -35,14 +35,7 @@ fn handle(res: Result<String, TError>) {
 }
 
 fn main() -> Result<(), TError> {
-    use env_logger::Env;
-    env_logger::Builder::from_env(
-        Env::default()
-            .filter_or("TAKO_LOG", "warn")
-            .write_style_or("TAKO_LOG_STYLE", "AUTO")
-    )
-    .format_timestamp(None)
-    .init();
+    takolib::build_logger(|env| env.init());
 
     let mut storage = DBStorage::default();
     {

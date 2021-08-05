@@ -26,6 +26,8 @@ pub struct TestOptions {
 type Test = Result<(), TError>;
 
 fn test_expecting(expected: TestResult, options: Vec<&str>) -> Test {
+    takolib::init_for_test();
+
     let mut storage = DBStorage::default();
     storage.options = Options::new(options);
     let mut stdout: Vec<String> = vec![];
