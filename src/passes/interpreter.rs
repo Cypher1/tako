@@ -5,6 +5,7 @@ use crate::externs::{prim_add_strs, prim_pow, Res};
 use crate::primitives::{
     boolean, int32, merge_vals, never_type, string, Frame, Prim::*, Val, Val::*,
 };
+use log::*;
 use std::collections::HashMap;
 
 pub type ImplFn<'a> =
@@ -229,20 +230,14 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
 
     fn visit_sym(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Sym) -> Res {
         let name = &expr.name;
-        if storage.debug_level() > 1 {
-            eprintln!("evaluating sym '{}'", name);
-        }
+        debug!("evaluating sym '{}'", name);
         let value = find_symbol(state, name);
         if let Some(prim) = value {
-            if storage.debug_level() > 0 {
-                eprintln!("{} = (from stack) {}", name, prim.clone().into_node());
-            }
+            debug!("{} = (from stack) {}", name, prim.clone().into_node());
             return Ok(prim.clone());
         }
         if let Some(ext) = crate::externs::get_implementation(name) {
-            if storage.debug_level() > 0 {
-                eprintln!("{} = (from externs)", name);
-            }
+            debug!("{} = (from externs)", name);
             let frame = || {
                 let mut frame_vals: HashMap<String, Box<dyn Fn() -> Res>> = map!();
                 for (name, val) in state.last().expect("Stack frame missing").clone().iter() {
@@ -261,9 +256,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
     }
 
     fn visit_val(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Val) -> Res {
-        if storage.debug_level() > 2 {
-            eprintln!("visiting prim {}", &expr);
-        }
+        debug!("visiting prim {}", &expr);
         match expr {
             Variable(name) => {
                 let frame = state.last().cloned().unwrap_or_default();
@@ -271,7 +264,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
                 for (k, v) in frame.iter() {
                     kvs.push(format!("{} = {}", k, v))
                 }
-                eprintln!("variable {}, state: {}", &name, &kvs.join(","));
+                debug!("variable {}, state: {}", &name, &kvs.join(","));
                 return state
                     .last()
                     .expect("Stack frame missing")
@@ -340,9 +333,9 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
                     for (arg, ty) in arguments.clone().into_struct().iter() {
                         let never = never_type();
                         let arg_ty = &frame.get(arg).unwrap_or(&never);
-                        eprintln!(">> {}: {} unified with {}", &arg, &ty, &arg_ty);
+                        debug!(">> {}: {} unified with {}", &arg, &ty, &arg_ty);
                         let unified = ty.unify(arg_ty, state)?;
-                        eprintln!(">>>> {}", &unified);
+                        debug!(">>>> {}", &unified);
                         new_args.push((arg.clone(), unified));
                     }
                     let results = self.visit_val(storage, state, results)?;
@@ -359,9 +352,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
     }
 
     fn visit_apply(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Apply) -> Res {
-        if storage.debug_level() > 1 {
-            eprintln!("evaluating apply {}", expr.clone().into_node());
-        }
+        debug!("evaluating apply {}", expr.clone().into_node());
         state.push(Frame::new());
         expr.args
             .iter()
@@ -370,22 +361,18 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
         // Retrive the inner
         let inner = self.visit(storage, state, &*expr.inner)?;
         // Run the inner
-        if storage.debug_level() > 2 {
-            eprintln!(
-                "apply args {:?} to inner {}",
-                state.last(),
-                inner.clone().into_node()
-            );
-        }
+        debug!(
+            "apply args {:?} to inner {}",
+            state.last(),
+            inner.clone().into_node()
+        );
         let res = match inner {
             Val::Lambda(func) => self.visit(storage, state, &*func)?,
             Val::PrimVal(prim) => {
                 use crate::primitives::Prim;
                 match prim {
                     Prim::BuiltIn(name) => {
-                        if storage.debug_level() > 2 {
-                            eprintln!("looking up interpreter impl {}", name);
-                        }
+                        debug!("looking up interpreter impl {}", name);
                         let frame = || {
                             let mut frame_vals: HashMap<String, Box<dyn Fn() -> Res>> = map!();
                             for (name, val) in
@@ -400,9 +387,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
                         if let Some(extern_impl) = &mut self.impls.get_mut(&name) {
                             return extern_impl(storage, frame(), expr.get_info());
                         }
-                        if storage.debug_level() > 2 {
-                            eprintln!("looking up default impl {}", &name);
-                        }
+                        debug!("looking up default impl {}", &name);
                         if let Some(default_impl) = crate::externs::get_implementation(&name) {
                             return default_impl(storage, frame(), expr.get_info());
                         }
@@ -432,19 +417,14 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
         match res {
             Function { results, .. } => Ok(*results),
             res => {
-                if storage.debug_level() > 1 {
-                    eprintln!("unexpected, apply on a {}", res);
-                }
+                debug!("unexpected, apply on a {}", res);
                 Ok(res)
             }
         }
     }
 
     fn visit_abs(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Abs) -> Res {
-        if storage.debug_level() > 1 {
-            eprintln!("introducing abstraction {}", expr.clone().into_node());
-        }
-
+        debug!("introducing abstraction {}", expr.clone().into_node());
         // Add a new scope
         let mut frame = Frame::new();
         frame.insert(expr.name.clone(), Variable(expr.name.clone()));
@@ -457,10 +437,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
     }
 
     fn visit_let(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Let) -> Res {
-        if storage.debug_level() > 1 {
-            eprintln!("evaluating let {}", expr.clone().into_node());
-        }
-
+        debug!("evaluating let {}", expr.clone().into_node());
         if expr.args.is_some() {
             let val = Val::Lambda(expr.value.clone());
             state
@@ -480,9 +457,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
     }
 
     fn visit_un_op(&mut self, storage: &mut DBStorage, state: &mut State, expr: &UnOp) -> Res {
-        if storage.debug_level() > 1 {
-            eprintln!("evaluating unop {}", expr.clone().into_node());
-        }
+        debug!("evaluating unop {}", expr.clone().into_node());
         let i = self.visit(storage, state, &expr.inner)?;
         let info = expr.clone().get_info();
         match expr.name.as_str() {
@@ -506,9 +481,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
     }
 
     fn visit_bin_op(&mut self, storage: &mut DBStorage, state: &mut State, expr: &BinOp) -> Res {
-        if storage.debug_level() > 1 {
-            eprintln!("evaluating binop {}", expr.clone().into_node());
-        }
+        debug!("evaluating binop {}", expr.clone().into_node());
         let info = expr.clone().get_info();
         let l = self.visit(storage, state, &expr.left);
         let mut r = || self.visit(storage, state, &expr.right);
@@ -605,8 +578,8 @@ mod tests {
     #[allow(dead_code)]
     fn trace<T: std::fmt::Display, E>(t: Result<T, E>) -> Result<T, E> {
         match &t {
-            Ok(t) => eprintln!(">> {}", &t),
-            Err(_) => eprintln!(">> #error"),
+            Ok(t) => debug!(">> {}", &t),
+            Err(_) => debug!(">> #error"),
         }
         t
     }
@@ -796,7 +769,7 @@ mod tests {
             let num1: i32 = rng.gen();
             let num2: i32 = rng.gen();
             let res = num1.wrapping_add(num2);
-            eprintln!("mul {:?} + {:?} => {:?}", num1, num2, res);
+            info!("mul {:?} + {:?} => {:?}", num1, num2, res);
             assert_eq!(
                 eval_str(db, &format!("mul(x, y)=x+y;mul(x= {}, y= {})", num1, num2)),
                 Ok(int32(res))
@@ -813,7 +786,7 @@ mod tests {
             let num1: i32 = rng.gen();
             let num2: i32 = rng.gen();
             let res = num1.wrapping_mul(num2);
-            eprintln!("mul {:?} * {:?} => {:?}", num1, num2, res);
+            info!("mul {:?} * {:?} => {:?}", num1, num2, res);
             assert_eq!(
                 eval_str(db, &format!("mul(x, y)=x*y;mul(x= {}, y= {})", num1, num2)),
                 Ok(int32(res))

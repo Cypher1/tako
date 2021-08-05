@@ -11,7 +11,7 @@ impl Default for Table {
 
 impl Table {
     pub fn find<'a>(self: &'a Table, path: &[Symbol]) -> Option<&'a Table> {
-        // eprintln!("find in {:?}", self.value);
+        // debug!("find in {:?}", self.value);
         if path.is_empty() {
             return Some(self);
         }
@@ -23,7 +23,7 @@ impl Table {
     }
 
     pub fn find_mut<'a>(self: &'a mut Table, path: &[Symbol]) -> Option<&'a mut Table> {
-        // eprintln!("find in {:?}", self.value);
+        // debug!("find in {:?}", self.value);
         if path.is_empty() {
             return Some(self);
         }

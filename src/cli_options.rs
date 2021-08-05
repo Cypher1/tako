@@ -1,3 +1,5 @@
+use log::*;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Command {
     Build,
@@ -9,10 +11,6 @@ pub enum Command {
 pub struct Options {
     pub files: Vec<String>,
     pub cmd: Command,
-    pub show_ast: bool,
-    pub show_table: bool,
-    pub show_full_ast: bool,
-    pub debug_level: i32,
     pub interpreter_args: Vec<String>,
 }
 
@@ -21,23 +19,12 @@ impl Default for Options {
         Options {
             files: vec![],
             cmd: Command::Build,
-            show_ast: false,
-            show_table: false,
-            show_full_ast: false,
-            debug_level: 0,
             interpreter_args: vec![],
         }
     }
 }
 
 impl Options {
-    pub fn with_debug(self: Options, debug_level: i32) -> Options {
-        Options {
-            debug_level,
-            ..self
-        }
-    }
-
     pub fn with_file(self: Options, filename: &str) -> Options {
         let mut files = self.files;
         files.push(filename.to_owned());
@@ -61,10 +48,6 @@ impl Options {
                 match f.as_str() {
                     "-i" | "--interactive" => opts.cmd = Command::Repl,
                     "-r" | "--run" => opts.cmd = Command::Interpret,
-                    "-d" => opts.debug_level += 1,
-                    "--ast" => opts.show_ast = true,
-                    "--table" => opts.show_table = true,
-                    "--full-ast" => opts.show_full_ast = true,
                     "--version" => {
                         println!("{}{}", TITLE, VERSION);
                         return opts;
@@ -72,7 +55,7 @@ impl Options {
                     "--" => got_dashdash = true,
                     arg => {
                         if arg != "-h" && arg != "--help" {
-                            eprintln!("unexpected flag '{}'", f);
+                            warn!("unexpected flag '{}'", f);
                         }
                         print_cli_help();
                         return opts;
@@ -91,12 +74,12 @@ impl Options {
 }
 
 pub fn print_cli_info() {
-    eprintln!("{}{}", TITLE, VERSION);
+    info!("{}{}", TITLE, VERSION);
 }
 
 pub fn print_cli_help() {
     print_cli_info();
-    eprintln!("{}", USAGE);
+    info!("{}", USAGE);
 }
 
 pub const TITLE: &str = "tako v";
@@ -106,17 +89,13 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const USAGE: &str = "An experimental programming language for ergonomic software verification.
 
 Usage:
-  tako [-i|-r] [-d <level>] [--ast] [--full-ast] [--table] <files>...
+  tako [-i|-r] <files>...
   tako (-h | --help)
   tako --version
 
 Options:
   -i --interactive    Run as a repl (interactive mode).
   -r --run            Run files in interpreter.
-  -d --debug=<level>  Level of debug logging to use [default: 0].
-  --ast               Pretty print an abstract syntax tree of the code.
-  --full-ast          Debug print an abstract syntax tree of the code.
-  --table             Pretty print the symbol table of the code.
   -h --help           Show this screen.
   --version           Show compiler version.
 ";

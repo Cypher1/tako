@@ -7,6 +7,7 @@ use std::process::Command;
 use std::sync::Arc;
 
 use directories::ProjectDirs;
+use log::*;
 
 use crate::ast::{path_to_string, Node, Path, PathRef, Root, Symbol, Visitor};
 use crate::cli_options::Options;
@@ -141,10 +142,6 @@ impl DBStorage {
         self.config_dir().join("tako_history")
     }
 
-    pub fn debug_level(&self) -> i32 {
-        self.options.debug_level
-    }
-
     pub fn file(&mut self, filename: &str) -> Option<&Arc<String>> {
         self.file_contents.get(filename)
     }
@@ -175,13 +172,11 @@ impl DBStorage {
     pub fn filename(&self, module: Path) -> String {
         let parts: Vec<String> = module.iter().map(|sym| format!("{:?}", sym)).collect();
         let file_name = parts.join("/");
-        if self.debug_level() > 0 {
-            eprintln!(
-                "Getting filename for {}, {}",
-                path_to_string(&module),
-                file_name
-            );
-        }
+        debug!(
+            "Getting filename for {}, {}",
+            path_to_string(&module),
+            file_name
+        );
         file_name
     }
 
@@ -214,9 +209,7 @@ impl DBStorage {
     }
 
     pub fn parse_file(&mut self, module: Path) -> Result<Node, TError> {
-        if self.debug_level() > 0 {
-            eprintln!("parsing file... {}", path_to_string(&module));
-        }
+        info!("parsing file... {}", path_to_string(&module));
         let filename = self.filename(module.clone());
         let contents = if let Some(contents) = self.file_contents.get(&filename) {
             contents.clone()
@@ -231,34 +224,26 @@ impl DBStorage {
     }
     pub fn infer(&mut self, expr: Node, env: Val) -> Result<Val, TError> {
         use crate::passes::type_checker::infer;
-        if self.debug_level() > 0 {
-            eprintln!("infering type for ... {}", &expr);
-        }
+        info!("infering type for ... {}", &expr);
         infer(self, &expr, &env)
     }
 
     pub fn look_up_definitions(&mut self, context: Path) -> Result<Root, TError> {
         use crate::passes::definition_finder::DefinitionFinder;
         let module = to_file_path(&context);
-        if self.debug_level() > 0 {
-            eprintln!("look up definitions >> {}", path_to_string(&module));
-        }
+        info!("look up definitions >> {}", path_to_string(&module));
         DefinitionFinder::process(&module, self)
     }
 
     pub fn compile_to_cpp(&mut self, module: Path) -> Result<(String, HashSet<String>), TError> {
         use crate::passes::to_cpp::CodeGenerator;
-        if self.debug_level() > 0 {
-            eprintln!("generating code for file ... {}", path_to_string(&module));
-        }
+        info!("generating code for file ... {}", path_to_string(&module));
         CodeGenerator::process(&module, self)
     }
 
     pub fn build_with_gpp(&mut self, module: Path) -> Result<String, TError> {
         let (res, flags) = self.compile_to_cpp(module.clone())?;
-        if self.debug_level() > 0 {
-            eprintln!("building file with g++ ... {}", path_to_string(&module));
-        }
+        info!("building file with g++ ... {}", path_to_string(&module));
 
         let name: String = module
             .iter()
@@ -300,7 +285,7 @@ impl DBStorage {
         }
         let s =
             String::from_utf8(output.stdout).expect("Illegal utf8 stdout from backend compiler");
-        eprintln!("{}", s);
+        debug!("{}", s);
         Ok(res)
     }
 
@@ -322,13 +307,11 @@ impl DBStorage {
     }
 
     pub fn find_symbol(&mut self, mut context: Path, path: Path) -> Result<Option<Table>, TError> {
-        if self.debug_level() > 1 {
-            eprintln!(
-                ">>> looking for symbol {} in {}",
-                path_to_string(&path),
-                path_to_string(&context)
-            );
-        }
+        debug!(
+            ">>> looking for symbol {} in {}",
+            path_to_string(&path),
+            path_to_string(&context)
+        );
         let table = self.look_up_definitions(context.clone())?.table;
         loop {
             if let Some(Symbol::Anon) = context.last() {
@@ -337,24 +320,20 @@ impl DBStorage {
             let mut search: Vec<Symbol> = context.clone();
             search.extend(path.clone());
             if let Some(node) = table.find(&search) {
-                if self.debug_level() > 1 {
-                    eprintln!(
-                        "FOUND INSIDE {} {}",
-                        path_to_string(&context),
-                        path_to_string(&search)
-                    );
-                }
-                return Ok(Some(node.clone()));
-            }
-            if self.debug_level() > 1 {
-                eprintln!(
-                    "   not found {} at {}",
-                    path_to_string(&path),
+                debug!(
+                    "FOUND INSIDE {} {}",
+                    path_to_string(&context),
                     path_to_string(&search)
                 );
+                return Ok(Some(node.clone()));
             }
+            debug!(
+                "   not found {} at {}",
+                path_to_string(&path),
+                path_to_string(&search)
+            );
             if context.is_empty() {
-                eprintln!(
+                warn!(
                     "   not found {} at {}",
                     path_to_string(&path),
                     path_to_string(&search)

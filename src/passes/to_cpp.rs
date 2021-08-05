@@ -2,6 +2,7 @@ use crate::ast::*;
 use crate::primitives::{Prim, Val};
 use crate::symbol_table::*;
 use crate::{database::DBStorage, errors::TError};
+use log::*;
 use std::collections::HashSet;
 
 // Walks the AST compiling it to wasm.
@@ -248,9 +249,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             args: Some(vec![]),
         };
         let mut table = root.table; // TODO: Shouldn't be mut
-        if storage.debug_level() > 1 {
-            eprintln!("table {:?}", table);
-        }
+        debug!("table {:?}", table);
         let main = match self.visit_let(storage, &mut table, &main_let)? {
             Code::Assignment(_, val) => match *val {
                 Code::Func {
@@ -304,11 +303,11 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
     }
 
     fn visit_sym(&mut self, storage: &mut DBStorage, _state: &mut State, expr: &Sym) -> Res {
-        // eprintln!(
-        //   "to_c: visit {}, {:?}",
-        // expr.name,
-        //   expr.get_info().defined_at
-        // );
+        debug!(
+            "to_c: visit {}, {:?}",
+            expr.name,
+            expr.get_info().defined_at
+        );
         let name = make_name(
             expr.get_info()
                 .defined_at
@@ -367,7 +366,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
     }
 
     fn visit_apply(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Apply) -> Res {
-        // eprintln!("apply here: {:?}", expr);
+        debug!("apply here: {:?}", expr);
         // Build the 'struct' of args
         let mut args = vec![];
         for arg in expr.args.iter() {
@@ -389,11 +388,11 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
     }
 
     fn visit_abs(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Abs) -> Res {
-        // eprintln!(
-        //     "abs here: {:?}, {:?}",
-        //     expr.get_info().defined_at,
-        //     expr.name
-        // );
+        debug!(
+            "abs here: {:?}, {:?}",
+            expr.get_info().defined_at,
+            expr.name
+        );
         let path = expr
             .get_info()
             .defined_at
@@ -405,11 +404,11 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
     }
 
     fn visit_let(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Let) -> Res {
-        // eprintln!(
-        //     "let here: {:?}, {:?}",
-        //     expr.get_info().defined_at,
-        //     expr.name
-        // );
+        debug!(
+            "let here: {:?}, {:?}",
+            expr.get_info().defined_at,
+            expr.name
+        );
         let path = expr
             .get_info()
             .defined_at

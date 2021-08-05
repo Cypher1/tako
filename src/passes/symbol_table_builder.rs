@@ -6,6 +6,7 @@ use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::primitives::Val;
 use crate::symbol_table::Table;
+use log::*;
 
 // Walks the AST interpreting it.
 #[derive(Default)]
@@ -23,12 +24,10 @@ pub struct State {
 impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
     fn visit_root(&mut self, storage: &mut DBStorage, module: &Path) -> Result<Root, TError> {
         let expr = &storage.parse_file(module.clone())?;
-        if storage.debug_level() > 0 {
-            eprintln!(
-                "building symbol table for file... {}",
-                path_to_string(module)
-            );
-        }
+        info!(
+            "building symbol table for file... {}",
+            path_to_string(module)
+        );
 
         let mut table = Table::default();
         let mut main_at = module.clone();
@@ -53,9 +52,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
             path: module.clone(),
         };
 
-        if storage.debug_level() > 0 {
-            eprintln!("table: {:?}", state.table);
-        }
+        debug!("table: {:?}", state.table);
 
         Ok(Root {
             ast: self.visit(storage, &mut state, expr)?,
@@ -90,9 +87,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
     }
 
     fn visit_abs(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Abs) -> Res {
-        if storage.debug_level() > 1 {
-            eprintln!("visiting {} {}", path_to_string(&state.path), &expr.name);
-        }
+        debug!("visiting {} {}", path_to_string(&state.path), &expr.name);
 
         // Visit definition.
         let mut info = expr.get_info();
@@ -112,9 +107,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
     }
 
     fn visit_let(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Let) -> Res {
-        if storage.debug_level() > 1 {
-            eprintln!("visiting {} {}", path_to_string(&state.path), &expr.name);
-        }
+        debug!("visiting {} {}", path_to_string(&state.path), &expr.name);
 
         // Visit definition.
         let mut info = expr.get_info();

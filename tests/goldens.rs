@@ -1,3 +1,4 @@
+use log::*;
 use std::collections::HashMap;
 use std::fs::read_to_string;
 
@@ -25,6 +26,8 @@ pub struct TestOptions {
 type Test = Result<(), TError>;
 
 fn test_expecting(expected: TestResult, options: Vec<&str>) -> Test {
+    takolib::init_for_test();
+
     let mut storage = DBStorage::default();
     storage.options = Options::new(options);
     let mut stdout: Vec<String> = vec![];
@@ -54,39 +57,39 @@ fn test_expecting(expected: TestResult, options: Vec<&str>) -> Test {
 
     match (result, expected) {
         (Ok(result), Success) => {
-            eprintln!("Success. Result:\n{:?}", result);
+            info!("Success. Result:\n{:?}", result);
             Ok(())
         }
         (Ok(result), ReturnValue(value)) => {
             assert_eq!(result, format!("{}", value));
-            eprintln!("Success. Result:\n{:?}", result);
+            info!("Success. Result:\n{:?}", result);
             Ok(())
         }
         (Ok(result), Output(s)) => {
             assert_eq!(s, format!("{}{}", stdout.join(""), result));
-            eprintln!("Success. Result:\n{:?}", result);
+            info!("Success. Result:\n{:?}", result);
             Ok(())
         }
         (Ok(result), OutputFile(gold)) => {
-            eprintln!("Loading golden file {}", gold);
+            info!("Loading golden file {}", gold);
             let read = read_to_string(&gold);
             let golden = read
                 .unwrap_or_else(|_| panic!("golden file {} could not be read", gold))
                 .replace("\r", "");
             assert_eq!(format!("{}{}", stdout.join(""), result), golden);
-            eprintln!("Success. Result:\n{:?}", result);
+            info!("Success. Result:\n{:?}", result);
             Ok(())
         }
         (Err(err), Error) => {
-            eprintln!("Received error:\n{:?}", err);
+            info!("Received error:\n{:?}", err);
             Ok(())
         }
         (Ok(result), Error) => {
-            eprintln!("---Got result---\n{:?}", result);
+            info!("---Got result---\n{:?}", result);
             panic!("Expected error");
         }
         (Err(err), expectation) => {
-            eprintln!("---Expected---\n{:?}", expectation);
+            error!("---Expected---\n{:?}", expectation);
             panic!("Error: {}", err);
         }
     }

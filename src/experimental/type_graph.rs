@@ -1,9 +1,9 @@
 use crate::ast::*;
 use crate::data_structures::tribool::*;
-// use crate::data_structures::tribool::*;
 use crate::errors::TError;
 use crate::primitives::{never_type, Offset, Prim::*, TypeSet, Val, Val::*};
 use bitvec::prelude::*;
+use log::*;
 use std::collections::HashMap;
 
 type Id = i32; // TODO: Make this a vec of Id so it can be treated as a stack
@@ -285,9 +285,9 @@ impl TypeGraph {
         // panic!("wtf\n{}\n{}\n{:#?}", &from, &to, &v);
         // }
         // if v.is_sat().maybe_true() {
-        // eprintln!("unified:\n     {}\nwith {}\n to {}", &from, &to, &v);
+        // debug!("unified:\n     {}\nwith {}\n to {}", &from, &to, &v);
         // } else {
-        // eprintln!("couldnt not unify:\n     {}\nwith {}", &from, &to);
+        // debug!("couldnt not unify:\n     {}\nwith {}", &from, &to);
         // }
         Ok(v)
     }
@@ -408,7 +408,7 @@ impl TypeGraph {
         let from = self.normalize(from.clone())?;
         let to = self.normalize(to.clone())?;
         let unified = self.unify(&from, &to)?;
-        eprintln!("{}. {}. -> {}", &from, &to, &unified);
+        debug!("{}. {}. -> {}", &from, &to, &unified);
         Ok(unified.is_sat())
     }
 
