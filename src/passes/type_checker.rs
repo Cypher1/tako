@@ -209,8 +209,8 @@ mod tests {
     type Test = Result<(), TError>;
 
     fn assert_type(prog_str: &'static str, type_str: &'static str) -> Test {
-        dbg!(&prog_str);
-        dbg!(&type_str);
+        debug!("{:?}", &prog_str);
+        debug!("{:?}", &type_str);
         use crate::ast::Visitor;
         let mut storage = DBStorage::default();
 
@@ -221,7 +221,7 @@ mod tests {
         let ty = storage.look_up_definitions(type_module)?;
         let result_type = Interpreter::default().visit_root(&mut storage, &ty);
         if let Err(err) = &result_type {
-            dbg!(format!("{}", &err));
+            debug!("{}", &err);
         }
         let result_type = result_type?;
 
