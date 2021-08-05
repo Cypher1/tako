@@ -2,6 +2,7 @@ use crate::ast::{Node, Node::*};
 use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::passes::interpreter::Interpreter;
+use log::*;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 
@@ -117,8 +118,8 @@ pub fn infer(storage: &mut DBStorage, expr: &Node, env: &Val) -> Result<Val, TEr
                 let mut state = vec![frame];
                 return Interpreter::default().visit(storage, &mut state, &ext.ty);
             }
-            eprintln!("access sym: {}", name);
-            eprintln!("env sym: {}", env);
+            debug!("access sym: {}", name);
+            debug!("env sym: {}", env);
             Ok(env.access(name))
         }
         ApplyNode(Apply { inner, args, info }) => {
@@ -136,7 +137,7 @@ pub fn infer(storage: &mut DBStorage, expr: &Node, env: &Val) -> Result<Val, TEr
                 arg_tys.push(ty_let);
             }
             let new_env = env.clone().merge(Struct(let_tys));
-            eprintln!("new_env: {}", &new_env);
+            debug!("new_env: {}", &new_env);
             let inner_ty = infer(storage, inner, &new_env)?;
             let app = Apply {
                 inner: Box::new(inner_ty.into_node()),
@@ -212,7 +213,6 @@ mod tests {
         dbg!(&type_str);
         use crate::ast::Visitor;
         let mut storage = DBStorage::default();
-        storage.options.debug_level = 3;
 
         let type_filename = "test/type.tk";
         storage.set_file(type_filename, type_str.to_owned());
@@ -233,8 +233,8 @@ mod tests {
         let env = Variable("test_program".to_string()); // TODO: Track the type env
         let prog_ty = infer(&mut storage, &prog, &env)?;
 
-        eprintln!("got: {}", &prog_ty);
-        eprintln!("expected: {}", &result_type);
+        info!("got: {}", &prog_ty);
+        info!("expected: {}", &result_type);
         assert_eq!(format!("{}", &prog_ty), format!("{}", &result_type));
         assert_eq!(prog_ty, result_type);
         Ok(())

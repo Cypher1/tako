@@ -5,6 +5,7 @@ use crate::errors::TError;
 use crate::externs::get_externs;
 use crate::passes::symbol_table_builder::State;
 use crate::primitives::Val;
+use log::*;
 use specs::prelude::*;
 use std::collections::HashMap;
 
@@ -49,15 +50,15 @@ impl<'a> System<'a> for DefinitionFinderSystem {
                 continue; // this one is 'pre' defined
             }
             if let Some((entity, found_path)) = get_entity() {
-                eprintln!(
+                debug!(
                     "Found symbol: {:?} -> {:?} @ {:?}",
                     &symbol, &entity, &found_path
                 );
                 defined_at.0 = Some(found_path);
             } else if let Some(ext) = get_externs().unwrap().get(&path_to_string(&symbol.name)) {
-                eprintln!("Found extern: {:?} -> {:?}", &symbol, &ext);
+                debug!("Found extern: {:?} -> {:?}", &symbol, &ext);
             } else {
-                eprintln!("Couldn't find symbol: {:?}", &symbol);
+                warn!("Couldn't find symbol: {:?}", &symbol);
             }
         }
     }
@@ -66,12 +67,10 @@ impl<'a> System<'a> for DefinitionFinderSystem {
 impl Visitor<State, Node, Root, Path> for DefinitionFinder {
     fn visit_root(&mut self, storage: &mut DBStorage, module: &Path) -> Result<Root, TError> {
         let expr = storage.build_symbol_table(module.clone())?;
-        if storage.debug_level() > 0 {
-            eprintln!(
-                "looking up definitions in file... {}",
-                path_to_string(module)
-            );
-        }
+        info!(
+            "looking up definitions in file... {}",
+            path_to_string(module)
+        );
         let mut definition_finder = DefinitionFinderSystem {
             path_to_entity: storage.path_to_entity.clone(),
         };
@@ -88,14 +87,12 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
         })
     }
 
-    fn visit_sym(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Sym) -> Res {
-        if storage.debug_level() > 1 {
-            eprintln!(
-                "visiting sym {} {}",
-                path_to_string(&state.path),
-                &expr.name
-            );
-        }
+    fn visit_sym(&mut self, _storage: &mut DBStorage, state: &mut State, expr: &Sym) -> Res {
+        debug!(
+            "visiting sym {} {}",
+            path_to_string(&state.path),
+            &expr.name
+        );
         let mut search: Vec<Symbol> = state.path.clone();
         loop {
             if let Some(Symbol::Anon) = search.last() {
@@ -106,26 +103,22 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
             match node {
                 Some(node) => {
                     node.value.uses.insert(state.path.clone());
-                    if storage.debug_level() > 1 {
-                        eprintln!(
-                            "FOUND {} at {}\n",
-                            expr.name.clone(),
-                            path_to_string(&search)
-                        );
-                    }
+                    debug!(
+                        "FOUND {} at {}\n",
+                        expr.name.clone(),
+                        path_to_string(&search)
+                    );
                     let mut res = expr.clone();
                     res.info.defined_at = Some(search);
                     return Ok(res.into_node());
                 }
                 None => {
                     search.pop(); // Strip the name off.
-                    if storage.debug_level() > 1 {
-                        eprintln!(
-                            "   not found {} at {}",
-                            expr.name.clone(),
-                            path_to_string(&search)
-                        );
-                    }
+                    debug!(
+                        "   not found {} at {}",
+                        expr.name.clone(),
+                        path_to_string(&search)
+                    );
                     if search.is_empty() {
                         return Err(TError::UnknownSymbol(
                             expr.name.clone(),
@@ -170,9 +163,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
     }
 
     fn visit_abs(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Abs) -> Res {
-        if storage.debug_level() > 1 {
-            eprintln!("visiting {} {}", path_to_string(&state.path), &expr.name);
-        }
+        debug!("visiting {} {}", path_to_string(&state.path), &expr.name);
         let value = Box::new(self.visit(storage, state, &expr.value)?);
         Ok(Abs {
             name: expr.name.clone(),
@@ -183,9 +174,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
     }
 
     fn visit_let(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Let) -> Res {
-        if storage.debug_level() > 1 {
-            eprintln!("visiting {} {}", path_to_string(&state.path), &expr.name);
-        }
+        debug!("visiting {} {}", path_to_string(&state.path), &expr.name);
         let path_name = Symbol::new(&expr.name);
         state.path.push(path_name);
         let args = if let Some(args) = &expr.args {

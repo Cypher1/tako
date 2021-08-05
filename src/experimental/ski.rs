@@ -21,7 +21,7 @@ use SVal::*;
 use Ski::*;
 
 pub fn eval(mut stack: Stack) -> Stack {
-    // eprintln!("{:?}", shows(&stack));
+    // debug!("{:?}", shows(&stack));
     while let Some(curr) = stack.pop_front() {
         match curr {
             T(S) => {
@@ -88,7 +88,7 @@ pub fn eval(mut stack: Stack) -> Stack {
                 }
             }
         }
-        // eprintln!("{:?}", shows(&stack));
+        // debug!("{:?}", shows(&stack));
     }
     // Error: no instructions
     panic!("no instructions")
@@ -118,15 +118,16 @@ pub fn shows(s: &Stack) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use log::*;
 
     fn v(name: &str) -> SVal {
         SVal::V(name.to_string())
     }
 
     fn test(stack: Stack, expected: Stack) {
-        eprintln!("Running: {:?}", &stack);
+        info!("Running: {:?}", &stack);
         let out = eval(stack);
-        eprintln!("Got: {:?}", &out);
+        info!("Got: {:?}", &out);
 
         assert_eq!(out, expected);
     }

@@ -1,3 +1,5 @@
+use log::*;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Command {
     Build,
@@ -12,7 +14,6 @@ pub struct Options {
     pub show_ast: bool,
     pub show_table: bool,
     pub show_full_ast: bool,
-    pub debug_level: i32,
     pub interpreter_args: Vec<String>,
 }
 
@@ -24,20 +25,12 @@ impl Default for Options {
             show_ast: false,
             show_table: false,
             show_full_ast: false,
-            debug_level: 0,
             interpreter_args: vec![],
         }
     }
 }
 
 impl Options {
-    pub fn with_debug(self: Options, debug_level: i32) -> Options {
-        Options {
-            debug_level,
-            ..self
-        }
-    }
-
     pub fn with_file(self: Options, filename: &str) -> Options {
         let mut files = self.files;
         files.push(filename.to_owned());
@@ -61,7 +54,6 @@ impl Options {
                 match f.as_str() {
                     "-i" | "--interactive" => opts.cmd = Command::Repl,
                     "-r" | "--run" => opts.cmd = Command::Interpret,
-                    "-d" => opts.debug_level += 1,
                     "--ast" => opts.show_ast = true,
                     "--table" => opts.show_table = true,
                     "--full-ast" => opts.show_full_ast = true,
@@ -72,7 +64,7 @@ impl Options {
                     "--" => got_dashdash = true,
                     arg => {
                         if arg != "-h" && arg != "--help" {
-                            eprintln!("unexpected flag '{}'", f);
+                            warn!("unexpected flag '{}'", f);
                         }
                         print_cli_help();
                         return opts;
@@ -91,12 +83,12 @@ impl Options {
 }
 
 pub fn print_cli_info() {
-    eprintln!("{}{}", TITLE, VERSION);
+    info!("{}{}", TITLE, VERSION);
 }
 
 pub fn print_cli_help() {
     print_cli_info();
-    eprintln!("{}", USAGE);
+    info!("{}", USAGE);
 }
 
 pub const TITLE: &str = "tako v";

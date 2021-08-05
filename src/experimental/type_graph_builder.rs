@@ -3,6 +3,7 @@ use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::passes::interpreter::Interpreter;
 use crate::primitives::{Prim::*, Val::*, *};
+use log::*;
 use std::collections::BTreeSet;
 
 use crate::experimental::type_graph::*;
@@ -23,12 +24,10 @@ pub struct State {
 impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
     fn visit_root(&mut self, storage: &mut DBStorage, module: &Path) -> Result<TypeGraph, TError> {
         let expr = &storage.parse_file(module.clone())?;
-        if storage.debug_level() > 0 {
-            eprintln!(
-                "building symbol table & type graph for file... {}",
-                path_to_string(module)
-            );
-        }
+        info!(
+            "building symbol table & type graph for file... {}",
+            path_to_string(module)
+        );
         let mut state = State {
             path: module.clone(),
             graph: TypeGraph::default(),
@@ -38,14 +37,12 @@ impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
         Ok(state.graph)
     }
 
-    fn visit_sym(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Sym) -> Res {
-        if storage.debug_level() > 1 {
-            eprintln!(
-                "visiting sym {} {}",
-                path_to_string(&state.path),
-                &expr.name
-            );
-        }
+    fn visit_sym(&mut self, _storage: &mut DBStorage, state: &mut State, expr: &Sym) -> Res {
+        debug!(
+            "visiting sym {} {}",
+            path_to_string(&state.path),
+            &expr.name
+        );
         // TODO: lookup type in state
         Ok(Variable(format!("typeof({})", expr.name)))
     }
@@ -102,9 +99,7 @@ impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
     }
 
     fn visit_abs(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Abs) -> Res {
-        if storage.debug_level() > 1 {
-            eprintln!("visiting {} {}", path_to_string(&state.path), &expr.name);
-        }
+        debug!("visiting {} {}", path_to_string(&state.path), &expr.name);
         Ok(WithRequirement(
             Box::new(self.visit(storage, state, &expr.value)?),
             vec![expr.name.clone()],
@@ -112,9 +107,7 @@ impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
     }
 
     fn visit_let(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Let) -> Res {
-        if storage.debug_level() > 1 {
-            eprintln!("visiting {} {}", path_to_string(&state.path), &expr.name);
-        }
+        debug!("visiting {} {}", path_to_string(&state.path), &expr.name);
         let path_name = Symbol::new(&expr.name);
         state.path.push(path_name);
         let args = if let Some(args) = &expr.args {
@@ -151,7 +144,7 @@ impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
         let ty = op.ty;
         let arg_ty = self.visit(storage, state, &expr.inner)?;
 
-        eprintln!("un op {}: {}, {}", &expr.name, &ty, &arg_ty);
+        debug!("un op {}: {}, {}", &expr.name, &ty, &arg_ty);
         Interpreter::default().visit_apply(
             storage,
             &mut vec![],
@@ -171,7 +164,7 @@ impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
         let left_ty = self.visit(storage, state, &expr.left)?;
         let right_ty = self.visit(storage, state, &expr.right)?;
 
-        eprintln!("bin op {}: {}, {} {}", &expr.name, &ty, &left_ty, &right_ty);
+        debug!("bin op {}: {}, {} {}", &expr.name, &ty, &left_ty, &right_ty);
         Interpreter::default().visit_apply(
             storage,
             &mut vec![],

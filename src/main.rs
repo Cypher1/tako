@@ -1,5 +1,6 @@
 #![deny(clippy::all)]
 
+use log::*;
 use rustyline::error::ReadlineError;
 use rustyline::{config::Config, Editor};
 use std::env;
@@ -14,16 +15,16 @@ use takolib::{work, work_on_string};
 fn handle(res: Result<String, TError>) {
     match res {
         Ok(res) => {
-            eprintln!("{}", res);
+            println!("{}", res);
         }
         Err(err) => {
             let mut stderr = StandardStream::stderr(ColorChoice::Auto);
             stderr
                 .set_color(ColorSpec::new().set_fg(Some(Color::Yellow)))
                 .expect("Could not set termcolor");
-            eprintln!("Error: {}", err);
+            error!("Error: {}", err);
             if let Some(source) = err.source() {
-                eprintln!("Caused by: {}", source);
+                error!("Caused by: {}", source);
             }
 
             stderr
@@ -64,7 +65,7 @@ fn repl(storage: &mut DBStorage) -> Result<(), TError> {
 
     let mut rl = Editor::<()>::with_config(rl_config);
     if let Err(err) = rl.load_history(&storage.history_file()) {
-        eprintln!("{:?}", err);
+        error!("{:?}", err);
     }
     let mut last_cmd_was_interrupt = false;
     loop {
@@ -84,12 +85,12 @@ fn repl(storage: &mut DBStorage) -> Result<(), TError> {
                 if last_cmd_was_interrupt {
                     break;
                 }
-                eprintln!("(To exit, press ^C again or type :exit)");
+                info!("(To exit, press ^C again or type :exit)");
                 cmd_was_interrupt = true;
             }
             Err(ReadlineError::Eof) => break,
             Err(err) => {
-                eprintln!("Readline Error: {:?}", err);
+                error!("Readline Error: {:?}", err);
                 break;
             }
         }

@@ -1,3 +1,4 @@
+use log::*;
 use specs::Entity;
 use std::collections::VecDeque;
 use std::sync::Arc;
@@ -546,9 +547,7 @@ pub fn parse_string(
     text: &Arc<String>,
 ) -> Result<(Node, Entity), TError> {
     let toks = lex_string(storage, module, text)?;
-    if storage.debug_level() > 0 {
-        eprintln!("parsing str... {}", path_to_string(module));
-    }
+    debug!("parsing str... {}", path_to_string(module));
     let (root, root_node, left_over) = expr(storage, toks, 0, module)?;
     let root_entity = storage.store_node(root_node);
 
@@ -559,7 +558,7 @@ pub fn parse_string(
         ));
     }
     if storage.options.show_ast {
-        eprintln!("ast: {}", root);
+        debug!("ast: {}", root);
     }
     Ok((root, root_entity))
 }
