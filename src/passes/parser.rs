@@ -557,9 +557,7 @@ pub fn parse_string(
             head.get_info(),
         ));
     }
-    if storage.options.show_ast {
-        debug!("ast: {}", root);
-    }
+    debug!("ast: {}", root);
     Ok((root, root_entity))
 }
 

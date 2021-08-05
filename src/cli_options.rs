@@ -11,9 +11,6 @@ pub enum Command {
 pub struct Options {
     pub files: Vec<String>,
     pub cmd: Command,
-    pub show_ast: bool,
-    pub show_table: bool,
-    pub show_full_ast: bool,
     pub interpreter_args: Vec<String>,
 }
 
@@ -22,9 +19,6 @@ impl Default for Options {
         Options {
             files: vec![],
             cmd: Command::Build,
-            show_ast: false,
-            show_table: false,
-            show_full_ast: false,
             interpreter_args: vec![],
         }
     }
@@ -54,9 +48,6 @@ impl Options {
                 match f.as_str() {
                     "-i" | "--interactive" => opts.cmd = Command::Repl,
                     "-r" | "--run" => opts.cmd = Command::Interpret,
-                    "--ast" => opts.show_ast = true,
-                    "--table" => opts.show_table = true,
-                    "--full-ast" => opts.show_full_ast = true,
                     "--version" => {
                         println!("{}{}", TITLE, VERSION);
                         return opts;
@@ -98,17 +89,13 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const USAGE: &str = "An experimental programming language for ergonomic software verification.
 
 Usage:
-  tako [-i|-r] [-d <level>] [--ast] [--full-ast] [--table] <files>...
+  tako [-i|-r] <files>...
   tako (-h | --help)
   tako --version
 
 Options:
   -i --interactive    Run as a repl (interactive mode).
   -r --run            Run files in interpreter.
-  -d --debug=<level>  Level of debug logging to use [default: 0].
-  --ast               Pretty print an abstract syntax tree of the code.
-  --full-ast          Debug print an abstract syntax tree of the code.
-  --table             Pretty print the symbol table of the code.
   -h --help           Show this screen.
   --version           Show compiler version.
 ";
