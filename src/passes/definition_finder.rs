@@ -62,10 +62,7 @@ impl<'a> System<'a> for DefinitionFinderSystem {
 impl Visitor<State, Node, Root, Path> for DefinitionFinder {
     fn visit_root(&mut self, storage: &mut DBStorage, module: &Path) -> Result<Root, TError> {
         let expr = storage.build_symbol_table(module.clone())?;
-        info!(
-            "Looking up definitions... {}",
-            path_to_string(module)
-        );
+        info!("Looking up definitions... {}", path_to_string(module));
         let mut definition_finder = DefinitionFinderSystem {
             path_to_entity: storage.path_to_entity.clone(),
         };
@@ -222,7 +219,10 @@ mod tests {
 
     type Test = Result<(), TError>;
 
-    fn symbols_found_using(storage: &mut DBStorage, prog_str: &'static str) -> Result<String, TError> {
+    fn symbols_found_using(
+        storage: &mut DBStorage,
+        prog_str: &'static str,
+    ) -> Result<String, TError> {
         let prog_filename = "test/prog.tk";
         storage.set_file(prog_filename, prog_str.to_owned());
         let prog_module = storage.module_name(prog_filename.to_owned());
