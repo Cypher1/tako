@@ -16,12 +16,6 @@ pub struct DefinitionFinder {}
 // TODO: Return nodes.
 type Res = Result<Node, TError>;
 
-#[derive(Debug, Clone)]
-pub struct Namespace {
-    name: Symbol,
-    info: Entry,
-}
-
 struct DefinitionFinderSystem {
     path_to_entity: HashMap<Path, Entity>,
 }
@@ -57,6 +51,7 @@ impl<'a> System<'a> for DefinitionFinderSystem {
                 defined_at.0 = Some(found_path);
             } else if let Some(ext) = get_externs().unwrap().get(&path_to_string(&symbol.name)) {
                 debug!("Found extern: {:?} -> {:?}", &symbol, &ext);
+                defined_at.0 = Some(symbol.name.clone());
             } else {
                 debug!("Couldn't find symbol: {:?}", &symbol);
             }
@@ -67,10 +62,7 @@ impl<'a> System<'a> for DefinitionFinderSystem {
 impl Visitor<State, Node, Root, Path> for DefinitionFinder {
     fn visit_root(&mut self, storage: &mut DBStorage, module: &Path) -> Result<Root, TError> {
         let expr = storage.build_symbol_table(module.clone())?;
-        info!(
-            "looking up definitions in file... {}",
-            path_to_string(module)
-        );
+        info!("Looking up definitions... {}", path_to_string(module));
         let mut definition_finder = DefinitionFinderSystem {
             path_to_entity: storage.path_to_entity.clone(),
         };
@@ -221,4 +213,100 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use super::*;
+    use crate::database::DBStorage;
+
+    type Test = Result<(), TError>;
+
+    fn symbols_found_using(
+        storage: &mut DBStorage,
+        prog_str: &'static str,
+    ) -> Result<String, TError> {
+        let prog_filename = "test/prog.tk";
+        storage.set_file(prog_filename, prog_str.to_owned());
+        let prog_module = storage.module_name(prog_filename.to_owned());
+
+        let Root { ast, table } = DefinitionFinder::process(&prog_module, storage)?;
+
+        debug!("{:?}", ast);
+
+        Ok(format!(
+            "{:?}",
+            table
+                .find(&prog_module)
+                .expect("couldn't find definitions for test file")
+        ))
+    }
+
+    fn assert_symbols_found(prog_str: &'static str, matches: &'static str) -> Test {
+        let mut storage = DBStorage::default();
+        let prog_definitions = symbols_found_using(&mut storage, prog_str)?;
+        assert_str_eq!(prog_definitions, matches);
+        Ok(())
+    }
+
+    #[test]
+    fn use_local_definition() -> Test {
+        assert_symbols_found(
+            "x=23;x",
+            "Entry { uses: {}, defined_at: [] } {
+    main: Entry { uses: {[test, prog.tk]}, defined_at: [] },
+    x: Entry { uses: {[test, prog.tk]}, defined_at: [] },
+}",
+        )
+    }
+
+    #[test]
+    fn entity_use_local_definition() -> Test {
+        let mut storage = DBStorage::default();
+        let _ = symbols_found_using(&mut storage, "x=23;x")?;
+        assert_str_eq!(storage.format_entities(),
+            "\
+Entity 0:
+ - HasValue(23)
+Entity 1:
+ - Definition { names: [[x]], params: None, implementations: [Entity(0, Generation(1))], path: [test, prog.tk] }
+Entity 2:
+ - DefinedAt(Some([test, prog.tk, x]))
+ - SymbolRef { name: [x], context: [test, prog.tk] }
+Entity 3:
+ - DefinedAt(Some([;]))
+ - SymbolRef { name: [;], context: [test, prog.tk] }
+Entity 4:
+ - Call(Entity(3, Generation(1)), [Entity(1, Generation(1)), Entity(2, Generation(1))])");
+        Ok(())
+    }
+
+    #[test]
+    fn entity_use_closest_definition() -> Test {
+        let mut storage = DBStorage::default();
+        let _ = symbols_found_using(&mut storage, "x=23;y=(x=45;x)")?;
+        assert_str_eq!(storage.format_entities(),
+            "\
+Entity 0:
+ - HasValue(23)
+Entity 1:
+ - Definition { names: [[x]], params: None, implementations: [Entity(0, Generation(1))], path: [test, prog.tk] }
+Entity 2:
+ - HasValue(45)
+Entity 3:
+ - Definition { names: [[x]], params: None, implementations: [Entity(2, Generation(1))], path: [test, prog.tk, y] }
+Entity 4:
+ - DefinedAt(Some([test, prog.tk, y, x]))
+ - SymbolRef { name: [x], context: [test, prog.tk, y] }
+Entity 5:
+ - DefinedAt(Some([;]))
+ - SymbolRef { name: [;], context: [test, prog.tk, y] }
+Entity 6:
+ - Call(Entity(5, Generation(1)), [Entity(3, Generation(1)), Entity(4, Generation(1))])
+Entity 7:
+ - Definition { names: [[y]], params: None, implementations: [Entity(6, Generation(1))], path: [test, prog.tk] }
+Entity 8:
+ - DefinedAt(Some([;]))
+ - SymbolRef { name: [;], context: [test, prog.tk] }
+Entity 9:
+ - Call(Entity(8, Generation(1)), [Entity(1, Generation(1)), Entity(7, Generation(1))])");
+        Ok(())
+    }
+}

@@ -25,7 +25,7 @@ impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
     fn visit_root(&mut self, storage: &mut DBStorage, module: &Path) -> Result<TypeGraph, TError> {
         let expr = &storage.parse_file(module.clone())?;
         info!(
-            "building symbol table & type graph for file... {}",
+            "Building symbol table & type graph... {}",
             path_to_string(module)
         );
         let mut state = State {

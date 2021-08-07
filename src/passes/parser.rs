@@ -547,7 +547,7 @@ pub fn parse_string(
     text: &Arc<String>,
 ) -> Result<(Node, Entity), TError> {
     let toks = lex_string(storage, module, text)?;
-    debug!("parsing str... {}", path_to_string(module));
+    debug!("Parsing contents... {}", path_to_string(module));
     let (root, root_node, left_over) = expr(storage, toks, 0, module)?;
     let root_entity = storage.store_node(root_node);
 

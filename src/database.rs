@@ -209,7 +209,7 @@ impl DBStorage {
     }
 
     pub fn parse_file(&mut self, module: Path) -> Result<Node, TError> {
-        info!("parsing file... {}", path_to_string(&module));
+        info!("Parsing file... {}", path_to_string(&module));
         let filename = self.filename(module.clone());
         let contents = if let Some(contents) = self.file_contents.get(&filename) {
             contents.clone()
@@ -224,26 +224,26 @@ impl DBStorage {
     }
     pub fn infer(&mut self, expr: Node, env: Val) -> Result<Val, TError> {
         use crate::passes::type_checker::infer;
-        info!("infering type for ... {}", &expr);
+        info!("Infering type for ... {}", &expr);
         infer(self, &expr, &env)
     }
 
     pub fn look_up_definitions(&mut self, context: Path) -> Result<Root, TError> {
         use crate::passes::definition_finder::DefinitionFinder;
         let module = to_file_path(&context);
-        info!("look up definitions >> {}", path_to_string(&module));
+        info!("Look up definitions >> {}", path_to_string(&module));
         DefinitionFinder::process(&module, self)
     }
 
     pub fn compile_to_cpp(&mut self, module: Path) -> Result<(String, HashSet<String>), TError> {
         use crate::passes::to_cpp::CodeGenerator;
-        info!("generating code for file ... {}", path_to_string(&module));
+        info!("Generating code... {}", path_to_string(&module));
         CodeGenerator::process(&module, self)
     }
 
     pub fn build_with_gpp(&mut self, module: Path) -> Result<String, TError> {
         let (res, flags) = self.compile_to_cpp(module.clone())?;
-        info!("building file with g++ ... {}", path_to_string(&module));
+        info!("Building file with g++ ... {}", path_to_string(&module));
 
         let name: String = module
             .iter()
