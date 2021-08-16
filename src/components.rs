@@ -1,10 +1,10 @@
-use specs::prelude::*;
-use specs::Component;
-
 use crate::ast::Path;
 use crate::errors::TError;
+use crate::location::Loc;
 use crate::primitives::Val;
-use crate::tokens::TokenType;
+use specs::prelude::*;
+use specs::Component;
+use std::collections::BTreeSet;
 
 #[derive(Component, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[storage(VecStorage)]
@@ -12,10 +12,7 @@ pub struct DefinedAt(pub Option<Path>);
 
 #[derive(Component, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[storage(VecStorage)]
-pub struct Token {
-    pub token: TokenType,
-    pub value: String,
-}
+pub struct InstancesAt(pub BTreeSet<Loc>);
 
 #[derive(Component, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[storage(VecStorage)]
