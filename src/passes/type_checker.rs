@@ -286,7 +286,13 @@ mod tests {
         let num = int32(23).into_node();
         let env = rec![]; // TODO: Track the type env
         assert_eq!(infer(&mut storage, &num, &env), Ok(i32_type()));
-        assert_type("23", "I32", "")
+        assert_type("23", "I32", "\
+Entity 0:
+ - SymbolRef { name: [I32], context: [test, type.tk] }
+Entity 1:
+ - HasValue(23)
+ - HasType(I32)"
+        )
     }
 
     #[test]
@@ -321,12 +327,53 @@ mod tests {
 
     #[test]
     fn infer_type_of_sym_with_extra_lets_i32() -> Test {
-        assert_type("x=12,y=4;x", "I32", "")
+        assert_type("x=12,y=4;x", "I32", "\
+Entity 0:
+ - SymbolRef { name: [I32], context: [test, type.tk] }
+Entity 1:
+ - HasValue(12)
+Entity 2:
+ - HasValue(4)
+Entity 3:
+ - Definition { names: [[x]], params: None, implementations: [Entity(1, Generation(1))], path: [test, prog.tk] }
+Entity 4:
+ - Definition { names: [[y]], params: None, implementations: [Entity(2, Generation(1))], path: [test, prog.tk] }
+Entity 5:
+Entity 6:
+ - SymbolRef { name: [x], context: [test, prog.tk] }
+Entity 7:
+ - SymbolRef { name: [;], context: [test, prog.tk] }
+Entity 8:
+ - Call(Entity(7, Generation(1)), [Entity(5, Generation(1)), Entity(6, Generation(1))])")
     }
 
     #[test]
     fn infer_type_of_sym_with_struct_lets_i32() -> Test {
-        assert_type("x=12,y=4,x", "(x=I32,y=I32,it=I32)", "")
+        assert_type("x=12,y=4,x", "(x=I32,y=I32,it=I32)", "\
+Entity 0:
+ - SymbolRef { name: [I32], context: [test, type.tk, x] }
+Entity 1:
+ - SymbolRef { name: [I32], context: [test, type.tk, y] }
+Entity 2:
+ - Definition { names: [[x]], params: None, implementations: [Entity(0, Generation(1))], path: [test, type.tk] }
+Entity 3:
+ - Definition { names: [[y]], params: None, implementations: [Entity(1, Generation(1))], path: [test, type.tk] }
+Entity 4:
+ - SymbolRef { name: [I32], context: [test, type.tk, it] }
+Entity 5:
+ - Definition { names: [[it]], params: None, implementations: [Entity(4, Generation(1))], path: [test, type.tk] }
+Entity 6:
+Entity 7:
+ - HasValue(12)
+Entity 8:
+ - HasValue(4)
+Entity 9:
+ - Definition { names: [[x]], params: None, implementations: [Entity(7, Generation(1))], path: [test, prog.tk] }
+Entity 10:
+ - Definition { names: [[y]], params: None, implementations: [Entity(8, Generation(1))], path: [test, prog.tk] }
+Entity 11:
+ - SymbolRef { name: [x], context: [test, prog.tk] }
+Entity 12:")
     }
 
     // #[test]
@@ -361,11 +408,27 @@ mod tests {
 
     #[test]
     fn infer_type_of_argc() -> Test {
-        assert_type("argc", "I32", "")
+        assert_type("argc", "I32", "\
+Entity 0:
+ - SymbolRef { name: [I32], context: [test, type.tk] }
+Entity 1:
+ - SymbolRef { name: [argc], context: [test, prog.tk] }")
     }
 
     #[test]
     fn infer_type_of_argv() -> Test {
-        assert_type("argv", "(it=I32) -> String", "")
+        assert_type("argv", "(it=I32) -> String", "\
+Entity 0:
+ - SymbolRef { name: [I32], context: [test, type.tk, it] }
+Entity 1:
+ - Definition { names: [[it]], params: None, implementations: [Entity(0, Generation(1))], path: [test, type.tk] }
+Entity 2:
+ - SymbolRef { name: [String], context: [test, type.tk] }
+Entity 3:
+ - SymbolRef { name: [->], context: [test, type.tk] }
+Entity 4:
+ - Call(Entity(3, Generation(1)), [Entity(1, Generation(1)), Entity(2, Generation(1))])
+Entity 5:
+ - SymbolRef { name: [argv], context: [test, prog.tk] }")
     }
 }
