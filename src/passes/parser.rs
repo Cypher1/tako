@@ -317,6 +317,7 @@ fn led(
                             def_path.push(Symbol::new(&s.name));
                             let (right, right_node, new_toks) = parse_right(storage, &def_path)?;
                             let right_entity = storage.store_node(right_node);
+                            let loc = left_node.loc.clone();
                             return Ok((
                                 Let {
                                     name: s.name,
@@ -325,12 +326,13 @@ fn led(
                                     info: head.get_info(),
                                 }
                                 .into_node(),
-                                left_node.into_definition(storage, right_entity, head.pos)?,
+                                left_node.into_definition(storage, right_entity, loc)?,
                                 new_toks,
                             ));
                         }
                         Node::ApplyNode(a) => match &*a.inner {
                             Node::SymNode(s) => {
+                                let loc = a.inner.get_info().loc.expect("This shouldn't be option").clone();
                                 let mut def_path = path.to_vec();
                                 def_path.push(Symbol::new(&s.name));
                                 let (right, right_node, new_toks) =
@@ -344,7 +346,7 @@ fn led(
                                         info: head.get_info(),
                                     }
                                     .into_node(),
-                                    left_node.into_definition(storage, right_entity, head.pos)?,
+                                    left_node.into_definition(storage, right_entity, loc)?,
                                     new_toks,
                                 ));
                             }
@@ -393,6 +395,7 @@ fn led(
                     && toks.front().map(|t| &t.value) == Some(&")".to_string())
                 {
                     toks.pop_front();
+                    let loc = left_node.loc.clone();
                     return Ok((
                         Apply {
                             inner: Box::new(left),
@@ -412,7 +415,7 @@ fn led(
                                 children: vec![],
                             },
                         }
-                        .into_node(head.pos, None),
+                        .into_node(loc, None),
                         toks,
                     ));
                 }
@@ -453,6 +456,7 @@ fn led(
                 }
                 new_toks.pop_front();
                 // Introduce arguments
+                let loc = left_node.loc.clone();
                 Ok((
                     Apply {
                         inner: Box::new(left),
@@ -470,7 +474,7 @@ fn led(
                             children: storage.store_node_set(args_node),
                         },
                     }
-                    .into_node(head.pos, None),
+                    .into_node(loc, None),
                     new_toks,
                 ))
             }
@@ -786,7 +790,8 @@ pub mod tests {
             dbg_parse_entities("12")?,
             "\
 Entity 0:
- - HasValue(12)"
+ - HasValue(12)
+ - InstancesAt(test.tk:1:1)"
         );
         Ok(())
     }
@@ -799,9 +804,11 @@ Entity 0:
 Entity 0:
  - DefinedAt(None)
  - SymbolRef { name: [Int], context: [test.tk] }
+ - InstancesAt(test.tk:1:6)
 Entity 1:
  - HasType(Entity(0, Generation(1)))
- - HasValue(12)"
+ - HasValue(12)
+ - InstancesAt(test.tk:1:1)"
         );
         Ok(())
     }
@@ -813,17 +820,22 @@ Entity 1:
             "\
 Entity 0:
  - HasValue(3)
+ - InstancesAt(test.tk:1:1)
 Entity 1:
  - HasValue(4)
+ - InstancesAt(test.tk:1:5)
 Entity 2:
  - DefinedAt(None)
  - SymbolRef { name: [Int], context: [test.tk] }
+ - InstancesAt(test.tk:1:9)
 Entity 3:
  - DefinedAt(None)
  - SymbolRef { name: [*], context: [test.tk] }
+ - InstancesAt(test.tk:1:3)
 Entity 4:
  - Call(Entity(3, Generation(1)), [Entity(0, Generation(1)), Entity(1, Generation(1))])
- - HasType(Entity(2, Generation(1)))"
+ - HasType(Entity(2, Generation(1)))
+ - InstancesAt(test.tk:1:3)"
         );
         Ok(())
     }
@@ -835,17 +847,22 @@ Entity 4:
             "\
 Entity 0:
  - HasValue(3)
+ - InstancesAt(test.tk:1:1)
 Entity 1:
  - DefinedAt(None)
  - SymbolRef { name: [Int], context: [test.tk] }
+ - InstancesAt(test.tk:1:10)
 Entity 2:
  - HasType(Entity(1, Generation(1)))
  - HasValue(4)
+ - InstancesAt(test.tk:1:6)
 Entity 3:
  - DefinedAt(None)
  - SymbolRef { name: [*], context: [test.tk] }
+ - InstancesAt(test.tk:1:3)
 Entity 4:
- - Call(Entity(3, Generation(1)), [Entity(0, Generation(1)), Entity(2, Generation(1))])"
+ - Call(Entity(3, Generation(1)), [Entity(0, Generation(1)), Entity(2, Generation(1))])
+ - InstancesAt(test.tk:1:3)"
         );
         Ok(())
     }
@@ -857,16 +874,21 @@ Entity 4:
             "\
 Entity 0:
  - HasValue(3)
+ - InstancesAt(test.tk:1:2)
 Entity 1:
  - HasValue(4)
+ - InstancesAt(test.tk:1:6)
 Entity 2:
  - HasValue(12)
+ - InstancesAt(test.tk:1:11)
 Entity 3:
  - DefinedAt(None)
  - SymbolRef { name: [*], context: [test.tk] }
+ - InstancesAt(test.tk:1:4)
 Entity 4:
  - Call(Entity(3, Generation(1)), [Entity(0, Generation(1)), Entity(1, Generation(1))])
- - HasType(Entity(2, Generation(1)))"
+ - HasType(Entity(2, Generation(1)))
+ - InstancesAt(test.tk:1:4)"
         );
         Ok(())
     }
@@ -877,7 +899,8 @@ Entity 4:
             dbg_parse_entities("\"hello world\"")?,
             "\
 Entity 0:
- - HasValue('hello world')"
+ - HasValue('hello world')
+ - InstancesAt(test.tk:1:1)"
         );
         Ok(())
     }
@@ -890,9 +913,11 @@ Entity 0:
 Entity 0:
  - DefinedAt(None)
  - SymbolRef { name: [String], context: [test.tk] }
+ - InstancesAt(test.tk:1:17)
 Entity 1:
  - HasType(Entity(0, Generation(1)))
- - HasValue('hello world')"
+ - HasValue('hello world')
+ - InstancesAt(test.tk:1:1)"
         );
         Ok(())
     }
@@ -904,11 +929,14 @@ Entity 1:
             "\
 Entity 0:
  - HasValue(12)
+ - InstancesAt(test.tk:1:2)
 Entity 1:
  - DefinedAt(None)
  - SymbolRef { name: [-], context: [test.tk] }
+ - InstancesAt(test.tk:1:1)
 Entity 2:
- - Call(Entity(1, Generation(1)), [Entity(0, Generation(1))])"
+ - Call(Entity(1, Generation(1)), [Entity(0, Generation(1))])
+ - InstancesAt(test.tk:1:1)"
         );
         Ok(())
     }
@@ -920,13 +948,17 @@ Entity 2:
             "\
 Entity 0:
  - HasValue(14)
+ - InstancesAt(test.tk:1:1)
 Entity 1:
  - HasValue(12)
+ - InstancesAt(test.tk:1:4)
 Entity 2:
  - DefinedAt(None)
  - SymbolRef { name: [-], context: [test.tk] }
+ - InstancesAt(test.tk:1:3)
 Entity 3:
- - Call(Entity(2, Generation(1)), [Entity(0, Generation(1)), Entity(1, Generation(1))])"
+ - Call(Entity(2, Generation(1)), [Entity(0, Generation(1)), Entity(1, Generation(1))])
+ - InstancesAt(test.tk:1:3)"
         );
         Ok(())
     }
@@ -938,13 +970,17 @@ Entity 3:
             "\
 Entity 0:
  - HasValue(14)
+ - InstancesAt(test.tk:1:1)
 Entity 1:
  - HasValue(12)
+ - InstancesAt(test.tk:1:4)
 Entity 2:
  - DefinedAt(None)
  - SymbolRef { name: [*], context: [test.tk] }
+ - InstancesAt(test.tk:1:3)
 Entity 3:
- - Call(Entity(2, Generation(1)), [Entity(0, Generation(1)), Entity(1, Generation(1))])"
+ - Call(Entity(2, Generation(1)), [Entity(0, Generation(1)), Entity(1, Generation(1))])
+ - InstancesAt(test.tk:1:3)"
         );
         Ok(())
     }
@@ -956,20 +992,27 @@ Entity 3:
             "\
 Entity 0:
  - HasValue(3)
+ - InstancesAt(test.tk:1:1)
 Entity 1:
  - HasValue(2)
+ - InstancesAt(test.tk:1:3)
 Entity 2:
  - HasValue(4)
+ - InstancesAt(test.tk:1:5)
 Entity 3:
  - DefinedAt(None)
  - SymbolRef { name: [*], context: [test.tk] }
+ - InstancesAt(test.tk:1:4)
 Entity 4:
  - Call(Entity(3, Generation(1)), [Entity(1, Generation(1)), Entity(2, Generation(1))])
+ - InstancesAt(test.tk:1:4)
 Entity 5:
  - DefinedAt(None)
  - SymbolRef { name: [+], context: [test.tk] }
+ - InstancesAt(test.tk:1:2)
 Entity 6:
- - Call(Entity(5, Generation(1)), [Entity(0, Generation(1)), Entity(4, Generation(1))])"
+ - Call(Entity(5, Generation(1)), [Entity(0, Generation(1)), Entity(4, Generation(1))])
+ - InstancesAt(test.tk:1:2)" // TODO: should report the left most child node.
         );
         Ok(())
     }
@@ -981,20 +1024,27 @@ Entity 6:
             "\
 Entity 0:
  - HasValue(3)
+ - InstancesAt(test.tk:1:1)
 Entity 1:
  - HasValue(2)
+ - InstancesAt(test.tk:1:3)
 Entity 2:
  - DefinedAt(None)
  - SymbolRef { name: [*], context: [test.tk] }
+ - InstancesAt(test.tk:1:2)
 Entity 3:
  - Call(Entity(2, Generation(1)), [Entity(0, Generation(1)), Entity(1, Generation(1))])
+ - InstancesAt(test.tk:1:2)
 Entity 4:
  - HasValue(4)
+ - InstancesAt(test.tk:1:5)
 Entity 5:
  - DefinedAt(None)
  - SymbolRef { name: [+], context: [test.tk] }
+ - InstancesAt(test.tk:1:4)
 Entity 6:
- - Call(Entity(5, Generation(1)), [Entity(3, Generation(1)), Entity(4, Generation(1))])"
+ - Call(Entity(5, Generation(1)), [Entity(3, Generation(1)), Entity(4, Generation(1))])
+ - InstancesAt(test.tk:1:4)"
         );
         Ok(())
     }
@@ -1006,20 +1056,27 @@ Entity 6:
             "\
 Entity 0:
  - HasValue(3)
+ - InstancesAt(test.tk:1:1)
 Entity 1:
  - HasValue(2)
+ - InstancesAt(test.tk:1:4)
 Entity 2:
  - HasValue(4)
+ - InstancesAt(test.tk:1:6)
 Entity 3:
  - DefinedAt(None)
  - SymbolRef { name: [+], context: [test.tk] }
+ - InstancesAt(test.tk:1:5)
 Entity 4:
  - Call(Entity(3, Generation(1)), [Entity(1, Generation(1)), Entity(2, Generation(1))])
+ - InstancesAt(test.tk:1:5)
 Entity 5:
  - DefinedAt(None)
  - SymbolRef { name: [*], context: [test.tk] }
+ - InstancesAt(test.tk:1:2)
 Entity 6:
- - Call(Entity(5, Generation(1)), [Entity(0, Generation(1)), Entity(4, Generation(1))])"
+ - Call(Entity(5, Generation(1)), [Entity(0, Generation(1)), Entity(4, Generation(1))])
+ - InstancesAt(test.tk:1:2)"
         );
         Ok(())
     }
@@ -1031,13 +1088,17 @@ Entity 6:
             "\
 Entity 0:
  - HasValue('hello')
+ - InstancesAt(test.tk:1:1)
 Entity 1:
  - HasValue(' world')
+ - InstancesAt(test.tk:1:9)
 Entity 2:
  - DefinedAt(None)
  - SymbolRef { name: [+], context: [test.tk] }
+ - InstancesAt(test.tk:1:8)
 Entity 3:
- - Call(Entity(2, Generation(1)), [Entity(0, Generation(1)), Entity(1, Generation(1))])"
+ - Call(Entity(2, Generation(1)), [Entity(0, Generation(1)), Entity(1, Generation(1))])
+ - InstancesAt(test.tk:1:8)"
         );
         Ok(())
     }
@@ -1049,10 +1110,13 @@ Entity 3:
             "\
 Entity 0:
  - HasValue('hello world')
+ - InstancesAt(test.tk:1:1)
 Entity 1:
  - HasValue(7)
+ - InstancesAt(test.tk:2:1)
 Entity 2:
- - Sequence([Entity(0, Generation(1)), Entity(1, Generation(1))])"
+ - Sequence([Entity(0, Generation(1)), Entity(1, Generation(1))])
+ - InstancesAt(test.tk:2:1)"
         );
         Ok(())
     }
@@ -1064,13 +1128,17 @@ Entity 2:
             "\
 Entity 0:
  - HasValue('hello world')
+ - InstancesAt(test.tk:1:7)
 Entity 1:
  - Definition { names: [[arg]], params: None, implementations: [Entity(0, Generation(1))], path: [test.tk, _] }
+ - InstancesAt(test.tk:1:3)
 Entity 2:
  - DefinedAt(None)
  - SymbolRef { name: [f], context: [test.tk] }
+ - InstancesAt(test.tk:1:1)
 Entity 3:
- - Call(Entity(2, Generation(1)), [Entity(1, Generation(1))])"
+ - Call(Entity(2, Generation(1)), [Entity(1, Generation(1))])
+ - InstancesAt(test.tk:1:1)"
         );
         Ok(())
     }
@@ -1083,22 +1151,29 @@ Entity 3:
 Entity 0:
  - DefinedAt(None)
  - SymbolRef { name: [x], context: [test.tk, _] }
+ - InstancesAt(test.tk:1:5)
 Entity 1:
  - DefinedAt(None)
  - SymbolRef { name: [y], context: [test.tk, _] }
+ - InstancesAt(test.tk:1:8)
 Entity 2:
  - DefinedAt(None)
  - SymbolRef { name: [x], context: [test.tk, mul] }
+ - InstancesAt(test.tk:1:12)
 Entity 3:
  - DefinedAt(None)
  - SymbolRef { name: [y], context: [test.tk, mul] }
+ - InstancesAt(test.tk:1:14)
 Entity 4:
  - DefinedAt(None)
  - SymbolRef { name: [*], context: [test.tk, mul] }
+ - InstancesAt(test.tk:1:13)
 Entity 5:
  - Call(Entity(4, Generation(1)), [Entity(2, Generation(1)), Entity(3, Generation(1))])
+ - InstancesAt(test.tk:1:13)
 Entity 6:
- - Definition { names: [[mul]], params: Some([Entity(0, Generation(1)), Entity(1, Generation(1))]), implementations: [Entity(5, Generation(1))], path: [test.tk] }"
+ - Definition { names: [[mul]], params: Some([Entity(0, Generation(1)), Entity(1, Generation(1))]), implementations: [Entity(5, Generation(1))], path: [test.tk] }
+ - InstancesAt(test.tk:1:1)"
         );
         Ok(())
     }
@@ -1110,20 +1185,27 @@ Entity 6:
             "\
 Entity 0:
  - HasValue('hello world')
+ - InstancesAt(test.tk:1:7)
 Entity 1:
  - DefinedAt(None)
  - SymbolRef { name: [!], context: [test.tk, x] }
+ - InstancesAt(test.tk:1:6)
 Entity 2:
  - Call(Entity(1, Generation(1)), [Entity(0, Generation(1))])
+ - InstancesAt(test.tk:1:6)
 Entity 3:
  - Definition { names: [[x]], params: Some([]), implementations: [Entity(2, Generation(1))], path: [test.tk] }
+ - InstancesAt(test.tk:1:1)
 Entity 4:
  - HasValue(7)
+ - InstancesAt(test.tk:2:1)
 Entity 5:
  - DefinedAt(None)
  - SymbolRef { name: [;], context: [test.tk] }
+ - InstancesAt(test.tk:1:20)
 Entity 6:
- - Call(Entity(5, Generation(1)), [Entity(3, Generation(1)), Entity(4, Generation(1))])"
+ - Call(Entity(5, Generation(1)), [Entity(3, Generation(1)), Entity(4, Generation(1))])
+ - InstancesAt(test.tk:1:20)"
         );
         Ok(())
     }

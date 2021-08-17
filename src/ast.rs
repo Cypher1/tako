@@ -226,7 +226,7 @@ impl HasInfo for BinOp {
 }
 
 #[derive(Clone, PartialOrd, Ord)]
-pub struct Info {
+pub struct Info { // TODO: Remove this
     pub loc: Option<Loc>,
     pub ty: Option<Box<Node>>,
     pub defined_at: Option<Path>,
