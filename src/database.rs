@@ -1,14 +1,3 @@
-use specs::prelude::*;
-use specs::World;
-use std::collections::{HashMap, HashSet};
-use std::io::Write;
-use std::path::PathBuf;
-use std::process::Command;
-use std::sync::Arc;
-
-use directories::ProjectDirs;
-use log::*;
-
 use crate::ast::{path_to_string, Node, Path, PathRef, Root, Symbol, Visitor};
 use crate::cli_options::Options;
 use crate::components::*;
@@ -17,6 +6,15 @@ use crate::externs::get_externs;
 use crate::externs::{Extern, Semantic};
 use crate::primitives::Val;
 use crate::symbol_table::Table;
+use directories::ProjectDirs;
+use log::*;
+use specs::prelude::*;
+use specs::World;
+use std::collections::{BTreeSet, HashMap, HashSet};
+use std::io::Write;
+use std::path::PathBuf;
+use std::process::Command;
+use std::sync::Arc;
 
 fn to_file_path(context: PathRef) -> Path {
     let mut module = context.to_vec();
@@ -46,6 +44,37 @@ pub struct DBStorage {
     instance_at: HashMap<Entity, HashSet<Loc>>,
 }
 
+macro_rules! define_debug {
+    ($func: ident, $print_func: ident, $func_all: ident, $($component:ty),* ) => {
+        impl DBStorage {
+            /// Print all the components that are associated with an entity.
+            fn $func(self: &DBStorage, entity: Entity) -> String {
+            let mut out = format!("Entity {}:", entity.id());
+            // let mut out = format!("{:?}:", self.world.read_storage::<InstancesAt>().get(entity).unwrap_or(&InstancesAt(BTreeSet::new())).0);
+            $(
+                if let Some(component) = self.world.read_storage::<$component>().get(entity) {
+                    out = format!("{}\n - {:?}", out, component);
+                }
+            )*
+            out
+            }
+            pub fn $print_func(&self, entity: Entity) {
+                print!("{}", self.$func(entity));
+            }
+            pub fn $func_all(&self) -> String {
+                let f = |entity| self.$func(entity);
+                let mut mapper = DebugSystem::<String> {
+                    f: &f,
+                    results: Vec::new(),
+                };
+                mapper.run_now(&self.world);
+                // self.world.maintain(); // Nah?
+                mapper.results.join("\n")
+            }
+        }
+    }
+}
+
 macro_rules! define_components {
     ( $($component:ty),* ) => {
         /// Register all components with the world.
@@ -53,25 +82,48 @@ macro_rules! define_components {
             $( world.register::<$component>(); )*
         }
 
-        /// Print all the components that are associated with an entity.
-        fn format_entity(world: &World, entity: Entity) -> String {
-            let mut out = format!("Entity {}:", entity.id());
-            $(
-                if let Some(component) = world.read_storage::<$component>().get(entity) {
-                    out = format!("{}\n - {:?}", out, component);
-                }
-            )*
-            out
-        }
-
-        fn print_entity(world: &World, entity: Entity) {
-            print!("{}", format_entity(world, entity));
-        }
+        define_debug!(
+            format_entity,
+            print_entity,
+            format_entities,
+            $( $component ),*
+        );
     }
 }
 
 define_components!(
-    Call, DefinedAt, Definition, HasErrors, HasType, HasValue, Sequence, SymbolRef, Token, Untyped
+    Call,
+    DefinedAt,
+    Definition,
+    HasErrors,
+    HasType,
+    HasValue,
+    Sequence,
+    SymbolRef,
+    Untyped,
+    InstancesAt
+);
+
+define_debug!(
+    format_entity_definition,
+    print_entity_definition,
+    format_entity_definitions,
+    DefinedAt,
+    Definition,
+    SymbolRef
+);
+
+define_debug!(
+    format_entity_type,
+    print_entity_type,
+    format_entity_types,
+    Call,
+    Definition,
+    HasErrors,
+    HasType,
+    HasValue,
+    SymbolRef,
+    Untyped
 );
 
 impl Default for DBStorage {
@@ -111,25 +163,6 @@ impl<'a, T> System<'a> for DebugSystem<'a, T> {
 
 use crate::location::Loc;
 impl DBStorage {
-    pub fn print_entity(&self, entity: Entity) {
-        print_entity(&self.world, entity);
-    }
-
-    pub fn format_entity(&self, entity: Entity) -> String {
-        format_entity(&self.world, entity)
-    }
-
-    pub fn format_entities(&self) -> String {
-        let f = |entity| format_entity(&self.world, entity);
-        let mut mapper = DebugSystem::<String> {
-            f: &f,
-            results: Vec::new(),
-        };
-        mapper.run_now(&self.world);
-        // self.world.maintain(); // Nah?
-        mapper.results.join("\n")
-    }
-
     pub fn config_dir(&self) -> PathBuf {
         if let Some(project_dirs) = &self.project_dirs {
             project_dirs.config_dir().to_path_buf()
@@ -364,6 +397,12 @@ impl DBStorage {
     }
 
     fn add_location_for_entity(&mut self, loc: Loc, entity: Entity) {
+        self.world
+            .write_storage::<InstancesAt>()
+            .get_mut(entity)
+            .expect("All entities should have an 'instance at'")
+            .0
+            .insert(loc.clone());
         self.instance_at
             .entry(entity)
             .or_insert_with(HashSet::new)
@@ -523,7 +562,7 @@ impl DBStorage {
                         entity.with(Sequence(children))
                     }
                 };
-                entity.build()
+                entity.with(InstancesAt(BTreeSet::new())).build()
             };
             if let AstTerm::Definition { head, .. } = &entry.term {
                 self.add_location_for_definition(entry.loc.clone(), entity);

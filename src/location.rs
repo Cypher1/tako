@@ -8,7 +8,7 @@ pub struct Pos {
 
 impl std::fmt::Debug for Pos {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "at line {}, column {}", self.line, self.col)
+        write!(f, "{}:{}", self.line, self.col)
     }
 }
 
@@ -50,7 +50,7 @@ pub struct Loc {
 impl std::fmt::Debug for Loc {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.filename {
-            Some(file) => write!(f, "{} ", file),
+            Some(file) => write!(f, "{}:", file),
             None => write!(f, ""),
         }?;
         write!(f, "{:?}", self.pos)

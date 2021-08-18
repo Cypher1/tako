@@ -261,10 +261,9 @@ mod tests {
     fn entity_use_local_definition() -> Test {
         let mut storage = DBStorage::default();
         let _ = symbols_found_using(&mut storage, "x=23;x")?;
-        assert_str_eq!(storage.format_entities(),
+        assert_str_eq!(storage.format_entity_definitions(),
             "\
 Entity 0:
- - HasValue(23)
 Entity 1:
  - Definition { names: [[x]], params: None, implementations: [Entity(0, Generation(1))], path: [test, prog.tk] }
 Entity 2:
@@ -273,8 +272,7 @@ Entity 2:
 Entity 3:
  - DefinedAt(Some([;]))
  - SymbolRef { name: [;], context: [test, prog.tk] }
-Entity 4:
- - Call(Entity(3, Generation(1)), [Entity(1, Generation(1)), Entity(2, Generation(1))])");
+Entity 4:");
         Ok(())
     }
 
@@ -282,14 +280,12 @@ Entity 4:
     fn entity_use_closest_definition() -> Test {
         let mut storage = DBStorage::default();
         let _ = symbols_found_using(&mut storage, "x=23;y=(x=45;x)")?;
-        assert_str_eq!(storage.format_entities(),
+        assert_str_eq!(storage.format_entity_definitions(),
             "\
 Entity 0:
- - HasValue(23)
 Entity 1:
  - Definition { names: [[x]], params: None, implementations: [Entity(0, Generation(1))], path: [test, prog.tk] }
 Entity 2:
- - HasValue(45)
 Entity 3:
  - Definition { names: [[x]], params: None, implementations: [Entity(2, Generation(1))], path: [test, prog.tk, y] }
 Entity 4:
@@ -299,14 +295,12 @@ Entity 5:
  - DefinedAt(Some([;]))
  - SymbolRef { name: [;], context: [test, prog.tk, y] }
 Entity 6:
- - Call(Entity(5, Generation(1)), [Entity(3, Generation(1)), Entity(4, Generation(1))])
 Entity 7:
  - Definition { names: [[y]], params: None, implementations: [Entity(6, Generation(1))], path: [test, prog.tk] }
 Entity 8:
  - DefinedAt(Some([;]))
  - SymbolRef { name: [;], context: [test, prog.tk] }
-Entity 9:
- - Call(Entity(8, Generation(1)), [Entity(1, Generation(1)), Entity(7, Generation(1))])");
+Entity 9:");
         Ok(())
     }
 }

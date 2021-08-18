@@ -69,7 +69,7 @@ pub fn lex_head<'a>(
 
     let mut tok_type: TokenType = TokenType::Unknown;
     let mut quote: Option<char> = None;
-    let start = pos.clone();
+    let mut start = pos.clone();
 
     // TODO: This should be simplified (make tight loops).
     while let Some(chr) = contents.peek() {
@@ -108,6 +108,9 @@ pub fn lex_head<'a>(
         }
         // Continue past the character.
         pos.next(&mut contents);
+        if chr_type == TokenType::Whitespace {
+            start = pos.clone();
+        }
     }
     if tok_type == TokenType::StringLit {
         // We hit a quote.

@@ -1,20 +1,32 @@
-use specs::prelude::*;
-use specs::Component;
-
 use crate::ast::Path;
 use crate::errors::TError;
+use crate::location::Loc;
 use crate::primitives::Val;
-use crate::tokens::TokenType;
+use specs::prelude::*;
+use specs::Component;
+use std::collections::BTreeSet;
 
 #[derive(Component, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[storage(VecStorage)]
 pub struct DefinedAt(pub Option<Path>);
 
-#[derive(Component, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Component, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[storage(VecStorage)]
-pub struct Token {
-    pub token: TokenType,
-    pub value: String,
+pub struct InstancesAt(pub BTreeSet<Loc>);
+
+impl std::fmt::Debug for InstancesAt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "InstancesAt(")?;
+        let mut after = false;
+        for item in self.0.iter() {
+            write!(f, "{:?}", item)?;
+            if after {
+                write!(f, ", ")?;
+            }
+            after = true;
+        }
+        write!(f, ")")
+    }
 }
 
 #[derive(Component, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
