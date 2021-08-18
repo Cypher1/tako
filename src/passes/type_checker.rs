@@ -290,19 +290,30 @@ mod tests {
 Entity 0:
  - SymbolRef { name: [I32], context: [test, type.tk] }
 Entity 1:
- - HasValue(23)
- - HasType(I32)"
+ - HasValue(23)"
         )
     }
 
     #[test]
     fn infer_type_of_str() -> Test {
-        assert_type("\"23\"", "String", "")
+        assert_type("\"23\"", "String", "\
+Entity 0:
+ - SymbolRef { name: [String], context: [test, type.tk] }
+Entity 1:
+ - HasValue('23')")
     }
 
     #[test]
     fn infer_type_of_let_i32() -> Test {
-        assert_type("x=12", "(x=I32)", "")
+        assert_type("x=12", "(x=I32)", "\
+Entity 0:
+ - SymbolRef { name: [I32], context: [test, type.tk, x] }
+Entity 1:
+ - Definition { names: [[x]], params: None, implementations: [Entity(0, Generation(1))], path: [test, type.tk] }
+Entity 2:
+ - HasValue(12)
+Entity 3:
+ - Definition { names: [[x]], params: None, implementations: [Entity(2, Generation(1))], path: [test, prog.tk] }")
     }
 
     // #[test]
@@ -312,12 +323,36 @@ Entity 1:
 
     #[test]
     fn infer_type_of_sym_i32() -> Test {
-        assert_type("x=12;x", "I32", "")
+        assert_type("x=12;x", "I32", "\
+Entity 0:
+ - SymbolRef { name: [I32], context: [test, type.tk] }
+Entity 1:
+ - HasValue(12)
+Entity 2:
+ - Definition { names: [[x]], params: None, implementations: [Entity(1, Generation(1))], path: [test, prog.tk] }
+Entity 3:
+ - SymbolRef { name: [x], context: [test, prog.tk] }
+Entity 4:
+ - SymbolRef { name: [;], context: [test, prog.tk] }
+Entity 5:
+ - Call(Entity(4, Generation(1)), [Entity(2, Generation(1)), Entity(3, Generation(1))])")
     }
 
     #[test]
     fn infer_type_of_sym_str() -> Test {
-        assert_type("x=\"12\";x", "String", "")
+        assert_type("x=\"12\";x", "String", "\
+Entity 0:
+ - SymbolRef { name: [String], context: [test, type.tk] }
+Entity 1:
+ - HasValue('12')
+Entity 2:
+ - Definition { names: [[x]], params: None, implementations: [Entity(1, Generation(1))], path: [test, prog.tk] }
+Entity 3:
+ - SymbolRef { name: [x], context: [test, prog.tk] }
+Entity 4:
+ - SymbolRef { name: [;], context: [test, prog.tk] }
+Entity 5:
+ - Call(Entity(4, Generation(1)), [Entity(2, Generation(1)), Entity(3, Generation(1))])")
     }
 
     //#[test]
@@ -388,22 +423,60 @@ Entity 12:")
 
     #[test]
     fn infer_type_of_id_apply() -> Test {
-        assert_type("{x}(x=12)", "I32", "")
+        assert_type("{x}(x=12)", "I32", "\
+Entity 0:
+ - SymbolRef { name: [I32], context: [test, type.tk] }
+Entity 1:
+ - HasValue(12)
+Entity 2:
+ - Definition { names: [[x]], params: None, implementations: [Entity(1, Generation(1))], path: [test, prog.tk, _] }
+Entity 3:
+ - SymbolRef { name: [x], context: [test, prog.tk] }
+Entity 4:
+ - Call(Entity(3, Generation(1)), [Entity(2, Generation(1))])")
     }
 
     #[test]
     fn infer_type_of_id_apply_it_arg() -> Test {
-        assert_type("{it}(12)", "I32", "")
+        assert_type("{it}(12)", "I32", "\
+Entity 0:
+ - SymbolRef { name: [I32], context: [test, type.tk] }
+Entity 1:
+ - HasValue(12)
+Entity 2:
+ - SymbolRef { name: [it], context: [test, prog.tk] }
+Entity 3:
+ - Call(Entity(2, Generation(1)), [Entity(1, Generation(1))])")
     }
 
     #[test]
     fn infer_type_of_id_apply_explicit_it_arg() -> Test {
-        assert_type("{it}(it=12)", "I32", "")
+        assert_type("{it}(it=12)", "I32", "\
+Entity 0:
+ - SymbolRef { name: [I32], context: [test, type.tk] }
+Entity 1:
+ - HasValue(12)
+Entity 2:
+ - Definition { names: [[it]], params: None, implementations: [Entity(1, Generation(1))], path: [test, prog.tk, _] }
+Entity 3:
+ - SymbolRef { name: [it], context: [test, prog.tk] }
+Entity 4:
+ - Call(Entity(3, Generation(1)), [Entity(2, Generation(1))])")
     }
 
     #[test]
     fn infer_type_of_plus_expr() -> Test {
-        assert_type("12+32", "I32", "")
+        assert_type("12+32", "I32", "\
+Entity 0:
+ - SymbolRef { name: [I32], context: [test, type.tk] }
+Entity 1:
+ - HasValue(12)
+Entity 2:
+ - HasValue(32)
+Entity 3:
+ - SymbolRef { name: [+], context: [test, prog.tk] }
+Entity 4:
+ - Call(Entity(3, Generation(1)), [Entity(1, Generation(1)), Entity(2, Generation(1))])")
     }
 
     #[test]
