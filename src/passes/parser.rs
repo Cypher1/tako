@@ -336,8 +336,7 @@ fn led(
                                     .inner
                                     .get_info()
                                     .loc
-                                    .expect("This shouldn't be option")
-                                    .clone();
+                                    .expect("This shouldn't be option");
                                 let mut def_path = path.to_vec();
                                 def_path.push(Symbol::new(&s.name));
                                 let (right, right_node, new_toks) =

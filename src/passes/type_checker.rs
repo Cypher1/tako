@@ -12,6 +12,7 @@ use std::collections::HashMap;
 struct TypeCheckerSystem {}
 
 impl<'a> System<'a> for TypeCheckerSystem {
+    #[allow(clippy::type_complexity)]
     type SystemData = (
         ReadStorage<'a, Call>,
         ReadStorage<'a, DefinedAt>,
