@@ -286,21 +286,28 @@ mod tests {
         let num = int32(23).into_node();
         let env = rec![]; // TODO: Track the type env
         assert_eq!(infer(&mut storage, &num, &env), Ok(i32_type()));
-        assert_type("23", "I32", "\
+        assert_type(
+            "23",
+            "I32",
+            "\
 Entity 0:
  - SymbolRef { name: [I32], context: [test, type.tk] }
 Entity 1:
- - HasValue(23)"
+ - HasValue(23)",
         )
     }
 
     #[test]
     fn infer_type_of_str() -> Test {
-        assert_type("\"23\"", "String", "\
+        assert_type(
+            "\"23\"",
+            "String",
+            "\
 Entity 0:
  - SymbolRef { name: [String], context: [test, type.tk] }
 Entity 1:
- - HasValue('23')")
+ - HasValue('23')",
+        )
     }
 
     #[test]
@@ -438,7 +445,10 @@ Entity 4:
 
     #[test]
     fn infer_type_of_id_apply_it_arg() -> Test {
-        assert_type("{it}(12)", "I32", "\
+        assert_type(
+            "{it}(12)",
+            "I32",
+            "\
 Entity 0:
  - SymbolRef { name: [I32], context: [test, type.tk] }
 Entity 1:
@@ -446,7 +456,8 @@ Entity 1:
 Entity 2:
  - SymbolRef { name: [it], context: [test, prog.tk] }
 Entity 3:
- - Call(Entity(2, Generation(1)), [Entity(1, Generation(1))])")
+ - Call(Entity(2, Generation(1)), [Entity(1, Generation(1))])",
+        )
     }
 
     #[test]
@@ -466,7 +477,10 @@ Entity 4:
 
     #[test]
     fn infer_type_of_plus_expr() -> Test {
-        assert_type("12+32", "I32", "\
+        assert_type(
+            "12+32",
+            "I32",
+            "\
 Entity 0:
  - SymbolRef { name: [I32], context: [test, type.tk] }
 Entity 1:
@@ -476,16 +490,21 @@ Entity 2:
 Entity 3:
  - SymbolRef { name: [+], context: [test, prog.tk] }
 Entity 4:
- - Call(Entity(3, Generation(1)), [Entity(1, Generation(1)), Entity(2, Generation(1))])")
+ - Call(Entity(3, Generation(1)), [Entity(1, Generation(1)), Entity(2, Generation(1))])",
+        )
     }
 
     #[test]
     fn infer_type_of_argc() -> Test {
-        assert_type("argc", "I32", "\
+        assert_type(
+            "argc",
+            "I32",
+            "\
 Entity 0:
  - SymbolRef { name: [I32], context: [test, type.tk] }
 Entity 1:
- - SymbolRef { name: [argc], context: [test, prog.tk] }")
+ - SymbolRef { name: [argc], context: [test, prog.tk] }",
+        )
     }
 
     #[test]

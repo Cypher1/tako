@@ -332,7 +332,12 @@ fn led(
                         }
                         Node::ApplyNode(a) => match &*a.inner {
                             Node::SymNode(s) => {
-                                let loc = a.inner.get_info().loc.expect("This shouldn't be option").clone();
+                                let loc = a
+                                    .inner
+                                    .get_info()
+                                    .loc
+                                    .expect("This shouldn't be option")
+                                    .clone();
                                 let mut def_path = path.to_vec();
                                 def_path.push(Symbol::new(&s.name));
                                 let (right, right_node, new_toks) =

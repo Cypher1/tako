@@ -92,7 +92,16 @@ macro_rules! define_components {
 }
 
 define_components!(
-    Call, DefinedAt, Definition, HasErrors, HasType, HasValue, Sequence, SymbolRef, Untyped, InstancesAt
+    Call,
+    DefinedAt,
+    Definition,
+    HasErrors,
+    HasType,
+    HasValue,
+    Sequence,
+    SymbolRef,
+    Untyped,
+    InstancesAt
 );
 
 define_debug!(
@@ -388,7 +397,12 @@ impl DBStorage {
     }
 
     fn add_location_for_entity(&mut self, loc: Loc, entity: Entity) {
-        self.world.write_storage::<InstancesAt>().get_mut(entity).expect("All entities should have an 'instance at'").0.insert(loc.clone());
+        self.world
+            .write_storage::<InstancesAt>()
+            .get_mut(entity)
+            .expect("All entities should have an 'instance at'")
+            .0
+            .insert(loc.clone());
         self.instance_at
             .entry(entity)
             .or_insert_with(HashSet::new)
@@ -548,9 +562,7 @@ impl DBStorage {
                         entity.with(Sequence(children))
                     }
                 };
-                entity
-                    .with(InstancesAt(BTreeSet::new()))
-                    .build()
+                entity.with(InstancesAt(BTreeSet::new())).build()
             };
             if let AstTerm::Definition { head, .. } = &entry.term {
                 self.add_location_for_definition(entry.loc.clone(), entity);
