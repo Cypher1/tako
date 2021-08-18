@@ -10,3 +10,5 @@
 cargo-timing*.html
 out.c
 tako
+flamegraph.svg
+perf.data*
