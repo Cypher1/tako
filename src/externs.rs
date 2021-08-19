@@ -752,6 +752,6 @@ string to_string(const bool& t){
     };
 }
 
-pub fn get_externs() -> Result<HashMap<String, Extern>, TError> {
-    Ok(EXTERN_MAP.clone())
+pub fn get_externs() -> &'static HashMap<String, Extern> {
+    &EXTERN_MAP
 }

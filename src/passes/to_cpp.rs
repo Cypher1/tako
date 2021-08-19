@@ -313,11 +313,11 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 .defined_at
                 .expect("Could not find definition for symbol"),
         );
-        if let Some(info) = storage.get_extern(name.clone())? {
-            self.includes.insert(info.cpp.includes);
-            self.flags.extend(info.cpp.flags);
+        if let Some(info) = storage.get_extern(name.clone()) {
+            self.includes.insert(info.cpp.includes.clone());
+            self.flags.extend(info.cpp.flags.clone());
             // arg_processor
-            return Ok(Code::Expr(info.cpp.code));
+            return Ok(Code::Expr(info.cpp.code.clone()));
         }
         Ok(Code::Expr(name))
     }
@@ -462,9 +462,9 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         let code = self.visit(storage, state, &expr.inner)?;
         let info = expr.get_info();
         let op = expr.name.as_str();
-        if let Some(info) = storage.get_extern(op.to_string())? {
-            self.includes.insert(info.cpp.includes);
-            self.flags.extend(info.cpp.flags);
+        if let Some(info) = storage.get_extern(op.to_string()) {
+            self.includes.insert(info.cpp.includes.clone());
+            self.flags.extend(info.cpp.flags.clone());
             let code = if info.cpp.arg_processor.as_str() == "" {
                 code
             } else {
@@ -498,9 +498,9 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             }
             _ => {}
         }
-        if let Some(info) = storage.get_extern(op.to_string())? {
-            self.includes.insert(info.cpp.includes);
-            self.flags.extend(info.cpp.flags);
+        if let Some(info) = storage.get_extern(op.to_string()) {
+            self.includes.insert(info.cpp.includes.clone());
+            self.flags.extend(info.cpp.flags.clone());
             let (left, right) = if info.cpp.arg_processor.as_str() == "" {
                 (left, right)
             } else {

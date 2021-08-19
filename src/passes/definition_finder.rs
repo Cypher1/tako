@@ -49,7 +49,7 @@ impl<'a> System<'a> for DefinitionFinderSystem {
                     &symbol, &entity, &found_path
                 );
                 defined_at.0 = Some(found_path);
-            } else if let Some(ext) = get_externs().unwrap().get(&path_to_string(&symbol.name)) {
+            } else if let Some(ext) = get_externs().get(&path_to_string(&symbol.name)) {
                 debug!("Found extern: {:?} -> {:?}", &symbol, &ext);
                 defined_at.0 = Some(symbol.name.clone());
             } else {

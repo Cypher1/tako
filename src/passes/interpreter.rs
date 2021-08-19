@@ -221,7 +221,7 @@ type State = Vec<Frame>;
 impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
     fn visit_root(&mut self, storage: &mut DBStorage, root: &Root) -> Res {
         let mut base_frame = map! {};
-        for (name, ext) in storage.get_externs()?.iter() {
+        for (name, ext) in storage.get_externs().iter() {
             base_frame.insert(name.to_owned(), ext.value.clone());
         }
         let mut state = vec![base_frame];
