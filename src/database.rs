@@ -221,15 +221,14 @@ impl DBStorage {
         get_externs().keys().collect()
     }
 
-    pub fn get_extern(&self, name: String) -> Option<&'static Extern> {
-        get_externs().get(&name)
+    pub fn get_extern(&self, name: &str) -> Option<&'static Extern> {
+        get_externs().get(name)
     }
 
-    pub fn get_extern_operator(&self, name: String) -> Result<Semantic, TError> {
-        Ok(self
-            .get_extern(name)
+    pub fn get_extern_operator(&self, name: &str) -> Semantic {
+        self.get_extern(name)
             .map(|x| x.semantic.clone())
-            .unwrap_or(Semantic::Func))
+            .unwrap_or(Semantic::Func)
     }
 
     pub fn parse_string(&mut self, module: Path, contents: Arc<String>) -> Result<Node, TError> {

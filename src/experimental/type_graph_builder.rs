@@ -139,7 +139,7 @@ impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
 
     fn visit_un_op(&mut self, storage: &mut DBStorage, state: &mut State, expr: &UnOp) -> Res {
         let op = storage
-            .get_extern(expr.name.to_string())
+            .get_extern(&expr.name)
             .expect("operator should exist");
         let ty = &op.ty;
         let arg_ty = self.visit(storage, state, &expr.inner)?;
@@ -158,7 +158,7 @@ impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
 
     fn visit_bin_op(&mut self, storage: &mut DBStorage, state: &mut State, expr: &BinOp) -> Res {
         let op = storage
-            .get_extern(expr.name.to_string())
+            .get_extern(&expr.name)
             .expect("operator should exist");
         let ty = &op.ty;
         let left_ty = self.visit(storage, state, &expr.left)?;
