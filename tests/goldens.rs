@@ -1,8 +1,7 @@
 use log::*;
+use pretty_assertions::assert_eq;
 use std::collections::HashMap;
 use std::fs::read_to_string;
-
-// use pretty_assertions::assert_eq;
 use takolib::cli_options::Options;
 use takolib::database::DBStorage;
 use takolib::errors::TError;

@@ -920,6 +920,7 @@ dependencies = [
  "derivative",
  "directories",
  "env_logger",
+ "lazy_static",
  "log",
  "pretty_assertions",
  "rand",

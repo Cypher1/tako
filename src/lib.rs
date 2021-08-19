@@ -2,6 +2,8 @@
 
 #[macro_use]
 pub mod data_structures;
+#[macro_use]
+extern crate lazy_static;
 
 #[cfg(test)]
 #[macro_use]
