@@ -471,19 +471,20 @@ lazy_static! {
                 cpp: LangImpl::operator("+")
                     .with_arg_processor("std::to_string")
                     .with_includes(
-                        "#include <string>
-    #include <sstream>
-    namespace std{
-    template <typename T>
-    string to_string(const T& t){
-    stringstream out;
-    out << t;
-    return out.str();
-    }
-    string to_string(const bool& t){
-    return t ? \"true\" : \"false\";
-    }
-    }",
+                        "\
+#include <string>
+#include <sstream>
+namespace std{
+template <typename T>
+string to_string(const T& t){
+  stringstream out;
+  out << t;
+  return out.str();
+}
+string to_string(const bool& t){
+  return t ? \"true\" : \"false\";
+}
+}",
                     ),
             },
             Extern {
