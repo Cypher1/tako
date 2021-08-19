@@ -11,19 +11,19 @@ use crate::location::*;
 use crate::primitives::{int32, string, Prim, Val};
 use crate::tokens::*;
 
-fn binding(storage: &mut DBStorage, tok: &Token) -> Result<Semantic, TError> {
-    storage.get_extern_operator(tok.value.to_owned())
+fn binding(storage: &mut DBStorage, tok: &Token) -> Semantic {
+    storage.get_extern_operator(&tok.value)
 }
 
 fn binding_dir(storage: &mut DBStorage, tok: &Token) -> Result<Direction, TError> {
-    Ok(match binding(storage, tok)? {
+    Ok(match binding(storage, tok) {
         Semantic::Operator { assoc, .. } => assoc,
         Semantic::Func => Direction::Left,
     })
 }
 
 fn binding_power(storage: &mut DBStorage, tok: &Token) -> Result<i32, TError> {
-    Ok(match binding(storage, tok)? {
+    Ok(match binding(storage, tok) {
         Semantic::Operator { binding, .. } => binding,
         Semantic::Func => 1000,
     })

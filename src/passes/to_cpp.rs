@@ -313,7 +313,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 .defined_at
                 .expect("Could not find definition for symbol"),
         );
-        if let Some(info) = storage.get_extern(name.clone()) {
+        if let Some(info) = storage.get_extern(&name) {
             self.includes.insert(info.cpp.includes.clone());
             self.flags.extend(info.cpp.flags.clone());
             // arg_processor
@@ -461,8 +461,8 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
     fn visit_un_op(&mut self, storage: &mut DBStorage, state: &mut State, expr: &UnOp) -> Res {
         let code = self.visit(storage, state, &expr.inner)?;
         let info = expr.get_info();
-        let op = expr.name.as_str();
-        if let Some(info) = storage.get_extern(op.to_string()) {
+        let op = &expr.name;
+        if let Some(info) = storage.get_extern(op) {
             self.includes.insert(info.cpp.includes.clone());
             self.flags.extend(info.cpp.flags.clone());
             let code = if info.cpp.arg_processor.as_str() == "" {
@@ -498,7 +498,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             }
             _ => {}
         }
-        if let Some(info) = storage.get_extern(op.to_string()) {
+        if let Some(info) = storage.get_extern(op) {
             self.includes.insert(info.cpp.includes.clone());
             self.flags.extend(info.cpp.flags.clone());
             let (left, right) = if info.cpp.arg_processor.as_str() == "" {
