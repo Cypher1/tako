@@ -549,7 +549,7 @@ fn pow_twice() -> Test {
 }
 
 #[test]
-fn printing() -> Test {
+fn compile_printing() -> Test {
     compile("examples/printing.tk")
 }
 
