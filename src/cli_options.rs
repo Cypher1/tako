@@ -74,12 +74,12 @@ impl Options {
 }
 
 pub fn print_cli_info() {
-    info!("{}{}", TITLE, VERSION);
+    println!("{}{}", TITLE, VERSION);
 }
 
 pub fn print_cli_help() {
     print_cli_info();
-    info!("{}", USAGE);
+    println!("{}", USAGE);
 }
 
 pub const TITLE: &str = "tako v";

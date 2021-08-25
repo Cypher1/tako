@@ -213,22 +213,22 @@ impl DBStorage {
         file_name
     }
 
-    pub fn get_externs(&self) -> Result<HashMap<String, Extern>, TError> {
+    pub fn get_externs(&self) -> &'static HashMap<String, Extern> {
         get_externs()
     }
 
-    pub fn get_extern_names(&self) -> Result<Vec<String>, TError> {
-        Ok(get_externs()?.keys().cloned().collect())
+    pub fn get_extern_names(&self) -> Vec<&'static String> {
+        get_externs().keys().collect()
     }
 
-    pub fn get_extern(&self, name: String) -> Result<Option<Extern>, TError> {
-        Ok(get_externs()?.get(&name).cloned())
+    pub fn get_extern(&self, name: String) -> Option<&'static Extern> {
+        get_externs().get(&name)
     }
 
     pub fn get_extern_operator(&self, name: String) -> Result<Semantic, TError> {
         Ok(self
-            .get_extern(name)?
-            .map(|x| x.semantic)
+            .get_extern(name)
+            .map(|x| x.semantic.clone())
             .unwrap_or(Semantic::Func))
     }
 

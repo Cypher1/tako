@@ -36,7 +36,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
         // Add in the globals here!
         // TODO: Inject needs for bootstrapping here (e.g. import function).
         let globals: Vec<Path> = storage
-            .get_extern_names()?
+            .get_extern_names()
             .iter()
             .map(|x| vec![Symbol::new(x)])
             .collect();

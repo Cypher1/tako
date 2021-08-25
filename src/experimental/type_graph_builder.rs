@@ -139,17 +139,17 @@ impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
 
     fn visit_un_op(&mut self, storage: &mut DBStorage, state: &mut State, expr: &UnOp) -> Res {
         let op = storage
-            .get_extern(expr.name.to_string())?
+            .get_extern(expr.name.to_string())
             .expect("operator should exist");
-        let ty = op.ty;
+        let ty = &op.ty;
         let arg_ty = self.visit(storage, state, &expr.inner)?;
 
-        debug!("un op {}: {}, {}", &expr.name, &ty, &arg_ty);
+        debug!("un op {}: {}, {}", &expr.name, ty, &arg_ty);
         Interpreter::default().visit_apply(
             storage,
             &mut vec![],
             &Apply {
-                inner: Box::new(ty),
+                inner: Box::new(ty.clone()),
                 args: vec![Let::new("it", arg_ty)],
                 info: expr.get_info(),
             },
@@ -158,18 +158,18 @@ impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
 
     fn visit_bin_op(&mut self, storage: &mut DBStorage, state: &mut State, expr: &BinOp) -> Res {
         let op = storage
-            .get_extern(expr.name.to_string())?
+            .get_extern(expr.name.to_string())
             .expect("operator should exist");
-        let ty = op.ty;
+        let ty = &op.ty;
         let left_ty = self.visit(storage, state, &expr.left)?;
         let right_ty = self.visit(storage, state, &expr.right)?;
 
-        debug!("bin op {}: {}, {} {}", &expr.name, &ty, &left_ty, &right_ty);
+        debug!("bin op {}: {}, {} {}", &expr.name, ty, &left_ty, &right_ty);
         Interpreter::default().visit_apply(
             storage,
             &mut vec![],
             &Apply {
-                inner: Box::new(ty),
+                inner: Box::new(ty.clone()),
                 args: vec![Let::new("left", left_ty), Let::new("right", right_ty)],
                 info: expr.get_info(),
             },

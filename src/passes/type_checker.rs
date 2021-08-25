@@ -144,7 +144,7 @@ pub fn infer(storage: &mut DBStorage, expr: &Node, env: &Val) -> Result<Val, TEr
             Interpreter::default().visit_apply(storage, &mut state, &app)
         }
         SymNode(Sym { name, info: _ }) => {
-            if let Some(ext) = storage.get_extern(name.to_string())? {
+            if let Some(ext) = storage.get_extern(name.to_string()) {
                 // TODO intros
                 let mut frame = HashMap::new();
                 for (name, ty) in env.clone().into_struct().iter() {
