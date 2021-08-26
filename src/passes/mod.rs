@@ -1,6 +1,6 @@
 pub mod ast_interpreter;
-pub mod stack_interpreter;
 pub mod parser;
+pub mod stack_interpreter;
 pub mod type_checker;
 
 pub mod definition_finder;
