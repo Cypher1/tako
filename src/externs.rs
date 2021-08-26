@@ -10,9 +10,6 @@ use crate::primitives::{
     Prim::{Bool, Str, I32},
     Val,
     Val::{Function, Lambda, PrimVal, Product, Union, WithRequirement},
-    bit_type, boolean, builtin, i32_type, int32, never_type,
-    number_type, string, string_type, type_type, unit_type, variable, Prim::*,
-    Val, Val::*,
 };
 
 pub type Res = Result<Val, TError>;
