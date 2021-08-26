@@ -1,7 +1,7 @@
 use crate::ast::*;
 use crate::database::DBStorage;
 use crate::errors::TError;
-use crate::passes::interpreter::Interpreter;
+use crate::passes::ast_interpreter::Interpreter;
 use crate::primitives::{Prim::*, Val::*, *};
 use log::*;
 use std::collections::BTreeSet;

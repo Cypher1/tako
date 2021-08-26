@@ -1,4 +1,5 @@
-pub mod interpreter;
+pub mod ast_interpreter;
+pub mod stack_interpreter;
 pub mod parser;
 pub mod type_checker;
 

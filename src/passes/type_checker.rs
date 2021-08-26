@@ -2,7 +2,7 @@ use crate::ast::{Node, Node::*};
 use crate::components::*;
 use crate::database::DBStorage;
 use crate::errors::TError;
-use crate::passes::interpreter::Interpreter;
+use crate::passes::ast_interpreter::Interpreter;
 use crate::primitives::{bit_type, i32_type, record, string_type, Prim::*, Val, Val::*};
 use log::*;
 use specs::prelude::*;

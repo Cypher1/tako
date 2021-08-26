@@ -77,12 +77,12 @@ pub mod passes;
 
 mod components;
 use ast::Visitor;
-use passes::interpreter::Interpreter;
+use passes::ast_interpreter::Interpreter;
 use passes::pretty_print::PrettyPrint;
 
 use database::DBStorage;
 use errors::TError;
-use passes::interpreter::ImplFn;
+use passes::ast_interpreter::ImplFn;
 
 pub fn work<'a>(
     storage: &mut DBStorage,
