@@ -3,9 +3,6 @@ use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::externs::Res;
 use crate::primitives::{Prim::I32, Val};
-// use crate::primitives::{
-// boolean, int32, merge_vals, never_type, Frame, Prim::*, Val::*,
-// };
 use log::trace;
 use std::collections::HashMap;
 
