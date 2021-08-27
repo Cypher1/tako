@@ -1,4 +1,4 @@
-use crate::ast::*;
+use crate::ast::{Info};
 use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::externs::*;
@@ -13,15 +13,37 @@ pub type ImplFn<'a> =
 pub type PureImplFn<'a> =
     &'a dyn Fn(&DBStorage, HashMap<String, Box<dyn Fn() -> Res>>, Info) -> Res;
 
+use specs::Entity;
+
+pub enum StackValue {
+    // This is for storing a lazily evaluated reference (in the place of a pointer into the program's source)
+    StaticReference(Entity),
+    Value(Val),
+}
+use StackValue::*;
+
 pub struct Interpreter<'a> {
+    // Might be worth merging these two
     pub default_impls: HashMap<String, ImplFn<'a>>,
+    pub state: Vec<StackValue>,
 }
 
 impl<'a> Default for Interpreter<'a> {
     fn default() -> Interpreter<'a> {
         Interpreter {
             default_impls: HashMap::new(),
+            state: Vec::new(),
         }
+    }
+}
+
+impl Interpreter<'a> {
+    fn run(self: &mut Self, storage: &mut DBStorage, entry_point: Entity) -> Res {
+        self.state.push(StaticReference(entry_point)); // Inject the symbol to be evaluated. This is likely to be 'main'.
+        loop {
+            self.eval(storage)?;
+        }
+        Ok(PrimVal(I32(0)))
     }
 }
 
@@ -38,11 +60,6 @@ fn find_symbol<'a>(state: &'a [Frame], name: &str) -> Option<&'a Val> {
 type State = Vec<Frame>;
 impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
     fn visit_root(&mut self, storage: &mut DBStorage, root: &Root) -> Res {
-        let mut base_frame = map! {};
-        for (name, ext) in storage.get_externs().iter() {
-            base_frame.insert(name.to_owned(), ext.value.clone());
-        }
-        let mut state = vec![base_frame];
         self.visit(storage, &mut state, &root.ast)
     }
 

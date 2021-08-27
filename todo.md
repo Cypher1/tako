@@ -87,3 +87,10 @@
 - No way to run machine or low level instructions
 - No type checking (requirements and exhaustiveness checking)
 - Compiler is far behind interpreter feature set
+
+## Resources
+
+- http://craftinginterpreters.com/
+- https://rust-hosted-langs.github.io/book/introduction.html
+- https://os.phil-opp.com/kernel-heap/#alignment
+- http://www.paulgraham.com/rootsoflisp.html
