@@ -24,7 +24,7 @@ harness = false
 [dependencies]
 thiserror = "1.0.20"
 derivative = "2.1.1"
-rustyline = "8.2.0"
+rustyline = "9.0.0"
 directories = "3.0"
 termcolor = "1.1"
 bitvec = "0.22.3"
