@@ -387,10 +387,6 @@ impl DBStorage {
         self.ast_to_entity.insert(term, entity);
     }
 
-    fn entity_for_path(&self, path: PathRef) -> Option<Entity> {
-        self.path_to_entity.get(path).cloned()
-    }
-
     fn set_entity_for_path(&mut self, path: PathRef, entity: Entity) {
         self.path_to_entity.insert(path.to_vec(), entity);
     }
