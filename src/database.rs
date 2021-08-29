@@ -302,8 +302,6 @@ impl DBStorage {
             .arg("-Wfatal-errors")
             .arg("-fomit-frame-pointer")
             .arg("-fstrict-aliasing")
-            .arg("-fconserve-stack")
-            .arg("-fno-defer-pop")
             .arg("-O3")
             .arg(out_file)
             .arg("-o")
@@ -394,9 +392,6 @@ impl DBStorage {
     }
 
     fn set_entity_for_path(&mut self, path: PathRef, entity: Entity) {
-        if let Some(_old_entity) = self.entity_for_path(path) {
-            // panic!("Internal error, conflicting entities for path: {:?}. {:?} and {:?}", &path, &entity, &old_entity);
-        }
         self.path_to_entity.insert(path.to_vec(), entity);
     }
 
