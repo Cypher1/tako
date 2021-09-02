@@ -1,4 +1,4 @@
-use crate::ast::{Info, Path};
+use crate::ast::Info;
 use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::externs::*;
@@ -25,7 +25,7 @@ pub enum StackValue {
 
 pub struct Mem {
     stack: Vec<StackValue>,
-    heap: Vec<StackValue>,
+    // heap: Vec<StackValue>,
 }
 
 pub enum MemoryReference {
@@ -38,30 +38,30 @@ impl Default for Mem {
     fn default() -> Self {
         Self {
             stack: Vec::new(),
-            heap: Vec::new(),
+            // heap: Vec::new(),
         }
     }
 }
 
 pub struct Interpreter<'functions, 'storage> {
     // Might be worth merging these two
-    default_impls: HashMap<String, ImplFn<'functions>>,
+    pub default_impls: HashMap<String, ImplFn<'functions>>,
     memory: Mem,
-    mapping: HashMap<Path, MemoryReference>, // where each symbol is stored
+    // mapping: HashMap<Path, MemoryReference>, // where each symbol is stored
     storage: &'storage mut DBStorage,
 }
 
 impl<'functions, 'storage> Interpreter<'functions, 'storage> {
-    fn new(storage: &'storage mut DBStorage) -> Interpreter<'functions, 'storage> {
+    pub fn new(storage: &'storage mut DBStorage) -> Interpreter<'functions, 'storage> {
         Interpreter {
             default_impls: HashMap::new(),
             memory: Mem::default(),
-            mapping: HashMap::new(),
+            // mapping: HashMap::new(),
             storage,
         }
     }
 
-    fn eval(self: &mut Self, entry_point: Entity) -> Res {
+    pub fn eval(&mut self, entry_point: Entity) -> Res {
         let mut code = vec![entry_point]; // Inject the symbol to be evaluated. This is likely to be 'main'.
         let mut function_stack = vec![]; // function stack for quick 'returning'
         loop {
@@ -79,10 +79,10 @@ impl<'functions, 'storage> Interpreter<'functions, 'storage> {
     }
 
     fn step(
-        self: &mut Self,
+        &mut self,
         curr: Entity,
-        code: &mut Vec<Entity>,
-        function_stack: &mut Vec<usize>,
+        _code: &mut Vec<Entity>,
+        _function_stack: &mut Vec<usize>,
     ) -> Result<StackValue, TError> {
         if let Some(value) = self.storage.get_known_value(&curr) {
             return Ok(StackValue::Value(value));

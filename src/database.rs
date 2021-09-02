@@ -378,16 +378,16 @@ impl DBStorage {
     }
 
     pub fn arity(&self, entity: &Entity) -> Result<usize, TError> {
-        match self.world.read_storage::<Definition>().get(entity.clone()) {
+        match self.world.read_storage::<Definition>().get(*entity) {
             Some(def) => Ok(def.params.as_ref().map(|params| params.len()).unwrap_or(0)),
-            None => Err(TError::UnknownEntity(entity.clone(), Info::default())),
+            None => Err(TError::UnknownEntity(*entity, Info::default())),
         }
     }
 
     pub fn get_known_value(&self, entity: &Entity) -> Option<Val> {
         self.world
             .read_storage::<HasValue>()
-            .get(entity.clone())
+            .get(*entity)
             .map(|has_value| has_value.0.clone())
     }
 

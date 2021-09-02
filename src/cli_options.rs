@@ -5,6 +5,8 @@ pub enum Command {
     Build,
     Interpret,
     Repl,
+    StackInterpret,
+    StackRepl,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -48,6 +50,8 @@ impl Options {
                 match f.as_str() {
                     "-i" | "--interactive" => opts.cmd = Command::Repl,
                     "-r" | "--run" => opts.cmd = Command::Interpret,
+                    "-si" | "--stack_interactive" => opts.cmd = Command::StackRepl,
+                    "-sr" | "--stack_run" => opts.cmd = Command::StackInterpret,
                     "--version" => {
                         println!("{}{}", TITLE, VERSION);
                         return opts;
@@ -89,13 +93,15 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const USAGE: &str = "An experimental programming language for ergonomic software verification.
 
 Usage:
-  tako [-i|-r] <files>...
+  tako [-i|-r|-si|-sr] <files>...
   tako (-h | --help)
   tako --version
 
 Options:
   -i --interactive    Run as a repl (interactive mode).
   -r --run            Run files in interpreter.
+  -si --stack_interactive    Run as a repl (interactive mode) using the experimental stack based interpter.
+  -sr --stack_run            Run files in the experimental stack based interpter.
   -h --help           Show this screen.
   --version           Show compiler version.
 ";
