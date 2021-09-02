@@ -4,11 +4,191 @@ use crate::ast::{Info, Node, ToNode};
 use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::primitives::{
-    bit_type, builtin, i32_type, int32, never_type, number_type, string, string_type, type_type,
-    unit_type, variable, Prim::*, Val, Val::*,
+    bit_type, boolean, builtin, i32_type, int32, never_type, number_type, string, string_type,
+    type_type, unit_type, variable, Prim::*, Val, Val::*,
 };
 
 pub type Res = Result<Val, TError>;
+
+pub fn prim_add(l: &Val, r: &Val, _info: Info) -> Res {
+    use crate::primitives::sum;
+    match (l, r) {
+        (PrimVal(Bool(l)), PrimVal(Bool(r))) => {
+            Ok(int32(if *l { 1 } else { 0 } + if *r { 1 } else { 0 }))
+        }
+        (PrimVal(Bool(l)), PrimVal(I32(r))) => Ok(int32(r.wrapping_add(if *l { 1 } else { 0 }))),
+        (PrimVal(Bool(l)), PrimVal(Str(r))) => Ok(PrimVal(Str(l.to_string() + &r.to_string()))),
+        (PrimVal(I32(l)), PrimVal(Bool(r))) => Ok(int32(l.wrapping_add(if *r { 1 } else { 0 }))),
+        (PrimVal(I32(l)), PrimVal(I32(r))) => Ok(int32(l.wrapping_add(*r))),
+        (PrimVal(I32(l)), PrimVal(Str(r))) => Ok(PrimVal(Str(l.to_string() + &r.to_string()))),
+        (PrimVal(Str(l)), PrimVal(Bool(r))) => Ok(PrimVal(Str(l.to_string() + &r.to_string()))),
+        (PrimVal(Str(l)), PrimVal(I32(r))) => Ok(PrimVal(Str(l.to_string() + &r.to_string()))),
+        (PrimVal(Str(l)), PrimVal(Str(r))) => Ok(PrimVal(Str(l.to_string() + &r.to_string()))),
+        (l, r) => Ok(sum(vec![l.clone(), r.clone()])?),
+        //(l, r) => Err(TError::TypeMismatch2(
+        //"+".to_string(),
+        //Box::new((*l).clone()),
+        //Box::new((*r).clone()),
+        //info,
+        //)),
+    }
+}
+
+pub fn prim_eq(l: &Val, r: &Val, info: Info) -> Res {
+    match (l, r) {
+        (PrimVal(Bool(l)), PrimVal(Bool(r))) => Ok(boolean(*l == *r)),
+        (PrimVal(I32(l)), PrimVal(I32(r))) => Ok(boolean(l == r)),
+        (PrimVal(Str(l)), PrimVal(Str(r))) => Ok(boolean(l == r)),
+        (l, r) => Err(TError::TypeMismatch2(
+            "==".to_string(),
+            Box::new((*l).clone()),
+            Box::new((*r).clone()),
+            info,
+        )),
+    }
+}
+
+pub fn prim_neq(l: &Val, r: &Val, info: Info) -> Res {
+    match (l, r) {
+        (PrimVal(Bool(l)), PrimVal(Bool(r))) => Ok(boolean(*l != *r)),
+        (PrimVal(I32(l)), PrimVal(I32(r))) => Ok(boolean(l != r)),
+        (PrimVal(Str(l)), PrimVal(Str(r))) => Ok(boolean(l != r)),
+        (l, r) => Err(TError::TypeMismatch2(
+            "!=".to_string(),
+            Box::new((*l).clone()),
+            Box::new((*r).clone()),
+            info,
+        )),
+    }
+}
+
+pub fn prim_gt(l: &Val, r: &Val, info: Info) -> Res {
+    match (l, r) {
+        (PrimVal(Bool(l)), PrimVal(Bool(r))) => Ok(boolean(*l & !(*r))),
+        (PrimVal(I32(l)), PrimVal(I32(r))) => Ok(boolean(l > r)),
+        (PrimVal(Str(l)), PrimVal(Str(r))) => Ok(boolean(l > r)),
+        (l, r) => Err(TError::TypeMismatch2(
+            ">".to_string(),
+            Box::new((*l).clone()),
+            Box::new((*r).clone()),
+            info,
+        )),
+    }
+}
+
+pub fn prim_gte(l: &Val, r: &Val, info: Info) -> Res {
+    match (l, r) {
+        (PrimVal(Bool(l)), PrimVal(Bool(r))) => Ok(boolean(*l >= *r)),
+        (PrimVal(I32(l)), PrimVal(I32(r))) => Ok(boolean(l >= r)),
+        (PrimVal(Str(l)), PrimVal(Str(r))) => Ok(boolean(l >= r)),
+        (l, r) => Err(TError::TypeMismatch2(
+            ">=".to_string(),
+            Box::new((*l).clone()),
+            Box::new((*r).clone()),
+            info,
+        )),
+    }
+}
+
+pub fn prim_sub(l: &Val, r: &Val, info: Info) -> Res {
+    match (l, r) {
+        (PrimVal(I32(l)), PrimVal(Bool(r))) => Ok(int32(l - if *r { 1 } else { 0 })),
+        (PrimVal(I32(l)), PrimVal(I32(r))) => Ok(int32(l - r)),
+        (l, r) => Err(TError::TypeMismatch2(
+            "-".to_string(),
+            Box::new((*l).clone()),
+            Box::new((*r).clone()),
+            info,
+        )),
+    }
+}
+
+pub fn prim_mul(l: &Val, r: &Val, info: Info) -> Res {
+    use crate::primitives::record;
+    let fail = || {
+        Err(TError::TypeMismatch2(
+            "*".to_string(),
+            Box::new((*l).clone()),
+            Box::new((*r).clone()),
+            info,
+        ))
+    };
+    match (l, r) {
+        (PrimVal(Bool(l)), PrimVal(I32(r))) => Ok(int32(if *l { *r } else { 0 })),
+        (PrimVal(Bool(l)), PrimVal(Str(r))) => Ok(string(if *l { r } else { "" })),
+        (PrimVal(I32(l)), PrimVal(Bool(r))) => Ok(int32(if *r { *l } else { 0 })),
+        (PrimVal(Str(l)), PrimVal(Bool(r))) => Ok(string(if *r { l } else { "" })),
+        (PrimVal(Bool(_)), PrimVal(_)) => fail(),
+        (PrimVal(_), PrimVal(Bool(_))) => fail(),
+        (PrimVal(I32(l)), PrimVal(I32(r))) => Ok(int32(l.wrapping_mul(*r))),
+        (l, r) => Ok(record(vec![l.clone(), r.clone()])?),
+    }
+}
+
+pub fn prim_div(l: &Val, r: &Val, info: Info) -> Res {
+    match (l, r) {
+        (PrimVal(I32(l)), PrimVal(I32(r))) => Ok(int32(l / r)),
+        (l, r) => Err(TError::TypeMismatch2(
+            "/".to_string(),
+            Box::new((*l).clone()),
+            Box::new((*r).clone()),
+            info,
+        )),
+    }
+}
+
+pub fn prim_mod(l: &Val, r: &Val, info: Info) -> Res {
+    match (l, r) {
+        (PrimVal(I32(l)), PrimVal(I32(r))) => Ok(int32(l % r)),
+        (l, r) => Err(TError::TypeMismatch2(
+            "%".to_string(),
+            Box::new((*l).clone()),
+            Box::new((*r).clone()),
+            info,
+        )),
+    }
+}
+
+pub fn prim_and(l: &Val, r: &Val, info: Info) -> Res {
+    match (l, r) {
+        (PrimVal(Bool(l)), PrimVal(Bool(r))) => Ok(boolean(*l && *r)),
+        (l, r) => Err(TError::TypeMismatch2(
+            "&&".to_string(),
+            Box::new((*l).clone()),
+            Box::new((*r).clone()),
+            info,
+        )),
+    }
+}
+
+pub fn prim_or(l: &Val, r: &Val, info: Info) -> Res {
+    match (l, r) {
+        (PrimVal(Bool(l)), PrimVal(Bool(r))) => Ok(boolean(*l || *r)),
+        (l, r) => Err(TError::TypeMismatch2(
+            "||".to_string(),
+            Box::new((*l).clone()),
+            Box::new((*r).clone()),
+            info,
+        )),
+    }
+}
+
+pub fn prim_type_arrow(l: Val, r: Val, _info: Info) -> Res {
+    // TODO: add existential and forall quantification operators
+    Ok(Val::Function {
+        intros: dict!(),
+        results: Box::new(r),
+        arguments: Box::new(l),
+    })
+}
+
+pub fn prim_type_and(l: Val, r: Val) -> Res {
+    Ok(Val::Product(set!(l, r)))
+}
+
+pub fn prim_type_or(l: Val, r: Val, _info: Info) -> Res {
+    Ok(Val::Union(set!(l, r)))
+}
 
 pub fn prim_add_strs(l: &Val, r: &Val, _info: Info) -> Res {
     let to_str = |v: &Val| {

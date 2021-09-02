@@ -64,12 +64,18 @@
   - Constant propagation
   - [Super compilation](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/07/supercomp-by-eval.pdf)
 
-### Compiler optimisations
+### Compiler optimisations and usability
 
-- Store AST as map of SSA nodes by id, map from 'symbol paths' to ids
-- Perform passes over the SSA map values without having to perform AST traversal
-- De duplicate SSA nodes (i.e. duplicate nodes are only stored once, start with constants and then bubble it up)
 - Intern strings
+- Could use a fast string matching algorithm to quickly count newlines when building error messages, rather than counting them during tokenization
+  - See [aho_corasick](https://thedan64.github.io/inkwell/aho_corasick/index.html)
+- For logging and timing purposes, it seems likely that a scope guard pattern would make reporting much more reliable
+  - See [scope_guard](https://thedan64.github.io/inkwell/scopeguard/index.html)
+- Probably should eventually support [unicode identifiers](http://www.unicode.org/reports/tr31/#Introduction)
+  - See [unicode_xid](https://thedan64.github.io/inkwell/unicode_xid/index.html)
+- Should use [smallvec](https://thedan64.github.io/inkwell/smallvec/index.html) for argument lists and other compiler info
+- Should experiment with LLVM
+  - Possible via [inkwell](https://thedan64.github.io/inkwell/inkwell/index.html).
 
 ## Communication
 
@@ -81,3 +87,10 @@
 - No way to run machine or low level instructions
 - No type checking (requirements and exhaustiveness checking)
 - Compiler is far behind interpreter feature set
+
+## Resources
+
+- http://craftinginterpreters.com/
+- https://rust-hosted-langs.github.io/book/introduction.html
+- https://os.phil-opp.com/kernel-heap/#alignment
+- http://www.paulgraham.com/rootsoflisp.html

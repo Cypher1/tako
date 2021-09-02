@@ -2,7 +2,7 @@ use crate::ast::{Node, Node::*};
 use crate::components::*;
 use crate::database::DBStorage;
 use crate::errors::TError;
-use crate::passes::interpreter::Interpreter;
+use crate::passes::ast_interpreter::Interpreter;
 use crate::primitives::{bit_type, i32_type, record, string_type, Prim::*, Val, Val::*};
 use log::*;
 use specs::prelude::*;
@@ -144,7 +144,7 @@ pub fn infer(storage: &mut DBStorage, expr: &Node, env: &Val) -> Result<Val, TEr
             Interpreter::default().visit_apply(storage, &mut state, &app)
         }
         SymNode(Sym { name, info: _ }) => {
-            if let Some(ext) = storage.get_extern(name.to_string()) {
+            if let Some(ext) = storage.get_extern(name) {
                 // TODO intros
                 let mut frame = HashMap::new();
                 for (name, ty) in env.clone().into_struct().iter() {

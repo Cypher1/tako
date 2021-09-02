@@ -1,4 +1,4 @@
-use crate::ast::{path_to_string, Node, Path, PathRef, Root, Symbol, Visitor};
+use crate::ast::{path_to_string, Info, Node, Path, PathRef, Root, Symbol, Visitor};
 use crate::cli_options::Options;
 use crate::components::*;
 use crate::errors::TError;
@@ -221,15 +221,14 @@ impl DBStorage {
         get_externs().keys().collect()
     }
 
-    pub fn get_extern(&self, name: String) -> Option<&'static Extern> {
-        get_externs().get(&name)
+    pub fn get_extern(&self, name: &str) -> Option<&'static Extern> {
+        get_externs().get(name)
     }
 
-    pub fn get_extern_operator(&self, name: String) -> Result<Semantic, TError> {
-        Ok(self
-            .get_extern(name)
+    pub fn get_extern_operator(&self, name: &str) -> Semantic {
+        self.get_extern(name)
             .map(|x| x.semantic.clone())
-            .unwrap_or(Semantic::Func))
+            .unwrap_or(Semantic::Func)
     }
 
     pub fn parse_string(&mut self, module: Path, contents: Arc<String>) -> Result<Node, TError> {
@@ -261,6 +260,7 @@ impl DBStorage {
         infer(self, &expr, &env)
     }
 
+    // TODO: Paths should be passed by reference
     pub fn look_up_definitions(&mut self, context: Path) -> Result<Root, TError> {
         use crate::passes::definition_finder::DefinitionFinder;
         let module = to_file_path(&context);
@@ -311,7 +311,6 @@ impl DBStorage {
         if !output.status.success() {
             let s = String::from_utf8(output.stderr)
                 .expect("Illegal utf8 stderr from backend compiler");
-            use crate::ast::Info;
             return Err(TError::CppCompilerError(
                 s,
                 output.status.code(),
@@ -328,7 +327,6 @@ impl DBStorage {
         if let Some(symbol) = self.find_symbol(path.clone(), Vec::new())? {
             return Ok(symbol.value.uses);
         }
-        use crate::ast::Info;
         Err(TError::UnknownSymbol(
             path_to_string(&path),
             Info::default(),
@@ -379,6 +377,20 @@ impl DBStorage {
         }
     }
 
+    pub fn arity(&self, entity: &Entity) -> Result<usize, TError> {
+        match self.world.read_storage::<Definition>().get(*entity) {
+            Some(def) => Ok(def.params.as_ref().map(|params| params.len()).unwrap_or(0)),
+            None => Err(TError::UnknownEntity(*entity, Info::default())),
+        }
+    }
+
+    pub fn get_known_value(&self, entity: &Entity) -> Option<Val> {
+        self.world
+            .read_storage::<HasValue>()
+            .get(*entity)
+            .map(|has_value| has_value.0.clone())
+    }
+
     fn entity_for_ast(&self, node: &AstTerm) -> Option<Entity> {
         self.ast_to_entity.get(node).cloned()
     }
@@ -420,14 +432,20 @@ pub struct DefinitionHead {
 }
 
 impl DefinitionHead {
-    pub fn into_call(self, storage: &mut DBStorage, loc: Loc, ty: Option<Entity>) -> AstNode {
+    pub fn into_call(
+        self,
+        storage: &mut DBStorage,
+        path: PathRef,
+        loc: Loc,
+        ty: Option<Entity>,
+    ) -> AstNode {
         let name = AstTerm::Symbol {
             name: self.name,
             context: self.path,
         }
         .into_node(loc.clone(), None);
         if let Some(children) = self.params {
-            let inner = storage.store_node(name);
+            let inner = storage.store_node(name, path);
             AstTerm::Call { inner, children }.into_node(loc, ty)
         } else {
             name
@@ -515,21 +533,21 @@ impl AstNode {
 }
 
 impl DBStorage {
-    pub fn store_node_set(&mut self, node: AstNode) -> Vec<Entity> {
+    pub fn store_node_set(&mut self, node: AstNode, path: PathRef) -> Vec<Entity> {
         match node.term {
             AstTerm::Sequence(args) => args,
-            _ => vec![self.store_node(node)],
+            _ => vec![self.store_node(node, path)],
         }
     }
 
-    pub fn store_node(&mut self, entry: AstNode) -> Entity {
+    pub fn store_node(&mut self, entry: AstNode, path: PathRef) -> Entity {
         let lookup: Option<Entity> = self.entity_for_ast(&entry.term);
         let entity = if let Some(entity) = lookup {
             entity
         } else {
             if let AstTerm::DefinitionHead(head) = entry.term {
-                let call = head.into_call(self, entry.loc, entry.ty);
-                return self.store_node(call);
+                let call = head.into_call(self, path, entry.loc, entry.ty);
+                return self.store_node(call, path);
             }
             let entity = {
                 let mut entity = self.world.create_entity();
@@ -559,12 +577,12 @@ impl DBStorage {
                 };
                 entity.with(InstancesAt(BTreeSet::new())).build()
             };
+            let mut sub_path = path.to_vec();
             if let AstTerm::Definition { head, .. } = &entry.term {
                 self.add_location_for_definition(entry.loc.clone(), entity);
-                let mut sub_path = head.path.clone();
                 sub_path.extend(head.name.clone());
-                self.set_entity_for_path(&sub_path, entity);
             }
+            self.set_entity_for_path(&sub_path, entity);
             self.set_entity_for_ast(entry.term, entity);
             entity
         };

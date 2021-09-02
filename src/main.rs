@@ -51,7 +51,7 @@ fn main() -> Result<(), TError> {
     }
 
     use takolib::cli_options::Command;
-    if storage.options.cmd == Command::Repl {
+    if storage.options.cmd == Command::Repl || storage.options.cmd == Command::StackRepl {
         repl(&mut storage)
     } else {
         Ok(())

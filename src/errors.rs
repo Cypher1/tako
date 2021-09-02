@@ -1,5 +1,6 @@
 use crate::ast::{Info, Node};
 use crate::primitives::Val;
+use specs::Entity;
 
 use thiserror::Error;
 
@@ -11,6 +12,8 @@ pub enum TError {
     CppCompilerError(String, Option<i32>, Info),
     #[error("unknown symbol `{0}` in {2} at {1}")]
     UnknownSymbol(String, Info, String),
+    #[error("unknown entity `{0:?}` at {1}")]
+    UnknownEntity(Entity, Info),
     #[error("out of scope type variable `{0}` at {1}")]
     OutOfScopeTypeVariable(String, Info),
     #[error("unknown infix operator `{0}` at {1}")]
@@ -37,6 +40,17 @@ pub enum TError {
     TypeMismatch2(String, Box<Val>, Box<Val>, Info),
     #[error("runtime requirement failed at {0}")]
     RequirementFailure(Info),
+    #[error(
+        "stack interpreter ran out of arguments for op {0:?}, expected {1} args, got {2:?} at {3}"
+    )]
+    StackInterpreterRanOutOfArguments(
+        Entity,
+        usize,
+        Vec<crate::passes::stack_interpreter::StackValue>,
+        Info,
+    ),
+    #[error("stack interpreter ran out of code at {0}")]
+    StackInterpreterRanOutOfCode(Info),
 
     #[error("parse failed, {0} at {1}")]
     ParseError(String, Info),

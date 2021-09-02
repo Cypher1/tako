@@ -11,19 +11,19 @@ use crate::location::*;
 use crate::primitives::{int32, string, Prim, Val};
 use crate::tokens::*;
 
-fn binding(storage: &mut DBStorage, tok: &Token) -> Result<Semantic, TError> {
-    storage.get_extern_operator(tok.value.to_owned())
+fn binding(storage: &mut DBStorage, tok: &Token) -> Semantic {
+    storage.get_extern_operator(&tok.value)
 }
 
 fn binding_dir(storage: &mut DBStorage, tok: &Token) -> Result<Direction, TError> {
-    Ok(match binding(storage, tok)? {
+    Ok(match binding(storage, tok) {
         Semantic::Operator { assoc, .. } => assoc,
         Semantic::Func => Direction::Left,
     })
 }
 
 fn binding_power(storage: &mut DBStorage, tok: &Token) -> Result<i32, TError> {
-    Ok(match binding(storage, tok)? {
+    Ok(match binding(storage, tok) {
         Semantic::Operator { binding, .. } => binding,
         Semantic::Func => 1000,
     })
@@ -70,7 +70,7 @@ fn nud(
             TokenType::Op => {
                 let lbp = binding_power(storage, &head)?;
                 let (right, right_node, new_toks) = expr(storage, toks, lbp, path)?;
-                let right_entity = storage.store_node(right_node);
+                let right_entity = storage.store_node(right_node, path);
                 Ok((
                     UnOp {
                         name: head.value.clone(),
@@ -247,7 +247,7 @@ fn led(
                     ":" => {
                         let (right, right_node, new_toks) = parse_right(storage, path)?;
                         left.get_mut_info().ty = Some(Box::new(right));
-                        let right_entity = storage.store_node(right_node);
+                        let right_entity = storage.store_node(right_node, path);
                         return Ok((
                             left,
                             AstNode {
@@ -269,13 +269,13 @@ fn led(
                             .into_node(),
                             match left_node.term {
                                 AstTerm::Sequence(mut left) => {
-                                    let right_entity = storage.store_node(right_node);
+                                    let right_entity = storage.store_node(right_node, path);
                                     left.push(right_entity);
                                     AstTerm::Sequence(left).into_node(head.pos, left_node.ty)
                                 }
                                 _ => {
-                                    let left_entity = storage.store_node(left_node);
-                                    let right_entity = storage.store_node(right_node);
+                                    let left_entity = storage.store_node(left_node, path);
+                                    let right_entity = storage.store_node(right_node, path);
                                     AstTerm::Sequence(vec![left_entity, right_entity])
                                         .into_node(head.pos, None)
                                 }
@@ -285,9 +285,9 @@ fn led(
                     }
                     "|-" => match left {
                         Node::SymNode(s) => {
-                            let left_entity = storage.store_node(left_node);
+                            let left_entity = storage.store_node(left_node, path);
                             let (right, right_node, new_toks) = parse_right(storage, path)?;
-                            let right_entity = storage.store_node(right_node);
+                            let right_entity = storage.store_node(right_node, path);
                             return Ok((
                                 Abs {
                                     name: s.name,
@@ -316,7 +316,7 @@ fn led(
                             let mut def_path = path.to_vec();
                             def_path.push(Symbol::new(&s.name));
                             let (right, right_node, new_toks) = parse_right(storage, &def_path)?;
-                            let right_entity = storage.store_node(right_node);
+                            let right_entity = storage.store_node(right_node, path);
                             let loc = left_node.loc.clone();
                             return Ok((
                                 Let {
@@ -337,7 +337,7 @@ fn led(
                                 def_path.push(Symbol::new(&s.name));
                                 let (right, right_node, new_toks) =
                                     parse_right(storage, &def_path)?;
-                                let right_entity = storage.store_node(right_node);
+                                let right_entity = storage.store_node(right_node, path);
                                 return Ok((
                                     Let {
                                         name: s.name.clone(),
@@ -366,9 +366,9 @@ fn led(
                     },
                     _ => {}
                 }
-                let left_entity = storage.store_node(left_node);
+                let left_entity = storage.store_node(left_node, path);
                 let (right, right_node, new_toks) = parse_right(storage, path)?;
-                let right_entity = storage.store_node(right_node);
+                let right_entity = storage.store_node(right_node, path);
                 Ok((
                     BinOp {
                         info: head.get_info(),
@@ -411,7 +411,7 @@ fn led(
                                 })
                             }
                             _ => AstTerm::Call {
-                                inner: storage.store_node(left_node),
+                                inner: storage.store_node(left_node, path),
                                 children: vec![],
                             },
                         }
@@ -466,12 +466,12 @@ fn led(
                     .into_node(),
                     match left_node.term {
                         AstTerm::DefinitionHead(head) => AstTerm::DefinitionHead(DefinitionHead {
-                            params: Some(storage.store_node_set(args_node)), // TODO: check params was none
+                            params: Some(storage.store_node_set(args_node, path)), // TODO: check params was none
                             ..head
                         }),
                         _ => AstTerm::Call {
-                            inner: storage.store_node(left_node),
-                            children: storage.store_node_set(args_node),
+                            inner: storage.store_node(left_node, path),
+                            children: storage.store_node_set(args_node, path),
                         },
                     }
                     .into_node(loc, None),
@@ -553,7 +553,7 @@ pub fn parse_string(
     let toks = lex_string(storage, module, text)?;
     debug!("Parsing contents... {}", path_to_string(module));
     let (root, root_node, left_over) = expr(storage, toks, 0, module)?;
-    let root_entity = storage.store_node(root_node);
+    let root_entity = storage.store_node(root_node, module);
 
     if let Some(head) = left_over.front() {
         return Err(TError::ParseError(
