@@ -432,7 +432,13 @@ pub struct DefinitionHead {
 }
 
 impl DefinitionHead {
-    pub fn into_call(self, storage: &mut DBStorage, path: PathRef, loc: Loc, ty: Option<Entity>) -> AstNode {
+    pub fn into_call(
+        self,
+        storage: &mut DBStorage,
+        path: PathRef,
+        loc: Loc,
+        ty: Option<Entity>,
+    ) -> AstNode {
         let name = AstTerm::Symbol {
             name: self.name,
             context: self.path,

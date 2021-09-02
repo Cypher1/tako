@@ -4,9 +4,8 @@ use crate::ast::{Info, Node, ToNode};
 use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::primitives::{
-    bit_type, boolean, builtin, i32_type, int32, never_type,
-    number_type, string, string_type, type_type, unit_type, variable, Prim::*,
-    Val, Val::*,
+    bit_type, boolean, builtin, i32_type, int32, never_type, number_type, string, string_type,
+    type_type, unit_type, variable, Prim::*, Val, Val::*,
 };
 
 pub type Res = Result<Val, TError>;

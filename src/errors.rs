@@ -40,8 +40,15 @@ pub enum TError {
     TypeMismatch2(String, Box<Val>, Box<Val>, Info),
     #[error("runtime requirement failed at {0}")]
     RequirementFailure(Info),
-    #[error("stack interpreter ran out of arguments for op {0:?}, expected {1} args, got {2:?} at {3}")]
-    StackInterpreterRanOutOfArguments(Entity, usize, Vec<crate::passes::stack_interpreter::StackValue>, Info),
+    #[error(
+        "stack interpreter ran out of arguments for op {0:?}, expected {1} args, got {2:?} at {3}"
+    )]
+    StackInterpreterRanOutOfArguments(
+        Entity,
+        usize,
+        Vec<crate::passes::stack_interpreter::StackValue>,
+        Info,
+    ),
     #[error("stack interpreter ran out of code at {0}")]
     StackInterpreterRanOutOfCode(Info),
 

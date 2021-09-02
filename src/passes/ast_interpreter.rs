@@ -2,9 +2,7 @@ use crate::ast::*;
 use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::externs::*;
-use crate::primitives::{
-    boolean, int32, merge_vals, never_type, Frame, Prim::*, Val, Val::*,
-};
+use crate::primitives::{boolean, int32, merge_vals, never_type, Frame, Prim::*, Val, Val::*};
 use log::*;
 use std::collections::HashMap;
 

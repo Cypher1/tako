@@ -124,11 +124,14 @@ mod tests {
         let mut storage = get_db();
         let filename = "test/file.tk";
         let module_name = storage.module_name(filename.to_owned());
-        let entity = storage.store_node(AstNode {
-            term: AstTerm::Value(int32(12)),
-            loc: Loc::default(),
-            ty: None,
-        }, &module_name);
+        let entity = storage.store_node(
+            AstNode {
+                term: AstTerm::Value(int32(12)),
+                loc: Loc::default(),
+                ty: None,
+            },
+            &module_name,
+        );
         assert_eq!(Interpreter::new(&mut storage).eval(entity), Ok(int32(12)));
     }
 
@@ -138,7 +141,11 @@ mod tests {
         storage.set_file(filename, s.to_string());
 
         let _root = storage.look_up_definitions(module_name.clone())?;
-        let root_entity = storage.path_to_entity.get(&module_name).expect("Expected an entity for the program").clone();
+        let root_entity = storage
+            .path_to_entity
+            .get(&module_name)
+            .expect("Expected an entity for the program")
+            .clone();
         Interpreter::new(storage).eval(root_entity)
     }
 
@@ -156,7 +163,6 @@ mod tests {
         let db = &mut get_db();
         assert_eq!(eval_str(db, "true"), Ok(boolean(true)));
     }
-
 }
 
 /*
