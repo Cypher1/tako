@@ -1,10 +1,11 @@
-use crate::ast::{Info};
+use crate::ast::{Info, Path};
 use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::externs::*;
-use crate::primitives::{
-    boolean, int32, merge_vals, never_type, Frame, Prim::*, Val, Val::*,
-};
+use crate::primitives::{Prim::*, Val};
+// use crate::primitives::{
+// boolean, int32, merge_vals, never_type, Frame, Prim::*, Val::*,
+// };
 use log::*;
 use std::collections::HashMap;
 
@@ -15,378 +16,104 @@ pub type PureImplFn<'a> =
 
 use specs::Entity;
 
+#[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Hash, Debug)]
 pub enum StackValue {
     // This is for storing a lazily evaluated reference (in the place of a pointer into the program's source)
     StaticReference(Entity),
     Value(Val),
 }
-use StackValue::*;
 
-pub struct Interpreter<'a> {
-    // Might be worth merging these two
-    pub default_impls: HashMap<String, ImplFn<'a>>,
-    pub state: Vec<StackValue>,
+pub struct Mem {
+    stack: Vec<StackValue>,
+    heap: Vec<StackValue>,
 }
 
-impl<'a> Default for Interpreter<'a> {
-    fn default() -> Interpreter<'a> {
+pub enum MemoryReference {
+    Stack(u32, u32),
+    Heap(u32, u32),
+    // TODO: Consider adding Registers to avoid hitting the stack for every argument
+}
+
+impl Default for Mem {
+    fn default() -> Self {
+        Self {
+            stack: Vec::new(),
+            heap: Vec::new(),
+        }
+    }
+}
+
+pub struct Interpreter<'functions, 'storage> {
+    // Might be worth merging these two
+    default_impls: HashMap<String, ImplFn<'functions>>,
+    memory: Mem,
+    mapping: HashMap<Path, MemoryReference>, // where each symbol is stored
+    storage: &'storage mut DBStorage,
+}
+
+impl<'functions, 'storage> Interpreter<'functions, 'storage> {
+    fn new(storage: &'storage mut DBStorage) -> Interpreter<'functions, 'storage> {
         Interpreter {
             default_impls: HashMap::new(),
-            state: Vec::new(),
+            memory: Mem::default(),
+            mapping: HashMap::new(),
+            storage,
         }
     }
-}
 
-impl Interpreter<'a> {
-    fn run(self: &mut Self, storage: &mut DBStorage, entry_point: Entity) -> Res {
-        self.state.push(StaticReference(entry_point)); // Inject the symbol to be evaluated. This is likely to be 'main'.
+    fn eval(self: &mut Self, entry_point: Entity) -> Res {
+        let mut code = vec![entry_point]; // Inject the symbol to be evaluated. This is likely to be 'main'.
+        let mut function_stack = vec![]; // function stack for quick 'returning'
         loop {
-            self.eval(storage)?;
-        }
-        Ok(PrimVal(I32(0)))
-    }
-}
-
-fn find_symbol<'a>(state: &'a [Frame], name: &str) -> Option<&'a Val> {
-    for frame in state.iter().rev() {
-        if let Some(val) = frame.get(name) {
-            return Some(val); // This is the variable
-        }
-        // Not in this frame, go back up.
-    }
-    None
-}
-
-type State = Vec<Frame>;
-impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
-    fn visit_root(&mut self, storage: &mut DBStorage, root: &Root) -> Res {
-        self.visit(storage, &mut state, &root.ast)
-    }
-
-    fn visit_sym(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Sym) -> Res {
-        let name = &expr.name;
-        debug!("evaluating sym '{}'", name);
-        let value = find_symbol(state, name);
-        if let Some(prim) = value {
-            debug!("{} = (from stack) {}", name, prim.clone().into_node());
-            return Ok(prim.clone());
-        }
-        if let Some(ext) = crate::externs::get_implementation(name) {
-            debug!("{} = (from externs)", name);
-            let frame = || {
-                let mut frame_vals: HashMap<String, Box<dyn Fn() -> Res>> = map!();
-                for (name, val) in state.last().expect("Stack frame missing").clone().iter() {
-                    let val = val.clone();
-                    frame_vals.insert(name.to_string(), Box::new(move || Ok(val.clone())));
+            if let Some(curr) = code.pop() {
+                let res = self.step(curr, &mut code, &mut function_stack)?;
+                trace!("eval step: {:?}", &res);
+                self.memory.stack.push(res); // Put the result back on the stack.
+            } else {
+                if let Some(StackValue::Value(last)) = self.memory.stack.pop() {
+                    return Ok(last);
                 }
-                frame_vals
-            };
-            return ext(storage, frame(), expr.get_info());
-        }
-        Err(TError::UnknownSymbol(
-            name.to_string(),
-            expr.info.clone(),
-            "interpreter::?".to_string(),
-        ))
-    }
-
-    fn visit_val(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Val) -> Res {
-        debug!("visiting prim {}", &expr);
-        match expr {
-            Variable(name) => {
-                let frame = state.last().cloned().unwrap_or_default();
-                let mut kvs = vec![];
-                for (k, v) in frame.iter() {
-                    kvs.push(format!("{} = {}", k, v))
-                }
-                debug!("variable {}, state: {}", &name, &kvs.join(","));
-                return state
-                    .last()
-                    .expect("Stack frame missing")
-                    .get(name)
-                    .cloned()
-                    .ok_or_else(|| {
-                        TError::OutOfScopeTypeVariable(name.to_string(), Info::default())
-                    }); // TODO: Get some info?
-            }
-            Product(tys) => {
-                let mut new_tys = set![];
-                for ty in tys.iter() {
-                    let new_ty = self.visit_val(storage, state, ty)?; // Evaluate the type
-                    if new_tys.len() == 1 {
-                        let ty = new_tys
-                            .iter()
-                            .cloned()
-                            .next()
-                            .expect("This should never fail (1 sized set shouldn't be empty)");
-                        match (&ty, &new_ty) {
-                            (Product(ty), Product(new_ty)) => {
-                                new_tys = ty.union(new_ty).cloned().collect();
-                                continue;
-                            }
-                            (Struct(ty), Struct(new_ty)) => {
-                                new_tys = set![Struct(merge_vals(ty.clone(), new_ty.clone()))];
-                                continue;
-                            }
-                            (Struct(ty), new_ty) => {
-                                new_tys = set![Struct(merge_vals(
-                                    ty.clone(),
-                                    vec![("it".to_string(), new_ty.clone())]
-                                ))];
-                                continue;
-                            }
-                            _ => {}
-                        }
-                    }
-                    new_tys.insert(new_ty);
-                }
-                if new_tys.len() == 1 {
-                    let ty = new_tys
-                        .iter()
-                        .cloned()
-                        .next()
-                        .expect("This should never fail (1 sized set shouldn't be empty)");
-                    return Ok(ty);
-                }
-                return Ok(Product(new_tys));
-            }
-            Struct(tys) => {
-                let mut new_tys = vec![];
-                for (name, ty) in tys.iter() {
-                    let new_ty = self.visit_val(storage, state, ty)?; // Evaluate the type
-                    new_tys.push((name.clone(), new_ty));
-                }
-                return Ok(Struct(new_tys));
-            }
-            Function {
-                arguments,
-                results,
-                intros: _,
-            } => {
-                if let Some(frame) = state.clone().last() {
-                    let mut new_args = vec![];
-                    for (arg, ty) in arguments.clone().into_struct().iter() {
-                        let never = never_type();
-                        let arg_ty = &frame.get(arg).unwrap_or(&never);
-                        debug!(">> {}: {} unified with {}", &arg, &ty, &arg_ty);
-                        let unified = ty.unify(arg_ty, state)?;
-                        debug!(">>>> {}", &unified);
-                        new_args.push((arg.clone(), unified));
-                    }
-                    let results = self.visit_val(storage, state, results)?;
-                    return Ok(Function {
-                        intros: dict!(),
-                        arguments: Box::new(Struct(new_args)),
-                        results: Box::new(results),
-                    });
-                }
-            }
-            _ => {}
-        }
-        Ok(expr.clone())
-    }
-
-    fn visit_apply(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Apply) -> Res {
-        debug!("evaluating apply {}", expr.clone().into_node());
-        state.push(Frame::new());
-        expr.args
-            .iter()
-            .map(|arg| self.visit_let(storage, state, arg))
-            .collect::<Result<Vec<Val>, TError>>()?;
-        // Retrive the inner
-        let inner = self.visit(storage, state, &*expr.inner)?;
-        // Run the inner
-        debug!(
-            "apply args {:?} to inner {}",
-            state.last(),
-            inner.clone().into_node()
-        );
-        let res = match inner {
-            Val::Lambda(func) => self.visit(storage, state, &*func)?,
-            Val::PrimVal(prim) => {
-                use crate::primitives::Prim;
-                match prim {
-                    Prim::BuiltIn(name) => {
-                        debug!("looking up interpreter impl {}", name);
-                        let frame = || {
-                            let mut frame_vals: HashMap<String, Box<dyn Fn() -> Res>> = map!();
-                            for (name, val) in
-                                state.last().expect("Stack frame missing").clone().iter()
-                            {
-                                let val = val.clone();
-                                frame_vals
-                                    .insert(name.to_string(), Box::new(move || Ok(val.clone())));
-                            }
-                            frame_vals
-                        };
-                        if let Some(extern_impl) = &mut self.default_impls.get_mut(&name) {
-                            return extern_impl(storage, frame(), expr.get_info());
-                        }
-                        debug!("looking up default impl {}", &name);
-                        if let Some(default_impl) = crate::externs::get_implementation(&name) {
-                            return default_impl(storage, frame(), expr.get_info());
-                        }
-                        panic!("Built a 'Built in' with unknown built in named {}", name);
-                    }
-                    prim => Val::PrimVal(prim),
-                }
-            }
-            Val::Function {
-                intros: _, // TODO
-                arguments,
-                results,
-            } => {
-                let frame = state.last_mut().expect("Stack frame missing");
-                if let Struct(vals) = *arguments {
-                    for (name, val) in vals {
-                        frame.insert(name, val);
-                    }
-                } else {
-                    frame.insert("it".to_string(), *arguments);
-                }
-                self.visit_val(storage, state, &*results)?
-            }
-            val => val,
-        };
-        state.pop();
-        match res {
-            Function { results, .. } => Ok(*results),
-            res => {
-                debug!("unexpected, apply on a {}", res);
-                Ok(res)
+                return Err(TError::StackInterpreterRanOutOfCode(Info::default()));
             }
         }
     }
 
-    fn visit_abs(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Abs) -> Res {
-        debug!("introducing abstraction {}", expr.clone().into_node());
-        // Add a new scope
-        let mut frame = Frame::new();
-        frame.insert(expr.name.clone(), Variable(expr.name.clone()));
-        state.push(frame);
-        let result = self.visit(storage, state, &expr.value)?;
-        // Drop the finished scope
-        state.pop();
-        // TODO: Rewrap in the abstraction
-        Ok(result)
-    }
-
-    fn visit_let(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Let) -> Res {
-        debug!("evaluating let {}", expr.clone().into_node());
-        if expr.args.is_some() {
-            let val = Val::Lambda(expr.value.clone());
-            state
-                .last_mut()
-                .expect("Stack frame missing")
-                .insert(expr.name.clone(), val.clone());
-            return Ok(val);
+    fn step(
+        self: &mut Self,
+        curr: Entity,
+        code: &mut Vec<Entity>,
+        function_stack: &mut Vec<usize>,
+    ) -> Result<StackValue, TError> {
+        if let Some(value) = self.storage.get_known_value(&curr) {
+            return Ok(StackValue::Value(value));
         }
-        // Add a new scope
-        state.push(Frame::new());
-        let result = self.visit(storage, state, &expr.value)?;
-        // Drop the finished scope
-        state.pop();
-        let frame = state.last_mut().expect("Stack frame missing");
-        frame.insert(expr.name.clone(), result.clone());
-        Ok(Val::Struct(vec![(expr.name.clone(), result)]))
-    }
-
-    fn visit_un_op(&mut self, storage: &mut DBStorage, state: &mut State, expr: &UnOp) -> Res {
-        debug!("evaluating unop {}", expr.clone().into_node());
-        let i = self.visit(storage, state, &expr.inner)?;
-        let info = expr.clone().get_info();
-        match expr.name.as_str() {
-            "!" => match i {
-                PrimVal(Bool(n)) => Ok(boolean(!n)),
-                Lambda(_) => Ok(Lambda(Box::new(expr.clone().into_node()))),
-                _ => Err(TError::TypeMismatch("!".to_string(), Box::new(i), info)),
-            },
-            "+" => match i {
-                PrimVal(I32(n)) => Ok(int32(n)),
-                Lambda(_) => Ok(Lambda(Box::new(expr.clone().into_node()))),
-                _ => Err(TError::TypeMismatch("+".to_string(), Box::new(i), info)),
-            },
-            "-" => match i {
-                PrimVal(I32(n)) => Ok(int32(-n)),
-                Lambda(_) => Ok(Lambda(Box::new(expr.clone().into_node()))),
-                _ => Err(TError::TypeMismatch("-".to_string(), Box::new(i), info)),
-            },
-            op => Err(TError::UnknownPrefixOperator(op.to_string(), info)),
+        let arity = self.storage.arity(&curr)?;
+        if self.memory.stack.len() < arity {
+            return Err(TError::StackInterpreterRanOutOfArguments(
+                curr,
+                arity,
+                self.memory.stack.clone(),
+                Info::default(),
+            ));
         }
-    }
+        // Get the code for the entity
 
-    fn visit_bin_op(&mut self, storage: &mut DBStorage, state: &mut State, expr: &BinOp) -> Res {
-        debug!("evaluating binop {}", expr.clone().into_node());
-        let info = expr.clone().get_info();
-        let l = self.visit(storage, state, &expr.left);
-        let mut r = || self.visit(storage, state, &expr.right);
-        match expr.name.as_str() {
-            "+" => prim_add(&l?, &r()?, info),
-            "++" => prim_add_strs(&l?, &r()?, info),
-            "==" => prim_eq(&l?, &r()?, info),
-            "!=" => prim_neq(&l?, &r()?, info),
-            ">" => prim_gt(&l?, &r()?, info),
-            "<" => prim_gt(&r()?, &l?, info),
-            ">=" => prim_gte(&l?, &r()?, info),
-            "<=" => prim_gte(&r()?, &l?, info),
-            "-" => prim_sub(&l?, &r()?, info),
-            "*" => prim_mul(&l?, &r()?, info),
-            "/" => prim_div(&l?, &r()?, info),
-            "%" => prim_mod(&l?, &r()?, info),
-            "^" => prim_pow(&l?, &r()?, info),
-            "&&" => prim_and(&l?, &r()?, info),
-            "||" => prim_or(&l?, &r()?, info),
-            "->" => prim_type_arrow(l?, r()?, info),
-            "&" => prim_type_and(l?, r()?),
-            "|" => prim_type_or(l?, r()?, info),
-            "," => {
-                let left = l?;
-                let right = r()?;
-                Ok(left.merge(right))
-            }
-            "." => {
-                let l = l?;
-                let r = r()?;
-                self.visit_apply(
-                    storage,
-                    state,
-                    &Apply {
-                        inner: Box::new(r.into_node()),
-                        args: vec![Let {
-                            name: "it".to_string(),
-                            value: Box::new(l.into_node()),
-                            args: None,
-                            info: info.clone(),
-                        }],
-                        info,
-                    },
-                )
-            }
-            ";" => {
-                l?;
-                let right = r()?;
-                Ok(right)
-            }
-            "?" => match l {
-                Err(_) => r(),
-                l => l,
-            },
-            "-|" => match l {
-                //TODO: Add pattern matching.
-                Ok(PrimVal(Bool(false))) => Err(TError::RequirementFailure(info)),
-                Ok(_) => r(),
-                l => l,
-            },
-            op => Err(TError::UnknownInfixOperator(op.to_string(), info)),
-        }
+        // Push the code (in reverse) onto the 'code' stack
+        // so that the first instruction is the 'last' (first to be executed)
+
+        // To 'call'
+        // function_stack.push(code.len()); // Place to 'ret' back to.
+        // code.push(ent);
+        Ok(StackValue::Value(Val::PrimVal(I32(0)))) // TODO: This is clearly wrong
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::database::{AstNode, AstTerm};
+    use crate::location::Loc;
     use crate::primitives::{boolean, int32, number_type, string, string_type};
-    use Node::*;
 
     fn get_db() -> DBStorage {
         DBStorage::default()
@@ -395,19 +122,24 @@ mod tests {
     #[test]
     fn eval_num() {
         let mut storage = get_db();
-        let tree = ValNode(int32(12), Info::default());
-        assert_eq!(
-            Interpreter::default().visit(&mut storage, &mut vec![], &tree),
-            Ok(int32(12))
-        );
+        let filename = "test/file.tk";
+        let module_name = storage.module_name(filename.to_owned());
+        let entity = storage.store_node(AstNode {
+            term: AstTerm::Value(int32(12)),
+            loc: Loc::default(),
+            ty: None,
+        }, &module_name);
+        assert_eq!(Interpreter::new(&mut storage).eval(entity), Ok(int32(12)));
     }
 
     fn eval_str(storage: &mut DBStorage, s: &str) -> Res {
         let filename = "test/file.tk";
         let module_name = storage.module_name(filename.to_owned());
         storage.set_file(filename, s.to_string());
-        let root = storage.look_up_definitions(module_name)?;
-        Interpreter::default().visit_root(storage, &root)
+
+        let _root = storage.look_up_definitions(module_name.clone())?;
+        let root_entity = storage.path_to_entity.get(&module_name).expect("Expected an entity for the program").clone();
+        Interpreter::new(storage).eval(root_entity)
     }
 
     #[allow(dead_code)]
@@ -425,6 +157,9 @@ mod tests {
         assert_eq!(eval_str(db, "true"), Ok(boolean(true)));
     }
 
+}
+
+/*
     #[test]
     fn parse_and_eval_bool_and() {
         let db = &mut get_db();
@@ -629,3 +364,4 @@ mod tests {
         }
     }
 }
+*/

@@ -21,6 +21,8 @@ impl HasInfo for TError {
             UnknownSizeOfAbstractType(_, info) => info.clone(),
             UnknownCardOfAbstractType(_, info) => info.clone(),
             StaticPointerCardinality(info) => info.clone(),
+            StackInterpreterRanOutOfArguments(_, _, _, info) => info.clone(),
+            StackInterpreterRanOutOfCode(info) => info.clone(),
             TypeMismatch(_, _, info) => info.clone(),
             TypeMismatch2(_, _, _, info) => info.clone(),
             RequirementFailure(info) => info.clone(),
@@ -28,6 +30,7 @@ impl HasInfo for TError {
             InternalError(_, info) => info.clone(),
             ExpectedLetNode(node) => node.get_info(),
             UnknownPath(_, info) => info.clone(),
+            UnknownEntity(_, info) => info.clone(),
         }
     }
     fn get_mut_info(&mut self) -> &mut Info {
@@ -42,6 +45,8 @@ impl HasInfo for TError {
             UnknownSizeOfAbstractType(_, ref mut info) => info,
             UnknownCardOfAbstractType(_, ref mut info) => info,
             StaticPointerCardinality(ref mut info) => info,
+            StackInterpreterRanOutOfArguments(_, _, _, ref mut info) => info,
+            StackInterpreterRanOutOfCode(ref mut info) => info,
             TypeMismatch(_, _, ref mut info) => info,
             TypeMismatch2(_, _, _, ref mut info) => info,
             RequirementFailure(ref mut info) => info,
@@ -49,6 +54,7 @@ impl HasInfo for TError {
             InternalError(_, ref mut info) => info,
             ExpectedLetNode(ref mut node) => node.get_mut_info(),
             UnknownPath(_, ref mut info) => info,
+            UnknownEntity(_, ref mut info) => info,
         }
     }
 }
