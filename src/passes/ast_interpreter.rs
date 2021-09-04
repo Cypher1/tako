@@ -1,9 +1,14 @@
-use crate::ast::*;
+use crate::ast::{Abs, Apply, BinOp, HasInfo, Info, Let, Root, Sym, ToNode, UnOp, Visitor};
 use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::externs::*;
-use crate::primitives::{boolean, int32, merge_vals, never_type, Frame, Prim::*, Val, Val::*};
-use log::*;
+use crate::primitives::{
+    boolean, int32, merge_vals, never_type, Frame,
+    Prim::{Bool, I32},
+    Val,
+    Val::{Function, Lambda, PrimVal, Product, Struct, Variable},
+};
+use log::{debug, info};
 use std::collections::HashMap;
 
 pub type ImplFn<'a> =
@@ -39,7 +44,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
     fn visit_root(&mut self, storage: &mut DBStorage, root: &Root) -> Res {
         let mut base_frame = map! {};
         for (name, ext) in storage.get_externs().iter() {
-            base_frame.insert(name.to_owned(), ext.value.clone());
+            base_frame.insert(name.clone(), ext.value.clone());
         }
         let mut state = vec![base_frame];
         self.visit(storage, &mut state, &root.ast)
@@ -57,7 +62,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
             debug!("{} = (from externs)", name);
             let frame = || {
                 let mut frame_vals: HashMap<String, Box<dyn Fn() -> Res>> = map!();
-                for (name, val) in state.last().expect("Stack frame missing").clone().iter() {
+                for (name, val) in state.last().expect("Stack frame missing") {
                     let val = val.clone();
                     frame_vals.insert(name.to_string(), Box::new(move || Ok(val.clone())));
                 }
@@ -78,8 +83,8 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
             Variable(name) => {
                 let frame = state.last().cloned().unwrap_or_default();
                 let mut kvs = vec![];
-                for (k, v) in frame.iter() {
-                    kvs.push(format!("{} = {}", k, v))
+                for (k, v) in &frame {
+                    kvs.push(format!("{} = {}", k, v));
                 }
                 debug!("variable {}, state: {}", &name, &kvs.join(","));
                 return state
@@ -147,7 +152,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
             } => {
                 if let Some(frame) = state.clone().last() {
                     let mut new_args = vec![];
-                    for (arg, ty) in arguments.clone().into_struct().iter() {
+                    for (arg, ty) in &arguments.clone().into_struct() {
                         let never = never_type();
                         let arg_ty = &frame.get(arg).unwrap_or(&never);
                         debug!(">> {}: {} unified with {}", &arg, &ty, &arg_ty);
@@ -192,9 +197,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
                         debug!("looking up interpreter impl {}", name);
                         let frame = || {
                             let mut frame_vals: HashMap<String, Box<dyn Fn() -> Res>> = map!();
-                            for (name, val) in
-                                state.last().expect("Stack frame missing").clone().iter()
-                            {
+                            for (name, val) in state.last().expect("Stack frame missing") {
                                 let val = val.clone();
                                 frame_vals
                                     .insert(name.to_string(), Box::new(move || Ok(val.clone())));
@@ -367,8 +370,10 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::primitives::{boolean, int32, number_type, string, string_type};
-    use Node::*;
+    use crate::ast::Node::ValNode;
+    use crate::primitives::{
+        boolean, i32_type, int32, number_type, record, string, string_type, sum, Val::Union,
+    };
 
     fn get_db() -> DBStorage {
         DBStorage::default()
@@ -515,7 +520,6 @@ mod tests {
 
     #[test]
     fn parse_and_eval_tagged_string_or_number_type() {
-        use crate::primitives::*;
         let db = &mut get_db();
         assert_eq!(
             eval_str(db, "String + I32"),
@@ -525,7 +529,6 @@ mod tests {
 
     #[test]
     fn parse_and_eval_string_times_number_type() {
-        use crate::primitives::*;
         let db = &mut get_db();
         assert_eq!(
             eval_str(db, "String * I32"),

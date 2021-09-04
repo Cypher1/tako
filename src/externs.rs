@@ -295,9 +295,10 @@ pub fn get_implementation(name: &str) -> Option<FuncImpl> {
             }
         })),
         "." => Some(Box::new(|_db, args, info| {
+            use crate::ast::{Apply, Let};
+
             let left = get_symbol(&args, "left", &info)?;
             let right = get_symbol(&args, "right", &info)?;
-            use crate::ast::{Apply, Let};
             Ok(Lambda(Box::new(
                 Apply {
                     inner: Box::new(right.into_node()),

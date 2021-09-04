@@ -15,6 +15,7 @@ impl fmt::Display for Tribool {
 
 use Tribool::*;
 impl Tribool {
+    #[must_use]
     pub fn not(&self) -> Self {
         match self {
             True => False,
@@ -23,6 +24,7 @@ impl Tribool {
         }
     }
 
+    #[must_use]
     pub fn or(&self, other: &Self) -> Self {
         match (self, other) {
             (True, _) | (_, True) => True,
@@ -31,6 +33,7 @@ impl Tribool {
         }
     }
 
+    #[must_use]
     pub fn and(&self, other: &Self) -> Self {
         match (self, other) {
             (False, _) | (_, False) => False,
@@ -39,18 +42,23 @@ impl Tribool {
         }
     }
 
+    #[must_use]
     pub fn is_true(&self) -> bool {
         self == &True
     }
+    #[must_use]
     pub fn maybe_true(&self) -> bool {
         self.is_true() || self.is_unknown()
     }
+    #[must_use]
     pub fn is_false(&self) -> bool {
         self == &False
     }
+    #[must_use]
     pub fn maybe_false(&self) -> bool {
         self.is_false() || self.is_unknown()
     }
+    #[must_use]
     pub fn is_unknown(&self) -> bool {
         self == &Unknown
     }

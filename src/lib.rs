@@ -45,13 +45,13 @@ pub fn build_logger(finish: impl FnOnce(&mut env_logger::Builder)) {
                 .write_style_or("TAKO_LOG_STYLE", "AUTO"),
         )
         .format_timestamp(None),
-    )
+    );
 }
 
 pub fn init_for_test() {
     build_logger(|env| {
         let _ = env.is_test(true).try_init();
-    })
+    });
 }
 
 use std::fs::File;
@@ -102,10 +102,11 @@ pub fn work_on_string<'a>(
     filename: &str,
     print_impl: Option<ImplFn<'a>>,
 ) -> Result<String, TError> {
+    use ast::ToNode;
+    use cli_options::Command;
+
     let module_name = storage.module_name(filename.to_owned());
     storage.set_file(filename, contents);
-
-    use cli_options::Command;
 
     match storage.options.cmd {
         Command::Build => storage.build_with_gpp(module_name),
@@ -116,7 +117,6 @@ pub fn work_on_string<'a>(
                 interp.impls.insert("print".to_string(), print_impl);
             }
             let res = interp.visit_root(storage, &root)?;
-            use ast::ToNode;
             PrettyPrint::process(&res.into_node(), storage)
                 .or_else(|_| panic!("Pretty print failed"))
         }
@@ -131,7 +131,6 @@ pub fn work_on_string<'a>(
                 interp.default_impls.insert("print".to_string(), print_impl);
             }
             let res = interp.eval(root_entity)?;
-            use ast::ToNode;
             PrettyPrint::process(&res.into_node(), storage)
                 .or_else(|_| panic!("Pretty print failed"))
         }

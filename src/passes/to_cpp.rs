@@ -1,8 +1,8 @@
-use crate::ast::*;
+use crate::ast::{Abs, Apply, BinOp, HasInfo, Let, Path, PathRef, Sym, Symbol, UnOp, Visitor};
 use crate::primitives::{Prim, Val};
-use crate::symbol_table::*;
+use crate::symbol_table::Table;
 use crate::{database::DBStorage, errors::TError};
-use log::*;
+use log::debug;
 use std::collections::HashSet;
 
 // Walks the AST compiling it to wasm.
@@ -97,9 +97,9 @@ impl Code {
                 Code::Block(right) // Backwards?
             }
             (Code::Block(mut left), right) => {
-                for line in left.iter_mut() {
+                for line in &mut left {
                     if let Code::Expr(expr) = line {
-                        *line = Code::Statement(expr.to_owned());
+                        *line = Code::Statement(expr.clone());
                     }
                 }
                 left.push(right);
@@ -115,7 +115,8 @@ impl Code {
     }
 }
 
-pub fn make_name(def: Vec<Symbol>) -> String {
+#[must_use]
+pub fn make_name(def: PathRef) -> String {
     let def_n: Vec<String> = def.iter().map(|n| n.clone().to_name()).collect();
     def_n.join("_")
 }
@@ -277,16 +278,16 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         // #includes
         let mut includes: Vec<&String> = self.includes.iter().collect();
         includes.sort();
-        for inc in includes.iter() {
+        for inc in &includes {
             if inc.as_str() != "" {
                 code = format!("{}{}\n", code, inc);
             }
         }
         // Forward declarations
-        for func in self.functions.clone().iter() {
+        for func in &self.functions.clone() {
             match &func {
                 Code::Func { name, args, .. } => {
-                    code = format!("{}{}({});\n", code, name, args.join(", "),)
+                    code = format!("{}{}({});\n", code, name, args.join(", "),);
                 }
                 _ => panic!("Cannot create function from non-function"),
             }
@@ -296,7 +297,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
 
         // Definitions
         for func in self.functions.iter().clone() {
-            let function = pretty_print_block(func.to_owned(), "\n");
+            let function = pretty_print_block(func.clone(), "\n");
             code = format!("{}{}", code, function);
         }
         Ok((code + "\n", self.flags.clone()))
@@ -309,7 +310,8 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             expr.get_info().defined_at
         );
         let name = make_name(
-            expr.get_info()
+            &expr
+                .get_info()
                 .defined_at
                 .expect("Could not find definition for symbol"),
         );
@@ -323,7 +325,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
     }
 
     fn visit_val(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Val) -> Res {
-        use Val::*;
+        use Val::{Lambda, PrimVal, Product, Struct, Union};
         match expr {
             Product(tys) => {
                 if tys.is_empty() {
@@ -338,7 +340,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 unimplemented!("unimplemented sum type in compilation to cpp")
             }
             PrimVal(prim) => {
-                use Prim::*;
+                use Prim::{Bool, BuiltIn, Str, Tag, I32};
                 match prim {
                     I32(n) => Ok(Code::Expr(n.to_string())),
                     Bool(true) => Ok(Code::Expr(1.to_string())),
@@ -369,7 +371,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         debug!("apply here: {:?}", expr);
         // Build the 'struct' of args
         let mut args = vec![];
-        for arg in expr.args.iter() {
+        for arg in &expr.args {
             // TODO: Include lambda head in values
             let val = self.visit_let(storage, state, arg)?;
             match val {
@@ -398,7 +400,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             .defined_at
             .expect("Could not find definition for abs");
 
-        let name = make_name(path);
+        let name = make_name(&path);
         let body = self.visit(storage, state, &expr.value)?;
         Ok(Code::Template(name, Box::new(body)))
     }
@@ -418,7 +420,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         if uses.is_empty() {
             return Ok(Code::Empty);
         }
-        let name = make_name(path);
+        let name = make_name(&path);
         let body = self.visit(storage, state, &expr.value)?;
         if let Some(e_args) = &expr.args {
             let mut args = vec![];
@@ -427,7 +429,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                     .get_info()
                     .defined_at
                     .expect("Could not find definition for let arg");
-                let name = make_name(path);
+                let name = make_name(&path);
                 args.push(format!("const auto {}", name));
             }
 

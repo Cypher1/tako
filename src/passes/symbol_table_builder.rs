@@ -6,7 +6,7 @@ use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::primitives::Val;
 use crate::symbol_table::Table;
-use log::*;
+use log::{debug, info};
 
 // Walks the AST interpreting it.
 #[derive(Default)]

@@ -1,13 +1,13 @@
 #![deny(clippy::all)]
 
-use log::*;
+use log::error;
 use rustyline::error::ReadlineError;
 use rustyline::{config::Config, Editor};
 use std::env;
 use std::error::Error;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
-use takolib::cli_options::{print_cli_info, Options};
+use takolib::cli_options::{print_cli_info, Command, Options};
 use takolib::database::DBStorage;
 use takolib::errors::TError;
 use takolib::{work, work_on_string};
@@ -35,7 +35,7 @@ fn handle(res: Result<String, TError>) {
 }
 
 fn main() -> Result<(), TError> {
-    takolib::build_logger(|env| env.init());
+    takolib::build_logger(env_logger::Builder::init);
 
     let mut storage = DBStorage::default();
     {
@@ -46,11 +46,10 @@ fn main() -> Result<(), TError> {
 
     let files = storage.options.files.clone();
 
-    for f in files.iter() {
+    for f in &files {
         handle(work(&mut storage, f, None));
     }
 
-    use takolib::cli_options::Command;
     if storage.options.cmd == Command::Repl || storage.options.cmd == Command::StackRepl {
         repl(&mut storage)
     } else {

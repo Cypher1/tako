@@ -123,7 +123,6 @@ impl Val {
     }
 
     pub fn merge(self: Val, other: Val) -> Val {
-        use Val::*;
         match (self, other) {
             (Struct(vals), Struct(o_vals)) => Struct(merge_vals(vals, o_vals)),
             (Struct(vals), other) => Struct(merge_vals(vals, other.into_struct())),
@@ -558,7 +557,7 @@ mod tests {
         Ok(())
     }
     #[test]
-    fn tag2_type() -> Res {
+    fn tag2_type() {
         assert_eq!(card(&tag(bits(0, 2))), Ok(1));
         assert_eq!(size(&tag(bits(0, 2))), Ok(2));
         assert_eq!(card(&tag(bits(1, 2))), Ok(1));
@@ -567,38 +566,33 @@ mod tests {
         assert_eq!(size(&tag(bits(2, 2))), Ok(2));
         assert_eq!(card(&tag(bits(3, 2))), Ok(1));
         assert_eq!(size(&tag(bits(3, 2))), Ok(2));
-        Ok(())
     }
     #[test]
-    fn tag4_type() -> Res {
+    fn tag4_type() {
         assert_eq!(card(&tag(bits(4, 3))), Ok(1));
         assert_eq!(size(&tag(bits(4, 3))), Ok(3));
-        Ok(())
     }
 
     #[test]
-    fn union_n_type() -> Res {
+    fn union_n_type() {
         let union2 = Union(set![unit_type(), unit_type()]);
         assert_eq!(card(&union2), Ok(1));
         assert_eq!(size(&union2), Ok(0));
         let union3 = Union(set![unit_type(), unit_type(), unit_type()]);
         assert_eq!(card(&union3), Ok(1));
         assert_eq!(size(&union3), Ok(0));
-        Ok(())
     }
     #[test]
-    fn bit() -> Res {
+    fn bit() {
         let bitt = bit_type();
         assert_eq!(card(&bitt), Ok(2));
         assert_eq!(size(&bitt), Ok(1));
-        Ok(())
     }
     #[test]
-    fn trit() -> Res {
+    fn trit() {
         let trit = trit_type();
         assert_eq!(card(&trit), Ok(3));
         assert_eq!(size(&trit), Ok(2));
-        Ok(())
     }
     #[test]
     fn nested_quad_type() -> Res {
@@ -608,11 +602,10 @@ mod tests {
         Ok(())
     }
     #[test]
-    fn quad() -> Res {
+    fn quad() {
         let quad = quad_type();
         assert_eq!(card(&quad), Ok(4));
         assert_eq!(size(&quad), Ok(2));
-        Ok(())
     }
     #[test]
     fn pent_type() -> Res {

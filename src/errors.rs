@@ -1,5 +1,6 @@
-use crate::ast::{Info, Node};
+use crate::ast::{Info, Node, Path};
 use crate::primitives::Val;
+use crate::tokens::Token;
 use specs::Entity;
 
 use thiserror::Error;
@@ -10,6 +11,8 @@ use derivative::Derivative;
 pub enum TError {
     #[error("call to C++ compiler failed with error code: {1:?}\n{0}")]
     CppCompilerError(String, Option<i32>, Info),
+    #[error("unknown token `{0:?}` in {2:?} at {1}")]
+    UnknownToken(Token, Info, Path),
     #[error("unknown symbol `{0}` in {2} at {1}")]
     UnknownSymbol(String, Info, String),
     #[error("unknown entity `{0:?}` at {1}")]

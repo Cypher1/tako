@@ -4,7 +4,7 @@ use std::hash::{Hash, Hasher};
 
 use crate::database::DBStorage;
 use crate::errors::TError;
-use crate::location::*;
+use crate::location::Loc;
 use crate::primitives::{unit_type, Val};
 use crate::symbol_table::Table;
 
@@ -12,49 +12,51 @@ impl HasInfo for TError {
     fn get_info(&self) -> Info {
         use TError::*;
         match self {
-            CppCompilerError(_, _, info) => info.clone(),
-            UnknownSymbol(_, info, _) => info.clone(),
-            OutOfScopeTypeVariable(_, info) => info.clone(),
-            UnknownInfixOperator(_, info) => info.clone(),
-            UnknownPrefixOperator(_, info) => info.clone(),
-            UnknownSizeOfVariableType(_, info) => info.clone(),
-            UnknownSizeOfAbstractType(_, info) => info.clone(),
-            UnknownCardOfAbstractType(_, info) => info.clone(),
-            StaticPointerCardinality(info) => info.clone(),
-            StackInterpreterRanOutOfArguments(_, _, _, info) => info.clone(),
-            StackInterpreterRanOutOfCode(info) => info.clone(),
-            TypeMismatch(_, _, info) => info.clone(),
-            TypeMismatch2(_, _, _, info) => info.clone(),
-            RequirementFailure(info) => info.clone(),
-            ParseError(_, info) => info.clone(),
-            InternalError(_, info) => info.clone(),
+            CppCompilerError(_, _, info)
+            | UnknownToken(_, info, _)
+            | UnknownSymbol(_, info, _)
+            | OutOfScopeTypeVariable(_, info)
+            | UnknownInfixOperator(_, info)
+            | UnknownPrefixOperator(_, info)
+            | UnknownSizeOfVariableType(_, info)
+            | UnknownSizeOfAbstractType(_, info)
+            | UnknownCardOfAbstractType(_, info)
+            | StaticPointerCardinality(info)
+            | StackInterpreterRanOutOfArguments(_, _, _, info)
+            | StackInterpreterRanOutOfCode(info)
+            | TypeMismatch(_, _, info)
+            | TypeMismatch2(_, _, _, info)
+            | RequirementFailure(info)
+            | ParseError(_, info)
+            | InternalError(_, info)
+            | UnknownPath(_, info)
+            | UnknownEntity(_, info) => info.clone(),
             ExpectedLetNode(node) => node.get_info(),
-            UnknownPath(_, info) => info.clone(),
-            UnknownEntity(_, info) => info.clone(),
         }
     }
     fn get_mut_info(&mut self) -> &mut Info {
         use TError::*;
         match self {
-            CppCompilerError(_, _, ref mut info) => info,
-            UnknownSymbol(_, ref mut info, _) => info,
-            OutOfScopeTypeVariable(_, ref mut info) => info,
-            UnknownInfixOperator(_, ref mut info) => info,
-            UnknownPrefixOperator(_, ref mut info) => info,
-            UnknownSizeOfVariableType(_, ref mut info) => info,
-            UnknownSizeOfAbstractType(_, ref mut info) => info,
-            UnknownCardOfAbstractType(_, ref mut info) => info,
-            StaticPointerCardinality(ref mut info) => info,
-            StackInterpreterRanOutOfArguments(_, _, _, ref mut info) => info,
-            StackInterpreterRanOutOfCode(ref mut info) => info,
-            TypeMismatch(_, _, ref mut info) => info,
-            TypeMismatch2(_, _, _, ref mut info) => info,
-            RequirementFailure(ref mut info) => info,
-            ParseError(_, ref mut info) => info,
-            InternalError(_, ref mut info) => info,
+            CppCompilerError(_, _, ref mut info)
+            | UnknownToken(_, ref mut info, _)
+            | UnknownSymbol(_, ref mut info, _)
+            | OutOfScopeTypeVariable(_, ref mut info)
+            | UnknownInfixOperator(_, ref mut info)
+            | UnknownPrefixOperator(_, ref mut info)
+            | UnknownSizeOfVariableType(_, ref mut info)
+            | UnknownSizeOfAbstractType(_, ref mut info)
+            | UnknownCardOfAbstractType(_, ref mut info)
+            | StaticPointerCardinality(ref mut info)
+            | StackInterpreterRanOutOfArguments(_, _, _, ref mut info)
+            | StackInterpreterRanOutOfCode(ref mut info)
+            | TypeMismatch(_, _, ref mut info)
+            | TypeMismatch2(_, _, _, ref mut info)
+            | RequirementFailure(ref mut info)
+            | ParseError(_, ref mut info)
+            | InternalError(_, ref mut info)
+            | UnknownPath(_, ref mut info)
+            | UnknownEntity(_, ref mut info) => info,
             ExpectedLetNode(ref mut node) => node.get_mut_info(),
-            UnknownPath(_, ref mut info) => info,
-            UnknownEntity(_, ref mut info) => info,
         }
     }
 }

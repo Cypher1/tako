@@ -1,4 +1,4 @@
-use log::*;
+use log::{error, info};
 use pretty_assertions::assert_eq;
 use std::collections::HashMap;
 use std::fs::read_to_string;
@@ -14,7 +14,7 @@ pub enum TestResult {
     OutputFile(String), // With an expected value in a file
     ReturnValue(i32),
 }
-use TestResult::*;
+use TestResult::{Error, Output, OutputFile, ReturnValue, Success};
 
 #[derive(Debug, PartialEq)]
 pub struct TestOptions {

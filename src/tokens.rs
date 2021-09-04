@@ -1,4 +1,4 @@
-use super::location::*;
+use super::location::Loc;
 use std::collections::VecDeque;
 use std::fmt;
 
@@ -81,20 +81,19 @@ pub fn lex_head<'a>(
                 TokenType::StringLit
             }
             (TokenType::Unknown, new_tok_type) => new_tok_type.clone(),
-            (_, TokenType::Whitespace) => break, // Token finished.
-            (TokenType::Op, TokenType::Op) => TokenType::Op,
-            (TokenType::Op, _) => break, // Token finished.
-
-            (TokenType::NumLit, TokenType::NumLit) => TokenType::NumLit,
+            (TokenType::Op, TokenType::Op) => TokenType::Op, // Continuation
+            (TokenType::NumLit, TokenType::NumLit) => TokenType::NumLit, // Continuation
             (TokenType::NumLit, TokenType::Sym) => TokenType::Sym, // Promotion
-            (TokenType::NumLit, _) => break,                       // Token finished.
-
-            (TokenType::Sym, TokenType::Sym) => TokenType::Sym,
-            (TokenType::Sym, TokenType::NumLit) => TokenType::Sym,
-            (TokenType::Sym, _) => break, // Token finished.
-
-            (TokenType::OpenBracket, _) => break, // Token finished.
-            (TokenType::CloseBracket, _) => break, // Token finished.
+            (TokenType::Sym, TokenType::NumLit | TokenType::Sym) => TokenType::Sym, // Continuation
+            (_, TokenType::Whitespace)
+            | (
+                TokenType::Op
+                | TokenType::NumLit
+                | TokenType::Sym
+                | TokenType::OpenBracket
+                | TokenType::CloseBracket,
+                _,
+            ) => break, // Token finished.
             _unexpected => {
                 unimplemented!() // Can't mix other tokentypes
             }
@@ -184,7 +183,7 @@ pub fn lex_head<'a>(
 
 #[cfg(test)]
 mod tests {
-    use super::super::location::*;
+    use super::super::location::{Loc, Pos};
     use super::classify_char;
     use super::lex_head;
     use super::TokenType;

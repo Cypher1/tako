@@ -4,7 +4,7 @@ use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::passes::ast_interpreter::Interpreter;
 use crate::primitives::{bit_type, i32_type, record, string_type, Prim::*, Val, Val::*};
-use log::*;
+use log::debug;
 use specs::prelude::*;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
@@ -238,8 +238,9 @@ pub fn infer(storage: &mut DBStorage, expr: &Node, env: &Val) -> Result<Val, TEr
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::ToNode;
+    use crate::ast::{ToNode, Visitor};
     use crate::database::DBStorage;
+    use log::info;
 
     type Test = Result<(), TError>;
 
@@ -250,7 +251,6 @@ mod tests {
     ) -> Test {
         debug!("{:?}", &prog_str);
         debug!("{:?}", &type_str);
-        use crate::ast::Visitor;
         let mut storage = DBStorage::default();
 
         let type_filename = "test/type.tk";

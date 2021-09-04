@@ -1,9 +1,9 @@
-use crate::ast::*;
-use crate::data_structures::tribool::*;
+use crate::ast::{path_to_string, Info, Path, PathRef};
+use crate::data_structures::tribool::Tribool;
 use crate::errors::TError;
-use crate::primitives::{never_type, Offset, Prim::*, TypeSet, Val, Val::*};
+use crate::primitives::{never_type, Offset, Prim::Tag, TypeSet, Val, Val::*};
 use bitvec::prelude::*;
-use log::*;
+use log::debug;
 use std::collections::HashMap;
 
 type Id = i32; // TODO: Make this a vec of Id so it can be treated as a stack
@@ -21,7 +21,7 @@ pub struct TypeGraph {
 
 fn reduce_common_padding(tys: TypeSet, builder: fn(TypeSet) -> Val) -> Val {
     let mut common_padding = None;
-    for ty in tys.iter() {
+    for ty in &tys {
         common_padding = Some(if let Padded(k, _ty) = ty {
             std::cmp::min(*k, common_padding.unwrap_or(*k))
         } else {
@@ -91,9 +91,9 @@ fn factor_out(val: Val, reduction: &Val) -> Val {
     }
 }
 
-fn cancel_neighbours(tys: TypeSet) -> TypeSet {
+fn cancel_neighbours(tys: &TypeSet) -> TypeSet {
     let mut res = tys.clone();
-    for ty in tys.iter() {
+    for ty in tys {
         let mut simpl_tys = set![];
         for other in res.iter().cloned() {
             simpl_tys.insert(factor_out(other, ty));
@@ -151,7 +151,7 @@ fn merge_bit_patterns(tys: TypeSet) -> Option<TypeSet> {
     let mut new_bits = set![];
     for b in bits {
         let mut b = b;
-        for other in new_bits.clone().iter() {
+        for other in &new_bits.clone() {
             if let Some(overlap) = merge_bit_pattern(&b, other) {
                 if let Some(overlap) = overlap {
                     // merge them
@@ -179,24 +179,24 @@ impl TypeGraph {
     }
 
     pub fn get_id_for_path(&mut self, path: PathRef) -> Id {
-        let id = self.symbols.get(path);
-        if let Some(id) = id {
-            *id
-        } else {
-            let new = self.get_new_id();
-            self.symbols.insert(path.to_owned(), new);
-            new
-        }
+        let id = self.symbols.get(path).copied();
+        id.map_or_else(
+            || {
+                let new = self.get_new_id();
+                self.symbols.insert(path.to_owned(), new);
+                new
+            },
+            |id| id,
+        )
     }
 
     pub fn get_type(&self, path: PathRef) -> Result<Val, TError> {
         let id = self.symbols.get(path); // TODO: Use get_id_for_path?
         let ty = id.and_then(|id| self.types.get(id));
-        if let Some(ty) = ty {
-            Ok(ty.clone())
-        } else {
-            Err(TError::UnknownPath(path_to_string(path), Info::default()))
-        }
+        ty.map_or_else(
+            || Err(TError::UnknownPath(path_to_string(path), Info::default())),
+            |ty| Ok(ty.clone()),
+        )
     }
 
     pub fn normalize(&mut self, value: Val) -> Result<Val, TError> {
@@ -213,7 +213,7 @@ impl TypeGraph {
             // },
             Struct(tys) => {
                 let mut new_tys = vec![];
-                for (name, ty) in tys.iter() {
+                for (name, ty) in &tys {
                     let ty = self.normalize(ty.clone())?;
                     if ty.is_sat().is_false() {
                         return Ok(never_type());
@@ -236,11 +236,11 @@ impl TypeGraph {
                     }
                 }
                 // Cancel all the neighbours (e.g. (a*b)|(c*b) => (a|c)*b
-                only_item_or_build(cancel_neighbours(new_tys), Union)
+                only_item_or_build(cancel_neighbours(&new_tys), Union)
             }
             Product(tys) => {
                 let mut new_tys = set![];
-                for ty in tys.iter() {
+                for ty in &tys {
                     let ty = self.normalize(ty.clone())?;
                     if ty.is_sat().is_false() {
                         return Ok(never_type());
@@ -253,12 +253,9 @@ impl TypeGraph {
                         }
                     }
                 }
-                if let Some(new_tys) = merge_bit_patterns(new_tys) {
-                    // Cancel all the neighbours (e.g. (a|b)*b => (a*b)|b
-                    only_item_or_build(cancel_neighbours(new_tys), Product)
-                } else {
-                    never_type()
-                }
+                merge_bit_patterns(new_tys).map_or_else(never_type, |new_tys| {
+                    only_item_or_build(cancel_neighbours(&new_tys), Product)
+                })
             }
             Padded(n, inner) => match self.normalize(*inner)? {
                 Padded(k, inner) => inner.padded(n + k),
@@ -396,8 +393,6 @@ impl TypeGraph {
                     never_type()
                 }
             }
-            (_, Pointer(_, _)) | (Pointer(_, _), _) => never_type(),
-            (_, Lambda(_)) | (Lambda(_), _) => never_type(), // TODO: Work out what this means
             _ => never_type(),
         })
     }
@@ -435,11 +430,14 @@ impl TypeGraph {
 #[cfg(test)]
 mod tests {
     use super::{Id, TypeGraph};
-    use crate::ast::{Path, PathRef, Symbol::*};
+    use crate::ast::{Path, PathRef, Symbol::Named};
     use crate::errors::TError;
     use crate::primitives::{
         bit_type, boolean, byte_type, i32_type, int32, never_type, number_type, quad_type, record,
-        string, string_type, sum, trit_type, variable, Prim::Tag, Val, Val::*,
+        string, string_type, sum, trit_type, variable,
+        Prim::Tag,
+        Val,
+        Val::{Padded, PrimVal, Product, Union},
     };
     use bitvec::prelude::*;
     use pretty_assertions::assert_eq;
@@ -476,9 +474,9 @@ mod tests {
         let mut tg = TypeGraph::default();
         let path = test_path();
         tg.require_assignable(&path, &i32_type())?;
-        let id = tg.id_for_path(&path).cloned();
+        let id = tg.id_for_path(&path).copied();
         tg.require_assignable(&path, &number_type())?;
-        let id2 = tg.id_for_path(&path).cloned();
+        let id2 = tg.id_for_path(&path).copied();
         assert_eq!(id, id2, "Should get the same Id for this path");
         Ok(())
     }

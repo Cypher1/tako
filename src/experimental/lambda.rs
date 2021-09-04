@@ -117,7 +117,7 @@ mod util {
 
 #[cfg(test)]
 mod test {
-    use super::util::*;
+    use super::util::{church_bool, church_nat, church_not, church_plus};
     use super::*;
 
     #[test]
@@ -181,7 +181,7 @@ mod test {
         assert_eq!(
             app(abs(app(app(var(1), var(0)), var(2))), abs(var(0))).beta_reduce(),
             app(app(var(0), abs(var(0))), var(1))
-        )
+        );
     }
 
     #[test]

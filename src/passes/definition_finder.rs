@@ -92,35 +92,31 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
             }
             search.push(Symbol::new(&expr.name));
             let node = state.table.find_mut(&search);
-            match node {
-                Some(node) => {
-                    node.value.uses.insert(state.path.clone());
-                    debug!(
-                        "FOUND {} at {}\n",
-                        expr.name.clone(),
-                        path_to_string(&search)
-                    );
-                    let mut res = expr.clone();
-                    res.info.defined_at = Some(search);
-                    return Ok(res.into_node());
-                }
-                None => {
-                    search.pop(); // Strip the name off.
-                    debug!(
-                        "   not found {} at {}",
-                        expr.name.clone(),
-                        path_to_string(&search)
-                    );
-                    if search.is_empty() {
-                        return Err(TError::UnknownSymbol(
-                            expr.name.clone(),
-                            expr.get_info(),
-                            path_to_string(&state.path),
-                        ));
-                    }
-                    search.pop(); // Up one, go again.
-                }
+            if let Some(node) = node {
+                node.value.uses.insert(state.path.clone());
+                debug!(
+                    "FOUND {} at {}\n",
+                    expr.name.clone(),
+                    path_to_string(&search)
+                );
+                let mut res = expr.clone();
+                res.info.defined_at = Some(search);
+                return Ok(res.into_node());
             }
+            search.pop(); // Strip the name off.
+            debug!(
+                "   not found {} at {}",
+                expr.name.clone(),
+                path_to_string(&search)
+            );
+            if search.is_empty() {
+                return Err(TError::UnknownSymbol(
+                    expr.name.clone(),
+                    expr.get_info(),
+                    path_to_string(&state.path),
+                ));
+            }
+            search.pop(); // Up one, go again.
         }
     }
 
@@ -260,7 +256,7 @@ mod tests {
     #[test]
     fn entity_use_local_definition() -> Test {
         let mut storage = DBStorage::default();
-        let _ = symbols_found_using(&mut storage, "x=23;x")?;
+        let _definitions = symbols_found_using(&mut storage, "x=23;x")?;
         assert_str_eq!(storage.format_entity_definitions(),
             "\
 Entity 0:
@@ -279,7 +275,7 @@ Entity 4:");
     #[test]
     fn entity_use_closest_definition() -> Test {
         let mut storage = DBStorage::default();
-        let _ = symbols_found_using(&mut storage, "x=23;y=(x=45;x)")?;
+        let _definitions = symbols_found_using(&mut storage, "x=23;y=(x=45;x)")?;
         assert_str_eq!(storage.format_entity_definitions(),
             "\
 Entity 0:

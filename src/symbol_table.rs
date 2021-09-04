@@ -15,11 +15,9 @@ impl Table {
         if path.is_empty() {
             return Some(self);
         }
-        if let Some(child) = self.children.get(&path[0]) {
-            child.find(&path[1..])
-        } else {
-            None
-        }
+        self.children
+            .get(&path[0])
+            .map_or(None, |child| child.find(&path[1..]))
     }
 
     pub fn find_mut<'a>(self: &'a mut Table, path: &[Symbol]) -> Option<&'a mut Table> {

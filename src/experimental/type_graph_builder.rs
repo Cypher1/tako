@@ -2,7 +2,12 @@ use crate::ast::*;
 use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::passes::ast_interpreter::Interpreter;
-use crate::primitives::{Prim::*, Val::*, *};
+use crate::primitives::{
+    bit_type, i32_type, string_type, Pack,
+    Prim::{Bool, Str, I32},
+    Val,
+    Val::{App, Function, Lambda, PrimVal, Product, Struct, Union, Variable, WithRequirement},
+};
 use log::*;
 use std::collections::BTreeSet;
 
@@ -123,15 +128,11 @@ impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
         let val_ty = self.visit(storage, state, &expr.value)?;
         // TODO: consider pushing args into the ty via the Function ty.
         // TODO: put the type in the type graph
-        let ty = if let Some(args) = args {
-            Function {
-                intros: Pack::new(),
-                arguments: Box::new(Struct(args)),
-                results: Box::new(val_ty),
-            }
-        } else {
-            val_ty
-        };
+        let ty = args.map_or(val_ty.clone(), |args| Function {
+            intros: Pack::new(),
+            arguments: Box::new(Struct(args)),
+            results: Box::new(val_ty),
+        });
         state.graph.require_assignable(&state.path, &ty)?;
         state.path.pop();
         Ok(Struct(vec![(expr.name.clone(), ty)]))

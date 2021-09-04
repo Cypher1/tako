@@ -1,4 +1,4 @@
-use crate::ast::*;
+use crate::ast::{path_to_string, Abs, Apply, BinOp, HasInfo, Let, Node, Sym, UnOp, Visitor};
 use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::primitives::Val;
@@ -38,7 +38,7 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
         self.visit(storage, state, &*expr.inner)?;
         write!(state, ")(")?;
         let mut is_first = true;
-        for arg in expr.args.iter() {
+        for arg in &expr.args {
             if is_first {
                 is_first = false;
             } else {
