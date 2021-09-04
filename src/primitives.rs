@@ -439,29 +439,23 @@ pub fn unit_type() -> Val {
 }
 
 pub fn bit_type() -> Val {
-    sum(vec![unit_type(), unit_type()]).expect("bit should be safe")
+    let unit = unit_type();
+    sum(vec![unit.clone(); 2]).expect("bit should be safe")
 }
 
 pub fn trit_type() -> Val {
-    sum(vec![unit_type(), unit_type(), unit_type()]).expect("trit should be safe")
+    let unit = unit_type();
+    sum(vec![unit.clone(); 3]).expect("trit should be safe")
 }
 
 pub fn quad_type() -> Val {
-    record(vec![bit_type(), bit_type()]).expect("quad should be safe")
+    let bit = bit_type();
+    record(vec![bit.clone(); 2]).expect("quad should be safe")
 }
 
 pub fn byte_type() -> Val {
-    record(vec![
-        bit_type(),
-        bit_type(),
-        bit_type(),
-        bit_type(),
-        bit_type(),
-        bit_type(),
-        bit_type(),
-        bit_type(),
-    ])
-    .expect("byte should be safe")
+    let bit = bit_type();
+    record(vec![ bit.clone(); 8]).expect("byte should be safe")
 }
 
 pub fn byte_size() -> Offset {
@@ -499,33 +493,30 @@ mod tests {
     type Res = Result<(), TError>;
 
     #[test]
-    fn bits_zero_length() -> Res {
+    fn bits_zero_length() {
         assert_eq!(bits(0, 0), bits![]);
         assert_eq!(bits(1, 0), bits![]);
-        Ok(())
     }
 
     #[test]
-    fn bits_one_length() -> Res {
+    fn bits_one_length() {
         assert_eq!(bits(0, 1), bits![0]);
         assert_eq!(bits(1, 1), bits![1]);
         assert_eq!(bits(2, 1), bits![0]);
         assert_eq!(bits(3, 1), bits![1]);
-        Ok(())
     }
 
     #[test]
-    fn bits_two_length() -> Res {
+    fn bits_two_length() {
         assert_eq!(bits(0, 2), bits![0, 0]);
         assert_eq!(bits(1, 2), bits![0, 1]);
         assert_eq!(bits(2, 2), bits![1, 0]);
         assert_eq!(bits(3, 2), bits![1, 1]);
         assert_eq!(bits(4, 2), bits![0, 0]);
-        Ok(())
     }
 
     #[test]
-    fn bits_three_length() -> Res {
+    fn bits_three_length() {
         assert_eq!(bits(0, 3), bits![0, 0, 0]);
         assert_eq!(bits(1, 3), bits![0, 0, 1]);
         assert_eq!(bits(2, 3), bits![0, 1, 0]);
@@ -535,26 +526,22 @@ mod tests {
         assert_eq!(bits(6, 3), bits![1, 1, 0]);
         assert_eq!(bits(7, 3), bits![1, 1, 1]);
         assert_eq!(bits(8, 3), bits![0, 0, 0]);
-        Ok(())
     }
 
     #[test]
-    fn never() -> Res {
+    fn never() {
         assert_eq!(card(&never_type()), Ok(0));
         assert_eq!(size(&never_type()), Ok(0));
-        Ok(())
     }
     #[test]
-    fn unit() -> Res {
+    fn unit() {
         assert_eq!(card(&unit_type()), Ok(1));
         assert_eq!(size(&unit_type()), Ok(0));
-        Ok(())
     }
     #[test]
-    fn tag1_type() -> Res {
+    fn tag1_type() {
         assert_eq!(card(&tag(bits(1, 1))), Ok(1));
         assert_eq!(size(&tag(bits(1, 1))), Ok(1));
-        Ok(())
     }
     #[test]
     fn tag2_type() {
@@ -609,13 +596,8 @@ mod tests {
     }
     #[test]
     fn pent_type() -> Res {
-        let pent = sum(vec![
-            unit_type(),
-            unit_type(),
-            unit_type(),
-            unit_type(),
-            unit_type(),
-        ])?;
+        let unit = unit_type();
+        let pent = sum(vec![ unit.clone(); 5])?;
         assert_eq!(card(&pent), Ok(5));
         assert_eq!(size(&pent), Ok(3));
         Ok(())
