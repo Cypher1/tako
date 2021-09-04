@@ -6,7 +6,7 @@ use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::primitives::{
     bit_type, boolean, builtin, i32_type, int32, never_type, number_type, string, string_type,
-    type_type, unit_type, variable, Prim::*, Val, Val::*,
+    type_type, unit_type, variable, Prim::{Bool, I32, Str}, Val, Val::{Function, Lambda, PrimVal, Product, Union, WithRequirement},
 };
 
 pub type Res = Result<Val, TError>;
@@ -65,7 +65,7 @@ pub fn prim_neq(l: &Val, r: &Val, info: &Info) -> Res {
 
 pub fn prim_gt(l: &Val, r: &Val, info: &Info) -> Res {
     match (l, r) {
-        (PrimVal(Bool(l)), PrimVal(Bool(r))) => Ok(boolean(*l & !(*r))),
+        (PrimVal(Bool(l)), PrimVal(Bool(r))) => Ok(boolean(*l && !(*r))),
         (PrimVal(I32(l)), PrimVal(I32(r))) => Ok(boolean(l > r)),
         (PrimVal(Str(l)), PrimVal(Str(r))) => Ok(boolean(l > r)),
         (l, r) => Err(TError::TypeMismatch2(
@@ -204,7 +204,13 @@ pub fn prim_add_strs(l: &Val, r: &Val, _info: &Info) -> Res {
 pub fn prim_pow(l: &Val, r: &Val, info: &Info) -> Res {
     match (l, r) {
         (PrimVal(I32(l)), PrimVal(Bool(r))) => Ok(int32(if *r { *l } else { 1 })),
-        (PrimVal(I32(l)), PrimVal(I32(r))) => Ok(int32(i32::pow(*l, *r as u32))), // TODO: require pos pow
+        (PrimVal(I32(l)), PrimVal(I32(r))) => Ok(int32(i32::pow(*l, u32::try_from(*r).map_err(|_err|
+        TError::TypeMismatch2(
+            "^ (range error)".to_string(),
+            Box::new(PrimVal(I32(*l))),
+            Box::new(PrimVal(I32(*r))),
+            info.clone(),
+        ))?))), // TODO: require pos pow
         (l, r) => Err(TError::TypeMismatch2(
             "^".to_string(),
             Box::new((*l).clone()),
@@ -230,6 +236,7 @@ fn get_symbol(args: &Args, sym: &str, info: &Info) -> Res {
     )
 }
 
+#[must_use]
 pub fn get_implementation(name: &str) -> Option<FuncImpl> {
     match name {
         "print" => Some(Box::new(|_, args, info| {
@@ -253,7 +260,7 @@ pub fn get_implementation(name: &str) -> Option<FuncImpl> {
             let mut sorted_args: Vec<_> = args.iter().collect();
             sorted_args.sort_by_key(|a| a.0);
             let mut requirements: Vec<Node> = vec![];
-            for (name, arg) in sorted_args.iter() {
+            for (name, arg) in &sorted_args {
                 let arg = arg()?;
                 requirements.push(
                     BinOp {
@@ -277,7 +284,7 @@ pub fn get_implementation(name: &str) -> Option<FuncImpl> {
                         info: info.clone(),
                     }
                     .into_node(),
-                )
+                );
             }
             if let Some(first) = requirements.first() {
                 let mut curr = first.clone(); // Nah don't clone
@@ -357,7 +364,7 @@ pub fn get_implementation(name: &str) -> Option<FuncImpl> {
             ))
         })),
         "argv" => Some(Box::new(|db, args, info| {
-            match get_symbol(&args, "it", &info)? {
+            match get_symbol(&args, "it", info)? {
                 PrimVal(I32(ind)) => Ok(string(
                     &db.options.interpreter_args[usize::try_from(ind)
                         .expect("Invalid interpreter argument index: index was not a valid usize")],

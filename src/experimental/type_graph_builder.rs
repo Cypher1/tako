@@ -1,4 +1,4 @@
-use crate::ast::*;
+use crate::ast::{Abs, Apply, BinOp, HasInfo, Let, Path, Sym, Symbol, UnOp, Visitor, path_to_string};
 use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::passes::ast_interpreter::Interpreter;
@@ -8,10 +8,10 @@ use crate::primitives::{
     Val,
     Val::{App, Function, Lambda, PrimVal, Product, Struct, Union, Variable, WithRequirement},
 };
-use log::*;
+use log::{debug, info};
 use std::collections::BTreeSet;
 
-use crate::experimental::type_graph::*;
+use crate::experimental::type_graph::TypeGraph;
 
 // Walks the AST interpreting it.
 #[derive(Default)]
@@ -28,7 +28,7 @@ pub struct State {
 
 impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
     fn visit_root(&mut self, storage: &mut DBStorage, module: &Path) -> Result<TypeGraph, TError> {
-        let expr = &storage.parse_file(module.clone())?;
+        let expr = &storage.parse_file(module)?;
         info!(
             "Building symbol table & type graph... {}",
             path_to_string(module)
@@ -200,7 +200,7 @@ mod tests {
     fn get_tg(s: &str) -> Result<TypeGraph, TError> {
         let mut storage = DBStorage::default();
         storage.set_file(&filename(), s.to_string());
-        let module = storage.module_name(filename());
+        let module = storage.module_name(&filename());
         let mut tgb = TypeGraphBuilder::default();
         let tg: TypeGraph = tgb.visit_root(&mut storage, &module)?;
         Ok(tg)

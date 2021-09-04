@@ -46,7 +46,7 @@ impl<'a> System<'a> for TypeCheckerSystem {
 pub fn infer(storage: &mut DBStorage, expr: &Node, env: &Val) -> Result<Val, TError> {
     // Infer that expression t has type A, t => A
     // See https://ncatlab.org/nlab/show/bidirectional+typechecking
-    use crate::ast::*;
+    use crate::ast::{Abs, Apply, BinOp, Let, Sym, ToNode, UnOp, Visitor};
     match expr {
         ValNode(prim, _) => match prim {
             Product(vals) => {
@@ -147,8 +147,8 @@ pub fn infer(storage: &mut DBStorage, expr: &Node, env: &Val) -> Result<Val, TEr
             if let Some(ext) = storage.get_extern(name) {
                 // TODO intros
                 let mut frame = HashMap::new();
-                for (name, ty) in env.clone().into_struct().iter() {
-                    frame.insert(name.clone(), ty.clone());
+                for (name, ty) in env.as_struct() {
+                    frame.insert(name.to_string(), ty.clone());
                 }
                 let mut state = vec![frame];
                 return Interpreter::default().visit(storage, &mut state, &ext.ty);
@@ -255,9 +255,9 @@ mod tests {
 
         let type_filename = "test/type.tk";
         storage.set_file(type_filename, type_str.to_owned());
-        let type_module = storage.module_name(type_filename.to_owned());
+        let type_module = storage.module_name(type_filename);
 
-        let ty = storage.look_up_definitions(type_module)?;
+        let ty = storage.look_up_definitions(&type_module)?;
         let result_type = Interpreter::default().visit_root(&mut storage, &ty);
         if let Err(err) = &result_type {
             debug!("{}", &err);
@@ -265,9 +265,9 @@ mod tests {
         let result_type = result_type?;
 
         let prog_filename = "test/prog.tk";
-        let prog_module = storage.module_name(prog_filename.to_owned());
+        let prog_module = storage.module_name(prog_filename);
 
-        let prog = storage.parse_str(prog_module, prog_str)?;
+        let prog = storage.parse_str(&prog_module, prog_str)?;
 
         let env = Variable("test_program".to_string()); // TODO: Track the type env
         let prog_ty = infer(&mut storage, &prog, &env)?;

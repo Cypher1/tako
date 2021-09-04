@@ -1,11 +1,11 @@
-use crate::ast::*;
+use crate::ast::{Abs, Apply, BinOp, HasInfo, Let, Node, Path, Root, Sym, Symbol, ToNode, UnOp, Visitor, path_to_string};
 use crate::components::{DefinedAt, SymbolRef};
 use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::externs::get_externs;
 use crate::passes::symbol_table_builder::State;
 use crate::primitives::Val;
-use log::*;
+use log::{debug, info};
 use specs::prelude::*;
 use std::collections::HashMap;
 
@@ -61,7 +61,7 @@ impl<'a> System<'a> for DefinitionFinderSystem {
 
 impl Visitor<State, Node, Root, Path> for DefinitionFinder {
     fn visit_root(&mut self, storage: &mut DBStorage, module: &Path) -> Result<Root, TError> {
-        let expr = storage.build_symbol_table(module.clone())?;
+        let expr = storage.build_symbol_table(module)?;
         info!("Looking up definitions... {}", path_to_string(module));
         let mut definition_finder = DefinitionFinderSystem {
             path_to_entity: storage.path_to_entity.clone(),
@@ -221,7 +221,7 @@ mod tests {
     ) -> Result<String, TError> {
         let prog_filename = "test/prog.tk";
         storage.set_file(prog_filename, prog_str.to_owned());
-        let prog_module = storage.module_name(prog_filename.to_owned());
+        let prog_module = storage.module_name(prog_filename);
 
         let Root { ast, table } = DefinitionFinder::process(&prog_module, storage)?;
 

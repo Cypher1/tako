@@ -13,7 +13,7 @@ impl fmt::Display for Tribool {
     }
 }
 
-use Tribool::*;
+use Tribool::{False, True, Unknown};
 impl Tribool {
     #[must_use]
     pub fn not(&self) -> Self {

@@ -10,7 +10,7 @@ use crate::symbol_table::Table;
 
 impl HasInfo for TError {
     fn get_info(&self) -> &Info {
-        use TError::*;
+        use TError::{CppCompilerError, ExpectedLetNode, InternalError, OutOfScopeTypeVariable, ParseError, RequirementFailure, StackInterpreterRanOutOfArguments, StackInterpreterRanOutOfCode, StaticPointerCardinality, TypeMismatch, TypeMismatch2, UnknownCardOfAbstractType, UnknownEntity, UnknownInfixOperator, UnknownPath, UnknownPrefixOperator, UnknownSizeOfAbstractType, UnknownSizeOfVariableType, UnknownSymbol, UnknownToken};
         match self {
             CppCompilerError(_, _, info)
             | UnknownToken(_, info, _)
@@ -35,7 +35,7 @@ impl HasInfo for TError {
         }
     }
     fn get_mut_info(&mut self) -> &mut Info {
-        use TError::*;
+        use TError::{CppCompilerError, ExpectedLetNode, InternalError, OutOfScopeTypeVariable, ParseError, RequirementFailure, StackInterpreterRanOutOfArguments, StackInterpreterRanOutOfCode, StaticPointerCardinality, TypeMismatch, TypeMismatch2, UnknownCardOfAbstractType, UnknownEntity, UnknownInfixOperator, UnknownPath, UnknownPrefixOperator, UnknownSizeOfAbstractType, UnknownSizeOfVariableType, UnknownSymbol, UnknownToken};
         match self {
             CppCompilerError(_, _, ref mut info)
             | UnknownToken(_, ref mut info, _)
@@ -89,6 +89,7 @@ pub struct Sym {
 }
 
 impl Sym {
+    #[must_use]
     pub fn as_let(self: &Sym) -> Let {
         Let {
             name: self.name.clone(),
@@ -128,6 +129,7 @@ pub struct Abs {
 }
 
 impl Abs {
+    #[must_use]
     pub fn to_sym(self: &Abs) -> Sym {
         Sym {
             name: self.name.clone(),
@@ -160,12 +162,14 @@ pub struct Let {
 }
 
 impl Let {
+    #[must_use]
     pub fn to_sym(self: &Let) -> Sym {
         Sym {
             name: self.name.clone(),
             info: self.get_info().clone(),
         }
     }
+    #[must_use]
     pub fn new(name: &str, value: Val) -> Let {
         Let {
             name: name.to_string(),
@@ -299,7 +303,7 @@ pub enum Node {
 
 impl std::fmt::Debug for Node {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use Node::*;
+        use Node::{AbsNode, ApplyNode, BinOpNode, LetNode, SymNode, UnOpNode, ValNode};
         match self {
             SymNode(n) => n.fmt(f),
             ValNode(n, _) => n.fmt(f),
@@ -330,7 +334,7 @@ impl ToNode for Node {
 }
 impl HasInfo for Node {
     fn get_info(&self) -> &Info {
-        use Node::*;
+        use Node::{AbsNode, ApplyNode, BinOpNode, LetNode, SymNode, UnOpNode, ValNode};
         match self {
             SymNode(n) => n.get_info(),
             ApplyNode(n) => n.get_info(),
@@ -338,11 +342,11 @@ impl HasInfo for Node {
             LetNode(n) => n.get_info(),
             UnOpNode(n) => n.get_info(),
             BinOpNode(n) => n.get_info(),
-            ValNode(_n, info) => &info,
+            ValNode(_n, info) => info,
         }
     }
     fn get_mut_info(&mut self) -> &mut Info {
-        use Node::*;
+        use Node::{AbsNode, ApplyNode, BinOpNode, LetNode, SymNode, UnOpNode, ValNode};
         match self {
             SymNode(ref mut n) => n.get_mut_info(),
             ApplyNode(ref mut n) => n.get_mut_info(),
@@ -357,7 +361,7 @@ impl HasInfo for Node {
 
 impl Node {
     pub fn as_let(&self) -> Result<Let, TError> {
-        use Node::*;
+        use Node::LetNode;
         if let LetNode(n) = self {
             return Ok(n.clone());
         }
@@ -404,12 +408,15 @@ impl fmt::Display for Symbol {
 }
 
 impl Symbol {
+    #[must_use]
     pub fn new(name: &str) -> Symbol {
         Symbol::Named(name.to_string(), None)
     }
+    #[must_use]
     pub fn to_name(self: &Symbol) -> String {
         format!("{}", &self)
     }
+    #[must_use]
     pub fn to_filename(self: &Symbol) -> String {
         match self {
             Symbol::Anon => "".to_owned(),
@@ -418,8 +425,7 @@ impl Symbol {
                 "{}{}",
                 name,
                 ext.as_ref()
-                    .map(|v| format!(".{}", v))
-                    .unwrap_or_else(|| "".to_string())
+                    .map_or_else(|| "".to_string(), |v| format!(".{}", v))
             ),
         }
     }
@@ -428,6 +434,7 @@ impl Symbol {
 pub type Path = Vec<Symbol>;
 pub type PathRef<'a> = &'a [Symbol];
 
+#[must_use]
 pub fn path_to_string(path: PathRef) -> String {
     path.iter()
         .map(|p| format!("{}", p))
@@ -523,7 +530,7 @@ pub trait Visitor<State, Res, Final, Start = Root> {
         state: &mut State,
         e: &Node,
     ) -> Result<Res, TError> {
-        use Node::*;
+        use Node::{AbsNode, ApplyNode, BinOpNode, LetNode, SymNode, UnOpNode, ValNode};
         match e {
             SymNode(n) => self.visit_sym(storage, state, n),
             ValNode(n, _) => self.visit_val(storage, state, n),
@@ -537,8 +544,7 @@ pub trait Visitor<State, Res, Final, Start = Root> {
 
     fn process(root: &Start, storage: &mut DBStorage) -> Result<Final, TError>
     where
-        Self: Sized,
-        Self: Default,
+        Self: Sized + Default,
     {
         Self::default().visit_root(storage, root)
     }

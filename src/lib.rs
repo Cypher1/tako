@@ -105,13 +105,13 @@ pub fn work_on_string<'a>(
     use ast::ToNode;
     use cli_options::Command;
 
-    let module_name = storage.module_name(filename.to_owned());
+    let module_name = storage.module_name(filename);
     storage.set_file(filename, contents);
 
     match storage.options.cmd {
-        Command::Build => storage.build_with_gpp(module_name),
+        Command::Build => storage.build_with_gpp(&module_name),
         Command::Interpret | Command::Repl => {
-            let root = storage.look_up_definitions(module_name)?;
+            let root = storage.look_up_definitions(&module_name)?;
             let mut interp = Interpreter::default();
             if let Some(print_impl) = print_impl {
                 interp.impls.insert("print".to_string(), print_impl);
@@ -121,7 +121,7 @@ pub fn work_on_string<'a>(
                 .or_else(|_| panic!("Pretty print failed"))
         }
         Command::StackInterpret | Command::StackRepl => {
-            let _root = storage.look_up_definitions(module_name.clone())?;
+            let _root = storage.look_up_definitions(&module_name)?;
             let root_entity = *storage
                 .path_to_entity
                 .get(&module_name)

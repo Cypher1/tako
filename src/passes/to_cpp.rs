@@ -239,7 +239,7 @@ fn build_call2(before: &str, mid: &str, left: Code, right: &Code) -> Code {
 
 impl Visitor<State, Code, Out, Path> for CodeGenerator {
     fn visit_root(&mut self, storage: &mut DBStorage, module: &Path) -> Result<Out, TError> {
-        let root = storage.look_up_definitions(module.clone())?;
+        let root = storage.look_up_definitions(module)?;
         let mut main_info = root.ast.get_info().clone();
         let mut main_at = module.clone();
         main_at.push(Symbol::new("main"));
@@ -401,7 +401,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             .defined_at.as_ref()
             .expect("Could not find definition for abs");
 
-        let name = make_name(&path);
+        let name = make_name(path);
         let body = self.visit(storage, state, &expr.value)?;
         Ok(Code::Template(name, Box::new(body)))
     }
@@ -417,11 +417,11 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             .defined_at.as_ref()
             .expect("Could not find definition for let");
 
-        let uses = storage.find_symbol_uses(path.clone())?;
+        let uses = storage.find_symbol_uses(path)?;
         if uses.is_empty() {
             return Ok(Code::Empty);
         }
-        let name = make_name(&path);
+        let name = make_name(path);
         let body = self.visit(storage, state, &expr.value)?;
         if let Some(e_args) = &expr.args {
             let mut args = vec![];
@@ -430,7 +430,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                     .get_info()
                     .defined_at.as_ref()
                     .expect("Could not find definition for let arg");
-                let name = make_name(&path);
+                let name = make_name(path);
                 args.push(format!("const auto {}", name));
             }
 

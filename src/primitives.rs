@@ -94,14 +94,14 @@ impl Val {
 
     #[must_use]
     pub fn is_sat(self: &Val) -> Tribool {
-        use Tribool::*;
+        use Tribool::{True, Unknown};
         match self {
             PrimVal(_) => True,
             Pointer(_size, ty) => ty.is_sat(),
             Lambda(_) => Unknown,
             Struct(tys) => all_true(tys.iter().map(|(_name, ty)| ty.is_sat())),
-            Product(tys) => all_true(tys.iter().map(|ty| ty.is_sat())),
-            Union(tys) => any_true(tys.iter().map(|ty| ty.is_sat())),
+            Product(tys) => all_true(tys.iter().map(Val::is_sat)),
+            Union(tys) => any_true(tys.iter().map(Val::is_sat)),
             Padded(_, ty) => ty.is_sat(),
             Function {
                 intros: _,
@@ -120,23 +120,27 @@ impl Val {
 
     #[must_use]
     pub fn into_struct(self: Val) -> Vec<(String, Val)> {
+        self.as_struct().iter().map(|(name, val)| ((*name).to_string(), (*val).clone())).collect()
+    }
+
+    #[must_use]
+    pub fn as_struct(self: &Val) -> Vec<(&str, &Val)> {
         match self {
-            Struct(vals) => vals,
-            _ => vec![("it".to_string(), self)],
+            Struct(vals) => vals.iter().map(|(name, val)| (name.as_str(), val)).collect(),
+            _ => vec![("it", self)],
         }
     }
 
     #[must_use]
     pub fn merge(self: Val, other: Val) -> Val {
         match (self, other) {
-            (Struct(vals), Struct(o_vals)) => Struct(merge_vals(vals, o_vals)),
-            (Struct(vals), other) => Struct(merge_vals(vals, other.into_struct())),
-            (vals, Struct(other)) => Struct(merge_vals(vals.into_struct(), other)),
+            (Struct(vals), Struct(o_vals)) => Struct(merge_vals(&vals, &o_vals)),
+            (Struct(vals), other) => Struct(merge_vals(&vals, &other.into_struct())),
+            (vals, Struct(other)) => Struct(merge_vals(&vals.into_struct(), &other)),
             (thing, other) => rec!["left" => thing, "right" => other],
         }
     }
 
-    #[must_use]
     pub fn unify(self: &Val, other: &Val, env: &mut Vec<Frame>) -> Result<Val, TError> {
         match (self, other) {
             (Variable(name), ty) => {
@@ -268,18 +272,18 @@ impl std::fmt::Debug for Val {
 }
 
 #[must_use]
-pub fn merge_vals(left: Vec<(String, Val)>, right: Vec<(String, Val)>) -> Vec<(String, Val)> {
+pub fn merge_vals(left: &[(String, Val)], right: &[(String, Val)]) -> Vec<(String, Val)> {
     let mut names = HashSet::<String>::new();
-    for pair in right.iter() {
+    for pair in right {
         names.insert(pair.0.clone());
     }
     let mut items = vec![];
-    for pair in left.iter() {
+    for pair in left {
         if !names.contains(&pair.0) {
             items.push(pair.clone());
         }
     }
-    for pair in right.iter() {
+    for pair in right {
         items.push(pair.clone());
     }
     items
@@ -311,10 +315,7 @@ pub fn builtin(name: &str) -> Val {
 }
 
 #[allow(dead_code)]
-#[must_use]
 pub fn card(ty: &Val) -> Result<Offset, TError> {
-    use Prim::*;
-    use Val::*;
     match ty {
         PrimVal(Tag(_bits)) => Ok(1),
         BitStr(_ptr_size) => Err(TError::StaticPointerCardinality(Info::default())),
@@ -342,27 +343,14 @@ pub fn card(ty: &Val) -> Result<Offset, TError> {
 }
 
 // Calculates the memory needed for a new instance in bits.
-#[must_use]
 pub fn size(ty: &Val) -> Result<Offset, TError> {
-    use Prim::*;
-    use Val::*;
     match ty {
         PrimVal(Tag(bits)) => Ok(bits.len()),
         BitStr(ptr_size) => Ok(*ptr_size),
-        Union(s) => {
+        Union(s) | Product(s) => {
             let mut res = 0;
             for sty in s.iter() {
                 // This includes padding in size.
-                let c = size(sty)?;
-                if res <= c {
-                    res = c;
-                }
-            }
-            Ok(res)
-        }
-        Product(s) => {
-            let mut res = 0;
-            for sty in s.iter() {
                 let c = size(sty)?;
                 if res <= c {
                     res = c;
@@ -434,7 +422,6 @@ pub fn add_to_product(tys: &mut TypeSet, values: &TypeSet) {
     }
 }
 
-#[must_use]
 pub fn sum(values: Vec<Val>) -> Result<Val, TError> {
     let mut layout = set![];
     let tag_bits = num_bits(values.len() as Offset);

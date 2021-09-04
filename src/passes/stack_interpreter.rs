@@ -124,7 +124,7 @@ mod tests {
     fn eval_num() {
         let mut storage = get_db();
         let filename = "test/file.tk";
-        let module_name = storage.module_name(filename.to_owned());
+        let module_name = storage.module_name(filename);
         let entity = storage.store_node(
             AstNode {
                 term: AstTerm::Value(int32(12)),
@@ -138,10 +138,10 @@ mod tests {
 
     fn eval_str(storage: &mut DBStorage, s: &str) -> Res {
         let filename = "test/file.tk";
-        let module_name = storage.module_name(filename.to_owned());
+        let module_name = storage.module_name(filename);
         storage.set_file(filename, s.to_string());
 
-        let _root = storage.look_up_definitions(module_name.clone())?;
+        let _root = storage.look_up_definitions(&module_name)?;
         let root_entity = *storage
             .path_to_entity
             .get(&module_name)

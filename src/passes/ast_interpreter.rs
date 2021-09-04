@@ -1,7 +1,7 @@
 use crate::ast::{Abs, Apply, BinOp, HasInfo, Info, Let, Root, Sym, ToNode, UnOp, Visitor};
 use crate::database::DBStorage;
 use crate::errors::TError;
-use crate::externs::*;
+use crate::externs::{Res, prim_add, prim_add_strs, prim_and, prim_div, prim_eq, prim_gt, prim_gte, prim_mod, prim_mul, prim_neq, prim_or, prim_pow, prim_sub, prim_type_and, prim_type_arrow, prim_type_or};
 use crate::primitives::{
     boolean, int32, merge_vals, never_type, Frame,
     Prim::{Bool, I32},
@@ -112,13 +112,13 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
                                 continue;
                             }
                             (Struct(ty), Struct(new_ty)) => {
-                                new_tys = set![Struct(merge_vals(ty.clone(), new_ty.clone()))];
+                                new_tys = set![Struct(merge_vals(ty, new_ty))];
                                 continue;
                             }
                             (Struct(ty), new_ty) => {
                                 new_tys = set![Struct(merge_vals(
-                                    ty.clone(),
-                                    vec![("it".to_string(), new_ty.clone())]
+                                    ty,
+                                    &[("it".to_string(), new_ty.clone())]
                                 ))];
                                 continue;
                             }
@@ -152,13 +152,13 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
             } => {
                 if let Some(frame) = state.clone().last() {
                     let mut new_args = vec![];
-                    for (arg, ty) in &arguments.clone().into_struct() {
+                    for (arg, ty) in arguments.as_struct() {
                         let never = never_type();
                         let arg_ty = &frame.get(arg).unwrap_or(&never);
                         debug!(">> {}: {} unified with {}", &arg, &ty, &arg_ty);
                         let unified = ty.unify(arg_ty, state)?;
                         debug!(">>>> {}", &unified);
-                        new_args.push((arg.clone(), unified));
+                        new_args.push((arg.to_string(), unified));
                     }
                     let results = self.visit_val(storage, state, results)?;
                     return Ok(Function {
@@ -318,24 +318,24 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
         let l = self.visit(storage, state, &expr.left);
         let mut r = || self.visit(storage, state, &expr.right);
         match expr.name.as_str() {
-            "+" => prim_add(&l?, &r()?, &info),
-            "++" => prim_add_strs(&l?, &r()?, &info),
-            "==" => prim_eq(&l?, &r()?, &info),
-            "!=" => prim_neq(&l?, &r()?, &info),
-            ">" => prim_gt(&l?, &r()?, &info),
-            "<" => prim_gt(&r()?, &l?, &info),
-            ">=" => prim_gte(&l?, &r()?, &info),
-            "<=" => prim_gte(&r()?, &l?, &info),
-            "-" => prim_sub(&l?, &r()?, &info),
-            "*" => prim_mul(&l?, &r()?, &info),
-            "/" => prim_div(&l?, &r()?, &info),
-            "%" => prim_mod(&l?, &r()?, &info),
-            "^" => prim_pow(&l?, &r()?, &info),
-            "&&" => prim_and(&l?, &r()?, &info),
-            "||" => prim_or(&l?, &r()?, &info),
-            "->" => prim_type_arrow(l?, r()?, &info),
+            "+" => prim_add(&l?, &r()?, info),
+            "++" => prim_add_strs(&l?, &r()?, info),
+            "==" => prim_eq(&l?, &r()?, info),
+            "!=" => prim_neq(&l?, &r()?, info),
+            ">" => prim_gt(&l?, &r()?, info),
+            "<" => prim_gt(&r()?, &l?, info),
+            ">=" => prim_gte(&l?, &r()?, info),
+            "<=" => prim_gte(&r()?, &l?, info),
+            "-" => prim_sub(&l?, &r()?, info),
+            "*" => prim_mul(&l?, &r()?, info),
+            "/" => prim_div(&l?, &r()?, info),
+            "%" => prim_mod(&l?, &r()?, info),
+            "^" => prim_pow(&l?, &r()?, info),
+            "&&" => prim_and(&l?, &r()?, info),
+            "||" => prim_or(&l?, &r()?, info),
+            "->" => prim_type_arrow(l?, r()?, info),
             "&" => prim_type_and(l?, r()?),
-            "|" => prim_type_or(l?, r()?, &info),
+            "|" => prim_type_or(l?, r()?, info),
             "," => {
                 let left = l?;
                 let right = r()?;
@@ -404,9 +404,9 @@ mod tests {
 
     fn eval_str(storage: &mut DBStorage, s: &str) -> Res {
         let filename = "test/file.tk";
-        let module_name = storage.module_name(filename.to_owned());
+        let module_name = storage.module_name(filename);
         storage.set_file(filename, s.to_string());
-        let root = storage.look_up_definitions(module_name)?;
+        let root = storage.look_up_definitions(&module_name)?;
         Interpreter::default().visit_root(storage, &root)
     }
 

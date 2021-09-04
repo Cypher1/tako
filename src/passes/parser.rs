@@ -520,7 +520,7 @@ fn lex_string(
     module: PathRef,
     contents: &str,
 ) -> Result<VecDeque<Token>, TError> {
-    let filename = storage.filename(module.to_vec());
+    let filename = storage.filename(module);
     let mut toks: VecDeque<Token> = VecDeque::new();
 
     let mut pos = Loc {
@@ -581,7 +581,7 @@ pub mod tests {
 
     fn parse_impl(storage: &mut DBStorage, contents: &str) -> Result<(Node, Entity), TError> {
         let filename = "test.tk";
-        let module = storage.module_name(filename.to_owned());
+        let module = storage.module_name(filename);
         parse_string(storage, &module, &Arc::new(contents.to_string()))
     }
 

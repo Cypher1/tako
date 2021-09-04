@@ -1,7 +1,7 @@
 use crate::ast::{path_to_string, Info, Path, PathRef};
 use crate::data_structures::tribool::Tribool;
 use crate::errors::TError;
-use crate::primitives::{never_type, Offset, Prim::Tag, TypeSet, Val, Val::*};
+use crate::primitives::{never_type, Offset, Prim::Tag, TypeSet, Val, Val::{Padded, Pointer, PrimVal, Product, Struct, Union, Variable}};
 use bitvec::prelude::*;
 use log::debug;
 use std::collections::HashMap;
@@ -103,29 +103,35 @@ fn cancel_neighbours(tys: &TypeSet) -> TypeSet {
     res
 }
 
+enum Overlap {
+    None,
+    Match((Offset, BitVec)),
+    Impossible,
+}
+
 fn merge_bit_pattern(
     left: &(Offset, BitVec),
     right: &(Offset, BitVec),
-) -> Option<Option<(Offset, BitVec)>> {
+) -> Overlap {
     let ((left_offset, left), (right_offset, right)) = if left.0 < right.0 {
         (left, right)
     } else {
         (right, left)
     };
     if left_offset + left.len() < *right_offset {
-        None // gap.
+        Overlap::None // gap.
     } else {
         let overlap = left_offset + left.len() - right_offset;
         let left_overlap = &right[left.len() - overlap..];
         let right_overlap = &right[0..overlap];
         assert_eq!(left_overlap.len(), right_overlap.len());
-        Some(if left_overlap == right_overlap {
+        if left_overlap == right_overlap {
             let mut other = left.clone();
             other.extend(&right[overlap..]);
-            Some((*left_offset, other))
+            Overlap::Match((*left_offset, other))
         } else {
-            None
-        })
+            Overlap::Impossible
+        }
     }
 }
 
@@ -152,14 +158,14 @@ fn merge_bit_patterns(tys: TypeSet) -> Option<TypeSet> {
     for b in bits {
         let mut b = b;
         for other in &new_bits.clone() {
-            if let Some(overlap) = merge_bit_pattern(&b, other) {
-                if let Some(overlap) = overlap {
+            match merge_bit_pattern(&b, other) {
+                Overlap::Match(overlap) => {
                     // merge them
                     new_bits.remove(other);
                     b = overlap;
-                } else {
-                    return None;
                 }
+                Overlap::Impossible => {return None;}
+                Overlap::None => {}
             }
         }
         new_bits.insert(b);

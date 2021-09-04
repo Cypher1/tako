@@ -23,7 +23,7 @@ pub struct State {
 
 impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
     fn visit_root(&mut self, storage: &mut DBStorage, module: &Path) -> Result<Root, TError> {
-        let expr = &storage.parse_file(module.clone())?;
+        let expr = &storage.parse_file(module)?;
         info!("Building symbol table... {}", path_to_string(module));
 
         let mut table = Table::default();
