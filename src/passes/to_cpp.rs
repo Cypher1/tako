@@ -398,7 +398,8 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         );
         let path = expr
             .get_info()
-            .defined_at.as_ref()
+            .defined_at
+            .as_ref()
             .expect("Could not find definition for abs");
 
         let name = make_name(path);
@@ -414,7 +415,8 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         );
         let path = expr
             .get_info()
-            .defined_at.as_ref()
+            .defined_at
+            .as_ref()
             .expect("Could not find definition for let");
 
         let uses = storage.find_symbol_uses(path)?;
@@ -428,7 +430,8 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             for arg in e_args.iter() {
                 let path = arg
                     .get_info()
-                    .defined_at.as_ref()
+                    .defined_at
+                    .as_ref()
                     .expect("Could not find definition for let arg");
                 let name = make_name(path);
                 args.push(format!("const auto {}", name));

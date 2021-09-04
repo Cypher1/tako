@@ -1,7 +1,12 @@
 use crate::ast::{path_to_string, Info, Path, PathRef};
 use crate::data_structures::tribool::Tribool;
 use crate::errors::TError;
-use crate::primitives::{never_type, Offset, Prim::Tag, TypeSet, Val, Val::{Padded, Pointer, PrimVal, Product, Struct, Union, Variable}};
+use crate::primitives::{
+    never_type, Offset,
+    Prim::Tag,
+    TypeSet, Val,
+    Val::{Padded, Pointer, PrimVal, Product, Struct, Union, Variable},
+};
 use bitvec::prelude::*;
 use log::debug;
 use std::collections::HashMap;
@@ -109,10 +114,7 @@ enum Overlap {
     Impossible,
 }
 
-fn merge_bit_pattern(
-    left: &(Offset, BitVec),
-    right: &(Offset, BitVec),
-) -> Overlap {
+fn merge_bit_pattern(left: &(Offset, BitVec), right: &(Offset, BitVec)) -> Overlap {
     let ((left_offset, left), (right_offset, right)) = if left.0 < right.0 {
         (left, right)
     } else {
@@ -164,7 +166,9 @@ fn merge_bit_patterns(tys: TypeSet) -> Option<TypeSet> {
                     new_bits.remove(other);
                     b = overlap;
                 }
-                Overlap::Impossible => {return None;}
+                Overlap::Impossible => {
+                    return None;
+                }
                 Overlap::None => {}
             }
         }

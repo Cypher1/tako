@@ -7,7 +7,7 @@ pub enum Term {
     App { inner: Box<Term>, arg: Box<Term> },
     Abs { inner: Box<Term> },
 }
-use Term::{Var, App, Abs};
+use Term::{Abs, App, Var};
 
 fn var(ind: Ind) -> Term {
     Var { ind }
@@ -85,7 +85,7 @@ impl Term {
 }
 
 mod util {
-    use super::{Term, abs, app, var};
+    use super::{abs, app, var, Term};
 
     pub fn church_bool(b: bool) -> Term {
         abs(abs(var(if b { 1 } else { 0 })))

@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt;
 
-use crate::data_structures::tribool::{Tribool, all_true, any_true};
+use crate::data_structures::tribool::{all_true, any_true, Tribool};
 
 // i32 here are sizes in bits, not bytes.
 // This means that we don't need to have a separate systems for bit&byte layouts.
@@ -26,7 +26,7 @@ pub enum Prim {
     BuiltIn(String),
     Tag(BitVec), // An identifying bit string (prefix).
 }
-use Prim::{Bool, I32, Str, BuiltIn, Tag};
+use Prim::{Bool, BuiltIn, Str, Tag, I32};
 
 impl std::fmt::Debug for Prim {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -74,7 +74,10 @@ pub enum Val {
     BitStr(Offset),
 }
 
-use Val::{App, BitStr, Function, Lambda, Padded, Pointer, PrimVal, Product, Struct, Union, Variable, WithRequirement};
+use Val::{
+    App, BitStr, Function, Lambda, Padded, Pointer, PrimVal, Product, Struct, Union, Variable,
+    WithRequirement,
+};
 
 impl Val {
     #[must_use]
@@ -120,13 +123,19 @@ impl Val {
 
     #[must_use]
     pub fn into_struct(self: Val) -> Vec<(String, Val)> {
-        self.as_struct().iter().map(|(name, val)| ((*name).to_string(), (*val).clone())).collect()
+        self.as_struct()
+            .iter()
+            .map(|(name, val)| ((*name).to_string(), (*val).clone()))
+            .collect()
     }
 
     #[must_use]
     pub fn as_struct(self: &Val) -> Vec<(&str, &Val)> {
         match self {
-            Struct(vals) => vals.iter().map(|(name, val)| (name.as_str(), val)).collect(),
+            Struct(vals) => vals
+                .iter()
+                .map(|(name, val)| (name.as_str(), val))
+                .collect(),
             _ => vec![("it", self)],
         }
     }

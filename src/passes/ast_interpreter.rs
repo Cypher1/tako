@@ -1,7 +1,10 @@
 use crate::ast::{Abs, Apply, BinOp, HasInfo, Info, Let, Root, Sym, ToNode, UnOp, Visitor};
 use crate::database::DBStorage;
 use crate::errors::TError;
-use crate::externs::{Res, prim_add, prim_add_strs, prim_and, prim_div, prim_eq, prim_gt, prim_gte, prim_mod, prim_mul, prim_neq, prim_or, prim_pow, prim_sub, prim_type_and, prim_type_arrow, prim_type_or};
+use crate::externs::{
+    prim_add, prim_add_strs, prim_and, prim_div, prim_eq, prim_gt, prim_gte, prim_mod, prim_mul,
+    prim_neq, prim_or, prim_pow, prim_sub, prim_type_and, prim_type_arrow, prim_type_or, Res,
+};
 use crate::primitives::{
     boolean, int32, merge_vals, never_type, Frame,
     Prim::{Bool, I32},

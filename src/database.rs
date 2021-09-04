@@ -1,6 +1,9 @@
 use crate::ast::{path_to_string, Info, Node, Path, PathRef, Root, Symbol, Visitor};
 use crate::cli_options::Options;
-use crate::components::{Call, DefinedAt, Definition, HasErrors, HasType, HasValue, InstancesAt, Sequence, SymbolRef, Untyped};
+use crate::components::{
+    Call, DefinedAt, Definition, HasErrors, HasType, HasValue, InstancesAt, Sequence, SymbolRef,
+    Untyped,
+};
 use crate::errors::TError;
 use crate::externs::get_externs;
 use crate::externs::{Extern, Semantic};
@@ -166,10 +169,11 @@ use crate::location::Loc;
 impl DBStorage {
     #[must_use]
     pub fn config_dir(&self) -> PathBuf {
-        self.project_dirs.as_ref().map_or_else(
-             PathBuf::new,
-            |project_dirs| project_dirs.config_dir().to_path_buf(),
-        )
+        self.project_dirs
+            .as_ref()
+            .map_or_else(PathBuf::new, |project_dirs| {
+                project_dirs.config_dir().to_path_buf()
+            })
     }
 
     #[must_use]
@@ -238,7 +242,11 @@ impl DBStorage {
             .map_or(Semantic::Func, |x| x.semantic.clone())
     }
 
-    pub fn parse_string(&mut self, module: PathRef, contents: &Arc<String>) -> Result<Node, TError> {
+    pub fn parse_string(
+        &mut self,
+        module: PathRef,
+        contents: &Arc<String>,
+    ) -> Result<Node, TError> {
         use crate::passes::parser;
         Ok(parser::parse_string(self, module, contents)?.0)
     }

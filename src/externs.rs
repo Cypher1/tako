@@ -6,7 +6,10 @@ use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::primitives::{
     bit_type, boolean, builtin, i32_type, int32, never_type, number_type, string, string_type,
-    type_type, unit_type, variable, Prim::{Bool, I32, Str}, Val, Val::{Function, Lambda, PrimVal, Product, Union, WithRequirement},
+    type_type, unit_type, variable,
+    Prim::{Bool, Str, I32},
+    Val,
+    Val::{Function, Lambda, PrimVal, Product, Union, WithRequirement},
 };
 
 pub type Res = Result<Val, TError>;
@@ -204,13 +207,17 @@ pub fn prim_add_strs(l: &Val, r: &Val, _info: &Info) -> Res {
 pub fn prim_pow(l: &Val, r: &Val, info: &Info) -> Res {
     match (l, r) {
         (PrimVal(I32(l)), PrimVal(Bool(r))) => Ok(int32(if *r { *l } else { 1 })),
-        (PrimVal(I32(l)), PrimVal(I32(r))) => Ok(int32(i32::pow(*l, u32::try_from(*r).map_err(|_err|
-        TError::TypeMismatch2(
-            "^ (range error)".to_string(),
-            Box::new(PrimVal(I32(*l))),
-            Box::new(PrimVal(I32(*r))),
-            info.clone(),
-        ))?))), // TODO: require pos pow
+        (PrimVal(I32(l)), PrimVal(I32(r))) => Ok(int32(i32::pow(
+            *l,
+            u32::try_from(*r).map_err(|_err| {
+                TError::TypeMismatch2(
+                    "^ (range error)".to_string(),
+                    Box::new(PrimVal(I32(*l))),
+                    Box::new(PrimVal(I32(*r))),
+                    info.clone(),
+                )
+            })?,
+        ))), // TODO: require pos pow
         (l, r) => Err(TError::TypeMismatch2(
             "^".to_string(),
             Box::new((*l).clone()),

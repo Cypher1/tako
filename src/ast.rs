@@ -10,7 +10,13 @@ use crate::symbol_table::Table;
 
 impl HasInfo for TError {
     fn get_info(&self) -> &Info {
-        use TError::{CppCompilerError, ExpectedLetNode, InternalError, OutOfScopeTypeVariable, ParseError, RequirementFailure, StackInterpreterRanOutOfArguments, StackInterpreterRanOutOfCode, StaticPointerCardinality, TypeMismatch, TypeMismatch2, UnknownCardOfAbstractType, UnknownEntity, UnknownInfixOperator, UnknownPath, UnknownPrefixOperator, UnknownSizeOfAbstractType, UnknownSizeOfVariableType, UnknownSymbol, UnknownToken};
+        use TError::{
+            CppCompilerError, ExpectedLetNode, InternalError, OutOfScopeTypeVariable, ParseError,
+            RequirementFailure, StackInterpreterRanOutOfArguments, StackInterpreterRanOutOfCode,
+            StaticPointerCardinality, TypeMismatch, TypeMismatch2, UnknownCardOfAbstractType,
+            UnknownEntity, UnknownInfixOperator, UnknownPath, UnknownPrefixOperator,
+            UnknownSizeOfAbstractType, UnknownSizeOfVariableType, UnknownSymbol, UnknownToken,
+        };
         match self {
             CppCompilerError(_, _, info)
             | UnknownToken(_, info, _)
@@ -35,7 +41,13 @@ impl HasInfo for TError {
         }
     }
     fn get_mut_info(&mut self) -> &mut Info {
-        use TError::{CppCompilerError, ExpectedLetNode, InternalError, OutOfScopeTypeVariable, ParseError, RequirementFailure, StackInterpreterRanOutOfArguments, StackInterpreterRanOutOfCode, StaticPointerCardinality, TypeMismatch, TypeMismatch2, UnknownCardOfAbstractType, UnknownEntity, UnknownInfixOperator, UnknownPath, UnknownPrefixOperator, UnknownSizeOfAbstractType, UnknownSizeOfVariableType, UnknownSymbol, UnknownToken};
+        use TError::{
+            CppCompilerError, ExpectedLetNode, InternalError, OutOfScopeTypeVariable, ParseError,
+            RequirementFailure, StackInterpreterRanOutOfArguments, StackInterpreterRanOutOfCode,
+            StaticPointerCardinality, TypeMismatch, TypeMismatch2, UnknownCardOfAbstractType,
+            UnknownEntity, UnknownInfixOperator, UnknownPath, UnknownPrefixOperator,
+            UnknownSizeOfAbstractType, UnknownSizeOfVariableType, UnknownSymbol, UnknownToken,
+        };
         match self {
             CppCompilerError(_, _, ref mut info)
             | UnknownToken(_, ref mut info, _)

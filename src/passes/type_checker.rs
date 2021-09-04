@@ -1,9 +1,19 @@
-use crate::ast::{Node, Node::{AbsNode, ApplyNode, BinOpNode, LetNode, SymNode, UnOpNode, ValNode}};
-use crate::components::{Call, DefinedAt, Definition, HasType, HasValue, Sequence, SymbolRef, Untyped};
+use crate::ast::{
+    Node,
+    Node::{AbsNode, ApplyNode, BinOpNode, LetNode, SymNode, UnOpNode, ValNode},
+};
+use crate::components::{
+    Call, DefinedAt, Definition, HasType, HasValue, Sequence, SymbolRef, Untyped,
+};
 use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::passes::ast_interpreter::Interpreter;
-use crate::primitives::{bit_type, i32_type, record, string_type, Prim::{Bool, I32, Str}, Val, Val::{Function, Lambda, PrimVal, Product, Struct, Union, Variable}};
+use crate::primitives::{
+    bit_type, i32_type, record, string_type,
+    Prim::{Bool, Str, I32},
+    Val,
+    Val::{Function, Lambda, PrimVal, Product, Struct, Union, Variable},
+};
 use log::debug;
 use specs::prelude::*;
 use std::collections::BTreeSet;

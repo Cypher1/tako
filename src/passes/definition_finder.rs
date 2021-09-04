@@ -1,4 +1,7 @@
-use crate::ast::{Abs, Apply, BinOp, HasInfo, Let, Node, Path, Root, Sym, Symbol, ToNode, UnOp, Visitor, path_to_string};
+use crate::ast::{
+    path_to_string, Abs, Apply, BinOp, HasInfo, Let, Node, Path, Root, Sym, Symbol, ToNode, UnOp,
+    Visitor,
+};
 use crate::components::{DefinedAt, SymbolRef};
 use crate::database::DBStorage;
 use crate::errors::TError;

@@ -5,7 +5,6 @@ use std::fs::read_to_string;
 use takolib::cli_options::Options;
 use takolib::database::DBStorage;
 
-
 #[derive(Debug, PartialEq)]
 pub enum TestResult {
     Error,
