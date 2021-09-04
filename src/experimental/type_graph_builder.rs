@@ -1,12 +1,19 @@
-use crate::ast::*;
+use crate::ast::{
+    path_to_string, Abs, Apply, BinOp, HasInfo, Let, Path, Sym, Symbol, UnOp, Visitor,
+};
 use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::passes::ast_interpreter::Interpreter;
-use crate::primitives::{Prim::*, Val::*, *};
-use log::*;
+use crate::primitives::{
+    bit_type, i32_type, string_type, Pack,
+    Prim::{Bool, Str, I32},
+    Val,
+    Val::{App, Function, Lambda, PrimVal, Product, Struct, Union, Variable, WithRequirement},
+};
+use log::{debug, info};
 use std::collections::BTreeSet;
 
-use crate::experimental::type_graph::*;
+use crate::experimental::type_graph::TypeGraph;
 
 // Walks the AST interpreting it.
 #[derive(Default)]
@@ -23,7 +30,7 @@ pub struct State {
 
 impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
     fn visit_root(&mut self, storage: &mut DBStorage, module: &Path) -> Result<TypeGraph, TError> {
-        let expr = &storage.parse_file(module.clone())?;
+        let expr = &storage.parse_file(module)?;
         info!(
             "Building symbol table & type graph... {}",
             path_to_string(module)
@@ -123,15 +130,11 @@ impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
         let val_ty = self.visit(storage, state, &expr.value)?;
         // TODO: consider pushing args into the ty via the Function ty.
         // TODO: put the type in the type graph
-        let ty = if let Some(args) = args {
-            Function {
-                intros: Pack::new(),
-                arguments: Box::new(Struct(args)),
-                results: Box::new(val_ty),
-            }
-        } else {
-            val_ty
-        };
+        let ty = args.map_or(val_ty.clone(), |args| Function {
+            intros: Pack::new(),
+            arguments: Box::new(Struct(args)),
+            results: Box::new(val_ty),
+        });
         state.graph.require_assignable(&state.path, &ty)?;
         state.path.pop();
         Ok(Struct(vec![(expr.name.clone(), ty)]))
@@ -151,7 +154,7 @@ impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
             &Apply {
                 inner: Box::new(ty.clone()),
                 args: vec![Let::new("it", arg_ty)],
-                info: expr.get_info(),
+                info: expr.get_info().clone(),
             },
         )
     }
@@ -171,7 +174,7 @@ impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
             &Apply {
                 inner: Box::new(ty.clone()),
                 args: vec![Let::new("left", left_ty), Let::new("right", right_ty)],
-                info: expr.get_info(),
+                info: expr.get_info().clone(),
             },
         )
     }
@@ -199,7 +202,7 @@ mod tests {
     fn get_tg(s: &str) -> Result<TypeGraph, TError> {
         let mut storage = DBStorage::default();
         storage.set_file(&filename(), s.to_string());
-        let module = storage.module_name(filename());
+        let module = storage.module_name(&filename());
         let mut tgb = TypeGraphBuilder::default();
         let tg: TypeGraph = tgb.visit_root(&mut storage, &module)?;
         Ok(tg)

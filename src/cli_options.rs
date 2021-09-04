@@ -1,4 +1,4 @@
-use log::*;
+use log::warn;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Command {
@@ -27,6 +27,7 @@ impl Default for Options {
 }
 
 impl Options {
+    #[must_use]
     pub fn with_file(self: Options, filename: &str) -> Options {
         let mut files = self.files;
         files.push(filename.to_owned());
@@ -42,7 +43,7 @@ impl Options {
         let mut got_dashdash = false;
         for f in args.into_iter().map(Into::into) {
             if got_dashdash {
-                opts.interpreter_args.push(f.to_owned());
+                opts.interpreter_args.push(f.clone());
                 continue;
             }
             if f.is_empty() {
@@ -68,7 +69,7 @@ impl Options {
             } else {
                 if opts.files.is_empty() {
                     // This is the first argument, so it should be the 'main'.
-                    opts.interpreter_args.push(f.to_owned());
+                    opts.interpreter_args.push(f.clone());
                 }
                 opts.files.push(f.to_string());
             }

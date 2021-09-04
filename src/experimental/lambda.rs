@@ -7,7 +7,7 @@ pub enum Term {
     App { inner: Box<Term>, arg: Box<Term> },
     Abs { inner: Box<Term> },
 }
-use Term::*;
+use Term::{Abs, App, Var};
 
 fn var(ind: Ind) -> Term {
     Var { ind }
@@ -85,7 +85,7 @@ impl Term {
 }
 
 mod util {
-    use super::*;
+    use super::{abs, app, var, Term};
 
     pub fn church_bool(b: bool) -> Term {
         abs(abs(var(if b { 1 } else { 0 })))
@@ -117,7 +117,7 @@ mod util {
 
 #[cfg(test)]
 mod test {
-    use super::util::*;
+    use super::util::{church_bool, church_nat, church_not, church_plus};
     use super::*;
 
     #[test]
@@ -181,7 +181,7 @@ mod test {
         assert_eq!(
             app(abs(app(app(var(1), var(0)), var(2))), abs(var(0))).beta_reduce(),
             app(app(var(0), abs(var(0))), var(1))
-        )
+        );
     }
 
     #[test]

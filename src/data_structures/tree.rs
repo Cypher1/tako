@@ -20,10 +20,7 @@ impl<T: fmt::Debug> fmt::Debug for Tree<T> {
 #[derive(Clone, PartialEq, Eq)]
 pub struct HashTree<K, T>
 where
-    K: std::hash::Hash,
-    K: std::cmp::Ord,
-    K: PartialEq,
-    K: Eq,
+    K: std::hash::Hash + std::cmp::Ord + PartialEq + Eq,
 {
     pub value: T,
     pub children: BTreeMap<K, HashTree<K, T>>, // Only use btree map here to ensure ordering for debug
@@ -31,9 +28,7 @@ where
 
 pub fn to_hash_root<K, T>(t: T) -> HashTree<K, T>
 where
-    K: std::hash::Hash,
-    K: std::cmp::Ord,
-    K: std::cmp::Eq,
+    K: std::hash::Hash + std::cmp::Ord + std::cmp::Eq,
 {
     HashTree {
         value: t,
@@ -43,10 +38,7 @@ where
 
 impl<K, T: fmt::Debug> fmt::Debug for HashTree<K, T>
 where
-    K: fmt::Debug,
-    K: std::hash::Hash,
-    K: std::cmp::Ord,
-    K: std::cmp::Eq,
+    K: fmt::Debug + std::hash::Hash + std::cmp::Ord + std::cmp::Eq,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.children.is_empty() {

@@ -1,8 +1,8 @@
-use crate::ast::*;
+use crate::ast::{Abs, Apply, BinOp, HasInfo, Let, Path, PathRef, Sym, Symbol, UnOp, Visitor};
 use crate::primitives::{Prim, Val};
-use crate::symbol_table::*;
+use crate::symbol_table::Table;
 use crate::{database::DBStorage, errors::TError};
-use log::*;
+use log::debug;
 use std::collections::HashSet;
 
 // Walks the AST compiling it to wasm.
@@ -97,9 +97,9 @@ impl Code {
                 Code::Block(right) // Backwards?
             }
             (Code::Block(mut left), right) => {
-                for line in left.iter_mut() {
+                for line in &mut left {
                     if let Code::Expr(expr) = line {
-                        *line = Code::Statement(expr.to_owned());
+                        *line = Code::Statement(expr.clone());
                     }
                 }
                 left.push(right);
@@ -115,7 +115,8 @@ impl Code {
     }
 }
 
-pub fn make_name(def: Vec<Symbol>) -> String {
+#[must_use]
+pub fn make_name(def: PathRef) -> String {
     let def_n: Vec<String> = def.iter().map(|n| n.clone().to_name()).collect();
     def_n.join("_")
 }
@@ -222,23 +223,24 @@ type Res = Result<Code, TError>;
 type State = Table;
 type Out = (String, HashSet<String>);
 
-impl CodeGenerator {
-    fn build_call1(&mut self, before: &str, inner: Code) -> Code {
-        inner.with_expr(&|exp| Code::Expr(format!("{}({})", before, exp)))
-    }
-    fn build_call2(&mut self, before: &str, mid: &str, left: Code, right: Code) -> Code {
-        left.with_expr(&|left_expr| {
-            right.clone().with_expr(&|right_expr| {
-                Code::Expr(format!("{}({}{}{})", before, left_expr, mid, right_expr))
-            })
+fn build_call1(before: &str, inner: Code) -> Code {
+    inner.with_expr(&|exp| Code::Expr(format!("{}({})", &before, &exp)))
+}
+fn build_call2(before: &str, mid: &str, left: Code, right: &Code) -> Code {
+    left.with_expr(&|left_expr| {
+        right.clone().with_expr(&|right_expr| {
+            Code::Expr(format!(
+                "{}({}{}{})",
+                &before, &left_expr, &mid, &right_expr
+            ))
         })
-    }
+    })
 }
 
 impl Visitor<State, Code, Out, Path> for CodeGenerator {
     fn visit_root(&mut self, storage: &mut DBStorage, module: &Path) -> Result<Out, TError> {
-        let root = storage.look_up_definitions(module.clone())?;
-        let mut main_info = root.ast.get_info();
+        let root = storage.look_up_definitions(module)?;
+        let mut main_info = root.ast.get_info().clone();
         let mut main_at = module.clone();
         main_at.push(Symbol::new("main"));
         main_info.defined_at = Some(main_at);
@@ -277,16 +279,16 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         // #includes
         let mut includes: Vec<&String> = self.includes.iter().collect();
         includes.sort();
-        for inc in includes.iter() {
+        for inc in &includes {
             if inc.as_str() != "" {
                 code = format!("{}{}\n", code, inc);
             }
         }
         // Forward declarations
-        for func in self.functions.clone().iter() {
+        for func in &self.functions.clone() {
             match &func {
                 Code::Func { name, args, .. } => {
-                    code = format!("{}{}({});\n", code, name, args.join(", "),)
+                    code = format!("{}{}({});\n", code, name, args.join(", "),);
                 }
                 _ => panic!("Cannot create function from non-function"),
             }
@@ -296,7 +298,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
 
         // Definitions
         for func in self.functions.iter().clone() {
-            let function = pretty_print_block(func.to_owned(), "\n");
+            let function = pretty_print_block(func.clone(), "\n");
             code = format!("{}{}", code, function);
         }
         Ok((code + "\n", self.flags.clone()))
@@ -311,6 +313,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         let name = make_name(
             expr.get_info()
                 .defined_at
+                .as_ref()
                 .expect("Could not find definition for symbol"),
         );
         if let Some(info) = storage.get_extern(&name) {
@@ -323,7 +326,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
     }
 
     fn visit_val(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Val) -> Res {
-        use Val::*;
+        use Val::{Lambda, PrimVal, Product, Struct, Union};
         match expr {
             Product(tys) => {
                 if tys.is_empty() {
@@ -338,7 +341,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 unimplemented!("unimplemented sum type in compilation to cpp")
             }
             PrimVal(prim) => {
-                use Prim::*;
+                use Prim::{Bool, BuiltIn, Str, Tag, I32};
                 match prim {
                     I32(n) => Ok(Code::Expr(n.to_string())),
                     Bool(true) => Ok(Code::Expr(1.to_string())),
@@ -369,7 +372,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         debug!("apply here: {:?}", expr);
         // Build the 'struct' of args
         let mut args = vec![];
-        for arg in expr.args.iter() {
+        for arg in &expr.args {
             // TODO: Include lambda head in values
             let val = self.visit_let(storage, state, arg)?;
             match val {
@@ -396,6 +399,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         let path = expr
             .get_info()
             .defined_at
+            .as_ref()
             .expect("Could not find definition for abs");
 
         let name = make_name(path);
@@ -412,9 +416,10 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         let path = expr
             .get_info()
             .defined_at
+            .as_ref()
             .expect("Could not find definition for let");
 
-        let uses = storage.find_symbol_uses(path.clone())?;
+        let uses = storage.find_symbol_uses(path)?;
         if uses.is_empty() {
             return Ok(Code::Empty);
         }
@@ -426,6 +431,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 let path = arg
                     .get_info()
                     .defined_at
+                    .as_ref()
                     .expect("Could not find definition for let arg");
                 let name = make_name(path);
                 args.push(format!("const auto {}", name));
@@ -468,11 +474,11 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             let code = if info.cpp.arg_processor.as_str() == "" {
                 code
             } else {
-                self.build_call1(info.cpp.arg_processor.as_str(), code)
+                build_call1(info.cpp.arg_processor.as_str(), code)
             };
-            return Ok(self.build_call1(info.cpp.arg_joiner.as_str(), code));
+            return Ok(build_call1(info.cpp.arg_joiner.as_str(), code));
         }
-        Err(TError::UnknownPrefixOperator(op.to_string(), info))
+        Err(TError::UnknownPrefixOperator(op.to_string(), info.clone()))
     }
 
     fn visit_bin_op(&mut self, storage: &mut DBStorage, state: &mut State, expr: &BinOp) -> Res {
@@ -505,17 +511,17 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 (left, right)
             } else {
                 (
-                    self.build_call1(info.cpp.arg_processor.as_str(), left),
-                    self.build_call1(info.cpp.arg_processor.as_str(), right),
+                    build_call1(info.cpp.arg_processor.as_str(), left),
+                    build_call1(info.cpp.arg_processor.as_str(), right),
                 )
             };
-            return Ok(self.build_call2(
+            return Ok(build_call2(
                 info.cpp.code.as_str(),
                 info.cpp.arg_joiner.as_str(),
                 left,
-                right,
+                &right,
             ));
         }
-        Err(TError::UnknownInfixOperator(op.to_string(), info))
+        Err(TError::UnknownInfixOperator(op.to_string(), info.clone()))
     }
 }

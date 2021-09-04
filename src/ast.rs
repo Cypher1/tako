@@ -4,57 +4,71 @@ use std::hash::{Hash, Hasher};
 
 use crate::database::DBStorage;
 use crate::errors::TError;
-use crate::location::*;
+use crate::location::Loc;
 use crate::primitives::{unit_type, Val};
 use crate::symbol_table::Table;
 
 impl HasInfo for TError {
-    fn get_info(&self) -> Info {
-        use TError::*;
+    fn get_info(&self) -> &Info {
+        use TError::{
+            CppCompilerError, ExpectedLetNode, InternalError, OutOfScopeTypeVariable, ParseError,
+            RequirementFailure, StackInterpreterRanOutOfArguments, StackInterpreterRanOutOfCode,
+            StaticPointerCardinality, TypeMismatch, TypeMismatch2, UnknownCardOfAbstractType,
+            UnknownEntity, UnknownInfixOperator, UnknownPath, UnknownPrefixOperator,
+            UnknownSizeOfAbstractType, UnknownSizeOfVariableType, UnknownSymbol, UnknownToken,
+        };
         match self {
-            CppCompilerError(_, _, info) => info.clone(),
-            UnknownSymbol(_, info, _) => info.clone(),
-            OutOfScopeTypeVariable(_, info) => info.clone(),
-            UnknownInfixOperator(_, info) => info.clone(),
-            UnknownPrefixOperator(_, info) => info.clone(),
-            UnknownSizeOfVariableType(_, info) => info.clone(),
-            UnknownSizeOfAbstractType(_, info) => info.clone(),
-            UnknownCardOfAbstractType(_, info) => info.clone(),
-            StaticPointerCardinality(info) => info.clone(),
-            StackInterpreterRanOutOfArguments(_, _, _, info) => info.clone(),
-            StackInterpreterRanOutOfCode(info) => info.clone(),
-            TypeMismatch(_, _, info) => info.clone(),
-            TypeMismatch2(_, _, _, info) => info.clone(),
-            RequirementFailure(info) => info.clone(),
-            ParseError(_, info) => info.clone(),
-            InternalError(_, info) => info.clone(),
+            CppCompilerError(_, _, info)
+            | UnknownToken(_, info, _)
+            | UnknownSymbol(_, info, _)
+            | OutOfScopeTypeVariable(_, info)
+            | UnknownInfixOperator(_, info)
+            | UnknownPrefixOperator(_, info)
+            | UnknownSizeOfVariableType(_, info)
+            | UnknownSizeOfAbstractType(_, info)
+            | UnknownCardOfAbstractType(_, info)
+            | StaticPointerCardinality(info)
+            | StackInterpreterRanOutOfArguments(_, _, _, info)
+            | StackInterpreterRanOutOfCode(info)
+            | TypeMismatch(_, _, info)
+            | TypeMismatch2(_, _, _, info)
+            | RequirementFailure(info)
+            | ParseError(_, info)
+            | InternalError(_, info)
+            | UnknownPath(_, info)
+            | UnknownEntity(_, info) => info,
             ExpectedLetNode(node) => node.get_info(),
-            UnknownPath(_, info) => info.clone(),
-            UnknownEntity(_, info) => info.clone(),
         }
     }
     fn get_mut_info(&mut self) -> &mut Info {
-        use TError::*;
+        use TError::{
+            CppCompilerError, ExpectedLetNode, InternalError, OutOfScopeTypeVariable, ParseError,
+            RequirementFailure, StackInterpreterRanOutOfArguments, StackInterpreterRanOutOfCode,
+            StaticPointerCardinality, TypeMismatch, TypeMismatch2, UnknownCardOfAbstractType,
+            UnknownEntity, UnknownInfixOperator, UnknownPath, UnknownPrefixOperator,
+            UnknownSizeOfAbstractType, UnknownSizeOfVariableType, UnknownSymbol, UnknownToken,
+        };
         match self {
-            CppCompilerError(_, _, ref mut info) => info,
-            UnknownSymbol(_, ref mut info, _) => info,
-            OutOfScopeTypeVariable(_, ref mut info) => info,
-            UnknownInfixOperator(_, ref mut info) => info,
-            UnknownPrefixOperator(_, ref mut info) => info,
-            UnknownSizeOfVariableType(_, ref mut info) => info,
-            UnknownSizeOfAbstractType(_, ref mut info) => info,
-            UnknownCardOfAbstractType(_, ref mut info) => info,
-            StaticPointerCardinality(ref mut info) => info,
-            StackInterpreterRanOutOfArguments(_, _, _, ref mut info) => info,
-            StackInterpreterRanOutOfCode(ref mut info) => info,
-            TypeMismatch(_, _, ref mut info) => info,
-            TypeMismatch2(_, _, _, ref mut info) => info,
-            RequirementFailure(ref mut info) => info,
-            ParseError(_, ref mut info) => info,
-            InternalError(_, ref mut info) => info,
+            CppCompilerError(_, _, ref mut info)
+            | UnknownToken(_, ref mut info, _)
+            | UnknownSymbol(_, ref mut info, _)
+            | OutOfScopeTypeVariable(_, ref mut info)
+            | UnknownInfixOperator(_, ref mut info)
+            | UnknownPrefixOperator(_, ref mut info)
+            | UnknownSizeOfVariableType(_, ref mut info)
+            | UnknownSizeOfAbstractType(_, ref mut info)
+            | UnknownCardOfAbstractType(_, ref mut info)
+            | StaticPointerCardinality(ref mut info)
+            | StackInterpreterRanOutOfArguments(_, _, _, ref mut info)
+            | StackInterpreterRanOutOfCode(ref mut info)
+            | TypeMismatch(_, _, ref mut info)
+            | TypeMismatch2(_, _, _, ref mut info)
+            | RequirementFailure(ref mut info)
+            | ParseError(_, ref mut info)
+            | InternalError(_, ref mut info)
+            | UnknownPath(_, ref mut info)
+            | UnknownEntity(_, ref mut info) => info,
             ExpectedLetNode(ref mut node) => node.get_mut_info(),
-            UnknownPath(_, ref mut info) => info,
-            UnknownEntity(_, ref mut info) => info,
         }
     }
 }
@@ -72,8 +86,8 @@ impl ToNode for Apply {
     }
 }
 impl HasInfo for Apply {
-    fn get_info(&self) -> Info {
-        self.info.clone()
+    fn get_info(&self) -> &Info {
+        &self.info
     }
     fn get_mut_info(&mut self) -> &mut Info {
         &mut self.info
@@ -87,12 +101,13 @@ pub struct Sym {
 }
 
 impl Sym {
+    #[must_use]
     pub fn as_let(self: &Sym) -> Let {
         Let {
             name: self.name.clone(),
             value: Box::new(unit_type().into_node()),
             args: None,
-            info: self.get_info(),
+            info: self.get_info().clone(),
         }
     }
 }
@@ -103,8 +118,8 @@ impl ToNode for Sym {
     }
 }
 impl HasInfo for Sym {
-    fn get_info(&self) -> Info {
-        self.info.clone()
+    fn get_info(&self) -> &Info {
+        &self.info
     }
     fn get_mut_info(&mut self) -> &mut Info {
         &mut self.info
@@ -126,10 +141,11 @@ pub struct Abs {
 }
 
 impl Abs {
+    #[must_use]
     pub fn to_sym(self: &Abs) -> Sym {
         Sym {
             name: self.name.clone(),
-            info: self.get_info(),
+            info: self.get_info().clone(),
         }
     }
 }
@@ -140,8 +156,8 @@ impl ToNode for Abs {
     }
 }
 impl HasInfo for Abs {
-    fn get_info(&self) -> Info {
-        self.info.clone()
+    fn get_info(&self) -> &Info {
+        &self.info
     }
     fn get_mut_info(&mut self) -> &mut Info {
         &mut self.info
@@ -158,12 +174,14 @@ pub struct Let {
 }
 
 impl Let {
+    #[must_use]
     pub fn to_sym(self: &Let) -> Sym {
         Sym {
             name: self.name.clone(),
-            info: self.get_info(),
+            info: self.get_info().clone(),
         }
     }
+    #[must_use]
     pub fn new(name: &str, value: Val) -> Let {
         Let {
             name: name.to_string(),
@@ -180,8 +198,8 @@ impl ToNode for Let {
     }
 }
 impl HasInfo for Let {
-    fn get_info(&self) -> Info {
-        self.info.clone()
+    fn get_info(&self) -> &Info {
+        &self.info
     }
     fn get_mut_info(&mut self) -> &mut Info {
         &mut self.info
@@ -201,8 +219,8 @@ impl ToNode for UnOp {
     }
 }
 impl HasInfo for UnOp {
-    fn get_info(&self) -> Info {
-        self.info.clone()
+    fn get_info(&self) -> &Info {
+        &self.info
     }
     fn get_mut_info(&mut self) -> &mut Info {
         &mut self.info
@@ -223,8 +241,8 @@ impl ToNode for BinOp {
     }
 }
 impl HasInfo for BinOp {
-    fn get_info(&self) -> Info {
-        self.info.clone()
+    fn get_info(&self) -> &Info {
+        &self.info
     }
     fn get_mut_info(&mut self) -> &mut Info {
         &mut self.info
@@ -297,7 +315,7 @@ pub enum Node {
 
 impl std::fmt::Debug for Node {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use Node::*;
+        use Node::{AbsNode, ApplyNode, BinOpNode, LetNode, SymNode, UnOpNode, ValNode};
         match self {
             SymNode(n) => n.fmt(f),
             ValNode(n, _) => n.fmt(f),
@@ -327,35 +345,35 @@ impl ToNode for Node {
     }
 }
 impl HasInfo for Node {
-    fn get_info(&self) -> Info {
-        use Node::*;
+    fn get_info(&self) -> &Info {
+        use Node::{AbsNode, ApplyNode, BinOpNode, LetNode, SymNode, UnOpNode, ValNode};
         match self {
             SymNode(n) => n.get_info(),
-            ValNode(_n, info) => info.clone(),
             ApplyNode(n) => n.get_info(),
             AbsNode(n) => n.get_info(),
             LetNode(n) => n.get_info(),
             UnOpNode(n) => n.get_info(),
             BinOpNode(n) => n.get_info(),
+            ValNode(_n, info) => info,
         }
     }
     fn get_mut_info(&mut self) -> &mut Info {
-        use Node::*;
+        use Node::{AbsNode, ApplyNode, BinOpNode, LetNode, SymNode, UnOpNode, ValNode};
         match self {
             SymNode(ref mut n) => n.get_mut_info(),
-            ValNode(_, ref mut info) => info,
             ApplyNode(ref mut n) => n.get_mut_info(),
             AbsNode(ref mut n) => n.get_mut_info(),
             LetNode(ref mut n) => n.get_mut_info(),
             UnOpNode(ref mut n) => n.get_mut_info(),
             BinOpNode(ref mut n) => n.get_mut_info(),
+            ValNode(_, ref mut info) => info,
         }
     }
 }
 
 impl Node {
     pub fn as_let(&self) -> Result<Let, TError> {
-        use Node::*;
+        use Node::LetNode;
         if let LetNode(n) = self {
             return Ok(n.clone());
         }
@@ -368,7 +386,7 @@ pub trait ToNode {
 }
 
 pub trait HasInfo {
-    fn get_info(&self) -> Info;
+    fn get_info(&self) -> &Info;
     fn get_mut_info(&mut self) -> &mut Info;
 }
 
@@ -402,12 +420,15 @@ impl fmt::Display for Symbol {
 }
 
 impl Symbol {
+    #[must_use]
     pub fn new(name: &str) -> Symbol {
         Symbol::Named(name.to_string(), None)
     }
+    #[must_use]
     pub fn to_name(self: &Symbol) -> String {
         format!("{}", &self)
     }
+    #[must_use]
     pub fn to_filename(self: &Symbol) -> String {
         match self {
             Symbol::Anon => "".to_owned(),
@@ -416,8 +437,7 @@ impl Symbol {
                 "{}{}",
                 name,
                 ext.as_ref()
-                    .map(|v| format!(".{}", v))
-                    .unwrap_or_else(|| "".to_string())
+                    .map_or_else(|| "".to_string(), |v| format!(".{}", v))
             ),
         }
     }
@@ -426,6 +446,7 @@ impl Symbol {
 pub type Path = Vec<Symbol>;
 pub type PathRef<'a> = &'a [Symbol];
 
+#[must_use]
 pub fn path_to_string(path: PathRef) -> String {
     path.iter()
         .map(|p| format!("{}", p))
@@ -521,7 +542,7 @@ pub trait Visitor<State, Res, Final, Start = Root> {
         state: &mut State,
         e: &Node,
     ) -> Result<Res, TError> {
-        use Node::*;
+        use Node::{AbsNode, ApplyNode, BinOpNode, LetNode, SymNode, UnOpNode, ValNode};
         match e {
             SymNode(n) => self.visit_sym(storage, state, n),
             ValNode(n, _) => self.visit_val(storage, state, n),
@@ -535,8 +556,7 @@ pub trait Visitor<State, Res, Final, Start = Root> {
 
     fn process(root: &Start, storage: &mut DBStorage) -> Result<Final, TError>
     where
-        Self: Sized,
-        Self: Default,
+        Self: Sized + Default,
     {
         Self::default().visit_root(storage, root)
     }

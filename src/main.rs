@@ -1,13 +1,13 @@
 #![deny(clippy::all)]
 
-use log::*;
+use log::error;
 use rustyline::error::ReadlineError;
 use rustyline::{config::Config, Editor};
 use std::env;
 use std::error::Error;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
-use takolib::cli_options::{print_cli_info, Options};
+use takolib::cli_options::{print_cli_info, Command, Options};
 use takolib::database::DBStorage;
 use takolib::errors::TError;
 use takolib::{work, work_on_string};
@@ -34,8 +34,8 @@ fn handle(res: Result<String, TError>) {
     }
 }
 
-fn main() -> Result<(), TError> {
-    takolib::build_logger(|env| env.init());
+fn main() {
+    takolib::build_logger(env_logger::Builder::init);
 
     let mut storage = DBStorage::default();
     {
@@ -46,19 +46,16 @@ fn main() -> Result<(), TError> {
 
     let files = storage.options.files.clone();
 
-    for f in files.iter() {
+    for f in &files {
         handle(work(&mut storage, f, None));
     }
 
-    use takolib::cli_options::Command;
     if storage.options.cmd == Command::Repl || storage.options.cmd == Command::StackRepl {
-        repl(&mut storage)
-    } else {
-        Ok(())
+        repl(&mut storage);
     }
 }
 
-fn repl(storage: &mut DBStorage) -> Result<(), TError> {
+fn repl(storage: &mut DBStorage) {
     print_cli_info();
     // `()` can be used when no completer is required
     let rl_config = Config::builder().tab_stop(2).build();
@@ -98,5 +95,4 @@ fn repl(storage: &mut DBStorage) -> Result<(), TError> {
     }
     rl.save_history(&storage.history_file())
         .expect("Could not save history");
-    Ok(())
 }

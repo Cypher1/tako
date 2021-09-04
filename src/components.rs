@@ -18,7 +18,7 @@ impl std::fmt::Debug for InstancesAt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "InstancesAt(")?;
         let mut after = false;
-        for item in self.0.iter() {
+        for item in &self.0 {
             write!(f, "{:?}", item)?;
             if after {
                 write!(f, ", ")?;

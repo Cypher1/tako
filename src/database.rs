@@ -1,13 +1,16 @@
 use crate::ast::{path_to_string, Info, Node, Path, PathRef, Root, Symbol, Visitor};
 use crate::cli_options::Options;
-use crate::components::*;
+use crate::components::{
+    Call, DefinedAt, Definition, HasErrors, HasType, HasValue, InstancesAt, Sequence, SymbolRef,
+    Untyped,
+};
 use crate::errors::TError;
 use crate::externs::get_externs;
 use crate::externs::{Extern, Semantic};
 use crate::primitives::Val;
 use crate::symbol_table::Table;
 use directories::ProjectDirs;
-use log::*;
+use log::{debug, info, warn};
 use specs::prelude::*;
 use specs::World;
 use std::collections::{BTreeSet, HashMap, HashSet};
@@ -61,6 +64,7 @@ macro_rules! define_debug {
             pub fn $print_func(&self, entity: Entity) {
                 print!("{}", self.$func(entity));
             }
+            #[must_use]
             pub fn $func_all(&self) -> String {
                 let f = |entity| self.$func(entity);
                 let mut mapper = DebugSystem::<String> {
@@ -163,14 +167,16 @@ impl<'a, T> System<'a> for DebugSystem<'a, T> {
 
 use crate::location::Loc;
 impl DBStorage {
+    #[must_use]
     pub fn config_dir(&self) -> PathBuf {
-        if let Some(project_dirs) = &self.project_dirs {
-            project_dirs.config_dir().to_path_buf()
-        } else {
-            PathBuf::new()
-        }
+        self.project_dirs
+            .as_ref()
+            .map_or_else(PathBuf::new, |project_dirs| {
+                project_dirs.config_dir().to_path_buf()
+            })
     }
 
+    #[must_use]
     pub fn history_file(&self) -> PathBuf {
         self.config_dir().join("tako_history")
     }
@@ -184,7 +190,8 @@ impl DBStorage {
             .insert(filename.to_owned(), Arc::new(contents));
     }
 
-    pub fn module_name(&self, filename: String) -> Path {
+    #[must_use]
+    pub fn module_name(&self, filename: &str) -> Path {
         filename
             .replace("\\", "/")
             .split('/')
@@ -202,47 +209,55 @@ impl DBStorage {
             .collect()
     }
 
-    pub fn filename(&self, module: Path) -> String {
+    #[must_use]
+    pub fn filename(&self, module: PathRef) -> String {
         let parts: Vec<String> = module.iter().map(|sym| format!("{:?}", sym)).collect();
         let file_name = parts.join("/");
         debug!(
             "Getting filename for {}, {}",
-            path_to_string(&module),
+            path_to_string(module),
             file_name
         );
         file_name
     }
 
+    #[must_use]
     pub fn get_externs(&self) -> &'static HashMap<String, Extern> {
         get_externs()
     }
 
+    #[must_use]
     pub fn get_extern_names(&self) -> Vec<&'static String> {
         get_externs().keys().collect()
     }
 
+    #[must_use]
     pub fn get_extern(&self, name: &str) -> Option<&'static Extern> {
         get_externs().get(name)
     }
 
+    #[must_use]
     pub fn get_extern_operator(&self, name: &str) -> Semantic {
         self.get_extern(name)
-            .map(|x| x.semantic.clone())
-            .unwrap_or(Semantic::Func)
+            .map_or(Semantic::Func, |x| x.semantic.clone())
     }
 
-    pub fn parse_string(&mut self, module: Path, contents: Arc<String>) -> Result<Node, TError> {
+    pub fn parse_string(
+        &mut self,
+        module: PathRef,
+        contents: &Arc<String>,
+    ) -> Result<Node, TError> {
         use crate::passes::parser;
-        Ok(parser::parse_string(self, &module, &contents)?.0)
+        Ok(parser::parse_string(self, module, contents)?.0)
     }
 
-    pub fn parse_str(&mut self, module: Path, contents: &'static str) -> Result<Node, TError> {
-        self.parse_string(module, Arc::new(contents.to_string()))
+    pub fn parse_str(&mut self, module: PathRef, contents: &'static str) -> Result<Node, TError> {
+        self.parse_string(module, &Arc::new(contents.to_string()))
     }
 
-    pub fn parse_file(&mut self, module: Path) -> Result<Node, TError> {
-        info!("Parsing file... {}", path_to_string(&module));
-        let filename = self.filename(module.clone());
+    pub fn parse_file(&mut self, module: PathRef) -> Result<Node, TError> {
+        info!("Parsing file... {}", path_to_string(module));
+        let filename = self.filename(module);
         let contents = if let Some(contents) = self.file_contents.get(&filename) {
             contents.clone()
         } else {
@@ -252,35 +267,35 @@ impl DBStorage {
             self.file_contents.insert(filename, contents.clone());
             contents
         };
-        self.parse_string(module, contents)
+        self.parse_string(module, &contents)
     }
-    pub fn infer(&mut self, expr: Node, env: Val) -> Result<Val, TError> {
+    pub fn infer(&mut self, expr: &Node, env: &Val) -> Result<Val, TError> {
         use crate::passes::type_checker::infer;
-        info!("Infering type for ... {}", &expr);
-        infer(self, &expr, &env)
+        info!("Infering type for ... {}", expr);
+        infer(self, expr, env)
     }
 
     // TODO: Paths should be passed by reference
-    pub fn look_up_definitions(&mut self, context: Path) -> Result<Root, TError> {
+    pub fn look_up_definitions(&mut self, context: PathRef) -> Result<Root, TError> {
         use crate::passes::definition_finder::DefinitionFinder;
-        let module = to_file_path(&context);
+        let module = to_file_path(context);
         info!("Look up definitions >> {}", path_to_string(&module));
         DefinitionFinder::process(&module, self)
     }
 
-    pub fn compile_to_cpp(&mut self, module: Path) -> Result<(String, HashSet<String>), TError> {
+    pub fn compile_to_cpp(&mut self, module: PathRef) -> Result<(String, HashSet<String>), TError> {
         use crate::passes::to_cpp::CodeGenerator;
-        info!("Generating code... {}", path_to_string(&module));
-        CodeGenerator::process(&module, self)
+        info!("Generating code... {}", path_to_string(module));
+        CodeGenerator::process(&module.to_vec(), self)
     }
 
-    pub fn build_with_gpp(&mut self, module: Path) -> Result<String, TError> {
-        let (res, flags) = self.compile_to_cpp(module.clone())?;
-        info!("Building file with g++ ... {}", path_to_string(&module));
+    pub fn build_with_gpp(&mut self, module: PathRef) -> Result<String, TError> {
+        let (res, flags) = self.compile_to_cpp(module)?;
+        info!("Building file with g++ ... {}", path_to_string(module));
 
         let name: String = module
             .iter()
-            .map(|s| s.to_name())
+            .map(crate::ast::Symbol::to_name)
             .collect::<Vec<String>>()
             .join("_");
 
@@ -292,7 +307,7 @@ impl DBStorage {
         write!(f, "{}", res).expect("couldn't write to file");
 
         let mut cmd = Command::new("g++");
-        for arg in flags.iter() {
+        for arg in &flags {
             cmd.arg(arg);
         }
         let output = cmd
@@ -323,35 +338,40 @@ impl DBStorage {
         Ok(res)
     }
 
-    pub fn find_symbol_uses(&mut self, path: Path) -> Result<HashSet<Path>, TError> {
-        if let Some(symbol) = self.find_symbol(path.clone(), Vec::new())? {
+    pub fn find_symbol_uses(&mut self, path: PathRef) -> Result<HashSet<Path>, TError> {
+        if let Some(symbol) = self.find_symbol(path, &Vec::new())? {
             return Ok(symbol.value.uses);
         }
         Err(TError::UnknownSymbol(
-            path_to_string(&path),
+            path_to_string(path),
             Info::default(),
             "".to_string(),
         ))
     }
 
-    pub fn build_symbol_table(&mut self, module: Path) -> Result<Root, TError> {
+    pub fn build_symbol_table(&mut self, module: PathRef) -> Result<Root, TError> {
         use crate::passes::symbol_table_builder::SymbolTableBuilder;
-        SymbolTableBuilder::process(&module, self)
+        SymbolTableBuilder::process(&module.to_vec(), self)
     }
 
-    pub fn find_symbol(&mut self, mut context: Path, path: Path) -> Result<Option<Table>, TError> {
+    pub fn find_symbol(
+        &mut self,
+        context: PathRef,
+        path: PathRef,
+    ) -> Result<Option<Table>, TError> {
+        let mut context = context.to_vec();
         debug!(
             ">>> looking for symbol {} in {}",
-            path_to_string(&path),
+            path_to_string(path),
             path_to_string(&context)
         );
-        let table = self.look_up_definitions(context.clone())?.table;
+        let table = self.look_up_definitions(&context)?.table;
         loop {
             if let Some(Symbol::Anon) = context.last() {
                 context.pop(); // Cannot look inside an 'anon'.
             }
             let mut search: Vec<Symbol> = context.clone();
-            search.extend(path.clone());
+            search.extend(path.to_vec());
             if let Some(node) = table.find(&search) {
                 debug!(
                     "FOUND INSIDE {} {}",
@@ -362,13 +382,13 @@ impl DBStorage {
             }
             debug!(
                 "   not found {} at {}",
-                path_to_string(&path),
+                path_to_string(path),
                 path_to_string(&search)
             );
             if context.is_empty() {
                 warn!(
                     "   not found {} at {}",
-                    path_to_string(&path),
+                    path_to_string(path),
                     path_to_string(&search)
                 );
                 return Ok(None);
@@ -379,11 +399,12 @@ impl DBStorage {
 
     pub fn arity(&self, entity: &Entity) -> Result<usize, TError> {
         match self.world.read_storage::<Definition>().get(*entity) {
-            Some(def) => Ok(def.params.as_ref().map(|params| params.len()).unwrap_or(0)),
+            Some(def) => Ok(def.params.as_ref().map_or(0, Vec::len)),
             None => Err(TError::UnknownEntity(*entity, Info::default())),
         }
     }
 
+    #[must_use]
     pub fn get_known_value(&self, entity: &Entity) -> Option<Val> {
         self.world
             .read_storage::<HasValue>()
@@ -392,7 +413,7 @@ impl DBStorage {
     }
 
     fn entity_for_ast(&self, node: &AstTerm) -> Option<Entity> {
-        self.ast_to_entity.get(node).cloned()
+        self.ast_to_entity.get(node).copied()
     }
 
     fn set_entity_for_ast(&mut self, term: AstTerm, entity: Entity) {
@@ -436,20 +457,18 @@ impl DefinitionHead {
         self,
         storage: &mut DBStorage,
         path: PathRef,
-        loc: Loc,
+        loc: &Loc,
         ty: Option<Entity>,
     ) -> AstNode {
         let name = AstTerm::Symbol {
             name: self.name,
             context: self.path,
         }
-        .into_node(loc.clone(), None);
-        if let Some(children) = self.params {
+        .into_node(loc, None);
+        self.params.map_or(name.clone(), |children| {
             let inner = storage.store_node(name, path);
             AstTerm::Call { inner, children }.into_node(loc, ty)
-        } else {
-            name
-        }
+        })
     }
 }
 
@@ -473,10 +492,11 @@ pub enum AstTerm {
 }
 
 impl AstTerm {
-    pub fn into_node(self, loc: Loc, ty: Option<Entity>) -> AstNode {
+    #[must_use]
+    pub fn into_node(self, loc: &Loc, ty: Option<Entity>) -> AstNode {
         AstNode {
             term: self,
-            loc,
+            loc: loc.clone(),
             ty,
         }
     }
@@ -485,7 +505,7 @@ impl AstTerm {
         self,
         _storage: &mut DBStorage,
         right: Entity,
-        loc: Loc,
+        loc: &Loc,
     ) -> Result<AstNode, TError> {
         Ok(match self {
             AstTerm::Symbol { name, context } => AstTerm::Definition {
@@ -503,7 +523,7 @@ impl AstTerm {
             _ => {
                 return Err(TError::ParseError(
                     format!("Cannot assign to {:?}", self),
-                    loc.get_info(),
+                    loc.clone().get_info(),
                 ));
             }
         }
@@ -523,7 +543,7 @@ impl AstNode {
         self,
         storage: &mut DBStorage,
         right: Entity,
-        loc: Loc,
+        loc: &Loc,
     ) -> Result<AstNode, TError> {
         Ok(AstNode {
             ty: self.ty,
@@ -546,7 +566,7 @@ impl DBStorage {
             entity
         } else {
             if let AstTerm::DefinitionHead(head) = entry.term {
-                let call = head.into_call(self, path, entry.loc, entry.ty);
+                let call = head.into_call(self, path, &entry.loc, entry.ty);
                 return self.store_node(call, path);
             }
             let entity = {

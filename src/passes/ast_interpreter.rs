@@ -1,15 +1,23 @@
-use crate::ast::*;
+use crate::ast::{Abs, Apply, BinOp, HasInfo, Info, Let, Root, Sym, ToNode, UnOp, Visitor};
 use crate::database::DBStorage;
 use crate::errors::TError;
-use crate::externs::*;
-use crate::primitives::{boolean, int32, merge_vals, never_type, Frame, Prim::*, Val, Val::*};
-use log::*;
+use crate::externs::{
+    prim_add, prim_add_strs, prim_and, prim_div, prim_eq, prim_gt, prim_gte, prim_mod, prim_mul,
+    prim_neq, prim_or, prim_pow, prim_sub, prim_type_and, prim_type_arrow, prim_type_or, Res,
+};
+use crate::primitives::{
+    boolean, int32, merge_vals, never_type, Frame,
+    Prim::{Bool, I32},
+    Val,
+    Val::{Function, Lambda, PrimVal, Product, Struct, Variable},
+};
+use log::debug;
 use std::collections::HashMap;
 
 pub type ImplFn<'a> =
-    &'a mut dyn FnMut(&mut DBStorage, HashMap<String, Box<dyn Fn() -> Res>>, Info) -> Res;
+    &'a mut dyn FnMut(&mut DBStorage, HashMap<String, Box<dyn Fn() -> Res>>, &Info) -> Res;
 pub type PureImplFn<'a> =
-    &'a dyn Fn(&DBStorage, HashMap<String, Box<dyn Fn() -> Res>>, Info) -> Res;
+    &'a dyn Fn(&DBStorage, HashMap<String, Box<dyn Fn() -> Res>>, &Info) -> Res;
 
 // Walks the AST interpreting it.
 pub struct Interpreter<'a> {
@@ -39,7 +47,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
     fn visit_root(&mut self, storage: &mut DBStorage, root: &Root) -> Res {
         let mut base_frame = map! {};
         for (name, ext) in storage.get_externs().iter() {
-            base_frame.insert(name.to_owned(), ext.value.clone());
+            base_frame.insert(name.clone(), ext.value.clone());
         }
         let mut state = vec![base_frame];
         self.visit(storage, &mut state, &root.ast)
@@ -57,7 +65,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
             debug!("{} = (from externs)", name);
             let frame = || {
                 let mut frame_vals: HashMap<String, Box<dyn Fn() -> Res>> = map!();
-                for (name, val) in state.last().expect("Stack frame missing").clone().iter() {
+                for (name, val) in state.last().expect("Stack frame missing") {
                     let val = val.clone();
                     frame_vals.insert(name.to_string(), Box::new(move || Ok(val.clone())));
                 }
@@ -78,8 +86,8 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
             Variable(name) => {
                 let frame = state.last().cloned().unwrap_or_default();
                 let mut kvs = vec![];
-                for (k, v) in frame.iter() {
-                    kvs.push(format!("{} = {}", k, v))
+                for (k, v) in &frame {
+                    kvs.push(format!("{} = {}", k, v));
                 }
                 debug!("variable {}, state: {}", &name, &kvs.join(","));
                 return state
@@ -107,13 +115,13 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
                                 continue;
                             }
                             (Struct(ty), Struct(new_ty)) => {
-                                new_tys = set![Struct(merge_vals(ty.clone(), new_ty.clone()))];
+                                new_tys = set![Struct(merge_vals(ty, new_ty))];
                                 continue;
                             }
                             (Struct(ty), new_ty) => {
                                 new_tys = set![Struct(merge_vals(
-                                    ty.clone(),
-                                    vec![("it".to_string(), new_ty.clone())]
+                                    ty,
+                                    &[("it".to_string(), new_ty.clone())]
                                 ))];
                                 continue;
                             }
@@ -147,13 +155,13 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
             } => {
                 if let Some(frame) = state.clone().last() {
                     let mut new_args = vec![];
-                    for (arg, ty) in arguments.clone().into_struct().iter() {
+                    for (arg, ty) in arguments.as_struct() {
                         let never = never_type();
                         let arg_ty = &frame.get(arg).unwrap_or(&never);
                         debug!(">> {}: {} unified with {}", &arg, &ty, &arg_ty);
                         let unified = ty.unify(arg_ty, state)?;
                         debug!(">>>> {}", &unified);
-                        new_args.push((arg.clone(), unified));
+                        new_args.push((arg.to_string(), unified));
                     }
                     let results = self.visit_val(storage, state, results)?;
                     return Ok(Function {
@@ -192,9 +200,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
                         debug!("looking up interpreter impl {}", name);
                         let frame = || {
                             let mut frame_vals: HashMap<String, Box<dyn Fn() -> Res>> = map!();
-                            for (name, val) in
-                                state.last().expect("Stack frame missing").clone().iter()
-                            {
+                            for (name, val) in state.last().expect("Stack frame missing") {
                                 let val = val.clone();
                                 frame_vals
                                     .insert(name.to_string(), Box::new(move || Ok(val.clone())));
@@ -276,30 +282,42 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
     fn visit_un_op(&mut self, storage: &mut DBStorage, state: &mut State, expr: &UnOp) -> Res {
         debug!("evaluating unop {}", expr.clone().into_node());
         let i = self.visit(storage, state, &expr.inner)?;
-        let info = expr.clone().get_info();
+        let info = expr.get_info();
         match expr.name.as_str() {
             "!" => match i {
                 PrimVal(Bool(n)) => Ok(boolean(!n)),
                 Lambda(_) => Ok(Lambda(Box::new(expr.clone().into_node()))),
-                _ => Err(TError::TypeMismatch("!".to_string(), Box::new(i), info)),
+                _ => Err(TError::TypeMismatch(
+                    "!".to_string(),
+                    Box::new(i),
+                    info.clone(),
+                )),
             },
             "+" => match i {
                 PrimVal(I32(n)) => Ok(int32(n)),
                 Lambda(_) => Ok(Lambda(Box::new(expr.clone().into_node()))),
-                _ => Err(TError::TypeMismatch("+".to_string(), Box::new(i), info)),
+                _ => Err(TError::TypeMismatch(
+                    "+".to_string(),
+                    Box::new(i),
+                    info.clone(),
+                )),
             },
             "-" => match i {
                 PrimVal(I32(n)) => Ok(int32(-n)),
                 Lambda(_) => Ok(Lambda(Box::new(expr.clone().into_node()))),
-                _ => Err(TError::TypeMismatch("-".to_string(), Box::new(i), info)),
+                _ => Err(TError::TypeMismatch(
+                    "-".to_string(),
+                    Box::new(i),
+                    info.clone(),
+                )),
             },
-            op => Err(TError::UnknownPrefixOperator(op.to_string(), info)),
+            op => Err(TError::UnknownPrefixOperator(op.to_string(), info.clone())),
         }
     }
 
     fn visit_bin_op(&mut self, storage: &mut DBStorage, state: &mut State, expr: &BinOp) -> Res {
         debug!("evaluating binop {}", expr.clone().into_node());
-        let info = expr.clone().get_info();
+        let info = expr.get_info();
         let l = self.visit(storage, state, &expr.left);
         let mut r = || self.visit(storage, state, &expr.right);
         match expr.name.as_str() {
@@ -340,7 +358,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
                             args: None,
                             info: info.clone(),
                         }],
-                        info,
+                        info: info.clone(),
                     },
                 )
             }
@@ -355,11 +373,11 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
             },
             "-|" => match l {
                 //TODO: Add pattern matching.
-                Ok(PrimVal(Bool(false))) => Err(TError::RequirementFailure(info)),
+                Ok(PrimVal(Bool(false))) => Err(TError::RequirementFailure(info.clone())),
                 Ok(_) => r(),
                 l => l,
             },
-            op => Err(TError::UnknownInfixOperator(op.to_string(), info)),
+            op => Err(TError::UnknownInfixOperator(op.to_string(), info.clone())),
         }
     }
 }
@@ -367,8 +385,11 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::primitives::{boolean, int32, number_type, string, string_type};
-    use Node::*;
+    use crate::ast::Node::ValNode;
+    use crate::primitives::{
+        boolean, i32_type, int32, number_type, record, string, string_type, sum, Val::Union,
+    };
+    use log::info;
 
     fn get_db() -> DBStorage {
         DBStorage::default()
@@ -386,9 +407,9 @@ mod tests {
 
     fn eval_str(storage: &mut DBStorage, s: &str) -> Res {
         let filename = "test/file.tk";
-        let module_name = storage.module_name(filename.to_owned());
+        let module_name = storage.module_name(filename);
         storage.set_file(filename, s.to_string());
-        let root = storage.look_up_definitions(module_name)?;
+        let root = storage.look_up_definitions(&module_name)?;
         Interpreter::default().visit_root(storage, &root)
     }
 
@@ -515,7 +536,6 @@ mod tests {
 
     #[test]
     fn parse_and_eval_tagged_string_or_number_type() {
-        use crate::primitives::*;
         let db = &mut get_db();
         assert_eq!(
             eval_str(db, "String + I32"),
@@ -525,7 +545,6 @@ mod tests {
 
     #[test]
     fn parse_and_eval_string_times_number_type() {
-        use crate::primitives::*;
         let db = &mut get_db();
         assert_eq!(
             eval_str(db, "String * I32"),

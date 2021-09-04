@@ -1,18 +1,18 @@
 use crate::ast::Info;
 use crate::database::DBStorage;
 use crate::errors::TError;
-use crate::externs::*;
-use crate::primitives::{Prim::*, Val};
+use crate::externs::Res;
+use crate::primitives::{Prim::I32, Val};
 // use crate::primitives::{
 // boolean, int32, merge_vals, never_type, Frame, Prim::*, Val::*,
 // };
-use log::*;
+use log::trace;
 use std::collections::HashMap;
 
 pub type ImplFn<'a> =
-    &'a mut dyn FnMut(&mut DBStorage, HashMap<String, Box<dyn Fn() -> Res>>, Info) -> Res;
+    &'a mut dyn FnMut(&mut DBStorage, HashMap<String, Box<dyn Fn() -> Res>>, &Info) -> Res;
 pub type PureImplFn<'a> =
-    &'a dyn Fn(&DBStorage, HashMap<String, Box<dyn Fn() -> Res>>, Info) -> Res;
+    &'a dyn Fn(&DBStorage, HashMap<String, Box<dyn Fn() -> Res>>, &Info) -> Res;
 
 use specs::Entity;
 
@@ -113,7 +113,8 @@ mod tests {
     use super::*;
     use crate::database::{AstNode, AstTerm};
     use crate::location::Loc;
-    use crate::primitives::{boolean, int32, number_type, string, string_type};
+    use crate::primitives::{boolean, int32};
+    use log::debug;
 
     fn get_db() -> DBStorage {
         DBStorage::default()
@@ -123,7 +124,7 @@ mod tests {
     fn eval_num() {
         let mut storage = get_db();
         let filename = "test/file.tk";
-        let module_name = storage.module_name(filename.to_owned());
+        let module_name = storage.module_name(filename);
         let entity = storage.store_node(
             AstNode {
                 term: AstTerm::Value(int32(12)),
@@ -137,15 +138,14 @@ mod tests {
 
     fn eval_str(storage: &mut DBStorage, s: &str) -> Res {
         let filename = "test/file.tk";
-        let module_name = storage.module_name(filename.to_owned());
+        let module_name = storage.module_name(filename);
         storage.set_file(filename, s.to_string());
 
-        let _root = storage.look_up_definitions(module_name.clone())?;
-        let root_entity = storage
+        let _root = storage.look_up_definitions(&module_name)?;
+        let root_entity = *storage
             .path_to_entity
             .get(&module_name)
-            .expect("Expected an entity for the program")
-            .clone();
+            .expect("Expected an entity for the program");
         Interpreter::new(storage).eval(root_entity)
     }
 

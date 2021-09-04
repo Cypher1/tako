@@ -1,11 +1,14 @@
-use crate::ast::*;
+use crate::ast::{
+    path_to_string, Abs, Apply, BinOp, HasInfo, Let, Node, Path, Root, Sym, Symbol, ToNode, UnOp,
+    Visitor,
+};
 use crate::components::{DefinedAt, SymbolRef};
 use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::externs::get_externs;
 use crate::passes::symbol_table_builder::State;
 use crate::primitives::Val;
-use log::*;
+use log::{debug, info};
 use specs::prelude::*;
 use std::collections::HashMap;
 
@@ -61,7 +64,7 @@ impl<'a> System<'a> for DefinitionFinderSystem {
 
 impl Visitor<State, Node, Root, Path> for DefinitionFinder {
     fn visit_root(&mut self, storage: &mut DBStorage, module: &Path) -> Result<Root, TError> {
-        let expr = storage.build_symbol_table(module.clone())?;
+        let expr = storage.build_symbol_table(module)?;
         info!("Looking up definitions... {}", path_to_string(module));
         let mut definition_finder = DefinitionFinderSystem {
             path_to_entity: storage.path_to_entity.clone(),
@@ -92,35 +95,31 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
             }
             search.push(Symbol::new(&expr.name));
             let node = state.table.find_mut(&search);
-            match node {
-                Some(node) => {
-                    node.value.uses.insert(state.path.clone());
-                    debug!(
-                        "FOUND {} at {}\n",
-                        expr.name.clone(),
-                        path_to_string(&search)
-                    );
-                    let mut res = expr.clone();
-                    res.info.defined_at = Some(search);
-                    return Ok(res.into_node());
-                }
-                None => {
-                    search.pop(); // Strip the name off.
-                    debug!(
-                        "   not found {} at {}",
-                        expr.name.clone(),
-                        path_to_string(&search)
-                    );
-                    if search.is_empty() {
-                        return Err(TError::UnknownSymbol(
-                            expr.name.clone(),
-                            expr.get_info(),
-                            path_to_string(&state.path),
-                        ));
-                    }
-                    search.pop(); // Up one, go again.
-                }
+            if let Some(node) = node {
+                node.value.uses.insert(state.path.clone());
+                debug!(
+                    "FOUND {} at {}\n",
+                    expr.name.clone(),
+                    path_to_string(&search)
+                );
+                let mut res = expr.clone();
+                res.info.defined_at = Some(search);
+                return Ok(res.into_node());
             }
+            search.pop(); // Strip the name off.
+            debug!(
+                "   not found {} at {}",
+                expr.name.clone(),
+                path_to_string(&search)
+            );
+            if search.is_empty() {
+                return Err(TError::UnknownSymbol(
+                    expr.name.clone(),
+                    expr.get_info().clone(),
+                    path_to_string(&state.path),
+                ));
+            }
+            search.pop(); // Up one, go again.
         }
     }
 
@@ -149,7 +148,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
         Ok(Apply {
             inner,
             args,
-            info: expr.get_info(),
+            info: expr.get_info().clone(),
         }
         .into_node())
     }
@@ -194,7 +193,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
         Ok(UnOp {
             name: expr.name.clone(),
             inner,
-            info: expr.get_info(),
+            info: expr.get_info().clone(),
         }
         .into_node())
     }
@@ -206,7 +205,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
             name: expr.name.clone(),
             left,
             right,
-            info: expr.get_info(),
+            info: expr.get_info().clone(),
         }
         .into_node())
     }
@@ -225,7 +224,7 @@ mod tests {
     ) -> Result<String, TError> {
         let prog_filename = "test/prog.tk";
         storage.set_file(prog_filename, prog_str.to_owned());
-        let prog_module = storage.module_name(prog_filename.to_owned());
+        let prog_module = storage.module_name(prog_filename);
 
         let Root { ast, table } = DefinitionFinder::process(&prog_module, storage)?;
 
@@ -260,7 +259,7 @@ mod tests {
     #[test]
     fn entity_use_local_definition() -> Test {
         let mut storage = DBStorage::default();
-        let _ = symbols_found_using(&mut storage, "x=23;x")?;
+        let _definitions = symbols_found_using(&mut storage, "x=23;x")?;
         assert_str_eq!(storage.format_entity_definitions(),
             "\
 Entity 0:
@@ -279,7 +278,7 @@ Entity 4:");
     #[test]
     fn entity_use_closest_definition() -> Test {
         let mut storage = DBStorage::default();
-        let _ = symbols_found_using(&mut storage, "x=23;y=(x=45;x)")?;
+        let _definitions = symbols_found_using(&mut storage, "x=23;y=(x=45;x)")?;
         assert_str_eq!(storage.format_entity_definitions(),
             "\
 Entity 0:

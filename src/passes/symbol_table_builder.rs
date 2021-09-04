@@ -6,7 +6,7 @@ use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::primitives::Val;
 use crate::symbol_table::Table;
-use log::*;
+use log::{debug, info};
 
 // Walks the AST interpreting it.
 #[derive(Default)]
@@ -23,7 +23,7 @@ pub struct State {
 
 impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
     fn visit_root(&mut self, storage: &mut DBStorage, module: &Path) -> Result<Root, TError> {
-        let expr = &storage.parse_file(module.clone())?;
+        let expr = &storage.parse_file(module)?;
         info!("Building symbol table... {}", path_to_string(module));
 
         let mut table = Table::default();
@@ -77,7 +77,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
         Ok(Apply {
             inner,
             args,
-            info: expr.get_info(),
+            info: expr.get_info().clone(),
         }
         .into_node())
     }
@@ -86,7 +86,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
         debug!("visiting {} {}", path_to_string(&state.path), &expr.name);
 
         // Visit definition.
-        let mut info = expr.get_info();
+        let mut info = expr.get_info().clone();
         state.path.push(Symbol::new(&expr.name));
         info.defined_at = Some(state.path.clone());
         state.table.get_mut(&state.path);
@@ -106,7 +106,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
         debug!("visiting {} {}", path_to_string(&state.path), &expr.name);
 
         // Visit definition.
-        let mut info = expr.get_info();
+        let mut info = expr.get_info().clone();
         state.path.push(Symbol::new(&expr.name));
         info.defined_at = Some(state.path.clone());
         state.table.get_mut(&state.path);
@@ -138,7 +138,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
         Ok(UnOp {
             name: expr.name.clone(),
             inner,
-            info: expr.get_info(),
+            info: expr.get_info().clone(),
         }
         .into_node())
     }
@@ -150,7 +150,7 @@ impl Visitor<State, Node, Root, Path> for SymbolTableBuilder {
             name: expr.name.clone(),
             left,
             right,
-            info: expr.get_info(),
+            info: expr.get_info().clone(),
         }
         .into_node())
     }

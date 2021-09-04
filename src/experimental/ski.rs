@@ -17,8 +17,8 @@ pub enum SVal {
 
 type Stack = VecDeque<SVal>;
 
-use SVal::*;
-use Ski::*;
+use SVal::{P, T, V};
+use Ski::{I, K, S};
 
 pub fn eval(mut stack: Stack) -> Stack {
     // debug!("{:?}", shows(&stack));
@@ -118,25 +118,25 @@ pub fn shows(s: &Stack) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use log::*;
+    use log::info;
 
     fn v(name: &str) -> SVal {
         SVal::V(name.to_string())
     }
 
-    fn test(stack: Stack, expected: Stack) {
+    fn test(stack: Stack, expected: &Stack) {
         info!("Running: {:?}", &stack);
         let out = eval(stack);
         info!("Got: {:?}", &out);
 
-        assert_eq!(out, expected);
+        assert_eq!(&out, expected);
     }
 
     #[test]
     fn term_i() {
         test(
             vec![T(I), v("x"), v("y"), v("z")].into(),
-            vec![v("x"), v("y"), v("z")].into(),
+            &vec![v("x"), v("y"), v("z")].into(),
         );
     }
 
@@ -144,7 +144,7 @@ mod tests {
     fn term_k() {
         test(
             vec![T(K), v("x"), v("y"), v("z")].into(),
-            vec![v("x"), v("z")].into(),
+            &vec![v("x"), v("z")].into(),
         );
     }
 
@@ -152,7 +152,7 @@ mod tests {
     fn term_s() {
         test(
             vec![T(S), v("x"), v("y"), v("z")].into(),
-            vec![v("x"), v("z"), P(vec![v("y"), v("z")].into())].into(),
+            &vec![v("x"), v("z"), P(vec![v("y"), v("z")].into())].into(),
         );
     }
 
@@ -175,7 +175,7 @@ mod tests {
                 v("b"),
             ]
             .into(),
-            vec![v("b"), v("a")].into(),
+            &vec![v("b"), v("a")].into(),
         );
     }
 }

@@ -1,4 +1,4 @@
-use crate::ast::*;
+use crate::ast::{path_to_string, Abs, Apply, BinOp, HasInfo, Let, Node, Sym, UnOp, Visitor};
 use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::primitives::Val;
@@ -20,8 +20,8 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
     }
 
     fn visit_sym(&mut self, _storage: &mut DBStorage, state: &mut State, expr: &Sym) -> Res {
-        if let Some(def_at) = expr.get_info().defined_at {
-            write!(state, ".{}", path_to_string(&def_at))?;
+        if let Some(def_at) = &expr.get_info().defined_at {
+            write!(state, ".{}", path_to_string(def_at))?;
         } else {
             write!(state, "{}", expr.name)?;
         }
@@ -38,7 +38,7 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
         self.visit(storage, state, &*expr.inner)?;
         write!(state, ")(")?;
         let mut is_first = true;
-        for arg in expr.args.iter() {
+        for arg in &expr.args {
             if is_first {
                 is_first = false;
             } else {
@@ -56,8 +56,8 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
     }
 
     fn visit_let(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Let) -> Res {
-        if let Some(def_at) = expr.get_info().defined_at {
-            write!(state, ".{}", path_to_string(&def_at))?;
+        if let Some(def_at) = &expr.get_info().defined_at {
+            write!(state, ".{}", path_to_string(def_at))?;
         } else {
             write!(state, "{}", expr.name)?;
         }

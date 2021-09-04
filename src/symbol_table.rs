@@ -10,30 +10,29 @@ impl Default for Table {
 }
 
 impl Table {
+    #[must_use]
     pub fn find<'a>(self: &'a Table, path: &[Symbol]) -> Option<&'a Table> {
         // debug!("find in {:?}", self.value);
         if path.is_empty() {
             return Some(self);
         }
-        if let Some(child) = self.children.get(&path[0]) {
-            child.find(&path[1..])
-        } else {
-            None
-        }
+        self.children
+            .get(&path[0])
+            .and_then(|child| child.find(&path[1..]))
     }
 
+    #[must_use]
     pub fn find_mut<'a>(self: &'a mut Table, path: &[Symbol]) -> Option<&'a mut Table> {
         // debug!("find in {:?}", self.value);
         if path.is_empty() {
             return Some(self);
         }
-        if let Some(child) = self.children.get_mut(&path[0]) {
-            child.find_mut(&path[1..])
-        } else {
-            None
-        }
+        self.children
+            .get_mut(&path[0])
+            .and_then(|child| child.find_mut(&path[1..]))
     }
 
+    #[must_use]
     fn get_child_mut<'a>(self: &'a mut Table, find: &Symbol) -> &'a mut HashTree<Symbol, Entry> {
         self.children
             .entry(find.clone())

@@ -15,5 +15,6 @@
         "toks",
         "vals",
         "wasm"
-    ]
+    ],
+    "rust-analyzer.cargo.allFeatures": true
 }
