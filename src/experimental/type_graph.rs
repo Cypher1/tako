@@ -304,7 +304,7 @@ impl TypeGraph {
                     t_tys.insert(name.clone(), ty.clone());
                 }
                 let mut vals = vec![];
-                for name in names.iter() {
+                for name in &names {
                     match (s_tys.get(name), t_tys.get(name)) {
                         (None, None) => panic!("name must be in type"),
                         (None, Some(t)) | (Some(t), None) => {
@@ -407,9 +407,9 @@ impl TypeGraph {
         Ok(unified.is_sat())
     }
 
-    fn require_assignable_for_id(&mut self, id: &Id, ty: &Val) -> Result<(), TError> {
+    fn require_assignable_for_id(&mut self, id: Id, ty: &Val) -> Result<(), TError> {
         // TODO: Merge with existing types
-        let curr_ty = self.types.get(id).cloned();
+        let curr_ty = self.types.get(&id).cloned();
         let m = if let Some(curr_ty) = curr_ty {
             self.unify(&curr_ty, ty)?
         } else {
@@ -417,13 +417,13 @@ impl TypeGraph {
         };
 
         // Check overlap?
-        self.types.insert(*id, m);
+        self.types.insert(id, m);
         Ok(())
     }
 
     pub fn require_assignable(&mut self, path: PathRef, ty: &Val) -> Result<(), TError> {
         let id = self.get_id_for_path(path);
-        self.require_assignable_for_id(&id, ty)
+        self.require_assignable_for_id(id, ty)
     }
 }
 

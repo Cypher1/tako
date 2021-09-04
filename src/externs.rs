@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::convert::TryFrom;
 
 use crate::ast::{Info, Node, ToNode};
 use crate::database::DBStorage;
@@ -10,7 +11,7 @@ use crate::primitives::{
 
 pub type Res = Result<Val, TError>;
 
-pub fn prim_add(l: &Val, r: &Val, _info: Info) -> Res {
+pub fn prim_add(l: &Val, r: &Val, _info: &Info) -> Res {
     use crate::primitives::sum;
     match (l, r) {
         (PrimVal(Bool(l)), PrimVal(Bool(r))) => {
@@ -34,7 +35,7 @@ pub fn prim_add(l: &Val, r: &Val, _info: Info) -> Res {
     }
 }
 
-pub fn prim_eq(l: &Val, r: &Val, info: Info) -> Res {
+pub fn prim_eq(l: &Val, r: &Val, info: &Info) -> Res {
     match (l, r) {
         (PrimVal(Bool(l)), PrimVal(Bool(r))) => Ok(boolean(*l == *r)),
         (PrimVal(I32(l)), PrimVal(I32(r))) => Ok(boolean(l == r)),
@@ -48,7 +49,7 @@ pub fn prim_eq(l: &Val, r: &Val, info: Info) -> Res {
     }
 }
 
-pub fn prim_neq(l: &Val, r: &Val, info: Info) -> Res {
+pub fn prim_neq(l: &Val, r: &Val, info: &Info) -> Res {
     match (l, r) {
         (PrimVal(Bool(l)), PrimVal(Bool(r))) => Ok(boolean(*l != *r)),
         (PrimVal(I32(l)), PrimVal(I32(r))) => Ok(boolean(l != r)),
@@ -62,7 +63,7 @@ pub fn prim_neq(l: &Val, r: &Val, info: Info) -> Res {
     }
 }
 
-pub fn prim_gt(l: &Val, r: &Val, info: Info) -> Res {
+pub fn prim_gt(l: &Val, r: &Val, info: &Info) -> Res {
     match (l, r) {
         (PrimVal(Bool(l)), PrimVal(Bool(r))) => Ok(boolean(*l & !(*r))),
         (PrimVal(I32(l)), PrimVal(I32(r))) => Ok(boolean(l > r)),
@@ -76,7 +77,7 @@ pub fn prim_gt(l: &Val, r: &Val, info: Info) -> Res {
     }
 }
 
-pub fn prim_gte(l: &Val, r: &Val, info: Info) -> Res {
+pub fn prim_gte(l: &Val, r: &Val, info: &Info) -> Res {
     match (l, r) {
         (PrimVal(Bool(l)), PrimVal(Bool(r))) => Ok(boolean(*l >= *r)),
         (PrimVal(I32(l)), PrimVal(I32(r))) => Ok(boolean(l >= r)),
@@ -90,7 +91,7 @@ pub fn prim_gte(l: &Val, r: &Val, info: Info) -> Res {
     }
 }
 
-pub fn prim_sub(l: &Val, r: &Val, info: Info) -> Res {
+pub fn prim_sub(l: &Val, r: &Val, info: &Info) -> Res {
     match (l, r) {
         (PrimVal(I32(l)), PrimVal(Bool(r))) => Ok(int32(l - if *r { 1 } else { 0 })),
         (PrimVal(I32(l)), PrimVal(I32(r))) => Ok(int32(l - r)),
@@ -103,7 +104,7 @@ pub fn prim_sub(l: &Val, r: &Val, info: Info) -> Res {
     }
 }
 
-pub fn prim_mul(l: &Val, r: &Val, info: Info) -> Res {
+pub fn prim_mul(l: &Val, r: &Val, info: &Info) -> Res {
     use crate::primitives::record;
     let fail = || {
         Err(TError::TypeMismatch2(
@@ -118,14 +119,13 @@ pub fn prim_mul(l: &Val, r: &Val, info: Info) -> Res {
         (PrimVal(Bool(l)), PrimVal(Str(r))) => Ok(string(if *l { r } else { "" })),
         (PrimVal(I32(l)), PrimVal(Bool(r))) => Ok(int32(if *r { *l } else { 0 })),
         (PrimVal(Str(l)), PrimVal(Bool(r))) => Ok(string(if *r { l } else { "" })),
-        (PrimVal(Bool(_)), PrimVal(_)) => fail(),
-        (PrimVal(_), PrimVal(Bool(_))) => fail(),
+        (PrimVal(Bool(_)), PrimVal(_)) | (PrimVal(_), PrimVal(Bool(_))) => fail(),
         (PrimVal(I32(l)), PrimVal(I32(r))) => Ok(int32(l.wrapping_mul(*r))),
         (l, r) => Ok(record(vec![l.clone(), r.clone()])?),
     }
 }
 
-pub fn prim_div(l: &Val, r: &Val, info: Info) -> Res {
+pub fn prim_div(l: &Val, r: &Val, info: &Info) -> Res {
     match (l, r) {
         (PrimVal(I32(l)), PrimVal(I32(r))) => Ok(int32(l / r)),
         (l, r) => Err(TError::TypeMismatch2(
@@ -137,7 +137,7 @@ pub fn prim_div(l: &Val, r: &Val, info: Info) -> Res {
     }
 }
 
-pub fn prim_mod(l: &Val, r: &Val, info: Info) -> Res {
+pub fn prim_mod(l: &Val, r: &Val, info: &Info) -> Res {
     match (l, r) {
         (PrimVal(I32(l)), PrimVal(I32(r))) => Ok(int32(l % r)),
         (l, r) => Err(TError::TypeMismatch2(
@@ -149,7 +149,7 @@ pub fn prim_mod(l: &Val, r: &Val, info: Info) -> Res {
     }
 }
 
-pub fn prim_and(l: &Val, r: &Val, info: Info) -> Res {
+pub fn prim_and(l: &Val, r: &Val, info: &Info) -> Res {
     match (l, r) {
         (PrimVal(Bool(l)), PrimVal(Bool(r))) => Ok(boolean(*l && *r)),
         (l, r) => Err(TError::TypeMismatch2(
@@ -161,7 +161,7 @@ pub fn prim_and(l: &Val, r: &Val, info: Info) -> Res {
     }
 }
 
-pub fn prim_or(l: &Val, r: &Val, info: Info) -> Res {
+pub fn prim_or(l: &Val, r: &Val, info: &Info) -> Res {
     match (l, r) {
         (PrimVal(Bool(l)), PrimVal(Bool(r))) => Ok(boolean(*l || *r)),
         (l, r) => Err(TError::TypeMismatch2(
@@ -173,7 +173,7 @@ pub fn prim_or(l: &Val, r: &Val, info: Info) -> Res {
     }
 }
 
-pub fn prim_type_arrow(l: Val, r: Val, _info: Info) -> Res {
+pub fn prim_type_arrow(l: Val, r: Val, _info: &Info) -> Res {
     // TODO: add existential and forall quantification operators
     Ok(Val::Function {
         intros: dict!(),
@@ -186,11 +186,11 @@ pub fn prim_type_and(l: Val, r: Val) -> Res {
     Ok(Val::Product(set!(l, r)))
 }
 
-pub fn prim_type_or(l: Val, r: Val, _info: Info) -> Res {
+pub fn prim_type_or(l: Val, r: Val, _info: &Info) -> Res {
     Ok(Val::Union(set!(l, r)))
 }
 
-pub fn prim_add_strs(l: &Val, r: &Val, _info: Info) -> Res {
+pub fn prim_add_strs(l: &Val, r: &Val, _info: &Info) -> Res {
     let to_str = |v: &Val| {
         if let PrimVal(Str(s)) = v {
             s.to_string()
@@ -201,7 +201,7 @@ pub fn prim_add_strs(l: &Val, r: &Val, _info: Info) -> Res {
     Ok(PrimVal(Str(format!("{}{}", to_str(l), to_str(r)))))
 }
 
-pub fn prim_pow(l: &Val, r: &Val, info: Info) -> Res {
+pub fn prim_pow(l: &Val, r: &Val, info: &Info) -> Res {
     match (l, r) {
         (PrimVal(I32(l)), PrimVal(Bool(r))) => Ok(int32(if *r { *l } else { 1 })),
         (PrimVal(I32(l)), PrimVal(I32(r))) => Ok(int32(i32::pow(*l, *r as u32))), // TODO: require pos pow
@@ -215,24 +215,25 @@ pub fn prim_pow(l: &Val, r: &Val, info: Info) -> Res {
 }
 
 pub type Args = HashMap<String, Box<dyn Fn() -> Res>>;
-pub type FuncImpl = Box<dyn Fn(&DBStorage, Args, Info) -> Res>;
+pub type FuncImpl = Box<dyn Fn(&DBStorage, Args, &Info) -> Res>;
 
 fn get_symbol(args: &Args, sym: &str, info: &Info) -> Res {
-    if let Some(val) = args.get(sym) {
-        val()
-    } else {
-        Err(TError::UnknownSymbol(
-            sym.to_string(),
-            info.clone(),
-            "".to_string(),
-        ))
-    }
+    args.get(sym).map_or_else(
+        || {
+            Err(TError::UnknownSymbol(
+                sym.to_string(),
+                info.clone(),
+                "".to_string(),
+            ))
+        },
+        |val| val(),
+    )
 }
 
 pub fn get_implementation(name: &str) -> Option<FuncImpl> {
     match name {
         "print" => Some(Box::new(|_, args, info| {
-            let val = get_symbol(&args, "it", &info)?;
+            let val = get_symbol(&args, "it", info)?;
             match val {
                 PrimVal(Str(s)) => print!("{}", s),
                 s => print!("{:?}", s),
@@ -240,7 +241,7 @@ pub fn get_implementation(name: &str) -> Option<FuncImpl> {
             Ok(int32(0))
         })),
         "eprint" => Some(Box::new(|_, args, info| {
-            let val = get_symbol(&args, "it", &info)?;
+            let val = get_symbol(&args, "it", info)?;
             match val {
                 PrimVal(Str(s)) => eprint!("{}", s),
                 s => eprint!("{:?}", s),
@@ -297,8 +298,8 @@ pub fn get_implementation(name: &str) -> Option<FuncImpl> {
         "." => Some(Box::new(|_db, args, info| {
             use crate::ast::{Apply, Let};
 
-            let left = get_symbol(&args, "left", &info)?;
-            let right = get_symbol(&args, "right", &info)?;
+            let left = get_symbol(&args, "left", info)?;
+            let right = get_symbol(&args, "right", info)?;
             Ok(Lambda(Box::new(
                 Apply {
                     inner: Box::new(right.into_node()),
@@ -314,7 +315,7 @@ pub fn get_implementation(name: &str) -> Option<FuncImpl> {
             )))
         })),
         "exit" => Some(Box::new(|_, args, info| {
-            let val = get_symbol(&args, "it", &info)?;
+            let val = get_symbol(&args, "it", info)?;
             let code = match val {
                 PrimVal(I32(n)) => n,
                 s => {
@@ -325,36 +326,42 @@ pub fn get_implementation(name: &str) -> Option<FuncImpl> {
             std::process::exit(code);
         })),
         "parse_i32" => Some(Box::new(|_, args, info| {
-            let val = get_symbol(&args, "it", &info)?;
+            let val = get_symbol(&args, "it", info)?;
             match val {
                 PrimVal(Str(n)) => Ok(int32(n.parse::<i32>()?)),
                 s => Err(TError::TypeMismatch(
                     "Expected parse_i32 argument to be a string encoded i32".to_string(),
                     Box::new(s),
-                    info,
+                    info.clone(),
                 )),
             }
         })),
         "++" => Some(Box::new(|_, args, info| {
             prim_add_strs(
-                &get_symbol(&args, "left", &info)?,
-                &get_symbol(&args, "right", &info)?,
+                &get_symbol(&args, "left", info)?,
+                &get_symbol(&args, "right", info)?,
                 info,
             )
         })),
         "^" => Some(Box::new(|_, args, info| {
             prim_pow(
-                &get_symbol(&args, "left", &info)?,
-                &get_symbol(&args, "right", &info)?,
+                &get_symbol(&args, "left", info)?,
+                &get_symbol(&args, "right", info)?,
                 info,
             )
         })),
         "argc" => Some(Box::new(|db, _, _info| {
-            Ok(int32(db.options.interpreter_args.len() as i32))
+            Ok(int32(
+                i32::try_from(db.options.interpreter_args.len())
+                    .expect("Too many interpreter arguments: length was not a valid i32"),
+            ))
         })),
         "argv" => Some(Box::new(|db, args, info| {
             match get_symbol(&args, "it", &info)? {
-                PrimVal(I32(ind)) => Ok(string(&db.options.interpreter_args[ind as usize])),
+                PrimVal(I32(ind)) => Ok(string(
+                    &db.options.interpreter_args[usize::try_from(ind)
+                        .expect("Invalid interpreter argument index: index was not a valid usize")],
+                )),
                 value => Err(TError::TypeMismatch(
                     "Expected index to be of type i32".to_string(),
                     Box::new(value),
@@ -446,7 +453,7 @@ impl LangImpl {
 
 lazy_static! {
     static ref EXTERN_MAP: HashMap<String, Extern> = {
-        use Direction::*;
+        use Direction::{Left, Right};
         use Semantic::Func;
         let mut externs = vec![
             Extern {
@@ -933,6 +940,7 @@ string to_string(const bool& t){
     };
 }
 
+#[must_use]
 pub fn get_externs() -> &'static HashMap<String, Extern> {
     &EXTERN_MAP
 }

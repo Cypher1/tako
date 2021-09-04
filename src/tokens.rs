@@ -83,8 +83,7 @@ pub fn lex_head<'a>(
             (TokenType::Unknown, new_tok_type) => new_tok_type.clone(),
             (TokenType::Op, TokenType::Op) => TokenType::Op, // Continuation
             (TokenType::NumLit, TokenType::NumLit) => TokenType::NumLit, // Continuation
-            (TokenType::NumLit, TokenType::Sym) => TokenType::Sym, // Promotion
-            (TokenType::Sym, TokenType::NumLit | TokenType::Sym) => TokenType::Sym, // Continuation
+            (TokenType::NumLit, TokenType::Sym) | (TokenType::Sym, TokenType::NumLit | TokenType::Sym) => TokenType::Sym,
             (_, TokenType::Whitespace)
             | (
                 TokenType::Op

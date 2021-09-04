@@ -34,7 +34,7 @@ fn handle(res: Result<String, TError>) {
     }
 }
 
-fn main() -> Result<(), TError> {
+fn main() {
     takolib::build_logger(env_logger::Builder::init);
 
     let mut storage = DBStorage::default();
@@ -51,13 +51,11 @@ fn main() -> Result<(), TError> {
     }
 
     if storage.options.cmd == Command::Repl || storage.options.cmd == Command::StackRepl {
-        repl(&mut storage)
-    } else {
-        Ok(())
+        repl(&mut storage);
     }
 }
 
-fn repl(storage: &mut DBStorage) -> Result<(), TError> {
+fn repl(storage: &mut DBStorage) {
     print_cli_info();
     // `()` can be used when no completer is required
     let rl_config = Config::builder().tab_stop(2).build();
@@ -97,5 +95,4 @@ fn repl(storage: &mut DBStorage) -> Result<(), TError> {
     }
     rl.save_history(&storage.history_file())
         .expect("Could not save history");
-    Ok(())
 }

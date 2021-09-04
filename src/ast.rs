@@ -9,7 +9,7 @@ use crate::primitives::{unit_type, Val};
 use crate::symbol_table::Table;
 
 impl HasInfo for TError {
-    fn get_info(&self) -> Info {
+    fn get_info(&self) -> &Info {
         use TError::*;
         match self {
             CppCompilerError(_, _, info)
@@ -30,7 +30,7 @@ impl HasInfo for TError {
             | ParseError(_, info)
             | InternalError(_, info)
             | UnknownPath(_, info)
-            | UnknownEntity(_, info) => info.clone(),
+            | UnknownEntity(_, info) => info,
             ExpectedLetNode(node) => node.get_info(),
         }
     }
@@ -370,7 +370,7 @@ pub trait ToNode {
 }
 
 pub trait HasInfo {
-    fn get_info(&self) -> Info;
+    fn get_info(&self) -> &Info;
     fn get_mut_info(&mut self) -> &mut Info;
 }
 

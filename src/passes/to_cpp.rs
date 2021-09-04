@@ -223,23 +223,21 @@ type Res = Result<Code, TError>;
 type State = Table;
 type Out = (String, HashSet<String>);
 
-impl CodeGenerator {
-    fn build_call1(&mut self, before: &str, inner: Code) -> Code {
-        inner.with_expr(&|exp| Code::Expr(format!("{}({})", before, exp)))
-    }
-    fn build_call2(&mut self, before: &str, mid: &str, left: Code, right: Code) -> Code {
-        left.with_expr(&|left_expr| {
-            right.clone().with_expr(&|right_expr| {
-                Code::Expr(format!("{}({}{}{})", before, left_expr, mid, right_expr))
-            })
+fn build_call1(before: &str, inner: Code) -> Code {
+    inner.with_expr(&|exp| Code::Expr(format!("{}({})", &before, &exp)))
+}
+fn build_call2(before: &str, mid: &str, left: Code, right: &Code) -> Code {
+    left.with_expr(&|left_expr| {
+        right.clone().with_expr(&|right_expr| {
+            Code::Expr(format!("{}({}{}{})", &before, &left_expr, &mid, &right_expr))
         })
-    }
+    })
 }
 
 impl Visitor<State, Code, Out, Path> for CodeGenerator {
     fn visit_root(&mut self, storage: &mut DBStorage, module: &Path) -> Result<Out, TError> {
         let root = storage.look_up_definitions(module.clone())?;
-        let mut main_info = root.ast.get_info();
+        let mut main_info = root.ast.get_info().clone();
         let mut main_at = module.clone();
         main_at.push(Symbol::new("main"));
         main_info.defined_at = Some(main_at);
@@ -470,11 +468,11 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             let code = if info.cpp.arg_processor.as_str() == "" {
                 code
             } else {
-                self.build_call1(info.cpp.arg_processor.as_str(), code)
+                build_call1(info.cpp.arg_processor.as_str(), code)
             };
-            return Ok(self.build_call1(info.cpp.arg_joiner.as_str(), code));
+            return Ok(build_call1(info.cpp.arg_joiner.as_str(), code));
         }
-        Err(TError::UnknownPrefixOperator(op.to_string(), info))
+        Err(TError::UnknownPrefixOperator(op.to_string(), info.clone()))
     }
 
     fn visit_bin_op(&mut self, storage: &mut DBStorage, state: &mut State, expr: &BinOp) -> Res {
@@ -507,17 +505,17 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 (left, right)
             } else {
                 (
-                    self.build_call1(info.cpp.arg_processor.as_str(), left),
-                    self.build_call1(info.cpp.arg_processor.as_str(), right),
+                    build_call1(info.cpp.arg_processor.as_str(), left),
+                    build_call1(info.cpp.arg_processor.as_str(), right),
                 )
             };
-            return Ok(self.build_call2(
+            return Ok(build_call2(
                 info.cpp.code.as_str(),
                 info.cpp.arg_joiner.as_str(),
                 left,
-                right,
+                &right,
             ));
         }
-        Err(TError::UnknownInfixOperator(op.to_string(), info))
+        Err(TError::UnknownInfixOperator(op.to_string(), info.clone()))
     }
 }

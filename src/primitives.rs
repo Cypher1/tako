@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt;
 
-use crate::data_structures::tribool::*;
+use crate::data_structures::tribool::{Tribool, all_true, any_true};
 
 // i32 here are sizes in bits, not bytes.
 // This means that we don't need to have a separate systems for bit&byte layouts.
@@ -26,10 +26,10 @@ pub enum Prim {
     BuiltIn(String),
     Tag(BitVec), // An identifying bit string (prefix).
 }
+use Prim::{Bool, I32, Str, BuiltIn, Tag};
 
 impl std::fmt::Debug for Prim {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use Prim::*;
         match self {
             Bool(b) => write!(f, "{:?}", b)?,
             I32(i) => write!(f, "{:?}", i)?,
@@ -38,7 +38,7 @@ impl std::fmt::Debug for Prim {
             Tag(bits) => {
                 write!(f, "b")?;
                 for bit in bits.iter() {
-                    write!(f, "{}", if *bit { '1' } else { '0' })?
+                    write!(f, "{}", if *bit { '1' } else { '0' })?;
                 }
             }
         }
@@ -74,12 +74,14 @@ pub enum Val {
     BitStr(Offset),
 }
 
-use Val::*;
+use Val::{App, BitStr, Function, Lambda, Padded, Pointer, PrimVal, Product, Struct, Union, Variable, WithRequirement};
 
 impl Val {
+    #[must_use]
     pub fn ptr(self: Val) -> Val {
         Pointer(8 * byte_size(), Box::new(self))
     }
+    #[must_use]
     pub fn padded(self: Val, size: Offset) -> Val {
         if size == 0 {
             return self;
@@ -90,6 +92,7 @@ impl Val {
         Padded(size, Box::new(self))
     }
 
+    #[must_use]
     pub fn is_sat(self: &Val) -> Tribool {
         use Tribool::*;
         match self {
@@ -115,6 +118,7 @@ impl Val {
         }
     }
 
+    #[must_use]
     pub fn into_struct(self: Val) -> Vec<(String, Val)> {
         match self {
             Struct(vals) => vals,
@@ -122,6 +126,7 @@ impl Val {
         }
     }
 
+    #[must_use]
     pub fn merge(self: Val, other: Val) -> Val {
         match (self, other) {
             (Struct(vals), Struct(o_vals)) => Struct(merge_vals(vals, o_vals)),
@@ -131,6 +136,7 @@ impl Val {
         }
     }
 
+    #[must_use]
     pub fn unify(self: &Val, other: &Val, env: &mut Vec<Frame>) -> Result<Val, TError> {
         match (self, other) {
             (Variable(name), ty) => {
@@ -144,13 +150,21 @@ impl Val {
         }
     }
 
+    #[must_use]
     pub fn access(self: &Val, name: &str) -> Val {
         match self {
             PrimVal(Prim::BuiltIn(name)) => {
                 panic!("Built in {} does not currently support introspection", name)
             }
-            BitStr(_) | PrimVal(_) => never_type(),
-            Lambda(_) => never_type(),
+            BitStr(_)
+            | PrimVal(_)
+            | Union(_)
+            | Product(_)
+            | App {
+                inner: _,
+                arguments: _,
+            }
+            | Lambda(_) => never_type(), // TODO
             Struct(tys) => {
                 for (param, ty) in tys.iter() {
                     if param == name {
@@ -159,10 +173,7 @@ impl Val {
                 }
                 never_type()
             }
-            Union(_) => never_type(),   // TODO
-            Product(_) => never_type(), // TODO
-            Padded(_, ty) => ty.access(name),
-            Pointer(_, ty) => ty.access(name),
+            Padded(_, ty) | Pointer(_, ty) => ty.access(name),
             Function {
                 intros: _,
                 arguments,
@@ -172,11 +183,7 @@ impl Val {
                 "results" => *results.clone(),
                 _ => never_type(),
             },
-            App {
-                inner: _,
-                arguments: _,
-            } => never_type(), // TODO
-            WithRequirement(ty, effs) => WithRequirement(Box::new(ty.access(name)), effs.to_vec()),
+            WithRequirement(ty, effs) => WithRequirement(Box::new(ty.access(name)), effs.clone()),
             Variable(var) => Variable(format!("{}.{}", var, name)),
         }
     }
@@ -199,7 +206,7 @@ impl std::fmt::Debug for Val {
             (trit_type(), "Trit"),
             (quad_type(), "Quad"),
         ];
-        for (ty, name) in types.iter() {
+        for (ty, name) in &types {
             if self == ty {
                 return write!(f, "{}", name);
             }
@@ -260,6 +267,7 @@ impl std::fmt::Debug for Val {
     }
 }
 
+#[must_use]
 pub fn merge_vals(left: Vec<(String, Val)>, right: Vec<(String, Val)>) -> Vec<(String, Val)> {
     let mut names = HashSet::<String>::new();
     for pair in right.iter() {
@@ -277,27 +285,33 @@ pub fn merge_vals(left: Vec<(String, Val)>, right: Vec<(String, Val)>) -> Vec<(S
     items
 }
 
+#[must_use]
 pub fn tag(bits: BitVec) -> Val {
     Val::PrimVal(Prim::Tag(bits))
 }
 
+#[must_use]
 pub fn boolean(b: bool) -> Val {
     Val::PrimVal(Prim::Bool(b))
 }
 
+#[must_use]
 pub fn string(s: &str) -> Val {
     Val::PrimVal(Prim::Str(s.to_string()))
 }
 
+#[must_use]
 pub fn int32(i: i32) -> Val {
     Val::PrimVal(Prim::I32(i))
 }
 
+#[must_use]
 pub fn builtin(name: &str) -> Val {
     Val::PrimVal(Prim::BuiltIn(name.to_string()))
 }
 
 #[allow(dead_code)]
+#[must_use]
 pub fn card(ty: &Val) -> Result<Offset, TError> {
     use Prim::*;
     use Val::*;
@@ -328,6 +342,7 @@ pub fn card(ty: &Val) -> Result<Offset, TError> {
 }
 
 // Calculates the memory needed for a new instance in bits.
+#[must_use]
 pub fn size(ty: &Val) -> Result<Offset, TError> {
     use Prim::*;
     use Val::*;
@@ -368,6 +383,7 @@ pub fn size(ty: &Val) -> Result<Offset, TError> {
     }
 }
 
+#[must_use]
 fn num_bits(n: Offset) -> Offset {
     let mut k = 0;
     let mut p = 1;
@@ -380,6 +396,7 @@ fn num_bits(n: Offset) -> Offset {
     }
 }
 
+#[must_use]
 pub fn bits(mut n: Offset, len: Offset) -> BitVec {
     let mut v: BitVec = bitvec![0; len];
     for mut b in v.iter_mut().rev() {
@@ -417,6 +434,7 @@ pub fn add_to_product(tys: &mut TypeSet, values: &TypeSet) {
     }
 }
 
+#[must_use]
 pub fn sum(values: Vec<Val>) -> Result<Val, TError> {
     let mut layout = set![];
     let tag_bits = num_bits(values.len() as Offset);
@@ -430,58 +448,67 @@ pub fn sum(values: Vec<Val>) -> Result<Val, TError> {
     Ok(Union(layout))
 }
 
+#[must_use]
 pub fn never_type() -> Val {
     Union(set![])
 }
 
+#[must_use]
 pub fn unit_type() -> Val {
     Product(set![])
 }
 
+#[must_use]
 pub fn bit_type() -> Val {
-    let unit = unit_type();
-    sum(vec![unit.clone(); 2]).expect("bit should be safe")
+    sum(vec![unit_type(); 2]).expect("bit should be safe")
 }
 
+#[must_use]
 pub fn trit_type() -> Val {
-    let unit = unit_type();
-    sum(vec![unit.clone(); 3]).expect("trit should be safe")
+    sum(vec![unit_type(); 3]).expect("trit should be safe")
 }
 
+#[must_use]
 pub fn quad_type() -> Val {
-    let bit = bit_type();
-    record(vec![bit.clone(); 2]).expect("quad should be safe")
+    record(vec![bit_type(); 2]).expect("quad should be safe")
 }
 
+#[must_use]
 pub fn byte_type() -> Val {
-    let bit = bit_type();
-    record(vec![ bit.clone(); 8]).expect("byte should be safe")
+    record(vec![bit_type(); 8]).expect("byte should be safe")
 }
 
+#[must_use]
 pub fn byte_size() -> Offset {
     8
 }
 
+#[must_use]
 pub fn char_type() -> Val {
     byte_type()
 }
 
+#[must_use]
 pub fn string_type() -> Val {
     char_type().ptr()
 }
 
+#[must_use]
 pub fn i32_type() -> Val {
-    record(vec![byte_type(), byte_type(), byte_type(), byte_type()]).expect("i32 should be safe")
+    record(vec![byte_type(); 4]).expect("i32 should be safe")
 }
 
+#[must_use]
 pub fn number_type() -> Val {
     variable("Number")
 }
 
+#[must_use]
 pub fn type_type() -> Val {
     variable("Type")
 }
 
+#[must_use]
 pub fn variable(name: &str) -> Val {
     Variable(name.to_string())
 }
@@ -583,7 +610,7 @@ mod tests {
     }
     #[test]
     fn nested_quad_type() -> Res {
-        let quad = record(vec![bit_type(), bit_type()])?;
+        let quad = record(vec![bit_type(); 2])?;
         assert_eq!(card(&quad), Ok(4));
         assert_eq!(size(&quad), Ok(2));
         Ok(())
@@ -596,8 +623,7 @@ mod tests {
     }
     #[test]
     fn pent_type() -> Res {
-        let unit = unit_type();
-        let pent = sum(vec![ unit.clone(); 5])?;
+        let pent = sum(vec![unit_type(); 5])?;
         assert_eq!(card(&pent), Ok(5));
         assert_eq!(size(&pent), Ok(3));
         Ok(())
@@ -605,7 +631,7 @@ mod tests {
     #[test]
     fn pair_bool_ptrs() -> Res {
         let bool_ptr = Pointer(64, Box::new(bit_type()));
-        let quad = record(vec![bool_ptr.clone(), bool_ptr])?;
+        let quad = record(vec![bool_ptr; 2])?;
         assert_eq!(card(&quad), Ok(4));
         assert_eq!(size(&quad), Ok(2 * 64));
         Ok(())
@@ -613,7 +639,7 @@ mod tests {
     #[test]
     fn nested_nibble() -> Res {
         let quad = record(vec![bit_type(), bit_type()])?;
-        let nibble = record(vec![quad.clone(), quad])?;
+        let nibble = record(vec![quad; 2])?;
         assert_eq!(card(&nibble), Ok(16));
         assert_eq!(size(&nibble), Ok(4));
         Ok(())
@@ -621,7 +647,7 @@ mod tests {
     #[test]
     fn padded_nibble() -> Res {
         let quad = record(vec![bit_type().padded(2), bit_type()])?;
-        let nibble = record(vec![quad.clone(), quad])?;
+        let nibble = record(vec![quad; 2])?;
         assert_eq!(card(&nibble), Ok(16));
         assert_eq!(size(&nibble), Ok(8));
         Ok(())
