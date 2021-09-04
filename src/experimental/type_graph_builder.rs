@@ -152,7 +152,7 @@ impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
             &Apply {
                 inner: Box::new(ty.clone()),
                 args: vec![Let::new("it", arg_ty)],
-                info: expr.get_info(),
+                info: expr.get_info().clone(),
             },
         )
     }
@@ -172,7 +172,7 @@ impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
             &Apply {
                 inner: Box::new(ty.clone()),
                 args: vec![Let::new("left", left_ty), Let::new("right", right_ty)],
-                info: expr.get_info(),
+                info: expr.get_info().clone(),
             },
         )
     }

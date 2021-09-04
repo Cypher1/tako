@@ -10,9 +10,9 @@ use log::trace;
 use std::collections::HashMap;
 
 pub type ImplFn<'a> =
-    &'a mut dyn FnMut(&mut DBStorage, HashMap<String, Box<dyn Fn() -> Res>>, Info) -> Res;
+    &'a mut dyn FnMut(&mut DBStorage, HashMap<String, Box<dyn Fn() -> Res>>, &Info) -> Res;
 pub type PureImplFn<'a> =
-    &'a dyn Fn(&DBStorage, HashMap<String, Box<dyn Fn() -> Res>>, Info) -> Res;
+    &'a dyn Fn(&DBStorage, HashMap<String, Box<dyn Fn() -> Res>>, &Info) -> Res;
 
 use specs::Entity;
 

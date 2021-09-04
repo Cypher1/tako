@@ -57,7 +57,7 @@ fn nud(
                 let val = int32(head.value.parse().expect("Unexpected numeric character"));
                 Ok((
                     Node::ValNode(val.clone(), head.get_info()),
-                    AstTerm::Value(val).into_node(head.pos, None),
+                    AstTerm::Value(val).into_node(&head.pos, None),
                     toks,
                 ))
             }
@@ -65,7 +65,7 @@ fn nud(
                 let val = string(&head.value);
                 Ok((
                     Node::ValNode(val.clone(), head.get_info()),
-                    AstTerm::Value(val).into_node(head.pos, None),
+                    AstTerm::Value(val).into_node(&head.pos, None),
                     toks,
                 ))
             }
@@ -85,7 +85,7 @@ fn nud(
                         params: Some(vec![right_entity]),
                         path: path.to_vec(),
                     })
-                    .into_node(head.pos, None),
+                    .into_node(&head.pos, None),
                     new_toks,
                 ))
             }
@@ -135,7 +135,7 @@ fn nud(
                     let val = Val::PrimVal(Prim::Bool(head.value == "true"));
                     return Ok((
                         val.clone().into_node(),
-                        AstTerm::Value(val).into_node(head.pos, None),
+                        AstTerm::Value(val).into_node(&head.pos, None),
                         toks,
                     ));
                 }
@@ -150,7 +150,7 @@ fn nud(
                         params: None,
                         path: path.to_vec(),
                     })
-                    .into_node(head.pos, None),
+                    .into_node(&head.pos, None),
                     toks,
                 ))
             }
@@ -190,7 +190,7 @@ fn get_defs(args: Node) -> Vec<Let> {
     vec![Let {
         name: "it".to_string(),
         args: None,
-        info: args.get_info(),
+        info: args.get_info().clone(),
         value: Box::new(args),
     }]
 }
@@ -216,7 +216,7 @@ fn led(
     match toks.pop_front() {
         None => Err(TError::ParseError(
             "Unexpected eof, expected expr tail".to_string(),
-            left.get_info(),
+            left.get_info().clone(),
         )),
         Some(head) => match head.tok_type {
             TokenType::NumLit | TokenType::StringLit | TokenType::Sym => {
@@ -270,12 +270,12 @@ fn led(
                             if let AstTerm::Sequence(mut left) = left_node.term {
                                 let right_entity = storage.store_node(right_node, path);
                                 left.push(right_entity);
-                                AstTerm::Sequence(left).into_node(head.pos, left_node.ty)
+                                AstTerm::Sequence(left).into_node(&head.pos, left_node.ty)
                             } else {
                                 let left_entity = storage.store_node(left_node, path);
                                 let right_entity = storage.store_node(right_node, path);
                                 AstTerm::Sequence(vec![left_entity, right_entity])
-                                    .into_node(head.pos, None)
+                                    .into_node(&head.pos, None)
                             },
                             new_toks,
                         ));
@@ -297,7 +297,7 @@ fn led(
                                     params: Some(vec![left_entity, right_entity]),
                                     path: path.to_vec(),
                                 })
-                                .into_node(head.pos, None),
+                                .into_node(&head.pos, None),
                                 new_toks,
                             ));
                         }
@@ -323,13 +323,13 @@ fn led(
                                     info: head.get_info(),
                                 }
                                 .into_node(),
-                                left_node.into_definition(storage, right_entity, loc)?,
+                                left_node.into_definition(storage, right_entity, &loc)?,
                                 new_toks,
                             ));
                         }
                         Node::ApplyNode(a) => match &*a.inner {
                             Node::SymNode(s) => {
-                                let loc = a.inner.get_info().loc.expect("This shouldn't be option");
+                                let loc = a.inner.get_info().loc.clone().expect("This shouldn't be option");
                                 let mut def_path = path.to_vec();
                                 def_path.push(Symbol::new(&s.name));
                                 let (right, right_node, new_toks) =
@@ -343,7 +343,7 @@ fn led(
                                         info: head.get_info(),
                                     }
                                     .into_node(),
-                                    left_node.into_definition(storage, right_entity, loc)?,
+                                    left_node.into_definition(storage, right_entity, &loc)?,
                                     new_toks,
                                 ));
                             }
@@ -379,7 +379,7 @@ fn led(
                         params: Some(vec![left_entity, right_entity]),
                         path: path.to_vec(),
                     })
-                    .into_node(head.pos, None),
+                    .into_node(&head.pos, None),
                     new_toks,
                 ))
             }
@@ -412,7 +412,7 @@ fn led(
                                 children: vec![],
                             },
                         }
-                        .into_node(loc, None),
+                        .into_node(&loc, None),
                         toks,
                     ));
                 }
@@ -469,7 +469,7 @@ fn led(
                             children: storage.store_node_set(args_node, path),
                         },
                     }
-                    .into_node(loc, None),
+                    .into_node(&loc, None),
                     new_toks,
                 ))
             }

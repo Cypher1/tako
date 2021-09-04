@@ -44,7 +44,7 @@ pub fn prim_eq(l: &Val, r: &Val, info: &Info) -> Res {
             "==".to_string(),
             Box::new((*l).clone()),
             Box::new((*r).clone()),
-            info,
+            info.clone(),
         )),
     }
 }
@@ -58,7 +58,7 @@ pub fn prim_neq(l: &Val, r: &Val, info: &Info) -> Res {
             "!=".to_string(),
             Box::new((*l).clone()),
             Box::new((*r).clone()),
-            info,
+            info.clone(),
         )),
     }
 }
@@ -72,7 +72,7 @@ pub fn prim_gt(l: &Val, r: &Val, info: &Info) -> Res {
             ">".to_string(),
             Box::new((*l).clone()),
             Box::new((*r).clone()),
-            info,
+            info.clone(),
         )),
     }
 }
@@ -86,7 +86,7 @@ pub fn prim_gte(l: &Val, r: &Val, info: &Info) -> Res {
             ">=".to_string(),
             Box::new((*l).clone()),
             Box::new((*r).clone()),
-            info,
+            info.clone(),
         )),
     }
 }
@@ -99,7 +99,7 @@ pub fn prim_sub(l: &Val, r: &Val, info: &Info) -> Res {
             "-".to_string(),
             Box::new((*l).clone()),
             Box::new((*r).clone()),
-            info,
+            info.clone(),
         )),
     }
 }
@@ -111,7 +111,7 @@ pub fn prim_mul(l: &Val, r: &Val, info: &Info) -> Res {
             "*".to_string(),
             Box::new((*l).clone()),
             Box::new((*r).clone()),
-            info,
+            info.clone(),
         ))
     };
     match (l, r) {
@@ -132,7 +132,7 @@ pub fn prim_div(l: &Val, r: &Val, info: &Info) -> Res {
             "/".to_string(),
             Box::new((*l).clone()),
             Box::new((*r).clone()),
-            info,
+            info.clone(),
         )),
     }
 }
@@ -144,7 +144,7 @@ pub fn prim_mod(l: &Val, r: &Val, info: &Info) -> Res {
             "%".to_string(),
             Box::new((*l).clone()),
             Box::new((*r).clone()),
-            info,
+            info.clone(),
         )),
     }
 }
@@ -156,7 +156,7 @@ pub fn prim_and(l: &Val, r: &Val, info: &Info) -> Res {
             "&&".to_string(),
             Box::new((*l).clone()),
             Box::new((*r).clone()),
-            info,
+            info.clone(),
         )),
     }
 }
@@ -168,7 +168,7 @@ pub fn prim_or(l: &Val, r: &Val, info: &Info) -> Res {
             "||".to_string(),
             Box::new((*l).clone()),
             Box::new((*r).clone()),
-            info,
+            info.clone(),
         )),
     }
 }
@@ -209,7 +209,7 @@ pub fn prim_pow(l: &Val, r: &Val, info: &Info) -> Res {
             "^".to_string(),
             Box::new((*l).clone()),
             Box::new((*r).clone()),
-            info,
+            info.clone(),
         )),
     }
 }
@@ -309,7 +309,7 @@ pub fn get_implementation(name: &str) -> Option<FuncImpl> {
                         args: None,
                         info: info.clone(),
                     }],
-                    info,
+                    info: info.clone(),
                 }
                 .into_node(),
             )))
@@ -365,7 +365,7 @@ pub fn get_implementation(name: &str) -> Option<FuncImpl> {
                 value => Err(TError::TypeMismatch(
                     "Expected index to be of type i32".to_string(),
                     Box::new(value),
-                    info,
+                    info.clone(),
                 )),
             }
         })),

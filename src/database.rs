@@ -436,14 +436,14 @@ impl DefinitionHead {
         self,
         storage: &mut DBStorage,
         path: PathRef,
-        loc: Loc,
+        loc: &Loc,
         ty: Option<Entity>,
     ) -> AstNode {
         let name = AstTerm::Symbol {
             name: self.name,
             context: self.path,
         }
-        .into_node(loc.clone(), None);
+        .into_node(loc, None);
         if let Some(children) = self.params {
             let inner = storage.store_node(name, path);
             AstTerm::Call { inner, children }.into_node(loc, ty)
@@ -473,10 +473,10 @@ pub enum AstTerm {
 }
 
 impl AstTerm {
-    pub fn into_node(self, loc: Loc, ty: Option<Entity>) -> AstNode {
+    pub fn into_node(self, loc: &Loc, ty: Option<Entity>) -> AstNode {
         AstNode {
             term: self,
-            loc,
+            loc: loc.clone(),
             ty,
         }
     }
@@ -485,7 +485,7 @@ impl AstTerm {
         self,
         _storage: &mut DBStorage,
         right: Entity,
-        loc: Loc,
+        loc: &Loc,
     ) -> Result<AstNode, TError> {
         Ok(match self {
             AstTerm::Symbol { name, context } => AstTerm::Definition {
@@ -503,7 +503,7 @@ impl AstTerm {
             _ => {
                 return Err(TError::ParseError(
                     format!("Cannot assign to {:?}", self),
-                    loc.get_info(),
+                    loc.clone().get_info(),
                 ));
             }
         }
@@ -523,7 +523,7 @@ impl AstNode {
         self,
         storage: &mut DBStorage,
         right: Entity,
-        loc: Loc,
+        loc: &Loc,
     ) -> Result<AstNode, TError> {
         Ok(AstNode {
             ty: self.ty,
@@ -546,7 +546,7 @@ impl DBStorage {
             entity
         } else {
             if let AstTerm::DefinitionHead(head) = entry.term {
-                let call = head.into_call(self, path, entry.loc, entry.ty);
+                let call = head.into_call(self, path, &entry.loc, entry.ty);
                 return self.store_node(call, path);
             }
             let entity = {

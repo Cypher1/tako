@@ -35,7 +35,7 @@ fn test_expecting(expected: TestResult, options: Vec<&str>) {
         let mut print_impl =
             &mut |_: &mut DBStorage,
                   args: HashMap<String, Box<dyn Fn() -> takolib::externs::Res>>,
-                  _: takolib::ast::Info|
+                  _: &takolib::ast::Info|
              -> Res {
                 stdout.push(
                     match args.get("it").expect("Expected value named 'it' not found")()? {

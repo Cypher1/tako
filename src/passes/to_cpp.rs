@@ -229,7 +229,10 @@ fn build_call1(before: &str, inner: Code) -> Code {
 fn build_call2(before: &str, mid: &str, left: Code, right: &Code) -> Code {
     left.with_expr(&|left_expr| {
         right.clone().with_expr(&|right_expr| {
-            Code::Expr(format!("{}({}{}{})", &before, &left_expr, &mid, &right_expr))
+            Code::Expr(format!(
+                "{}({}{}{})",
+                &before, &left_expr, &mid, &right_expr
+            ))
         })
     })
 }
@@ -308,9 +311,9 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             expr.get_info().defined_at
         );
         let name = make_name(
-            &expr
-                .get_info()
+            expr.get_info()
                 .defined_at
+                .as_ref()
                 .expect("Could not find definition for symbol"),
         );
         if let Some(info) = storage.get_extern(&name) {
@@ -395,7 +398,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         );
         let path = expr
             .get_info()
-            .defined_at
+            .defined_at.as_ref()
             .expect("Could not find definition for abs");
 
         let name = make_name(&path);
@@ -411,7 +414,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         );
         let path = expr
             .get_info()
-            .defined_at
+            .defined_at.as_ref()
             .expect("Could not find definition for let");
 
         let uses = storage.find_symbol_uses(path.clone())?;
@@ -425,7 +428,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             for arg in e_args.iter() {
                 let path = arg
                     .get_info()
-                    .defined_at
+                    .defined_at.as_ref()
                     .expect("Could not find definition for let arg");
                 let name = make_name(&path);
                 args.push(format!("const auto {}", name));

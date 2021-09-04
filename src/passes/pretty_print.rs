@@ -20,8 +20,8 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
     }
 
     fn visit_sym(&mut self, _storage: &mut DBStorage, state: &mut State, expr: &Sym) -> Res {
-        if let Some(def_at) = expr.get_info().defined_at {
-            write!(state, ".{}", path_to_string(&def_at))?;
+        if let Some(def_at) = &expr.get_info().defined_at {
+            write!(state, ".{}", path_to_string(def_at))?;
         } else {
             write!(state, "{}", expr.name)?;
         }
@@ -56,8 +56,8 @@ impl Visitor<State, (), String, Node> for PrettyPrint {
     }
 
     fn visit_let(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Let) -> Res {
-        if let Some(def_at) = expr.get_info().defined_at {
-            write!(state, ".{}", path_to_string(&def_at))?;
+        if let Some(def_at) = &expr.get_info().defined_at {
+            write!(state, ".{}", path_to_string(def_at))?;
         } else {
             write!(state, "{}", expr.name)?;
         }

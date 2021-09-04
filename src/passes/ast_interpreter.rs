@@ -8,13 +8,13 @@ use crate::primitives::{
     Val,
     Val::{Function, Lambda, PrimVal, Product, Struct, Variable},
 };
-use log::{debug, info};
+use log::debug;
 use std::collections::HashMap;
 
 pub type ImplFn<'a> =
-    &'a mut dyn FnMut(&mut DBStorage, HashMap<String, Box<dyn Fn() -> Res>>, Info) -> Res;
+    &'a mut dyn FnMut(&mut DBStorage, HashMap<String, Box<dyn Fn() -> Res>>, &Info) -> Res;
 pub type PureImplFn<'a> =
-    &'a dyn Fn(&DBStorage, HashMap<String, Box<dyn Fn() -> Res>>, Info) -> Res;
+    &'a dyn Fn(&DBStorage, HashMap<String, Box<dyn Fn() -> Res>>, &Info) -> Res;
 
 // Walks the AST interpreting it.
 pub struct Interpreter<'a> {
@@ -279,30 +279,42 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
     fn visit_un_op(&mut self, storage: &mut DBStorage, state: &mut State, expr: &UnOp) -> Res {
         debug!("evaluating unop {}", expr.clone().into_node());
         let i = self.visit(storage, state, &expr.inner)?;
-        let info = expr.clone().get_info();
+        let info = expr.get_info();
         match expr.name.as_str() {
             "!" => match i {
                 PrimVal(Bool(n)) => Ok(boolean(!n)),
                 Lambda(_) => Ok(Lambda(Box::new(expr.clone().into_node()))),
-                _ => Err(TError::TypeMismatch("!".to_string(), Box::new(i), info)),
+                _ => Err(TError::TypeMismatch(
+                    "!".to_string(),
+                    Box::new(i),
+                    info.clone(),
+                )),
             },
             "+" => match i {
                 PrimVal(I32(n)) => Ok(int32(n)),
                 Lambda(_) => Ok(Lambda(Box::new(expr.clone().into_node()))),
-                _ => Err(TError::TypeMismatch("+".to_string(), Box::new(i), info)),
+                _ => Err(TError::TypeMismatch(
+                    "+".to_string(),
+                    Box::new(i),
+                    info.clone(),
+                )),
             },
             "-" => match i {
                 PrimVal(I32(n)) => Ok(int32(-n)),
                 Lambda(_) => Ok(Lambda(Box::new(expr.clone().into_node()))),
-                _ => Err(TError::TypeMismatch("-".to_string(), Box::new(i), info)),
+                _ => Err(TError::TypeMismatch(
+                    "-".to_string(),
+                    Box::new(i),
+                    info.clone(),
+                )),
             },
-            op => Err(TError::UnknownPrefixOperator(op.to_string(), info)),
+            op => Err(TError::UnknownPrefixOperator(op.to_string(), info.clone())),
         }
     }
 
     fn visit_bin_op(&mut self, storage: &mut DBStorage, state: &mut State, expr: &BinOp) -> Res {
         debug!("evaluating binop {}", expr.clone().into_node());
-        let info = expr.clone().get_info();
+        let info = expr.get_info();
         let l = self.visit(storage, state, &expr.left);
         let mut r = || self.visit(storage, state, &expr.right);
         match expr.name.as_str() {
@@ -343,7 +355,7 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
                             args: None,
                             info: info.clone(),
                         }],
-                        info,
+                        info: info.clone(),
                     },
                 )
             }
@@ -358,11 +370,11 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
             },
             "-|" => match l {
                 //TODO: Add pattern matching.
-                Ok(PrimVal(Bool(false))) => Err(TError::RequirementFailure(info)),
+                Ok(PrimVal(Bool(false))) => Err(TError::RequirementFailure(info.clone())),
                 Ok(_) => r(),
                 l => l,
             },
-            op => Err(TError::UnknownInfixOperator(op.to_string(), info)),
+            op => Err(TError::UnknownInfixOperator(op.to_string(), info.clone())),
         }
     }
 }
@@ -374,6 +386,7 @@ mod tests {
     use crate::primitives::{
         boolean, i32_type, int32, number_type, record, string, string_type, sum, Val::Union,
     };
+    use log::info;
 
     fn get_db() -> DBStorage {
         DBStorage::default()

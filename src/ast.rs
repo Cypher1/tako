@@ -74,8 +74,8 @@ impl ToNode for Apply {
     }
 }
 impl HasInfo for Apply {
-    fn get_info(&self) -> Info {
-        self.info.clone()
+    fn get_info(&self) -> &Info {
+        &self.info
     }
     fn get_mut_info(&mut self) -> &mut Info {
         &mut self.info
@@ -94,7 +94,7 @@ impl Sym {
             name: self.name.clone(),
             value: Box::new(unit_type().into_node()),
             args: None,
-            info: self.get_info(),
+            info: self.get_info().clone(),
         }
     }
 }
@@ -105,8 +105,8 @@ impl ToNode for Sym {
     }
 }
 impl HasInfo for Sym {
-    fn get_info(&self) -> Info {
-        self.info.clone()
+    fn get_info(&self) -> &Info {
+        &self.info
     }
     fn get_mut_info(&mut self) -> &mut Info {
         &mut self.info
@@ -131,7 +131,7 @@ impl Abs {
     pub fn to_sym(self: &Abs) -> Sym {
         Sym {
             name: self.name.clone(),
-            info: self.get_info(),
+            info: self.get_info().clone(),
         }
     }
 }
@@ -142,8 +142,8 @@ impl ToNode for Abs {
     }
 }
 impl HasInfo for Abs {
-    fn get_info(&self) -> Info {
-        self.info.clone()
+    fn get_info(&self) -> &Info {
+        &self.info
     }
     fn get_mut_info(&mut self) -> &mut Info {
         &mut self.info
@@ -163,7 +163,7 @@ impl Let {
     pub fn to_sym(self: &Let) -> Sym {
         Sym {
             name: self.name.clone(),
-            info: self.get_info(),
+            info: self.get_info().clone(),
         }
     }
     pub fn new(name: &str, value: Val) -> Let {
@@ -182,8 +182,8 @@ impl ToNode for Let {
     }
 }
 impl HasInfo for Let {
-    fn get_info(&self) -> Info {
-        self.info.clone()
+    fn get_info(&self) -> &Info {
+        &self.info
     }
     fn get_mut_info(&mut self) -> &mut Info {
         &mut self.info
@@ -203,8 +203,8 @@ impl ToNode for UnOp {
     }
 }
 impl HasInfo for UnOp {
-    fn get_info(&self) -> Info {
-        self.info.clone()
+    fn get_info(&self) -> &Info {
+        &self.info
     }
     fn get_mut_info(&mut self) -> &mut Info {
         &mut self.info
@@ -225,8 +225,8 @@ impl ToNode for BinOp {
     }
 }
 impl HasInfo for BinOp {
-    fn get_info(&self) -> Info {
-        self.info.clone()
+    fn get_info(&self) -> &Info {
+        &self.info
     }
     fn get_mut_info(&mut self) -> &mut Info {
         &mut self.info
@@ -329,28 +329,28 @@ impl ToNode for Node {
     }
 }
 impl HasInfo for Node {
-    fn get_info(&self) -> Info {
+    fn get_info(&self) -> &Info {
         use Node::*;
         match self {
             SymNode(n) => n.get_info(),
-            ValNode(_n, info) => info.clone(),
             ApplyNode(n) => n.get_info(),
             AbsNode(n) => n.get_info(),
             LetNode(n) => n.get_info(),
             UnOpNode(n) => n.get_info(),
             BinOpNode(n) => n.get_info(),
+            ValNode(_n, info) => &info,
         }
     }
     fn get_mut_info(&mut self) -> &mut Info {
         use Node::*;
         match self {
             SymNode(ref mut n) => n.get_mut_info(),
-            ValNode(_, ref mut info) => info,
             ApplyNode(ref mut n) => n.get_mut_info(),
             AbsNode(ref mut n) => n.get_mut_info(),
             LetNode(ref mut n) => n.get_mut_info(),
             UnOpNode(ref mut n) => n.get_mut_info(),
             BinOpNode(ref mut n) => n.get_mut_info(),
+            ValNode(_, ref mut info) => info,
         }
     }
 }

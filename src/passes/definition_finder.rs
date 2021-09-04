@@ -112,7 +112,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
             if search.is_empty() {
                 return Err(TError::UnknownSymbol(
                     expr.name.clone(),
-                    expr.get_info(),
+                    expr.get_info().clone(),
                     path_to_string(&state.path),
                 ));
             }
@@ -145,7 +145,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
         Ok(Apply {
             inner,
             args,
-            info: expr.get_info(),
+            info: expr.get_info().clone(),
         }
         .into_node())
     }
@@ -190,7 +190,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
         Ok(UnOp {
             name: expr.name.clone(),
             inner,
-            info: expr.get_info(),
+            info: expr.get_info().clone(),
         }
         .into_node())
     }
@@ -202,7 +202,7 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
             name: expr.name.clone(),
             left,
             right,
-            info: expr.get_info(),
+            info: expr.get_info().clone(),
         }
         .into_node())
     }
