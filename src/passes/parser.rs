@@ -415,7 +415,7 @@ fn led(
                             }
                             _ => AstTerm::Call {
                                 inner: storage.store_node(left_node, path),
-                                children: vec![],
+                                args: vec![],
                             },
                         }
                         .into_node(&loc, None),
@@ -472,7 +472,7 @@ fn led(
                         }),
                         _ => AstTerm::Call {
                             inner: storage.store_node(left_node, path),
-                            children: storage.store_node_set(args_node, path),
+                            args: storage.store_node_set(args_node, path),
                         },
                     }
                     .into_node(&loc, None),

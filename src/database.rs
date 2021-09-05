@@ -54,7 +54,7 @@ macro_rules! define_debug {
     ($func: ident, $print_func: ident, $func_all: ident, $($component:ty),* ) => {
         impl DBStorage {
             /// Print all the components that are associated with an entity.
-            fn $func(self: &DBStorage, entity: Entity) -> String {
+            pub fn $func(self: &DBStorage, entity: Entity) -> String {
             let mut out = format!("Entity {}:", entity.id());
             // let mut out = format!("{:?}:", self.world.read_storage::<InstancesAt>().get(entity).unwrap_or(&InstancesAt(BTreeSet::new())).0);
             $(
@@ -450,6 +450,23 @@ impl DBStorage {
             .map(|has_value| has_value.0.clone())
     }
 
+    #[must_use]
+    pub fn get_call_info(&self, entity: &Entity) -> Option<Call> {
+        self.world
+            .read_storage::<Call>()
+            .get(*entity)
+            .cloned()
+    }
+
+    #[must_use]
+    pub fn get_symbol_reference(&self, entity: &Entity) -> Option<Entity> {
+        self.world
+            .read_storage::<SymbolRef>()
+            .get(*entity)
+            .map(|reference| reference.definition)
+            .unwrap_or(None).clone()
+    }
+
     fn entity_for_ast(&self, node: &AstTerm) -> Option<Entity> {
         self.ast_to_entity.get(node).copied()
     }
@@ -518,9 +535,9 @@ impl DBStorage {
                     }),
                     AstTerm::Value(value) => entity.with(HasValue(value)),
                     AstTerm::Symbol { name, context } => entity
-                        .with(SymbolRef { name, context })
+                        .with(SymbolRef { name, context, definition: None })
                         .with(DefinedAt(None)),
-                    AstTerm::Call { inner, children } => entity.with(Call(inner, children)),
+                    AstTerm::Call { inner, args } => entity.with(Call {inner, args}),
                     AstTerm::Sequence(children) => {
                         // TODO: We assume this is a tuple, review this.
                         entity.with(Sequence(children))

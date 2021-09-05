@@ -64,8 +64,10 @@ impl<'functions, 'storage> Interpreter<'functions, 'storage> {
         loop {
             if let Some(curr) = code.pop() {
                 let res = self.step(curr, &mut code, &mut function_stack)?;
-                trace!("eval step: {:?}", &res);
-                self.memory.stack.push(res); // Put the result back on the stack.
+                trace!("finished eval step: {:?}", &res);
+                if let Some(res) = res {
+                    self.memory.stack.push(res); // Put the result back on the stack.
+                }
             } else {
                 if let Some(StackValue::Value(last)) = self.memory.stack.pop() {
                     return Ok(last);
@@ -78,13 +80,29 @@ impl<'functions, 'storage> Interpreter<'functions, 'storage> {
     fn step(
         &mut self,
         curr: Entity,
-        _code: &mut Vec<Entity>,
+        code: &mut Vec<Entity>,
         _function_stack: &mut Vec<usize>,
-    ) -> Result<StackValue, TError> {
+    ) -> Result<Option<StackValue>, TError> {
+        trace!("\nevaluating: {}", &self.storage.format_entity(curr));
         if let Some(value) = self.storage.get_known_value(&curr) {
-            return Ok(StackValue::Value(value));
+            trace!("known value: {:?}", &value);
+            return Ok(Some(StackValue::Value(value)));
+        }
+        if let Some(call_info) = self.storage.get_call_info(&curr) {
+            trace!("call: args {:?}", &call_info.args);
+            trace!("call: inner {:?}", &call_info.inner);
+            code.push(call_info.inner);
+            for arg in call_info.args {
+                code.push(arg);
+            }
+            return Ok(None); // No return, no computation has been done
+        }
+        if let Some(path) = self.storage.get_symbol_reference(&curr) {
+            trace!("known reference: {:?}", &path);
+            todo!();
         }
         let arity = self.storage.arity(&curr)?;
+        trace!("arity: {:?}", &arity);
         if self.memory.stack.len() < arity {
             return Err(TError::StackInterpreterRanOutOfArguments(
                 curr,
@@ -101,7 +119,7 @@ impl<'functions, 'storage> Interpreter<'functions, 'storage> {
         // To 'call'
         // function_stack.push(code.len()); // Place to 'ret' back to.
         // code.push(ent);
-        Ok(StackValue::Value(Val::PrimVal(I32(0)))) // TODO: This is clearly wrong
+        Ok(Some(StackValue::Value(Val::PrimVal(I32(0))))) // TODO: This is clearly wrong
     }
 }
 
@@ -113,7 +131,10 @@ mod tests {
     use crate::primitives::{boolean, int32};
     use log::debug;
 
+    use crate::init_for_test;
+
     fn get_db() -> DBStorage {
+        init_for_test();
         DBStorage::default()
     }
 
@@ -160,17 +181,18 @@ mod tests {
         let db = &mut get_db();
         assert_eq!(eval_str(db, "true"), Ok(boolean(true)));
     }
-}
-
-/*
+    
     #[test]
     fn parse_and_eval_bool_and() {
         let db = &mut get_db();
         assert_eq!(eval_str(db, "true&&true"), Ok(boolean(true)));
-        assert_eq!(eval_str(db, "false&&true"), Ok(boolean(false)));
-        assert_eq!(eval_str(db, "true&&false"), Ok(boolean(false)));
-        assert_eq!(eval_str(db, "false&&false"), Ok(boolean(false)));
+        // assert_eq!(eval_str(db, "false&&true"), Ok(boolean(false)));
+        // assert_eq!(eval_str(db, "true&&false"), Ok(boolean(false)));
+        // assert_eq!(eval_str(db, "false&&false"), Ok(boolean(false)));
     }
+}
+
+/*
 
     #[test]
     fn parse_and_eval_bool_or() {
