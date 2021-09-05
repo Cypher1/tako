@@ -97,9 +97,9 @@ impl<'functions, 'storage> Interpreter<'functions, 'storage> {
             }
             return Ok(None); // No return, no computation has been done
         }
-        if let Some(path) = self.storage.get_symbol_reference(&curr) {
-            trace!("known reference: {:?}", &path);
-            todo!();
+        if let Some(defined_at) = self.storage.get_symbol_reference(&curr) {
+            trace!("known reference: {:?}", &defined_at);
+            return Ok(Some(StackValue::StaticReference(defined_at)));
         }
         let arity = self.storage.arity(&curr)?;
         trace!("arity: {:?}", &arity);

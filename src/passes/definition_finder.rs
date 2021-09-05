@@ -24,11 +24,11 @@ struct DefinitionFinderSystem {
 }
 
 impl<'a> System<'a> for DefinitionFinderSystem {
-    type SystemData = (ReadStorage<'a, SymbolRef>, WriteStorage<'a, DefinedAt>);
+    type SystemData = (WriteStorage<'a, SymbolRef>, WriteStorage<'a, DefinedAt>);
 
-    fn run(&mut self, (symbols, mut defined_at_map): Self::SystemData) {
+    fn run(&mut self, (mut symbols, mut defined_at_map): Self::SystemData) {
         // dbg!(&self.path_to_entity);
-        for (symbol, defined_at) in (&symbols, &mut defined_at_map).join() {
+        for (symbol, defined_at) in (&mut symbols, &mut defined_at_map).join() {
             let get_entity = || {
                 let mut context = symbol.context.clone();
                 loop {
@@ -51,10 +51,8 @@ impl<'a> System<'a> for DefinitionFinderSystem {
                     "Found symbol: {:?} -> {:?} @ {:?}",
                     &symbol, &entity, &found_path
                 );
+                symbol.definition = Some(*entity);
                 defined_at.0 = Some(found_path);
-            } else if let Some(ext) = get_externs().get(&path_to_string(&symbol.name)) {
-                debug!("Found extern: {:?} -> {:?}", &symbol, &ext);
-                defined_at.0 = Some(symbol.name.clone());
             } else {
                 debug!("Couldn't find symbol: {:?}", &symbol);
             }

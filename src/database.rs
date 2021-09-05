@@ -5,9 +5,8 @@ use crate::components::{
     Untyped,
 };
 use crate::errors::TError;
-use crate::externs::get_externs;
-use crate::externs::{Extern, Semantic};
-use crate::primitives::Val;
+use crate::externs::{get_externs, Extern, Semantic};
+use crate::primitives::{Prim, Val};
 use crate::symbol_table::Table;
 use directories::ProjectDirs;
 use log::{debug, info, warn};
@@ -136,7 +135,7 @@ impl Default for DBStorage {
         register_components(&mut world);
 
         let project_dirs = ProjectDirs::from("systems", "mimir", "tako");
-        Self {
+        let mut empty = Self {
             world,
             project_dirs,
             options: Options::default(),
@@ -146,7 +145,20 @@ impl Default for DBStorage {
             defined_at: HashMap::default(),
             // refers_to: HashMap::default(),
             instance_at: HashMap::default(),
+        };
+
+        // Register builtins.
+        for (name, ext ) in empty.get_externs() {
+            let path = vec![Symbol::new(&name)];
+            let entry = AstNode {
+                term: AstTerm::Symbol{name: path.clone(), context: vec![], value: Some(ext.value.clone()) },
+                loc: Loc::default(), // TODO: Make locations for externs
+                ty: None, // TODO: use ext.ty,
+            };
+            empty.store_node(entry, &path);
         }
+
+        empty
     }
 }
 
@@ -480,6 +492,7 @@ impl DefinitionHead {
         let name = AstTerm::Symbol {
             name: self.name,
             context: self.path,
+            value: None,
         }
         .into_node(loc, None);
         self.params.map_or(name.clone(), |args| {
@@ -495,6 +508,7 @@ pub enum AstTerm {
     Symbol {
         name: Path,
         context: Path,
+        value: Option<Val>,
     },
     Sequence(Vec<Entity>), // TODO: Inline the vec somehow? Use a non empty vec?
     Call {
@@ -525,7 +539,7 @@ impl AstTerm {
         loc: &Loc,
     ) -> Result<AstNode, TError> {
         Ok(match self {
-            AstTerm::Symbol { name, context } => AstTerm::Definition {
+            AstTerm::Symbol { name, context , value: None} => AstTerm::Definition {
                 head: DefinitionHead {
                     name,
                     params: None,
@@ -603,9 +617,16 @@ impl DBStorage {
                         path: head.path,
                     }),
                     AstTerm::Value(value) => entity.with(HasValue(value)),
-                    AstTerm::Symbol { name, context } => entity
+                    AstTerm::Symbol { name, context , value} => {
+                        let entity = entity
                         .with(SymbolRef { name, context, definition: None })
-                        .with(DefinedAt(None)),
+                        .with(DefinedAt(None));
+                        if let Some(value) = value {
+                            entity.with(HasValue(value))
+                        } else {
+                            entity
+                        }
+                    },
                     AstTerm::Call { inner, args } => entity.with(Call {inner, args}),
                     AstTerm::Sequence(children) => {
                         // TODO: We assume this is a tuple, review this.
