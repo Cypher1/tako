@@ -48,6 +48,7 @@ pub fn build_logger(finish: impl FnOnce(&mut env_logger::Builder)) {
     );
 }
 
+#[cfg(test)]
 pub fn init_for_test() {
     build_logger(|env| {
         let _ = env.is_test(true).try_init();

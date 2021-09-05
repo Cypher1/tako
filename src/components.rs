@@ -47,7 +47,10 @@ pub struct HasErrors(pub Vec<TError>);
 
 #[derive(Component, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[storage(VecStorage)]
-pub struct Call(pub Entity, pub Vec<Entity>); // TODO: Short vec
+pub struct Call {
+    pub inner: Entity,
+    pub args: Vec<Entity>, // TODO: Short vec
+}
 
 #[derive(Component, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[storage(VecStorage)]
@@ -58,6 +61,7 @@ pub struct Sequence(pub Vec<Entity>); // TODO: Short vec
 pub struct SymbolRef {
     pub name: Path,
     pub context: Path,
+    pub definition: Option<Entity>,
 }
 
 #[derive(Component, Clone, Default, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
