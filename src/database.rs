@@ -189,7 +189,7 @@ impl Default for DBStorage {
         register_components(&mut world);
 
         let project_dirs = ProjectDirs::from("systems", "mimir", "tako");
-        Self {
+        let mut empty = Self {
             world,
             project_dirs,
             options: Options::default(),
@@ -199,7 +199,20 @@ impl Default for DBStorage {
             defined_at: HashMap::default(),
             // refers_to: HashMap::default(),
             instance_at: HashMap::default(),
+        };
+
+        // Register builtins.
+        for (name, ext ) in empty.get_externs() {
+            let path = vec![Symbol::new(&name)];
+            let entry = AstNode {
+                term: AstTerm::Symbol{name: path.clone(), context: vec![], value: Some(ext.value.clone()) },
+                loc: Loc::default(), // TODO: Make locations for externs
+                ty: None, // TODO: use ext.ty,
+            };
+            empty.store_node(entry, &path);
         }
+
+        empty
     }
 }
 
@@ -534,9 +547,16 @@ impl DBStorage {
                         path: head.path,
                     }),
                     AstTerm::Value(value) => entity.with(HasValue(value)),
-                    AstTerm::Symbol { name, context } => entity
+                    AstTerm::Symbol { name, context , value} => {
+                        let entity = entity
                         .with(SymbolRef { name, context, definition: None })
-                        .with(DefinedAt(None)),
+                        .with(DefinedAt(None));
+                        if let Some(value) = value {
+                            entity.with(HasValue(value))
+                        } else {
+                            entity
+                        }
+                    },
                     AstTerm::Call { inner, args } => entity.with(Call {inner, args}),
                     AstTerm::Sequence(children) => {
                         // TODO: We assume this is a tuple, review this.
