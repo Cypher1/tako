@@ -86,14 +86,6 @@ fn test_expecting(expected: TestResult, options: Vec<&str>) {
     }
 }
 
-fn compile(file: &str) {
-    test_expecting(Success, vec![file]);
-}
-
-fn compile_matching_golden(golden: &str, file: &str) {
-    test_expecting(OutputFile(golden.to_string()), vec![file]);
-}
-
 fn run(file: &str) {
     test_expecting(Success, vec!["--run", file]);
 }
@@ -156,204 +148,6 @@ fn comment() {
 }
 
 #[test]
-fn compile_1_plus_2() {
-    compile_matching_golden("tests/goldens/examples_1_plus_2.cc", "examples/1_plus_2.tk");
-}
-
-#[test]
-fn compile_arguments() {
-    compile_matching_golden(
-        "tests/goldens/examples_arguments.cc",
-        "examples/arguments.tk",
-    );
-}
-
-#[test]
-fn compile_code_reuse() {
-    compile_matching_golden(
-        "tests/goldens/examples_code_reuse.cc",
-        "examples/code_reuse.tk",
-    );
-}
-
-#[test]
-fn compile_comment() {
-    compile_matching_golden("tests/goldens/examples_comment.cc", "examples/comment.tk");
-}
-
-#[test]
-fn compile_div() {
-    compile_matching_golden("tests/goldens/examples_div.cc", "examples/div.tk");
-}
-
-#[test]
-fn compile_empty_def_args() {
-    compile_matching_golden(
-        "tests/goldens/examples_empty_def_args.cc",
-        "examples/empty_def_args.tk",
-    );
-}
-
-#[test]
-fn compile_hello_name() {
-    compile_matching_golden(
-        "tests/goldens/examples_hello_name.cc",
-        "examples/hello_name.tk",
-    );
-}
-
-#[test]
-fn compile_higher_order() {
-    compile_matching_golden(
-        "tests/goldens/examples_higher_order.cc",
-        "examples/higher_order.tk",
-    );
-}
-
-#[test]
-fn compile_ignored_let() {
-    compile_matching_golden(
-        "tests/goldens/examples_ignored_let.cc",
-        "examples/ignored_let.tk",
-    );
-}
-
-#[test]
-fn compile_lambda() {
-    compile_matching_golden("tests/goldens/examples_lambda.cc", "examples/lambda.tk");
-}
-
-#[test]
-fn compile_multi_comment() {
-    compile_matching_golden(
-        "tests/goldens/examples_multi_comment.cc",
-        "examples/multi_comment.tk",
-    );
-}
-
-#[test]
-fn compile_multi_comment_nested() {
-    compile_matching_golden(
-        "tests/goldens/examples_multi_comment_nested.cc",
-        "examples/multi_comment_nested.tk",
-    );
-}
-
-#[test]
-fn compile_neg() {
-    compile_matching_golden("tests/goldens/examples_neg.cc", "examples/neg.tk");
-}
-
-#[test]
-fn compile_nested() {
-    compile_matching_golden("tests/goldens/examples_nested.cc", "examples/nested.tk");
-}
-
-#[test]
-fn compile_nested_as_function() {
-    compile_matching_golden(
-        "tests/goldens/examples_nested_as_function.cc",
-        "examples/nested_as_function.tk",
-    );
-}
-
-#[test]
-fn compile_nested_explicit() {
-    compile_matching_golden(
-        "tests/goldens/examples_nested_explicit.cc",
-        "examples/nested_explicit.tk",
-    );
-}
-
-#[test]
-fn compile_non_overlapping_anons() {
-    compile_matching_golden(
-        "tests/goldens/examples_non_overlapping_anons.cc",
-        "examples/non_overlapping_anons.tk",
-    );
-}
-
-#[test]
-fn compile_not() {
-    compile_matching_golden("tests/goldens/examples_not.cc", "examples/not.tk");
-}
-
-#[test]
-fn compile_optional_semis() {
-    compile_matching_golden(
-        "tests/goldens/examples_optional_semis.cc",
-        "examples/optional_semis.tk",
-    );
-}
-
-#[test]
-fn compile_order_of_ops() {
-    compile_matching_golden(
-        "tests/goldens/examples_order_of_ops.cc",
-        "examples/order_of_ops.tk",
-    );
-}
-
-#[test]
-fn compile_paren() {
-    compile_matching_golden("tests/goldens/examples_paren.cc", "examples/paren.tk");
-}
-
-#[test]
-fn compile_pow() {
-    compile_matching_golden("tests/goldens/examples_pow.cc", "examples/pow.tk");
-}
-
-#[test]
-fn compile_pow_twice() {
-    compile_matching_golden(
-        "tests/goldens/examples_pow_twice.cc",
-        "examples/pow_twice.tk",
-    );
-}
-
-#[test]
-fn compile_shadowing() {
-    test_expecting(Error, vec!["counter_examples/shadowing.tk"]);
-}
-
-#[test]
-fn compile_simple() {
-    compile_matching_golden("tests/goldens/examples_simple.cc", "examples/simple.tk");
-}
-
-#[test]
-fn compile_simple_call() {
-    compile_matching_golden(
-        "tests/goldens/examples_simple_call.cc",
-        "examples/simple_call.tk",
-    );
-}
-
-#[test]
-fn compile_sub() {
-    compile_matching_golden("tests/goldens/examples_sub.cc", "examples/sub.tk");
-}
-
-#[test]
-fn compile_three_vars() {
-    compile_matching_golden(
-        "tests/goldens/examples_three_vars.cc",
-        "examples/three_vars.tk",
-    );
-}
-
-#[test]
-fn compile_tmp() {
-    compile_matching_golden("tests/goldens/examples_tmp.cc", "examples/tmp.tk");
-}
-
-#[test]
-fn compile_x_plus_1() {
-    compile_matching_golden("tests/goldens/examples_x_plus_1.cc", "examples/x_plus_1.tk");
-}
-
-#[test]
 fn defaulting() {
     run("examples/defaulting.tk");
 }
@@ -365,7 +159,7 @@ fn div() {
 
 #[test]
 fn dupe_alt() {
-    test_expecting(Error, vec!["--run", "counter_examples/dupe_alt.tk"]);
+    run_with_error("counter_examples/dupe_alt.tk");
 }
 
 #[test]
@@ -428,10 +222,7 @@ fn r#loop() {
 
 #[test]
 fn missing_arguments() {
-    test_expecting(
-        Error,
-        vec!["--run", "counter_examples/missing_arguments.tk"],
-    );
+    run_with_error("counter_examples/missing_arguments.tk");
 }
 
 #[test]
@@ -456,12 +247,12 @@ fn neg() {
 
 #[test]
 fn negative_bool() {
-    test_expecting(Error, vec!["--run", "counter_examples/negative_bool.tk"]);
+    run_with_error("counter_examples/negative_bool.tk");
 }
 
 #[test]
 fn nested() {
-    test_expecting(Error, vec!["--run", "counter_examples/nested.tk"]);
+    run_with_error("counter_examples/nested.tk");
 }
 
 #[test]
@@ -476,15 +267,12 @@ fn nested_explicit() {
 
 #[test]
 fn nested_explicit_side_effect() {
-    test_expecting(
-        Error,
-        vec!["--run", "counter_examples/nested_explicit_side_effect.tk"],
-    );
+    run_with_error("counter_examples/nested_explicit_side_effect.tk");
 }
 
 #[test]
 fn non_lambda() {
-    test_expecting(Error, vec!["--run", "counter_examples/non_lambda.tk"]);
+    run_with_error("counter_examples/non_lambda.tk");
 }
 
 #[test]
@@ -499,12 +287,12 @@ fn not() {
 
 #[test]
 fn not_int() {
-    test_expecting(Error, vec!["--run", "counter_examples/not_int.tk"]);
+    run_with_error("counter_examples/not_int.tk");
 }
 
 #[test]
 fn not_string() {
-    test_expecting(Error, vec!["--run", "counter_examples/not_string.tk"]);
+    run_with_error("counter_examples/not_string.tk");
 }
 
 #[test]
@@ -541,23 +329,8 @@ fn pow_twice() {
 }
 
 #[test]
-fn compile_printing() {
-    compile("examples/printing.tk");
-}
-
-#[test]
 fn error_printing() {
     run("examples/error_printing.tk");
-}
-
-#[test]
-fn compile_error_printing() {
-    compile("examples/error_printing.tk");
-}
-
-#[test]
-fn compile_parse_i32() {
-    compile("examples/parse_i32.tk");
 }
 
 #[test]
@@ -618,4 +391,229 @@ fn type_str() {
 #[test]
 fn x_plus_1() {
     run("examples/x_plus_1.tk");
+}
+
+mod compile {
+    use super::*;
+
+    fn compile(file: &str) {
+        test_expecting(Success, vec![file]);
+    }
+
+    fn compile_matching_golden(golden: &str, file: &str) {
+        test_expecting(OutputFile(golden.to_string()), vec![file]);
+    }
+
+    #[test]
+    fn _1_plus_2() {
+        compile_matching_golden("tests/goldens/examples_1_plus_2.cc", "examples/1_plus_2.tk");
+    }
+
+    #[test]
+    fn arguments() {
+        compile_matching_golden(
+            "tests/goldens/examples_arguments.cc",
+            "examples/arguments.tk",
+        );
+    }
+
+    #[test]
+    fn code_reuse() {
+        compile_matching_golden(
+            "tests/goldens/examples_code_reuse.cc",
+            "examples/code_reuse.tk",
+        );
+    }
+
+    #[test]
+    fn comment() {
+        compile_matching_golden("tests/goldens/examples_comment.cc", "examples/comment.tk");
+    }
+
+    #[test]
+    fn div() {
+        compile_matching_golden("tests/goldens/examples_div.cc", "examples/div.tk");
+    }
+
+    #[test]
+    fn empty_def_args() {
+        compile_matching_golden(
+            "tests/goldens/examples_empty_def_args.cc",
+            "examples/empty_def_args.tk",
+        );
+    }
+
+    #[test]
+    fn hello_name() {
+        compile_matching_golden(
+            "tests/goldens/examples_hello_name.cc",
+            "examples/hello_name.tk",
+        );
+    }
+
+    #[test]
+    fn higher_order() {
+        compile_matching_golden(
+            "tests/goldens/examples_higher_order.cc",
+            "examples/higher_order.tk",
+        );
+    }
+
+    #[test]
+    fn ignored_let() {
+        compile_matching_golden(
+            "tests/goldens/examples_ignored_let.cc",
+            "examples/ignored_let.tk",
+        );
+    }
+
+    #[test]
+    fn lambda() {
+        compile_matching_golden("tests/goldens/examples_lambda.cc", "examples/lambda.tk");
+    }
+
+    #[test]
+    fn multi_comment() {
+        compile_matching_golden(
+            "tests/goldens/examples_multi_comment.cc",
+            "examples/multi_comment.tk",
+        );
+    }
+
+    #[test]
+    fn multi_comment_nested() {
+        compile_matching_golden(
+            "tests/goldens/examples_multi_comment_nested.cc",
+            "examples/multi_comment_nested.tk",
+        );
+    }
+
+    #[test]
+    fn neg() {
+        compile_matching_golden("tests/goldens/examples_neg.cc", "examples/neg.tk");
+    }
+
+    #[test]
+    fn nested() {
+        compile_matching_golden("tests/goldens/examples_nested.cc", "examples/nested.tk");
+    }
+
+    #[test]
+    fn nested_as_function() {
+        compile_matching_golden(
+            "tests/goldens/examples_nested_as_function.cc",
+            "examples/nested_as_function.tk",
+        );
+    }
+
+    #[test]
+    fn nested_explicit() {
+        compile_matching_golden(
+            "tests/goldens/examples_nested_explicit.cc",
+            "examples/nested_explicit.tk",
+        );
+    }
+
+    #[test]
+    fn non_overlapping_anons() {
+        compile_matching_golden(
+            "tests/goldens/examples_non_overlapping_anons.cc",
+            "examples/non_overlapping_anons.tk",
+        );
+    }
+
+    #[test]
+    fn not() {
+        compile_matching_golden("tests/goldens/examples_not.cc", "examples/not.tk");
+    }
+
+    #[test]
+    fn optional_semis() {
+        compile_matching_golden(
+            "tests/goldens/examples_optional_semis.cc",
+            "examples/optional_semis.tk",
+        );
+    }
+
+    #[test]
+    fn order_of_ops() {
+        compile_matching_golden(
+            "tests/goldens/examples_order_of_ops.cc",
+            "examples/order_of_ops.tk",
+        );
+    }
+
+    #[test]
+    fn paren() {
+        compile_matching_golden("tests/goldens/examples_paren.cc", "examples/paren.tk");
+    }
+
+    #[test]
+    fn pow() {
+        compile_matching_golden("tests/goldens/examples_pow.cc", "examples/pow.tk");
+    }
+
+    #[test]
+    fn pow_twice() {
+        compile_matching_golden(
+            "tests/goldens/examples_pow_twice.cc",
+            "examples/pow_twice.tk",
+        );
+    }
+
+    #[test]
+    fn shadowing() {
+        test_expecting(Error, vec!["counter_examples/shadowing.tk"]);
+    }
+
+    #[test]
+    fn simple() {
+        compile_matching_golden("tests/goldens/examples_simple.cc", "examples/simple.tk");
+    }
+
+    #[test]
+    fn simple_call() {
+        compile_matching_golden(
+            "tests/goldens/examples_simple_call.cc",
+            "examples/simple_call.tk",
+        );
+    }
+
+    #[test]
+    fn sub() {
+        compile_matching_golden("tests/goldens/examples_sub.cc", "examples/sub.tk");
+    }
+
+    #[test]
+    fn three_vars() {
+        compile_matching_golden(
+            "tests/goldens/examples_three_vars.cc",
+            "examples/three_vars.tk",
+        );
+    }
+
+    #[test]
+    fn tmp() {
+        compile_matching_golden("tests/goldens/examples_tmp.cc", "examples/tmp.tk");
+    }
+
+    #[test]
+    fn x_plus_1() {
+        compile_matching_golden("tests/goldens/examples_x_plus_1.cc", "examples/x_plus_1.tk");
+    }
+
+    #[test]
+    fn printing() {
+        compile("examples/printing.tk");
+    }
+
+    #[test]
+    fn error_printing() {
+        compile("examples/error_printing.tk");
+    }
+
+    #[test]
+    fn parse_i32() {
+        compile("examples/parse_i32.tk");
+    }
 }
