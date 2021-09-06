@@ -69,7 +69,7 @@ tako is a standalone single file. It can be installed simply by building and cop
 
 ## Contributing
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests.
+Please read the [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) and [CONTRIBUTING.md](CONTRIBUTING.md) guides for details on our code of conduct, and the process for submitting pull requests.
 
 ## Versioning
 
