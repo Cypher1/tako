@@ -31,16 +31,13 @@
   - pointer(ty)
   - x?.y (mapped .get and .set)
   - x?:y (sugar for if x then x else y)
-  - Functions that take just one argument can skip "()" parens(e.g. func(y) == func y)
 - Locals (scope management)
 - Main + command function argument parsing
 - Conversion to SSA (after parsing)
 - Conversion to stack?
 - Move source locations out of errors and AST nodes in favour of symbol 'paths'
-- Provide a mapping between symbol 'paths' and source locations
 - Look up source locations only when displaying info / errors to the user
 - Incremental re-parsing
-- Replace symbol table builder, definition finder and type checker with type graph builder
 
 ## Testing
 
