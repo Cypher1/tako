@@ -8,11 +8,8 @@ main : argc:int -> argv:string[] -> int = {
 }
 
 //-------------
-mathlib=if(lib::exists('math'), 'math', 'libc')
-
-import('stdio')
-import(mathlib)
-import(if(lib::exists('math'), 'math', 'libc'))
+stdio = import('stdio')
+math = import(if(lib::exists('math'), 'math', 'libc'))
 
 main:int = { result = add(42, 1337) -|
   printf('%d\n', result) 
