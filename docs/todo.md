@@ -13,8 +13,8 @@
   - Ops need:
     - Precedence (maybe a set of allowed inner operators rather than a number)
     - left or right associativity
-    - a bin/un op form (possibly both)
-- Convert bin and un op to calls to the operator functions
+    - a bin/un-op form (possibly both)
+- Convert bin and un-op to calls to the operator functions
 - Introduce "." notation for identifiers.
 - Convenient Conditionals / Ifs / Matches
   - i.e. Shouldn't have to use operators
@@ -68,11 +68,17 @@
   - See [aho_corasick](https://thedan64.github.io/inkwell/aho_corasick/index.html)
 - For logging and timing purposes, it seems likely that a scope guard pattern would make reporting much more reliable
   - See [scope_guard](https://thedan64.github.io/inkwell/scopeguard/index.html)
-- Probably should eventually support [unicode identifiers](http://www.unicode.org/reports/tr31/#Introduction)
+- Probably should eventually support [Unicode identifiers](http://www.unicode.org/reports/tr31/#Introduction)
   - See [unicode_xid](https://thedan64.github.io/inkwell/unicode_xid/index.html)
 - Should use [smallvec](https://thedan64.github.io/inkwell/smallvec/index.html) for argument lists and other compiler info
 - Should experiment with LLVM
   - Possible via [inkwell](https://thedan64.github.io/inkwell/inkwell/index.html).
+- Explore using worker threads for the parser
+  - Job per file, contributing to a queue of nodes to store
+  - Bunches of nodes to store would be faster to store as groups and could be async from file access
+  - Parsing the file could be broken up by balanced brackets
+  - This may be premature optimisation the store medium / RAM may be the bottle neck
+- Remove AST and Info types
 
 ## Communication
 
