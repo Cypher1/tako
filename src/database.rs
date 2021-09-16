@@ -7,7 +7,7 @@ use crate::components::{
 };
 use crate::errors::{RequirementError, TError};
 use crate::externs::get_externs;
-use crate::externs::{Extern, Semantic};
+use crate::externs::{get_externs, Extern, Semantic};
 use crate::map_system::MapSystem;
 use crate::matcher::{Log, MatchErr, Matcher};
 use crate::primitives::Val;
