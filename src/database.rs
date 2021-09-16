@@ -6,7 +6,7 @@ use crate::components::{
 };
 use crate::errors::TError;
 use crate::externs::{get_externs, Extern, Semantic};
-use crate::primitives::{Prim, Val};
+use crate::primitives::Val;
 use crate::symbol_table::Table;
 use directories::ProjectDirs;
 use log::{debug, info, warn};

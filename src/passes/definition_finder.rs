@@ -5,7 +5,6 @@ use crate::ast::{
 use crate::components::{DefinedAt, SymbolRef};
 use crate::database::DBStorage;
 use crate::errors::TError;
-use crate::externs::get_externs;
 use crate::passes::symbol_table_builder::State;
 use crate::primitives::Val;
 use log::{debug, info};
