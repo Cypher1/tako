@@ -19,10 +19,10 @@ pub mod primitives;
 // This is where all the compiler passes (rather than shared infrastructure) goes.
 pub mod passes;
 
+mod components;
 mod location;
 mod symbol_table;
 mod tokens;
-mod components;
 
 // This is where the fun, but currently unused stuff goes
 #[cfg(test)]
