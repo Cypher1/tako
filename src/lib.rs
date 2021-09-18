@@ -1,41 +1,44 @@
 #![deny(clippy::all)]
 
 #[macro_use]
-pub mod data_structures;
-#[macro_use]
 extern crate lazy_static;
 
 #[cfg(test)]
 #[macro_use]
-mod pretty_assertions {
-    // Wrapper around string slice that makes debug output `{:?}` to print string same way as `{}`.
-    // Used in different `assert*!` macros in combination with `pretty_assertions` crate to make
-    // test failures to show nice diffs.
-    #[derive(PartialEq, Eq)]
-    pub struct MultiPretty<T>(pub T);
+mod pretty_assertions;
 
-    /// Make diff to display string as multi-line string
-    impl<'a> std::fmt::Debug for MultiPretty<&'a str> {
-        fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-            f.write_str(self.0)
-        }
-    }
+#[macro_use]
+pub mod data_structures;
 
-    impl std::fmt::Debug for MultiPretty<String> {
-        fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-            f.write_str(&self.0)
-        }
-    }
+pub mod ast;
+pub mod cli_options;
+pub mod database;
+pub mod errors;
+pub mod externs;
+pub mod primitives;
+// This is where all the compiler passes (rather than shared infrastructure) goes.
+pub mod passes;
 
-    macro_rules! assert_str_eq {
-        ($left:expr, $right:expr) => {
-            pretty_assertions::assert_eq!(
-                crate::pretty_assertions::MultiPretty($left),
-                crate::pretty_assertions::MultiPretty($right.to_string())
-            );
-        };
-    }
-}
+mod location;
+mod symbol_table;
+mod tokens;
+mod components;
+
+// This is where the fun, but currently unused stuff goes
+#[cfg(test)]
+#[allow(dead_code)]
+mod experimental;
+
+use ast::Visitor;
+use passes::ast_interpreter::Interpreter;
+use passes::pretty_print::PrettyPrint;
+
+use database::DBStorage;
+use errors::TError;
+use passes::ast_interpreter::ImplFn;
+
+use std::fs::File;
+use std::io::prelude::*;
 
 pub fn build_logger(finish: impl FnOnce(&mut env_logger::Builder)) {
     finish(
@@ -53,36 +56,6 @@ pub fn init_for_test() {
         let _ = env.is_test(true).try_init();
     });
 }
-
-use std::fs::File;
-use std::io::prelude::*;
-
-pub mod ast;
-pub mod cli_options;
-pub mod database;
-pub mod errors;
-pub mod externs;
-pub mod primitives;
-
-mod location;
-mod symbol_table;
-mod tokens;
-
-// This is where the fun, but currently unused stuff goes
-#[allow(dead_code)]
-mod experimental;
-
-// This is where all the compiler passes (rather than shared infrastructure) gors.
-pub mod passes;
-
-mod components;
-use ast::Visitor;
-use passes::ast_interpreter::Interpreter;
-use passes::pretty_print::PrettyPrint;
-
-use database::DBStorage;
-use errors::TError;
-use passes::ast_interpreter::ImplFn;
 
 pub fn work<'a>(
     storage: &mut DBStorage,
