@@ -33,7 +33,7 @@ impl std::fmt::Debug for InstancesAt {
 #[storage(VecStorage)]
 pub struct HasValue(pub Val);
 
-#[derive(Component, Default, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Component, Clone, Default, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[storage(NullStorage)]
 pub struct Untyped;
 

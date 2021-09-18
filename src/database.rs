@@ -66,7 +66,7 @@ macro_rules! define_debug {
             }
             #[must_use]
             pub fn $func_all(&self) -> String {
-                let f = |entity| self.$func(entity);
+                let f = |entity| Some(self.$func(entity));
                 let mut mapper = DebugSystem::<String> {
                     f: &f,
                     results: Vec::new(),
@@ -80,10 +80,60 @@ macro_rules! define_debug {
 }
 
 macro_rules! define_components {
-    ( $($component:ty),* ) => {
+    ( $($name:ident => $component:ty),* ) => {
         /// Register all components with the world.
         fn register_components(world: &mut World) {
             $( world.register::<$component>(); )*
+        }
+
+        pub struct Requirement<'a> {
+            // TODO: use https://users.rust-lang.org/t/is-it-possible-to-implement-debug-for-fn-type/14824/3
+            // To make the matcher functions debuggable
+            $(
+                #[allow(unused)]
+                $name: &'a dyn Fn(Option < &$component >) -> bool,
+            )*
+        }
+
+        impl <'a> Default for Requirement<'a> {
+            fn default() -> Self {
+                Self { $( $name: &|_field: Option <&$component>| true,)* }
+            }
+        }
+
+        impl DBStorage {
+            #[allow(unused)]
+            fn is_match<'a>(self: &DBStorage, entity: Entity, req: &Requirement<'a>) -> bool {
+                $(
+                    {
+                        let field_req = req.$name;
+                        if !(field_req(self.world.read_storage::<$component>().get(entity))) {
+                            return false;
+                        }
+                    }
+                )*
+                true
+            }
+
+            fn match_or_none<'a>(self: &DBStorage, entity: Entity, req: &Requirement<'a>) -> Option<Entity> {
+                if self.is_match(entity, req) {
+                    Some(entity)
+                } else {
+                    None
+                }
+            }
+
+            #[must_use]
+            pub fn matches<'a>(&self, req: &Requirement<'a>) -> Vec<Entity> {
+                let f = |entity| self.match_or_none(entity, req);
+                let mut mapper = DebugSystem::<Entity> {
+                    f: &f,
+                    results: Vec::new(),
+                };
+                mapper.run_now(&self.world);
+                // self.world.maintain(); // Nah?
+                mapper.results
+            }
         }
 
         define_debug!(
@@ -96,16 +146,16 @@ macro_rules! define_components {
 }
 
 define_components!(
-    Call,
-    DefinedAt,
-    Definition,
-    HasErrors,
-    HasType,
-    HasValue,
-    Sequence,
-    SymbolRef,
-    Untyped,
-    InstancesAt
+    call => Call,
+    defined_at => DefinedAt,
+    definition => Definition,
+    has_errors => HasErrors,
+    has_type => HasType,
+    has_value => HasValue,
+    sequence => Sequence,
+    symbol_ref => SymbolRef,
+    untyped => Untyped,
+    instances_at => InstancesAt
 );
 
 define_debug!(
@@ -151,7 +201,7 @@ impl Default for DBStorage {
 }
 
 struct DebugSystem<'a, T> {
-    f: &'a dyn Fn(Entity) -> T,
+    f: &'a dyn Fn(Entity) -> Option<T>,
     results: Vec<T>,
 }
 
@@ -160,7 +210,9 @@ impl<'a, T> System<'a> for DebugSystem<'a, T> {
 
     fn run(&mut self, entities: Self::SystemData) {
         for ent in (&*entities).join() {
-            self.results.push((self.f)(ent));
+            if let Some(val) = (self.f)(ent) {
+                self.results.push(val);
+            }
         }
     }
 }
