@@ -23,6 +23,7 @@ mod components;
 mod location;
 mod symbol_table;
 mod tokens;
+mod matcher;
 
 // This is where the fun, but currently unused stuff goes
 #[cfg(test)]

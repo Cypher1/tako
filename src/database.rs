@@ -18,6 +18,7 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Arc;
+use paste::paste;
 
 fn to_file_path(context: PathRef) -> Path {
     let mut module = context.to_vec();
@@ -86,27 +87,58 @@ macro_rules! define_components {
             $( world.register::<$component>(); )*
         }
 
-        pub struct Requirement<'a> {
+        pub struct Requirement {
             // TODO: use https://users.rust-lang.org/t/is-it-possible-to-implement-debug-for-fn-type/14824/3
             // To make the matcher functions debuggable
             $(
                 #[allow(unused)]
-                $name: &'a dyn Fn(Option < &$component >) -> bool,
+                $name: Box<dyn Fn(Option < &$component >) -> bool>,
             )*
         }
 
-        impl <'a> Default for Requirement<'a> {
+        impl Requirement {
+            $(
+                paste! {
+                    #[allow(unused)]
+                    fn [<expect_ $name >](mut self: Self, expected: Option<$component>) -> Self where $component: PartialEq {
+                        self.$name = Box::new(move |val: Option < &$component > | val == expected.as_ref());
+                        self
+                    }
+                    fn [<expect_not_ $name >](mut self: Self, expected: Option<$component>) -> Self where $component: PartialEq {
+                        self.$name = Box::new(move |val: Option < &$component > | val != expected.as_ref());
+                        self
+                    }
+                    #[allow(unused)]
+                    fn [<is_ $name >](mut self: Self, expected: $component) -> Self where $component: PartialEq {
+                        self.[<expect_ $name >](Some(expected))
+                    }
+                    #[allow(unused)]
+                    fn [<is_not_ $name >](mut self: Self, expected: $component) -> Self where $component: PartialEq {
+                        self.[<expect_not_ $name >](Some(expected))
+                    }
+                    #[allow(unused)]
+                    fn [<is_none_ $name >](mut self: Self) -> Self where $component: PartialEq {
+                        self.[<expect_ $name >](None)
+                    }
+                    #[allow(unused)]
+                    fn [<is_not_none_ $name >](mut self: Self) -> Self where $component: PartialEq {
+                        self.[<expect_not_ $name >](None)
+                    }
+                }
+            )*
+        }
+        impl Default for Requirement {
             fn default() -> Self {
-                Self { $( $name: &|_field: Option <&$component>| true,)* }
+                Self { $( $name: Box::new(|_field: Option <&$component>| true),)* }
             }
         }
 
         impl DBStorage {
             #[allow(unused)]
-            fn is_match<'a>(self: &DBStorage, entity: Entity, req: &Requirement<'a>) -> bool {
+            fn is_match(self: &DBStorage, entity: Entity, req: &Requirement) -> bool {
                 $(
                     {
-                        let field_req = req.$name;
+                        let field_req = &req.$name;
                         if !(field_req(self.world.read_storage::<$component>().get(entity))) {
                             return false;
                         }
@@ -115,7 +147,7 @@ macro_rules! define_components {
                 true
             }
 
-            fn match_or_none<'a>(self: &DBStorage, entity: Entity, req: &Requirement<'a>) -> Option<Entity> {
+            fn match_or_none(self: &DBStorage, entity: Entity, req: &Requirement) -> Option<Entity> {
                 if self.is_match(entity, req) {
                     Some(entity)
                 } else {
@@ -124,7 +156,7 @@ macro_rules! define_components {
             }
 
             #[must_use]
-            pub fn matches<'a>(&self, req: &Requirement<'a>) -> Vec<Entity> {
+            pub fn matches(&self, req: &Requirement) -> Vec<Entity> {
                 let f = |entity| self.match_or_none(entity, req);
                 let mut mapper = DebugSystem::<Entity> {
                     f: &f,
