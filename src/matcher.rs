@@ -29,7 +29,7 @@ trait Matcher<Res = Vec<Entity>> {
 }
 
 impl<T> dyn Matcher<T> {
-    fn chain<'a, U>(self: Self, other: impl Fn(T) -> Box<dyn Matcher<U>> + 'a) -> Chain<'a, T, U> where Self: Sized {
+    fn chain<'a, U>(self: Self, other: impl Fn(&T) -> Box<dyn Matcher<U>> + 'a) -> Chain<'a, T, U> where Self: Sized {
         Chain {
             first: Box::new(self),
             second: Box::new(other),
@@ -73,23 +73,6 @@ impl Matcher<()> for Requirement {
     }
 }
 
-struct Chain<'a, T, U> {
-    first: Box<dyn Matcher<T>>,
-    second: Box<dyn Fn(T) -> Box<dyn Matcher<U>> + 'a>,
-}
-
-impl<'a, T, U> Matcher<U> for Chain<'a, T, U> {
-    fn run(self: &Self, storage: &DBStorage) -> Result<U, MatchErr> {
-        let res = self
-            .first
-            .run(storage)
-            .map_err(|err| ChainErrorInInitial(Box::new(err)))?;
-        (self.second)(res)
-            .run(storage)
-            .map_err(|err| ChainErrorInFollowUp(Box::new(err)))
-    }
-}
-
 struct Pair<'a, T, U> {
     first: Box<dyn Matcher<T>>,
     second: Box<dyn Matcher<U> + 'a>,
@@ -105,5 +88,23 @@ impl<'a, T, U> Matcher<(T, U)> for Pair<'a, T, U> {
                 .run(storage)
                 .map_err(|err| PairErrorInRight(Box::new(err)))?,
         ))
+    }
+}
+
+struct Chain<'a, T, U> {
+    first: Box<dyn Matcher<T>>,
+    second: Box<dyn Fn(&T) -> Box<dyn Matcher<U>> + 'a>,
+}
+
+impl<'a, T, U> Matcher<(T, U)> for Chain<'a, T, U> {
+    fn run(self: &Self, storage: &DBStorage) -> Result<(T, U), MatchErr> {
+        let left = self
+            .first
+            .run(storage)
+            .map_err(|err| ChainErrorInInitial(Box::new(err)))?;
+        let right = (self.second)(&left)
+            .run(storage)
+            .map_err(|err| ChainErrorInFollowUp(Box::new(err)))?;
+        Ok((left, right))
     }
 }
