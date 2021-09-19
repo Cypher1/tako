@@ -111,7 +111,7 @@ impl<'functions, 'storage> Interpreter<'functions, 'storage> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::database::{AstNode, AstTerm};
+    use crate::ast_node::{AstNode, AstTerm};
     use crate::location::Loc;
     use crate::primitives::{boolean, int32};
     use log::debug;

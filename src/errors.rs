@@ -97,3 +97,36 @@ impl From<MatchErr> for TError {
         MatchError(error, Info::default())
     }
 }
+
+#[derive(Error, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Derivative)]
+#[derivative(Debug)]
+pub enum RequirementError {
+    #[error("\n  Found {0},\n  Expected None")]
+    ExpectedNoComponent(String),
+    #[error("\n  Found None,\n  Expected Some(_)")]
+    ExpectedAnyComponent,
+    #[error("\n  Found {1},\n  Expected {0}")]
+    ExpectedComponent(String, String),
+    #[error("\n  Found no component,\n  Expected {0}")]
+    ExpectedComponentFoundNone(String),
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
+pub struct RequirementErrors {
+    pub errs: Vec<RequirementError>,
+}
+
+impl std::fmt::Display for RequirementErrors {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut first = true;
+        for v in &self.errs {
+            if !first {
+                write!(f, ", ")?;
+            } else {
+                first = false;
+            }
+            write!(f, "{}", v)?;
+        }
+        Ok(())
+    }
+}

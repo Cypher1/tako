@@ -1,10 +1,11 @@
 use crate::ast::{path_to_string, Info, Node, Path, PathRef, Root, Symbol, Visitor};
+use crate::ast_node::*;
 use crate::cli_options::Options;
 use crate::components::{
     Call, DefinedAt, Definition, HasErrors, HasType, HasValue, InstancesAt, Sequence, SymbolRef,
     Untyped,
 };
-use crate::errors::TError;
+use crate::errors::{RequirementError, TError};
 use crate::externs::get_externs;
 use crate::externs::{Extern, Semantic};
 use crate::primitives::Val;
@@ -48,6 +49,21 @@ pub struct DBStorage {
     instance_at: HashMap<Entity, HashSet<Loc>>,
 }
 
+impl DBStorage {
+    #[must_use]
+    pub fn matches(&self, req: &Requirement) -> (Vec<Entity>, Vec<RequirementError>) {
+        let f = |entity| self.is_match(entity, req);
+        let mut mapper = DebugSystem::<Entity, RequirementError> {
+            f: &f,
+            results: Vec::new(),
+            errors: Vec::new(),
+        };
+        mapper.run_now(&self.world);
+        // self.world.maintain(); // Nah?
+        (mapper.results, mapper.errors)
+    }
+}
+
 macro_rules! define_debug {
     ($func: ident, $print_func: ident, $func_all: ident, $($component:ty),* ) => {
         impl DBStorage {
@@ -81,41 +97,6 @@ macro_rules! define_debug {
     }
 }
 
-use derivative::Derivative;
-use thiserror::Error;
-#[derive(Error, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Derivative)]
-#[derivative(Debug)]
-pub enum RequirementError {
-    #[error("\n  Found {0},\n  Expected None")]
-    ExpectedNoComponent(String),
-    #[error("\n  Found None,\n  Expected Some(_)")]
-    ExpectedAnyComponent,
-    #[error("\n  Found {1},\n  Expected {0}")]
-    ExpectedComponent(String, String),
-    #[error("\n  Found no component,\n  Expected {0}")]
-    ExpectedComponentFoundNone(String),
-}
-
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
-pub struct RequirementErrors {
-    pub errs: Vec<RequirementError>,
-}
-
-impl std::fmt::Display for RequirementErrors {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut first = true;
-        for v in &self.errs {
-            if !first {
-                write!(f, ", ")?;
-            } else {
-                first = false;
-            }
-            write!(f, "{}", v)?;
-        }
-        Ok(())
-    }
-}
-
 macro_rules! define_components {
     ( $($name:ident => $component:ty),* ) => {
         /// Register all components with the world.
@@ -127,6 +108,7 @@ macro_rules! define_components {
             // TODO: use https://users.rust-lang.org/t/is-it-possible-to-implement-debug-for-fn-type/14824/3
             // To make the matcher functions debuggable
             // $name: Box<dyn Fn(Option < &$component >) -> bool>,
+            // TODO: Use a trait for this and build structs & tuples of components, rather than checking them all
             $(
                 #[allow(unused)]
                 $name: Option <Option < $component >>,
@@ -181,19 +163,6 @@ macro_rules! define_components {
                     }
                 )*
                 Ok(entity)
-            }
-
-            #[must_use]
-            pub fn matches(&self, req: &Requirement) -> (Vec<Entity>, Vec<RequirementError>) {
-                let f = |entity| self.is_match(entity, req);
-                let mut mapper = DebugSystem::<Entity, RequirementError> {
-                    f: &f,
-                    results: Vec::new(),
-                    errors: Vec::new(),
-                };
-                mapper.run_now(&self.world);
-                // self.world.maintain(); // Nah?
-                (mapper.results, mapper.errors)
             }
         }
 
@@ -557,113 +526,6 @@ impl DBStorage {
             .entry(entity)
             .or_insert_with(HashSet::new)
             .insert(loc);
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Hash, PartialOrd, Ord)]
-pub struct DefinitionHead {
-    pub name: Path,
-    pub params: Option<Vec<Entity>>, // TODO: Restrict to valid def-args (variables and functions with optional default values)
-    pub path: Path,
-}
-
-impl DefinitionHead {
-    pub fn into_call(
-        self,
-        storage: &mut DBStorage,
-        path: PathRef,
-        loc: &Loc,
-        ty: Option<Entity>,
-    ) -> AstNode {
-        let name = AstTerm::Symbol {
-            name: self.name,
-            context: self.path,
-        }
-        .into_node(loc, None);
-        self.params.map_or(name.clone(), |children| {
-            let inner = storage.store_node(name, path);
-            AstTerm::Call { inner, children }.into_node(loc, ty)
-        })
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Hash, PartialOrd, Ord)]
-pub enum AstTerm {
-    Value(Val),
-    Symbol {
-        name: Path,
-        context: Path,
-    },
-    Sequence(Vec<Entity>), // TODO: Inline the vec somehow? Use a non empty vec?
-    Call {
-        inner: Entity,
-        children: Vec<Entity>,
-    },
-    Definition {
-        head: DefinitionHead,
-        implementations: Vec<Entity>,
-    },
-    DefinitionHead(DefinitionHead),
-}
-
-impl AstTerm {
-    #[must_use]
-    pub fn into_node(self, loc: &Loc, ty: Option<Entity>) -> AstNode {
-        AstNode {
-            term: self,
-            loc: loc.clone(),
-            ty,
-        }
-    }
-
-    pub fn into_definition(
-        self,
-        _storage: &mut DBStorage,
-        right: Entity,
-        loc: &Loc,
-    ) -> Result<AstNode, TError> {
-        Ok(match self {
-            AstTerm::Symbol { name, context } => AstTerm::Definition {
-                head: DefinitionHead {
-                    name,
-                    params: None,
-                    path: context,
-                },
-                implementations: vec![right],
-            },
-            AstTerm::DefinitionHead(head) => AstTerm::Definition {
-                head,
-                implementations: vec![right],
-            },
-            _ => {
-                return Err(TError::ParseError(
-                    format!("Cannot assign to {:?}", self),
-                    loc.clone().get_info(),
-                ));
-            }
-        }
-        .into_node(loc, None))
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct AstNode {
-    pub term: AstTerm,
-    pub loc: Loc,
-    pub ty: Option<Entity>,
-}
-
-impl AstNode {
-    pub fn into_definition(
-        self,
-        storage: &mut DBStorage,
-        right: Entity,
-        loc: &Loc,
-    ) -> Result<AstNode, TError> {
-        Ok(AstNode {
-            ty: self.ty,
-            ..self.term.into_definition(storage, right, loc)?
-        })
     }
 }
 

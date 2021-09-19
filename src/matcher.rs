@@ -1,4 +1,5 @@
-use crate::database::{DBStorage, Requirement, RequirementError, RequirementErrors};
+use crate::database::{DBStorage, Requirement};
+use crate::errors::{RequirementError, RequirementErrors};
 use derivative::Derivative;
 use specs::Entity;
 use thiserror::Error;
@@ -51,10 +52,7 @@ pub trait Matcher<Res = Vec<Entity>> {
 }
 
 impl<T> dyn Matcher<T> {
-    pub fn chain<'a, U>(
-        self,
-        other: impl Fn(&T) -> Box<dyn Matcher<U>> + 'a,
-    ) -> Chain<'a, T, U>
+    pub fn chain<'a, U>(self, other: impl Fn(&T) -> Box<dyn Matcher<U>> + 'a) -> Chain<'a, T, U>
     where
         Self: Sized,
     {

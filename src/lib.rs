@@ -19,6 +19,7 @@ pub mod primitives;
 // This is where all the compiler passes (rather than shared infrastructure) goes.
 pub mod passes;
 
+mod ast_node;
 mod components;
 mod location;
 mod matcher;

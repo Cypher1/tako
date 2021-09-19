@@ -6,7 +6,8 @@ use std::sync::Arc;
 use crate::ast::{
     path_to_string, Abs, Apply, BinOp, HasInfo, Info, Let, Node, PathRef, Sym, Symbol, ToNode, UnOp,
 };
-use crate::database::{AstNode, AstTerm, DBStorage, DefinitionHead};
+use crate::ast_node::{AstNode, AstTerm, DefinitionHead};
+use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::externs::{Direction, Semantic};
 use crate::location::Loc;
