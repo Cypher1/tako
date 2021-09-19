@@ -15,7 +15,7 @@ pub enum MatchErrReason {
 }
 
 impl MatchErrReason {
-    fn because(self: Self, errs: Vec<RequirementError>) -> MatchErr {
+    fn because(self, errs: Vec<RequirementError>) -> MatchErr {
         Fail(self, RequirementErrors { errs })
     }
 }
@@ -47,12 +47,12 @@ use MatchErr::*;
 use MatchErrReason::*;
 
 pub trait Matcher<Res = Vec<Entity>> {
-    fn run(self: &Self, storage: &DBStorage) -> Result<Res, MatchErr>;
+    fn run(&self, storage: &DBStorage) -> Result<Res, MatchErr>;
 }
 
 impl<T> dyn Matcher<T> {
     pub fn chain<'a, U>(
-        self: Self,
+        self,
         other: impl Fn(&T) -> Box<dyn Matcher<U>> + 'a,
     ) -> Chain<'a, T, U>
     where
@@ -64,7 +64,7 @@ impl<T> dyn Matcher<T> {
         }
     }
 
-    pub fn pair<'a, U>(self: Self, other: impl Matcher<U> + 'a) -> Pair<'a, T, U>
+    pub fn pair<'a, U>(self, other: impl Matcher<U> + 'a) -> Pair<'a, T, U>
     where
         Self: Sized,
     {
@@ -79,7 +79,7 @@ impl<T> dyn Matcher<T>
 where
     T: Eq,
 {
-    pub fn expect<'a>(self: &'a Self, other: impl Matcher<T> + 'a) -> Expect<'a, T> {
+    pub fn expect<'a>(&'a self, other: impl Matcher<T> + 'a) -> Expect<'a, T> {
         Expect {
             first: self,
             second: Box::new(other),
@@ -88,14 +88,14 @@ where
 }
 
 impl Matcher<Vec<Entity>> for Requirement {
-    fn run(self: &Self, storage: &DBStorage) -> Result<Vec<Entity>, MatchErr> {
+    fn run(&self, storage: &DBStorage) -> Result<Vec<Entity>, MatchErr> {
         let (res, _errs) = storage.matches(self);
         Ok(res)
     }
 }
 
 impl Matcher<Entity> for Requirement {
-    fn run(self: &Self, storage: &DBStorage) -> Result<Entity, MatchErr> {
+    fn run(&self, storage: &DBStorage) -> Result<Entity, MatchErr> {
         let (res, errs) = storage.matches(self);
         if res.is_empty() {
             return Err(ExpectedOneFoundNone.because(errs));
@@ -110,7 +110,7 @@ impl Matcher<Entity> for Requirement {
 pub struct NoMatches;
 
 impl Matcher<NoMatches> for Requirement {
-    fn run(self: &Self, storage: &DBStorage) -> Result<NoMatches, MatchErr> {
+    fn run(&self, storage: &DBStorage) -> Result<NoMatches, MatchErr> {
         let (res, errs) = storage.matches(self);
         if !res.is_empty() {
             return Err(ExpectedNoneFoundSome(res).because(errs));
@@ -125,7 +125,7 @@ pub struct Pair<'a, T, U> {
 }
 
 impl<'a, T, U> Matcher<(T, U)> for Pair<'a, T, U> {
-    fn run(self: &Self, storage: &DBStorage) -> Result<(T, U), MatchErr> {
+    fn run(&self, storage: &DBStorage) -> Result<(T, U), MatchErr> {
         Ok((
             self.first
                 .run(storage)
@@ -143,7 +143,7 @@ pub struct Chain<'a, T, U> {
 }
 
 impl<'a, T, U> Matcher<(T, U)> for Chain<'a, T, U> {
-    fn run(self: &Self, storage: &DBStorage) -> Result<(T, U), MatchErr> {
+    fn run(&self, storage: &DBStorage) -> Result<(T, U), MatchErr> {
         let left = self
             .first
             .run(storage)
@@ -161,7 +161,7 @@ pub struct Expect<'a, T: Eq> {
 }
 
 impl<'a> Matcher<Vec<Entity>> for Expect<'a, Vec<Entity>> {
-    fn run(self: &Self, storage: &DBStorage) -> Result<Vec<Entity>, MatchErr> {
+    fn run(&self, storage: &DBStorage) -> Result<Vec<Entity>, MatchErr> {
         let left = self
             .first
             .run(storage)
@@ -178,7 +178,7 @@ impl<'a> Matcher<Vec<Entity>> for Expect<'a, Vec<Entity>> {
 }
 
 impl<'a> Matcher<Entity> for Expect<'a, Entity> {
-    fn run(self: &Self, storage: &DBStorage) -> Result<Entity, MatchErr> {
+    fn run(&self, storage: &DBStorage) -> Result<Entity, MatchErr> {
         let left = self
             .first
             .run(storage)

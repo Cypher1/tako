@@ -106,11 +106,11 @@ impl std::fmt::Display for RequirementErrors {
         let mut first = true;
         for v in &self.errs {
             if !first {
-                write!(f, ", ");
+                write!(f, ", ")?;
             } else {
                 first = false;
             }
-            write!(f, "{}", v);
+            write!(f, "{}", v)?;
         }
         Ok(())
     }
