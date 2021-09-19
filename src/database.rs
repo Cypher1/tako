@@ -67,16 +67,52 @@ macro_rules! define_debug {
             }
             #[must_use]
             pub fn $func_all(&self) -> String {
-                let f = |entity| Some(self.$func(entity));
-                let mut mapper = DebugSystem::<String> {
+                let f = |entity| Ok(self.$func(entity));
+                let mut mapper = DebugSystem::<String, std::convert::Infallible> {
                     f: &f,
                     results: Vec::new(),
+                    errors: Vec::new(),
                 };
                 mapper.run_now(&self.world);
                 // self.world.maintain(); // Nah?
                 mapper.results.join("\n")
             }
         }
+    }
+}
+
+use derivative::Derivative;
+use thiserror::Error;
+#[derive(Error, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Derivative)]
+#[derivative(Debug)]
+pub enum RequirementError {
+    #[error("\n  Found {0},\n  Expected None")]
+    ExpectedNoComponent(String),
+    #[error("\n  Found None,\n  Expected Some(_)")]
+    ExpectedAnyComponent,
+    #[error("\n  Found {1},\n  Expected {0}")]
+    ExpectedComponent(String, String),
+    #[error("\n  Found no component,\n  Expected {0}")]
+    ExpectedComponentFoundNone(String),
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
+pub struct RequirementErrors {
+    pub errs: Vec<RequirementError>,
+}
+
+impl std::fmt::Display for RequirementErrors {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut first = true;
+        for v in &self.errs {
+            if !first {
+                write!(f, ", ");
+            } else {
+                first = false;
+            }
+            write!(f, "{}", v);
+        }
+        Ok(())
     }
 }
 
@@ -90,9 +126,10 @@ macro_rules! define_components {
         pub struct Requirement {
             // TODO: use https://users.rust-lang.org/t/is-it-possible-to-implement-debug-for-fn-type/14824/3
             // To make the matcher functions debuggable
+            // $name: Box<dyn Fn(Option < &$component >) -> bool>,
             $(
                 #[allow(unused)]
-                $name: Box<dyn Fn(Option < &$component >) -> bool>,
+                $name: Option <Option < $component >>,
             )*
         }
 
@@ -100,71 +137,63 @@ macro_rules! define_components {
             $(
                 paste! {
                     #[allow(unused)]
-                    fn [<expect_ $name >](mut self: Self, expected: Option<$component>) -> Self where $component: PartialEq {
-                        self.$name = Box::new(move |val: Option < &$component > | val == expected.as_ref());
-                        self
-                    }
-                    fn [<expect_not_ $name >](mut self: Self, expected: Option<$component>) -> Self where $component: PartialEq {
-                        self.$name = Box::new(move |val: Option < &$component > | val != expected.as_ref());
+                    pub fn [<with_ $name >](mut self: Self, expected: $component) -> Self where $component: PartialEq {
+                        self.$name = Some(Some(expected));
                         self
                     }
                     #[allow(unused)]
-                    fn [<is_ $name >](mut self: Self, expected: $component) -> Self where $component: PartialEq {
-                        self.[<expect_ $name >](Some(expected))
+                    pub fn [<with_any_ $name >](mut self: Self) -> Self where $component: PartialEq {
+                        self.$name = None;
+                        self
                     }
                     #[allow(unused)]
-                    fn [<is_not_ $name >](mut self: Self, expected: $component) -> Self where $component: PartialEq {
-                        self.[<expect_not_ $name >](Some(expected))
-                    }
-                    #[allow(unused)]
-                    fn [<is_none_ $name >](mut self: Self) -> Self where $component: PartialEq {
-                        self.[<expect_ $name >](None)
-                    }
-                    #[allow(unused)]
-                    fn [<is_not_none_ $name >](mut self: Self) -> Self where $component: PartialEq {
-                        self.[<expect_not_ $name >](None)
+                    pub fn [<with_no_ $name >](mut self: Self) -> Self where $component: PartialEq {
+                        self.$name = Some(None);
+                        self
                     }
                 }
             )*
         }
         impl Default for Requirement {
             fn default() -> Self {
-                Self { $( $name: Box::new(|_field: Option <&$component>| true),)* }
+                Self { $( $name: None, )* }
             }
         }
 
         impl DBStorage {
             #[allow(unused)]
-            fn is_match(self: &DBStorage, entity: Entity, req: &Requirement) -> bool {
+            pub fn is_match(self: &DBStorage, entity: Entity, req: &Requirement) -> Result<Entity, RequirementError> {
                 $(
                     {
                         let field_req = &req.$name;
-                        if !(field_req(self.world.read_storage::<$component>().get(entity))) {
-                            return false;
+                        if let Some(expectation) = field_req {
+                            let value = self.world.read_storage::<$component>().get(entity).cloned();
+                            if expectation != &value {
+                                use RequirementError::*;
+                                match (expectation, value) {
+                                    (None, None) => unreachable!(),
+                                    (None, Some(res)) => return Err(ExpectedNoComponent(format!("{0:?}", res))),
+                                    (Some(exp), None) => return Err(ExpectedComponentFoundNone(format!("{0:?}", exp))),
+                                    (Some(exp), Some(res)) => return Err(ExpectedComponent(format!("{0:?}", exp), format!("{0:?}", res))),
+                                }
+                            }
                         }
                     }
                 )*
-                true
-            }
-
-            fn match_or_none(self: &DBStorage, entity: Entity, req: &Requirement) -> Option<Entity> {
-                if self.is_match(entity, req) {
-                    Some(entity)
-                } else {
-                    None
-                }
+                Ok(entity)
             }
 
             #[must_use]
-            pub fn matches(&self, req: &Requirement) -> Vec<Entity> {
-                let f = |entity| self.match_or_none(entity, req);
-                let mut mapper = DebugSystem::<Entity> {
+            pub fn matches(&self, req: &Requirement) -> (Vec<Entity>, Vec<RequirementError>) {
+                let f = |entity| self.is_match(entity, req);
+                let mut mapper = DebugSystem::<Entity, RequirementError> {
                     f: &f,
                     results: Vec::new(),
+                    errors: Vec::new(),
                 };
                 mapper.run_now(&self.world);
                 // self.world.maintain(); // Nah?
-                mapper.results
+                (mapper.results, mapper.errors)
             }
         }
 
@@ -232,18 +261,20 @@ impl Default for DBStorage {
     }
 }
 
-struct DebugSystem<'a, T> {
-    f: &'a dyn Fn(Entity) -> Option<T>,
+struct DebugSystem<'a, T, E> {
+    f: &'a dyn Fn(Entity) -> Result<T, E>,
     results: Vec<T>,
+    errors: Vec<E>,
 }
 
-impl<'a, T> System<'a> for DebugSystem<'a, T> {
+impl<'a, T, E> System<'a> for DebugSystem<'a, T, E> {
     type SystemData = Entities<'a>;
 
     fn run(&mut self, entities: Self::SystemData) {
         for ent in (&*entities).join() {
-            if let Some(val) = (self.f)(ent) {
-                self.results.push(val);
+            match (self.f)(ent) {
+                Ok(val) => self.results.push(val),
+                Err(err) => self.errors.push(err),
             }
         }
     }

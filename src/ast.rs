@@ -8,15 +8,16 @@ use crate::location::Loc;
 use crate::primitives::{unit_type, Val};
 use crate::symbol_table::Table;
 
+use TError::{
+    CppCompilerError, ExpectedLetNode, InternalError, OutOfScopeTypeVariable, ParseError,
+    RequirementFailure, StackInterpreterRanOutOfArguments, StackInterpreterRanOutOfCode,
+    StaticPointerCardinality, TypeMismatch, TypeMismatch2, UnknownCardOfAbstractType,
+    UnknownEntity, UnknownInfixOperator, UnknownPath, UnknownPrefixOperator,
+    UnknownSizeOfAbstractType, UnknownSizeOfVariableType, UnknownSymbol, UnknownToken,
+    MatchError,
+};
 impl HasInfo for TError {
     fn get_info(&self) -> &Info {
-        use TError::{
-            CppCompilerError, ExpectedLetNode, InternalError, OutOfScopeTypeVariable, ParseError,
-            RequirementFailure, StackInterpreterRanOutOfArguments, StackInterpreterRanOutOfCode,
-            StaticPointerCardinality, TypeMismatch, TypeMismatch2, UnknownCardOfAbstractType,
-            UnknownEntity, UnknownInfixOperator, UnknownPath, UnknownPrefixOperator,
-            UnknownSizeOfAbstractType, UnknownSizeOfVariableType, UnknownSymbol, UnknownToken,
-        };
         match self {
             CppCompilerError(_, _, info)
             | UnknownToken(_, info, _)
@@ -37,17 +38,11 @@ impl HasInfo for TError {
             | InternalError(_, info)
             | UnknownPath(_, info)
             | UnknownEntity(_, info) => info,
+            | MatchError(_, info) => info,
             ExpectedLetNode(node) => node.get_info(),
         }
     }
     fn get_mut_info(&mut self) -> &mut Info {
-        use TError::{
-            CppCompilerError, ExpectedLetNode, InternalError, OutOfScopeTypeVariable, ParseError,
-            RequirementFailure, StackInterpreterRanOutOfArguments, StackInterpreterRanOutOfCode,
-            StaticPointerCardinality, TypeMismatch, TypeMismatch2, UnknownCardOfAbstractType,
-            UnknownEntity, UnknownInfixOperator, UnknownPath, UnknownPrefixOperator,
-            UnknownSizeOfAbstractType, UnknownSizeOfVariableType, UnknownSymbol, UnknownToken,
-        };
         match self {
             CppCompilerError(_, _, ref mut info)
             | UnknownToken(_, ref mut info, _)
@@ -68,6 +63,7 @@ impl HasInfo for TError {
             | InternalError(_, ref mut info)
             | UnknownPath(_, ref mut info)
             | UnknownEntity(_, ref mut info) => info,
+            | MatchError(_, ref mut info) => info,
             ExpectedLetNode(ref mut node) => node.get_mut_info(),
         }
     }

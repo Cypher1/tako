@@ -581,6 +581,10 @@ pub mod tests {
     use crate::errors::TError;
     use crate::primitives::{int32, string};
     use pretty_assertions::assert_eq;
+    use crate::database::Requirement;
+    use crate::components::*;
+    use crate::matcher::Matcher;
+    use crate::location::Loc;
 
     type Test = Result<(), TError>;
 
@@ -596,9 +600,13 @@ pub mod tests {
     }
 
     fn dbg_parse_entities(contents: &str) -> Result<String, TError> {
+        Ok(parse_entities(contents)?.1.format_entities())
+    }
+
+    fn parse_entities(contents: &str) -> Result<(Entity, DBStorage), TError> {
         let mut storage = DBStorage::default();
-        let _out = parse_impl(&mut storage, contents)?.1;
-        Ok(storage.format_entities())
+        let root = parse_impl(&mut storage, contents)?.1;
+        Ok((root, storage))
     }
 
     fn num_lit(x: i32) -> Box<Node> {
@@ -803,6 +811,23 @@ Entity 0:
  - HasValue(12)
  - InstancesAt(test.tk:1:1)"
         );
+        Ok(())
+    }
+
+    #[test]
+    fn match_entity_parse_num() -> Test {
+        let (root, storage) = parse_entities("12")?;
+        let start_pos = Loc::new("test.tk", 1, 1);
+        let first_token: &dyn Matcher<Entity> = &Requirement::default()
+            .with_instances_at(InstancesAt(set![start_pos]));
+        let is_12= Requirement::default()
+            .with_has_value(HasValue(Val::PrimVal(Prim::I32(12))));
+        let res = first_token.expect(is_12).run(&storage);
+        match &res {
+            Ok(_) => {},
+            Err(err) => {eprintln!("{0}", err);}
+        }
+        assert_eq!(res?, root);
         Ok(())
     }
 

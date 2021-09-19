@@ -47,6 +47,15 @@ pub struct Loc {
     pub pos: Pos,
 }
 
+impl Loc {
+    pub fn new(filename: &str, line: i32, col: i32) -> Loc {
+        Loc {
+            filename: Some(filename.to_string()),
+            pos: Pos { line, col },
+        }
+    }
+}
+
 impl std::fmt::Debug for Loc {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.filename {

@@ -65,6 +65,9 @@ pub enum TError {
 
     #[error("failed to find type recorded for path `{0}` at {1}")]
     UnknownPath(String, Info),
+
+    #[error("matched failed `{0}` at {1}")]
+    MatchError(MatchErr, Info),
 }
 
 impl From<std::fmt::Error> for TError {
@@ -84,5 +87,13 @@ impl From<std::num::ParseIntError> for TError {
     fn from(error: std::num::ParseIntError) -> Self {
         use TError::ParseError;
         ParseError(error.to_string(), Info::default())
+    }
+}
+
+use crate::matcher::MatchErr;
+impl From<MatchErr> for TError {
+    fn from(error: MatchErr) -> Self {
+        use TError::MatchError;
+        MatchError(error, Info::default())
     }
 }
