@@ -11,6 +11,7 @@ use crate::primitives::Val;
 use crate::symbol_table::Table;
 use directories::ProjectDirs;
 use log::{debug, info, warn};
+use paste::paste;
 use specs::prelude::*;
 use specs::World;
 use std::collections::{BTreeSet, HashMap, HashSet};
@@ -18,7 +19,6 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Arc;
-use paste::paste;
 
 fn to_file_path(context: PathRef) -> Path {
     let mut module = context.to_vec();

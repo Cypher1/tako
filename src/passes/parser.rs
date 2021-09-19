@@ -578,13 +578,13 @@ pub fn parse_string(
 #[cfg(test)]
 pub mod tests {
     use super::*;
+    use crate::components::*;
+    use crate::database::Requirement;
     use crate::errors::TError;
+    use crate::location::Loc;
+    use crate::matcher::Matcher;
     use crate::primitives::{int32, string};
     use pretty_assertions::assert_eq;
-    use crate::database::Requirement;
-    use crate::components::*;
-    use crate::matcher::Matcher;
-    use crate::location::Loc;
 
     type Test = Result<(), TError>;
 
@@ -818,14 +818,15 @@ Entity 0:
     fn match_entity_parse_num() -> Test {
         let (root, storage) = parse_entities("12")?;
         let start_pos = Loc::new("test.tk", 1, 1);
-        let first_token: &dyn Matcher<Entity> = &Requirement::default()
-            .with_instances_at(InstancesAt(set![start_pos]));
-        let is_12= Requirement::default()
-            .with_has_value(HasValue(Val::PrimVal(Prim::I32(12))));
+        let first_token: &dyn Matcher<Entity> =
+            &Requirement::default().with_instances_at(InstancesAt(set![start_pos]));
+        let is_12 = Requirement::default().with_has_value(HasValue(Val::PrimVal(Prim::I32(12))));
         let res = first_token.expect(is_12).run(&storage);
         match &res {
-            Ok(_) => {},
-            Err(err) => {eprintln!("{0}", err);}
+            Ok(_) => {}
+            Err(err) => {
+                eprintln!("{0}", err);
+            }
         }
         assert_eq!(res?, root);
         Ok(())

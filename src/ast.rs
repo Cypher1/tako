@@ -9,12 +9,12 @@ use crate::primitives::{unit_type, Val};
 use crate::symbol_table::Table;
 
 use TError::{
-    CppCompilerError, ExpectedLetNode, InternalError, OutOfScopeTypeVariable, ParseError,
-    RequirementFailure, StackInterpreterRanOutOfArguments, StackInterpreterRanOutOfCode,
-    StaticPointerCardinality, TypeMismatch, TypeMismatch2, UnknownCardOfAbstractType,
-    UnknownEntity, UnknownInfixOperator, UnknownPath, UnknownPrefixOperator,
-    UnknownSizeOfAbstractType, UnknownSizeOfVariableType, UnknownSymbol, UnknownToken,
-    MatchError,
+    CppCompilerError, ExpectedLetNode, InternalError, MatchError, OutOfScopeTypeVariable,
+    ParseError, RequirementFailure, StackInterpreterRanOutOfArguments,
+    StackInterpreterRanOutOfCode, StaticPointerCardinality, TypeMismatch, TypeMismatch2,
+    UnknownCardOfAbstractType, UnknownEntity, UnknownInfixOperator, UnknownPath,
+    UnknownPrefixOperator, UnknownSizeOfAbstractType, UnknownSizeOfVariableType, UnknownSymbol,
+    UnknownToken,
 };
 impl HasInfo for TError {
     fn get_info(&self) -> &Info {
@@ -38,7 +38,7 @@ impl HasInfo for TError {
             | InternalError(_, info)
             | UnknownPath(_, info)
             | UnknownEntity(_, info) => info,
-            | MatchError(_, info) => info,
+            MatchError(_, info) => info,
             ExpectedLetNode(node) => node.get_info(),
         }
     }
@@ -63,7 +63,7 @@ impl HasInfo for TError {
             | InternalError(_, ref mut info)
             | UnknownPath(_, ref mut info)
             | UnknownEntity(_, ref mut info) => info,
-            | MatchError(_, ref mut info) => info,
+            MatchError(_, ref mut info) => info,
             ExpectedLetNode(ref mut node) => node.get_mut_info(),
         }
     }

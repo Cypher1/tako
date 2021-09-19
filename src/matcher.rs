@@ -1,6 +1,6 @@
 use crate::database::{DBStorage, Requirement, RequirementError, RequirementErrors};
-use specs::Entity;
 use derivative::Derivative;
+use specs::Entity;
 use thiserror::Error;
 
 #[derive(Error, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Derivative)]
@@ -16,7 +16,7 @@ pub enum MatchErrReason {
 
 impl MatchErrReason {
     fn because(self: Self, errs: Vec<RequirementError>) -> MatchErr {
-        Fail(self, RequirementErrors{ errs })
+        Fail(self, RequirementErrors { errs })
     }
 }
 
@@ -43,8 +43,8 @@ pub enum MatchErr {
     ExpectationNotMet(Entity, Entity),
 }
 
-use MatchErrReason::*;
 use MatchErr::*;
+use MatchErrReason::*;
 
 pub trait Matcher<Res = Vec<Entity>> {
     fn run(self: &Self, storage: &DBStorage) -> Result<Res, MatchErr>;
@@ -79,8 +79,7 @@ impl<T> dyn Matcher<T>
 where
     T: Eq,
 {
-    pub fn expect<'a>(self: &'a Self, other: impl Matcher<T> + 'a) -> Expect<'a, T>
-    {
+    pub fn expect<'a>(self: &'a Self, other: impl Matcher<T> + 'a) -> Expect<'a, T> {
         Expect {
             first: self,
             second: Box::new(other),
