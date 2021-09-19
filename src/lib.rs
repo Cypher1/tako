@@ -22,6 +22,7 @@ pub mod passes;
 mod ast_node;
 mod components;
 mod location;
+mod map_system;
 mod matcher;
 mod symbol_table;
 mod tokens;

@@ -8,6 +8,7 @@ use crate::components::{
 use crate::errors::{RequirementError, TError};
 use crate::externs::get_externs;
 use crate::externs::{Extern, Semantic};
+use crate::map_system::MapSystem;
 use crate::primitives::Val;
 use crate::symbol_table::Table;
 use directories::ProjectDirs;
@@ -53,11 +54,7 @@ impl DBStorage {
     #[must_use]
     pub fn matches(&self, req: &Requirement) -> (Vec<Entity>, Vec<RequirementError>) {
         let f = |entity| self.is_match(entity, req);
-        let mut mapper = DebugSystem::<Entity, RequirementError> {
-            f: &f,
-            results: Vec::new(),
-            errors: Vec::new(),
-        };
+        let mut mapper = MapSystem::<Entity, RequirementError>::new(&f);
         mapper.run_now(&self.world);
         // self.world.maintain(); // Nah?
         (mapper.results, mapper.errors)
@@ -84,11 +81,7 @@ macro_rules! define_debug {
             #[must_use]
             pub fn $func_all(&self) -> String {
                 let f = |entity| Ok(self.$func(entity));
-                let mut mapper = DebugSystem::<String, std::convert::Infallible> {
-                    f: &f,
-                    results: Vec::new(),
-                    errors: Vec::new(),
-                };
+                let mut mapper = MapSystem::<String, std::convert::Infallible>::new(&f);
                 mapper.run_now(&self.world);
                 // self.world.maintain(); // Nah?
                 mapper.results.join("\n")
@@ -226,25 +219,6 @@ impl Default for DBStorage {
             defined_at: HashMap::default(),
             // refers_to: HashMap::default(),
             instance_at: HashMap::default(),
-        }
-    }
-}
-
-struct DebugSystem<'a, T, E> {
-    f: &'a dyn Fn(Entity) -> Result<T, E>,
-    results: Vec<T>,
-    errors: Vec<E>,
-}
-
-impl<'a, T, E> System<'a> for DebugSystem<'a, T, E> {
-    type SystemData = Entities<'a>;
-
-    fn run(&mut self, entities: Self::SystemData) {
-        for ent in (&*entities).join() {
-            match (self.f)(ent) {
-                Ok(val) => self.results.push(val),
-                Err(err) => self.errors.push(err),
-            }
         }
     }
 }
