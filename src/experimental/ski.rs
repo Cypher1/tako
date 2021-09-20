@@ -28,7 +28,7 @@ pub fn p(stack: &[Ski]) -> Ski {
 
 type Stack = VecDeque<Ski>;
 
-use Ski::{I, K, S, P, V};
+use Ski::{I, K, P, S, V};
 
 pub fn eval(mut stack: Stack) -> Stack {
     // debug!("{:?}", shows(&stack));
@@ -208,14 +208,7 @@ mod tests {
         βα
          */
         test(
-            toVecDeque(&[
-                S,
-                p(&[K, p(&[S, I])]),
-                K,
-                v("a"),
-                v("b"),
-            ]
-            ),
+            toVecDeque(&[S, p(&[K, p(&[S, I])]), K, v("a"), v("b")]),
             toVecDeque(&[v("b"), v("a")]),
         );
     }

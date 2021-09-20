@@ -31,7 +31,7 @@ impl Term {
         match self {
             Var { ind } => *ind == var,
             App { inner, arg } => inner.uses(var) || arg.uses(var),
-            Abs { inner } => inner.uses(var+1),
+            Abs { inner } => inner.uses(var + 1),
         }
     }
 
@@ -131,12 +131,12 @@ pub mod util {
 
     pub fn church_to_i32(t: Term) -> Result<i32, DecodeChurchError> {
         use DecodeChurchError::*;
-        let mut curr = if let Abs{inner} = t {
+        let mut curr = if let Abs { inner } = t {
             *inner
         } else {
             return Err(ExpectedAbstractionOverFunction(t));
         };
-        curr = if let Abs{inner} = curr {
+        curr = if let Abs { inner } = curr {
             *inner
         } else {
             return Err(ExpectedAbstractionOverBaseValue(curr));
@@ -145,7 +145,7 @@ pub mod util {
         loop {
             if var(0) == curr {
                 return Ok(n);
-            } else if let App{inner, arg} = curr {
+            } else if let App { inner, arg } = curr {
                 if var(1) == *inner {
                     curr = *arg;
                     n += 1;
@@ -169,7 +169,10 @@ pub mod util {
 
 #[cfg(test)]
 mod test {
-    use super::util::{church_bool, church_nat, church_not, church_succ, church_plus, church_to_i32, DecodeChurchError};
+    use super::util::{
+        church_bool, church_nat, church_not, church_plus, church_succ, church_to_i32,
+        DecodeChurchError,
+    };
     use super::*;
 
     #[test]
@@ -321,7 +324,10 @@ mod test {
     fn eval_church_succ_700() {
         let seven_hundred = church_nat(700);
         let seven_hundred_and_one = church_nat(701);
-        assert_eq!(app(church_succ(), seven_hundred).eval(), seven_hundred_and_one);
+        assert_eq!(
+            app(church_succ(), seven_hundred).eval(),
+            seven_hundred_and_one
+        );
     }
 
     #[test]
@@ -329,7 +335,10 @@ mod test {
     fn eval_church_succ_7000() {
         let seven_thousand = church_nat(7000);
         let seven_thousand_and_one = church_nat(7001);
-        assert_eq!(app(church_succ(), seven_thousand).eval(), seven_thousand_and_one);
+        assert_eq!(
+            app(church_succ(), seven_thousand).eval(),
+            seven_thousand_and_one
+        );
     }
 
     #[test]
@@ -344,12 +353,20 @@ mod test {
     fn eval_church_3_plus_4_to_i32_eq_7() {
         let three = church_nat(3);
         let four = church_nat(4);
-        assert_eq!(church_to_i32(app(app(church_plus(), three), four).eval()), Ok(7));
+        assert_eq!(
+            church_to_i32(app(app(church_plus(), three), four).eval()),
+            Ok(7)
+        );
     }
 
     #[test]
     fn fail_to_decode_true_as_nat() {
-        assert_eq!(church_to_i32(church_bool(true)), Err(DecodeChurchError::ExpectedFunctionApplicationOrBaseValue(var(1))));
+        assert_eq!(
+            church_to_i32(church_bool(true)),
+            Err(DecodeChurchError::ExpectedFunctionApplicationOrBaseValue(
+                var(1)
+            ))
+        );
     }
 
     #[test]
@@ -360,17 +377,28 @@ mod test {
 
     #[test]
     fn fail_to_decode_x_as_nat() {
-        assert_eq!(church_to_i32(var(0)), Err(DecodeChurchError::ExpectedAbstractionOverFunction(var(0))));
+        assert_eq!(
+            church_to_i32(var(0)),
+            Err(DecodeChurchError::ExpectedAbstractionOverFunction(var(0)))
+        );
     }
 
     #[test]
     fn fail_to_decode_x_y_as_nat() {
-        assert_eq!(church_to_i32(app(var(0), var(1))), Err(DecodeChurchError::ExpectedAbstractionOverFunction(app(var(0), var(1)))));
+        assert_eq!(
+            church_to_i32(app(var(0), var(1))),
+            Err(DecodeChurchError::ExpectedAbstractionOverFunction(app(
+                var(0),
+                var(1)
+            )))
+        );
     }
 
     #[test]
     fn fail_to_decode_id_as_nat() {
-        assert_eq!(church_to_i32(abs(var(0))), Err(DecodeChurchError::ExpectedAbstractionOverBaseValue(var(0))));
+        assert_eq!(
+            church_to_i32(abs(var(0))),
+            Err(DecodeChurchError::ExpectedAbstractionOverBaseValue(var(0)))
+        );
     }
-
 }
