@@ -23,7 +23,7 @@ impl fmt::Display for Ski {
 }
 
 pub fn p(stack: &[Ski]) -> Ski {
-    P(stack.to_vec().into())
+    P(toVecDeque(stack))
 }
 
 type Stack = VecDeque<Ski>;
@@ -125,6 +125,10 @@ pub fn shows(s: &Stack) -> String {
     show(&P(s.clone()))
 }
 
+fn toVecDeque(items: &[Ski]) -> VecDeque<Ski> {
+    items.iter().cloned().collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -134,35 +138,35 @@ mod tests {
         Ski::V(name.to_string())
     }
 
-    fn test(stack: Stack, expected: &Stack) {
+    fn test(stack: Stack, expected: Stack) {
         info!("Running: {:?}", &stack);
         let out = eval(stack);
         info!("Got: {:?}", &out);
 
-        assert_eq!(&out, expected);
+        assert_eq!(out, expected);
     }
 
     #[test]
     fn term_i() {
         test(
-            vec![I, v("x"), v("y"), v("z")].into(),
-            &vec![v("x"), v("y"), v("z")].into(),
+            toVecDeque(&[I, v("x"), v("y"), v("z")]),
+            toVecDeque(&[v("x"), v("y"), v("z")]),
         );
     }
 
     #[test]
     fn term_k() {
         test(
-            vec![K, v("x"), v("y"), v("z")].into(),
-            &vec![v("x"), v("z")].into(),
+            toVecDeque(&[K, v("x"), v("y"), v("z")]),
+            toVecDeque(&[v("x"), v("z")]),
         );
     }
 
     #[test]
     fn term_s() {
         test(
-            vec![S, v("x"), v("y"), v("z")].into(),
-            &vec![v("x"), v("z"), P(vec![v("y"), v("z")].into())].into(),
+            toVecDeque(&[S, v("x"), v("y"), v("z")]),
+            toVecDeque(&[v("x"), v("z"), P(toVecDeque(&[v("y"), v("z")]))]),
         );
     }
 
@@ -170,8 +174,8 @@ mod tests {
     fn abc_to_a() {
         // S(KK)K
         test(
-            vec![S, p(&[K, K]), K, v("a"), v("b"), v("c")].into(),
-            vec![v("a")].into(),
+            toVecDeque(&[S, p(&[K, K]), K, v("a"), v("b"), v("c")]),
+            toVecDeque(&[v("a")]),
         );
     }
 
@@ -179,8 +183,8 @@ mod tests {
     fn abc_to_b() {
         // KK
         test(
-            vec![K, K, v("a"), v("b"), v("c")].into(),
-            vec![v("b")].into(),
+            toVecDeque(&[K, K, v("a"), v("b"), v("c")]),
+            toVecDeque(&[v("b")]),
         );
     }
 
@@ -188,8 +192,8 @@ mod tests {
     fn abc_to_c() {
         // SSK(SK)
         test(
-            vec![S, S, K, p(&[S, K]), v("a"), v("b"), v("c")].into(),
-            vec![v("c")].into(),
+            toVecDeque(&[S, S, K, p(&[S, K]), v("a"), v("b"), v("c")]),
+            toVecDeque(&[v("c")]),
         );
     }
 
@@ -204,15 +208,15 @@ mod tests {
         βα
          */
         test(
-            vec![
+            toVecDeque(&[
                 S,
                 p(&[K, p(&[S, I])]),
                 K,
                 v("a"),
                 v("b"),
             ]
-            .into(),
-            &vec![v("b"), v("a")].into(),
+            ),
+            toVecDeque(&[v("b"), v("a")]),
         );
     }
 }

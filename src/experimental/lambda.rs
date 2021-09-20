@@ -93,7 +93,7 @@ impl Term {
 }
 
 pub mod util {
-    use super::{abs, app, var, Term};
+    use super::{abs, app, var, Abs, App, Term};
 
     pub fn church_bool(b: bool) -> Term {
         abs(abs(var(if b { 1 } else { 0 })))
@@ -169,7 +169,7 @@ pub mod util {
 
 #[cfg(test)]
 mod test {
-    use super::util::{church_bool, church_nat, church_not, church_plus};
+    use super::util::{church_bool, church_nat, church_not, church_succ, church_plus, church_to_i32, DecodeChurchError};
     use super::*;
 
     #[test]
