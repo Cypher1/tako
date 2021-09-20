@@ -6,7 +6,7 @@ use ski::{p, Ski};
 use lambda::{Delta, Ind, Term};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Debug)]
-enum Lambski {
+pub enum Lambski {
     Var {
         ind: Ind,
     },
@@ -214,8 +214,6 @@ impl lambda::Term {
 
 #[cfg(test)]
 mod test {
-    use std::collections::VecDeque;
-
     use super::*;
     use lambda::util::*;
     use pretty_assertions::assert_eq;

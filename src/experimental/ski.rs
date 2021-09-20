@@ -23,7 +23,7 @@ impl fmt::Display for Ski {
 }
 
 pub fn p(stack: &[Ski]) -> Ski {
-    P(toVecDeque(stack))
+    P(to_vec_deque(stack))
 }
 
 type Stack = VecDeque<Ski>;
@@ -125,7 +125,7 @@ pub fn shows(s: &Stack) -> String {
     show(&P(s.clone()))
 }
 
-fn toVecDeque(items: &[Ski]) -> VecDeque<Ski> {
+fn to_vec_deque(items: &[Ski]) -> VecDeque<Ski> {
     items.iter().cloned().collect()
 }
 
@@ -149,24 +149,24 @@ mod tests {
     #[test]
     fn term_i() {
         test(
-            toVecDeque(&[I, v("x"), v("y"), v("z")]),
-            toVecDeque(&[v("x"), v("y"), v("z")]),
+            to_vec_deque(&[I, v("x"), v("y"), v("z")]),
+            to_vec_deque(&[v("x"), v("y"), v("z")]),
         );
     }
 
     #[test]
     fn term_k() {
         test(
-            toVecDeque(&[K, v("x"), v("y"), v("z")]),
-            toVecDeque(&[v("x"), v("z")]),
+            to_vec_deque(&[K, v("x"), v("y"), v("z")]),
+            to_vec_deque(&[v("x"), v("z")]),
         );
     }
 
     #[test]
     fn term_s() {
         test(
-            toVecDeque(&[S, v("x"), v("y"), v("z")]),
-            toVecDeque(&[v("x"), v("z"), P(toVecDeque(&[v("y"), v("z")]))]),
+            to_vec_deque(&[S, v("x"), v("y"), v("z")]),
+            to_vec_deque(&[v("x"), v("z"), P(to_vec_deque(&[v("y"), v("z")]))]),
         );
     }
 
@@ -174,8 +174,8 @@ mod tests {
     fn abc_to_a() {
         // S(KK)K
         test(
-            toVecDeque(&[S, p(&[K, K]), K, v("a"), v("b"), v("c")]),
-            toVecDeque(&[v("a")]),
+            to_vec_deque(&[S, p(&[K, K]), K, v("a"), v("b"), v("c")]),
+            to_vec_deque(&[v("a")]),
         );
     }
 
@@ -183,8 +183,8 @@ mod tests {
     fn abc_to_b() {
         // KK
         test(
-            toVecDeque(&[K, K, v("a"), v("b"), v("c")]),
-            toVecDeque(&[v("b")]),
+            to_vec_deque(&[K, K, v("a"), v("b"), v("c")]),
+            to_vec_deque(&[v("b")]),
         );
     }
 
@@ -192,8 +192,8 @@ mod tests {
     fn abc_to_c() {
         // SSK(SK)
         test(
-            toVecDeque(&[S, S, K, p(&[S, K]), v("a"), v("b"), v("c")]),
-            toVecDeque(&[v("c")]),
+            to_vec_deque(&[S, S, K, p(&[S, K]), v("a"), v("b"), v("c")]),
+            to_vec_deque(&[v("c")]),
         );
     }
 
@@ -208,8 +208,8 @@ mod tests {
         βα
          */
         test(
-            toVecDeque(&[S, p(&[K, p(&[S, I])]), K, v("a"), v("b")]),
-            toVecDeque(&[v("b"), v("a")]),
+            to_vec_deque(&[S, p(&[K, p(&[S, I])]), K, v("a"), v("b")]),
+            to_vec_deque(&[v("b"), v("a")]),
         );
     }
 }
