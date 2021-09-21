@@ -47,51 +47,56 @@ pub enum MatchErr {
 use MatchErr::*;
 use MatchErrReason::*;
 
-pub trait Matcher<Res = Vec<Entity>> {
-    fn run(&self, storage: &DBStorage) -> Result<Res, MatchErr>;
+pub trait Matcher {
+    type Res;
+    fn run(&self, storage: &DBStorage) -> Result<Self::Res, MatchErr>;
 
-    /*
-    fn chain<'a, U>(self, other: impl Fn(&Res) -> Box<dyn Matcher<U>> + 'a) -> Chain<'a, Res, U>
-    where
-        Self: Sized + 'a,
-    {
+    fn chain<U: Matcher>(self, other: impl Fn(&Self::Res) -> U + 'static) -> Chain<Self, U>
+        where Self: Sized {
         Chain {
-            first: Box::new(self),
+            first: self,
             second: Box::new(other),
         }
     }
 
-    fn pair<'a, U>(self, other: impl Matcher<U> + 'a) -> Pair<'a, Res, U>
-    where
-        Self: Sized + 'a,
-    {
+    fn pair<U: Matcher>(self, other: U) -> Pair<Self, U>
+        where Self: Sized {
         Pair {
-            first: Box::new(self),
-            second: Box::new(other),
+            first: self,
+            second: other,
         }
-    }*/
-}
-
-impl Requirement {
-    pub fn expected<'a, T: Eq>(self, other: impl Matcher<T> + 'a) -> Expect<'a, T> 
-    where Requirement: Matcher<T> {
+    }
+    fn expect<U: Matcher<Res=Vec<Entity>>>(self, other: U) -> Expect<Self, U>
+    where Self: Sized + Matcher<Res=Vec<Entity>> {
         Expect {
-            first: Box::new(self),
-            second: Box::new(other),
+            first: self,
+            second: other,
+        }
+    }
+    fn expect_one<U: Matcher<Res=Entity>>(self, other: U) -> ExpectOne<Self, U>
+        where Self: Sized + Matcher<Res=Entity> {
+        ExpectOne {
+            first: self,
+            second: other,
         }
     }
 }
 
-impl Matcher<Vec<Entity>> for Requirement {
-    fn run(&self, storage: &DBStorage) -> Result<Vec<Entity>, MatchErr> {
+impl Matcher for Requirement {
+    type Res = Vec<Entity>;
+    fn run(&self, storage: &DBStorage) -> Result<Self::Res, MatchErr> {
         let (res, _errs) = storage.matches(self);
         Ok(res)
     }
 }
 
-impl Matcher<Entity> for Requirement {
+struct One(Requirement);
+
+impl Matcher for One {
+    type Res = Entity;
+
     fn run(&self, storage: &DBStorage) -> Result<Entity, MatchErr> {
-        let (res, errs) = storage.matches(self);
+        let (res, errs) = storage.matches(&self.0);
         if res.is_empty() {
             return Err(ExpectedOneFoundNone.because(errs));
         }
@@ -102,25 +107,27 @@ impl Matcher<Entity> for Requirement {
     }
 }
 
-pub struct NoMatches;
+pub struct NoMatches(Requirement);
 
-impl Matcher<NoMatches> for Requirement {
-    fn run(&self, storage: &DBStorage) -> Result<NoMatches, MatchErr> {
-        let (res, errs) = storage.matches(self);
+impl Matcher for NoMatches {
+    type Res = ();
+    fn run(&self, storage: &DBStorage) -> Result<Self::Res, MatchErr> {
+        let (res, errs) = storage.matches(&self.0);
         if !res.is_empty() {
             return Err(ExpectedNoneFoundSome(res).because(errs));
         }
-        Ok(NoMatches)
+        Ok(())
     }
 }
 
-pub struct Pair<'a, T, U> {
-    first: Box<dyn Matcher<T>>,
-    second: Box<dyn Matcher<U> + 'a>,
+pub struct Pair<T: Matcher, U: Matcher> {
+    first: T,
+    second: U,
 }
 
-impl<'a, T, U> Matcher<(T, U)> for Pair<'a, T, U> {
-    fn run(&self, storage: &DBStorage) -> Result<(T, U), MatchErr> {
+impl<T: Matcher, U: Matcher> Matcher for Pair<T, U> {
+    type Res = (T::Res, U::Res);
+    fn run(&self, storage: &DBStorage) -> Result<Self::Res, MatchErr> {
         Ok((
             self.first
                 .run(storage)
@@ -132,13 +139,14 @@ impl<'a, T, U> Matcher<(T, U)> for Pair<'a, T, U> {
     }
 }
 
-pub struct Chain<'a, T, U> {
-    first: Box<dyn Matcher<T>>,
-    second: Box<dyn Fn(&T) -> Box<dyn Matcher<U>> + 'a>,
+pub struct Chain<T: Matcher, U: Matcher> {
+    first: T,
+    second: Box<dyn Fn(&T::Res) -> U>,
 }
 
-impl<'a, T, U> Matcher<(T, U)> for Chain<'a, T, U> {
-    fn run(&self, storage: &DBStorage) -> Result<(T, U), MatchErr> {
+impl<T: Matcher, U: Matcher> Matcher for Chain<T, U> {
+    type Res = (T::Res, U::Res);
+    fn run(&self, storage: &DBStorage) -> Result<Self::Res, MatchErr> {
         let left = self
             .first
             .run(storage)
@@ -150,13 +158,14 @@ impl<'a, T, U> Matcher<(T, U)> for Chain<'a, T, U> {
     }
 }
 
-pub struct Expect<'a, T: Eq> {
-    first: Box<dyn Matcher<T> + 'a>,
-    second: Box<dyn Matcher<T> + 'a>,
+pub struct Expect<T: Matcher, U: Matcher> {
+    first: T,
+    second: U,
 }
 
-impl<'a> Matcher<Vec<Entity>> for Expect<'a, Vec<Entity>> {
-    fn run(&self, storage: &DBStorage) -> Result<Vec<Entity>, MatchErr> {
+impl <T: Matcher<Res=Vec<Entity>>, U: Matcher<Res=Vec<Entity>>> Matcher for Expect<T, U> {
+    type Res = T::Res;
+    fn run(&self, storage: &DBStorage) -> Result<Self::Res, MatchErr> {
         let left = self
             .first
             .run(storage)
@@ -172,8 +181,14 @@ impl<'a> Matcher<Vec<Entity>> for Expect<'a, Vec<Entity>> {
     }
 }
 
-impl<'a> Matcher<Entity> for Expect<'a, Entity> {
-    fn run(&self, storage: &DBStorage) -> Result<Entity, MatchErr> {
+pub struct ExpectOne<T: Matcher, U: Matcher> {
+    first: T,
+    second: U,
+}
+
+impl <T: Matcher<Res=Entity>, U: Matcher<Res=Entity>> Matcher for ExpectOne<T, U> {
+    type Res = T::Res;
+    fn run(&self, storage: &DBStorage) -> Result<Self::Res, MatchErr> {
         let left = self
             .first
             .run(storage)

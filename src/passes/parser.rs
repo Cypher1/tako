@@ -834,11 +834,11 @@ Entity 0:
         let (root, storage) = parse_entities("12")?;
         Ok(assert_eq_err(
             Requirement::with_instances_at(InstancesAt(set![Loc::new("test.tk", 1, 1)]))
-                .expected(
+                .expect(
                     Requirement::with_has_value(HasValue(Val::PrimVal(Prim::I32(12)))),
                 )
                 .run(&storage),
-            root,
+            vec![root],
         )?)
     }
 
