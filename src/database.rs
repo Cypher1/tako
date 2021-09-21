@@ -112,7 +112,11 @@ macro_rules! define_components {
             $(
                 paste! {
                     #[allow(unused)]
-                    pub fn [<with_ $name >](mut self: Self, expected: $component) -> Self where $component: PartialEq {
+                    pub fn [<with_ $name >](expected: $component) -> Requirement where $component: PartialEq {
+                        Requirement::default().[<and_ $name>](expected)
+                    }
+                    #[allow(unused)]
+                    pub fn [<and_ $name >](mut self: Self, expected: $component) -> Self where $component: PartialEq {
                         self.$name = Some(Some(expected));
                         self
                     }

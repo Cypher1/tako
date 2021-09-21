@@ -6,6 +6,7 @@ use specs::prelude::*;
 use specs::Component;
 use std::collections::BTreeSet;
 
+// TODO: Use macro for defining and registering each of these.
 #[derive(Component, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[storage(VecStorage)]
 pub struct DefinedAt(pub Option<Path>);

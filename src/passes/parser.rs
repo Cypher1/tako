@@ -815,22 +815,31 @@ Entity 0:
         Ok(())
     }
 
-    #[test]
-    fn match_entity_parse_num() -> Test {
-        let (root, storage) = parse_entities("12")?;
-        let start_pos = Loc::new("test.tk", 1, 1);
-        let first_token: &dyn Matcher<Entity> =
-            &Requirement::default().with_instances_at(InstancesAt(set![start_pos]));
-        let is_12 = Requirement::default().with_has_value(HasValue(Val::PrimVal(Prim::I32(12))));
-        let res = first_token.expect(is_12).run(&storage);
+    fn assert_eq_err<T: PartialEq + std::fmt::Debug, E: std::fmt::Display>(
+        res: Result<T, E>,
+        rhs: T,
+    ) -> Result<(), E> {
         match &res {
             Ok(_) => {}
             Err(err) => {
                 eprintln!("{0}", err);
             }
         }
-        assert_eq!(res?, root);
+        assert_eq!(res?, rhs);
         Ok(())
+    }
+
+    #[test]
+    fn match_entity_parse_num() -> Test {
+        let (root, storage) = parse_entities("12")?;
+        Ok(assert_eq_err(
+            Requirement::with_instances_at(InstancesAt(set![Loc::new("test.tk", 1, 1)]))
+                .expected(
+                    Requirement::with_has_value(HasValue(Val::PrimVal(Prim::I32(12)))),
+                )
+                .run(&storage),
+            root,
+        )?)
     }
 
     #[test]

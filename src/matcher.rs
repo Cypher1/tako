@@ -49,12 +49,11 @@ use MatchErrReason::*;
 
 pub trait Matcher<Res = Vec<Entity>> {
     fn run(&self, storage: &DBStorage) -> Result<Res, MatchErr>;
-}
 
-impl<T> dyn Matcher<T> {
-    pub fn chain<'a, U>(self, other: impl Fn(&T) -> Box<dyn Matcher<U>> + 'a) -> Chain<'a, T, U>
+    /*
+    fn chain<'a, U>(self, other: impl Fn(&Res) -> Box<dyn Matcher<U>> + 'a) -> Chain<'a, Res, U>
     where
-        Self: Sized,
+        Self: Sized + 'a,
     {
         Chain {
             first: Box::new(self),
@@ -62,24 +61,22 @@ impl<T> dyn Matcher<T> {
         }
     }
 
-    pub fn pair<'a, U>(self, other: impl Matcher<U> + 'a) -> Pair<'a, T, U>
+    fn pair<'a, U>(self, other: impl Matcher<U> + 'a) -> Pair<'a, Res, U>
     where
-        Self: Sized,
+        Self: Sized + 'a,
     {
         Pair {
             first: Box::new(self),
             second: Box::new(other),
         }
-    }
+    }*/
 }
 
-impl<T> dyn Matcher<T>
-where
-    T: Eq,
-{
-    pub fn expect<'a>(&'a self, other: impl Matcher<T> + 'a) -> Expect<'a, T> {
+impl Requirement {
+    pub fn expected<'a, T: Eq>(self, other: impl Matcher<T> + 'a) -> Expect<'a, T> 
+    where Requirement: Matcher<T> {
         Expect {
-            first: self,
+            first: Box::new(self),
             second: Box::new(other),
         }
     }
@@ -154,7 +151,7 @@ impl<'a, T, U> Matcher<(T, U)> for Chain<'a, T, U> {
 }
 
 pub struct Expect<'a, T: Eq> {
-    first: &'a dyn Matcher<T>,
+    first: Box<dyn Matcher<T> + 'a>,
     second: Box<dyn Matcher<T> + 'a>,
 }
 
