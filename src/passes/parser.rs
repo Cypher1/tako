@@ -802,16 +802,20 @@ pub mod tests {
         Ok(())
     }
 
-    #[test]
-    fn entity_parse_num() -> Test {
-        assert_str_eq!(
-            dbg_parse_entities("12")?,
-            "\
-Entity 0:
- - HasValue(12)
- - InstancesAt(test.tk:1:1)"
-        );
-        Ok(())
+    fn log_err<T, E: std::fmt::Display>(res: Result<T, E>) -> Result<T, E> {
+        res.map_err(|err| {
+            eprintln!("{0}", &err);
+            err
+        })
+    }
+
+    fn assert_no_err<T: std::fmt::Debug, E: std::fmt::Display>(
+        res: Result<T, E>,
+    ) -> Result<(), TError>
+    where
+        TError: From<E>,
+    {
+        Ok(log_err(res).map(|_| ())?)
     }
 
     fn assert_eq_err<T: PartialEq + std::fmt::Debug, E: std::fmt::Display>(
@@ -821,18 +825,12 @@ Entity 0:
     where
         TError: From<E>,
     {
-        match &res {
-            Ok(_) => {}
-            Err(err) => {
-                eprintln!("{0}", err);
-            }
-        }
-        assert_eq!(res?, rhs);
+        assert_eq!(log_err(res)?, rhs);
         Ok(())
     }
 
     #[test]
-    fn match_entity_parse_num() -> Test {
+    fn entity_parse_num() -> Test {
         let (root, storage) = parse_entities("12")?;
         assert_eq_err(
             InstancesAt::new(Loc::new("test.tk", 1, 1))
@@ -840,6 +838,27 @@ Entity 0:
                 .one()
                 .run(&storage),
             root,
+        )
+    }
+
+    #[test]
+    fn match_entity_parse_num_with_type_annotation() -> Test {
+        let (_root, storage) = parse_entities("12 : Int")?;
+        assert_no_err(
+            SymbolRef {
+                name: vec![Symbol::new("Int")],
+                context: vec![Symbol::with_ext("test", "tk")],
+            }
+            .expect(DefinedAt(None))
+            .expect(InstancesAt::new(Loc::new("test.tk", 1, 6)))
+            .one()
+            .chain(|ty_id| {
+                HasValue::new(Prim::I32(12))
+                    .expect(InstancesAt::new(Loc::new("test.tk", 1, 1)))
+                    .expect(HasType(*ty_id))
+                    .one()
+            })
+            .run(&storage),
         )
     }
 

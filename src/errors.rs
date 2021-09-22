@@ -101,13 +101,13 @@ impl From<MatchErr> for TError {
 #[derive(Error, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Derivative)]
 #[derivative(Debug)]
 pub enum RequirementError {
-    #[error("\n  Found {0},\n  Expected None")]
+    #[error("\n  Found {0},\n    Expected None")]
     ExpectedNoComponent(String),
-    #[error("\n  Found None,\n  Expected Some(_)")]
+    #[error("\n  Found None,\n    Expected Some(_)")]
     ExpectedAnyComponent,
-    #[error("\n  Found {1},\n  Expected {0}")]
+    #[error("\n  Found {1},\n    Expected {0}")]
     ExpectedComponent(String, String),
-    #[error("\n  Found no component,\n  Expected {0}")]
+    #[error("\n  Found None,\n    Expected {0}")]
     ExpectedComponentFoundNone(String),
 }
 

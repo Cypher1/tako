@@ -418,7 +418,14 @@ impl fmt::Display for Symbol {
 impl Symbol {
     #[must_use]
     pub fn new(name: &str) -> Symbol {
+        if name.contains('.') || name.contains("::") {
+            panic!("Illegal symbol name '{}'", name);
+        }
         Symbol::Named(name.to_string(), None)
+    }
+    #[must_use]
+    pub fn with_ext(name: &str, ext: &str) -> Symbol {
+        Symbol::Named(name.to_string(), Some(ext.to_string()))
     }
     #[must_use]
     pub fn to_name(self: &Symbol) -> String {
