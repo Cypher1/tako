@@ -1,4 +1,4 @@
-use crate::database::{DBStorage, Requirement};
+use crate::database::DBStorage;
 use crate::errors::{RequirementError, RequirementErrors};
 use derivative::Derivative;
 use specs::Entity;
@@ -19,7 +19,7 @@ pub enum MatchErrReason {
     ExpectationNotMet(Entity, Entity),
 }
 
-type Log = Vec<RequirementError>;
+pub type Log = Vec<RequirementError>;
 
 impl MatchErrReason {
     fn because(self, errs: Log) -> MatchErr {
@@ -59,17 +59,23 @@ pub trait Matcher {
     fn run_with_errs(&self, storage: &DBStorage) -> Result<(Self::Res, Log), MatchErr>;
 
     fn one(self) -> One<Self>
-        where Self: Sized + Matcher<Res=Vec<Entity>> {
+    where
+        Self: Sized + Matcher<Res = Vec<Entity>>,
+    {
         One(self)
     }
 
     fn none(self) -> NoMatches<Self>
-        where Self: Sized + Matcher<Res=Vec<Entity>> {
+    where
+        Self: Sized + Matcher<Res = Vec<Entity>>,
+    {
         NoMatches(self)
     }
 
     fn chain<U: Matcher>(self, other: impl Fn(&Self::Res) -> U + 'static) -> Chain<Self, U>
-        where Self: Sized {
+    where
+        Self: Sized,
+    {
         Chain {
             first: self,
             second: Box::new(other),
@@ -77,14 +83,18 @@ pub trait Matcher {
     }
 
     fn pair<U: Matcher>(self, other: U) -> Pair<Self, U>
-        where Self: Sized {
+    where
+        Self: Sized,
+    {
         Pair {
             first: self,
             second: other,
         }
     }
-    fn expect<U: Matcher<Res=Vec<Entity>>>(self, other: U) -> Expect<Self, U>
-    where Self: Sized + Matcher<Res=Vec<Entity>> {
+    fn expect<U: Matcher<Res = Vec<Entity>>>(self, other: U) -> Expect<Self, U>
+    where
+        Self: Sized + Matcher<Res = Vec<Entity>>,
+    {
         Expect {
             first: self,
             second: other,
@@ -92,16 +102,9 @@ pub trait Matcher {
     }
 }
 
-impl Matcher for Requirement {
-    type Res = Vec<Entity>;
-    fn run_with_errs(&self, storage: &DBStorage) -> Result<(Self::Res, Log), MatchErr> {
-        Ok(storage.matches(self))
-    }
-}
+pub struct One<T: Matcher<Res = Vec<Entity>>>(T);
 
-pub struct One<T: Matcher<Res=Vec<Entity>>>(T);
-
-impl <T: Matcher<Res=Vec<Entity>>> Matcher for One<T> {
+impl<T: Matcher<Res = Vec<Entity>>> Matcher for One<T> {
     type Res = Entity;
 
     fn run_with_errs(&self, storage: &DBStorage) -> Result<(Entity, Log), MatchErr> {
@@ -116,9 +119,9 @@ impl <T: Matcher<Res=Vec<Entity>>> Matcher for One<T> {
     }
 }
 
-pub struct NoMatches<T: Matcher<Res=Vec<Entity>>>(T);
+pub struct NoMatches<T: Matcher<Res = Vec<Entity>>>(T);
 
-impl <T: Matcher<Res=Vec<Entity>>> Matcher for NoMatches<T> {
+impl<T: Matcher<Res = Vec<Entity>>> Matcher for NoMatches<T> {
     type Res = ();
     fn run_with_errs(&self, storage: &DBStorage) -> Result<(Self::Res, Log), MatchErr> {
         let (res, errs) = self.0.run_with_errs(storage)?;
@@ -137,12 +140,14 @@ pub struct Pair<T: Matcher, U: Matcher> {
 impl<T: Matcher, U: Matcher> Matcher for Pair<T, U> {
     type Res = (T::Res, U::Res);
     fn run_with_errs(&self, storage: &DBStorage) -> Result<(Self::Res, Log), MatchErr> {
-        let (f, f_errs) = self.first
-                .run_with_errs(storage)
-                .map_err(|err| PairErrorInLeft(Box::new(err)))?;
-        let (s, s_errs) = self.second
-                .run_with_errs(storage)
-                .map_err(|err| PairErrorInRight(Box::new(err)))?;
+        let (f, f_errs) = self
+            .first
+            .run_with_errs(storage)
+            .map_err(|err| PairErrorInLeft(Box::new(err)))?;
+        let (s, s_errs) = self
+            .second
+            .run_with_errs(storage)
+            .map_err(|err| PairErrorInRight(Box::new(err)))?;
         let mut errs = f_errs;
         errs.extend(s_errs);
         Ok(((f, s), errs))
@@ -175,7 +180,7 @@ pub struct Expect<T: Matcher, U: Matcher> {
     second: U,
 }
 
-impl <T: Matcher<Res=Vec<Entity>>, U: Matcher<Res=Vec<Entity>>> Matcher for Expect<T, U> {
+impl<T: Matcher<Res = Vec<Entity>>, U: Matcher<Res = Vec<Entity>>> Matcher for Expect<T, U> {
     type Res = T::Res;
     fn run_with_errs(&self, storage: &DBStorage) -> Result<(Self::Res, Log), MatchErr> {
         let (left, l_errs) = self
@@ -200,7 +205,7 @@ pub struct ExpectOne<T: Matcher, U: Matcher> {
     second: U,
 }
 
-impl <T: Matcher<Res=Entity>, U: Matcher<Res=Entity>> Matcher for ExpectOne<T, U> {
+impl<T: Matcher<Res = Entity>, U: Matcher<Res = Entity>> Matcher for ExpectOne<T, U> {
     type Res = T::Res;
     fn run_with_errs(&self, storage: &DBStorage) -> Result<(Self::Res, Log), MatchErr> {
         let (left, l_errs) = self

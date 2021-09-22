@@ -5,6 +5,7 @@ use crate::components::{
     Call, DefinedAt, Definition, HasErrors, HasType, HasValue, InstancesAt, Sequence, SymbolRef,
     Untyped,
 };
+use crate::matcher::{Matcher, Log, MatchErr};
 use crate::errors::{RequirementError, TError};
 use crate::externs::get_externs;
 use crate::externs::{Extern, Semantic};
@@ -13,7 +14,6 @@ use crate::primitives::Val;
 use crate::symbol_table::Table;
 use directories::ProjectDirs;
 use log::{debug, info, warn};
-use paste::paste;
 use specs::prelude::*;
 use specs::World;
 use std::collections::{BTreeSet, HashMap, HashSet};
@@ -50,17 +50,6 @@ pub struct DBStorage {
     instance_at: HashMap<Entity, HashSet<Loc>>,
 }
 
-impl DBStorage {
-    #[must_use]
-    pub fn matches(&self, req: &Requirement) -> (Vec<Entity>, Vec<RequirementError>) {
-        let f = |entity| self.is_match(entity, req);
-        let mut mapper = MapSystem::<Entity, RequirementError>::new(&f);
-        mapper.run_now(&self.world);
-        // self.world.maintain(); // Nah?
-        (mapper.results, mapper.errors)
-    }
-}
-
 macro_rules! define_debug {
     ($func: ident, $print_func: ident, $func_all: ident, $($component:ty),* ) => {
         impl DBStorage {
@@ -90,6 +79,24 @@ macro_rules! define_debug {
     }
 }
 
+trait CanMatch<T> {
+    // TODO: use https://users.rust-lang.org/t/is-it-possible-to-implement-debug-for-fn-type/14824/3
+    #[must_use]
+    fn is_match_or_none(&self, entity: Entity, req: Option<&T>) -> Result<Entity, RequirementError>;
+
+    #[must_use]
+    fn is_match(&self, entity: Entity, req: &T) -> Result<Entity, RequirementError> {
+        self.is_match_or_none(entity, Some(req))
+    }
+
+    #[must_use]
+    fn matches_or_none(&self, req: Option<&T>) -> (Vec<Entity>, Vec<RequirementError>);
+    #[must_use]
+    fn matches(&self, req: &T) -> (Vec<Entity>, Vec<RequirementError>) {
+        self.matches_or_none(Some(req))
+    }
+}
+
 macro_rules! define_components {
     ( $($name:ident => $component:ty),* ) => {
         /// Register all components with the world.
@@ -97,71 +104,41 @@ macro_rules! define_components {
             $( world.register::<$component>(); )*
         }
 
-        pub struct Requirement {
-            // TODO: use https://users.rust-lang.org/t/is-it-possible-to-implement-debug-for-fn-type/14824/3
-            // To make the matcher functions debuggable
-            // $name: Box<dyn Fn(Option < &$component >) -> bool>,
-            // TODO: Use a trait for this and build structs & tuples of components, rather than checking them all
-            $(
-                #[allow(unused)]
-                $name: Option <Option < $component >>,
-            )*
-        }
-
-        impl Requirement {
-            $(
-                paste! {
-                    #[allow(unused)]
-                    pub fn [<with_ $name >](expected: $component) -> Requirement where $component: PartialEq {
-                        Requirement::default().[<and_ $name>](expected)
-                    }
-                    #[allow(unused)]
-                    pub fn [<and_ $name >](mut self: Self, expected: $component) -> Self where $component: PartialEq {
-                        self.$name = Some(Some(expected));
-                        self
-                    }
-                    #[allow(unused)]
-                    pub fn [<with_any_ $name >](mut self: Self) -> Self where $component: PartialEq {
-                        self.$name = None;
-                        self
-                    }
-                    #[allow(unused)]
-                    pub fn [<with_no_ $name >](mut self: Self) -> Self where $component: PartialEq {
-                        self.$name = Some(None);
-                        self
-                    }
+        $(
+            impl Matcher for $component {
+                type Res = Vec<Entity>;
+                fn run_with_errs(&self, storage: &DBStorage) -> Result<(Self::Res, Log), MatchErr> {
+                    Ok(storage.matches(self))
                 }
-            )*
-        }
-        impl Default for Requirement {
-            fn default() -> Self {
-                Self { $( $name: None, )* }
             }
-        }
 
-        impl DBStorage {
-            #[allow(unused)]
-            pub fn is_match(self: &DBStorage, entity: Entity, req: &Requirement) -> Result<Entity, RequirementError> {
-                $(
-                    {
-                        let field_req = &req.$name;
-                        if let Some(expectation) = field_req {
-                            let value = self.world.read_storage::<$component>().get(entity).cloned();
-                            if expectation != &value {
-                                use RequirementError::*;
-                                match (expectation, value) {
-                                    (None, None) => unreachable!(),
-                                    (None, Some(res)) => return Err(ExpectedNoComponent(format!("{0:?}", res))),
-                                    (Some(exp), None) => return Err(ExpectedComponentFoundNone(format!("{0:?}", exp))),
-                                    (Some(exp), Some(res)) => return Err(ExpectedComponent(format!("{0:?}", exp), format!("{0:?}", res))),
-                                }
-                            }
+            impl CanMatch<$component> for DBStorage {
+                #[allow(unused)]
+                fn is_match_or_none(self: &DBStorage, entity: Entity, req: Option<&$component>) -> Result<Entity, RequirementError> {
+                    let value = self.world.read_storage::<$component>().get(entity).cloned();
+                    use RequirementError::*;
+                    match (req, value) {
+                        (None, None) => Ok(entity),
+                        (None, Some(res)) => Err(ExpectedNoComponent(format!("{0:?}", res))),
+                        (Some(exp), None) => Err(ExpectedComponentFoundNone(format!("{0:?}", exp))),
+                        (Some(exp), Some(res)) => if exp != &res {
+
+                            Err(ExpectedComponent(format!("{0:?}", exp), format!("{0:?}", res)))
+                        } else {
+                            Ok(entity)
                         }
                     }
-                )*
-                Ok(entity)
+                }
+
+                fn matches_or_none(&self, req: Option<&$component>) -> (Vec<Entity>, Vec<RequirementError>) {
+                    let f = |entity| self.is_match_or_none(entity, req);
+                    let mut mapper = MapSystem::<Entity, RequirementError>::new(&f);
+                    mapper.run_now(&self.world);
+                    // self.world.maintain(); // Nah?
+                    (mapper.results, mapper.errors)
+                }
             }
-        }
+        )*
 
         define_debug!(
             format_entity,

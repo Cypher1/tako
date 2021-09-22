@@ -580,7 +580,6 @@ pub fn parse_string(
 pub mod tests {
     use super::*;
     use crate::components::*;
-    use crate::database::Requirement;
     use crate::errors::TError;
     use crate::location::Loc;
     use crate::matcher::Matcher;
@@ -818,7 +817,7 @@ Entity 0:
     fn assert_eq_err<T: PartialEq + std::fmt::Debug, E: std::fmt::Display>(
         res: Result<T, E>,
         rhs: T,
-    ) -> Result<(), E> {
+    ) -> Result<(), TError> where TError: From<E> {
         match &res {
             Ok(_) => {}
             Err(err) => {
