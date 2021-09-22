@@ -817,7 +817,10 @@ Entity 0:
     fn assert_eq_err<T: PartialEq + std::fmt::Debug, E: std::fmt::Display>(
         res: Result<T, E>,
         rhs: T,
-    ) -> Result<(), TError> where TError: From<E> {
+    ) -> Result<(), TError>
+    where
+        TError: From<E>,
+    {
         match &res {
             Ok(_) => {}
             Err(err) => {
@@ -834,8 +837,9 @@ Entity 0:
         assert_eq_err(
             InstancesAt::new(Loc::new("test.tk", 1, 1))
                 .expect(HasValue::new(Prim::I32(12)))
+                .one()
                 .run(&storage),
-            vec![root],
+            root,
         )
     }
 

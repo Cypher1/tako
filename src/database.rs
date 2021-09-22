@@ -5,11 +5,11 @@ use crate::components::{
     Call, DefinedAt, Definition, HasErrors, HasType, HasValue, InstancesAt, Sequence, SymbolRef,
     Untyped,
 };
-use crate::matcher::{Matcher, Log, MatchErr};
 use crate::errors::{RequirementError, TError};
 use crate::externs::get_externs;
 use crate::externs::{Extern, Semantic};
 use crate::map_system::MapSystem;
+use crate::matcher::{Log, MatchErr, Matcher};
 use crate::primitives::Val;
 use crate::symbol_table::Table;
 use directories::ProjectDirs;
@@ -81,10 +81,9 @@ macro_rules! define_debug {
 
 trait CanMatch<T> {
     // TODO: use https://users.rust-lang.org/t/is-it-possible-to-implement-debug-for-fn-type/14824/3
-    #[must_use]
-    fn is_match_or_none(&self, entity: Entity, req: Option<&T>) -> Result<Entity, RequirementError>;
+    fn is_match_or_none(&self, entity: Entity, req: Option<&T>)
+        -> Result<Entity, RequirementError>;
 
-    #[must_use]
     fn is_match(&self, entity: Entity, req: &T) -> Result<Entity, RequirementError> {
         self.is_match_or_none(entity, Some(req))
     }
