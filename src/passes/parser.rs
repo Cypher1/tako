@@ -832,14 +832,12 @@ Entity 0:
     #[test]
     fn match_entity_parse_num() -> Test {
         let (root, storage) = parse_entities("12")?;
-        Ok(assert_eq_err(
-            Requirement::with_instances_at(InstancesAt(set![Loc::new("test.tk", 1, 1)]))
-                .expect(
-                    Requirement::with_has_value(HasValue(Val::PrimVal(Prim::I32(12)))),
-                )
+        assert_eq_err(
+            InstancesAt::new(Loc::new("test.tk", 1, 1))
+                .expect(HasValue::new(Prim::I32(12)))
                 .run(&storage),
             vec![root],
-        )?)
+        )
     }
 
     #[test]

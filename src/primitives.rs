@@ -74,6 +74,12 @@ pub enum Val {
     BitStr(Offset),
 }
 
+impl From<Prim> for Val {
+    fn from(val: Prim) -> Self {
+        Self::PrimVal(val)
+    }
+}
+
 use Val::{
     App, BitStr, Function, Lambda, Padded, Pointer, PrimVal, Product, Struct, Union, Variable,
     WithRequirement,

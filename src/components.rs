@@ -15,6 +15,12 @@ pub struct DefinedAt(pub Option<Path>);
 #[storage(VecStorage)]
 pub struct InstancesAt(pub BTreeSet<Loc>);
 
+impl InstancesAt {
+    pub fn new(loc: Loc) -> Self {
+        Self(set![loc])
+    }
+}
+
 impl std::fmt::Debug for InstancesAt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "InstancesAt(")?;
@@ -33,6 +39,12 @@ impl std::fmt::Debug for InstancesAt {
 #[derive(Component, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[storage(VecStorage)]
 pub struct HasValue(pub Val);
+
+impl HasValue {
+    pub fn new<T: Into<Val>>(val: T) -> Self {
+        Self(val.into())
+    }
+}
 
 #[derive(Component, Clone, Default, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[storage(NullStorage)]
