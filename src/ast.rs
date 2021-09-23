@@ -418,7 +418,7 @@ impl fmt::Display for Symbol {
 impl Symbol {
     #[must_use]
     pub fn new(name: &str) -> Symbol {
-        if name.contains('.') || name.contains("::") {
+        if name.contains(".tk") || name.contains("::") {
             panic!("Illegal symbol name '{}'", name);
         }
         Symbol::Named(name.to_string(), None)
