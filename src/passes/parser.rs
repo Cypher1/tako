@@ -6,7 +6,8 @@ use std::sync::Arc;
 use crate::ast::{
     path_to_string, Abs, Apply, BinOp, HasInfo, Info, Let, Node, PathRef, Sym, Symbol, ToNode, UnOp,
 };
-use crate::database::{AstNode, AstTerm, DBStorage, DefinitionHead};
+use crate::ast_node::{AstNode, AstTerm, DefinitionHead};
+use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::externs::{Direction, Semantic};
 use crate::location::Loc;
@@ -578,7 +579,10 @@ pub fn parse_string(
 #[cfg(test)]
 pub mod tests {
     use super::*;
+    use crate::components::*;
     use crate::errors::TError;
+    use crate::location::Loc;
+    use crate::matcher::Matcher;
     use crate::primitives::{int32, string};
     use pretty_assertions::assert_eq;
 
@@ -596,9 +600,13 @@ pub mod tests {
     }
 
     fn dbg_parse_entities(contents: &str) -> Result<String, TError> {
+        Ok(parse_entities(contents)?.1.format_entities())
+    }
+
+    fn parse_entities(contents: &str) -> Result<(Entity, DBStorage), TError> {
         let mut storage = DBStorage::default();
-        let _out = parse_impl(&mut storage, contents)?.1;
-        Ok(storage.format_entities())
+        let root = parse_impl(&mut storage, contents)?.1;
+        Ok((root, storage))
     }
 
     fn num_lit(x: i32) -> Box<Node> {
@@ -794,16 +802,64 @@ pub mod tests {
         Ok(())
     }
 
+    fn log_err<T, E: std::fmt::Display>(res: Result<T, E>) -> Result<T, E> {
+        res.map_err(|err| {
+            eprintln!("{0}", &err);
+            err
+        })
+    }
+
+    fn assert_no_err<T: std::fmt::Debug, E: std::fmt::Display>(
+        res: Result<T, E>,
+    ) -> Result<(), TError>
+    where
+        TError: From<E>,
+    {
+        Ok(log_err(res).map(|_| ())?)
+    }
+
+    fn assert_eq_err<T: PartialEq + std::fmt::Debug, E: std::fmt::Display>(
+        res: Result<T, E>,
+        rhs: T,
+    ) -> Result<(), TError>
+    where
+        TError: From<E>,
+    {
+        assert_eq!(log_err(res)?, rhs);
+        Ok(())
+    }
+
     #[test]
     fn entity_parse_num() -> Test {
-        assert_str_eq!(
-            dbg_parse_entities("12")?,
-            "\
-Entity 0:
- - HasValue(12)
- - InstancesAt(test.tk:1:1)"
-        );
-        Ok(())
+        let (root, storage) = parse_entities("12")?;
+        assert_eq_err(
+            InstancesAt::new(Loc::new("test.tk", 1, 1))
+                .expect(HasValue::new(Prim::I32(12)))
+                .one()
+                .run(&storage),
+            root,
+        )
+    }
+
+    #[test]
+    fn match_entity_parse_num_with_type_annotation() -> Test {
+        let (_root, storage) = parse_entities("12 : Int")?;
+        assert_no_err(
+            SymbolRef {
+                name: vec![Symbol::new("Int")],
+                context: vec![Symbol::with_ext("test", "tk")],
+            }
+            .expect(DefinedAt(None))
+            .expect(InstancesAt::new(Loc::new("test.tk", 1, 6)))
+            .one()
+            .chain(|ty_id| {
+                HasValue::new(Prim::I32(12))
+                    .expect(InstancesAt::new(Loc::new("test.tk", 1, 1)))
+                    .expect(HasType(*ty_id))
+                    .one()
+            })
+            .run(&storage),
+        )
     }
 
     #[test]

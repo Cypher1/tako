@@ -6,6 +6,7 @@ use specs::prelude::*;
 use specs::Component;
 use std::collections::BTreeSet;
 
+// TODO: Use macro for defining and registering each of these.
 #[derive(Component, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[storage(VecStorage)]
 pub struct DefinedAt(pub Option<Path>);
@@ -13,6 +14,13 @@ pub struct DefinedAt(pub Option<Path>);
 #[derive(Component, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[storage(VecStorage)]
 pub struct InstancesAt(pub BTreeSet<Loc>);
+
+impl InstancesAt {
+    #[cfg(test)]
+    pub fn new(loc: Loc) -> Self {
+        Self(set![loc])
+    }
+}
 
 impl std::fmt::Debug for InstancesAt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -33,7 +41,14 @@ impl std::fmt::Debug for InstancesAt {
 #[storage(VecStorage)]
 pub struct HasValue(pub Val);
 
-#[derive(Component, Default, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+impl HasValue {
+    #[cfg(test)]
+    pub fn new<T: Into<Val>>(val: T) -> Self {
+        Self(val.into())
+    }
+}
+
+#[derive(Component, Clone, Default, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[storage(NullStorage)]
 pub struct Untyped;
 

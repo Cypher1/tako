@@ -1,12 +1,15 @@
 use crate::ast::{path_to_string, Info, Node, Path, PathRef, Root, Symbol, Visitor};
+use crate::ast_node::*;
 use crate::cli_options::Options;
 use crate::components::{
     Call, DefinedAt, Definition, HasErrors, HasType, HasValue, InstancesAt, Sequence, SymbolRef,
     Untyped,
 };
-use crate::errors::TError;
+use crate::errors::{RequirementError, TError};
 use crate::externs::get_externs;
 use crate::externs::{Extern, Semantic};
+use crate::map_system::MapSystem;
+use crate::matcher::{Log, MatchErr, Matcher};
 use crate::primitives::Val;
 use crate::symbol_table::Table;
 use directories::ProjectDirs;
@@ -66,11 +69,8 @@ macro_rules! define_debug {
             }
             #[must_use]
             pub fn $func_all(&self) -> String {
-                let f = |entity| self.$func(entity);
-                let mut mapper = DebugSystem::<String> {
-                    f: &f,
-                    results: Vec::new(),
-                };
+                let f = |entity| Ok(self.$func(entity));
+                let mut mapper = MapSystem::<String, std::convert::Infallible>::new(&f);
                 mapper.run_now(&self.world);
                 // self.world.maintain(); // Nah?
                 mapper.results.join("\n")
@@ -79,12 +79,65 @@ macro_rules! define_debug {
     }
 }
 
+trait CanMatch<T> {
+    // TODO: use https://users.rust-lang.org/t/is-it-possible-to-implement-debug-for-fn-type/14824/3
+    fn is_match_or_none(&self, entity: Entity, req: Option<&T>)
+        -> Result<Entity, RequirementError>;
+
+    fn is_match(&self, entity: Entity, req: &T) -> Result<Entity, RequirementError> {
+        self.is_match_or_none(entity, Some(req))
+    }
+
+    #[must_use]
+    fn matches_or_none(&self, req: Option<&T>) -> (Vec<Entity>, Vec<RequirementError>);
+    #[must_use]
+    fn matches(&self, req: &T) -> (Vec<Entity>, Vec<RequirementError>) {
+        self.matches_or_none(Some(req))
+    }
+}
+
 macro_rules! define_components {
-    ( $($component:ty),* ) => {
+    ( $($name:ident => $component:ty),* ) => {
         /// Register all components with the world.
         fn register_components(world: &mut World) {
             $( world.register::<$component>(); )*
         }
+
+        $(
+            impl Matcher for $component {
+                type Res = Vec<Entity>;
+                fn run_with_errs(&self, storage: &DBStorage) -> Result<(Self::Res, Log), MatchErr> {
+                    Ok(storage.matches(self))
+                }
+            }
+
+            impl CanMatch<$component> for DBStorage {
+                #[allow(unused)]
+                fn is_match_or_none(self: &DBStorage, entity: Entity, req: Option<&$component>) -> Result<Entity, RequirementError> {
+                    let value = self.world.read_storage::<$component>().get(entity).cloned();
+                    use RequirementError::*;
+                    match (req, value) {
+                        (None, None) => Ok(entity),
+                        (None, Some(res)) => Err(ExpectedNoComponent(format!("{0:?}", res))),
+                        (Some(exp), None) => Err(ExpectedComponentFoundNone(format!("{0:?}", exp))),
+                        (Some(exp), Some(res)) => if exp != &res {
+
+                            Err(ExpectedComponent(format!("{0:?}", exp), format!("{0:?}", res)))
+                        } else {
+                            Ok(entity)
+                        }
+                    }
+                }
+
+                fn matches_or_none(&self, req: Option<&$component>) -> (Vec<Entity>, Vec<RequirementError>) {
+                    let f = |entity| self.is_match_or_none(entity, req);
+                    let mut mapper = MapSystem::<Entity, RequirementError>::new(&f);
+                    mapper.run_now(&self.world);
+                    // self.world.maintain(); // Nah?
+                    (mapper.results, mapper.errors)
+                }
+            }
+        )*
 
         define_debug!(
             format_entity,
@@ -96,16 +149,16 @@ macro_rules! define_components {
 }
 
 define_components!(
-    Call,
-    DefinedAt,
-    Definition,
-    HasErrors,
-    HasType,
-    HasValue,
-    Sequence,
-    SymbolRef,
-    Untyped,
-    InstancesAt
+    call => Call,
+    defined_at => DefinedAt,
+    definition => Definition,
+    has_errors => HasErrors,
+    has_type => HasType,
+    has_value => HasValue,
+    sequence => Sequence,
+    symbol_ref => SymbolRef,
+    untyped => Untyped,
+    instances_at => InstancesAt
 );
 
 define_debug!(
@@ -146,21 +199,6 @@ impl Default for DBStorage {
             defined_at: HashMap::default(),
             // refers_to: HashMap::default(),
             instance_at: HashMap::default(),
-        }
-    }
-}
-
-struct DebugSystem<'a, T> {
-    f: &'a dyn Fn(Entity) -> T,
-    results: Vec<T>,
-}
-
-impl<'a, T> System<'a> for DebugSystem<'a, T> {
-    type SystemData = Entities<'a>;
-
-    fn run(&mut self, entities: Self::SystemData) {
-        for ent in (&*entities).join() {
-            self.results.push((self.f)(ent));
         }
     }
 }
@@ -442,113 +480,6 @@ impl DBStorage {
             .entry(entity)
             .or_insert_with(HashSet::new)
             .insert(loc);
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Hash, PartialOrd, Ord)]
-pub struct DefinitionHead {
-    pub name: Path,
-    pub params: Option<Vec<Entity>>, // TODO: Restrict to valid def-args (variables and functions with optional default values)
-    pub path: Path,
-}
-
-impl DefinitionHead {
-    pub fn into_call(
-        self,
-        storage: &mut DBStorage,
-        path: PathRef,
-        loc: &Loc,
-        ty: Option<Entity>,
-    ) -> AstNode {
-        let name = AstTerm::Symbol {
-            name: self.name,
-            context: self.path,
-        }
-        .into_node(loc, None);
-        self.params.map_or(name.clone(), |children| {
-            let inner = storage.store_node(name, path);
-            AstTerm::Call { inner, children }.into_node(loc, ty)
-        })
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Hash, PartialOrd, Ord)]
-pub enum AstTerm {
-    Value(Val),
-    Symbol {
-        name: Path,
-        context: Path,
-    },
-    Sequence(Vec<Entity>), // TODO: Inline the vec somehow? Use a non empty vec?
-    Call {
-        inner: Entity,
-        children: Vec<Entity>,
-    },
-    Definition {
-        head: DefinitionHead,
-        implementations: Vec<Entity>,
-    },
-    DefinitionHead(DefinitionHead),
-}
-
-impl AstTerm {
-    #[must_use]
-    pub fn into_node(self, loc: &Loc, ty: Option<Entity>) -> AstNode {
-        AstNode {
-            term: self,
-            loc: loc.clone(),
-            ty,
-        }
-    }
-
-    pub fn into_definition(
-        self,
-        _storage: &mut DBStorage,
-        right: Entity,
-        loc: &Loc,
-    ) -> Result<AstNode, TError> {
-        Ok(match self {
-            AstTerm::Symbol { name, context } => AstTerm::Definition {
-                head: DefinitionHead {
-                    name,
-                    params: None,
-                    path: context,
-                },
-                implementations: vec![right],
-            },
-            AstTerm::DefinitionHead(head) => AstTerm::Definition {
-                head,
-                implementations: vec![right],
-            },
-            _ => {
-                return Err(TError::ParseError(
-                    format!("Cannot assign to {:?}", self),
-                    loc.clone().get_info(),
-                ));
-            }
-        }
-        .into_node(loc, None))
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct AstNode {
-    pub term: AstTerm,
-    pub loc: Loc,
-    pub ty: Option<Entity>,
-}
-
-impl AstNode {
-    pub fn into_definition(
-        self,
-        storage: &mut DBStorage,
-        right: Entity,
-        loc: &Loc,
-    ) -> Result<AstNode, TError> {
-        Ok(AstNode {
-            ty: self.ty,
-            ..self.term.into_definition(storage, right, loc)?
-        })
     }
 }
 
