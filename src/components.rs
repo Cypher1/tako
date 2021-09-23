@@ -16,6 +16,7 @@ pub struct DefinedAt(pub Option<Path>);
 pub struct InstancesAt(pub BTreeSet<Loc>);
 
 impl InstancesAt {
+    #[cfg(test)]
     pub fn new(loc: Loc) -> Self {
         Self(set![loc])
     }
@@ -41,6 +42,7 @@ impl std::fmt::Debug for InstancesAt {
 pub struct HasValue(pub Val);
 
 impl HasValue {
+    #[cfg(test)]
     pub fn new<T: Into<Val>>(val: T) -> Self {
         Self(val.into())
     }
