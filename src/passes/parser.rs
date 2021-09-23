@@ -848,8 +848,8 @@ pub mod tests {
             SymbolRef {
                 name: vec![Symbol::new("Int")],
                 context: vec![Symbol::with_ext("test", "tk")],
+                definition: None,
             }
-            .expect(DefinedAt(None))
             .expect(InstancesAt::new(Loc::new("test.tk", 1, 6)))
             .one()
             .chain(|ty_id| {

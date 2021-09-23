@@ -8,9 +8,9 @@ extern crate lazy_static;
 mod pretty_assertions;
 
 #[macro_use]
+pub mod data_structures;
 pub mod ast;
 pub mod cli_options;
-pub mod data_structures;
 pub mod database;
 pub mod errors;
 pub mod externs;
