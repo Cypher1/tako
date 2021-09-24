@@ -199,28 +199,3 @@ impl<T: Matcher<Res = Vec<Entity>>, U: Matcher<Res = Vec<Entity>>> Matcher for E
         Ok((left, errs))
     }
 }
-
-pub struct ExpectOne<T: Matcher, U: Matcher> {
-    first: T,
-    second: U,
-}
-
-impl<T: Matcher<Res = Entity>, U: Matcher<Res = Entity>> Matcher for ExpectOne<T, U> {
-    type Res = T::Res;
-    fn run_with_errs(&self, storage: &DBStorage) -> Result<(Self::Res, Log), MatchErr> {
-        let (left, l_errs) = self
-            .first
-            .run_with_errs(storage)
-            .map_err(|err| ExpectErrorInInitial(Box::new(err)))?;
-        let (right, r_errs) = self
-            .second
-            .run_with_errs(storage)
-            .map_err(|err| ExpectErrorInFollowUp(Box::new(err)))?;
-        let mut errs = l_errs;
-        errs.extend(r_errs);
-        if left != right {
-            return Err(ExpectationNotMet(left, right).because(errs));
-        }
-        Ok((left, errs))
-    }
-}
