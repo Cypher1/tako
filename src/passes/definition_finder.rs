@@ -267,10 +267,10 @@ Entity 1:
  - Definition { names: [[x]], params: None, implementations: [Entity(0, Generation(1))], path: [test, prog.tk] }
 Entity 2:
  - DefinedAt(Some([test, prog.tk, x]))
- - SymbolRef { name: [x], context: [test, prog.tk] }
+ - SymbolRef { name: [x], context: [test, prog.tk], definition: None }
 Entity 3:
  - DefinedAt(Some([;]))
- - SymbolRef { name: [;], context: [test, prog.tk] }
+ - SymbolRef { name: [;], context: [test, prog.tk], definition: None }
 Entity 4:");
         Ok(())
     }
@@ -289,16 +289,16 @@ Entity 3:
  - Definition { names: [[x]], params: None, implementations: [Entity(2, Generation(1))], path: [test, prog.tk, y] }
 Entity 4:
  - DefinedAt(Some([test, prog.tk, y, x]))
- - SymbolRef { name: [x], context: [test, prog.tk, y] }
+ - SymbolRef { name: [x], context: [test, prog.tk, y], definition: None }
 Entity 5:
  - DefinedAt(Some([;]))
- - SymbolRef { name: [;], context: [test, prog.tk, y] }
+ - SymbolRef { name: [;], context: [test, prog.tk, y], definition: None }
 Entity 6:
 Entity 7:
  - Definition { names: [[y]], params: None, implementations: [Entity(6, Generation(1))], path: [test, prog.tk] }
 Entity 8:
  - DefinedAt(Some([;]))
- - SymbolRef { name: [;], context: [test, prog.tk] }
+ - SymbolRef { name: [;], context: [test, prog.tk], definition: None }
 Entity 9:");
         Ok(())
     }

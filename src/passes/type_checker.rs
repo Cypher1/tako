@@ -302,7 +302,7 @@ mod tests {
             "I32",
             "\
 Entity 0:
- - SymbolRef { name: [I32], context: [test, type.tk] }
+ - SymbolRef { name: [I32], context: [test, type.tk], definition: None }
 Entity 1:
  - HasValue(23)",
         )
@@ -315,7 +315,7 @@ Entity 1:
             "String",
             "\
 Entity 0:
- - SymbolRef { name: [String], context: [test, type.tk] }
+ - SymbolRef { name: [String], context: [test, type.tk], definition: None }
 Entity 1:
  - HasValue('23')",
         )
@@ -325,7 +325,7 @@ Entity 1:
     fn infer_type_of_let_i32() -> Test {
         assert_type("x=12", "(x=I32)", "\
 Entity 0:
- - SymbolRef { name: [I32], context: [test, type.tk, x] }
+ - SymbolRef { name: [I32], context: [test, type.tk, x], definition: None }
 Entity 1:
  - Definition { names: [[x]], params: None, implementations: [Entity(0, Generation(1))], path: [test, type.tk] }
 Entity 2:
@@ -343,34 +343,34 @@ Entity 3:
     fn infer_type_of_sym_i32() -> Test {
         assert_type("x=12;x", "I32", "\
 Entity 0:
- - SymbolRef { name: [I32], context: [test, type.tk] }
+ - SymbolRef { name: [I32], context: [test, type.tk], definition: None }
 Entity 1:
  - HasValue(12)
 Entity 2:
  - Definition { names: [[x]], params: None, implementations: [Entity(1, Generation(1))], path: [test, prog.tk] }
 Entity 3:
- - SymbolRef { name: [x], context: [test, prog.tk] }
+ - SymbolRef { name: [x], context: [test, prog.tk], definition: None }
 Entity 4:
- - SymbolRef { name: [;], context: [test, prog.tk] }
+ - SymbolRef { name: [;], context: [test, prog.tk], definition: None }
 Entity 5:
- - Call(Entity(4, Generation(1)), [Entity(2, Generation(1)), Entity(3, Generation(1))])")
+ - Call { inner: Entity(4, Generation(1)), args: [Entity(2, Generation(1)), Entity(3, Generation(1))] }")
     }
 
     #[test]
     fn infer_type_of_sym_str() -> Test {
         assert_type("x=\"12\";x", "String", "\
 Entity 0:
- - SymbolRef { name: [String], context: [test, type.tk] }
+ - SymbolRef { name: [String], context: [test, type.tk], definition: None }
 Entity 1:
  - HasValue('12')
 Entity 2:
  - Definition { names: [[x]], params: None, implementations: [Entity(1, Generation(1))], path: [test, prog.tk] }
 Entity 3:
- - SymbolRef { name: [x], context: [test, prog.tk] }
+ - SymbolRef { name: [x], context: [test, prog.tk], definition: None }
 Entity 4:
- - SymbolRef { name: [;], context: [test, prog.tk] }
+ - SymbolRef { name: [;], context: [test, prog.tk], definition: None }
 Entity 5:
- - Call(Entity(4, Generation(1)), [Entity(2, Generation(1)), Entity(3, Generation(1))])")
+ - Call { inner: Entity(4, Generation(1)), args: [Entity(2, Generation(1)), Entity(3, Generation(1))] }")
     }
 
     //#[test]
@@ -382,7 +382,7 @@ Entity 5:
     fn infer_type_of_sym_with_extra_lets_i32() -> Test {
         assert_type("x=12,y=4;x", "I32", "\
 Entity 0:
- - SymbolRef { name: [I32], context: [test, type.tk] }
+ - SymbolRef { name: [I32], context: [test, type.tk], definition: None }
 Entity 1:
  - HasValue(12)
 Entity 2:
@@ -393,26 +393,26 @@ Entity 4:
  - Definition { names: [[y]], params: None, implementations: [Entity(2, Generation(1))], path: [test, prog.tk] }
 Entity 5:
 Entity 6:
- - SymbolRef { name: [x], context: [test, prog.tk] }
+ - SymbolRef { name: [x], context: [test, prog.tk], definition: None }
 Entity 7:
- - SymbolRef { name: [;], context: [test, prog.tk] }
+ - SymbolRef { name: [;], context: [test, prog.tk], definition: None }
 Entity 8:
- - Call(Entity(7, Generation(1)), [Entity(5, Generation(1)), Entity(6, Generation(1))])")
+ - Call { inner: Entity(7, Generation(1)), args: [Entity(5, Generation(1)), Entity(6, Generation(1))] }")
     }
 
     #[test]
     fn infer_type_of_sym_with_struct_lets_i32() -> Test {
         assert_type("x=12,y=4,x", "(x=I32,y=I32,it=I32)", "\
 Entity 0:
- - SymbolRef { name: [I32], context: [test, type.tk, x] }
+ - SymbolRef { name: [I32], context: [test, type.tk, x], definition: None }
 Entity 1:
- - SymbolRef { name: [I32], context: [test, type.tk, y] }
+ - SymbolRef { name: [I32], context: [test, type.tk, y], definition: None }
 Entity 2:
  - Definition { names: [[x]], params: None, implementations: [Entity(0, Generation(1))], path: [test, type.tk] }
 Entity 3:
  - Definition { names: [[y]], params: None, implementations: [Entity(1, Generation(1))], path: [test, type.tk] }
 Entity 4:
- - SymbolRef { name: [I32], context: [test, type.tk, it] }
+ - SymbolRef { name: [I32], context: [test, type.tk, it], definition: None }
 Entity 5:
  - Definition { names: [[it]], params: None, implementations: [Entity(4, Generation(1))], path: [test, type.tk] }
 Entity 6:
@@ -425,7 +425,7 @@ Entity 9:
 Entity 10:
  - Definition { names: [[y]], params: None, implementations: [Entity(8, Generation(1))], path: [test, prog.tk] }
 Entity 11:
- - SymbolRef { name: [x], context: [test, prog.tk] }
+ - SymbolRef { name: [x], context: [test, prog.tk], definition: None }
 Entity 12:")
     }
 
@@ -443,15 +443,15 @@ Entity 12:")
     fn infer_type_of_id_apply() -> Test {
         assert_type("{x}(x=12)", "I32", "\
 Entity 0:
- - SymbolRef { name: [I32], context: [test, type.tk] }
+ - SymbolRef { name: [I32], context: [test, type.tk], definition: None }
 Entity 1:
  - HasValue(12)
 Entity 2:
  - Definition { names: [[x]], params: None, implementations: [Entity(1, Generation(1))], path: [test, prog.tk, _] }
 Entity 3:
- - SymbolRef { name: [x], context: [test, prog.tk] }
+ - SymbolRef { name: [x], context: [test, prog.tk], definition: None }
 Entity 4:
- - Call(Entity(3, Generation(1)), [Entity(2, Generation(1))])")
+ - Call { inner: Entity(3, Generation(1)), args: [Entity(2, Generation(1))] }")
     }
 
     #[test]
@@ -461,13 +461,13 @@ Entity 4:
             "I32",
             "\
 Entity 0:
- - SymbolRef { name: [I32], context: [test, type.tk] }
+ - SymbolRef { name: [I32], context: [test, type.tk], definition: None }
 Entity 1:
  - HasValue(12)
 Entity 2:
- - SymbolRef { name: [it], context: [test, prog.tk] }
+ - SymbolRef { name: [it], context: [test, prog.tk], definition: None }
 Entity 3:
- - Call(Entity(2, Generation(1)), [Entity(1, Generation(1))])",
+ - Call { inner: Entity(2, Generation(1)), args: [Entity(1, Generation(1))] }",
         )
     }
 
@@ -475,15 +475,15 @@ Entity 3:
     fn infer_type_of_id_apply_explicit_it_arg() -> Test {
         assert_type("{it}(it=12)", "I32", "\
 Entity 0:
- - SymbolRef { name: [I32], context: [test, type.tk] }
+ - SymbolRef { name: [I32], context: [test, type.tk], definition: None }
 Entity 1:
  - HasValue(12)
 Entity 2:
  - Definition { names: [[it]], params: None, implementations: [Entity(1, Generation(1))], path: [test, prog.tk, _] }
 Entity 3:
- - SymbolRef { name: [it], context: [test, prog.tk] }
+ - SymbolRef { name: [it], context: [test, prog.tk], definition: None }
 Entity 4:
- - Call(Entity(3, Generation(1)), [Entity(2, Generation(1))])")
+ - Call { inner: Entity(3, Generation(1)), args: [Entity(2, Generation(1))] }")
     }
 
     #[test]
@@ -493,15 +493,15 @@ Entity 4:
             "I32",
             "\
 Entity 0:
- - SymbolRef { name: [I32], context: [test, type.tk] }
+ - SymbolRef { name: [I32], context: [test, type.tk], definition: None }
 Entity 1:
  - HasValue(12)
 Entity 2:
  - HasValue(32)
 Entity 3:
- - SymbolRef { name: [+], context: [test, prog.tk] }
+ - SymbolRef { name: [+], context: [test, prog.tk], definition: None }
 Entity 4:
- - Call(Entity(3, Generation(1)), [Entity(1, Generation(1)), Entity(2, Generation(1))])",
+ - Call { inner: Entity(3, Generation(1)), args: [Entity(1, Generation(1)), Entity(2, Generation(1))] }",
         )
     }
 
@@ -512,9 +512,9 @@ Entity 4:
             "I32",
             "\
 Entity 0:
- - SymbolRef { name: [I32], context: [test, type.tk] }
+ - SymbolRef { name: [I32], context: [test, type.tk], definition: None }
 Entity 1:
- - SymbolRef { name: [argc], context: [test, prog.tk] }",
+ - SymbolRef { name: [argc], context: [test, prog.tk], definition: None }",
         )
     }
 
@@ -522,16 +522,17 @@ Entity 1:
     fn infer_type_of_argv() -> Test {
         assert_type("argv", "(it=I32) -> String", "\
 Entity 0:
- - SymbolRef { name: [I32], context: [test, type.tk, it] }
+ - SymbolRef { name: [I32], context: [test, type.tk, it], definition: None }
 Entity 1:
  - Definition { names: [[it]], params: None, implementations: [Entity(0, Generation(1))], path: [test, type.tk] }
 Entity 2:
- - SymbolRef { name: [String], context: [test, type.tk] }
+ - SymbolRef { name: [String], context: [test, type.tk], definition: None }
 Entity 3:
- - SymbolRef { name: [->], context: [test, type.tk] }
+ - SymbolRef { name: [->], context: [test, type.tk], definition: None }
 Entity 4:
- - Call(Entity(3, Generation(1)), [Entity(1, Generation(1)), Entity(2, Generation(1))])
+ - Call { inner: Entity(3, Generation(1)), args: [Entity(1, Generation(1)), Entity(2, Generation(1))] }
 Entity 5:
- - SymbolRef { name: [argv], context: [test, prog.tk] }")
+ - SymbolRef { name: [argv], context: [test, prog.tk], definition: None }"
+        )
     }
 }
