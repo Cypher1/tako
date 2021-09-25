@@ -867,25 +867,14 @@ pub mod tests {
         let (root, storage) = parse_entities("3 * 4 : Int")?;
         let node_3 = HasValue::new(Prim::I32(3)).at(TEST_FN, 1, 1).one();
         let node_4 = HasValue::new(Prim::I32(4)).at(TEST_FN, 1, 5).one();
-        let int_ty = SymbolRef {
-            name: path!("Int"),
-            context: path!(TEST_FN),
-            definition: None,
-        }
-        .at(TEST_FN, 1, 9)
-        .one();
-        let node_mul = SymbolRef {
-            name: path!("*"),
-            context: path!(TEST_FN),
-            definition: None,
-        }
-        .at(TEST_FN, 1, 3)
-        .one();
+        let int_ty = SymbolRef::new(path!("Int"), path!(TEST_FN))
+            .at(TEST_FN, 1, 9)
+            .one();
+        let node_mul = SymbolRef::new(path!("*"), path!(TEST_FN))
+            .at(TEST_FN, 1, 3)
+            .one();
         assert_eq_err(
-            node_3
-                .pair(node_4)
-                .pair(int_ty)
-                .pair(node_mul)
+            (((node_3, node_4), int_ty), node_mul)
                 .chain(|(((n_3, n_4), n_ty), n_mul)| {
                     Call {
                         inner: *n_mul,

@@ -72,6 +72,17 @@ pub struct SymbolRef {
     pub definition: Option<Entity>,
 }
 
+impl SymbolRef {
+    #[cfg(test)]
+    pub fn new(name: Path, context: Path) -> Self {
+        Self {
+            name,
+            context,
+            definition: None,
+        }
+    }
+}
+
 #[derive(Component, Clone, Default, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[storage(NullStorage)]
 pub struct IsAst;
