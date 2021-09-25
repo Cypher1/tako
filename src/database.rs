@@ -517,10 +517,25 @@ impl DBStorage {
                         path: head.path,
                     }),
                     AstTerm::Value(value) => entity.with(HasValue(value)),
-                    AstTerm::Symbol { name, context } => entity
-                        .with(SymbolRef { name, context })
-                        .with(DefinedAt(None)),
-                    AstTerm::Call { inner, children } => entity.with(Call(inner, children)),
+                    AstTerm::Symbol {
+                        name,
+                        context,
+                        value,
+                    } => {
+                        let entity = entity
+                            .with(SymbolRef {
+                                name,
+                                context,
+                                definition: None,
+                            })
+                            .with(DefinedAt(None));
+                        if let Some(value) = value {
+                            entity.with(HasValue(value))
+                        } else {
+                            entity
+                        }
+                    }
+                    AstTerm::Call { inner, args } => entity.with(Call { inner, args }),
                     AstTerm::Sequence(children) => {
                         // TODO: We assume this is a tuple, review this.
                         entity.with(Sequence(children))
