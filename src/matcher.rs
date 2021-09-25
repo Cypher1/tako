@@ -203,7 +203,14 @@ impl<T: Matcher<Res = Vec<Entity>>, U: Matcher<Res = Vec<Entity>>> Matcher for E
             .map_err(|err| ExpectErrorInFollowUp(Box::new(err)))?;
         let mut errs = l_errs;
         errs.extend(r_errs);
-        if left != right {
+        let mut failed = false;
+        for l in left.iter() {
+            if !right.contains(l) { // TODO: This is O(n), could be O(1)
+                failed = true;
+                break;
+            }
+        }
+        if failed {
             return Err(ExpectationNotMetVec(left, right).because(errs));
         }
         Ok((left, errs))
