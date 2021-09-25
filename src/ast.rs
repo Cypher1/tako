@@ -405,7 +405,7 @@ impl fmt::Debug for Symbol {
 }
 
 macro_rules! symbol {
-    ($name_token: literal) => {
+    ($name_token: tt) => {
         {
         let name: &str = $name_token;
         if name.contains('.') {
@@ -419,7 +419,7 @@ macro_rules! symbol {
 }
 
 macro_rules! path {
-    ($($name:literal),*) => {
+    ($($name:tt),*) => {
        vec![$(symbol!($name),)*]
     };
 }
