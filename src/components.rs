@@ -60,6 +60,16 @@ pub struct Call {
     pub args: Vec<Entity>, // TODO: Short vec
 }
 
+impl Call {
+    #[cfg(test)]
+    pub fn new(inner: Entity, args: &[Entity]) -> Self {
+        Self {
+            inner,
+            args: args.to_vec(),
+        }
+    }
+}
+
 #[derive(Component, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[storage(VecStorage)]
 pub struct Sequence(pub Vec<Entity>); // TODO: Short vec

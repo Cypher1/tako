@@ -861,18 +861,15 @@ pub mod tests {
     fn entity_parse_expr_with_type_annotation() -> Test {
         let (root, storage) = parse_entities("3 * 4 : Int")?;
         let node_3 = HasValue::new(Prim::I32(3)).at(TEST_FN, 1, 1);
+        let node_mul = SymbolRef::new(path!("*"), path!(TEST_FN)).at(TEST_FN, 1, 3);
         let node_4 = HasValue::new(Prim::I32(4)).at(TEST_FN, 1, 5);
         let int_ty = SymbolRef::new(path!("Int"), path!(TEST_FN)).at(TEST_FN, 1, 9);
-        let node_mul = SymbolRef::new(path!("*"), path!(TEST_FN)).at(TEST_FN, 1, 3);
         assert_eq_err(
-            (((node_3, node_4), int_ty), node_mul)
-                .chain(|(((n_3, n_4), n_ty), n_mul)| {
-                    Call {
-                        inner: *n_mul,
-                        args: vec![*n_3, *n_4],
-                    }
-                    .expect(HasType(*n_ty))
-                    .at(TEST_FN, 1, 3)
+            (((node_3, node_mul), node_4), int_ty)
+                .chain(|(((n_3, n_mul), n_4), n_ty)| {
+                    Call::new(*n_mul, &[*n_3, *n_4])
+                        .expect(HasType(*n_ty))
+                        .at(TEST_FN, 1, 3)
                 })
                 .run(&storage)
                 .map(|res| res.1),
