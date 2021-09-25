@@ -1,10 +1,10 @@
+use crate::components::InstancesAt;
 use crate::database::DBStorage;
 use crate::errors::{RequirementError, RequirementErrors};
+use crate::location::Loc;
 use derivative::Derivative;
 use specs::Entity;
 use thiserror::Error;
-use crate::components::InstancesAt;
-use crate::location::Loc;
 
 #[derive(Error, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Derivative)]
 #[derivative(Debug)]
@@ -104,12 +104,11 @@ pub trait Matcher {
     }
 
     fn at(self, file_name: &str, line: i32, col: i32) -> Expect<Self, InstancesAt>
-        where
+    where
         Self: Sized + Matcher<Res = Vec<Entity>>,
-        {
-            self.expect(InstancesAt(set!(Loc::new(file_name, line, col))))
-        }
-
+    {
+        self.expect(InstancesAt(set!(Loc::new(file_name, line, col))))
+    }
 }
 
 pub struct One<T: Matcher<Res = Vec<Entity>>>(T);
@@ -205,7 +204,8 @@ impl<T: Matcher<Res = Vec<Entity>>, U: Matcher<Res = Vec<Entity>>> Matcher for E
         errs.extend(r_errs);
         let mut failed = false;
         for l in left.iter() {
-            if !right.contains(l) { // TODO: This is O(n), could be O(1)
+            if !right.contains(l) {
+                // TODO: This is O(n), could be O(1)
                 failed = true;
                 break;
             }

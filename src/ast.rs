@@ -405,8 +405,7 @@ impl fmt::Debug for Symbol {
 }
 
 macro_rules! symbol {
-    ($name_token: tt) => {
-        {
+    ($name_token: tt) => {{
         let name: &str = $name_token;
         if name.contains('.') {
             let parts: Vec<&str> = name.splitn(2, '.').collect();
@@ -414,8 +413,7 @@ macro_rules! symbol {
         } else {
             crate::ast::Symbol::new(name)
         }
-    }
-    }
+    }};
 }
 
 macro_rules! path {
