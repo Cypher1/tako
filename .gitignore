@@ -12,3 +12,4 @@ out.c
 tako
 flamegraph.svg
 perf.data*
+.vscode
