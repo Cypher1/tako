@@ -20,6 +20,10 @@ impl InstancesAt {
     pub fn new(loc: Loc) -> Self {
         Self(set![loc])
     }
+
+    pub fn loc(file: &str, line: i32, col: i32) -> Self {
+        Self(set![Loc::new(file, line, col)])
+    }
 }
 
 impl std::fmt::Debug for InstancesAt {

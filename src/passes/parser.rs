@@ -581,7 +581,6 @@ pub mod tests {
     use super::*;
     use crate::components::*;
     use crate::errors::TError;
-    use crate::location::Loc;
     use crate::matcher::Matcher;
     use crate::primitives::{int32, string};
     use pretty_assertions::assert_eq;
@@ -833,7 +832,7 @@ pub mod tests {
     fn entity_parse_num() -> Test {
         let (root, storage) = parse_entities("12")?;
         assert_eq_err(
-            InstancesAt::new(Loc::new("test.tk", 1, 1))
+            InstancesAt::loc("test.tk", 1, 1)
                 .expect(HasValue::new(Prim::I32(12)))
                 .one()
                 .run(&storage),
@@ -846,15 +845,15 @@ pub mod tests {
         let (_root, storage) = parse_entities("12 : Int")?;
         assert_no_err(
             SymbolRef {
-                name: vec![Symbol::new("Int")],
-                context: vec![Symbol::with_ext("test", "tk")],
+                name: path!("Int"),
+                context: path!("test.tk"),
                 definition: None,
             }
-            .expect(InstancesAt::new(Loc::new("test.tk", 1, 6)))
+            .expect(InstancesAt::loc("test.tk", 1, 6))
             .one()
             .chain(|ty_id| {
                 HasValue::new(Prim::I32(12))
-                    .expect(InstancesAt::new(Loc::new("test.tk", 1, 1)))
+                    .expect(InstancesAt::loc("test.tk", 1, 1))
                     .expect(HasType(*ty_id))
                     .one()
             })

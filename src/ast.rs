@@ -404,6 +404,26 @@ impl fmt::Debug for Symbol {
     }
 }
 
+macro_rules! symbol {
+    ($name_token: literal) => {
+        {
+        let name: &str = $name_token;
+        if name.contains('.') {
+            let parts: Vec<&str> = name.splitn(2, '.').collect();
+            crate::ast::Symbol::with_ext(parts[0], parts[1])
+        } else {
+            crate::ast::Symbol::new(name)
+        }
+    }
+    }
+}
+
+macro_rules! path {
+    ($($name:literal),*) => {
+       vec![$(symbol!($name),)*]
+    };
+}
+
 impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
