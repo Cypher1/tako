@@ -404,6 +404,7 @@ impl fmt::Debug for Symbol {
     }
 }
 
+#[cfg(test)]
 macro_rules! symbol {
     ($name_token: tt) => {{
         let name: &str = $name_token;
@@ -416,6 +417,7 @@ macro_rules! symbol {
     }};
 }
 
+#[cfg(test)]
 macro_rules! path {
     ($($name:tt),*) => {
        vec![$(symbol!($name),)*]
