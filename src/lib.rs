@@ -9,8 +9,9 @@ mod pretty_assertions;
 
 #[macro_use]
 pub mod data_structures;
-
+#[macro_use]
 pub mod ast;
+
 pub mod cli_options;
 pub mod database;
 pub mod errors;

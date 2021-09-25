@@ -15,13 +15,6 @@ pub struct DefinedAt(pub Option<Path>);
 #[storage(VecStorage)]
 pub struct InstancesAt(pub BTreeSet<Loc>);
 
-impl InstancesAt {
-    #[cfg(test)]
-    pub fn new(loc: Loc) -> Self {
-        Self(set![loc])
-    }
-}
-
 impl std::fmt::Debug for InstancesAt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "InstancesAt(")?;
