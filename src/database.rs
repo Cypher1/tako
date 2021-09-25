@@ -53,7 +53,7 @@ macro_rules! define_debug {
     ($func: ident, $print_func: ident, $func_all: ident, $($component:ty),* ) => {
         impl DBStorage {
             /// Print all the components that are associated with an entity.
-            fn $func(self: &DBStorage, entity: Entity) -> String {
+            pub fn $func(self: &DBStorage, entity: Entity) -> String {
             let mut out = format!("Entity {}:", entity.id());
             // let mut out = format!("{:?}:", self.world.read_storage::<InstancesAt>().get(entity).unwrap_or(&InstancesAt(BTreeSet::new())).0);
             $(
