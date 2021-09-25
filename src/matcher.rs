@@ -3,6 +3,8 @@ use crate::errors::{RequirementError, RequirementErrors};
 use derivative::Derivative;
 use specs::Entity;
 use thiserror::Error;
+use crate::components::InstancesAt;
+use crate::location::Loc;
 
 #[derive(Error, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Derivative)]
 #[derivative(Debug)]
@@ -100,6 +102,14 @@ pub trait Matcher {
             second: other,
         }
     }
+
+    fn at(self, file_name: &str, line: i32, col: i32) -> Expect<Self, InstancesAt>
+        where
+        Self: Sized + Matcher<Res = Vec<Entity>>,
+        {
+            self.expect(InstancesAt(set!(Loc::new(file_name, line, col))))
+        }
+
 }
 
 pub struct One<T: Matcher<Res = Vec<Entity>>>(T);
