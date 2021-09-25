@@ -94,11 +94,12 @@ pub trait Matcher {
         }
     }
 
-    fn at(self, file_name: &str, line: i32, col: i32) -> Expect<Self, InstancesAt>
+    fn at(self, file_name: &str, line: i32, col: i32) -> One<Expect<Self, InstancesAt>>
     where
         Self: Sized + Matcher<Res = Vec<Entity>>,
     {
         self.expect(InstancesAt(set!(Loc::new(file_name, line, col))))
+            .one()
     }
 }
 

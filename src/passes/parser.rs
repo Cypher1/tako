@@ -833,10 +833,7 @@ pub mod tests {
     fn entity_parse_num() -> Test {
         let (root, storage) = parse_entities("12")?;
         assert_eq_err(
-            HasValue::new(Prim::I32(12))
-                .at(TEST_FN, 1, 1)
-                .one()
-                .run(&storage),
+            HasValue::new(Prim::I32(12)).at(TEST_FN, 1, 1).run(&storage),
             root,
         )
     }
@@ -851,12 +848,10 @@ pub mod tests {
                 definition: None,
             }
             .at(TEST_FN, 1, 6)
-            .one()
             .chain(|ty_id| {
                 HasValue::new(Prim::I32(12))
-                    .at(TEST_FN, 1, 1)
                     .expect(HasType(*ty_id))
-                    .one()
+                    .at(TEST_FN, 1, 1)
             })
             .run(&storage),
         )
@@ -865,14 +860,10 @@ pub mod tests {
     #[test]
     fn entity_parse_expr_with_type_annotation() -> Test {
         let (root, storage) = parse_entities("3 * 4 : Int")?;
-        let node_3 = HasValue::new(Prim::I32(3)).at(TEST_FN, 1, 1).one();
-        let node_4 = HasValue::new(Prim::I32(4)).at(TEST_FN, 1, 5).one();
-        let int_ty = SymbolRef::new(path!("Int"), path!(TEST_FN))
-            .at(TEST_FN, 1, 9)
-            .one();
-        let node_mul = SymbolRef::new(path!("*"), path!(TEST_FN))
-            .at(TEST_FN, 1, 3)
-            .one();
+        let node_3 = HasValue::new(Prim::I32(3)).at(TEST_FN, 1, 1);
+        let node_4 = HasValue::new(Prim::I32(4)).at(TEST_FN, 1, 5);
+        let int_ty = SymbolRef::new(path!("Int"), path!(TEST_FN)).at(TEST_FN, 1, 9);
+        let node_mul = SymbolRef::new(path!("*"), path!(TEST_FN)).at(TEST_FN, 1, 3);
         assert_eq_err(
             (((node_3, node_4), int_ty), node_mul)
                 .chain(|(((n_3, n_4), n_ty), n_mul)| {
@@ -882,7 +873,6 @@ pub mod tests {
                     }
                     .expect(HasType(*n_ty))
                     .at(TEST_FN, 1, 3)
-                    .one()
                 })
                 .run(&storage)
                 .map(|res| res.1),
