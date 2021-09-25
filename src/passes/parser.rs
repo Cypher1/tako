@@ -415,7 +415,7 @@ fn led(
                             }
                             _ => AstTerm::Call {
                                 inner: storage.store_node(left_node, path),
-                                children: vec![],
+                                args: vec![],
                             },
                         }
                         .into_node(&loc, None),
@@ -472,7 +472,7 @@ fn led(
                         }),
                         _ => AstTerm::Call {
                             inner: storage.store_node(left_node, path),
-                            children: storage.store_node_set(args_node, path),
+                            args: storage.store_node_set(args_node, path),
                         },
                     }
                     .into_node(&loc, None),
@@ -848,8 +848,8 @@ pub mod tests {
             SymbolRef {
                 name: vec![Symbol::new("Int")],
                 context: vec![Symbol::with_ext("test", "tk")],
+                definition: None,
             }
-            .expect(DefinedAt(None))
             .expect(InstancesAt::new(Loc::new("test.tk", 1, 6)))
             .one()
             .chain(|ty_id| {
@@ -869,7 +869,7 @@ pub mod tests {
             "\
 Entity 0:
  - DefinedAt(None)
- - SymbolRef { name: [Int], context: [test.tk] }
+ - SymbolRef { name: [Int], context: [test.tk], definition: None }
  - InstancesAt(test.tk:1:6)
 Entity 1:
  - HasType(Entity(0, Generation(1)))
@@ -892,14 +892,14 @@ Entity 1:
  - InstancesAt(test.tk:1:5)
 Entity 2:
  - DefinedAt(None)
- - SymbolRef { name: [Int], context: [test.tk] }
+ - SymbolRef { name: [Int], context: [test.tk], definition: None }
  - InstancesAt(test.tk:1:9)
 Entity 3:
  - DefinedAt(None)
- - SymbolRef { name: [*], context: [test.tk] }
+ - SymbolRef { name: [*], context: [test.tk], definition: None }
  - InstancesAt(test.tk:1:3)
 Entity 4:
- - Call(Entity(3, Generation(1)), [Entity(0, Generation(1)), Entity(1, Generation(1))])
+ - Call { inner: Entity(3, Generation(1)), args: [Entity(0, Generation(1)), Entity(1, Generation(1))] }
  - HasType(Entity(2, Generation(1)))
  - InstancesAt(test.tk:1:3)"
         );
@@ -916,7 +916,7 @@ Entity 0:
  - InstancesAt(test.tk:1:1)
 Entity 1:
  - DefinedAt(None)
- - SymbolRef { name: [Int], context: [test.tk] }
+ - SymbolRef { name: [Int], context: [test.tk], definition: None }
  - InstancesAt(test.tk:1:10)
 Entity 2:
  - HasType(Entity(1, Generation(1)))
@@ -924,10 +924,10 @@ Entity 2:
  - InstancesAt(test.tk:1:6)
 Entity 3:
  - DefinedAt(None)
- - SymbolRef { name: [*], context: [test.tk] }
+ - SymbolRef { name: [*], context: [test.tk], definition: None }
  - InstancesAt(test.tk:1:3)
 Entity 4:
- - Call(Entity(3, Generation(1)), [Entity(0, Generation(1)), Entity(2, Generation(1))])
+ - Call { inner: Entity(3, Generation(1)), args: [Entity(0, Generation(1)), Entity(2, Generation(1))] }
  - InstancesAt(test.tk:1:3)"
         );
         Ok(())
@@ -949,10 +949,10 @@ Entity 2:
  - InstancesAt(test.tk:1:11)
 Entity 3:
  - DefinedAt(None)
- - SymbolRef { name: [*], context: [test.tk] }
+ - SymbolRef { name: [*], context: [test.tk], definition: None }
  - InstancesAt(test.tk:1:4)
 Entity 4:
- - Call(Entity(3, Generation(1)), [Entity(0, Generation(1)), Entity(1, Generation(1))])
+ - Call { inner: Entity(3, Generation(1)), args: [Entity(0, Generation(1)), Entity(1, Generation(1))] }
  - HasType(Entity(2, Generation(1)))
  - InstancesAt(test.tk:1:4)"
         );
@@ -978,7 +978,7 @@ Entity 0:
             "\
 Entity 0:
  - DefinedAt(None)
- - SymbolRef { name: [String], context: [test.tk] }
+ - SymbolRef { name: [String], context: [test.tk], definition: None }
  - InstancesAt(test.tk:1:17)
 Entity 1:
  - HasType(Entity(0, Generation(1)))
@@ -998,10 +998,10 @@ Entity 0:
  - InstancesAt(test.tk:1:2)
 Entity 1:
  - DefinedAt(None)
- - SymbolRef { name: [-], context: [test.tk] }
+ - SymbolRef { name: [-], context: [test.tk], definition: None }
  - InstancesAt(test.tk:1:1)
 Entity 2:
- - Call(Entity(1, Generation(1)), [Entity(0, Generation(1))])
+ - Call { inner: Entity(1, Generation(1)), args: [Entity(0, Generation(1))] }
  - InstancesAt(test.tk:1:1)"
         );
         Ok(())
@@ -1020,10 +1020,10 @@ Entity 1:
  - InstancesAt(test.tk:1:4)
 Entity 2:
  - DefinedAt(None)
- - SymbolRef { name: [-], context: [test.tk] }
+ - SymbolRef { name: [-], context: [test.tk], definition: None }
  - InstancesAt(test.tk:1:3)
 Entity 3:
- - Call(Entity(2, Generation(1)), [Entity(0, Generation(1)), Entity(1, Generation(1))])
+ - Call { inner: Entity(2, Generation(1)), args: [Entity(0, Generation(1)), Entity(1, Generation(1))] }
  - InstancesAt(test.tk:1:3)"
         );
         Ok(())
@@ -1042,10 +1042,10 @@ Entity 1:
  - InstancesAt(test.tk:1:4)
 Entity 2:
  - DefinedAt(None)
- - SymbolRef { name: [*], context: [test.tk] }
+ - SymbolRef { name: [*], context: [test.tk], definition: None }
  - InstancesAt(test.tk:1:3)
 Entity 3:
- - Call(Entity(2, Generation(1)), [Entity(0, Generation(1)), Entity(1, Generation(1))])
+ - Call { inner: Entity(2, Generation(1)), args: [Entity(0, Generation(1)), Entity(1, Generation(1))] }
  - InstancesAt(test.tk:1:3)"
         );
         Ok(())
@@ -1067,17 +1067,17 @@ Entity 2:
  - InstancesAt(test.tk:1:5)
 Entity 3:
  - DefinedAt(None)
- - SymbolRef { name: [*], context: [test.tk] }
+ - SymbolRef { name: [*], context: [test.tk], definition: None }
  - InstancesAt(test.tk:1:4)
 Entity 4:
- - Call(Entity(3, Generation(1)), [Entity(1, Generation(1)), Entity(2, Generation(1))])
+ - Call { inner: Entity(3, Generation(1)), args: [Entity(1, Generation(1)), Entity(2, Generation(1))] }
  - InstancesAt(test.tk:1:4)
 Entity 5:
  - DefinedAt(None)
- - SymbolRef { name: [+], context: [test.tk] }
+ - SymbolRef { name: [+], context: [test.tk], definition: None }
  - InstancesAt(test.tk:1:2)
 Entity 6:
- - Call(Entity(5, Generation(1)), [Entity(0, Generation(1)), Entity(4, Generation(1))])
+ - Call { inner: Entity(5, Generation(1)), args: [Entity(0, Generation(1)), Entity(4, Generation(1))] }
  - InstancesAt(test.tk:1:2)" // TODO: should report the left most child node.
         );
         Ok(())
@@ -1096,20 +1096,20 @@ Entity 1:
  - InstancesAt(test.tk:1:3)
 Entity 2:
  - DefinedAt(None)
- - SymbolRef { name: [*], context: [test.tk] }
+ - SymbolRef { name: [*], context: [test.tk], definition: None }
  - InstancesAt(test.tk:1:2)
 Entity 3:
- - Call(Entity(2, Generation(1)), [Entity(0, Generation(1)), Entity(1, Generation(1))])
+ - Call { inner: Entity(2, Generation(1)), args: [Entity(0, Generation(1)), Entity(1, Generation(1))] }
  - InstancesAt(test.tk:1:2)
 Entity 4:
  - HasValue(4)
  - InstancesAt(test.tk:1:5)
 Entity 5:
  - DefinedAt(None)
- - SymbolRef { name: [+], context: [test.tk] }
+ - SymbolRef { name: [+], context: [test.tk], definition: None }
  - InstancesAt(test.tk:1:4)
 Entity 6:
- - Call(Entity(5, Generation(1)), [Entity(3, Generation(1)), Entity(4, Generation(1))])
+ - Call { inner: Entity(5, Generation(1)), args: [Entity(3, Generation(1)), Entity(4, Generation(1))] }
  - InstancesAt(test.tk:1:4)"
         );
         Ok(())
@@ -1131,17 +1131,17 @@ Entity 2:
  - InstancesAt(test.tk:1:6)
 Entity 3:
  - DefinedAt(None)
- - SymbolRef { name: [+], context: [test.tk] }
+ - SymbolRef { name: [+], context: [test.tk], definition: None }
  - InstancesAt(test.tk:1:5)
 Entity 4:
- - Call(Entity(3, Generation(1)), [Entity(1, Generation(1)), Entity(2, Generation(1))])
+ - Call { inner: Entity(3, Generation(1)), args: [Entity(1, Generation(1)), Entity(2, Generation(1))] }
  - InstancesAt(test.tk:1:5)
 Entity 5:
  - DefinedAt(None)
- - SymbolRef { name: [*], context: [test.tk] }
+ - SymbolRef { name: [*], context: [test.tk], definition: None }
  - InstancesAt(test.tk:1:2)
 Entity 6:
- - Call(Entity(5, Generation(1)), [Entity(0, Generation(1)), Entity(4, Generation(1))])
+ - Call { inner: Entity(5, Generation(1)), args: [Entity(0, Generation(1)), Entity(4, Generation(1))] }
  - InstancesAt(test.tk:1:2)"
         );
         Ok(())
@@ -1160,10 +1160,10 @@ Entity 1:
  - InstancesAt(test.tk:1:9)
 Entity 2:
  - DefinedAt(None)
- - SymbolRef { name: [+], context: [test.tk] }
+ - SymbolRef { name: [+], context: [test.tk], definition: None }
  - InstancesAt(test.tk:1:8)
 Entity 3:
- - Call(Entity(2, Generation(1)), [Entity(0, Generation(1)), Entity(1, Generation(1))])
+ - Call { inner: Entity(2, Generation(1)), args: [Entity(0, Generation(1)), Entity(1, Generation(1))] }
  - InstancesAt(test.tk:1:8)"
         );
         Ok(())
@@ -1200,10 +1200,10 @@ Entity 1:
  - InstancesAt(test.tk:1:3)
 Entity 2:
  - DefinedAt(None)
- - SymbolRef { name: [f], context: [test.tk] }
+ - SymbolRef { name: [f], context: [test.tk], definition: None }
  - InstancesAt(test.tk:1:1)
 Entity 3:
- - Call(Entity(2, Generation(1)), [Entity(1, Generation(1))])
+ - Call { inner: Entity(2, Generation(1)), args: [Entity(1, Generation(1))] }
  - InstancesAt(test.tk:1:1)"
         );
         Ok(())
@@ -1216,26 +1216,26 @@ Entity 3:
             "\
 Entity 0:
  - DefinedAt(None)
- - SymbolRef { name: [x], context: [test.tk, _] }
+ - SymbolRef { name: [x], context: [test.tk, _], definition: None }
  - InstancesAt(test.tk:1:5)
 Entity 1:
  - DefinedAt(None)
- - SymbolRef { name: [y], context: [test.tk, _] }
+ - SymbolRef { name: [y], context: [test.tk, _], definition: None }
  - InstancesAt(test.tk:1:8)
 Entity 2:
  - DefinedAt(None)
- - SymbolRef { name: [x], context: [test.tk, mul] }
+ - SymbolRef { name: [x], context: [test.tk, mul], definition: None }
  - InstancesAt(test.tk:1:12)
 Entity 3:
  - DefinedAt(None)
- - SymbolRef { name: [y], context: [test.tk, mul] }
+ - SymbolRef { name: [y], context: [test.tk, mul], definition: None }
  - InstancesAt(test.tk:1:14)
 Entity 4:
  - DefinedAt(None)
- - SymbolRef { name: [*], context: [test.tk, mul] }
+ - SymbolRef { name: [*], context: [test.tk, mul], definition: None }
  - InstancesAt(test.tk:1:13)
 Entity 5:
- - Call(Entity(4, Generation(1)), [Entity(2, Generation(1)), Entity(3, Generation(1))])
+ - Call { inner: Entity(4, Generation(1)), args: [Entity(2, Generation(1)), Entity(3, Generation(1))] }
  - InstancesAt(test.tk:1:13)
 Entity 6:
  - Definition { names: [[mul]], params: Some([Entity(0, Generation(1)), Entity(1, Generation(1))]), implementations: [Entity(5, Generation(1))], path: [test.tk] }
@@ -1254,10 +1254,10 @@ Entity 0:
  - InstancesAt(test.tk:1:7)
 Entity 1:
  - DefinedAt(None)
- - SymbolRef { name: [!], context: [test.tk, x] }
+ - SymbolRef { name: [!], context: [test.tk, x], definition: None }
  - InstancesAt(test.tk:1:6)
 Entity 2:
- - Call(Entity(1, Generation(1)), [Entity(0, Generation(1))])
+ - Call { inner: Entity(1, Generation(1)), args: [Entity(0, Generation(1))] }
  - InstancesAt(test.tk:1:6)
 Entity 3:
  - Definition { names: [[x]], params: Some([]), implementations: [Entity(2, Generation(1))], path: [test.tk] }
@@ -1267,10 +1267,10 @@ Entity 4:
  - InstancesAt(test.tk:2:1)
 Entity 5:
  - DefinedAt(None)
- - SymbolRef { name: [;], context: [test.tk] }
+ - SymbolRef { name: [;], context: [test.tk], definition: None }
  - InstancesAt(test.tk:1:20)
 Entity 6:
- - Call(Entity(5, Generation(1)), [Entity(3, Generation(1)), Entity(4, Generation(1))])
+ - Call { inner: Entity(5, Generation(1)), args: [Entity(3, Generation(1)), Entity(4, Generation(1))] }
  - InstancesAt(test.tk:1:20)"
         );
         Ok(())

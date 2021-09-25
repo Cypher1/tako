@@ -23,11 +23,12 @@ impl DefinitionHead {
         let name = AstTerm::Symbol {
             name: self.name,
             context: self.path,
+            value: None,
         }
         .into_node(loc, None);
-        self.params.map_or(name.clone(), |children| {
+        self.params.map_or(name.clone(), |args| {
             let inner = storage.store_node(name, path);
-            AstTerm::Call { inner, children }.into_node(loc, ty)
+            AstTerm::Call { inner, args }.into_node(loc, ty)
         })
     }
 }
@@ -38,11 +39,12 @@ pub enum AstTerm {
     Symbol {
         name: Path,
         context: Path,
+        value: Option<Val>,
     },
     Sequence(Vec<Entity>), // TODO: Inline the vec somehow? Use a non empty vec?
     Call {
         inner: Entity,
-        children: Vec<Entity>,
+        args: Vec<Entity>,
     },
     Definition {
         head: DefinitionHead,
@@ -68,7 +70,11 @@ impl AstTerm {
         loc: &Loc,
     ) -> Result<AstNode, TError> {
         Ok(match self {
-            AstTerm::Symbol { name, context } => AstTerm::Definition {
+            AstTerm::Symbol {
+                name,
+                context,
+                value: None,
+            } => AstTerm::Definition {
                 head: DefinitionHead {
                     name,
                     params: None,
