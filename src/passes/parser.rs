@@ -587,9 +587,10 @@ pub mod tests {
 
     type Test = Result<(), TError>;
 
+    static TEST_FN: &str = "test.tk";
+
     fn parse_impl(storage: &mut DBStorage, contents: &str) -> Result<(Node, Entity), TError> {
-        let filename = "test.tk";
-        let module = storage.module_name(filename);
+        let module = storage.module_name(TEST_FN);
         parse_string(storage, &module, &Arc::new(contents.to_string()))
     }
 
@@ -832,8 +833,8 @@ pub mod tests {
     fn entity_parse_num() -> Test {
         let (root, storage) = parse_entities("12")?;
         assert_eq_err(
-            InstancesAt::loc("test.tk", 1, 1)
-                .expect(HasValue::new(Prim::I32(12)))
+            HasValue::new(Prim::I32(12))
+                .at(TEST_FN, 1, 1)
                 .one()
                 .run(&storage),
             root,
@@ -841,19 +842,19 @@ pub mod tests {
     }
 
     #[test]
-    fn match_entity_parse_num_with_type_annotation() -> Test {
+    fn entity_parse_num_with_type_annotation() -> Test {
         let (_root, storage) = parse_entities("12 : Int")?;
         assert_no_err(
             SymbolRef {
                 name: path!("Int"),
-                context: path!("test.tk"),
+                context: path!(TEST_FN),
                 definition: None,
             }
-            .expect(InstancesAt::loc("test.tk", 1, 6))
+            .at(TEST_FN, 1, 6)
             .one()
             .chain(|ty_id| {
                 HasValue::new(Prim::I32(12))
-                    .expect(InstancesAt::loc("test.tk", 1, 1))
+                    .at(TEST_FN, 1, 1)
                     .expect(HasType(*ty_id))
                     .one()
             })
@@ -862,47 +863,42 @@ pub mod tests {
     }
 
     #[test]
-    fn entity_parse_num_with_type_annotation() -> Test {
-        assert_str_eq!(
-            dbg_parse_entities("12 : Int")?,
-            "\
-Entity 0:
- - DefinedAt(None)
- - SymbolRef { name: [Int], context: [test.tk], definition: None }
- - InstancesAt(test.tk:1:6)
-Entity 1:
- - HasType(Entity(0, Generation(1)))
- - HasValue(12)
- - InstancesAt(test.tk:1:1)"
-        );
-        Ok(())
-    }
-
-    #[test]
     fn entity_parse_expr_with_type_annotation() -> Test {
-        assert_str_eq!(
-            dbg_parse_entities("3 * 4 : Int")?,
-            "\
-Entity 0:
- - HasValue(3)
- - InstancesAt(test.tk:1:1)
-Entity 1:
- - HasValue(4)
- - InstancesAt(test.tk:1:5)
-Entity 2:
- - DefinedAt(None)
- - SymbolRef { name: [Int], context: [test.tk], definition: None }
- - InstancesAt(test.tk:1:9)
-Entity 3:
- - DefinedAt(None)
- - SymbolRef { name: [*], context: [test.tk], definition: None }
- - InstancesAt(test.tk:1:3)
-Entity 4:
- - Call { inner: Entity(3, Generation(1)), args: [Entity(0, Generation(1)), Entity(1, Generation(1))] }
- - HasType(Entity(2, Generation(1)))
- - InstancesAt(test.tk:1:3)"
-        );
-        Ok(())
+        let (root, storage) = parse_entities("3 * 4 : Int")?;
+        let node_3 = HasValue::new(Prim::I32(3)).at(TEST_FN, 1, 1).one();
+        let node_4 = HasValue::new(Prim::I32(4)).at(TEST_FN, 1, 5).one();
+        let int_ty = SymbolRef {
+            name: path!("Int"),
+            context: path!(TEST_FN),
+            definition: None,
+        }
+        .at(TEST_FN, 1, 9)
+        .one();
+        let node_mul = SymbolRef {
+            name: path!("*"),
+            context: path!(TEST_FN),
+            definition: None,
+        }
+        .at(TEST_FN, 1, 3)
+        .one();
+        assert_eq_err(
+            node_3
+                .pair(node_4)
+                .pair(int_ty)
+                .pair(node_mul)
+                .chain(|(((n_3, n_4), n_ty), n_mul)| {
+                    Call {
+                        inner: *n_mul,
+                        args: vec![*n_3, *n_4],
+                    }
+                    .expect(HasType(*n_ty))
+                    .at(TEST_FN, 1, 3)
+                    .one()
+                })
+                .run(&storage)
+                .map(|res| res.1),
+            root,
+        )
     }
 
     #[test]
