@@ -924,14 +924,12 @@ pub mod tests {
 
     #[test]
     fn entity_parse_str() -> Test {
-        assert_str_eq!(
-            dbg_parse_entities("\"hello world\"")?,
-            "\
-Entity 0:
- - HasValue('hello world')
- - InstancesAt(test.tk:1:1)"
-        );
-        Ok(())
+        let (root, storage) = parse_entities("\"hello world\"")?;
+        let txt = "hello world".to_string();
+        assert_eq_err(
+            HasValue::new(Prim::Str(txt)).at(TEST_FN, 1, 1).run(&storage),
+            root,
+        )
     }
 
     #[test]
