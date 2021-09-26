@@ -879,16 +879,24 @@ pub mod tests {
 
     #[test]
     fn entity_parse_expr_containing_value_with_type_annotation() -> Test {
-        assert_str_eq!(
-            dbg_parse_entities("3 * (4 : Int)")?,
+        let (root, storage) = parse_entities("3 * (4 : Int)")?;
+        let node_3 = HasValue::new(Prim::I32(3)).at(TEST_FN, 1, 1);
+        let int_ty = SymbolRef::new(path!("Int"), path!(TEST_FN)).at(TEST_FN, 1, 10);
+        int_y.chain(|n_ty|)
+        let node_mul = SymbolRef::new(path!("*"), path!(TEST_FN)).at(TEST_FN, 1, 3);
+        let node_4 = HasValue::new(Prim::I32(4)).at(TEST_FN, 1, 5);
+        assert_eq_err(
+            (((node_3, node_mul), node_4), int_ty)
+                .chain(|(((n_3, n_mul), n_4), n_ty)| {
+                    Call::new(*n_mul, &[*n_3, *n_4])
+                        .expect(HasType(*n_ty))
+                        .at(TEST_FN, 1, 3)
+                })
+                .run(&storage)
+                .map(|res| res.1),
+            root,
+        )
             "\
-Entity 0:
- - HasValue(3)
- - InstancesAt(test.tk:1:1)
-Entity 1:
- - DefinedAt(None)
- - SymbolRef { name: [Int], context: [test.tk], definition: None }
- - InstancesAt(test.tk:1:10)
 Entity 2:
  - HasType(Entity(1, Generation(1)))
  - HasValue(4)
