@@ -840,8 +840,8 @@ pub mod tests {
 
     #[test]
     fn entity_parse_num_with_type_annotation() -> Test {
-        let (_root, storage) = parse_entities("12 : Int")?;
-        assert_no_err(
+        let (root, storage) = parse_entities("12 : Int")?;
+        assert_eq_err(
             SymbolRef {
                 name: path!("Int"),
                 context: path!(TEST_FN),
@@ -853,7 +853,9 @@ pub mod tests {
                     .expect(HasType(*ty_id))
                     .at(TEST_FN, 1, 1)
             })
-            .run(&storage),
+            .run(&storage)
+            .map(|res| res.1),
+            root
         )
     }
 
@@ -882,60 +884,42 @@ pub mod tests {
         let (root, storage) = parse_entities("3 * (4 : Int)")?;
         let node_3 = HasValue::new(Prim::I32(3)).at(TEST_FN, 1, 1);
         let int_ty = SymbolRef::new(path!("Int"), path!(TEST_FN)).at(TEST_FN, 1, 10);
-        int_y.chain(|n_ty|)
+        let node_4 = int_ty.chain(|n_ty|
+            HasValue::new(Prim::I32(4))
+            .expect(HasType(*n_ty))
+            .at(TEST_FN, 1, 6)
+        );
         let node_mul = SymbolRef::new(path!("*"), path!(TEST_FN)).at(TEST_FN, 1, 3);
-        let node_4 = HasValue::new(Prim::I32(4)).at(TEST_FN, 1, 5);
         assert_eq_err(
-            (((node_3, node_mul), node_4), int_ty)
-                .chain(|(((n_3, n_mul), n_4), n_ty)| {
+            ((node_3, node_mul), node_4)
+                .chain(|((n_3, n_mul), (_n_ty, n_4))| {
                     Call::new(*n_mul, &[*n_3, *n_4])
-                        .expect(HasType(*n_ty))
                         .at(TEST_FN, 1, 3)
                 })
                 .run(&storage)
                 .map(|res| res.1),
             root,
         )
-            "\
-Entity 2:
- - HasType(Entity(1, Generation(1)))
- - HasValue(4)
- - InstancesAt(test.tk:1:6)
-Entity 3:
- - DefinedAt(None)
- - SymbolRef { name: [*], context: [test.tk], definition: None }
- - InstancesAt(test.tk:1:3)
-Entity 4:
- - Call { inner: Entity(3, Generation(1)), args: [Entity(0, Generation(1)), Entity(2, Generation(1))] }
- - InstancesAt(test.tk:1:3)"
-        );
-        Ok(())
     }
 
     #[test]
     fn entity_parse_expr_with_value_type_annotation() -> Test {
-        assert_str_eq!(
-            dbg_parse_entities("(3 * 4) : 12")?,
-            "\
-Entity 0:
- - HasValue(3)
- - InstancesAt(test.tk:1:2)
-Entity 1:
- - HasValue(4)
- - InstancesAt(test.tk:1:6)
-Entity 2:
- - HasValue(12)
- - InstancesAt(test.tk:1:11)
-Entity 3:
- - DefinedAt(None)
- - SymbolRef { name: [*], context: [test.tk], definition: None }
- - InstancesAt(test.tk:1:4)
-Entity 4:
- - Call { inner: Entity(3, Generation(1)), args: [Entity(0, Generation(1)), Entity(1, Generation(1))] }
- - HasType(Entity(2, Generation(1)))
- - InstancesAt(test.tk:1:4)"
-        );
-        Ok(())
+        let (root, storage) = parse_entities("(3 * 4) : 12")?;
+        let node_3 = HasValue::new(Prim::I32(3)).at(TEST_FN, 1, 2);
+        let node_4 = HasValue::new(Prim::I32(4)).at(TEST_FN, 1, 6);
+        let node_12 = HasValue::new(Prim::I32(12)).at(TEST_FN, 1, 11);
+        let node_mul = SymbolRef::new(path!("*"), path!(TEST_FN)).at(TEST_FN, 1, 4);
+        assert_eq_err(
+            (((node_3, node_mul), node_4), node_12)
+                .chain(|(((n_3, n_mul), n_4), n_12)| {
+                    Call::new(*n_mul, &[*n_3, *n_4])
+                        .expect(HasType(*n_12))
+                        .at(TEST_FN, 1, 4)
+                })
+                .run(&storage)
+                .map(|res| res.1),
+            root,
+        )
     }
 
     #[test]
