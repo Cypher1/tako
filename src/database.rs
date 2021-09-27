@@ -2,8 +2,7 @@ use crate::ast::{path_to_string, Info, Node, Path, PathRef, Root, Symbol, Visito
 use crate::ast_node::*;
 use crate::cli_options::Options;
 use crate::components::{
-    Call, DefinedAt, Definition, HasErrors, HasType, HasValue, InstancesAt, Sequence, SymbolRef,
-    Untyped,
+    Call, Definition, HasErrors, HasType, HasValue, InstancesAt, Sequence, SymbolRef, Untyped,
 };
 use crate::errors::{RequirementError, TError};
 use crate::externs::{get_externs, Extern, Semantic};
@@ -149,7 +148,6 @@ macro_rules! define_components {
 
 define_components!(
     call => Call,
-    defined_at => DefinedAt,
     definition => Definition,
     has_errors => HasErrors,
     has_type => HasType,
@@ -164,7 +162,6 @@ define_debug!(
     format_entity_definition,
     print_entity_definition,
     format_entity_definitions,
-    DefinedAt,
     Definition,
     SymbolRef
 );
@@ -184,6 +181,8 @@ define_debug!(
 
 impl Default for DBStorage {
     fn default() -> Self {
+        #[cfg(test)]
+        crate::init_for_test();
         let mut world = World::new();
         register_components(&mut world);
 
@@ -283,16 +282,20 @@ impl DBStorage {
         &mut self,
         module: PathRef,
         contents: &Arc<String>,
-    ) -> Result<Node, TError> {
+    ) -> Result<(Node, Entity), TError> {
         use crate::passes::parser;
-        Ok(parser::parse_string(self, module, contents)?.0)
+        parser::parse_string(self, module, contents)
     }
 
-    pub fn parse_str(&mut self, module: PathRef, contents: &'static str) -> Result<Node, TError> {
+    pub fn parse_str(
+        &mut self,
+        module: PathRef,
+        contents: &'static str,
+    ) -> Result<(Node, Entity), TError> {
         self.parse_string(module, &Arc::new(contents.to_string()))
     }
 
-    pub fn parse_file(&mut self, module: PathRef) -> Result<Node, TError> {
+    pub fn parse_file(&mut self, module: PathRef) -> Result<(Node, Entity), TError> {
         info!("Parsing file... {}", path_to_string(module));
         let filename = self.filename(module);
         let contents = if let Some(contents) = self.file_contents.get(&filename) {
@@ -320,15 +323,16 @@ impl DBStorage {
         DefinitionFinder::process(&module, self)
     }
 
-    pub fn compile_to_cpp(&mut self, module: PathRef) -> Result<(String, HashSet<String>), TError> {
+    pub fn compile_to_cpp(&mut self, module: PathRef) -> Result<(String, HashSet<String>, (String, HashSet<String>)), TError> {
         use crate::passes::to_cpp::CodeGenerator;
         info!("Generating code... {}", path_to_string(module));
         CodeGenerator::process(&module.to_vec(), self)
     }
 
     pub fn build_with_gpp(&mut self, module: PathRef) -> Result<String, TError> {
-        let (res, flags) = self.compile_to_cpp(module)?;
+        let (res, flags, (entity_res, entity_flags)) = self.compile_to_cpp(module)?;
         info!("Building file with g++ ... {}", path_to_string(module));
+        info!("Alternative {:?} {:?}", entity_res, entity_flags);
 
         let name: String = module
             .iter()
@@ -521,13 +525,11 @@ impl DBStorage {
                         context,
                         value,
                     } => {
-                        let entity = entity
-                            .with(SymbolRef {
-                                name,
-                                context,
-                                definition: None,
-                            })
-                            .with(DefinedAt(None));
+                        let entity = entity.with(SymbolRef {
+                            name,
+                            context,
+                            definition: None,
+                        });
                         if let Some(value) = value {
                             entity.with(HasValue(value))
                         } else {

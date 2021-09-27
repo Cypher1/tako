@@ -1,8 +1,14 @@
-use crate::ast::{Abs, Apply, BinOp, HasInfo, Let, Path, PathRef, Sym, Symbol, UnOp, Visitor};
+use crate::ast::{
+    path_to_string, Abs, Apply, BinOp, HasInfo, Let, Path, PathRef, Sym, Symbol, UnOp, Visitor,
+};
+use crate::components::SymbolRef;
+use crate::database::DBStorage;
+use crate::errors::TError;
 use crate::primitives::{Prim, Val};
 use crate::symbol_table::Table;
-use crate::{database::DBStorage, errors::TError};
-use log::debug;
+use log::{debug, info};
+use specs::prelude::*;
+use std::collections::HashMap;
 use std::collections::HashSet;
 
 // Walks the AST compiling it to wasm.
@@ -221,7 +227,7 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
 
 type Res = Result<Code, TError>;
 type State = Table;
-type Out = (String, HashSet<String>);
+type Out = (String, HashSet<String>, (String, HashSet<String>));
 
 fn build_call1(before: &str, inner: Code) -> Code {
     inner.with_expr(&|exp| Code::Expr(format!("{}({})", &before, &exp)))
@@ -237,9 +243,89 @@ fn build_call2(before: &str, mid: &str, left: Code, right: &Code) -> Code {
     })
 }
 
+fn code_to_text(includes: &HashSet<String>, functions: &Vec<Code>) -> String {
+    // TODO(cypher1): Use a writer.
+    let mut code = "".to_string();
+    // #includes
+    let mut includes: Vec<&String> = includes.into_iter().collect();
+    includes.sort();
+    for inc in includes {
+        if inc.as_str() != "" {
+            code = format!("{}{}\n", code, inc);
+        }
+    }
+    // Forward declarations
+    for func in functions.iter() {
+        match &func {
+            Code::Func { name, args, return_type, .. } => {
+                code = format!("{}{} {}({});\n", code, return_type, name, args.join(", "),);
+            }
+            _ => panic!("Cannot create function from non-function"),
+        }
+    }
+
+    // Definitions
+    for func in functions.iter().clone() {
+        let function = pretty_print_block(func.clone(), "\n");
+        code = format!("{}{}", code, function);
+    }
+    code + "\n"
+}
+
+struct CodeGeneratorSystem {
+    entry: Entity,
+    result: Option<String>,
+    flags: HashSet<String>,
+}
+
+impl<'a> System<'a> for CodeGeneratorSystem {
+    type SystemData = ReadStorage<'a, SymbolRef>;
+
+    fn run(&mut self, mut symbols: Self::SystemData) {
+        let mut code_for_entity: HashMap<Entity, Code> = HashMap::new();
+        // dbg!(&self.path_to_entity);
+        for symbol in (&mut symbols).join() {
+            // code_for_entity.insert(, Code::);
+        }
+        // Work from the entry down
+        let mut includes = HashSet::new();
+        let mut functions = Vec::new();
+
+        if false {
+            let body = Box::new(
+                code_for_entity
+                    .get(&self.entry)
+                    .expect("Entry point should have associated code")
+                    .clone(),
+            ); // turn this into 'main'
+            let main = Code::Func {
+                name: "main".to_string(),
+                args: vec!["int argc".to_string(), "char* argv[]".to_string()],
+                body,
+                lambda: false,
+                call: false,
+                return_type: "int".to_string(),
+            };
+            functions.push(main);
+        }
+
+        self.result = Some(code_to_text(&includes, &functions));
+    }
+}
+
 impl Visitor<State, Code, Out, Path> for CodeGenerator {
     fn visit_root(&mut self, storage: &mut DBStorage, module: &Path) -> Result<Out, TError> {
         let root = storage.look_up_definitions(module)?;
+        info!("Generating code... {}", path_to_string(module));
+        let mut code_generator = CodeGeneratorSystem {
+            result: None,
+            flags: HashSet::new(),
+            entry: root.entity,
+        };
+        debug!("Running code_generator");
+        code_generator.run_now(&storage.world);
+        debug!("Done code_generator");
+
         let mut main_info = root.ast.get_info().clone();
         let mut main_at = module.clone();
         main_at.push(Symbol::new("main"));
@@ -273,35 +359,17 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             },
             thing => panic!("main must be an Func {:?}", thing),
         };
-        // TODO(cypher1): Use a writer.
-        let mut code = "".to_string();
-
-        // #includes
-        let mut includes: Vec<&String> = self.includes.iter().collect();
-        includes.sort();
-        for inc in &includes {
-            if inc.as_str() != "" {
-                code = format!("{}{}\n", code, inc);
-            }
-        }
-        // Forward declarations
-        for func in &self.functions.clone() {
-            match &func {
-                Code::Func { name, args, .. } => {
-                    code = format!("{}{}({});\n", code, name, args.join(", "),);
-                }
-                _ => panic!("Cannot create function from non-function"),
-            }
-        }
-
         self.functions.push(main);
-
-        // Definitions
-        for func in self.functions.iter().clone() {
-            let function = pretty_print_block(func.clone(), "\n");
-            code = format!("{}{}", code, function);
-        }
-        Ok((code + "\n", self.flags.clone()))
+        // TODO(cypher1): Use a writer.
+        let code = code_to_text(&self.includes, &self.functions);
+        Ok((
+            code,
+            self.flags.clone(),
+            (
+                code_generator.result.unwrap_or("".to_string()),
+                code_generator.flags,
+            ),
+        ))
     }
 
     fn visit_sym(&mut self, storage: &mut DBStorage, _state: &mut State, expr: &Sym) -> Res {

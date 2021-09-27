@@ -116,10 +116,7 @@ mod tests {
     use crate::primitives::{boolean, int32};
     use log::debug;
 
-    use crate::init_for_test;
-
     fn get_db() -> DBStorage {
-        init_for_test();
         DBStorage::default()
     }
 

@@ -30,7 +30,7 @@ pub struct State {
 
 impl Visitor<State, Val, TypeGraph, Path> for TypeGraphBuilder {
     fn visit_root(&mut self, storage: &mut DBStorage, module: &Path) -> Result<TypeGraph, TError> {
-        let expr = &storage.parse_file(module)?;
+        let (expr, _entity) = &storage.parse_file(module)?;
         info!(
             "Building symbol table & type graph... {}",
             path_to_string(module)

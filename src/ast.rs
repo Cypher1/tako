@@ -7,6 +7,7 @@ use crate::errors::TError;
 use crate::location::Loc;
 use crate::primitives::{unit_type, Val};
 use crate::symbol_table::Table;
+use specs::Entity;
 
 use TError::{
     CppCompilerError, ExpectedLetNode, InternalError, MatchError, OutOfScopeTypeVariable,
@@ -408,7 +409,9 @@ impl fmt::Debug for Symbol {
 macro_rules! symbol {
     ($name_token: tt) => {{
         let name: &str = $name_token;
-        if name.contains('.') {
+        if name == "_" {
+            crate::ast::Symbol::Anon
+        } else if name.contains('.') {
             let parts: Vec<&str> = name.splitn(2, '.').collect();
             crate::ast::Symbol::with_ext(parts[0], parts[1])
         } else {
@@ -499,6 +502,7 @@ impl Default for Entry {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Root {
     pub ast: Node,
+    pub entity: Entity,
     pub table: Table,
 }
 

@@ -2,9 +2,7 @@ use crate::ast::{
     Node,
     Node::{AbsNode, ApplyNode, BinOpNode, LetNode, SymNode, UnOpNode, ValNode},
 };
-use crate::components::{
-    Call, DefinedAt, Definition, HasType, HasValue, Sequence, SymbolRef, Untyped,
-};
+use crate::components::{Call, Definition, HasType, HasValue, Sequence, SymbolRef, Untyped};
 use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::passes::ast_interpreter::Interpreter;
@@ -25,7 +23,6 @@ impl<'a> System<'a> for TypeCheckerSystem {
     #[allow(clippy::type_complexity)]
     type SystemData = (
         ReadStorage<'a, Call>,
-        ReadStorage<'a, DefinedAt>,
         ReadStorage<'a, Definition>,
         WriteStorage<'a, HasType>,
         ReadStorage<'a, HasValue>,
@@ -36,11 +33,10 @@ impl<'a> System<'a> for TypeCheckerSystem {
 
     fn run(
         &mut self,
-        (calls, defined_at, definition, mut has_type, has_value, sequence, symbol_ref, mut untyped): Self::SystemData,
+        (calls, definition, mut has_type, has_value, sequence, symbol_ref, mut untyped): Self::SystemData,
     ) {
         for _ in (
             &calls,
-            &defined_at,
             &definition,
             &mut has_type,
             &has_value,
@@ -277,7 +273,7 @@ mod tests {
         let prog_filename = "test/prog.tk";
         let prog_module = storage.module_name(prog_filename);
 
-        let prog = storage.parse_str(&prog_module, prog_str)?;
+        let (prog, _entity) = storage.parse_str(&prog_module, prog_str)?;
 
         let env = Variable("test_program".to_string()); // TODO: Track the type env
         let prog_ty = infer(&mut storage, &prog, &env)?;

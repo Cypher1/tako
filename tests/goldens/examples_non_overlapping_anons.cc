@@ -1,3 +1,4 @@
+int main(int argc, char* argv[]);
 
 int main(int argc, char* argv[]) {
   const auto examples_non_overlapping_anons_x = [&](
