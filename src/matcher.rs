@@ -35,9 +35,9 @@ pub enum MatchErr {
     #[error("{0}\n  Requirement not met: {1}")]
     Fail(MatchErrReason, RequirementErrors),
     #[error("Error in left: {0}")]
-    PairErrorInLeft(Box<MatchErr>),
+    TupleErrorInLeft(Box<MatchErr>),
     #[error("Error in right: {0}")]
-    PairErrorInRight(Box<MatchErr>),
+    TupleErrorInRight(Box<MatchErr>),
     #[error("Error in initial search: {0}")]
     ChainErrorInInitial(Box<MatchErr>),
     #[error("Error in follow up search: {0}")]
@@ -84,15 +84,6 @@ pub trait Matcher {
         }
     }
 
-    fn pair<U: Matcher>(self, other: U) -> Pair<Self, U>
-    where
-        Self: Sized,
-    {
-        Pair {
-            first: self,
-            second: other,
-        }
-    }
     fn expect<U: Matcher<Res = Vec<Entity>>>(self, other: U) -> Expect<Self, U>
     where
         Self: Sized + Matcher<Res = Vec<Entity>>,
@@ -103,11 +94,12 @@ pub trait Matcher {
         }
     }
 
-    fn at(self, file_name: &str, line: i32, col: i32) -> Expect<Self, InstancesAt>
+    fn at(self, file_name: &str, line: i32, col: i32) -> One<Expect<Self, InstancesAt>>
     where
         Self: Sized + Matcher<Res = Vec<Entity>>,
     {
         self.expect(InstancesAt(set!(Loc::new(file_name, line, col))))
+            .one()
     }
 }
 
@@ -141,22 +133,17 @@ impl<T: Matcher<Res = Vec<Entity>>> Matcher for NoMatches<T> {
     }
 }
 
-pub struct Pair<T: Matcher, U: Matcher> {
-    first: T,
-    second: U,
-}
-
-impl<T: Matcher, U: Matcher> Matcher for Pair<T, U> {
+impl<T: Matcher, U: Matcher> Matcher for (T, U) {
     type Res = (T::Res, U::Res);
     fn run_with_errs(&self, storage: &DBStorage) -> Result<(Self::Res, Log), MatchErr> {
         let (f, f_errs) = self
-            .first
+            .0
             .run_with_errs(storage)
-            .map_err(|err| PairErrorInLeft(Box::new(err)))?;
+            .map_err(|err| TupleErrorInLeft(Box::new(err)))?;
         let (s, s_errs) = self
-            .second
+            .1
             .run_with_errs(storage)
-            .map_err(|err| PairErrorInRight(Box::new(err)))?;
+            .map_err(|err| TupleErrorInRight(Box::new(err)))?;
         let mut errs = f_errs;
         errs.extend(s_errs);
         Ok(((f, s), errs))

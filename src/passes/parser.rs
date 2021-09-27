@@ -833,67 +833,45 @@ pub mod tests {
     fn entity_parse_num() -> Test {
         let (root, storage) = parse_entities("12")?;
         assert_eq_err(
-            HasValue::new(Prim::I32(12))
-                .at(TEST_FN, 1, 1)
-                .one()
-                .run(&storage),
+            HasValue::new(Prim::I32(12)).at(TEST_FN, 1, 1).run(&storage),
             root,
         )
     }
 
     #[test]
     fn entity_parse_num_with_type_annotation() -> Test {
-        let (_root, storage) = parse_entities("12 : Int")?;
-        assert_no_err(
+        let (root, storage) = parse_entities("12 : Int")?;
+        assert_eq_err(
             SymbolRef {
                 name: path!("Int"),
                 context: path!(TEST_FN),
                 definition: None,
             }
             .at(TEST_FN, 1, 6)
-            .one()
             .chain(|ty_id| {
                 HasValue::new(Prim::I32(12))
-                    .at(TEST_FN, 1, 1)
                     .expect(HasType(*ty_id))
-                    .one()
+                    .at(TEST_FN, 1, 1)
             })
-            .run(&storage),
+            .run(&storage)
+            .map(|res| res.1),
+            root,
         )
     }
 
     #[test]
     fn entity_parse_expr_with_type_annotation() -> Test {
         let (root, storage) = parse_entities("3 * 4 : Int")?;
-        let node_3 = HasValue::new(Prim::I32(3)).at(TEST_FN, 1, 1).one();
-        let node_4 = HasValue::new(Prim::I32(4)).at(TEST_FN, 1, 5).one();
-        let int_ty = SymbolRef {
-            name: path!("Int"),
-            context: path!(TEST_FN),
-            definition: None,
-        }
-        .at(TEST_FN, 1, 9)
-        .one();
-        let node_mul = SymbolRef {
-            name: path!("*"),
-            context: path!(TEST_FN),
-            definition: None,
-        }
-        .at(TEST_FN, 1, 3)
-        .one();
+        let node_3 = HasValue::new(Prim::I32(3)).at(TEST_FN, 1, 1);
+        let node_mul = SymbolRef::new(path!("*"), path!(TEST_FN)).at(TEST_FN, 1, 3);
+        let node_4 = HasValue::new(Prim::I32(4)).at(TEST_FN, 1, 5);
+        let int_ty = SymbolRef::new(path!("Int"), path!(TEST_FN)).at(TEST_FN, 1, 9);
         assert_eq_err(
-            node_3
-                .pair(node_4)
-                .pair(int_ty)
-                .pair(node_mul)
-                .chain(|(((n_3, n_4), n_ty), n_mul)| {
-                    Call {
-                        inner: *n_mul,
-                        args: vec![*n_3, *n_4],
-                    }
-                    .expect(HasType(*n_ty))
-                    .at(TEST_FN, 1, 3)
-                    .one()
+            (((node_3, node_mul), node_4), int_ty)
+                .chain(|(((n_3, n_mul), n_4), n_ty)| {
+                    Call::new(*n_mul, &[*n_3, *n_4])
+                        .expect(HasType(*n_ty))
+                        .at(TEST_FN, 1, 3)
                 })
                 .run(&storage)
                 .map(|res| res.1),
@@ -903,211 +881,166 @@ pub mod tests {
 
     #[test]
     fn entity_parse_expr_containing_value_with_type_annotation() -> Test {
-        assert_str_eq!(
-            dbg_parse_entities("3 * (4 : Int)")?,
-            "\
-Entity 0:
- - HasValue(3)
- - InstancesAt(test.tk:1:1)
-Entity 1:
- - DefinedAt(None)
- - SymbolRef { name: [Int], context: [test.tk], definition: None }
- - InstancesAt(test.tk:1:10)
-Entity 2:
- - HasType(Entity(1, Generation(1)))
- - HasValue(4)
- - InstancesAt(test.tk:1:6)
-Entity 3:
- - DefinedAt(None)
- - SymbolRef { name: [*], context: [test.tk], definition: None }
- - InstancesAt(test.tk:1:3)
-Entity 4:
- - Call { inner: Entity(3, Generation(1)), args: [Entity(0, Generation(1)), Entity(2, Generation(1))] }
- - InstancesAt(test.tk:1:3)"
-        );
-        Ok(())
+        let (root, storage) = parse_entities("3 * (4 : Int)")?;
+        let node_3 = HasValue::new(Prim::I32(3)).at(TEST_FN, 1, 1);
+        let int_ty = SymbolRef::new(path!("Int"), path!(TEST_FN)).at(TEST_FN, 1, 10);
+        let node_4 = int_ty.chain(|n_ty| {
+            HasValue::new(Prim::I32(4))
+                .expect(HasType(*n_ty))
+                .at(TEST_FN, 1, 6)
+        });
+        let node_mul = SymbolRef::new(path!("*"), path!(TEST_FN)).at(TEST_FN, 1, 3);
+        assert_eq_err(
+            ((node_3, node_mul), node_4)
+                .chain(|((n_3, n_mul), (_n_ty, n_4))| {
+                    Call::new(*n_mul, &[*n_3, *n_4]).at(TEST_FN, 1, 3)
+                })
+                .run(&storage)
+                .map(|res| res.1),
+            root,
+        )
     }
 
     #[test]
     fn entity_parse_expr_with_value_type_annotation() -> Test {
-        assert_str_eq!(
-            dbg_parse_entities("(3 * 4) : 12")?,
-            "\
-Entity 0:
- - HasValue(3)
- - InstancesAt(test.tk:1:2)
-Entity 1:
- - HasValue(4)
- - InstancesAt(test.tk:1:6)
-Entity 2:
- - HasValue(12)
- - InstancesAt(test.tk:1:11)
-Entity 3:
- - DefinedAt(None)
- - SymbolRef { name: [*], context: [test.tk], definition: None }
- - InstancesAt(test.tk:1:4)
-Entity 4:
- - Call { inner: Entity(3, Generation(1)), args: [Entity(0, Generation(1)), Entity(1, Generation(1))] }
- - HasType(Entity(2, Generation(1)))
- - InstancesAt(test.tk:1:4)"
-        );
-        Ok(())
+        let (root, storage) = parse_entities("(3 * 4) : 12")?;
+        let node_3 = HasValue::new(Prim::I32(3)).at(TEST_FN, 1, 2);
+        let node_4 = HasValue::new(Prim::I32(4)).at(TEST_FN, 1, 6);
+        let node_12 = HasValue::new(Prim::I32(12)).at(TEST_FN, 1, 11);
+        let node_mul = SymbolRef::new(path!("*"), path!(TEST_FN)).at(TEST_FN, 1, 4);
+        assert_eq_err(
+            (((node_3, node_mul), node_4), node_12)
+                .chain(|(((n_3, n_mul), n_4), n_12)| {
+                    Call::new(*n_mul, &[*n_3, *n_4])
+                        .expect(HasType(*n_12))
+                        .at(TEST_FN, 1, 4)
+                })
+                .run(&storage)
+                .map(|res| res.1),
+            root,
+        )
     }
 
     #[test]
     fn entity_parse_str() -> Test {
-        assert_str_eq!(
-            dbg_parse_entities("\"hello world\"")?,
-            "\
-Entity 0:
- - HasValue('hello world')
- - InstancesAt(test.tk:1:1)"
-        );
-        Ok(())
+        let (root, storage) = parse_entities("\"hello world\"")?;
+        let txt = "hello world".to_string();
+        assert_eq_err(
+            HasValue::new(Prim::Str(txt))
+                .at(TEST_FN, 1, 1)
+                .run(&storage),
+            root,
+        )
     }
 
     #[test]
     fn entity_parse_str_with_type_annotation() -> Test {
-        assert_str_eq!(
-            dbg_parse_entities("\"hello world\" : String")?,
-            "\
-Entity 0:
- - DefinedAt(None)
- - SymbolRef { name: [String], context: [test.tk], definition: None }
- - InstancesAt(test.tk:1:17)
-Entity 1:
- - HasType(Entity(0, Generation(1)))
- - HasValue('hello world')
- - InstancesAt(test.tk:1:1)"
-        );
-        Ok(())
+        let (root, storage) = parse_entities("\"hello world\" : String")?;
+        assert_eq_err(
+            SymbolRef::new(path!("String"), path!(TEST_FN))
+                .at(TEST_FN, 1, 17)
+                .chain(|ty_id| {
+                    HasValue::new(Prim::Str("hello world".to_string()))
+                        .expect(HasType(*ty_id))
+                        .at(TEST_FN, 1, 1)
+                })
+                .run(&storage)
+                .map(|res| res.1),
+            root,
+        )
     }
 
     #[test]
     fn entity_parse_un_op() -> Test {
-        assert_str_eq!(
-            dbg_parse_entities("-12")?,
-            "\
-Entity 0:
- - HasValue(12)
- - InstancesAt(test.tk:1:2)
-Entity 1:
- - DefinedAt(None)
- - SymbolRef { name: [-], context: [test.tk], definition: None }
- - InstancesAt(test.tk:1:1)
-Entity 2:
- - Call { inner: Entity(1, Generation(1)), args: [Entity(0, Generation(1))] }
- - InstancesAt(test.tk:1:1)"
-        );
-        Ok(())
+        let (root, storage) = parse_entities("-12")?;
+        let node_12 = HasValue::new(Prim::I32(12)).at(TEST_FN, 1, 2);
+        let node_neg = SymbolRef::new(path!("-"), path!(TEST_FN)).at(TEST_FN, 1, 1);
+        assert_eq_err(
+            (node_12, node_neg)
+                .chain(|(n_12, n_neg)| Call::new(*n_neg, &[*n_12]).at(TEST_FN, 1, 1))
+                .run(&storage)
+                .map(|res| res.1),
+            root,
+        )
     }
 
     #[test]
     fn entity_parse_min_op() -> Test {
-        assert_str_eq!(
-            dbg_parse_entities("14-12")?,
-            "\
-Entity 0:
- - HasValue(14)
- - InstancesAt(test.tk:1:1)
-Entity 1:
- - HasValue(12)
- - InstancesAt(test.tk:1:4)
-Entity 2:
- - DefinedAt(None)
- - SymbolRef { name: [-], context: [test.tk], definition: None }
- - InstancesAt(test.tk:1:3)
-Entity 3:
- - Call { inner: Entity(2, Generation(1)), args: [Entity(0, Generation(1)), Entity(1, Generation(1))] }
- - InstancesAt(test.tk:1:3)"
-        );
-        Ok(())
+        let (root, storage) = parse_entities("14-12")?;
+        let node_12 = HasValue::new(Prim::I32(12)).at(TEST_FN, 1, 4);
+        let node_14 = HasValue::new(Prim::I32(14)).at(TEST_FN, 1, 1);
+        let node_neg = SymbolRef::new(path!("-"), path!(TEST_FN)).at(TEST_FN, 1, 3);
+        assert_eq_err(
+            ((node_12, node_neg), node_14)
+                .chain(|((n_12, n_neg), n_14)| Call::new(*n_neg, &[*n_14, *n_12]).at(TEST_FN, 1, 3))
+                .run(&storage)
+                .map(|res| res.1),
+            root,
+        )
     }
 
     #[test]
     fn entity_parse_mul_op() -> Test {
-        assert_str_eq!(
-            dbg_parse_entities("14*12")?,
-            "\
-Entity 0:
- - HasValue(14)
- - InstancesAt(test.tk:1:1)
-Entity 1:
- - HasValue(12)
- - InstancesAt(test.tk:1:4)
-Entity 2:
- - DefinedAt(None)
- - SymbolRef { name: [*], context: [test.tk], definition: None }
- - InstancesAt(test.tk:1:3)
-Entity 3:
- - Call { inner: Entity(2, Generation(1)), args: [Entity(0, Generation(1)), Entity(1, Generation(1))] }
- - InstancesAt(test.tk:1:3)"
-        );
-        Ok(())
+        let (root, storage) = parse_entities("14+12")?;
+        let node_12 = HasValue::new(Prim::I32(12)).at(TEST_FN, 1, 4);
+        let node_14 = HasValue::new(Prim::I32(14)).at(TEST_FN, 1, 1);
+        let node_pls = SymbolRef::new(path!("+"), path!(TEST_FN)).at(TEST_FN, 1, 3);
+        assert_eq_err(
+            ((node_12, node_pls), node_14)
+                .chain(|((n_12, n_pls), n_14)| Call::new(*n_pls, &[*n_14, *n_12]).at(TEST_FN, 1, 3))
+                .run(&storage)
+                .map(|res| res.1),
+            root,
+        )
     }
 
     #[test]
     fn entity_parse_add_mul_precedence() -> Test {
-        assert_str_eq!(
-            dbg_parse_entities("3+2*4")?,
-            "\
-Entity 0:
- - HasValue(3)
- - InstancesAt(test.tk:1:1)
-Entity 1:
- - HasValue(2)
- - InstancesAt(test.tk:1:3)
-Entity 2:
- - HasValue(4)
- - InstancesAt(test.tk:1:5)
-Entity 3:
- - DefinedAt(None)
- - SymbolRef { name: [*], context: [test.tk], definition: None }
- - InstancesAt(test.tk:1:4)
-Entity 4:
- - Call { inner: Entity(3, Generation(1)), args: [Entity(1, Generation(1)), Entity(2, Generation(1))] }
- - InstancesAt(test.tk:1:4)
-Entity 5:
- - DefinedAt(None)
- - SymbolRef { name: [+], context: [test.tk], definition: None }
- - InstancesAt(test.tk:1:2)
-Entity 6:
- - Call { inner: Entity(5, Generation(1)), args: [Entity(0, Generation(1)), Entity(4, Generation(1))] }
- - InstancesAt(test.tk:1:2)" // TODO: should report the left most child node.
-        );
-        Ok(())
+        let (root, storage) = parse_entities("3+2*4")?;
+        let node_3 = HasValue::new(Prim::I32(3)).at(TEST_FN, 1, 1);
+        let node_pls = SymbolRef::new(path!("+"), path!(TEST_FN)).at(TEST_FN, 1, 2);
+        let node_2 = HasValue::new(Prim::I32(2)).at(TEST_FN, 1, 3);
+        let node_mul = SymbolRef::new(path!("*"), path!(TEST_FN)).at(TEST_FN, 1, 4);
+        let node_4 = HasValue::new(Prim::I32(4)).at(TEST_FN, 1, 5);
+        assert_eq_err(
+            ((((node_3, node_pls), node_2), node_mul), node_4)
+                .chain(|((((_n_3, _n_pls), n_2), n_mul), n_4)| {
+                    Call::new(*n_mul, &[*n_2, *n_4]).at(TEST_FN, 1, 4)
+                })
+                .chain(|(((((n_3, n_pls), _n_2), _n_mul), _n_4), n_8)| {
+                    Call::new(*n_pls, &[*n_3, *n_8]).at(TEST_FN, 1, 2)
+                })
+                .run(&storage)
+                .map(|res| res.1),
+            root,
+        )
     }
 
     #[test]
     fn entity_parse_mul_add_precedence() -> Test {
-        assert_str_eq!(
-            dbg_parse_entities("3*2+4")?,
-            "\
-Entity 0:
- - HasValue(3)
- - InstancesAt(test.tk:1:1)
-Entity 1:
- - HasValue(2)
- - InstancesAt(test.tk:1:3)
-Entity 2:
- - DefinedAt(None)
- - SymbolRef { name: [*], context: [test.tk], definition: None }
- - InstancesAt(test.tk:1:2)
-Entity 3:
- - Call { inner: Entity(2, Generation(1)), args: [Entity(0, Generation(1)), Entity(1, Generation(1))] }
- - InstancesAt(test.tk:1:2)
-Entity 4:
- - HasValue(4)
- - InstancesAt(test.tk:1:5)
-Entity 5:
- - DefinedAt(None)
- - SymbolRef { name: [+], context: [test.tk], definition: None }
- - InstancesAt(test.tk:1:4)
-Entity 6:
- - Call { inner: Entity(5, Generation(1)), args: [Entity(3, Generation(1)), Entity(4, Generation(1))] }
- - InstancesAt(test.tk:1:4)"
-        );
-        Ok(())
+        let (root, storage) = parse_entities("3*2+4")?;
+        let node_3 = HasValue::new(Prim::I32(3)).at(TEST_FN, 1, 1);
+        let node_mul = SymbolRef::new(path!("*"), path!(TEST_FN)).at(TEST_FN, 1, 2);
+        let node_2 = HasValue::new(Prim::I32(2)).at(TEST_FN, 1, 3);
+        let node_pls = SymbolRef::new(path!("+"), path!(TEST_FN)).at(TEST_FN, 1, 4);
+        let node_4 = HasValue::new(Prim::I32(4)).at(TEST_FN, 1, 5);
+        assert_eq_err(
+            (
+                (
+                    ((node_3, node_mul), node_2).chain(|((n_3, n_mul), n_2)| {
+                        Call::new(*n_mul, &[*n_3, *n_2]).at(TEST_FN, 1, 2)
+                    }),
+                    node_pls,
+                ),
+                node_4,
+            )
+                .chain(|(((_, n_6), n_pls), n_4)| {
+                    Call::new(*n_pls, &[*n_6, *n_4]).at(TEST_FN, 1, 4)
+                })
+                .run(&storage)
+                .map(|res| res.1),
+            root,
+        )
     }
 
     #[test]
