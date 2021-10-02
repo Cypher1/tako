@@ -247,7 +247,7 @@ fn code_to_text(includes: &HashSet<String>, functions: &Vec<Code>) -> String {
     // TODO(cypher1): Use a writer.
     let mut code = "".to_string();
     // #includes
-    let mut includes: Vec<&String> = includes.into_iter().collect();
+    let mut includes: Vec<&String> = includes.iter().collect();
     includes.sort();
     for inc in includes {
         if inc.as_str() != "" {
@@ -282,13 +282,13 @@ impl<'a> System<'a> for CodeGeneratorSystem {
     type SystemData = ReadStorage<'a, SymbolRef>;
 
     fn run(&mut self, mut symbols: Self::SystemData) {
-        let mut code_for_entity: HashMap<Entity, Code> = HashMap::new();
+        let code_for_entity: HashMap<Entity, Code> = HashMap::new();
         // dbg!(&self.path_to_entity);
-        for symbol in (&mut symbols).join() {
+        for _symbol in (&mut symbols).join() {
             // code_for_entity.insert(, Code::);
         }
         // Work from the entry down
-        let mut includes = HashSet::new();
+        let includes = HashSet::new();
         let mut functions = Vec::new();
 
         if false {
@@ -366,7 +366,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             code,
             self.flags.clone(),
             (
-                code_generator.result.unwrap_or("".to_string()),
+                code_generator.result.unwrap_or_else(||"".to_string()),
                 code_generator.flags,
             ),
         ))
