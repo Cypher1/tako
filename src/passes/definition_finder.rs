@@ -5,7 +5,6 @@ use crate::ast::{
 use crate::components::SymbolRef;
 use crate::database::DBStorage;
 use crate::errors::TError;
-use crate::externs::get_externs;
 use crate::passes::symbol_table_builder::State;
 use crate::primitives::Val;
 use log::{debug, info};
@@ -35,7 +34,11 @@ impl<'a> System<'a> for DefinitionFinderSystem {
                     let mut search_path = context.clone();
                     search_path.extend(symbol.name.clone());
                     if let Some(entity) = self.path_to_entity.get(&search_path) {
-                        return Some((*entity, search_path));
+                        debug!(
+                            "Found symbol: {:?} -> {:?} @ {:?}",
+                            &symbol, &entity, &search_path
+                        );
+                        return Some(*entity);
                     }
                     if context.is_empty() {
                         return None;
@@ -46,16 +49,8 @@ impl<'a> System<'a> for DefinitionFinderSystem {
             if symbol.definition != None {
                 continue; // this one is 'pre' defined
             }
-            if let Some((entity, found_path)) = get_entity() {
-                debug!(
-                    "Found symbol: {:?} -> {:?} @ {:?}",
-                    &symbol, &entity, &found_path
-                );
+            if let Some(entity) = get_entity() {
                 symbol.definition = Some(entity);
-            } else if let Some(ext) = get_externs().get(&path_to_string(&symbol.name)) {
-                debug!("Found extern: {:?} -> {:?}", &symbol, &ext);
-                // TODO
-                // symbol.definition = Some(symbol.name.clone());
             } else {
                 debug!("Couldn't find symbol: {:?}", &symbol);
             }

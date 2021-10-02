@@ -195,7 +195,6 @@ impl Default for DBStorage {
             ast_to_entity: HashMap::default(),
             path_to_entity: HashMap::default(),
             defined_at: HashMap::default(),
-            // refers_to: HashMap::default(),
             instance_at: HashMap::default(),
         }
     }
