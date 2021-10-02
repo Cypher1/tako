@@ -244,20 +244,49 @@ pub fn infer(storage: &mut DBStorage, expr: &Node, env: &Val) -> Result<Val, TEr
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ast::{ToNode, Visitor};
+    use crate::ast::{Path, ToNode, Visitor};
     use crate::database::DBStorage;
+    use crate::matcher::Matcher;
+    use crate::pretty_assertions::assert_eq_err;
+    use crate::primitives::Prim;
     use log::info;
 
     type Test = Result<(), TError>;
+
+    static TEST_FN: &str = "test/prog.tk";
+
+    fn test_path(ext: Path) -> Path {
+        let mut path = path!("test", "prog.tk");
+        path.extend(ext);
+        path
+    }
+
+    fn type_string(prog_str: &'static str) -> Result<(Entity, DBStorage), TError> {
+        let mut storage = DBStorage::default();
+        debug!("{:?}", &prog_str);
+
+        let prog_module = storage.module_name(TEST_FN);
+        storage.set_file(TEST_FN, prog_str.to_owned());
+
+        // TODO: Maybe don't parse this way?
+        let (_prog, root) = storage.parse_str(&prog_module, prog_str)?;
+
+        // TODO: look up definitions
+        // TODO: Inference
+
+        // let env = Variable("test_program".to_string()); // TODO: Track the type env
+        // let prog_ty = infer(&mut storage, &prog, &env)?;
+        Ok((root, storage))
+    }
 
     fn assert_type(
         prog_str: &'static str,
         type_str: &'static str,
         expected_type_info: &'static str,
     ) -> Test {
+        let mut storage = DBStorage::default();
         debug!("{:?}", &prog_str);
         debug!("{:?}", &type_str);
-        let mut storage = DBStorage::default();
 
         let type_filename = "test/type.tk";
         storage.set_file(type_filename, type_str.to_owned());
@@ -273,7 +302,7 @@ mod tests {
         let prog_filename = "test/prog.tk";
         let prog_module = storage.module_name(prog_filename);
 
-        let (prog, _entity) = storage.parse_str(&prog_module, prog_str)?;
+        let (prog, _root) = storage.parse_str(&prog_module, prog_str)?;
 
         let env = Variable("test_program".to_string()); // TODO: Track the type env
         let prog_ty = infer(&mut storage, &prog, &env)?;
@@ -288,37 +317,59 @@ mod tests {
 
     #[test]
     fn infer_type_of_i32() -> Test {
-        use crate::primitives::int32;
-        let mut storage = DBStorage::default();
-        let num = int32(23).into_node();
-        let env = rec![]; // TODO: Track the type env
-        assert_eq!(infer(&mut storage, &num, &env), Ok(i32_type()));
-        assert_type(
-            "23",
-            "I32",
-            "\
-Entity 0:
- - SymbolRef { name: [I32], context: [test, type.tk], definition: None }
-Entity 1:
- - HasValue(23)",
+        let (root, storage) = type_string("23")?;
+        assert_eq_err(
+            SymbolRef::new(path!("I32"), path!())
+                .one()
+                .chain(|_n_int| {
+                    HasValue::new(Prim::I32(23))
+                        // .expect(HasType(*n_int))
+                        .at(TEST_FN, 1, 1)
+                })
+                .run(&storage)
+                .map(|res| res.1),
+            root,
         )
     }
 
     #[test]
     fn infer_type_of_str() -> Test {
-        assert_type(
-            "\"23\"",
-            "String",
-            "\
-Entity 0:
- - SymbolRef { name: [String], context: [test, type.tk], definition: None }
-Entity 1:
- - HasValue('23')",
+        let (root, storage) = type_string("\"23\"")?;
+        assert_eq_err(
+            SymbolRef::new(path!("String"), path!())
+                .one()
+                .chain(|_n_str| {
+                    HasValue::new(Prim::Str("23".to_string()))
+                        // .expect(HasType(*n_str))
+                        .at(TEST_FN, 1, 1)
+                })
+                .run(&storage)
+                .map(|res| res.1),
+            root,
         )
     }
 
     #[test]
     fn infer_type_of_let_i32() -> Test {
+        let (root, storage) = type_string("x=12")?;
+        assert_eq_err(
+            (
+                SymbolRef::new(path!("x"), test_path(path!())).at(TEST_FN, 1, 1),
+                HasValue::new(Prim::I32(12))
+                    .at(TEST_FN, 1, 1),
+                SymbolRef::new(path!("I32"), path!())
+                    .one()
+        ).chain(|(n_x, n_i32, n_12)| {
+
+        }).chain(|((_n_x, _n_i32), n_def)| {
+                    HasValue::new(Prim::Str("12".to_string()))
+                        // .expect(HasType(*n_def))
+                        .at(TEST_FN, 1, 1)
+                })
+                .run(&storage)
+                .map(|res| res.1),
+            root,
+        )
         assert_type("x=12", "(x=I32)", "\
 Entity 0:
  - SymbolRef { name: [I32], context: [test, type.tk, x], definition: None }

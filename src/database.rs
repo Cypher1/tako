@@ -187,7 +187,7 @@ impl Default for DBStorage {
         register_components(&mut world);
 
         let project_dirs = ProjectDirs::from("systems", "mimir", "tako");
-        Self {
+        let mut empty = Self {
             world,
             project_dirs,
             options: Options::default(),
@@ -196,7 +196,23 @@ impl Default for DBStorage {
             path_to_entity: HashMap::default(),
             defined_at: HashMap::default(),
             instance_at: HashMap::default(),
-        }
+        };
+
+        // Register builtins.
+        for (name, ext) in empty.get_externs() {
+            let path = vec![Symbol::new(&name)];
+            let entry = AstNode {
+                term: AstTerm::Symbol {
+                    name: path.clone(),
+                    context: vec![],
+                    value: Some(ext.value.clone()),
+                },
+                loc: Loc::default(), // TODO: Make locations for externs
+                ty: None,            // TODO: use ext.ty,
+            };
+            empty.store_node(entry, &path);
+         }
+        empty
     }
 }
 
