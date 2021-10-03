@@ -2,6 +2,7 @@ use crate::ast::{
     path_to_string, Abs, Apply, BinOp, HasInfo, Let, Path, PathRef, Sym, Symbol, UnOp, Visitor,
 };
 use crate::components::SymbolRef;
+use crate::cpp_ast::Code;
 use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::primitives::{Prim, Val};
@@ -17,108 +18,6 @@ pub struct CodeGenerator {
     functions: Vec<Code>,
     includes: HashSet<String>,
     pub flags: HashSet<String>,
-}
-
-#[derive(Clone, Debug)]
-pub enum Code {
-    Empty,
-    Block(Vec<Code>),
-    Struct(Vec<Code>),
-    Expr(String),
-    Statement(String),
-    Template(String, Box<Code>),
-    Assignment(String, Box<Code>),
-    If {
-        condition: Box<Code>,
-        then: Box<Code>,
-        then_else: Box<Code>,
-    },
-    Func {
-        name: String,
-        args: Vec<String>,
-        return_type: String,
-        body: Box<Code>,
-        lambda: bool,
-        call: bool,
-    },
-}
-
-impl Code {
-    fn with_expr(self: Code, f: &dyn Fn(String) -> Code) -> Code {
-        match self {
-            Code::Empty => Code::Empty,
-            Code::Expr(expr) => f(expr),
-            Code::Struct(values) => Code::Struct(values),
-            Code::Block(mut statements) => {
-                let last = statements.pop().expect("Unexpected empty code block");
-                statements.push(last.with_expr(f));
-                Code::Block(statements)
-            }
-            Code::Statement(line) => Code::Statement(line),
-            Code::Template(name, body) => Code::Template(name, Box::new(body.with_expr(f))),
-            Code::Assignment(name, value) => Code::Assignment(name, Box::new(value.with_expr(f))),
-            Code::If {
-                condition,
-                then,
-                then_else,
-            } => Code::If {
-                condition,
-                then,
-                then_else,
-            },
-            Code::Func {
-                name,
-                args,
-                mut body,
-                lambda,
-                call,
-                return_type,
-            } => {
-                body = Box::new(body.with_expr(f));
-                Code::Func {
-                    name,
-                    args,
-                    body,
-                    lambda,
-                    call,
-                    return_type,
-                }
-            }
-        }
-    }
-
-    fn merge(self: Code, other: Code) -> Code {
-        match (self, other) {
-            (Code::Empty, right) => right,
-            (left, Code::Empty) => left,
-            (Code::Block(mut left), Code::Block(right)) => {
-                left.extend(right);
-                Code::Block(left)
-            }
-            (mut left, Code::Block(mut right)) => {
-                if let Code::Expr(expr) = left {
-                    left = Code::Statement(expr);
-                }
-                right.insert(0, left);
-                Code::Block(right) // Backwards?
-            }
-            (Code::Block(mut left), right) => {
-                for line in &mut left {
-                    if let Code::Expr(expr) = line {
-                        *line = Code::Statement(expr.clone());
-                    }
-                }
-                left.push(right);
-                Code::Block(left)
-            }
-            (mut left, right) => {
-                if let Code::Expr(expr) = left {
-                    left = Code::Statement(expr);
-                }
-                Code::Block(vec![left, right])
-            }
-        }
-    }
 }
 
 #[must_use]
@@ -277,7 +176,12 @@ fn code_to_text(includes: &HashSet<String>, functions: &Vec<Code>) -> String {
     code + "\n"
 }
 
-fn emit_symbol(storage: &DBStorage, name: String, includes: &mut HashSet<String>, flags: &mut HashSet<String>) -> Code {
+fn emit_symbol(
+    storage: &DBStorage,
+    name: String,
+    includes: &mut HashSet<String>,
+    flags: &mut HashSet<String>,
+) -> Code {
     Code::Expr(if let Some(info) = storage.get_extern(&name) {
         includes.insert(info.cpp.includes.clone());
         flags.extend(info.cpp.flags.clone());
@@ -400,7 +304,12 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 .as_ref()
                 .expect("Could not find definition for symbol"),
         );
-        Ok(emit_symbol(storage, name, &mut self.includes, &mut self.flags))
+        Ok(emit_symbol(
+            storage,
+            name,
+            &mut self.includes,
+            &mut self.flags,
+        ))
     }
 
     fn visit_val(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Val) -> Res {

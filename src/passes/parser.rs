@@ -796,9 +796,7 @@ pub mod tests {
                 ),
                 node_4,
             )
-                .with(|(((_, n_6), n_pls), n_4)| {
-                    Call::new(*n_pls, &[*n_6, *n_4]).at(TEST_FN, 1, 4)
-                })
+                .with(|(((_, n_6), n_pls), n_4)| Call::new(*n_pls, &[*n_6, *n_4]).at(TEST_FN, 1, 4))
                 .run(&storage)
                 .map(|res| res.1),
             root,
@@ -816,13 +814,10 @@ pub mod tests {
         assert_eq_err(
             (
                 (node_3, node_mul),
-                ((node_2, node_pls), node_4).with(|((n_2, n_pls), n_4)| {
-                    Call::new(*n_pls, &[*n_2, *n_4]).at(TEST_FN, 1, 5)
-                }),
+                ((node_2, node_pls), node_4)
+                    .with(|((n_2, n_pls), n_4)| Call::new(*n_pls, &[*n_2, *n_4]).at(TEST_FN, 1, 5)),
             )
-                .with(|((n_3, n_mul), (_, n_6))| {
-                    Call::new(*n_mul, &[*n_3, *n_6]).at(TEST_FN, 1, 2)
-                })
+                .with(|((n_3, n_mul), (_, n_6))| Call::new(*n_mul, &[*n_3, *n_6]).at(TEST_FN, 1, 2))
                 .run(&storage)
                 .map(|res| res.1),
             root,

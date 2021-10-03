@@ -11,6 +11,8 @@ mod pretty_assertions;
 pub mod data_structures;
 #[macro_use]
 pub mod ast;
+#[macro_use]
+pub mod cpp_ast;
 
 pub mod cli_options;
 pub mod database;

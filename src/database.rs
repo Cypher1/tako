@@ -211,7 +211,7 @@ impl Default for DBStorage {
                 ty: None,            // TODO: use ext.ty,
             };
             empty.store_node(entry, &path);
-         }
+        }
         empty
     }
 }
@@ -338,7 +338,10 @@ impl DBStorage {
         DefinitionFinder::process(&module, self)
     }
 
-    pub fn compile_to_cpp(&mut self, module: PathRef) -> Result<(String, HashSet<String>, (String, HashSet<String>)), TError> {
+    pub fn compile_to_cpp(
+        &mut self,
+        module: PathRef,
+    ) -> Result<(String, HashSet<String>, (String, HashSet<String>)), TError> {
         use crate::passes::to_cpp::CodeGenerator;
         info!("Generating code... {}", path_to_string(module));
         CodeGenerator::process(&module.to_vec(), self)
