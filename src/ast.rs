@@ -13,14 +13,15 @@ use TError::{
     CppCompilerError, ExpectedLetNode, InternalError, MatchError, OutOfScopeTypeVariable,
     ParseError, RequirementFailure, StackInterpreterRanOutOfArguments,
     StackInterpreterRanOutOfCode, StaticPointerCardinality, TypeMismatch, TypeMismatch2,
-    UnknownCardOfAbstractType, UnknownEntity, UnknownInfixOperator, UnknownPath,
-    UnknownPrefixOperator, UnknownSizeOfAbstractType, UnknownSizeOfVariableType, UnknownSymbol,
-    UnknownToken,
+    UnfinishedCodeGeneration, UnknownCardOfAbstractType, UnknownEntity, UnknownInfixOperator,
+    UnknownPath, UnknownPrefixOperator, UnknownSizeOfAbstractType, UnknownSizeOfVariableType,
+    UnknownSymbol, UnknownToken,
 };
 impl HasInfo for TError {
     fn get_info(&self) -> &Info {
         match self {
-            CppCompilerError(_, _, info)
+            UnfinishedCodeGeneration(_, info)
+            | CppCompilerError(_, _, info)
             | UnknownToken(_, info, _)
             | UnknownSymbol(_, info, _)
             | OutOfScopeTypeVariable(_, info)
@@ -45,7 +46,8 @@ impl HasInfo for TError {
     }
     fn get_mut_info(&mut self) -> &mut Info {
         match self {
-            CppCompilerError(_, _, ref mut info)
+            UnfinishedCodeGeneration(_, ref mut info)
+            | CppCompilerError(_, _, ref mut info)
             | UnknownToken(_, ref mut info, _)
             | UnknownSymbol(_, ref mut info, _)
             | OutOfScopeTypeVariable(_, ref mut info)

@@ -200,7 +200,7 @@ impl Default for DBStorage {
 
         // Register builtins.
         for (name, ext) in empty.get_externs() {
-            let path = vec![Symbol::new(&name)];
+            let path = vec![Symbol::new(name)];
             let entry = AstNode {
                 term: AstTerm::Symbol {
                     name: path.clone(),

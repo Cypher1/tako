@@ -1,5 +1,8 @@
+use specs::Entity;
+
 #[derive(Clone, Debug)]
 pub enum Code {
+    Partial(Entity),
     Empty,
     Block(Vec<Code>),
     Struct(Vec<Code>),
@@ -25,6 +28,7 @@ pub enum Code {
 impl Code {
     pub fn with_expr(self: Code, f: &dyn Fn(String) -> Code) -> Code {
         match self {
+            Code::Partial(ent) => Code::Partial(ent),
             Code::Empty => Code::Empty,
             Code::Expr(expr) => f(expr),
             Code::Struct(values) => Code::Struct(values),

@@ -1,5 +1,6 @@
 use crate::ast::{
-    path_to_string, Abs, Apply, BinOp, HasInfo, Let, Path, PathRef, Sym, Symbol, UnOp, Visitor,
+    path_to_string, Abs, Apply, BinOp, HasInfo, Info, Let, Path, PathRef, Sym, Symbol, UnOp,
+    Visitor,
 };
 use crate::components::SymbolRef;
 use crate::cpp_ast::Code;
@@ -26,25 +27,26 @@ pub fn make_name(def: PathRef) -> String {
     def_n.join("_")
 }
 
-fn pretty_print_block(src: Code, indent: &str) -> String {
+fn pretty_print_block(src: Code, indent: &str) -> Result<String, TError> {
     let new_indent = indent.to_string() + "  ";
     // Calculate the expression as well...
     // TODO: Consider if it is dropped (should it be stored? is it a side effect?)
-    match src {
+    Ok(match src {
+        Code::Partial(ent) => return Err(TError::UnfinishedCodeGeneration(ent, Info::default())),
         Code::Block(mut statements) => {
-            let last = statements.pop().expect("Unexpected empty code block");
+            let last = statements.pop().expect("Unexpected empty code block"); //TODO: Error case
             statements.push(last.with_expr(&|exp| Code::Statement(format!("return {}", exp))));
-            let body: Vec<String> = statements
-                .iter()
-                .map(|x| pretty_print_block(x.clone(), new_indent.as_str()))
-                .collect();
+            let mut body: Vec<String> = vec![];
+            for statement in statements {
+                body.push(pretty_print_block(statement.clone(), new_indent.as_str())?);
+            }
             format!("{{{}{indent}}}", body.join(""), indent = indent,)
         }
         Code::Struct(vals) => {
-            let body: Vec<String> = vals
-                .iter()
-                .map(|x| pretty_print_block(x.clone(), new_indent.as_str()))
-                .collect();
+            let mut body: Vec<String> = vec![];
+            for val in vals {
+                body.push(pretty_print_block(val.clone(), new_indent.as_str())?);
+            }
             format!("{{{}{indent}}}", body.join(", "), indent = indent,)
         }
         Code::Expr(line) => line,
@@ -53,13 +55,13 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
             "template <{} {}>\n{}",
             "typename",
             name,
-            pretty_print_block(*body, indent)
+            pretty_print_block(*body, indent)?
         ),
         Code::Assignment(name, value) => format!(
             "{}const auto {} = {};",
             indent,
             name,
-            pretty_print_block(*value, indent)
+            pretty_print_block(*value, indent)?
         ),
         Code::Empty => "".to_string(),
         Code::If {
@@ -67,9 +69,9 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
             then,
             then_else,
         } => {
-            let condition = pretty_print_block(*condition, indent);
-            let body = pretty_print_block(*then, indent);
-            let then_else = pretty_print_block(*then_else, indent);
+            let condition = pretty_print_block(*condition, indent)?;
+            let body = pretty_print_block(*then, indent)?;
+            let then_else = pretty_print_block(*then_else, indent)?;
             format!(
                 "{indent}if({}) {} else {}",
                 condition,
@@ -92,7 +94,7 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
                 // Auto wrap statements in blocks.
                 Code::Block(vec![*inner])
             };
-            let body = pretty_print_block(inner, indent);
+            let body = pretty_print_block(inner, indent)?;
             if lambda {
                 let arg_str = if args.is_empty() {
                     "".to_string()
@@ -121,7 +123,7 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
                 )
             }
         }
-    }
+    })
 }
 
 type Res = Result<Code, TError>;
@@ -142,7 +144,7 @@ fn build_call2(before: &str, mid: &str, left: Code, right: &Code) -> Code {
     })
 }
 
-fn code_to_text(includes: &HashSet<String>, functions: &Vec<Code>) -> String {
+fn code_to_text(includes: &HashSet<String>, functions: &Vec<Code>) -> Result<String, TError> {
     // TODO(cypher1): Use a writer.
     let mut code = "".to_string();
     // #includes
@@ -170,10 +172,10 @@ fn code_to_text(includes: &HashSet<String>, functions: &Vec<Code>) -> String {
 
     // Definitions
     for func in functions.iter().clone() {
-        let function = pretty_print_block(func.clone(), "\n");
+        let function = pretty_print_block(func.clone(), "\n")?;
         code = format!("{}{}", code, function);
     }
-    code + "\n"
+    Ok(code + "\n")
 }
 
 fn emit_symbol(
@@ -229,7 +231,9 @@ impl<'a> System<'a> for CodeGeneratorSystem {
             functions.push(main);
         }
 
-        self.result = Some(code_to_text(&includes, &functions));
+        self.result = Some(
+            code_to_text(&includes, &functions).expect("Expected all code to be fully generated."),
+        );
     }
 }
 
@@ -281,7 +285,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         };
         self.functions.push(main);
         // TODO(cypher1): Use a writer.
-        let code = code_to_text(&self.includes, &self.functions);
+        let code = code_to_text(&self.includes, &self.functions)?;
         Ok((
             code,
             self.flags.clone(),
@@ -363,8 +367,8 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             // TODO: Include lambda head in values
             let val = self.visit_let(storage, state, arg)?;
             match val {
-                Code::Assignment(_, val) => args.push(pretty_print_block(*val, "")),
-                val => args.push(pretty_print_block(val, "")),
+                Code::Assignment(_, val) => args.push(pretty_print_block(*val, "")?),
+                val => args.push(pretty_print_block(val, "")?),
             };
         }
         let inner = self.visit(storage, state, &expr.inner)?;
