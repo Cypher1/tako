@@ -247,7 +247,7 @@ mod tests {
         assert_no_err(
             HasValue::new(Prim::I32(23))
                 .one()
-                .chain(|n_23| {
+                .with(|n_23| {
                     Definition {
                         names: vec![path!("x")],
                         params: None,
@@ -256,7 +256,7 @@ mod tests {
                     }
                     .one()
                 })
-                .chain(|(_n_23, n_x)| {
+                .with(|(_n_23, n_x)| {
                     SymbolRef {
                         name: path!("x"),
                         context: test_path(),
@@ -275,7 +275,7 @@ mod tests {
         assert_no_err(
             HasValue::new(Prim::I32(45))
                 .one()
-                .chain(|n_23| {
+                .with(|n_23| {
                     Definition {
                         names: vec![path!("x")],
                         params: None,
@@ -284,7 +284,7 @@ mod tests {
                     }
                     .one()
                 })
-                .chain(|(_n_23, n_x)| {
+                .with(|(_n_23, n_x)| {
                     SymbolRef {
                         name: path!("x"),
                         context: test_path_and(path!("y")),

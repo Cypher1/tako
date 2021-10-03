@@ -610,7 +610,7 @@ pub mod tests {
         assert_eq_err(
             SymbolRef::new(path!("Int"), path!(TEST_FN))
                 .at(TEST_FN, 1, 6)
-                .chain(|ty_id| {
+                .with(|ty_id| {
                     HasValue::new(Prim::I32(12))
                         .expect(HasType(*ty_id))
                         .at(TEST_FN, 1, 1)
@@ -630,7 +630,7 @@ pub mod tests {
         let int_ty = SymbolRef::new(path!("Int"), path!(TEST_FN)).at(TEST_FN, 1, 9);
         assert_eq_err(
             (((node_3, node_mul), node_4), int_ty)
-                .chain(|(((n_3, n_mul), n_4), n_ty)| {
+                .with(|(((n_3, n_mul), n_4), n_ty)| {
                     Call::new(*n_mul, &[*n_3, *n_4])
                         .expect(HasType(*n_ty))
                         .at(TEST_FN, 1, 3)
@@ -646,7 +646,7 @@ pub mod tests {
         let (root, storage) = parse_entities("3 * (4 : Int)")?;
         let node_3 = HasValue::new(Prim::I32(3)).at(TEST_FN, 1, 1);
         let int_ty = SymbolRef::new(path!("Int"), path!(TEST_FN)).at(TEST_FN, 1, 10);
-        let node_4 = int_ty.chain(|n_ty| {
+        let node_4 = int_ty.with(|n_ty| {
             HasValue::new(Prim::I32(4))
                 .expect(HasType(*n_ty))
                 .at(TEST_FN, 1, 6)
@@ -654,7 +654,7 @@ pub mod tests {
         let node_mul = SymbolRef::new(path!("*"), path!(TEST_FN)).at(TEST_FN, 1, 3);
         assert_eq_err(
             ((node_3, node_mul), node_4)
-                .chain(|((n_3, n_mul), (_n_ty, n_4))| {
+                .with(|((n_3, n_mul), (_n_ty, n_4))| {
                     Call::new(*n_mul, &[*n_3, *n_4]).at(TEST_FN, 1, 3)
                 })
                 .run(&storage)
@@ -672,7 +672,7 @@ pub mod tests {
         let node_mul = SymbolRef::new(path!("*"), path!(TEST_FN)).at(TEST_FN, 1, 4);
         assert_eq_err(
             (((node_3, node_mul), node_4), node_12)
-                .chain(|(((n_3, n_mul), n_4), n_12)| {
+                .with(|(((n_3, n_mul), n_4), n_12)| {
                     Call::new(*n_mul, &[*n_3, *n_4])
                         .expect(HasType(*n_12))
                         .at(TEST_FN, 1, 4)
@@ -701,7 +701,7 @@ pub mod tests {
         assert_eq_err(
             SymbolRef::new(path!("String"), path!(TEST_FN))
                 .at(TEST_FN, 1, 17)
-                .chain(|ty_id| {
+                .with(|ty_id| {
                     HasValue::new(Prim::Str("hello world".to_string()))
                         .expect(HasType(*ty_id))
                         .at(TEST_FN, 1, 1)
@@ -719,7 +719,7 @@ pub mod tests {
         let node_neg = SymbolRef::new(path!("-"), path!(TEST_FN)).at(TEST_FN, 1, 1);
         assert_eq_err(
             (node_12, node_neg)
-                .chain(|(n_12, n_neg)| Call::new(*n_neg, &[*n_12]).at(TEST_FN, 1, 1))
+                .with(|(n_12, n_neg)| Call::new(*n_neg, &[*n_12]).at(TEST_FN, 1, 1))
                 .run(&storage)
                 .map(|res| res.1),
             root,
@@ -734,7 +734,7 @@ pub mod tests {
         let node_neg = SymbolRef::new(path!("-"), path!(TEST_FN)).at(TEST_FN, 1, 3);
         assert_eq_err(
             ((node_12, node_neg), node_14)
-                .chain(|((n_12, n_neg), n_14)| Call::new(*n_neg, &[*n_14, *n_12]).at(TEST_FN, 1, 3))
+                .with(|((n_12, n_neg), n_14)| Call::new(*n_neg, &[*n_14, *n_12]).at(TEST_FN, 1, 3))
                 .run(&storage)
                 .map(|res| res.1),
             root,
@@ -749,7 +749,7 @@ pub mod tests {
         let node_pls = SymbolRef::new(path!("+"), path!(TEST_FN)).at(TEST_FN, 1, 3);
         assert_eq_err(
             ((node_12, node_pls), node_14)
-                .chain(|((n_12, n_pls), n_14)| Call::new(*n_pls, &[*n_14, *n_12]).at(TEST_FN, 1, 3))
+                .with(|((n_12, n_pls), n_14)| Call::new(*n_pls, &[*n_14, *n_12]).at(TEST_FN, 1, 3))
                 .run(&storage)
                 .map(|res| res.1),
             root,
@@ -766,10 +766,10 @@ pub mod tests {
         let node_4 = HasValue::new(Prim::I32(4)).at(TEST_FN, 1, 5);
         assert_eq_err(
             ((((node_3, node_pls), node_2), node_mul), node_4)
-                .chain(|((((_n_3, _n_pls), n_2), n_mul), n_4)| {
+                .with(|((((_n_3, _n_pls), n_2), n_mul), n_4)| {
                     Call::new(*n_mul, &[*n_2, *n_4]).at(TEST_FN, 1, 4)
                 })
-                .chain(|(((((n_3, n_pls), _n_2), _n_mul), _n_4), n_8)| {
+                .with(|(((((n_3, n_pls), _n_2), _n_mul), _n_4), n_8)| {
                     Call::new(*n_pls, &[*n_3, *n_8]).at(TEST_FN, 1, 2)
                 })
                 .run(&storage)
@@ -789,14 +789,14 @@ pub mod tests {
         assert_eq_err(
             (
                 (
-                    ((node_3, node_mul), node_2).chain(|((n_3, n_mul), n_2)| {
+                    ((node_3, node_mul), node_2).with(|((n_3, n_mul), n_2)| {
                         Call::new(*n_mul, &[*n_3, *n_2]).at(TEST_FN, 1, 2)
                     }),
                     node_pls,
                 ),
                 node_4,
             )
-                .chain(|(((_, n_6), n_pls), n_4)| {
+                .with(|(((_, n_6), n_pls), n_4)| {
                     Call::new(*n_pls, &[*n_6, *n_4]).at(TEST_FN, 1, 4)
                 })
                 .run(&storage)
@@ -816,11 +816,11 @@ pub mod tests {
         assert_eq_err(
             (
                 (node_3, node_mul),
-                ((node_2, node_pls), node_4).chain(|((n_2, n_pls), n_4)| {
+                ((node_2, node_pls), node_4).with(|((n_2, n_pls), n_4)| {
                     Call::new(*n_pls, &[*n_2, *n_4]).at(TEST_FN, 1, 5)
                 }),
             )
-                .chain(|((n_3, n_mul), (_, n_6))| {
+                .with(|((n_3, n_mul), (_, n_6))| {
                     Call::new(*n_mul, &[*n_3, *n_6]).at(TEST_FN, 1, 2)
                 })
                 .run(&storage)
@@ -837,7 +837,7 @@ pub mod tests {
         let node_pls = SymbolRef::new(path!("+"), path!(TEST_FN)).at(TEST_FN, 1, 8);
         assert_eq_err(
             ((node_hello, node_pls), node_world)
-                .chain(|((n_h, n_pls), n_w)| Call::new(*n_pls, &[*n_h, *n_w]).at(TEST_FN, 1, 8))
+                .with(|((n_h, n_pls), n_w)| Call::new(*n_pls, &[*n_h, *n_w]).at(TEST_FN, 1, 8))
                 .run(&storage)
                 .map(|res| res.1),
             root,
@@ -851,7 +851,7 @@ pub mod tests {
         let node_7 = HasValue::new(Prim::I32(7)).at(TEST_FN, 2, 1);
         assert_eq_err(
             (node_hello, node_7)
-                .chain(|(n_h, n_7)| Sequence(vec![*n_h, *n_7]).at(TEST_FN, 2, 1))
+                .with(|(n_h, n_7)| Sequence(vec![*n_h, *n_7]).at(TEST_FN, 2, 1))
                 .run(&storage)
                 .map(|res| res.1),
             root,
@@ -865,7 +865,7 @@ pub mod tests {
         let node_f = SymbolRef::new(path!("f"), path!(TEST_FN)).at(TEST_FN, 1, 1);
         assert_eq_err(
             (
-                node_hello.chain(|n_h| {
+                node_hello.with(|n_h| {
                     Definition {
                         names: vec![path!("arg")],
                         params: None,
@@ -876,7 +876,7 @@ pub mod tests {
                 }),
                 node_f,
             )
-                .chain(|((_n_h, n_a), n_f)| {
+                .with(|((_n_h, n_a), n_f)| {
                     Call {
                         inner: *n_f,
                         args: vec![*n_a],
@@ -897,14 +897,14 @@ pub mod tests {
         let node_x = SymbolRef::new(path!("x"), path!(TEST_FN, "mul")).at(TEST_FN, 1, 12);
         let node_mul = SymbolRef::new(path!("*"), path!(TEST_FN, "mul")).at(TEST_FN, 1, 13);
         let node_y = SymbolRef::new(path!("y"), path!(TEST_FN, "mul")).at(TEST_FN, 1, 14);
-        let res = ((node_x, node_mul), node_y).chain(|((n_x, n_mul), n_y)| {
+        let res = ((node_x, node_mul), node_y).with(|((n_x, n_mul), n_y)| {
             Call {
                 inner: *n_mul,
                 args: vec![*n_x, *n_y],
             }
             .at(TEST_FN, 1, 13)
         });
-        let def = ((arg_x, arg_y), res).chain(|((n_x, n_y), (_, n_r))| {
+        let def = ((arg_x, arg_y), res).with(|((n_x, n_y), (_, n_r))| {
             Definition {
                 names: vec![path!("mul")],
                 params: Some(vec![*n_x, *n_y]),
@@ -921,14 +921,14 @@ pub mod tests {
         let (root, storage) = parse_entities("x()= !\"hello world\";\n7")?;
         let node_hello = HasValue::new(Prim::Str("hello world".to_string())).at(TEST_FN, 1, 7);
         let node_not = SymbolRef::new(path!("!"), path!(TEST_FN, "x")).at(TEST_FN, 1, 6);
-        let x_impl = (node_hello, node_not).chain(|(n_h, n_n)| {
+        let x_impl = (node_hello, node_not).with(|(n_h, n_n)| {
             Call {
                 inner: *n_n,
                 args: vec![*n_h],
             }
             .at(TEST_FN, 1, 6)
         });
-        let x_def = x_impl.chain(|(_n_h, n_i)| {
+        let x_def = x_impl.with(|(_n_h, n_i)| {
             Definition {
                 names: vec![path!("x")],
                 params: Some(vec![]),
@@ -941,7 +941,7 @@ pub mod tests {
         let node_semi = SymbolRef::new(path!(";"), path!(TEST_FN)).at(TEST_FN, 1, 20);
         assert_eq_err(
             ((x_def, node_semi), node_7)
-                .chain(|(((_, n_d), n_s), n_7)| {
+                .with(|(((_, n_d), n_s), n_7)| {
                     Call {
                         inner: *n_s,
                         args: vec![*n_d, *n_7],
