@@ -257,7 +257,12 @@ fn code_to_text(includes: &HashSet<String>, functions: &Vec<Code>) -> String {
     // Forward declarations
     for func in functions.iter() {
         match &func {
-            Code::Func { name, args, return_type, .. } => {
+            Code::Func {
+                name,
+                args,
+                return_type,
+                ..
+            } => {
                 code = format!("{}{} {}({});\n", code, return_type, name, args.join(", "),);
             }
             _ => panic!("Cannot create function from non-function"),
@@ -270,6 +275,17 @@ fn code_to_text(includes: &HashSet<String>, functions: &Vec<Code>) -> String {
         code = format!("{}{}", code, function);
     }
     code + "\n"
+}
+
+fn emit_symbol(storage: &DBStorage, name: String, includes: &mut HashSet<String>, flags: &mut HashSet<String>) -> Code {
+    Code::Expr(if let Some(info) = storage.get_extern(&name) {
+        includes.insert(info.cpp.includes.clone());
+        flags.extend(info.cpp.flags.clone());
+        // arg_processor
+        info.cpp.code.clone()
+    } else {
+        name
+    })
 }
 
 struct CodeGeneratorSystem {
@@ -366,7 +382,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             code,
             self.flags.clone(),
             (
-                code_generator.result.unwrap_or_else(||"".to_string()),
+                code_generator.result.unwrap_or_else(|| "".to_string()),
                 code_generator.flags,
             ),
         ))
@@ -384,13 +400,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 .as_ref()
                 .expect("Could not find definition for symbol"),
         );
-        if let Some(info) = storage.get_extern(&name) {
-            self.includes.insert(info.cpp.includes.clone());
-            self.flags.extend(info.cpp.flags.clone());
-            // arg_processor
-            return Ok(Code::Expr(info.cpp.code.clone()));
-        }
-        Ok(Code::Expr(name))
+        Ok(emit_symbol(storage, name, &mut self.includes, &mut self.flags))
     }
 
     fn visit_val(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Val) -> Res {
