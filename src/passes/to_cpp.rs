@@ -1,8 +1,17 @@
-use crate::ast::{Abs, Apply, BinOp, HasInfo, Let, Path, PathRef, Sym, Symbol, UnOp, Visitor};
+use crate::ast::{
+    path_to_string, Abs, Apply, BinOp, HasInfo, Info, Let, Path, PathRef, Sym, Symbol, UnOp,
+    Visitor,
+};
+use crate::components::SymbolRef;
+use crate::cpp_ast::Code;
+use crate::database::CompilationResult;
+use crate::database::DBStorage;
+use crate::errors::TError;
 use crate::primitives::{Prim, Val};
 use crate::symbol_table::Table;
-use crate::{database::DBStorage, errors::TError};
-use log::debug;
+use log::{debug, info};
+use specs::prelude::*;
+use std::collections::HashMap;
 use std::collections::HashSet;
 
 // Walks the AST compiling it to wasm.
@@ -11,108 +20,7 @@ pub struct CodeGenerator {
     functions: Vec<Code>,
     includes: HashSet<String>,
     pub flags: HashSet<String>,
-}
-
-#[derive(Clone, Debug)]
-pub enum Code {
-    Empty,
-    Block(Vec<Code>),
-    Struct(Vec<Code>),
-    Expr(String),
-    Statement(String),
-    Template(String, Box<Code>),
-    Assignment(String, Box<Code>),
-    If {
-        condition: Box<Code>,
-        then: Box<Code>,
-        then_else: Box<Code>,
-    },
-    Func {
-        name: String,
-        args: Vec<String>,
-        return_type: String,
-        body: Box<Code>,
-        lambda: bool,
-        call: bool,
-    },
-}
-
-impl Code {
-    fn with_expr(self: Code, f: &dyn Fn(String) -> Code) -> Code {
-        match self {
-            Code::Empty => Code::Empty,
-            Code::Expr(expr) => f(expr),
-            Code::Struct(values) => Code::Struct(values),
-            Code::Block(mut statements) => {
-                let last = statements.pop().expect("Unexpected empty code block");
-                statements.push(last.with_expr(f));
-                Code::Block(statements)
-            }
-            Code::Statement(line) => Code::Statement(line),
-            Code::Template(name, body) => Code::Template(name, Box::new(body.with_expr(f))),
-            Code::Assignment(name, value) => Code::Assignment(name, Box::new(value.with_expr(f))),
-            Code::If {
-                condition,
-                then,
-                then_else,
-            } => Code::If {
-                condition,
-                then,
-                then_else,
-            },
-            Code::Func {
-                name,
-                args,
-                mut body,
-                lambda,
-                call,
-                return_type,
-            } => {
-                body = Box::new(body.with_expr(f));
-                Code::Func {
-                    name,
-                    args,
-                    body,
-                    lambda,
-                    call,
-                    return_type,
-                }
-            }
-        }
-    }
-
-    fn merge(self: Code, other: Code) -> Code {
-        match (self, other) {
-            (Code::Empty, right) => right,
-            (left, Code::Empty) => left,
-            (Code::Block(mut left), Code::Block(right)) => {
-                left.extend(right);
-                Code::Block(left)
-            }
-            (mut left, Code::Block(mut right)) => {
-                if let Code::Expr(expr) = left {
-                    left = Code::Statement(expr);
-                }
-                right.insert(0, left);
-                Code::Block(right) // Backwards?
-            }
-            (Code::Block(mut left), right) => {
-                for line in &mut left {
-                    if let Code::Expr(expr) = line {
-                        *line = Code::Statement(expr.clone());
-                    }
-                }
-                left.push(right);
-                Code::Block(left)
-            }
-            (mut left, right) => {
-                if let Code::Expr(expr) = left {
-                    left = Code::Statement(expr);
-                }
-                Code::Block(vec![left, right])
-            }
-        }
-    }
+    entity_to_code: HashMap<Entity, Code>,
 }
 
 #[must_use]
@@ -121,25 +29,41 @@ pub fn make_name(def: PathRef) -> String {
     def_n.join("_")
 }
 
-fn pretty_print_block(src: Code, indent: &str) -> String {
+fn pretty_print_block(
+    src: Code,
+    indent: &str,
+    entity_to_code: &HashMap<Entity, Code>,
+) -> Result<String, TError> {
     let new_indent = indent.to_string() + "  ";
     // Calculate the expression as well...
     // TODO: Consider if it is dropped (should it be stored? is it a side effect?)
-    match src {
+    Ok(match src {
+        Code::Partial(ent) => return Err(TError::UnfinishedCodeGeneration(ent, Info::default())),
         Code::Block(mut statements) => {
-            let last = statements.pop().expect("Unexpected empty code block");
-            statements.push(last.with_expr(&|exp| Code::Statement(format!("return {}", exp))));
-            let body: Vec<String> = statements
-                .iter()
-                .map(|x| pretty_print_block(x.clone(), new_indent.as_str()))
-                .collect();
+            let last = statements.pop().expect("Unexpected empty code block"); //TODO: Error case
+            statements.push(last.with_expr(
+                &|exp| Code::Statement(format!("return {}", exp)),
+                entity_to_code,
+            ));
+            let mut body: Vec<String> = vec![];
+            for statement in statements {
+                body.push(pretty_print_block(
+                    statement.clone(),
+                    new_indent.as_str(),
+                    entity_to_code,
+                )?);
+            }
             format!("{{{}{indent}}}", body.join(""), indent = indent,)
         }
         Code::Struct(vals) => {
-            let body: Vec<String> = vals
-                .iter()
-                .map(|x| pretty_print_block(x.clone(), new_indent.as_str()))
-                .collect();
+            let mut body: Vec<String> = vec![];
+            for val in vals {
+                body.push(pretty_print_block(
+                    val.clone(),
+                    new_indent.as_str(),
+                    entity_to_code,
+                )?);
+            }
             format!("{{{}{indent}}}", body.join(", "), indent = indent,)
         }
         Code::Expr(line) => line,
@@ -148,13 +72,13 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
             "template <{} {}>\n{}",
             "typename",
             name,
-            pretty_print_block(*body, indent)
+            pretty_print_block(*body, indent, entity_to_code)?
         ),
         Code::Assignment(name, value) => format!(
             "{}const auto {} = {};",
             indent,
             name,
-            pretty_print_block(*value, indent)
+            pretty_print_block(*value, indent, entity_to_code)?
         ),
         Code::Empty => "".to_string(),
         Code::If {
@@ -162,9 +86,9 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
             then,
             then_else,
         } => {
-            let condition = pretty_print_block(*condition, indent);
-            let body = pretty_print_block(*then, indent);
-            let then_else = pretty_print_block(*then_else, indent);
+            let condition = pretty_print_block(*condition, indent, entity_to_code)?;
+            let body = pretty_print_block(*then, indent, entity_to_code)?;
+            let then_else = pretty_print_block(*then_else, indent, entity_to_code)?;
             format!(
                 "{indent}if({}) {} else {}",
                 condition,
@@ -187,7 +111,7 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
                 // Auto wrap statements in blocks.
                 Code::Block(vec![*inner])
             };
-            let body = pretty_print_block(inner, indent);
+            let body = pretty_print_block(inner, indent, entity_to_code)?;
             if lambda {
                 let arg_str = if args.is_empty() {
                     "".to_string()
@@ -216,30 +140,147 @@ fn pretty_print_block(src: Code, indent: &str) -> String {
                 )
             }
         }
-    }
+    })
 }
 
 type Res = Result<Code, TError>;
 type State = Table;
-type Out = (String, HashSet<String>);
+type Out = (CompilationResult, CompilationResult);
 
-fn build_call1(before: &str, inner: Code) -> Code {
-    inner.with_expr(&|exp| Code::Expr(format!("{}({})", &before, &exp)))
+fn build_call1(before: &str, inner: Code, entity_to_code: &HashMap<Entity, Code>) -> Code {
+    inner.with_expr(
+        &|exp| Code::Expr(format!("{}({})", &before, &exp)),
+        entity_to_code,
+    )
 }
-fn build_call2(before: &str, mid: &str, left: Code, right: &Code) -> Code {
-    left.with_expr(&|left_expr| {
-        right.clone().with_expr(&|right_expr| {
-            Code::Expr(format!(
-                "{}({}{}{})",
-                &before, &left_expr, &mid, &right_expr
-            ))
-        })
+fn build_call2(
+    before: &str,
+    mid: &str,
+    left: Code,
+    right: &Code,
+    entity_to_code: &HashMap<Entity, Code>,
+) -> Code {
+    left.with_expr(
+        &|left_expr| {
+            right.clone().with_expr(
+                &|right_expr| {
+                    Code::Expr(format!(
+                        "{}({}{}{})",
+                        &before, &left_expr, &mid, &right_expr
+                    ))
+                },
+                entity_to_code,
+            )
+        },
+        entity_to_code,
+    )
+}
+
+fn code_to_text(
+    includes: &HashSet<String>,
+    functions: &[Code],
+    entity_to_code: &HashMap<Entity, Code>,
+) -> Result<String, TError> {
+    // TODO(cypher1): Use a writer.
+    let mut code = "".to_string();
+    // #includes
+    let mut includes: Vec<&String> = includes.iter().collect();
+    includes.sort();
+    for inc in includes {
+        if inc.as_str() != "" {
+            code = format!("{}{}\n", code, inc);
+        }
+    }
+    // Forward declarations
+    for func in functions.iter() {
+        match &func {
+            Code::Func {
+                name,
+                args,
+                return_type,
+                ..
+            } => {
+                code = format!("{}{} {}({});\n", code, return_type, name, args.join(", "),);
+            }
+            _ => panic!("Cannot create function from non-function"),
+        }
+    }
+
+    // Definitions
+    for func in functions.iter().clone() {
+        let function = pretty_print_block(func.clone(), "\n", entity_to_code)?;
+        code = format!("{}{}", code, function);
+    }
+    Ok(code + "\n")
+}
+
+fn emit_symbol(
+    storage: &DBStorage,
+    name: String,
+    includes: &mut HashSet<String>,
+    flags: &mut HashSet<String>,
+) -> Code {
+    Code::Expr(if let Some(info) = storage.get_extern(&name) {
+        includes.insert(info.cpp.includes.clone());
+        flags.extend(info.cpp.flags.clone());
+        // arg_processor
+        info.cpp.code.clone()
+    } else {
+        name
     })
+}
+
+struct CodeGeneratorSystem {
+    entry: Entity,
+    result: Option<String>,
+    flags: HashSet<String>,
+}
+
+impl<'a> System<'a> for CodeGeneratorSystem {
+    type SystemData = ReadStorage<'a, SymbolRef>;
+
+    fn run(&mut self, symbols: Self::SystemData) {
+        let entity_to_code: HashMap<Entity, Code> = HashMap::new();
+        // dbg!(&self.path_to_entity);
+        for _symbol in (&symbols).join() {
+            // code_for_entity.insert(, Code::);
+        }
+        // Work from the entry down
+        let includes = HashSet::new();
+        let mut functions = Vec::new();
+
+        if false {
+            let main = Code::Func {
+                name: "main".to_string(),
+                args: vec!["int argc".to_string(), "char* argv[]".to_string()],
+                body: Box::new(Code::Partial(self.entry)),
+                lambda: false,
+                call: false,
+                return_type: "int".to_string(),
+            };
+            functions.push(main);
+        }
+
+        self.result = Some(
+            code_to_text(&includes, &functions, &entity_to_code)
+                .expect("Expected all code to be fully generated."),
+        );
+    }
 }
 
 impl Visitor<State, Code, Out, Path> for CodeGenerator {
     fn visit_root(&mut self, storage: &mut DBStorage, module: &Path) -> Result<Out, TError> {
         let root = storage.look_up_definitions(module)?;
+        info!("Generating code... {}", path_to_string(module));
+        let mut code_generator = CodeGeneratorSystem {
+            result: None,
+            flags: HashSet::new(),
+            entry: root.entity,
+        };
+        debug!("Running code_generator");
+        code_generator.run_now(&storage.world);
+        debug!("Done code_generator");
+
         let mut main_info = root.ast.get_info().clone();
         let mut main_at = module.clone();
         main_at.push(Symbol::new("main"));
@@ -273,35 +314,16 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             },
             thing => panic!("main must be an Func {:?}", thing),
         };
-        // TODO(cypher1): Use a writer.
-        let mut code = "".to_string();
-
-        // #includes
-        let mut includes: Vec<&String> = self.includes.iter().collect();
-        includes.sort();
-        for inc in &includes {
-            if inc.as_str() != "" {
-                code = format!("{}{}\n", code, inc);
-            }
-        }
-        // Forward declarations
-        for func in &self.functions.clone() {
-            match &func {
-                Code::Func { name, args, .. } => {
-                    code = format!("{}{}({});\n", code, name, args.join(", "),);
-                }
-                _ => panic!("Cannot create function from non-function"),
-            }
-        }
-
         self.functions.push(main);
-
-        // Definitions
-        for func in self.functions.iter().clone() {
-            let function = pretty_print_block(func.clone(), "\n");
-            code = format!("{}{}", code, function);
-        }
-        Ok((code + "\n", self.flags.clone()))
+        // TODO(cypher1): Use a writer.
+        let code = code_to_text(&self.includes, &self.functions, &self.entity_to_code)?;
+        Ok((
+            (code, self.flags.clone()),
+            (
+                code_generator.result.unwrap_or_else(|| "".to_string()),
+                code_generator.flags,
+            ),
+        ))
     }
 
     fn visit_sym(&mut self, storage: &mut DBStorage, _state: &mut State, expr: &Sym) -> Res {
@@ -316,13 +338,12 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 .as_ref()
                 .expect("Could not find definition for symbol"),
         );
-        if let Some(info) = storage.get_extern(&name) {
-            self.includes.insert(info.cpp.includes.clone());
-            self.flags.extend(info.cpp.flags.clone());
-            // arg_processor
-            return Ok(Code::Expr(info.cpp.code.clone()));
-        }
-        Ok(Code::Expr(name))
+        Ok(emit_symbol(
+            storage,
+            name,
+            &mut self.includes,
+            &mut self.flags,
+        ))
     }
 
     fn visit_val(&mut self, storage: &mut DBStorage, state: &mut State, expr: &Val) -> Res {
@@ -376,8 +397,10 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             // TODO: Include lambda head in values
             let val = self.visit_let(storage, state, arg)?;
             match val {
-                Code::Assignment(_, val) => args.push(pretty_print_block(*val, "")),
-                val => args.push(pretty_print_block(val, "")),
+                Code::Assignment(_, val) => {
+                    args.push(pretty_print_block(*val, "", &self.entity_to_code)?)
+                }
+                val => args.push(pretty_print_block(val, "", &self.entity_to_code)?),
             };
         }
         let inner = self.visit(storage, state, &expr.inner)?;
@@ -474,9 +497,13 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             let code = if info.cpp.arg_processor.as_str() == "" {
                 code
             } else {
-                build_call1(info.cpp.arg_processor.as_str(), code)
+                build_call1(info.cpp.arg_processor.as_str(), code, &self.entity_to_code)
             };
-            return Ok(build_call1(info.cpp.arg_joiner.as_str(), code));
+            return Ok(build_call1(
+                info.cpp.arg_joiner.as_str(),
+                code,
+                &self.entity_to_code,
+            ));
         }
         Err(TError::UnknownPrefixOperator(op.to_string(), info.clone()))
     }
@@ -511,8 +538,8 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 (left, right)
             } else {
                 (
-                    build_call1(info.cpp.arg_processor.as_str(), left),
-                    build_call1(info.cpp.arg_processor.as_str(), right),
+                    build_call1(info.cpp.arg_processor.as_str(), left, &self.entity_to_code),
+                    build_call1(info.cpp.arg_processor.as_str(), right, &self.entity_to_code),
                 )
             };
             return Ok(build_call2(
@@ -520,6 +547,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 info.cpp.arg_joiner.as_str(),
                 left,
                 &right,
+                &self.entity_to_code,
             ));
         }
         Err(TError::UnknownInfixOperator(op.to_string(), info.clone()))

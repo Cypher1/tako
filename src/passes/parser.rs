@@ -582,255 +582,21 @@ pub mod tests {
     use crate::components::*;
     use crate::errors::TError;
     use crate::matcher::Matcher;
-    use crate::primitives::{int32, string};
-    use pretty_assertions::assert_eq;
+    use crate::pretty_assertions::assert_eq_err;
 
     type Test = Result<(), TError>;
 
     static TEST_FN: &str = "test.tk";
 
-    fn parse_impl(storage: &mut DBStorage, contents: &str) -> Result<(Node, Entity), TError> {
-        let module = storage.module_name(TEST_FN);
-        parse_string(storage, &module, &Arc::new(contents.to_string()))
-    }
-
-    fn parse(contents: &str) -> Result<Node, TError> {
-        let mut storage = DBStorage::default();
-        Ok(parse_impl(&mut storage, contents)?.0)
-    }
-
-    fn dbg_parse_entities(contents: &str) -> Result<String, TError> {
-        Ok(parse_entities(contents)?.1.format_entities())
-    }
-
     fn parse_entities(contents: &str) -> Result<(Entity, DBStorage), TError> {
         let mut storage = DBStorage::default();
-        let root = parse_impl(&mut storage, contents)?.1;
+        let module = storage.module_name(TEST_FN);
+        let root = parse_string(&mut storage, &module, &Arc::new(contents.to_string()))?.1;
         Ok((root, storage))
-    }
-
-    fn num_lit(x: i32) -> Box<Node> {
-        Box::new(int32(x).into_node())
-    }
-
-    fn str_lit(x: &str) -> Box<Node> {
-        Box::new(string(x).into_node())
     }
 
     #[test]
     fn parse_num() -> Test {
-        assert_eq!(parse("12")?, int32(12).into_node());
-        Ok(())
-    }
-
-    #[test]
-    fn parse_str() -> Test {
-        assert_eq!(parse("\"hello world\"")?, string("hello world").into_node());
-        Ok(())
-    }
-
-    #[test]
-    fn parse_un_op() -> Test {
-        assert_eq!(
-            parse("-12")?,
-            UnOp {
-                name: "-".to_string(),
-                inner: Box::new(int32(12).into_node()),
-                info: Info::default()
-            }
-            .into_node()
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn parse_min_op() -> Test {
-        assert_eq!(
-            parse("14-12")?,
-            BinOp {
-                name: "-".to_string(),
-                left: num_lit(14),
-                right: num_lit(12),
-                info: Info::default()
-            }
-            .into_node()
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn parse_mul_op() -> Test {
-        assert_eq!(
-            parse("14*12")?,
-            BinOp {
-                name: "*".to_string(),
-                left: num_lit(14),
-                right: num_lit(12),
-                info: Info::default()
-            }
-            .into_node()
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn parse_add_mul_precedence() -> Test {
-        assert_eq!(
-            parse("3+2*4")?,
-            BinOp {
-                name: "+".to_string(),
-                left: num_lit(3),
-                right: Box::new(
-                    BinOp {
-                        name: "*".to_string(),
-                        left: num_lit(2),
-                        right: num_lit(4),
-                        info: Info::default()
-                    }
-                    .into_node()
-                ),
-                info: Info::default()
-            }
-            .into_node()
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn parse_mul_add_precedence() -> Test {
-        assert_eq!(
-            parse("3*2+4")?,
-            BinOp {
-                name: "+".to_string(),
-                left: Box::new(
-                    BinOp {
-                        name: "*".to_string(),
-                        left: num_lit(3),
-                        right: num_lit(2),
-                        info: Info::default()
-                    }
-                    .into_node()
-                ),
-                right: num_lit(4),
-                info: Info::default()
-            }
-            .into_node()
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn parse_mul_add_parens() -> Test {
-        assert_eq!(
-            parse("3*(2+4)")?,
-            BinOp {
-                name: "*".to_string(),
-                left: num_lit(3),
-                right: Box::new(
-                    BinOp {
-                        name: "+".to_string(),
-                        left: num_lit(2),
-                        right: num_lit(4),
-                        info: Info::default()
-                    }
-                    .into_node()
-                ),
-                info: Info::default()
-            }
-            .into_node()
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn parse_add_str() -> Test {
-        assert_eq!(
-            parse("\"hello\"+\" world\"")?,
-            BinOp {
-                name: "+".to_string(),
-                left: str_lit("hello"),
-                right: str_lit(" world"),
-                info: Info::default()
-            }
-            .into_node()
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn parse_strings_followed_by_raw_values() -> Test {
-        assert_eq!(
-            parse("\"hello world\"\n7")?,
-            BinOp {
-                name: ",".to_string(),
-                left: Box::new(str_lit("hello world").into_node()),
-                right: num_lit(7),
-                info: Info::default()
-            }
-            .into_node()
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn parse_strings_with_operators_and_trailing_values_in_let() -> Test {
-        assert_eq!(
-            parse("x()= !\"hello world\";\n7")?,
-            BinOp {
-                name: ";".to_string(),
-                left: Box::new(
-                    Let {
-                        name: "x".to_string(),
-                        args: Some(vec![]),
-                        value: Box::new(
-                            UnOp {
-                                name: "!".to_string(),
-                                inner: str_lit("hello world"),
-                                info: Info::default(),
-                            }
-                            .into_node()
-                        ),
-                        info: Info::default(),
-                    }
-                    .into_node()
-                ),
-                right: num_lit(7),
-                info: Info::default()
-            }
-            .into_node()
-        );
-        Ok(())
-    }
-
-    fn log_err<T, E: std::fmt::Display>(res: Result<T, E>) -> Result<T, E> {
-        res.map_err(|err| {
-            eprintln!("{0}", &err);
-            err
-        })
-    }
-
-    fn assert_no_err<T: std::fmt::Debug, E: std::fmt::Display>(
-        res: Result<T, E>,
-    ) -> Result<(), TError>
-    where
-        TError: From<E>,
-    {
-        Ok(log_err(res).map(|_| ())?)
-    }
-
-    fn assert_eq_err<T: PartialEq + std::fmt::Debug, E: std::fmt::Display>(
-        res: Result<T, E>,
-        rhs: T,
-    ) -> Result<(), TError>
-    where
-        TError: From<E>,
-    {
-        assert_eq!(log_err(res)?, rhs);
-        Ok(())
-    }
-
-    #[test]
-    fn entity_parse_num() -> Test {
         let (root, storage) = parse_entities("12")?;
         assert_eq_err(
             HasValue::new(Prim::I32(12)).at(TEST_FN, 1, 1).run(&storage),
@@ -839,28 +605,24 @@ pub mod tests {
     }
 
     #[test]
-    fn entity_parse_num_with_type_annotation() -> Test {
+    fn parse_num_with_type_annotation() -> Test {
         let (root, storage) = parse_entities("12 : Int")?;
         assert_eq_err(
-            SymbolRef {
-                name: path!("Int"),
-                context: path!(TEST_FN),
-                definition: None,
-            }
-            .at(TEST_FN, 1, 6)
-            .chain(|ty_id| {
-                HasValue::new(Prim::I32(12))
-                    .expect(HasType(*ty_id))
-                    .at(TEST_FN, 1, 1)
-            })
-            .run(&storage)
-            .map(|res| res.1),
+            SymbolRef::new(path!("Int"), path!(TEST_FN))
+                .at(TEST_FN, 1, 6)
+                .with(|ty_id| {
+                    HasValue::new(Prim::I32(12))
+                        .expect(HasType(*ty_id))
+                        .at(TEST_FN, 1, 1)
+                })
+                .run(&storage)
+                .map(|res| res.1),
             root,
         )
     }
 
     #[test]
-    fn entity_parse_expr_with_type_annotation() -> Test {
+    fn parse_expr_with_type_annotation() -> Test {
         let (root, storage) = parse_entities("3 * 4 : Int")?;
         let node_3 = HasValue::new(Prim::I32(3)).at(TEST_FN, 1, 1);
         let node_mul = SymbolRef::new(path!("*"), path!(TEST_FN)).at(TEST_FN, 1, 3);
@@ -868,7 +630,7 @@ pub mod tests {
         let int_ty = SymbolRef::new(path!("Int"), path!(TEST_FN)).at(TEST_FN, 1, 9);
         assert_eq_err(
             (((node_3, node_mul), node_4), int_ty)
-                .chain(|(((n_3, n_mul), n_4), n_ty)| {
+                .with(|(((n_3, n_mul), n_4), n_ty)| {
                     Call::new(*n_mul, &[*n_3, *n_4])
                         .expect(HasType(*n_ty))
                         .at(TEST_FN, 1, 3)
@@ -880,11 +642,11 @@ pub mod tests {
     }
 
     #[test]
-    fn entity_parse_expr_containing_value_with_type_annotation() -> Test {
+    fn parse_expr_containing_value_with_type_annotation() -> Test {
         let (root, storage) = parse_entities("3 * (4 : Int)")?;
         let node_3 = HasValue::new(Prim::I32(3)).at(TEST_FN, 1, 1);
         let int_ty = SymbolRef::new(path!("Int"), path!(TEST_FN)).at(TEST_FN, 1, 10);
-        let node_4 = int_ty.chain(|n_ty| {
+        let node_4 = int_ty.with(|n_ty| {
             HasValue::new(Prim::I32(4))
                 .expect(HasType(*n_ty))
                 .at(TEST_FN, 1, 6)
@@ -892,7 +654,7 @@ pub mod tests {
         let node_mul = SymbolRef::new(path!("*"), path!(TEST_FN)).at(TEST_FN, 1, 3);
         assert_eq_err(
             ((node_3, node_mul), node_4)
-                .chain(|((n_3, n_mul), (_n_ty, n_4))| {
+                .with(|((n_3, n_mul), (_n_ty, n_4))| {
                     Call::new(*n_mul, &[*n_3, *n_4]).at(TEST_FN, 1, 3)
                 })
                 .run(&storage)
@@ -902,7 +664,7 @@ pub mod tests {
     }
 
     #[test]
-    fn entity_parse_expr_with_value_type_annotation() -> Test {
+    fn parse_expr_with_value_type_annotation() -> Test {
         let (root, storage) = parse_entities("(3 * 4) : 12")?;
         let node_3 = HasValue::new(Prim::I32(3)).at(TEST_FN, 1, 2);
         let node_4 = HasValue::new(Prim::I32(4)).at(TEST_FN, 1, 6);
@@ -910,7 +672,7 @@ pub mod tests {
         let node_mul = SymbolRef::new(path!("*"), path!(TEST_FN)).at(TEST_FN, 1, 4);
         assert_eq_err(
             (((node_3, node_mul), node_4), node_12)
-                .chain(|(((n_3, n_mul), n_4), n_12)| {
+                .with(|(((n_3, n_mul), n_4), n_12)| {
                     Call::new(*n_mul, &[*n_3, *n_4])
                         .expect(HasType(*n_12))
                         .at(TEST_FN, 1, 4)
@@ -922,7 +684,7 @@ pub mod tests {
     }
 
     #[test]
-    fn entity_parse_str() -> Test {
+    fn parse_str() -> Test {
         let (root, storage) = parse_entities("\"hello world\"")?;
         let txt = "hello world".to_string();
         assert_eq_err(
@@ -934,12 +696,12 @@ pub mod tests {
     }
 
     #[test]
-    fn entity_parse_str_with_type_annotation() -> Test {
+    fn parse_str_with_type_annotation() -> Test {
         let (root, storage) = parse_entities("\"hello world\" : String")?;
         assert_eq_err(
             SymbolRef::new(path!("String"), path!(TEST_FN))
                 .at(TEST_FN, 1, 17)
-                .chain(|ty_id| {
+                .with(|ty_id| {
                     HasValue::new(Prim::Str("hello world".to_string()))
                         .expect(HasType(*ty_id))
                         .at(TEST_FN, 1, 1)
@@ -951,13 +713,13 @@ pub mod tests {
     }
 
     #[test]
-    fn entity_parse_un_op() -> Test {
+    fn parse_un_op() -> Test {
         let (root, storage) = parse_entities("-12")?;
         let node_12 = HasValue::new(Prim::I32(12)).at(TEST_FN, 1, 2);
         let node_neg = SymbolRef::new(path!("-"), path!(TEST_FN)).at(TEST_FN, 1, 1);
         assert_eq_err(
             (node_12, node_neg)
-                .chain(|(n_12, n_neg)| Call::new(*n_neg, &[*n_12]).at(TEST_FN, 1, 1))
+                .with(|(n_12, n_neg)| Call::new(*n_neg, &[*n_12]).at(TEST_FN, 1, 1))
                 .run(&storage)
                 .map(|res| res.1),
             root,
@@ -965,14 +727,14 @@ pub mod tests {
     }
 
     #[test]
-    fn entity_parse_min_op() -> Test {
+    fn parse_min_op() -> Test {
         let (root, storage) = parse_entities("14-12")?;
         let node_12 = HasValue::new(Prim::I32(12)).at(TEST_FN, 1, 4);
         let node_14 = HasValue::new(Prim::I32(14)).at(TEST_FN, 1, 1);
         let node_neg = SymbolRef::new(path!("-"), path!(TEST_FN)).at(TEST_FN, 1, 3);
         assert_eq_err(
             ((node_12, node_neg), node_14)
-                .chain(|((n_12, n_neg), n_14)| Call::new(*n_neg, &[*n_14, *n_12]).at(TEST_FN, 1, 3))
+                .with(|((n_12, n_neg), n_14)| Call::new(*n_neg, &[*n_14, *n_12]).at(TEST_FN, 1, 3))
                 .run(&storage)
                 .map(|res| res.1),
             root,
@@ -980,14 +742,14 @@ pub mod tests {
     }
 
     #[test]
-    fn entity_parse_mul_op() -> Test {
+    fn parse_mul_op() -> Test {
         let (root, storage) = parse_entities("14+12")?;
         let node_12 = HasValue::new(Prim::I32(12)).at(TEST_FN, 1, 4);
         let node_14 = HasValue::new(Prim::I32(14)).at(TEST_FN, 1, 1);
         let node_pls = SymbolRef::new(path!("+"), path!(TEST_FN)).at(TEST_FN, 1, 3);
         assert_eq_err(
             ((node_12, node_pls), node_14)
-                .chain(|((n_12, n_pls), n_14)| Call::new(*n_pls, &[*n_14, *n_12]).at(TEST_FN, 1, 3))
+                .with(|((n_12, n_pls), n_14)| Call::new(*n_pls, &[*n_14, *n_12]).at(TEST_FN, 1, 3))
                 .run(&storage)
                 .map(|res| res.1),
             root,
@@ -995,7 +757,7 @@ pub mod tests {
     }
 
     #[test]
-    fn entity_parse_add_mul_precedence() -> Test {
+    fn parse_add_mul_precedence() -> Test {
         let (root, storage) = parse_entities("3+2*4")?;
         let node_3 = HasValue::new(Prim::I32(3)).at(TEST_FN, 1, 1);
         let node_pls = SymbolRef::new(path!("+"), path!(TEST_FN)).at(TEST_FN, 1, 2);
@@ -1004,10 +766,10 @@ pub mod tests {
         let node_4 = HasValue::new(Prim::I32(4)).at(TEST_FN, 1, 5);
         assert_eq_err(
             ((((node_3, node_pls), node_2), node_mul), node_4)
-                .chain(|((((_n_3, _n_pls), n_2), n_mul), n_4)| {
+                .with(|((((_n_3, _n_pls), n_2), n_mul), n_4)| {
                     Call::new(*n_mul, &[*n_2, *n_4]).at(TEST_FN, 1, 4)
                 })
-                .chain(|(((((n_3, n_pls), _n_2), _n_mul), _n_4), n_8)| {
+                .with(|(((((n_3, n_pls), _n_2), _n_mul), _n_4), n_8)| {
                     Call::new(*n_pls, &[*n_3, *n_8]).at(TEST_FN, 1, 2)
                 })
                 .run(&storage)
@@ -1017,7 +779,7 @@ pub mod tests {
     }
 
     #[test]
-    fn entity_parse_mul_add_precedence() -> Test {
+    fn parse_mul_add_precedence() -> Test {
         let (root, storage) = parse_entities("3*2+4")?;
         let node_3 = HasValue::new(Prim::I32(3)).at(TEST_FN, 1, 1);
         let node_mul = SymbolRef::new(path!("*"), path!(TEST_FN)).at(TEST_FN, 1, 2);
@@ -1027,15 +789,94 @@ pub mod tests {
         assert_eq_err(
             (
                 (
-                    ((node_3, node_mul), node_2).chain(|((n_3, n_mul), n_2)| {
+                    ((node_3, node_mul), node_2).with(|((n_3, n_mul), n_2)| {
                         Call::new(*n_mul, &[*n_3, *n_2]).at(TEST_FN, 1, 2)
                     }),
                     node_pls,
                 ),
                 node_4,
             )
-                .chain(|(((_, n_6), n_pls), n_4)| {
-                    Call::new(*n_pls, &[*n_6, *n_4]).at(TEST_FN, 1, 4)
+                .with(|(((_, n_6), n_pls), n_4)| Call::new(*n_pls, &[*n_6, *n_4]).at(TEST_FN, 1, 4))
+                .run(&storage)
+                .map(|res| res.1),
+            root,
+        )
+    }
+
+    #[test]
+    fn parse_mul_add_parens() -> Test {
+        let (root, storage) = parse_entities("3*(2+4)")?;
+        let node_3 = HasValue::new(Prim::I32(3)).at(TEST_FN, 1, 1);
+        let node_mul = SymbolRef::new(path!("*"), path!(TEST_FN)).at(TEST_FN, 1, 2);
+        let node_2 = HasValue::new(Prim::I32(2)).at(TEST_FN, 1, 4);
+        let node_pls = SymbolRef::new(path!("+"), path!(TEST_FN)).at(TEST_FN, 1, 5);
+        let node_4 = HasValue::new(Prim::I32(4)).at(TEST_FN, 1, 6);
+        assert_eq_err(
+            (
+                (node_3, node_mul),
+                ((node_2, node_pls), node_4)
+                    .with(|((n_2, n_pls), n_4)| Call::new(*n_pls, &[*n_2, *n_4]).at(TEST_FN, 1, 5)),
+            )
+                .with(|((n_3, n_mul), (_, n_6))| Call::new(*n_mul, &[*n_3, *n_6]).at(TEST_FN, 1, 2))
+                .run(&storage)
+                .map(|res| res.1),
+            root,
+        )
+    }
+
+    #[test]
+    fn parse_add_str() -> Test {
+        let (root, storage) = parse_entities("\"hello\"+\" world\"")?;
+        let node_hello = HasValue::new(Prim::Str("hello".to_string())).at(TEST_FN, 1, 1);
+        let node_world = HasValue::new(Prim::Str(" world".to_string())).at(TEST_FN, 1, 9);
+        let node_pls = SymbolRef::new(path!("+"), path!(TEST_FN)).at(TEST_FN, 1, 8);
+        assert_eq_err(
+            ((node_hello, node_pls), node_world)
+                .with(|((n_h, n_pls), n_w)| Call::new(*n_pls, &[*n_h, *n_w]).at(TEST_FN, 1, 8))
+                .run(&storage)
+                .map(|res| res.1),
+            root,
+        )
+    }
+
+    #[test]
+    fn parse_strings_followed_by_raw_values() -> Test {
+        let (root, storage) = parse_entities("\"hello world\"\n7")?;
+        let node_hello = HasValue::new(Prim::Str("hello world".to_string())).at(TEST_FN, 1, 1);
+        let node_7 = HasValue::new(Prim::I32(7)).at(TEST_FN, 2, 1);
+        assert_eq_err(
+            (node_hello, node_7)
+                .with(|(n_h, n_7)| Sequence(vec![*n_h, *n_7]).at(TEST_FN, 2, 1))
+                .run(&storage)
+                .map(|res| res.1),
+            root,
+        )
+    }
+
+    #[test]
+    fn parse_kwargs() -> Test {
+        let (root, storage) = parse_entities("f(arg=\"hello world\")")?;
+        let node_hello = HasValue::new(Prim::Str("hello world".to_string())).at(TEST_FN, 1, 7);
+        let node_f = SymbolRef::new(path!("f"), path!(TEST_FN)).at(TEST_FN, 1, 1);
+        assert_eq_err(
+            (
+                node_hello.with(|n_h| {
+                    Definition {
+                        names: vec![path!("arg")],
+                        params: None,
+                        implementations: vec![*n_h],
+                        path: path!(TEST_FN, "_"),
+                    }
+                    .at(TEST_FN, 1, 3)
+                }),
+                node_f,
+            )
+                .with(|((_n_h, n_a), n_f)| {
+                    Call {
+                        inner: *n_f,
+                        args: vec![*n_a],
+                    }
+                    .at(TEST_FN, 1, 1)
                 })
                 .run(&storage)
                 .map(|res| res.1),
@@ -1044,163 +885,67 @@ pub mod tests {
     }
 
     #[test]
-    fn entity_parse_mul_add_parens() -> Test {
-        assert_str_eq!(
-            dbg_parse_entities("3*(2+4)")?,
-            "\
-Entity 0:
- - HasValue(3)
- - InstancesAt(test.tk:1:1)
-Entity 1:
- - HasValue(2)
- - InstancesAt(test.tk:1:4)
-Entity 2:
- - HasValue(4)
- - InstancesAt(test.tk:1:6)
-Entity 3:
- - DefinedAt(None)
- - SymbolRef { name: [+], context: [test.tk], definition: None }
- - InstancesAt(test.tk:1:5)
-Entity 4:
- - Call { inner: Entity(3, Generation(1)), args: [Entity(1, Generation(1)), Entity(2, Generation(1))] }
- - InstancesAt(test.tk:1:5)
-Entity 5:
- - DefinedAt(None)
- - SymbolRef { name: [*], context: [test.tk], definition: None }
- - InstancesAt(test.tk:1:2)
-Entity 6:
- - Call { inner: Entity(5, Generation(1)), args: [Entity(0, Generation(1)), Entity(4, Generation(1))] }
- - InstancesAt(test.tk:1:2)"
-        );
-        Ok(())
+    fn parse_mul_functions() -> Test {
+        let (root, storage) = parse_entities("mul(x, y)= x*y")?;
+        let arg_x = SymbolRef::new(path!("x"), path!(TEST_FN, "_")).at(TEST_FN, 1, 5);
+        let arg_y = SymbolRef::new(path!("y"), path!(TEST_FN, "_")).at(TEST_FN, 1, 8);
+        let node_x = SymbolRef::new(path!("x"), path!(TEST_FN, "mul")).at(TEST_FN, 1, 12);
+        let node_mul = SymbolRef::new(path!("*"), path!(TEST_FN, "mul")).at(TEST_FN, 1, 13);
+        let node_y = SymbolRef::new(path!("y"), path!(TEST_FN, "mul")).at(TEST_FN, 1, 14);
+        let res = ((node_x, node_mul), node_y).with(|((n_x, n_mul), n_y)| {
+            Call {
+                inner: *n_mul,
+                args: vec![*n_x, *n_y],
+            }
+            .at(TEST_FN, 1, 13)
+        });
+        let def = ((arg_x, arg_y), res).with(|((n_x, n_y), (_, n_r))| {
+            Definition {
+                names: vec![path!("mul")],
+                params: Some(vec![*n_x, *n_y]),
+                implementations: vec![*n_r],
+                path: path!(TEST_FN),
+            }
+            .at(TEST_FN, 1, 1)
+        });
+        assert_eq_err(def.run(&storage).map(|res| res.1), root)
     }
 
     #[test]
-    fn entity_parse_add_str() -> Test {
-        assert_str_eq!(
-            dbg_parse_entities("\"hello\"+\" world\"")?,
-            "\
-Entity 0:
- - HasValue('hello')
- - InstancesAt(test.tk:1:1)
-Entity 1:
- - HasValue(' world')
- - InstancesAt(test.tk:1:9)
-Entity 2:
- - DefinedAt(None)
- - SymbolRef { name: [+], context: [test.tk], definition: None }
- - InstancesAt(test.tk:1:8)
-Entity 3:
- - Call { inner: Entity(2, Generation(1)), args: [Entity(0, Generation(1)), Entity(1, Generation(1))] }
- - InstancesAt(test.tk:1:8)"
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn entity_parse_strings_followed_by_raw_values() -> Test {
-        assert_str_eq!(
-            dbg_parse_entities("\"hello world\"\n7")?,
-            "\
-Entity 0:
- - HasValue('hello world')
- - InstancesAt(test.tk:1:1)
-Entity 1:
- - HasValue(7)
- - InstancesAt(test.tk:2:1)
-Entity 2:
- - Sequence([Entity(0, Generation(1)), Entity(1, Generation(1))])
- - InstancesAt(test.tk:2:1)"
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn entity_parse_kwargs() -> Test {
-        assert_str_eq!(
-            dbg_parse_entities("f(arg=\"hello world\")")?,
-            "\
-Entity 0:
- - HasValue('hello world')
- - InstancesAt(test.tk:1:7)
-Entity 1:
- - Definition { names: [[arg]], params: None, implementations: [Entity(0, Generation(1))], path: [test.tk, _] }
- - InstancesAt(test.tk:1:3)
-Entity 2:
- - DefinedAt(None)
- - SymbolRef { name: [f], context: [test.tk], definition: None }
- - InstancesAt(test.tk:1:1)
-Entity 3:
- - Call { inner: Entity(2, Generation(1)), args: [Entity(1, Generation(1))] }
- - InstancesAt(test.tk:1:1)"
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn entity_parse_mul_functions() -> Test {
-        assert_str_eq!(
-            dbg_parse_entities("mul(x, y)= x*y")?,
-            "\
-Entity 0:
- - DefinedAt(None)
- - SymbolRef { name: [x], context: [test.tk, _], definition: None }
- - InstancesAt(test.tk:1:5)
-Entity 1:
- - DefinedAt(None)
- - SymbolRef { name: [y], context: [test.tk, _], definition: None }
- - InstancesAt(test.tk:1:8)
-Entity 2:
- - DefinedAt(None)
- - SymbolRef { name: [x], context: [test.tk, mul], definition: None }
- - InstancesAt(test.tk:1:12)
-Entity 3:
- - DefinedAt(None)
- - SymbolRef { name: [y], context: [test.tk, mul], definition: None }
- - InstancesAt(test.tk:1:14)
-Entity 4:
- - DefinedAt(None)
- - SymbolRef { name: [*], context: [test.tk, mul], definition: None }
- - InstancesAt(test.tk:1:13)
-Entity 5:
- - Call { inner: Entity(4, Generation(1)), args: [Entity(2, Generation(1)), Entity(3, Generation(1))] }
- - InstancesAt(test.tk:1:13)
-Entity 6:
- - Definition { names: [[mul]], params: Some([Entity(0, Generation(1)), Entity(1, Generation(1))]), implementations: [Entity(5, Generation(1))], path: [test.tk] }
- - InstancesAt(test.tk:1:1)"
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn entity_parse_strings_with_operators_and_trailing_values_in_let() -> Test {
-        assert_str_eq!(
-            dbg_parse_entities("x()= !\"hello world\";\n7")?,
-            "\
-Entity 0:
- - HasValue('hello world')
- - InstancesAt(test.tk:1:7)
-Entity 1:
- - DefinedAt(None)
- - SymbolRef { name: [!], context: [test.tk, x], definition: None }
- - InstancesAt(test.tk:1:6)
-Entity 2:
- - Call { inner: Entity(1, Generation(1)), args: [Entity(0, Generation(1))] }
- - InstancesAt(test.tk:1:6)
-Entity 3:
- - Definition { names: [[x]], params: Some([]), implementations: [Entity(2, Generation(1))], path: [test.tk] }
- - InstancesAt(test.tk:1:1)
-Entity 4:
- - HasValue(7)
- - InstancesAt(test.tk:2:1)
-Entity 5:
- - DefinedAt(None)
- - SymbolRef { name: [;], context: [test.tk], definition: None }
- - InstancesAt(test.tk:1:20)
-Entity 6:
- - Call { inner: Entity(5, Generation(1)), args: [Entity(3, Generation(1)), Entity(4, Generation(1))] }
- - InstancesAt(test.tk:1:20)"
-        );
-        Ok(())
+    fn parse_strings_with_operators_and_trailing_values_in_let() -> Test {
+        let (root, storage) = parse_entities("x()= !\"hello world\";\n7")?;
+        let node_hello = HasValue::new(Prim::Str("hello world".to_string())).at(TEST_FN, 1, 7);
+        let node_not = SymbolRef::new(path!("!"), path!(TEST_FN, "x")).at(TEST_FN, 1, 6);
+        let x_impl = (node_hello, node_not).with(|(n_h, n_n)| {
+            Call {
+                inner: *n_n,
+                args: vec![*n_h],
+            }
+            .at(TEST_FN, 1, 6)
+        });
+        let x_def = x_impl.with(|(_n_h, n_i)| {
+            Definition {
+                names: vec![path!("x")],
+                params: Some(vec![]),
+                implementations: vec![*n_i],
+                path: path!(TEST_FN),
+            }
+            .at(TEST_FN, 1, 1)
+        });
+        let node_7 = HasValue::new(Prim::I32(7)).at(TEST_FN, 2, 1);
+        let node_semi = SymbolRef::new(path!(";"), path!(TEST_FN)).at(TEST_FN, 1, 20);
+        assert_eq_err(
+            ((x_def, node_semi), node_7)
+                .with(|(((_, n_d), n_s), n_7)| {
+                    Call {
+                        inner: *n_s,
+                        args: vec![*n_d, *n_7],
+                    }
+                    .at(TEST_FN, 1, 20)
+                })
+                .run(&storage)
+                .map(|res| res.1),
+            root,
+        )
     }
 }

@@ -9,6 +9,8 @@ use derivative::Derivative;
 #[derive(Error, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Derivative)]
 #[derivative(Debug)]
 pub enum TError {
+    #[error("unfinished conversion to cpp, entity: {0:?}")]
+    UnfinishedCodeGeneration(Entity, Info),
     #[error("call to C++ compiler failed with error code: {1:?}\n{0}")]
     CppCompilerError(String, Option<i32>, Info),
     #[error("unknown token `{0:?}` in {2:?} at {1}")]

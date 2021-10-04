@@ -2,10 +2,9 @@ use crate::ast::{
     path_to_string, Abs, Apply, BinOp, HasInfo, Let, Node, Path, Root, Sym, Symbol, ToNode, UnOp,
     Visitor,
 };
-use crate::components::{DefinedAt, SymbolRef};
+use crate::components::SymbolRef;
 use crate::database::DBStorage;
 use crate::errors::TError;
-use crate::externs::get_externs;
 use crate::passes::symbol_table_builder::State;
 use crate::primitives::Val;
 use log::{debug, info};
@@ -24,18 +23,22 @@ struct DefinitionFinderSystem {
 }
 
 impl<'a> System<'a> for DefinitionFinderSystem {
-    type SystemData = (ReadStorage<'a, SymbolRef>, WriteStorage<'a, DefinedAt>);
+    type SystemData = WriteStorage<'a, SymbolRef>;
 
-    fn run(&mut self, (symbols, mut defined_at_map): Self::SystemData) {
+    fn run(&mut self, mut symbols: Self::SystemData) {
         // dbg!(&self.path_to_entity);
-        for (symbol, defined_at) in (&symbols, &mut defined_at_map).join() {
+        for symbol in (&mut symbols).join() {
             let get_entity = || {
                 let mut context = symbol.context.clone();
                 loop {
                     let mut search_path = context.clone();
                     search_path.extend(symbol.name.clone());
                     if let Some(entity) = self.path_to_entity.get(&search_path) {
-                        return Some((entity, search_path));
+                        debug!(
+                            "Found symbol: {:?} -> {:?} @ {:?}",
+                            &symbol, &entity, &search_path
+                        );
+                        return Some(*entity);
                     }
                     if context.is_empty() {
                         return None;
@@ -43,18 +46,11 @@ impl<'a> System<'a> for DefinitionFinderSystem {
                     context.pop(); // go back
                 }
             };
-            if defined_at.0 != None {
+            if symbol.definition != None {
                 continue; // this one is 'pre' defined
             }
-            if let Some((entity, found_path)) = get_entity() {
-                debug!(
-                    "Found symbol: {:?} -> {:?} @ {:?}",
-                    &symbol, &entity, &found_path
-                );
-                defined_at.0 = Some(found_path);
-            } else if let Some(ext) = get_externs().get(&path_to_string(&symbol.name)) {
-                debug!("Found extern: {:?} -> {:?}", &symbol, &ext);
-                defined_at.0 = Some(symbol.name.clone());
+            if let Some(entity) = get_entity() {
+                symbol.definition = Some(entity);
             } else {
                 debug!("Couldn't find symbol: {:?}", &symbol);
             }
@@ -64,20 +60,23 @@ impl<'a> System<'a> for DefinitionFinderSystem {
 
 impl Visitor<State, Node, Root, Path> for DefinitionFinder {
     fn visit_root(&mut self, storage: &mut DBStorage, module: &Path) -> Result<Root, TError> {
-        let expr = storage.build_symbol_table(module)?;
+        let root = storage.build_symbol_table(module)?;
         info!("Looking up definitions... {}", path_to_string(module));
         let mut definition_finder = DefinitionFinderSystem {
             path_to_entity: storage.path_to_entity.clone(),
         };
+        debug!("Running definition_finder");
         definition_finder.run_now(&storage.world);
+        debug!("Done definition_finder");
 
         let mut state = State {
             path: module.clone(),
-            table: expr.table.clone(),
+            table: root.table.clone(),
         };
-        let ast = self.visit(storage, &mut state, &expr.ast)?;
+        let ast = self.visit(storage, &mut state, &root.ast)?;
         Ok(Root {
             ast,
+            entity: root.entity,
             table: state.table,
         })
     }
@@ -214,92 +213,87 @@ impl Visitor<State, Node, Root, Path> for DefinitionFinder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::components::*;
     use crate::database::DBStorage;
+    use crate::errors::TError;
+    use crate::matcher::Matcher;
+    use crate::pretty_assertions::assert_no_err;
+    use crate::primitives::Prim;
 
     type Test = Result<(), TError>;
 
-    fn symbols_found_using(
-        storage: &mut DBStorage,
-        prog_str: &'static str,
-    ) -> Result<String, TError> {
-        let prog_filename = "test/prog.tk";
-        storage.set_file(prog_filename, prog_str.to_owned());
-        let prog_module = storage.module_name(prog_filename);
-
-        let Root { ast, table } = DefinitionFinder::process(&prog_module, storage)?;
-
-        debug!("{:?}", ast);
-
-        Ok(format!(
-            "{:?}",
-            table
-                .find(&prog_module)
-                .expect("couldn't find definitions for test file")
-        ))
+    static TEST_FN: &str = "test/prog.tk";
+    fn test_path() -> Path {
+        path!("test", "prog.tk")
     }
 
-    fn assert_symbols_found(prog_str: &'static str, matches: &'static str) -> Test {
+    fn test_path_and(suffix: Path) -> Path {
+        let mut path = test_path();
+        path.extend(suffix);
+        path
+    }
+
+    fn find_definitions_entities(contents: &str) -> Result<(Entity, DBStorage), TError> {
         let mut storage = DBStorage::default();
-        let prog_definitions = symbols_found_using(&mut storage, prog_str)?;
-        assert_str_eq!(prog_definitions, matches);
+        storage.set_file(TEST_FN, contents.to_owned());
+        let module = storage.module_name(TEST_FN);
+        let root = DefinitionFinder::process(&module, &mut storage)?;
+        Ok((root.entity, storage))
+    }
+
+    #[test]
+    fn matcher_use_local_definition() -> Test {
+        let (_root, storage) = find_definitions_entities("x=23;x")?;
+        assert_no_err(
+            HasValue::new(Prim::I32(23))
+                .one()
+                .with(|n_23| {
+                    Definition {
+                        names: vec![path!("x")],
+                        params: None,
+                        implementations: vec![*n_23],
+                        path: test_path(),
+                    }
+                    .one()
+                })
+                .with(|(_n_23, n_x)| {
+                    SymbolRef {
+                        name: path!("x"),
+                        context: test_path(),
+                        definition: Some(*n_x),
+                    }
+                    .one()
+                })
+                .run(&storage),
+        )?;
         Ok(())
     }
 
     #[test]
-    fn use_local_definition() -> Test {
-        assert_symbols_found(
-            "x=23;x",
-            "Entry { uses: {}, defined_at: [] } {
-    main: Entry { uses: {[test, prog.tk]}, defined_at: [] },
-    x: Entry { uses: {[test, prog.tk]}, defined_at: [] },
-}",
-        )
-    }
-
-    #[test]
-    fn entity_use_local_definition() -> Test {
-        let mut storage = DBStorage::default();
-        let _definitions = symbols_found_using(&mut storage, "x=23;x")?;
-        assert_str_eq!(storage.format_entity_definitions(),
-            "\
-Entity 0:
-Entity 1:
- - Definition { names: [[x]], params: None, implementations: [Entity(0, Generation(1))], path: [test, prog.tk] }
-Entity 2:
- - DefinedAt(Some([test, prog.tk, x]))
- - SymbolRef { name: [x], context: [test, prog.tk], definition: None }
-Entity 3:
- - DefinedAt(Some([;]))
- - SymbolRef { name: [;], context: [test, prog.tk], definition: None }
-Entity 4:");
-        Ok(())
-    }
-
-    #[test]
-    fn entity_use_closest_definition() -> Test {
-        let mut storage = DBStorage::default();
-        let _definitions = symbols_found_using(&mut storage, "x=23;y=(x=45;x)")?;
-        assert_str_eq!(storage.format_entity_definitions(),
-            "\
-Entity 0:
-Entity 1:
- - Definition { names: [[x]], params: None, implementations: [Entity(0, Generation(1))], path: [test, prog.tk] }
-Entity 2:
-Entity 3:
- - Definition { names: [[x]], params: None, implementations: [Entity(2, Generation(1))], path: [test, prog.tk, y] }
-Entity 4:
- - DefinedAt(Some([test, prog.tk, y, x]))
- - SymbolRef { name: [x], context: [test, prog.tk, y], definition: None }
-Entity 5:
- - DefinedAt(Some([;]))
- - SymbolRef { name: [;], context: [test, prog.tk, y], definition: None }
-Entity 6:
-Entity 7:
- - Definition { names: [[y]], params: None, implementations: [Entity(6, Generation(1))], path: [test, prog.tk] }
-Entity 8:
- - DefinedAt(Some([;]))
- - SymbolRef { name: [;], context: [test, prog.tk], definition: None }
-Entity 9:");
+    fn matcher_use_closest_definition() -> Test {
+        let (_root, storage) = find_definitions_entities("x=23;y=(x=45;x)")?;
+        assert_no_err(
+            HasValue::new(Prim::I32(45))
+                .one()
+                .with(|n_23| {
+                    Definition {
+                        names: vec![path!("x")],
+                        params: None,
+                        implementations: vec![*n_23],
+                        path: test_path_and(path!("y")),
+                    }
+                    .one()
+                })
+                .with(|(_n_23, n_x)| {
+                    SymbolRef {
+                        name: path!("x"),
+                        context: test_path_and(path!("y")),
+                        definition: Some(*n_x),
+                    }
+                    .one()
+                })
+                .run(&storage),
+        )?;
         Ok(())
     }
 }

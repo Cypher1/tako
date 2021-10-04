@@ -7,19 +7,21 @@ use crate::errors::TError;
 use crate::location::Loc;
 use crate::primitives::{unit_type, Val};
 use crate::symbol_table::Table;
+use specs::Entity;
 
 use TError::{
     CppCompilerError, ExpectedLetNode, InternalError, MatchError, OutOfScopeTypeVariable,
     ParseError, RequirementFailure, StackInterpreterRanOutOfArguments,
     StackInterpreterRanOutOfCode, StaticPointerCardinality, TypeMismatch, TypeMismatch2,
-    UnknownCardOfAbstractType, UnknownEntity, UnknownInfixOperator, UnknownPath,
-    UnknownPrefixOperator, UnknownSizeOfAbstractType, UnknownSizeOfVariableType, UnknownSymbol,
-    UnknownToken,
+    UnfinishedCodeGeneration, UnknownCardOfAbstractType, UnknownEntity, UnknownInfixOperator,
+    UnknownPath, UnknownPrefixOperator, UnknownSizeOfAbstractType, UnknownSizeOfVariableType,
+    UnknownSymbol, UnknownToken,
 };
 impl HasInfo for TError {
     fn get_info(&self) -> &Info {
         match self {
-            CppCompilerError(_, _, info)
+            UnfinishedCodeGeneration(_, info)
+            | CppCompilerError(_, _, info)
             | UnknownToken(_, info, _)
             | UnknownSymbol(_, info, _)
             | OutOfScopeTypeVariable(_, info)
@@ -44,7 +46,8 @@ impl HasInfo for TError {
     }
     fn get_mut_info(&mut self) -> &mut Info {
         match self {
-            CppCompilerError(_, _, ref mut info)
+            UnfinishedCodeGeneration(_, ref mut info)
+            | CppCompilerError(_, _, ref mut info)
             | UnknownToken(_, ref mut info, _)
             | UnknownSymbol(_, ref mut info, _)
             | OutOfScopeTypeVariable(_, ref mut info)
@@ -408,7 +411,9 @@ impl fmt::Debug for Symbol {
 macro_rules! symbol {
     ($name_token: tt) => {{
         let name: &str = $name_token;
-        if name.contains('.') {
+        if name == "_" {
+            crate::ast::Symbol::Anon
+        } else if name.contains('.') {
             let parts: Vec<&str> = name.splitn(2, '.').collect();
             crate::ast::Symbol::with_ext(parts[0], parts[1])
         } else {
@@ -499,6 +504,7 @@ impl Default for Entry {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Root {
     pub ast: Node,
+    pub entity: Entity,
     pub table: Table,
 }
 

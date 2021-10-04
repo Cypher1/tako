@@ -1,3 +1,4 @@
+int main(int argc, char* argv[]);
 
 int main(int argc, char* argv[]) {
   const auto examples_empty_def_args_x = [&]() {

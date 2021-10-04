@@ -12,6 +12,7 @@ string to_string(const bool& t){
   return t ? "true" : "false";
 }
 }
+int main(int argc, char* argv[]);
 
 int main(int argc, char* argv[]) {
   const auto examples_higher_order_apply = [&](

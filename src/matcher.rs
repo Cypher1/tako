@@ -74,7 +74,7 @@ pub trait Matcher {
         NoMatches(self)
     }
 
-    fn chain<U: Matcher>(self, other: impl Fn(&Self::Res) -> U + 'static) -> Chain<Self, U>
+    fn with<U: Matcher>(self, other: impl Fn(&Self::Res) -> U + 'static) -> Chain<Self, U>
     where
         Self: Sized,
     {
