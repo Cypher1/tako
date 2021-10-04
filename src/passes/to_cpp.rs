@@ -239,10 +239,10 @@ struct CodeGeneratorSystem {
 impl<'a> System<'a> for CodeGeneratorSystem {
     type SystemData = ReadStorage<'a, SymbolRef>;
 
-    fn run(&mut self, mut symbols: Self::SystemData) {
+    fn run(&mut self, symbols: Self::SystemData) {
         let entity_to_code: HashMap<Entity, Code> = HashMap::new();
         // dbg!(&self.path_to_entity);
-        for _symbol in (&mut symbols).join() {
+        for _symbol in (&symbols).join() {
             // code_for_entity.insert(, Code::);
         }
         // Work from the entry down
