@@ -19,6 +19,7 @@ pub struct CodeGenerator {
     functions: Vec<Code>,
     includes: HashSet<String>,
     pub flags: HashSet<String>,
+    entity_to_code: HashMap<Entity, Code>,
 }
 
 #[must_use]
@@ -27,7 +28,11 @@ pub fn make_name(def: PathRef) -> String {
     def_n.join("_")
 }
 
-fn pretty_print_block(src: Code, indent: &str) -> Result<String, TError> {
+fn pretty_print_block(
+    src: Code,
+    indent: &str,
+    entity_to_code: &HashMap<Entity, Code>,
+) -> Result<String, TError> {
     let new_indent = indent.to_string() + "  ";
     // Calculate the expression as well...
     // TODO: Consider if it is dropped (should it be stored? is it a side effect?)
@@ -35,17 +40,28 @@ fn pretty_print_block(src: Code, indent: &str) -> Result<String, TError> {
         Code::Partial(ent) => return Err(TError::UnfinishedCodeGeneration(ent, Info::default())),
         Code::Block(mut statements) => {
             let last = statements.pop().expect("Unexpected empty code block"); //TODO: Error case
-            statements.push(last.with_expr(&|exp| Code::Statement(format!("return {}", exp))));
+            statements.push(last.with_expr(
+                &|exp| Code::Statement(format!("return {}", exp)),
+                entity_to_code,
+            ));
             let mut body: Vec<String> = vec![];
             for statement in statements {
-                body.push(pretty_print_block(statement.clone(), new_indent.as_str())?);
+                body.push(pretty_print_block(
+                    statement.clone(),
+                    new_indent.as_str(),
+                    entity_to_code,
+                )?);
             }
             format!("{{{}{indent}}}", body.join(""), indent = indent,)
         }
         Code::Struct(vals) => {
             let mut body: Vec<String> = vec![];
             for val in vals {
-                body.push(pretty_print_block(val.clone(), new_indent.as_str())?);
+                body.push(pretty_print_block(
+                    val.clone(),
+                    new_indent.as_str(),
+                    entity_to_code,
+                )?);
             }
             format!("{{{}{indent}}}", body.join(", "), indent = indent,)
         }
@@ -55,13 +71,13 @@ fn pretty_print_block(src: Code, indent: &str) -> Result<String, TError> {
             "template <{} {}>\n{}",
             "typename",
             name,
-            pretty_print_block(*body, indent)?
+            pretty_print_block(*body, indent, entity_to_code)?
         ),
         Code::Assignment(name, value) => format!(
             "{}const auto {} = {};",
             indent,
             name,
-            pretty_print_block(*value, indent)?
+            pretty_print_block(*value, indent, entity_to_code)?
         ),
         Code::Empty => "".to_string(),
         Code::If {
@@ -69,9 +85,9 @@ fn pretty_print_block(src: Code, indent: &str) -> Result<String, TError> {
             then,
             then_else,
         } => {
-            let condition = pretty_print_block(*condition, indent)?;
-            let body = pretty_print_block(*then, indent)?;
-            let then_else = pretty_print_block(*then_else, indent)?;
+            let condition = pretty_print_block(*condition, indent, entity_to_code)?;
+            let body = pretty_print_block(*then, indent, entity_to_code)?;
+            let then_else = pretty_print_block(*then_else, indent, entity_to_code)?;
             format!(
                 "{indent}if({}) {} else {}",
                 condition,
@@ -94,7 +110,7 @@ fn pretty_print_block(src: Code, indent: &str) -> Result<String, TError> {
                 // Auto wrap statements in blocks.
                 Code::Block(vec![*inner])
             };
-            let body = pretty_print_block(inner, indent)?;
+            let body = pretty_print_block(inner, indent, entity_to_code)?;
             if lambda {
                 let arg_str = if args.is_empty() {
                     "".to_string()
@@ -130,21 +146,40 @@ type Res = Result<Code, TError>;
 type State = Table;
 type Out = (String, HashSet<String>, (String, HashSet<String>));
 
-fn build_call1(before: &str, inner: Code) -> Code {
-    inner.with_expr(&|exp| Code::Expr(format!("{}({})", &before, &exp)))
+fn build_call1(before: &str, inner: Code, entity_to_code: &HashMap<Entity, Code>) -> Code {
+    inner.with_expr(
+        &|exp| Code::Expr(format!("{}({})", &before, &exp)),
+        entity_to_code,
+    )
 }
-fn build_call2(before: &str, mid: &str, left: Code, right: &Code) -> Code {
-    left.with_expr(&|left_expr| {
-        right.clone().with_expr(&|right_expr| {
-            Code::Expr(format!(
-                "{}({}{}{})",
-                &before, &left_expr, &mid, &right_expr
-            ))
-        })
-    })
+fn build_call2(
+    before: &str,
+    mid: &str,
+    left: Code,
+    right: &Code,
+    entity_to_code: &HashMap<Entity, Code>,
+) -> Code {
+    left.with_expr(
+        &|left_expr| {
+            right.clone().with_expr(
+                &|right_expr| {
+                    Code::Expr(format!(
+                        "{}({}{}{})",
+                        &before, &left_expr, &mid, &right_expr
+                    ))
+                },
+                entity_to_code,
+            )
+        },
+        entity_to_code,
+    )
 }
 
-fn code_to_text(includes: &HashSet<String>, functions: &Vec<Code>) -> Result<String, TError> {
+fn code_to_text(
+    includes: &HashSet<String>,
+    functions: &Vec<Code>,
+    entity_to_code: &HashMap<Entity, Code>,
+) -> Result<String, TError> {
     // TODO(cypher1): Use a writer.
     let mut code = "".to_string();
     // #includes
@@ -172,7 +207,7 @@ fn code_to_text(includes: &HashSet<String>, functions: &Vec<Code>) -> Result<Str
 
     // Definitions
     for func in functions.iter().clone() {
-        let function = pretty_print_block(func.clone(), "\n")?;
+        let function = pretty_print_block(func.clone(), "\n", entity_to_code)?;
         code = format!("{}{}", code, function);
     }
     Ok(code + "\n")
@@ -204,7 +239,7 @@ impl<'a> System<'a> for CodeGeneratorSystem {
     type SystemData = ReadStorage<'a, SymbolRef>;
 
     fn run(&mut self, mut symbols: Self::SystemData) {
-        let code_for_entity: HashMap<Entity, Code> = HashMap::new();
+        let entity_to_code: HashMap<Entity, Code> = HashMap::new();
         // dbg!(&self.path_to_entity);
         for _symbol in (&mut symbols).join() {
             // code_for_entity.insert(, Code::);
@@ -214,16 +249,10 @@ impl<'a> System<'a> for CodeGeneratorSystem {
         let mut functions = Vec::new();
 
         if false {
-            let body = Box::new(
-                code_for_entity
-                    .get(&self.entry)
-                    .expect("Entry point should have associated code")
-                    .clone(),
-            ); // turn this into 'main'
             let main = Code::Func {
                 name: "main".to_string(),
                 args: vec!["int argc".to_string(), "char* argv[]".to_string()],
-                body,
+                body: Box::new(Code::Partial(self.entry)),
                 lambda: false,
                 call: false,
                 return_type: "int".to_string(),
@@ -232,7 +261,8 @@ impl<'a> System<'a> for CodeGeneratorSystem {
         }
 
         self.result = Some(
-            code_to_text(&includes, &functions).expect("Expected all code to be fully generated."),
+            code_to_text(&includes, &functions, &entity_to_code)
+                .expect("Expected all code to be fully generated."),
         );
     }
 }
@@ -285,7 +315,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         };
         self.functions.push(main);
         // TODO(cypher1): Use a writer.
-        let code = code_to_text(&self.includes, &self.functions)?;
+        let code = code_to_text(&self.includes, &self.functions, &self.entity_to_code)?;
         Ok((
             code,
             self.flags.clone(),
@@ -367,8 +397,10 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             // TODO: Include lambda head in values
             let val = self.visit_let(storage, state, arg)?;
             match val {
-                Code::Assignment(_, val) => args.push(pretty_print_block(*val, "")?),
-                val => args.push(pretty_print_block(val, "")?),
+                Code::Assignment(_, val) => {
+                    args.push(pretty_print_block(*val, "", &self.entity_to_code)?)
+                }
+                val => args.push(pretty_print_block(val, "", &self.entity_to_code)?),
             };
         }
         let inner = self.visit(storage, state, &expr.inner)?;
@@ -465,9 +497,13 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
             let code = if info.cpp.arg_processor.as_str() == "" {
                 code
             } else {
-                build_call1(info.cpp.arg_processor.as_str(), code)
+                build_call1(info.cpp.arg_processor.as_str(), code, &self.entity_to_code)
             };
-            return Ok(build_call1(info.cpp.arg_joiner.as_str(), code));
+            return Ok(build_call1(
+                info.cpp.arg_joiner.as_str(),
+                code,
+                &self.entity_to_code,
+            ));
         }
         Err(TError::UnknownPrefixOperator(op.to_string(), info.clone()))
     }
@@ -502,8 +538,8 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 (left, right)
             } else {
                 (
-                    build_call1(info.cpp.arg_processor.as_str(), left),
-                    build_call1(info.cpp.arg_processor.as_str(), right),
+                    build_call1(info.cpp.arg_processor.as_str(), left, &self.entity_to_code),
+                    build_call1(info.cpp.arg_processor.as_str(), right, &self.entity_to_code),
                 )
             };
             return Ok(build_call2(
@@ -511,6 +547,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
                 info.cpp.arg_joiner.as_str(),
                 left,
                 &right,
+                &self.entity_to_code,
             ));
         }
         Err(TError::UnknownInfixOperator(op.to_string(), info.clone()))
