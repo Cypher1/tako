@@ -4,6 +4,7 @@ use crate::ast::{
 };
 use crate::components::SymbolRef;
 use crate::cpp_ast::Code;
+use crate::database::CompilationResult;
 use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::primitives::{Prim, Val};
@@ -144,7 +145,7 @@ fn pretty_print_block(
 
 type Res = Result<Code, TError>;
 type State = Table;
-type Out = (String, HashSet<String>, (String, HashSet<String>));
+type Out = (CompilationResult, CompilationResult);
 
 fn build_call1(before: &str, inner: Code, entity_to_code: &HashMap<Entity, Code>) -> Code {
     inner.with_expr(
@@ -177,7 +178,7 @@ fn build_call2(
 
 fn code_to_text(
     includes: &HashSet<String>,
-    functions: &Vec<Code>,
+    functions: &[Code],
     entity_to_code: &HashMap<Entity, Code>,
 ) -> Result<String, TError> {
     // TODO(cypher1): Use a writer.
@@ -317,8 +318,7 @@ impl Visitor<State, Code, Out, Path> for CodeGenerator {
         // TODO(cypher1): Use a writer.
         let code = code_to_text(&self.includes, &self.functions, &self.entity_to_code)?;
         Ok((
-            code,
-            self.flags.clone(),
+            (code, self.flags.clone()),
             (
                 code_generator.result.unwrap_or_else(|| "".to_string()),
                 code_generator.flags,

@@ -20,6 +20,8 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Arc;
 
+pub type CompilationResult = (String, HashSet<String>);
+
 fn to_file_path(context: PathRef) -> Path {
     let mut module = context.to_vec();
     loop {
@@ -341,14 +343,14 @@ impl DBStorage {
     pub fn compile_to_cpp(
         &mut self,
         module: PathRef,
-    ) -> Result<(String, HashSet<String>, (String, HashSet<String>)), TError> {
+    ) -> Result<(CompilationResult, CompilationResult), TError> {
         use crate::passes::to_cpp::CodeGenerator;
         info!("Generating code... {}", path_to_string(module));
         CodeGenerator::process(&module.to_vec(), self)
     }
 
     pub fn build_with_gpp(&mut self, module: PathRef) -> Result<String, TError> {
-        let (res, flags, (entity_res, entity_flags)) = self.compile_to_cpp(module)?;
+        let ((res, flags), (entity_res, entity_flags)) = self.compile_to_cpp(module)?;
         info!("Building file with g++ ... {}", path_to_string(module));
         info!("Alternative {:?} {:?}", entity_res, entity_flags);
 
