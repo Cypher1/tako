@@ -22,7 +22,7 @@ pub struct TestOptions {
 }
 
 fn test_expecting(expected: TestResult, options: Vec<&str>) {
-    takolib::init_for_test();
+    takolib::ensure_initialized();
 
     let mut storage = DBStorage::default();
     storage.options = Options::new(options);

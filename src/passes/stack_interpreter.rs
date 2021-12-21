@@ -23,6 +23,7 @@ pub enum StackValue {
     Value(Val),
 }
 
+#[derive(Default)]
 pub struct Mem {
     stack: Vec<StackValue>,
     // heap: Vec<StackValue>,
@@ -32,15 +33,6 @@ pub enum MemoryReference {
     Stack(u32, u32),
     Heap(u32, u32),
     // TODO: Consider adding Registers to avoid hitting the stack for every argument
-}
-
-impl Default for Mem {
-    fn default() -> Self {
-        Self {
-            stack: Vec::new(),
-            // heap: Vec::new(),
-        }
-    }
 }
 
 pub struct Interpreter<'functions, 'storage> {

@@ -248,24 +248,13 @@ impl HasInfo for BinOp {
     }
 }
 
-#[derive(Clone, PartialOrd, Ord)]
+#[derive(Clone, PartialOrd, Ord, Default)]
 pub struct Info {
     // TODO: Remove this
     pub loc: Option<Loc>,
     pub ty: Option<Box<Node>>,
     pub defined_at: Option<Path>,
     pub callable: bool,
-}
-
-impl Default for Info {
-    fn default() -> Info {
-        Info {
-            loc: None,
-            ty: None,
-            defined_at: None,
-            callable: false,
-        }
-    }
 }
 
 impl std::fmt::Debug for Info {
@@ -482,23 +471,13 @@ pub fn path_to_string(path: PathRef) -> String {
         .join(".")
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+//TODO: Remove the default instance.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Entry {
     pub uses: HashSet<Path>,
     pub defined_at: Path,
     // pub requires: Vec<Sym>,
     // pub defines: HashMap<Sym, Path>,
-}
-
-impl Default for Entry {
-    fn default() -> Entry {
-        Entry {
-            uses: HashSet::new(),
-            defined_at: vec![], //TODO: Remove the default instance.
-                                // requires: vec![],
-                                // defines: HashMap::new(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

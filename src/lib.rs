@@ -46,21 +46,33 @@ use passes::ast_interpreter::ImplFn;
 use std::fs::File;
 use std::io::prelude::*;
 
+static mut LOGS_UNINITIALISED: bool = true;
+
 pub fn build_logger(finish: impl FnOnce(&mut env_logger::Builder)) {
-    finish(
-        env_logger::Builder::from_env(
-            env_logger::Env::default()
-                .filter_or("TAKO_LOG", "warn")
-                .write_style_or("TAKO_LOG_STYLE", "AUTO"),
-        )
-        .format_timestamp(None),
-    );
+    if unsafe { LOGS_UNINITIALISED } {
+        unsafe {
+            LOGS_UNINITIALISED = false;
+        }
+        finish(
+            env_logger::Builder::from_env(
+                env_logger::Env::default()
+                    .filter_or("TAKO_LOG", "warn")
+                    .write_style_or("TAKO_LOG_STYLE", "AUTO"),
+            )
+            .format_timestamp(None),
+        );
+    }
 }
 
-pub fn init_for_test() {
+#[cfg(test)]
+pub fn ensure_initialized() {
     build_logger(|env| {
         let _ = env.is_test(true).try_init();
     });
+}
+#[cfg(not(test))]
+pub fn ensure_initialized() {
+    build_logger(env_logger::Builder::init);
 }
 
 pub fn work<'a>(

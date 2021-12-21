@@ -35,7 +35,7 @@ fn handle(res: Result<String, TError>) {
 }
 
 fn main() {
-    takolib::build_logger(env_logger::Builder::init);
+    takolib::ensure_initialized();
 
     let mut storage = DBStorage::default();
     {
