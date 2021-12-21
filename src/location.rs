@@ -41,7 +41,7 @@ impl Default for Pos {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Ord, PartialOrd, Hash)]
+#[derive(PartialEq, Eq, Clone, Ord, PartialOrd, Hash, Default)]
 pub struct Loc {
     pub filename: Option<String>,
     pub pos: Pos,
@@ -69,14 +69,5 @@ impl std::fmt::Debug for Loc {
 impl Loc {
     pub fn next(&mut self, chars: &mut std::iter::Peekable<std::str::Chars>) {
         self.pos.next(chars);
-    }
-}
-
-impl Default for Loc {
-    fn default() -> Self {
-        Loc {
-            filename: None,
-            pos: Pos::default(),
-        }
     }
 }

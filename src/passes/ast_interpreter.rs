@@ -20,16 +20,9 @@ pub type PureImplFn<'a> =
     &'a dyn Fn(&DBStorage, HashMap<String, Box<dyn Fn() -> Res>>, &Info) -> Res;
 
 // Walks the AST interpreting it.
+#[derive(Default)]
 pub struct Interpreter<'a> {
     pub impls: HashMap<String, ImplFn<'a>>,
-}
-
-impl<'a> Default for Interpreter<'a> {
-    fn default() -> Interpreter<'a> {
-        Interpreter {
-            impls: HashMap::new(),
-        }
-    }
 }
 
 fn find_symbol<'a>(state: &'a [Frame], name: &str) -> Option<&'a Val> {
