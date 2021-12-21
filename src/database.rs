@@ -183,8 +183,7 @@ define_debug!(
 
 impl Default for DBStorage {
     fn default() -> Self {
-        #[cfg(test)]
-        crate::init_for_test();
+        crate::ensure_initialized();
         let mut world = World::new();
         register_components(&mut world);
 
