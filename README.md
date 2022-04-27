@@ -75,12 +75,6 @@ Please read the [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) and [CONTRIBUTING.md](C
 
 We will use [SemVer](http://semver.org/) for versioning. There are no versions currently available, but see the [tags on this repository](https://github.com/Cypher1/tako/tags).
 
-## Authors
-
-* **J Pratt** - *Initial work* - [Cypher1](https://github.com/Cypher1)
-
-See also the list of [contributors](https://github.com/Cypher1/tako/contributors) who participated in this project.
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
@@ -89,3 +83,11 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 
 * **Billie Thompson** - *Readme Templates* - [PurpleBooth](https://github.com/PurpleBooth)
 * **Chris Hall** - *Design advice and instruction in programming language theory* - [Chrisosaurus](https://github.com/chrisosaurus)
+
+## Contributors
+
+<a href="https://github.com/Cypher1/tako/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=Cypher1/tako" />
+</a>
+
+Made with [contrib.rocks](https://contrib.rocks).
