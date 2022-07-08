@@ -73,8 +73,8 @@ impl<'functions, 'storage> Interpreter<'functions, 'storage> {
     fn step(
         &mut self,
         curr: Entity,
-        _code: &mut Vec<Entity>,
-        _function_stack: &mut Vec<usize>,
+        _code: &mut [Entity],
+        _function_stack: &mut [usize],
     ) -> Result<StackValue, TError> {
         if let Some(value) = self.storage.get_known_value(&curr) {
             return Ok(StackValue::Value(value));
