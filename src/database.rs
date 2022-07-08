@@ -245,7 +245,7 @@ impl DBStorage {
     #[must_use]
     pub fn module_name(&self, filename: &str) -> Path {
         filename
-            .replace("\\", "/")
+            .replace('\\', "/")
             .split('/')
             .map(|part| {
                 let name: Vec<&str> = part.split('.').collect();
