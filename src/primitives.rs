@@ -156,7 +156,7 @@ impl Val {
         }
     }
 
-    pub fn unify(self: &Val, other: &Val, env: &mut Vec<Frame>) -> Result<Val, TError> {
+    pub fn unify(self: &Val, other: &Val, env: &mut [Frame]) -> Result<Val, TError> {
         match (self, other) {
             (Variable(name), ty) => {
                 // TODO check if already assigned (and if so unify again)

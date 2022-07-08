@@ -99,8 +99,8 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
                     if new_tys.len() == 1 {
                         let ty = new_tys
                             .iter()
-                            .cloned()
                             .next()
+                            .cloned()
                             .expect("This should never fail (1 sized set shouldn't be empty)");
                         match (&ty, &new_ty) {
                             (Product(ty), Product(new_ty)) => {
@@ -126,8 +126,8 @@ impl<'a> Visitor<State, Val, Val> for Interpreter<'a> {
                 if new_tys.len() == 1 {
                     let ty = new_tys
                         .iter()
-                        .cloned()
                         .next()
+                        .cloned()
                         .expect("This should never fail (1 sized set shouldn't be empty)");
                     return Ok(ty);
                 }

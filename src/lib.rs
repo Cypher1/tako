@@ -81,7 +81,7 @@ pub fn work<'a>(
     print_impl: Option<ImplFn<'a>>,
 ) -> Result<String, TError> {
     let mut contents = String::new();
-    let mut file = File::open(filename.to_owned())?;
+    let mut file = File::open(filename)?;
     file.read_to_string(&mut contents)?;
 
     work_on_string(storage, contents, filename, print_impl)
