@@ -150,9 +150,11 @@ impl<T: Matcher, U: Matcher> Matcher for (T, U) {
     }
 }
 
+type ChainFn<R, U> = dyn Fn(&R) -> U;
+
 pub struct Chain<T: Matcher, U: Matcher> {
     first: T,
-    second: Box<dyn Fn(&T::Res) -> U>,
+    second: Box<ChainFn<T::Res, U>>,
 }
 
 impl<T: Matcher, U: Matcher> Matcher for Chain<T, U> {
