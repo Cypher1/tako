@@ -68,7 +68,7 @@ fn test_expecting(expected: TestResult, options: Vec<&str>) {
             let read = read_to_string(&gold);
             let golden = read
                 .unwrap_or_else(|_| panic!("golden file {} could not be read", gold))
-                .replace("\r", "");
+                .replace('\r', "");
             assert_eq!(format!("{}{}", stdout.join(""), result), golden);
             info!("Success. Result:\n{:?}", result);
         }

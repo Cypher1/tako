@@ -9,7 +9,7 @@ pub enum Command {
     StackRepl,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Options {
     pub files: Vec<String>,
     pub cmd: Command,
