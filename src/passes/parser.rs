@@ -344,7 +344,7 @@ fn led(
                                 return Ok((
                                     Let {
                                         name: s.name.clone(),
-                                        args: Some(a.args.clone()),
+                                        args: Some(a.args),
                                         value: Box::new(right),
                                         info: head.get_info(),
                                     }
