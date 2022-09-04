@@ -1,0 +1,26 @@
+{
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": false,
+  "contributors": [
+    {
+      "login": "Cypher1",
+      "name": "J Pratt",
+      "avatar_url": "https://avatars.githubusercontent.com/u/1120798?v=4",
+      "profile": "https://cypher1.github.io",
+      "contributions": [
+        "design",
+        "code",
+        "example"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7,
+  "projectName": "tako",
+  "projectOwner": "Cypher1",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "skipCi": true
+}
