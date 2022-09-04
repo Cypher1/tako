@@ -1,4 +1,7 @@
 # Tako
+<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
+[![All Contributors](https://img.shields.io/badge/all_contributors-1-orange.svg?style=flat-square)](#contributors-)
+<!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 [![Cherry](docs/assets/tako.png)](https://takolang.dev)
 [![Build Status](https://github.com/Cypher1/tako/workflows/Rust/badge.svg)](https://github.com/Cypher1/tako/actions)
@@ -87,6 +90,18 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 ## Contributors
 
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<table>
+  <tr>
+    <td align="center"><a href="https://cypher1.github.io"><img src="https://avatars.githubusercontent.com/u/1120798?v=4?s=100" width="100px;" alt=""/><br /><sub><b>J Pratt</b></sub></a><br /><a href="#design-Cypher1" title="Design">🎨</a> <a href="https://github.com/Cypher1/tako/commits?author=Cypher1" title="Code">💻</a> <a href="#example-Cypher1" title="Examples">💡</a></td>
+  </tr>
+</table>
+
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+
+<!-- ALL-CONTRIBUTORS-LIST:END -->
 <!-- prettier-ignore-start -->
 <!-- markdownlint-disable -->
 
