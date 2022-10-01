@@ -3,7 +3,7 @@ use super::job::{FinishType, Job, JobId, JobState};
 #[derive(Debug)]
 pub struct JobStore<JobType> {
     ready: Vec<JobId<JobType>>,
-    jobs: Vec<Job<JobType>>,
+    all_jobs: Vec<Job<JobType>>,
     terminating: bool,
 }
 
@@ -11,7 +11,7 @@ impl<JobType> Default for JobStore<JobType> {
     fn default() -> Self {
         Self {
             ready: Vec::new(),
-            jobs: Vec::new(),
+            all_jobs: Vec::new(),
             terminating: false,
         }
     }
@@ -24,7 +24,7 @@ impl<JobType> JobStore<JobType> {
 
     pub fn num_finished(&self) -> usize {
         let mut num = 0;
-        for job in self.jobs.iter() {
+        for job in self.all_jobs.iter() {
             if let JobState::Finished(_) = job.state {
                 num += 1;
             }
@@ -33,12 +33,12 @@ impl<JobType> JobStore<JobType> {
     }
 
     pub fn num(&self) -> usize {
-        self.jobs.len()
+        self.all_jobs.len()
     }
 
     pub fn num_running(&self) -> usize {
         let mut num = 0;
-        for job in self.jobs.iter() {
+        for job in self.all_jobs.iter() {
             if let JobState::Running = job.state {
                 num += 1;
             }
@@ -48,7 +48,7 @@ impl<JobType> JobStore<JobType> {
 
     pub fn num_waiting(&self) -> usize {
         let mut num = 0;
-        for job in self.jobs.iter() {
+        for job in self.all_jobs.iter() {
             if let JobState::Waiting = job.state {
                 num += 1;
             }
@@ -60,7 +60,7 @@ impl<JobType> JobStore<JobType> {
         self.terminating = true;
     }
 
-    pub fn get(&mut self) -> Option<(JobId<JobType>, &Job<JobType>)> {
+    pub fn get_job(&mut self) -> Option<(JobId<JobType>, &Job<JobType>)> {
         if self.terminating {
             return None;
         }
@@ -68,7 +68,7 @@ impl<JobType> JobStore<JobType> {
         let ready = &mut self.ready;
         // TODO: consider a sorted datastructure.
         for (index, job_id) in ready.iter().enumerate() {
-            let job = job_id.get(&self.jobs);
+            let job = job_id.get(&self.all_jobs);
             let count = job.dependents.len();
             if best.map(|(max, _index)| max < count).unwrap_or(true) {
                 best = Some((count, index));
@@ -83,7 +83,7 @@ impl<JobType> JobStore<JobType> {
         if index < ready.len() {
             std::mem::swap(&mut job_id, &mut ready[index]);
         }
-        let job = job_id.get_mut(&mut self.jobs);
+        let job = job_id.get_mut(&mut self.all_jobs);
         job.state = JobState::Running;
         Some((job_id, job)) // Should not be mutable
     }
@@ -91,15 +91,15 @@ impl<JobType> JobStore<JobType> {
     pub fn add_job(&mut self, job: Job<JobType>) -> JobId<JobType> {
         use std::convert::TryInto;
         let id = JobId::new(
-            self.jobs
+            self.all_jobs
                 .len()
                 .try_into()
                 .unwrap_or_else(|e| panic!("Too many job ids: {}", e)),
         );
         for dep in &job.dependencies {
-            dep.get_mut(&mut self.jobs).dependents.push(id);
+            dep.get_mut(&mut self.all_jobs).dependents.push(id);
         }
-        self.jobs.push(job);
+        self.all_jobs.push(job);
         self.try_make_ready(id);
         id
     }
@@ -108,7 +108,7 @@ impl<JobType> JobStore<JobType> {
     where
         JobType: std::fmt::Debug,
     {
-        let job = job_id.get_mut(&mut self.jobs);
+        let job = job_id.get_mut(&mut self.all_jobs);
         if job.state == JobState::Running {
             eprintln!(
                 "Job {job_id:?} {:?} restarted while still running, may clobber",
@@ -120,28 +120,28 @@ impl<JobType> JobStore<JobType> {
     }
 
     fn try_make_ready(&mut self, job_id: JobId<JobType>) {
-        let job = job_id.get(&self.jobs);
+        let job = job_id.get(&self.all_jobs);
         if job.state != JobState::Waiting {
             return; // Already running or finished, wait to retry.
         }
         for dep in &job.dependencies {
-            let state = &dep.get(&self.jobs).state;
+            let state = &dep.get(&self.all_jobs).state;
             if let JobState::Finished(_) = state {
                 continue;
             }
             return; // Not ready, leave as is.
         }
-        let job = job_id.get_mut(&mut self.jobs);
+        let job = job_id.get_mut(&mut self.all_jobs);
         job.state = JobState::Ready;
         self.ready.push(job_id);
     }
 
     pub fn finish_job(&mut self, job_id: JobId<JobType>, result: FinishType) {
         {
-            let job = job_id.get_mut(&mut self.jobs);
+            let job = job_id.get_mut(&mut self.all_jobs);
             job.state = JobState::Finished(result);
         }
-        let deps = job_id.get(&self.jobs).dependents.clone();
+        let deps = job_id.get(&self.all_jobs).dependents.clone();
         for dep_id in deps {
             self.try_make_ready(dep_id);
         }
@@ -157,7 +157,7 @@ mod test {
     #[test]
     fn jobs_doesnt_invent_jobs_from_nowhere() {
         let mut jobs: JobStore<JobType> = JobStore::default();
-        assert!(jobs.get().is_none());
+        assert!(jobs.get_job().is_none());
     }
 
     #[test]
@@ -187,7 +187,7 @@ mod test {
         let job1 = jobs.add_job(Job::new("job1", vec![]));
         let job2 = jobs.add_job(Job::new("job2", vec![job1]));
         let todo = {
-            let todo = jobs.get();
+            let todo = jobs.get_job();
             assert!(todo.is_some());
             let todo = todo.unwrap();
             assert_eq!(todo.0, job1);
@@ -196,12 +196,12 @@ mod test {
         };
         jobs.finish_job(todo, FinishType::Success);
         dbg!(&jobs);
-        let todo = jobs.get();
+        let todo = jobs.get_job();
         assert!(todo.is_some());
         let todo = todo.unwrap();
         assert_eq!(todo.0, job2);
         assert_eq!(todo.1.ty, "job2");
-        assert!(jobs.get().is_none());
+        assert!(jobs.get_job().is_none());
     }
 
     #[test]
@@ -209,7 +209,7 @@ mod test {
         let mut jobs = JobStore::default();
         let job1 = jobs.add_job(Job::new("job1", vec![]));
         let job2 = jobs.add_job(Job::new("job2", vec![job1]));
-        let todo = jobs.get();
+        let todo = jobs.get_job();
         assert!(todo.is_some());
         let todo = todo.unwrap();
         assert_eq!(todo.0, job1);
@@ -227,7 +227,7 @@ mod test {
         assert_eq!(jobs.num_ready(), 1);
         assert_eq!(jobs.num_running(), 0);
         let todo = {
-            let todo = jobs.get();
+            let todo = jobs.get_job();
             assert!(todo.is_some());
             let todo = todo.unwrap();
             assert_eq!(todo.0, job1);
@@ -254,6 +254,6 @@ mod test {
         jobs.add_job(Job::new("job1", vec![]));
         jobs.add_job(Job::new("job2", vec![]));
         jobs.wind_down();
-        assert!(jobs.get().is_none());
+        assert!(jobs.get_job().is_none());
     }
 }
