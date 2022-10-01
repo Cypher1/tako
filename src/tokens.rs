@@ -75,6 +75,7 @@ pub struct Characters<'a> {
     it: std::iter::Peekable<std::str::Chars<'a>>,
     index: usize,
     start: usize,
+    prev: Option<char>,
 }
 
 impl<'a> Characters<'a> {
@@ -84,7 +85,11 @@ impl<'a> Characters<'a> {
             s,
             index: 0,
             start: 0,
+            prev: None,
         }
+    }
+    fn prev(&self) -> Option<char> {
+        self.prev
     }
     fn start(&self) -> usize {
         self.start
@@ -100,6 +105,7 @@ impl<'a> Characters<'a> {
         &self.s[self.start..self.index]
     }
     fn next(&mut self) -> Option<char> {
+        self.prev = self.peek();
         self.index += 1;
         self.it.next()
     }
@@ -155,43 +161,43 @@ pub fn lex_head<'a>(
         }
     }
     */
-    if characters.peek().is_some() {
-        characters.set_start()
-    } else {
+    if characters.peek().is_none() {
         return (Token::eof(), characters)
-    };
+    }
+    characters.set_start();
     // TODO: This should be simplified (make tight loops).
     use TokenType::*;
     let mut tok_type: TokenType = Unknown;
     while let Some(chr) = characters.peek() {
-        tok_type = match (&tok_type, classify_char(chr)) {
+        tok_type = match (tok_type, classify_char(chr)) {
             (Unknown, Whitespace) => Unknown, // Ignore
+            (_, Whitespace) => break, // Token finished whitespace.
             (Unknown, new_tok_type) => new_tok_type, // Start token.
             (Op, Op) => Op, // Continuation
             (NumLit, NumLit) => NumLit, // Continuation
             (NumLit, Sym) => NumLit, // Number with suffix.
             (Sym, NumLit | Sym) => Sym, // Symbol.
-            (_, Whitespace) => break, // Token finished whitespace.
             _ => break, // Token finished can't continue here.
         };
         characters.next(); // Continue past the character.
     }
     let str_id = if tok_type == StringLit {
         let mut strlit = "".to_string();
-        let quote = characters.peek().expect("String literals should starat with a quote");
-        characters.next();
-        characters.set_start(); // skip the quote.
+        let quote = characters.prev().expect("String literals should starat with a quote");
         while let Some(chr) = characters.next() {
             if chr == quote { // reached the end of the quote.
                 break;
             }
             strlit.push(match chr {
                 '\\' => match characters.next() {
+                    Some('\\') => '\\',
+                    Some('\'') => '\'',
+                    Some('\"') => '"',
                     Some('r') => '\r',
                     Some('n') => '\n',
                     Some('t') => '\t',
                     Some('0') => '\0',
-                    _ => todo!(),
+                    ch => todo!("escaping for {:?}", ch),
                 },
                 _ => chr,
             });
@@ -303,7 +309,7 @@ mod tests {
         let chars = Characters::new(&file.contents);
         let (tok, _) = lex_head(&file.contents, &mut file.string_interner, chars);
         assert_eq!(tok.tok_type, StringLit);
-        assert_str_eq!(get_str(&file.string_interner, &tok), "\\n\\t2\\r\\'\"");
+        assert_str_eq!(get_str(&file.string_interner, &tok), "\n\t2\r\'\"");
     }
 
     #[test]
