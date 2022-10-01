@@ -1,6 +1,6 @@
-use std::fmt;
 use crate::concepts::File;
 use soa_derive::StructOfArray;
+use std::fmt;
 
 type IndexIntoFile = u32;
 // This is chosen as it's large enough to index the whole of

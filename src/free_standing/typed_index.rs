@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
 
-pub struct TypedIndex<T, Idx=u32, Container: Index<usize> =Vec<T>> {
+pub struct TypedIndex<T, Idx = u32, Container: Index<usize> = Vec<T>> {
     index: Idx,
     ty: PhantomData<T>,
     container: PhantomData<Container>,
@@ -65,13 +65,29 @@ impl<T, Idx: std::fmt::Debug> std::fmt::Debug for TypedIndex<T, Idx> {
     }
 }
 
-impl<T, Idx: std::fmt::Debug + std::convert::TryInto<usize>, Container: Index<usize>> TypedIndex<T, Idx, Container> {
-    pub fn get(self, container: &Container) -> &Container::Output where Container: Index<usize> {
-        &container[self.index.try_into().unwrap_or_else(|_|panic!("Index too large for accessing into container as usize"))]
+impl<T, Idx: std::fmt::Debug + std::convert::TryInto<usize>, Container: Index<usize>>
+    TypedIndex<T, Idx, Container>
+{
+    pub fn get(self, container: &Container) -> &Container::Output
+    where
+        Container: Index<usize>,
+    {
+        &container[self
+            .index
+            .try_into()
+            .unwrap_or_else(|_| panic!("Index too large for accessing into container as usize"))]
     }
 }
-impl<T, Idx: std::fmt::Debug + std::convert::TryInto<usize>, Container: IndexMut<usize>> TypedIndex<T, Idx, Container> {
-    pub fn get_mut(self, container: &mut Container) -> &mut Container::Output where Container: Index<usize> {
-        &mut container[self.index.try_into().unwrap_or_else(|_|panic!("Index too large for accessing into container as usize"))]
+impl<T, Idx: std::fmt::Debug + std::convert::TryInto<usize>, Container: IndexMut<usize>>
+    TypedIndex<T, Idx, Container>
+{
+    pub fn get_mut(self, container: &mut Container) -> &mut Container::Output
+    where
+        Container: Index<usize>,
+    {
+        &mut container[self
+            .index
+            .try_into()
+            .unwrap_or_else(|_| panic!("Index too large for accessing into container as usize"))]
     }
 }

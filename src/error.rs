@@ -1,5 +1,5 @@
-use crate::location::{Location, UserFacingLocation};
 use crate::concepts::*;
+use crate::location::{Location, UserFacingLocation};
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -14,7 +14,7 @@ pub enum TError {
     },
     InternalError {
         message: String,
-        location: Option<Location>
+        location: Option<Location>,
     },
 }
 
@@ -26,7 +26,7 @@ impl std::fmt::Display for TError {
 
 impl From<std::fmt::Error> for TError {
     fn from(error: std::fmt::Error) -> Self {
-        TError::InternalError{
+        TError::InternalError {
             message: error.to_string(),
             location: None,
         }
@@ -61,15 +61,12 @@ impl UserFacingError {
     fn new(error: TError, file: &File) -> Self {
         use TError::*;
         let location = match &error {
-            CppCompilerError {..} => None,
-            ParseError { location, ..} => location.as_ref(),
-            InternalError { location, ..} => location.as_ref(),
+            CppCompilerError { .. } => None,
+            ParseError { location, .. } => location.as_ref(),
+            InternalError { location, .. } => location.as_ref(),
         };
         let location = location.map(|location| UserFacingLocation::from(file, location));
-        Self {
-            error,
-            location,
-        }
+        Self { error, location }
     }
 }
 
@@ -87,10 +84,10 @@ impl std::fmt::Debug for UserFacingError {
             write!(f, " in {}", &location)?;
         }
         match &self.error {
-            CppCompilerError {
-                error,
-                return_code
-            } => write!(f, "call to C++ compiler failed with error code: {return_code}\n{error}"),
+            CppCompilerError { error, return_code } => write!(
+                f,
+                "call to C++ compiler failed with error code: {return_code}\n{error}"
+            ),
             ParseError {
                 message,
                 location: _,

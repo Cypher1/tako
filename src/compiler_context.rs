@@ -1,7 +1,7 @@
+use crate::cli_options::Options;
 use crate::compiler_tasks::JobTypes;
 use crate::concepts::*;
 use crate::free_standing::jobs::JobStore;
-use crate::cli_options::Options;
 
 #[derive(Default, Debug)]
 pub struct CompilerContext {
