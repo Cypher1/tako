@@ -4,17 +4,17 @@
 pub mod free_standing;
 
 pub mod cli_options;
-pub mod concepts;
 pub mod compiler_context;
 pub mod compiler_tasks;
+pub mod concepts;
 pub mod error;
 pub mod primitives;
 // pub mod parser;
 pub mod ast;
-pub mod location;
-pub mod tokens;
-pub mod string_interner;
 pub mod keywords;
+pub mod location;
+pub mod string_interner;
+pub mod tokens;
 
 use compiler_context::CompilerContext;
 use error::TError;
@@ -59,7 +59,7 @@ pub fn work(
     let mut file = File::open(filename)?;
     file.read_to_string(&mut contents)?;
 
-    work_on_string(storage, contents, filename /*, print_impl*/ )
+    work_on_string(storage, contents, filename /*, print_impl*/)
 }
 
 pub fn work_on_string(

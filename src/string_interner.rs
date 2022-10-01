@@ -1,8 +1,8 @@
-use crate::keywords::KEYWORDS;
 use crate::free_standing::typed_index::TypedIndex;
-use string_interner::{Symbol, StringInterner, backend::BufferBackend};
-use std::iter::FromIterator;
+use crate::keywords::KEYWORDS;
 use std::convert::TryInto;
+use std::iter::FromIterator;
+use string_interner::{backend::BufferBackend, StringInterner, Symbol};
 
 pub type StrInterner = StringInterner<BufferBackend<StrId>>;
 

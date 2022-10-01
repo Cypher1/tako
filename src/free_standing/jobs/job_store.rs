@@ -1,4 +1,4 @@
-use super::job::{FinishType, Job, JobState, JobId};
+use super::job::{FinishType, Job, JobId, JobState};
 
 #[derive(Debug)]
 pub struct JobStore<JobType> {
@@ -70,7 +70,7 @@ impl<JobType> JobStore<JobType> {
         for (index, job_id) in ready.iter().enumerate() {
             let job = job_id.get(&self.jobs);
             let count = job.dependents.len();
-            if best.map(|(max, _index)|max < count).unwrap_or(true) {
+            if best.map(|(max, _index)| max < count).unwrap_or(true) {
                 best = Some((count, index));
             }
         }
@@ -90,7 +90,12 @@ impl<JobType> JobStore<JobType> {
 
     pub fn add_job(&mut self, job: Job<JobType>) -> JobId<JobType> {
         use std::convert::TryInto;
-        let id = JobId::new(self.jobs.len().try_into().unwrap_or_else(|e|panic!("Too many job ids: {}", e)));
+        let id = JobId::new(
+            self.jobs
+                .len()
+                .try_into()
+                .unwrap_or_else(|e| panic!("Too many job ids: {}", e)),
+        );
         for dep in &job.dependencies {
             dep.get_mut(&mut self.jobs).dependents.push(id);
         }
@@ -99,10 +104,16 @@ impl<JobType> JobStore<JobType> {
         id
     }
 
-    pub fn restart(&mut self, job_id: JobId<JobType>) where JobType: std::fmt::Debug {
+    pub fn restart(&mut self, job_id: JobId<JobType>)
+    where
+        JobType: std::fmt::Debug,
+    {
         let job = job_id.get_mut(&mut self.jobs);
         if job.state == JobState::Running {
-            eprintln!("Job {job_id:?} {:?} restarted while still running, may clobber", &job);
+            eprintln!(
+                "Job {job_id:?} {:?} restarted while still running, may clobber",
+                &job
+            );
         }
         job.state = JobState::Waiting;
         self.try_make_ready(job_id);

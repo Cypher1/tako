@@ -1,8 +1,8 @@
 use crate::error::TError;
+use crate::free_standing::tribool::{all_true, any_true, Tribool};
 use bitvec::prelude::*;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt;
-use crate::free_standing::tribool::{all_true, any_true, Tribool};
 
 // Offsets here are sizes in bits, not bytes.
 // This means that we don't need to have a separate systems for bit vs byte layouts.
@@ -99,7 +99,7 @@ impl Val {
 
     #[must_use]
     pub fn is_sat(self: &Val) -> Tribool {
-        use Tribool::{True /*, Unknown*/ };
+        use Tribool::True;
         match self {
             PrimVal(_) => True,
             Pointer(_size, ty) => ty.is_sat(),
@@ -329,7 +329,7 @@ pub fn builtin(name: &str) -> Val {
 pub fn card(ty: &Val) -> Result<Offset, TError> {
     match ty {
         PrimVal(Tag(_bits)) => Ok(1),
-        BitStr(length) => Ok(2**length),
+        BitStr(length) => Ok(2 * *length),
         Union(s) => {
             let mut sum = 0;
             for sty in s {

@@ -2,15 +2,13 @@
 
 use log::error;
 
-
 use std::env;
 use std::error::Error;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
-use takolib::cli_options::{Options};
+use takolib::cli_options::Options;
 use takolib::compiler_context::CompilerContext;
 use takolib::error::TError;
-
 
 fn handle(res: Result<String, TError>) {
     match res {
@@ -43,7 +41,7 @@ fn main() {
     todo!();
 }
 
-    /*
+/*
     std::fs::create_dir_all(&storage.config_dir())
         .expect("Could not create config directory");
     let files = storage.options.files.clone();
@@ -55,7 +53,7 @@ fn main() {
     if storage.options.cmd == Command::Repl || storage.options.cmd == Command::StackRepl {
         repl(&mut storage);
     }
- 
+
 }
 
 fn repl(storage: &mut CompilerContext) {

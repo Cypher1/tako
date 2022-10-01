@@ -1,6 +1,6 @@
 use crate::concepts::FileId;
-use crate::location::Location;
 use crate::free_standing::typed_index::TypedIndex;
+use crate::location::Location;
 use crate::string_interner::StrId;
 use soa_derive::StructOfArray;
 
@@ -79,7 +79,8 @@ pub struct Node {
 pub type NodeId = TypedIndex<Node>;
 
 #[derive(Default, Debug)]
-pub struct Ast { // Abstract syntax tree... forest
+pub struct Ast {
+    // Abstract syntax tree... forest
     pub roots: Vec<NodeId>,
     pub nodes: NodeVec,
     pub calls: CallVec,

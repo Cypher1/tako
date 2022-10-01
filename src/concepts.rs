@@ -1,9 +1,9 @@
-use crate::error::TError;
-use crate::location::Location;
-use crate::free_standing::typed_index::TypedIndex;
-use crate::tokens::Token;
 use crate::ast::*;
+use crate::error::TError;
+use crate::free_standing::typed_index::TypedIndex;
+use crate::location::Location;
 use crate::string_interner::StrInterner;
+use crate::tokens::Token;
 use soa_derive::StructOfArray;
 
 // TODO: Replace strings where ideal...

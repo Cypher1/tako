@@ -1,5 +1,5 @@
+use crate::string_interner::{StrId, StrInterner};
 use std::fmt;
-use crate::string_interner::{StrInterner, StrId};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum TokenType {
@@ -47,13 +47,14 @@ fn classify_char(ch: char) -> TokenType {
     use TokenType::*;
     match ch {
         '\n' | '\r' | '\t' | ' ' => Whitespace,
-        '~' | '!' | '@' | '#' | '$' | '%' | '^' | '&' | '*' | '-' | '+' | '=' | '<' | '>' | '|' | '\\' | '/' | '?' | '.' | ',' | ':' | ';' => Op,
+        '~' | '!' | '@' | '#' | '$' | '%' | '^' | '&' | '*' | '-' | '+' | '=' | '<' | '>' | '|'
+        | '\\' | '/' | '?' | '.' | ',' | ':' | ';' => Op,
         '(' | '[' | '{' => OpenBracket,
         ')' | ']' | '}' => CloseBracket,
         '0'..='9' => NumLit,
         '"' | '\'' => StringLit,
         'A'..='Z' | 'a'..='z' | '_' => Sym,
-        _ => panic!("Unknown character {}", ch)
+        _ => panic!("Unknown character {}", ch),
     }
 }
 
@@ -121,7 +122,8 @@ pub fn lex_head<'a>(
     string_interner: &mut StrInterner,
     mut characters: Characters<'a>,
 ) -> (Token, Characters<'a>) {
-    while let Some(chr) = characters.peek() { // skip whitespace.
+    while let Some(chr) = characters.peek() {
+        // skip whitespace.
         if !is_whitespace(chr) {
             break;
         }
@@ -162,7 +164,7 @@ pub fn lex_head<'a>(
     }
     */
     if characters.peek().is_none() {
-        return (Token::eof(), characters)
+        return (Token::eof(), characters);
     }
     characters.set_start();
     // TODO: This should be simplified (make tight loops).
@@ -170,22 +172,25 @@ pub fn lex_head<'a>(
     let mut tok_type: TokenType = Unknown;
     while let Some(chr) = characters.peek() {
         tok_type = match (tok_type, classify_char(chr)) {
-            (Unknown, Whitespace) => Unknown, // Ignore
-            (_, Whitespace) => break, // Token finished whitespace.
+            (Unknown, Whitespace) => Unknown,        // Ignore
+            (_, Whitespace) => break,                // Token finished whitespace.
             (Unknown, new_tok_type) => new_tok_type, // Start token.
-            (Op, Op) => Op, // Continuation
-            (NumLit, NumLit) => NumLit, // Continuation
-            (NumLit, Sym) => NumLit, // Number with suffix.
-            (Sym, NumLit | Sym) => Sym, // Symbol.
-            _ => break, // Token finished can't continue here.
+            (Op, Op) => Op,                          // Continuation
+            (NumLit, NumLit) => NumLit,              // Continuation
+            (NumLit, Sym) => NumLit,                 // Number with suffix.
+            (Sym, NumLit | Sym) => Sym,              // Symbol.
+            _ => break,                              // Token finished can't continue here.
         };
         characters.next(); // Continue past the character.
     }
     let str_id = if tok_type == StringLit {
         let mut strlit = "".to_string();
-        let quote = characters.prev().expect("String literals should starat with a quote");
+        let quote = characters
+            .prev()
+            .expect("String literals should starat with a quote");
         while let Some(chr) = characters.next() {
-            if chr == quote { // reached the end of the quote.
+            if chr == quote {
+                // reached the end of the quote.
                 break;
             }
             strlit.push(match chr {
@@ -222,9 +227,9 @@ pub fn lex_head<'a>(
 
 #[cfg(test)]
 mod tests {
-    use crate::concepts::File;
     use super::TokenType::*;
     use super::*;
+    use crate::concepts::File;
 
     #[test]
     fn classify_whitespace() {
@@ -318,7 +323,7 @@ mod tests {
         let chars = Characters::new(&file.contents);
         let (tok, chars2) = lex_head(&file.contents, &mut file.string_interner, chars);
         assert_eq!(tok.tok_type, Sym);
-assert_str_eq!(get_str(&file.string_interner, &tok), "x");
+        assert_str_eq!(get_str(&file.string_interner, &tok), "x");
         let (tok, chars3) = lex_head(&file.contents, &mut file.string_interner, chars2);
         assert_eq!(tok.tok_type, OpenBracket);
         assert_str_eq!(get_str(&file.string_interner, &tok), "(");

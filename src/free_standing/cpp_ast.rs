@@ -26,10 +26,7 @@ pub enum Code {
 }
 
 impl Code {
-    pub fn with_expr(
-        self: Code,
-        f: &dyn Fn(String) -> Code,
-    ) -> Code {
+    pub fn with_expr(self: Code, f: &dyn Fn(String) -> Code) -> Code {
         match self {
             Code::Partial(ent) => Code::Partial(ent),
             Code::Empty => Code::Empty,
@@ -41,12 +38,8 @@ impl Code {
                 Code::Block(statements)
             }
             Code::Statement(line) => Code::Statement(line),
-            Code::Template(name, body) => {
-                Code::Template(name, Box::new(body.with_expr(f)))
-            }
-            Code::Assignment(name, value) => {
-                Code::Assignment(name, Box::new(value.with_expr(f)))
-            }
+            Code::Template(name, body) => Code::Template(name, Box::new(body.with_expr(f))),
+            Code::Assignment(name, value) => Code::Assignment(name, Box::new(value.with_expr(f))),
             Code::If {
                 condition,
                 then,
