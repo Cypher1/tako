@@ -9,6 +9,7 @@ pub enum Command {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Options {
+    pub executable_location: Option<String>,
     pub files: Vec<String>,
     pub cmd: Command,
     pub interpreter_args: Vec<String>,
@@ -17,6 +18,7 @@ pub struct Options {
 impl Default for Options {
     fn default() -> Options {
         Options {
+            executable_location: None,
             files: vec![],
             cmd: Command::Build,
             interpreter_args: vec![],
@@ -40,6 +42,10 @@ impl Options {
         let mut opts = Options::default();
         let mut got_dashdash = false;
         for f in args.into_iter().map(Into::into) {
+            if opts.executable_location.is_none() {
+                opts.executable_location = Some(f.clone());
+                continue;
+            }
             if got_dashdash {
                 opts.interpreter_args.push(f.clone());
                 continue;
