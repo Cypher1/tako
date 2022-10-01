@@ -27,10 +27,10 @@ use Prim::{Bool, BuiltIn, Str, Tag, I32};
 impl std::fmt::Debug for Prim {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Bool(b) => write!(f, "{:?}", b)?,
-            I32(i) => write!(f, "{:?}", i)?,
-            Str(s) => write!(f, "'{}'", s)?,
-            BuiltIn(b) => write!(f, "BuiltIn#{}", b)?,
+            Bool(b) => write!(f, "{b:?}")?,
+            I32(i) => write!(f, "{i:?}")?,
+            Str(s) => write!(f, "'{s}'")?,
+            BuiltIn(b) => write!(f, "BuiltIn#{b}")?,
             Tag(bits) => {
                 write!(f, "b")?;
                 for bit in bits.iter() {
@@ -199,14 +199,14 @@ impl Val {
                 _ => never_type(),
             },
             WithRequirement(ty, effs) => WithRequirement(Box::new(ty.access(name)), effs.clone()),
-            Variable(var) => Variable(format!("{}.{}", var, name)),
+            Variable(var) => Variable(format!("{var}.{name}")),
         }
     }
 }
 
 impl fmt::Display for Val {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:#?}", self)
+        write!(f, "{self:#?}")
     }
 }
 
@@ -223,12 +223,12 @@ impl std::fmt::Debug for Val {
         ];
         for (ty, name) in &types {
             if self == ty {
-                return write!(f, "{}", name);
+                return write!(f, "{name}");
             }
         }
         match self {
-            PrimVal(prim) => write!(f, "{:?}", prim),
-            BitStr(ptr_size) => write!(f, "Pointer<{}b>Code", ptr_size),
+            PrimVal(prim) => write!(f, "{prim:?}"),
+            BitStr(ptr_size) => write!(f, "Pointer<{ptr_size}b>Code"),
             // Lambda(val) => write!(f, "{}", val),
             Struct(vals) => {
                 let mut out = f.debug_struct("");
@@ -259,8 +259,8 @@ impl std::fmt::Debug for Val {
                     out.finish()
                 }
             }
-            Pointer(ptr_size, ty) => write!(f, "Pointer<{}b>{:#?}", ptr_size, ty),
-            Padded(size, t) => write!(f, "pad_{}#{:#?}", size, t),
+            Pointer(ptr_size, ty) => write!(f, "Pointer<{ptr_size}b>{ty:#?}"),
+            Padded(size, t) => write!(f, "pad_{size}#{t:#?}"),
             Function {
                 intros,
                 results,
@@ -269,15 +269,15 @@ impl std::fmt::Debug for Val {
                 if !intros.is_empty() {
                     let ints: Vec<String> = intros
                         .iter()
-                        .map(|(name, ty)| format!("{}: {:#?}", name, ty))
+                        .map(|(name, ty)| format!("{name}: {ty:#?}"))
                         .collect();
                     write!(f, "{}|-", ints.join("|-"))?;
                 }
-                write!(f, "{:#?} -> {:#?}", arguments, results)
+                write!(f, "{arguments:#?} -> {results:#?}")
             }
-            App { inner, arguments } => write!(f, "({:#?})({:#?})", inner, arguments),
-            WithRequirement(ty, effs) => write!(f, "{:#?}+{}", ty, effs.join("+")),
-            Variable(name) => write!(f, "{}", name),
+            App { inner, arguments } => write!(f, "({inner:#?})({arguments:#?})"),
+            WithRequirement(ty, effs) => write!(f, "{ty:#?}+{}", effs.join("+")),
+            Variable(name) => write!(f, "{name}"),
         }
     }
 }

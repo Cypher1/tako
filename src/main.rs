@@ -1,21 +1,21 @@
 #![deny(clippy::all)]
 
 use log::error;
-use rustyline::error::ReadlineError;
-use rustyline::{config::Config, Editor};
+
+
 use std::env;
 use std::error::Error;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
-use takolib::cli_options::{print_cli_info, Command, Options};
+use takolib::cli_options::{Options};
 use takolib::compiler_context::CompilerContext;
 use takolib::error::TError;
-use takolib::{work, work_on_string};
+
 
 fn handle(res: Result<String, TError>) {
     match res {
         Ok(res) => {
-            println!("{}", res);
+            println!("{res}");
         }
         Err(err) => {
             let mut stderr = StandardStream::stderr(ColorChoice::Auto);

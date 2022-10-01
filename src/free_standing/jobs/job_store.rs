@@ -67,20 +67,14 @@ impl<JobType> JobStore<JobType> {
         let mut best = None;
         let ready = &mut self.ready;
         // TODO: consider a sorted datastructure.
-        let mut index = 0;
-        for job_id in ready.iter() {
+        for (index, job_id) in ready.iter().enumerate() {
             let job = job_id.get(&self.jobs);
             let count = job.dependents.len();
             if best.map(|(max, _index)|max < count).unwrap_or(true) {
                 best = Some((count, index));
             }
-            index += 1;
         }
-        let mut job_id = if let Some(job_id) = ready.pop() { // pop swap to remove in O(1).
-            job_id
-        } else {
-            return None;
-        };
+        let mut job_id = ready.pop()?; // pop swap to remove in O(1).
         let index = if let Some((_count, index)) = best {
             index
         } else {
@@ -108,7 +102,7 @@ impl<JobType> JobStore<JobType> {
     pub fn restart(&mut self, job_id: JobId<JobType>) where JobType: std::fmt::Debug {
         let job = job_id.get_mut(&mut self.jobs);
         if job.state == JobState::Running {
-            eprintln!("Job {:?} {:?} restarted while still running, may clobber", job_id, &job);
+            eprintln!("Job {job_id:?} {:?} restarted while still running, may clobber", &job);
         }
         job.state = JobState::Waiting;
         self.try_make_ready(job_id);

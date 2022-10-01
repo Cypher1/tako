@@ -50,7 +50,7 @@ impl Options {
                     "-i" | "--interactive" => opts.cmd = Command::Repl,
                     "-r" | "--run" => opts.cmd = Command::Interpret,
                     "--version" => {
-                        println!("{}{}", TITLE, VERSION);
+                        print_cli_info();
                         return opts;
                     }
                     "--" => got_dashdash = true,
@@ -75,12 +75,12 @@ impl Options {
 }
 
 pub fn print_cli_info() {
-    println!("{}{}", TITLE, VERSION);
+    println!("{TITLE}{VERSION}");
 }
 
 pub fn print_cli_help() {
     print_cli_info();
-    println!("{}", USAGE);
+    println!("{USAGE}");
 }
 
 pub const TITLE: &str = "tako v";

@@ -4,5 +4,5 @@ fn main() {
     while s.len() < 1_000_000 {
         s = format!("({}+{})", &s, &s);
     }
-    println!("{}", s);
+    println!("{s}");
 }
