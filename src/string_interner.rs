@@ -17,7 +17,7 @@ pub type StrId = TypedIndex<Str>;
 
 impl Symbol for StrId {
     fn try_from_usize(index: usize) -> Option<Self> {
-        index.try_into().map(|index| Self::new(index)).ok()
+        index.try_into().map(Self::new).ok()
     }
 
     fn to_usize(self) -> usize {

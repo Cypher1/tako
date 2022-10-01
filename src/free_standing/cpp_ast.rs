@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use specs::Entity;
 
 #[derive(Clone, Debug)]
@@ -31,7 +29,6 @@ impl Code {
     pub fn with_expr(
         self: Code,
         f: &dyn Fn(String) -> Code,
-        entity_to_code: &HashMap<Entity, Code>,
     ) -> Code {
         match self {
             Code::Partial(ent) => Code::Partial(ent),
@@ -40,15 +37,15 @@ impl Code {
             Code::Struct(values) => Code::Struct(values),
             Code::Block(mut statements) => {
                 let last = statements.pop().expect("Unexpected empty code block");
-                statements.push(last.with_expr(f, entity_to_code));
+                statements.push(last.with_expr(f));
                 Code::Block(statements)
             }
             Code::Statement(line) => Code::Statement(line),
             Code::Template(name, body) => {
-                Code::Template(name, Box::new(body.with_expr(f, entity_to_code)))
+                Code::Template(name, Box::new(body.with_expr(f)))
             }
             Code::Assignment(name, value) => {
-                Code::Assignment(name, Box::new(value.with_expr(f, entity_to_code)))
+                Code::Assignment(name, Box::new(value.with_expr(f)))
             }
             Code::If {
                 condition,
@@ -67,7 +64,7 @@ impl Code {
                 call,
                 return_type,
             } => {
-                body = Box::new(body.with_expr(f, entity_to_code));
+                body = Box::new(body.with_expr(f));
                 Code::Func {
                     name,
                     args,

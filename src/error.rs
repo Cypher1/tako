@@ -58,7 +58,7 @@ pub struct UserFacingError {
 }
 
 impl UserFacingError {
-    fn new<'a>(error: TError, file: &'a File) -> Self {
+    fn new(error: TError, file: &File) -> Self {
         use TError::*;
         let location = match &error {
             CppCompilerError {..} => None,

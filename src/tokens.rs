@@ -117,7 +117,7 @@ impl<'a> Characters<'a> {
 
 // Consumes a single token from a Deque of characters.
 pub fn lex_head<'a>(
-    contents: &str,
+    _contents: &str,
     string_interner: &mut StrInterner,
     mut characters: Characters<'a>,
 ) -> (Token, Characters<'a>) {
@@ -210,14 +210,14 @@ pub fn lex_head<'a>(
         string_interner.get_or_intern(span)
     };
     // TODO: Handle comments.
-    return (
+    (
         Token {
             start: characters.start() as u32,
             tok_type,
             str_id,
         },
         characters,
-    );
+    )
 }
 
 #[cfg(test)]

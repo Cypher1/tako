@@ -54,7 +54,7 @@ impl UserFacingLocation {
 
     pub fn next(&mut self, chars: &mut std::iter::Peekable<std::str::Chars>) {
         let ch = chars.peek();
-        if ch == None {
+        if ch.is_none() {
             return;
         }
         let nl = ch == Some(&'\n');

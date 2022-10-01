@@ -50,7 +50,7 @@ pub fn ensure_initialized() {
     build_logger(env_logger::Builder::init);
 }
 
-pub fn work<'a>(
+pub fn work(
     storage: &mut CompilerContext,
     filename: &str,
     // print_impl: Option<ImplFn<'a>>,
@@ -62,10 +62,10 @@ pub fn work<'a>(
     work_on_string(storage, contents, filename /*, print_impl*/ )
 }
 
-pub fn work_on_string<'a>(
-    storage: &mut CompilerContext,
-    contents: String,
-    filename: &str,
+pub fn work_on_string(
+    _storage: &mut CompilerContext,
+    _contents: String,
+    _filename: &str,
     // print_impl: Option<ImplFn<'a>>,
 ) -> Result<String, TError> {
     todo!("Dunno...");
