@@ -1,4 +1,0 @@
-apply(x, f)=f(y=f(y=x))
-
-print(apply(x=3, f(y)=y*2)++"  "++apply(x=true, f(y)=(!y))++"\n");
-0

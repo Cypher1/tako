@@ -1,8 +1,0 @@
-fib(it) = {
-  doFib(n, a, b) =
-    n == 0 -| a
-    ? (k=a+b; doFib(n=n-1, b=a, a=k));
-  doFib(n=it, a=0, b=1)
-};
-
-fib(parse_i32(argv(1)))

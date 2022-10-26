@@ -1,6 +1,0 @@
-fib(it) = {
-  it<=2-|1 ?
-  fib(it-1)+fib(it-2)
-};
-
-fib(30)

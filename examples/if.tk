@@ -1,3 +1,0 @@
-if(it, then, else)=it-|then?else;
-
-if(it=true, then="got true", else="got false")+". "+if(it=false, then="got true", else="got false")
