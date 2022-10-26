@@ -1,2 +1,0 @@
-y(x)=x?"default value.";
-y()+y(x="value.")

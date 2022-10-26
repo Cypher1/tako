@@ -1,3 +1,0 @@
-next(n)=n>0-|next(n=n-1)?n;
-
-next(n=6)

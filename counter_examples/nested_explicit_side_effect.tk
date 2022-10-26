@@ -1,8 +1,0 @@
-x=(
-  y=3;
-  0
-);
-
-x;y*5
-
-// This should error as `y-|int` doesn't match the expected type of main.
