@@ -1,5 +1,7 @@
 #![deny(clippy::all)]
 
+mod typed_index;
+
 #[macro_use]
 extern crate lazy_static;
 
