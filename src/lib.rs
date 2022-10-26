@@ -15,34 +15,19 @@ pub mod ast;
 pub mod cpp_ast;
 
 pub mod cli_options;
-pub mod database;
 pub mod errors;
 pub mod externs;
 pub mod primitives;
-// This is where all the compiler passes (rather than shared infrastructure) goes.
-pub mod passes;
+pub mod pretty_printer;
+pub mod parser;
 
 mod ast_node;
 mod components;
 mod location;
-mod map_system;
-mod matcher;
-mod symbol_table;
 mod tokens;
 
-// This is where the fun, but currently unused stuff goes
-#[cfg(test)]
-#[allow(dead_code)]
-mod experimental;
-
 use ast::Visitor;
-use passes::ast_interpreter::Interpreter;
-use passes::pretty_print::PrettyPrint;
-
-use database::DBStorage;
 use errors::TError;
-use passes::ast_interpreter::ImplFn;
-
 use std::fs::File;
 use std::io::prelude::*;
 
