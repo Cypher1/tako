@@ -17,9 +17,13 @@ path = "src/lib.rs"
 name = "tako"
 path = "src/main.rs"
 
-[[bench]]
-name = "tako_bench"
-harness = false
+[[bin]]
+name = "make_test_case"
+path = "src/make_test_case.rs"
+
+# [[bench]]
+# name = "tako_bench"
+# harness = false
 
 [dependencies]
 thiserror = "1.0.20"
