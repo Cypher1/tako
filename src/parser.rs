@@ -1,10 +1,9 @@
 use log::debug;
 use specs::Entity;
 use std::collections::VecDeque;
-use std::sync::Arc;
 
 use crate::ast::{
-    path_to_string, Abs, Apply, BinOp, HasInfo, Info, Let, Node, PathRef, Sym, Symbol, ToNode, UnOp,
+    path_to_string, Abs, Apply, HasInfo, Info, Let, Node, PathRef, Sym, Symbol,
 };
 use crate::ast_node::{AstNode, AstTerm, DefinitionHead};
 use crate::database::DBStorage;
