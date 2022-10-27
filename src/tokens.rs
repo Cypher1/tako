@@ -1,8 +1,7 @@
-use super::location::Loc;
 use std::collections::VecDeque;
 use std::fmt;
 
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum TokenType {
     Op,
     OpenBracket,
@@ -14,132 +13,86 @@ pub enum TokenType {
     Whitespace,
 }
 
-#[derive(Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
-pub struct Token {
+#[derive(Debug, Clone, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
+struct Token<'a> {
     pub tok_type: TokenType,
-    // TODO: Use enum types to convert tokens to literals and symbols.
-    pub value: String,
-    pub pos: Loc,
+    // this stores both the location and length, in the file and gives a way to get the contents.
+    pub txt: &'a str, // TODO: Avoid string comparisons.
 }
 
-impl fmt::Debug for Token {
+impl<'a> fmt::Debug for Token<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?} {:?}", self.tok_type, self.value)
+        write!(f, "{:?}({:?})", self.tok_type, self.txt)
     }
 }
 
-const OPERATORS: &str = "~!@#$%^&*-+=<>|\\/?.,:;";
-const OPENBRACKETS: &str = "([{";
-const CLOSEBRACKETS: &str = ")]}";
-const NUMBERS: &str = "0123456789";
-const WHITESPACE: &str = "\n\r\t ";
-const QUOTES: &str = "'\"`";
 const COMMENT: &str = "//";
 const MULTI_COMMENT: &str = "/*";
 
 fn classify_char(ch: char) -> TokenType {
     // TODO: replace this with an array with a value for each character.
-    if WHITESPACE.contains(ch) {
-        return TokenType::Whitespace;
+    use TokenType::*;
+    match ch {
+        '\n' | '\r' | '\t' | ' ' => Whitespace,
+        '~' | '!' | '@' | '#' | '$' | '%' | '^' | '&' | '*' | '-' | '+' | '=' | '<' | '>' | '|' | '\\' | '/' | '?' | '.' | ',' | ':' | ';' => Op,
+        '(' | '[' | '{' => OpenBracket,
+        ')' | ']' | '}' => CloseBracket,
+        '0'..'9' => NumLit,
+        '"' | '\'' => StringLit,
+        '0'..'9' => NumLit,
+        'A'..'Z' | 'a'..'z' | '_' => Sym,
+        _ => panic!("Unknown character {}", ch)
     }
-    if OPERATORS.contains(ch) {
-        return TokenType::Op;
-    }
-    if OPENBRACKETS.contains(ch) {
-        return TokenType::OpenBracket;
-    }
-    if CLOSEBRACKETS.contains(ch) {
-        return TokenType::CloseBracket;
-    }
-    if NUMBERS.contains(ch) {
-        return TokenType::NumLit;
-    }
-    if QUOTES.contains(ch) {
-        return TokenType::StringLit;
-    }
-    TokenType::Sym
 }
+
+type Characters<'a> = std::iter::Peekable<std::str::Chars<'a>>;
 
 // Consumes a single token from a Deque of characters.
 pub fn lex_head<'a>(
-    mut contents: std::iter::Peekable<std::str::Chars<'a>>,
-    pos: &mut Loc,
-) -> (Token, std::iter::Peekable<std::str::Chars<'a>>) {
-    let mut head: VecDeque<char> = VecDeque::new();
-
-    let mut tok_type: TokenType = TokenType::Unknown;
-    let mut quote: Option<char> = None;
-    let mut start = pos.clone();
-
-    // TODO: This should be simplified (make tight loops).
+    mut contents: Characters<'a>,
+) -> (Token, Characters<'a>) {
     while let Some(chr) = contents.peek() {
-        let chr_type = classify_char(*chr);
-        tok_type = match (&tok_type, &chr_type) {
-            (TokenType::Unknown, TokenType::Whitespace) => TokenType::Unknown, // Ignore
-            (TokenType::Unknown, TokenType::StringLit) => {
-                quote = Some(*chr);
-                TokenType::StringLit
-            }
-            (TokenType::Unknown, new_tok_type) => new_tok_type.clone(),
-            (TokenType::Op, TokenType::Op) => TokenType::Op, // Continuation
-            (TokenType::NumLit, TokenType::NumLit) => TokenType::NumLit, // Continuation
-            (TokenType::NumLit, TokenType::Sym)
-            | (TokenType::Sym, TokenType::NumLit | TokenType::Sym) => TokenType::Sym,
-            (_, TokenType::Whitespace)
-            | (
-                TokenType::Op
-                | TokenType::NumLit
-                | TokenType::Sym
-                | TokenType::OpenBracket
-                | TokenType::CloseBracket,
-                _,
-            ) => break, // Token finished.
-            _unexpected => {
-                unimplemented!() // Can't mix other tokentypes
-            }
-        };
-        if chr_type == TokenType::StringLit {
+        if matches!('\n' | '\r' | '\t' | ' ', chr) {
             break;
         }
-        if chr_type != TokenType::Whitespace {
-            // Add the character.
-            head.push_back(*chr);
-        }
-        // Continue past the character.
-        pos.next(&mut contents);
-        if chr_type == TokenType::Whitespace {
-            start = pos.clone();
-        }
+        contents.next(); // Continue past the character.
+    }
+    let mut start = contents.as_str();
+    // TODO: This should be simplified (make tight loops).
+    let mut chr_type;
+    let mut tok_type: TokenType = TokenType::Unknown;
+    while let Some(chr) = contents.peek() {
+        chr_type = classify_char(*chr);
+        tok_type = match (&tok_type, &chr_type) {
+            (TokenType::Unknown, TokenType::Whitespace) => TokenType::Unknown, // Ignore
+            (TokenType::Unknown, new_tok_type) => new_tok_type, // Start token.
+            (TokenType::Op, TokenType::Op) => TokenType::Op, // Continuation
+            (TokenType::NumLit, TokenType::NumLit) => TokenType::NumLit, // Continuation
+            (TokenType::NumLit, TokenType::Sym) => TokenType::NumLit, // Number with suffix.
+            (TokenType::Sym, TokenType::NumLit | TokenType::Sym) => TokenType::Sym, // Symbol.
+            (_, TokenType::Whitespace) => break, // Token finished whitespace.
+            _ => break, // Token finished can't continue here.
+        };
+        contents.next(); // Continue past the character.
     }
     if tok_type == TokenType::StringLit {
-        // We hit a quote.
-        loop {
-            pos.next(&mut contents);
-            // Add the character.
-            if let Some(chr) = contents.peek() {
-                if Some(*chr) == quote {
-                    break;
-                }
-                let nxt = if chr == &'\\' {
-                    contents.next(); // Escape.
-                    let escape = contents.peek().expect("Escaped character");
-                    match escape {
-                        'n' => '\n',
-                        'r' => '\r',
-                        't' => '\t',
-                        '0' => '\0',
-                        ch => *ch,
-                    }
-                } else {
-                    *contents.peek().expect("Escaped character")
-                };
-                head.push_back(nxt);
+        let quote = chr; // We hit a quote.
+        contents.next();
+        start = contents.as_str(); // start inside the string.
+        while let Some(chr) = contents.peek() {
+            if *chr == quote { // reached the end of the quote.
+                break;
             }
+            contents.next(); // Add the character.
+            if chr == &'\\' {
+                contents.next(); // Read the escaped character.
+            };
         }
         // Drop the quote
-        pos.next(&mut contents);
+        contents.next();
     }
-    let value = head.into_iter().collect();
+    // Token is finished, covers from `start` to `contents`.
+    let value = start[0..contents-start];
     let comment = value == COMMENT;
     let multi_comment = value == MULTI_COMMENT;
     if !comment && !multi_comment {
@@ -156,7 +109,7 @@ pub fn lex_head<'a>(
     let mut depth = 1;
     let mut last: Option<char> = None;
     loop {
-        pos.next(&mut contents);
+        contents.next();
         // Add the character.
         match (last, &mut contents.peek()) {
             (Some('/'), Some('*')) => {
@@ -165,13 +118,13 @@ pub fn lex_head<'a>(
             (Some('*'), Some('/')) => {
                 depth -= 1;
                 if multi_comment && depth == 0 {
-                    pos.next(&mut contents);
+                    contents.next();
                     return lex_head(contents, pos);
                 }
             }
             (_, Some(chr)) => {
                 if comment && (**chr == '\n' || **chr == '\r') {
-                    pos.next(&mut contents);
+                    contents.next();
                     return lex_head(contents, pos);
                 }
                 last = Some(**chr);

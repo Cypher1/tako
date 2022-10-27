@@ -23,7 +23,7 @@ impl<T, I: Clone> Clone<T> for TypedIndex<T, I> {
 impl<T, I: Copy> Copy<T> for TypedIndex<T, I> {}
 
 impl<T, I: std::fmt::Debug> std::fmt::Debug for TypedIndex<T, I> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}_{}", std::any::type_name::<T>(), self.index)
     }
 }

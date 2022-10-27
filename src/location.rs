@@ -2,8 +2,8 @@ use std::fmt;
 
 #[derive(PartialEq, Eq, Clone, Copy, Ord, PartialOrd, Hash)]
 pub struct Pos {
-    pub line: i32,
-    pub col: i32,
+    pub line: u32,
+    pub col: u32,
 }
 
 impl std::fmt::Debug for Pos {
@@ -48,7 +48,7 @@ pub struct Loc {
 }
 
 impl Loc {
-    pub fn new(filename: &str, line: i32, col: i32) -> Loc {
+    pub fn new(filename: &str, line: u32, col: u32) -> Loc {
         Loc {
             filename: Some(filename.to_string()),
             pos: Pos { line, col },

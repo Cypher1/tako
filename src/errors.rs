@@ -1,25 +1,27 @@
 use crate::primitives::Val;
-use crate::tokens::Token;
 use specs::Entity;
-
+use crate::location::Loc;
 use thiserror::Error;
-
 use derivative::Derivative;
+
 #[derive(Error, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Derivative)]
 #[derivative(Debug)]
 pub enum TError {
-    #[error("call to C++ compiler failed with error code: {1:?}\n{0}")]
-    CppCompilerError(String, Option<i32>, Info),
-    #[error("unknown token `{0:?}` in {2:?} at {1}")]
-    UnknownToken(Token, Info, String),
-    #[error("unknown symbol `{0}` in {2} at {1}")]
-    UnknownSymbol(String, Info, String),
-    #[error("out of scope type variable `{0}` at {1}")]
-    OutOfScopeTypeVariable(String, Info),
-    #[error("parse failed, {0} at {1}")]
-    ParseError(String, Info),
-    #[error("internal error: {0} at {1}")]
-    InternalError(String, Info),
+    #[error("call to C++ compiler failed with error code: {return_code}\n{error}")]
+    CppCompilerError {
+        error: String,
+        return_code: Option<i32>
+    },
+    #[error("parse failed, {msg} at {loc}")]
+    ParseError {
+        msg: String,
+        loc: Loc
+    },
+    #[error("internal error: {msg} at {loc}")]
+    InternalError {
+        msg: String,
+        loc: Loc
+    },
 }
 
 impl From<std::fmt::Error> for TError {
