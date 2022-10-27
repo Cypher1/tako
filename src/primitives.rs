@@ -1,4 +1,3 @@
-use crate::ast::{Info, Node};
 use crate::errors::TError;
 use bitvec::prelude::*;
 use std::collections::BTreeSet;
@@ -8,9 +7,9 @@ use std::fmt;
 
 use crate::data_structures::tribool::{all_true, any_true, Tribool};
 
-// i32 here are sizes in bits, not bytes.
-// This means that we don't need to have a separate systems for bit&byte layouts.
-pub type Offset = usize;
+// Offsets here are sizes in bits, not bytes.
+// This means that we don't need to have a separate systems for bit vs byte layouts.
+pub type Offset = u32; // TODO: Check that this size is okay...
 
 // A list of types with an offset to get to the first bit (used for padding, frequently 0).
 type Layout = Vec<Val>; // Use a deque
@@ -24,7 +23,7 @@ pub enum Prim {
     I32(i32),
     Str(String),
     BuiltIn(String),
-    Tag(BitVec), // An identifying bit string (prefix).
+    Tag(BitVec), // An identifying bit string (prefix, only, may be followed by other data).
 }
 use Prim::{Bool, BuiltIn, Str, Tag, I32};
 
@@ -333,7 +332,7 @@ pub fn builtin(name: &str) -> Val {
 pub fn card(ty: &Val) -> Result<Offset, TError> {
     match ty {
         PrimVal(Tag(_bits)) => Ok(1),
-        BitStr(_ptr_size) => Err(TError::StaticPointerCardinality(Info::default())),
+        BitStr(length) => Ok(2**length),
         Union(s) => {
             let mut sum = 0;
             for sty in s {

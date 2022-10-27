@@ -12,15 +12,11 @@ mod pretty_assertions;
 #[macro_use]
 pub mod data_structures;
 #[macro_use]
-pub mod ast;
-#[macro_use]
 pub mod cpp_ast;
 
 pub mod cli_options;
 pub mod errors;
-pub mod externs;
 pub mod primitives;
-pub mod pretty_printer;
 pub mod parser;
 
 mod ast_node;
@@ -80,7 +76,6 @@ pub fn work_on_string<'a>(
     filename: &str,
     print_impl: Option<ImplFn<'a>>,
 ) -> Result<String, TError> {
-    use ast::ToNode;
     use cli_options::Command;
 
     let module_name = storage.module_name(filename);
