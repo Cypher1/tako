@@ -9,6 +9,7 @@ use soa_derive::StructOfArray;
 #[derive(StructOfArray, Eq, PartialEq)]
 #[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
 pub struct Symbol {
+    node: NodeId,
     name: TypedIndex<Identifier>, // index into the file
     file_id: FileId,
 }
@@ -16,6 +17,7 @@ pub struct Symbol {
 #[derive(StructOfArray, Debug, Eq, PartialEq)]
 #[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
 pub struct Call {
+    node: NodeId,
     pub inner: NodeId,
     pub args: Vec<Entity>, // TODO: Short vec
 }
@@ -33,8 +35,16 @@ impl Call {
 #[derive(StructOfArray, Debug, Eq, PartialEq)]
 #[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
 pub struct Definition {
+    node: NodeId,
     pub name: TypedIndex<Symbol>,
     pub implementation: Entity,
+}
+
+#[derive(StructOfArray, Debug, Eq, PartialEq)]
+#[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
+pub struct Primitive {
+    node: NodeId,
+    pub value: (), // TODO: ???
 }
 
 #[derive(Debug, Eq, PartialEq, PartialOrd, Ord)]
@@ -53,3 +63,13 @@ pub struct Node {
     pub id: NodeData,
 }
 pub type NodeId = NodeId<Node>;
+
+#[cfg_attr(test, derive(Debug))]
+pub struct Ast { // Abstract syntax tree... forest
+    pub roots: Vec<NodeId>,
+    pub nodes: NodeVec,
+    pub calls: CallVec,
+    pub symbols: SymbolVec,
+    pub definitions: DefinitionVec,
+    pub primitives: PrimitiveVec,
+}

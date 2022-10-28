@@ -2,6 +2,7 @@ use crate::error::TError;
 use crate::location::Location;
 use crate::free_standing::typed_index::TypedIndex;
 use crate::tokens::Token;
+use crate::ast::*;
 use soa_derive::StructOfArray;
 
 // TODO: Replace strings where ideal...
@@ -9,9 +10,10 @@ use soa_derive::StructOfArray;
 #[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
 pub struct File {
     path: String, // TODO: Use something 'right'
-    root: Entity,
+    root: ModuleId,
     contents: String,
     lexed: Option<Vec<Token>>,
+    ast: Ast,
 }
 pub type FileId = TypedIndex<File>;
 
@@ -19,7 +21,9 @@ pub type FileId = TypedIndex<File>;
 #[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
 pub struct Module {
     file: FileId,
-    root: Entity,
+    parent: Option<ModuleId>,
+    children: Vec<ModuleId>,
+    root: NodeId,
 }
 pub type ModuleId = TypedIndex<Module>;
 
