@@ -10,7 +10,7 @@ pub enum TError {
     #[error("call to C++ compiler failed with error code: {return_code}\n{error}")]
     CppCompilerError {
         error: String,
-        return_code: Option<i32>
+        return_code: i32,
     },
     #[error("parse failed, {msg} at {loc}")]
     ParseError {

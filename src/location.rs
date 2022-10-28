@@ -56,6 +56,12 @@ impl Loc {
     }
 }
 
+impl std::fmt::Display for Loc {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        <Self as std::fmt::Debug>::fmt(self, f)
+    }
+}
+
 impl std::fmt::Debug for Loc {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.filename {
