@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-struct TypedIndex<T, Index=u32> {
+pub struct TypedIndex<T, Index=u32> {
     index: Index,
     ty: PhantomData<T>,
 }
