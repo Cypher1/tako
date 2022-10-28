@@ -4,7 +4,6 @@ use std::collections::VecDeque;
 use crate::ast::{
     path_to_string, Abs, Apply, HasInfo, Info, Let, Node, PathRef, Sym, Symbol,
 };
-use crate::ast_node::{AstNode, AstTerm, DefinitionHead};
 use crate::database::DBStorage;
 use crate::errors::TError;
 use crate::location::Loc;

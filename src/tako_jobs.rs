@@ -21,6 +21,7 @@ pub struct File {
     path: String, // TODO: Use something 'right'
     root: Entity,
     contents: String,
+    lexed: Option<Vec<Token>>,
 }
 pub type FileId = TypedIndex<File>;
 
