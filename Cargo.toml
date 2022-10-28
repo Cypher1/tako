@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["J Pratt <jp10010101010000@gmail.com>"]
 edition = "2018"
 include = ["src/**/*", "LICENSE.md", "README.md"]
+default-run = "tako"
 
 [features]
 bench = [ "criterion" ]
@@ -19,7 +20,7 @@ path = "src/main.rs"
 
 [[bin]]
 name = "make_test_case"
-path = "src/make_test_case.rs"
+path = "tests/make_test_case.rs"
 
 # [[bench]]
 # name = "tako_bench"
