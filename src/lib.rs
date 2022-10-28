@@ -7,7 +7,7 @@ pub mod cli_options;
 pub mod concepts;
 pub mod compiler_context;
 pub mod compiler_tasks;
-// TODO: pub mod error;
+pub mod error;
 // TODO: pub mod primitives;
 // TODO: pub mod parser;
 // TODO: pub mod ast;

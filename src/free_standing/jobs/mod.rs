@@ -2,14 +2,12 @@ mod job;
 use job::{FinishType, Job, JobState::*, JobId};
 
 pub struct JobStore<JobType> {
-    ready: Vec<JobId>,
+    ready: Vec<JobId<JobType>>,
     jobs: Vec<Job<JobType>>,
     terminating: bool,
 }
 
 impl<JobType> JobStore<JobType> {
-    type JobId = JobId<JobType>;
-
     pub fn num_ready(&self) -> usize {
         self.ready.len()
     }
@@ -36,7 +34,7 @@ impl<JobType> JobStore<JobType> {
         self.terminating = true;
     }
 
-    pub fn get(&mut self) -> Option<(JobId, &Job<JobType>)> {
+    pub fn get(&mut self) -> Option<(JobId<JobType>, &Job<JobType>)> {
         if self.terminating {
             return None;
         }
@@ -63,7 +61,7 @@ impl<JobType> JobStore<JobType> {
         Some((job_id, job)) // Should not be mutable
     }
 
-    pub fn add_job(&mut self, job: Job<JobType>) -> JobId {
+    pub fn add_job(&mut self, job: Job<JobType>) -> JobId<JobType> {
         let id = JobId::new(self.jobs.len());
         for dep in job.dependencies {
             self.jobs[dep.id].dependents.push(id);
@@ -73,7 +71,7 @@ impl<JobType> JobStore<JobType> {
         id
     }
 
-    pub fn restart(&mut self, job_id: JobId) {
+    pub fn restart(&mut self, job_id: JobId<JobType>) {
         let job = &mut self.jobs[job_id.id];
         if job.state == Running {
             eprintln!("Job {} {} restarted while still running, may clobber", job_id, &job);
@@ -82,7 +80,7 @@ impl<JobType> JobStore<JobType> {
         self.try_make_ready(job_id);
     }
 
-    fn try_make_ready(&mut self, job_id: JobId) {
+    fn try_make_ready(&mut self, job_id: JobId<JobType>) {
         let job = &mut self.jobs[job_id.id];
         if job.state != Waiting {
             return; // Already running or finished, wait to retry.
@@ -94,7 +92,7 @@ impl<JobType> JobStore<JobType> {
         self.ready.push(job_id);
     }
 
-    pub fn finish_job(&mut self, job_id: JobId, result: FinishType) {
+    pub fn finish_job(&mut self, job_id: JobId<JobType>, result: FinishType) {
         let job = &mut self.jobs[job_id.id];
         job.state = Finished(result);
         for dep_id in job.dependents {
