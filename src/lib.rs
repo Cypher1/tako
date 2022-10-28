@@ -21,8 +21,7 @@ pub mod errors;
 pub mod primitives;
 pub mod parser;
 
-mod ast_node;
-mod components;
+mod ast;
 mod location;
 mod tokens;
 
