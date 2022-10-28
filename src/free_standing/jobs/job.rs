@@ -18,14 +18,14 @@ pub enum JobState {
 pub struct Job<JobType> {
     ty: JobType,
     state: JobState,
-    dependents: Vec<JobId>,
-    dependencies: Vec<JobId>,
+    dependents: Vec<JobId<JobType>>,
+    dependencies: Vec<JobId<JobType>>,
 }
 pub type JobId<T> = TypedIndex<Job<T>>;
 
 impl<JobType> Job<JobType> {
     type JobId = JobId<JobType>;
-    pub fn new(ty: JobType, dependencies: Vec<JobId>) -> Self {
+    pub fn new(ty: JobType, dependencies: Vec<Self::JobId>) -> Self {
         Self {
             ty,
             state: JobState::Waiting,

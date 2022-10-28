@@ -1,5 +1,5 @@
 mod job;
-use job::{FinishType, Job, JobState, JobId};
+use job::{FinishType, Job, JobState::*, JobId};
 
 struct JobStore<JobType> {
     ready: Vec<JobId>,
@@ -42,7 +42,7 @@ impl<JobType> JobStore<JobType> {
         let ready = &mut self.ready;
         // TODO: consider a sorted datastructure.
         for (index, job) in ready.iter().ennumerate() {
-            let count = jobs.dependents.len();
+            let count = job.dependents.len();
             if best.map(|(max, _index)|max < count).unwrap_or(true) {
                 best = Some((count, index));
             }
@@ -54,10 +54,10 @@ impl<JobType> JobStore<JobType> {
         };
         let job_id = ready.pop(); // pop swap to remove in O(1).
         if index < ready.len() {
-            std::mem::swap(&mut job_id, &mut read[index]);
+            std::mem::swap(&mut job_id, &mut ready[index]);
         }
         let job = &mut self.jobs[job_id];
-        job.state = JobState::Running;
+        job.state = Running;
         Some((job_id, job)) // Should not be mutable
     }
 
@@ -88,7 +88,7 @@ impl<JobType> JobStore<JobType> {
         if !job.dependencies.is_empty() {
             return; // Not ready, leave as is.
         }
-        job.state = JobState::Ready;
+        job.state = Ready;
         self.ready.push(job_id);
     }
 
