@@ -20,7 +20,6 @@ pub mod concepts;
 pub mod compiler_context;
 pub mod compiler_tasks;
 pub mod error;
-pub mod internal_error;
 pub mod primitives;
 pub mod parser;
 

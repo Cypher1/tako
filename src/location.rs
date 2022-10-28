@@ -1,5 +1,6 @@
 use std::fmt;
 use crate::concepts::File;
+use soa_derive::StructOfArray;
 
 type IndexIntoFile = usize;
 
