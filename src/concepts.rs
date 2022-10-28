@@ -1,16 +1,7 @@
-use crate::location::Loc;
+use crate::errors::TError;
+use crate::location::Location;
 use crate::typed_index::TypedIndex;
-
-#[derive(Debug)]
-pub enum TakoJob {
-    Lex(FileId),
-    Parse(FileId),
-    TypeCheck(ModuleId),
-    GlobalTypeCheck,
-    Optimise(ModuleId),
-    GlobalOptimise,
-    CodeGen(EntryPointId),
-}
+use crate::tokens::Token;
 
 // TODO: Replace strings where ideal...
 // TODO: Use macro for defining and registering each of these.
@@ -47,8 +38,7 @@ pub type ModuleId = TypedIndex<Module>;
 pub struct Error {
     file: FileId,
     module: ModuleId,
-    entry_points: Vec<EntryPointId>,
-    ast: Entity,
+    location: LocationId,
     error: TError,
 }
 pub type ErrorId = TypedIndex<Error>;
