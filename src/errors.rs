@@ -1,5 +1,4 @@
 use crate::primitives::Val;
-use specs::Entity;
 use crate::location::Loc;
 use thiserror::Error;
 use derivative::Derivative;
