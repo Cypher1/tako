@@ -1,19 +1,16 @@
 use crate::location::Location;
 use thiserror::Error;
 
-#[derive(Error, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TError {
-    #[error("call to C++ compiler failed with error code: {return_code}\n{error}")]
     CppCompilerError {
         error: String,
         return_code: i32,
     },
-    #[error("parse failed, {message} at {location}")]
     ParseError {
         message: String,
         location: Location
     },
-    #[error("internal error: {message} at {location}")]
     InternalError {
         message: String,
         location: Location
@@ -37,7 +34,6 @@ impl From<std::num::ParseIntError> for TError {
         TError::ParseError(error.to_string())
     }
 }
-
 
 #[derive(Error, PartialEq, Eq, PartialOrd, Ord)]
 pub struct UserFacingError<'a> {
