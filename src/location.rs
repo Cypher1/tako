@@ -54,13 +54,10 @@ impl UserFacingLocation {
     }
 
     pub fn next(&mut self, chars: &mut std::iter::Peekable<std::str::Chars>) {
-        // TODO: Consider just keeping the offsets and then recovering line
-        // info later.
         let ch = chars.peek();
         if ch == None {
             return;
         }
-
         let nl = ch == Some(&'\n');
         let lf = ch == Some(&'\r');
         chars.next();
