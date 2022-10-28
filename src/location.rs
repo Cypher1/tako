@@ -1,7 +1,14 @@
 use std::fmt;
 use crate::concepts::File;
-use crate::ast::Location;
 
+type IndexIntoFile = usize;
+
+#[derive(StructOfArray, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
+pub struct Location {
+    location: IndexIntoFile,
+    file_id: FileId,
+}
 
 #[derive(PartialEq, Eq, Clone, Ord, PartialOrd)]
 pub struct UserFacingLocation {
@@ -31,7 +38,7 @@ impl UserFacingLocation {
         }
     }
 
-    fn from(file: &File, location: &Location) -> Self {
+    pub fn from(file: &File, location: &Location) -> Self {
         let mut loc = UserFacingLocation::new(file.path, 1, 1);
         let mut contents = &file.contents;
         for _ in 0..location.location {

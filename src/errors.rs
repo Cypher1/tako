@@ -1,45 +1,50 @@
 use crate::primitives::Val;
-use crate::location::Loc;
+use crate::location::Location;
 use thiserror::Error;
-use derivative::Derivative;
+use crate::internal_error::TError;
 
-#[derive(Error, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Derivative)]
-#[derivative(Debug)]
-pub enum TError {
-    #[error("call to C++ compiler failed with error code: {return_code}\n{error}")]
-    CppCompilerError {
-        error: String,
-        return_code: i32,
-    },
-    #[error("parse failed, {msg} at {loc}")]
-    ParseError {
-        msg: String,
-        loc: Loc
-    },
-    #[error("internal error: {msg} at {loc}")]
-    InternalError {
-        msg: String,
-        loc: Loc
-    },
+#[derive(Error, PartialEq, Eq, PartialOrd, Ord)]
+pub struct UserFacingError<'a> {
+    error: Terror,
+    file: &'a File,
+    entry: &'a EntryPoint,
+    location: &'a Location,
+    user_facing_location: UserFacingError,
 }
 
-impl From<std::fmt::Error> for TError {
-    fn from(error: std::fmt::Error) -> Self {
-        use TError::InternalError;
-        InternalError(error.to_string(), Info::default())
+impl<'a> UserFacingError<'a> {
+    fn new(file: &'a File, entry: &'a EntryPoint, location: &'a Location) -> Self {
+        let user_facing_location = UserFacingLocation::from(self.file, self.location);
+        Self {
+            file,
+            entry,
+            location,
+            user_facing_location,
+        }
     }
 }
 
-impl From<std::io::Error> for TError {
-    fn from(error: std::io::Error) -> Self {
-        use TError::InternalError;
-        InternalError(error.to_string(), Info::default())
+impl std::fmt::Display for UserFacingError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        <Self as std::fmt::Debug>::write(self, f)
     }
 }
 
-impl From<std::num::ParseIntError> for TError {
-    fn from(error: std::num::ParseIntError) -> Self {
-        use TError::ParseError;
-        ParseError(error.to_string(), Info::default())
+impl std::fmt::Debug for UserFacingError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.error {
+            CppCompilerError {
+                error,
+                return_code
+            } => write!(f, "call to C++ compiler failed with error code: {return_code}\n{error}"),
+            ParseError {
+                msg,
+                loc,
+            } => write!(f, "parse failed, {msg} at {loc}"),
+            InternalError {
+                msg,
+                loc,
+            } => write!(f, "internal error: {msg} at {loc}"),
+        }
     }
 }
