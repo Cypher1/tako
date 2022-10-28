@@ -51,19 +51,12 @@ type Characters<'a> = std::iter::Peekable<std::str::Chars<'a>>;
 pub fn lex_head<'a>(
     mut contents: Characters<'a>,
 ) -> (Token, Characters<'a>) {
-    while let Some(chr) = contents.peek() {
-        if matches!('\n' | '\r' | '\t' | ' ', chr) {
-            break;
-        }
-        contents.next(); // Continue past the character.
-    }
+    contents = contents.skip_while(|chr| matches!('\n' | '\r' | '\t' | ' ', chr)); // Continue past the character.
     let mut start = contents.as_str();
     // TODO: This should be simplified (make tight loops).
-    let mut chr_type;
     let mut tok_type: TokenType = TokenType::Unknown;
     while let Some(chr) = contents.peek() {
-        chr_type = classify_char(*chr);
-        tok_type = match (&tok_type, &chr_type) {
+        tok_type = match (&tok_type, classify_char(*chr)) {
             (TokenType::Unknown, TokenType::Whitespace) => TokenType::Unknown, // Ignore
             (TokenType::Unknown, new_tok_type) => new_tok_type, // Start token.
             (TokenType::Op, TokenType::Op) => TokenType::Op, // Continuation
