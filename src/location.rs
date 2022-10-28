@@ -2,12 +2,17 @@ use std::fmt;
 use crate::concepts::File;
 use soa_derive::StructOfArray;
 
-type IndexIntoFile = usize;
+type IndexIntoFile = u32;
+// This is chosen as it's large enough to index the whole of
+// gcc as a single '.c' file at a per-byte level,
+// and `u16` is too small.
+// Source: https://people.csail.mit.edu/smcc/projects/single-file-programs
 
 #[derive(StructOfArray, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
 pub struct Location {
     location: IndexIntoFile,
+    length: IndexIntoFile,
     file_id: FileId,
 }
 

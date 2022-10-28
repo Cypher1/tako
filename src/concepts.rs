@@ -1,5 +1,5 @@
 use crate::error::TError;
-use crate::location::LocationId;
+use crate::location::Location;
 use crate::free_standing::typed_index::TypedIndex;
 use crate::tokens::Token;
 use soa_derive::StructOfArray;
@@ -28,7 +28,7 @@ pub type ModuleId = TypedIndex<Module>;
 pub struct Error {
     file: FileId,
     module: ModuleId,
-    location: LocationId,
+    location: Location,
     error: TError,
 }
 pub type ErrorId = TypedIndex<Error>;
