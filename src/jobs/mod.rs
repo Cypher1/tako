@@ -22,7 +22,7 @@ pub enum JobState {
 }
 use JobState::*;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Job<JobType> {
     ty: JobType,
     state: JobState,
@@ -95,7 +95,7 @@ impl<JobType> Jobs<JobType> {
             index
         } else {
             return None;
-        }
+        };
         let job_id = ready.pop(); // pop swap to remove in O(1).
         if index < ready.len() {
             std::mem::swap(&mut job_id, &mut read[index]);
@@ -138,7 +138,7 @@ impl<JobType> Jobs<JobType> {
 
     pub fn finish_job(&mut self, job_id: JobId, result: FinishType) {
         let job = &mut self.jobs[job_id.id];
-        job.state = Finished(FinishType);
+        job.state = Finished(result);
         self.jobs[job_id.id].state = state;
         for dep_id in job.dependents {
             let dep = self.jobs[dep_id.id];

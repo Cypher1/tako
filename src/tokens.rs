@@ -17,12 +17,12 @@ pub enum TokenType {
 struct Token<'a> {
     pub tok_type: TokenType,
     // this stores both the location and length, in the file and gives a way to get the contents.
-    pub txt: &'a str, // TODO: Avoid string comparisons.
+    pub value: &'a str, // TODO: Avoid string comparisons.
 }
 
 impl<'a> fmt::Debug for Token<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}({:?})", self.tok_type, self.txt)
+        write!(f, "{:?}({:?})", self.tok_type, self.value)
     }
 }
 
@@ -161,32 +161,28 @@ mod tests {
     #[test]
     fn lex_number() {
         let chars = "123".chars().peekable();
-        let mut pos = Loc::default();
-        let (tok, _) = lex_head(chars, &mut pos);
+        let (tok, _) = lex_head(chars);
         assert_eq!(tok.tok_type, TokenType::NumLit);
     }
 
     #[test]
     fn lex_symbol() {
         let chars = "a123".chars().peekable();
-        let mut pos = Loc::default();
-        let (tok, _) = lex_head(chars, &mut pos);
+        let (tok, _) = lex_head(chars);
         assert_eq!(tok.tok_type, TokenType::Sym);
     }
 
     #[test]
     fn lex_operator() {
         let chars = "-a123".chars().peekable();
-        let mut pos = Loc::default();
-        let (tok, _) = lex_head(chars, &mut pos);
+        let (tok, _) = lex_head(chars);
         assert_eq!(tok.tok_type, TokenType::Op);
     }
 
     #[test]
     fn lex_num_and_newline_linux() {
         let chars = "\n12".chars().peekable();
-        let mut pos = Loc::default();
-        let (tok, _) = lex_head(chars, &mut pos);
+        let (tok, _) = lex_head(chars);
         assert_eq!(tok.tok_type, TokenType::NumLit);
         assert_eq!(
             pos,
@@ -200,8 +196,7 @@ mod tests {
     #[test]
     fn lex_num_and_newline_windows() {
         let chars = "\r\n12".chars().peekable();
-        let mut pos = Loc::default();
-        let (tok, _) = lex_head(chars, &mut pos);
+        let (tok, _) = lex_head(chars);
         assert_eq!(tok.tok_type, TokenType::NumLit);
         assert_eq!(
             pos,
@@ -216,8 +211,7 @@ mod tests {
     fn lex_num_and_newline_old_mac() {
         // For mac systems before OSX
         let chars = "\r12".chars().peekable();
-        let mut pos = Loc::default();
-        let (tok, _) = lex_head(chars, &mut pos);
+        let (tok, _) = lex_head(chars);
         assert_eq!(tok.tok_type, TokenType::NumLit);
         assert_eq!(
             pos,
@@ -231,8 +225,7 @@ mod tests {
     #[test]
     fn lex_escaped_characters_in_string() {
         let chars = "'\\n\\t2\\r\\\'\"'".chars().peekable();
-        let mut pos = Loc::default();
-        let (tok, _) = lex_head(chars, &mut pos);
+        let (tok, _) = lex_head(chars);
         assert_eq!(tok.tok_type, TokenType::StringLit);
         assert_eq!(tok.value, "\n\t2\r\'\"");
     }
@@ -240,14 +233,13 @@ mod tests {
     #[test]
     fn lex_call() {
         let chars = "x()".chars().peekable();
-        let mut pos = Loc::default();
-        let (tok, chars2) = lex_head(chars, &mut pos);
+        let (tok, chars2) = lex_head(chars);
         assert_eq!(tok.tok_type, TokenType::Sym);
         assert_eq!(tok.value, "x");
-        let (tok, chars3) = lex_head(chars2, &mut pos);
+        let (tok, chars3) = lex_head(chars2);
         assert_eq!(tok.tok_type, TokenType::OpenBracket);
         assert_eq!(tok.value, "(");
-        let (tok, _) = lex_head(chars3, &mut pos);
+        let (tok, _) = lex_head(chars3);
         assert_eq!(tok.tok_type, TokenType::CloseBracket);
         assert_eq!(tok.value, ")");
     }
@@ -255,14 +247,13 @@ mod tests {
     #[test]
     fn lex_strings_with_operators() {
         let chars = "!\"hello world\"\n7".chars().peekable();
-        let mut pos = Loc::default();
-        let (tok, chars2) = lex_head(chars, &mut pos);
+        let (tok, chars2) = lex_head(chars);
         assert_eq!(tok.tok_type, TokenType::Op);
         assert_eq!(tok.value, "!");
-        let (tok, chars3) = lex_head(chars2, &mut pos);
+        let (tok, chars3) = lex_head(chars2);
         assert_eq!(tok.tok_type, TokenType::StringLit);
         assert_eq!(tok.value, "hello world");
-        let (tok, _) = lex_head(chars3, &mut pos);
+        let (tok, _) = lex_head(chars3);
         assert_eq!(tok.tok_type, TokenType::NumLit);
         assert_eq!(tok.value, "7");
     }

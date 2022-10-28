@@ -1,4 +1,3 @@
-use crate::ast::Path;
 use crate::errors::TError;
 use crate::location::Loc;
 use crate::primitives::Val;
@@ -18,8 +17,7 @@ pub struct File {
 #[derive(Component, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[storage(VecStorage)]
 pub struct Symbol {
-    location: u32, // index into the file
-    length: u8, // length of the symbol
+    name: TypedIndex<Identifier>, // index into the file
     file_id: TypedIndex<File>,
 }
 
@@ -45,14 +43,6 @@ impl Call {
             args: args.to_vec(),
         }
     }
-}
-
-#[derive(Component, Clone, Default, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
-#[storage(VecStorage)]
-pub struct SymbolRef {
-    pub name: Path,
-    pub context: Path,
-    pub definition: Option<Entity>,
 }
 
 #[derive(Component, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
