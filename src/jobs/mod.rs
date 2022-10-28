@@ -78,7 +78,7 @@ impl<JobType> Jobs<JobType> {
         self.terminating = true;
     }
 
-    pub fn get(&mut self) -> Option<(JobId, &Job)> {
+    pub fn get(&mut self) -> Option<(JobId, &Job<JobType>)> {
         if self.terminating {
             return None;
         }
@@ -105,7 +105,7 @@ impl<JobType> Jobs<JobType> {
         Some((job_id, job)) // Should not be mutable
     }
 
-    pub fn add_job(&mut self, job: Job) -> JobId {
+    pub fn add_job(&mut self, job: Job<JobType>) -> JobId {
         let id = JobId::new(self.jobs.len());
         for dep in job.dependencies {
             self.jobs[dep.id].dependents.push(id);
