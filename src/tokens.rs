@@ -13,7 +13,7 @@ pub enum TokenType {
     Whitespace,
 }
 
-#[derive(Debug, Clone, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
 struct Token<'a> {
     pub tok_type: TokenType,
     // this stores both the location and length, in the file and gives a way to get the contents.
