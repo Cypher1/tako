@@ -16,7 +16,8 @@ pub mod cpp_ast;
 
 pub mod cli_options;
 pub mod jobs;
-pub mod tako_jobs;
+pub mod concepts;
+pub mod compiler_tasks;
 pub mod errors;
 pub mod primitives;
 pub mod parser;

@@ -1,11 +1,11 @@
 use std::fmt;
-use crate::tako_jobs::Filee;
+use crate::concepts::File;
 use crate::ast::Location;
 
 
 #[derive(PartialEq, Eq, Clone, Ord, PartialOrd)]
 pub struct UserFacingLocation {
-    pub filename: Option<String>,
+    pub filename: String,
     pub line: u32,
     pub col: u32,
 }
@@ -18,11 +18,7 @@ impl std::fmt::Display for UserFacingLocation {
 
 impl std::fmt::Debug for UserFacingLocation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.filename {
-            Some(file) => write!(f, "{}:", file),
-            None => write!(f, ""),
-        }?;
-        write!(f, "{}:{}", self.line, self.col)
+        write!(f, "{}:{}:{}", self.filename, self.line, self.col)
     }
 }
 
