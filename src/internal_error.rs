@@ -1,5 +1,5 @@
 use crate::primitives::Val;
-use crate::location::Loc;
+use crate::location::Location;
 use thiserror::Error;
 
 #[derive(Error, PartialEq, Eq, PartialOrd, Ord)]
@@ -9,15 +9,15 @@ pub enum TError {
         error: String,
         return_code: i32,
     },
-    #[error("parse failed, {msg} at {loc}")]
+    #[error("parse failed, {message} at {location}")]
     ParseError {
-        msg: String,
-        loc: Loc
+        message: String,
+        location: Location
     },
-    #[error("internal error: {msg} at {loc}")]
+    #[error("internal error: {message} at {location}")]
     InternalError {
-        msg: String,
-        loc: Loc
+        message: String,
+        location: Location
     },
 }
 
