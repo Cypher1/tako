@@ -7,12 +7,12 @@ pub mod cli_options;
 pub mod concepts;
 pub mod compiler_context;
 pub mod compiler_tasks;
-pub mod error;
-pub mod primitives;
-pub mod parser;
-pub mod ast;
+// TODO: pub mod error;
+// TODO: pub mod primitives;
+// TODO: pub mod parser;
+// TODO: pub mod ast;
 pub mod location;
-pub mod tokens;
+// TODO: pub mod tokens;
 
 use ast::Visitor;
 use error::TError;
