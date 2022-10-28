@@ -1,5 +1,5 @@
 use crate::location::Loc;
-use crate::typed_index::TypedIndex;
+use crate::free_standing::typed_index::TypedIndex;
 use soa_derive::StructOfArray;
 
 // TODO: Replace strings where ideal...

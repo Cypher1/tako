@@ -36,10 +36,10 @@ fn classify_char(ch: char) -> TokenType {
         '~' | '!' | '@' | '#' | '$' | '%' | '^' | '&' | '*' | '-' | '+' | '=' | '<' | '>' | '|' | '\\' | '/' | '?' | '.' | ',' | ':' | ';' => Op,
         '(' | '[' | '{' => OpenBracket,
         ')' | ']' | '}' => CloseBracket,
-        '0'..'9' => NumLit,
+        '0'..='9' => NumLit,
         '"' | '\'' => StringLit,
-        '0'..'9' => NumLit,
-        'A'..'Z' | 'a'..'z' | '_' => Sym,
+        '0'..='9' => NumLit,
+        'A'..='Z' | 'a'..='z' | '_' => Sym,
         _ => panic!("Unknown character {}", ch)
     }
 }

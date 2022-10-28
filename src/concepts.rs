@@ -1,6 +1,6 @@
 use crate::error::TError;
 use crate::location::Location;
-use crate::typed_index::TypedIndex;
+use crate::free_standing::typed_index::TypedIndex;
 use crate::tokens::Token;
 use soa_derive::{StructOfArray};
 

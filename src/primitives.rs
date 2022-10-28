@@ -1,11 +1,8 @@
 use crate::error::TError;
 use bitvec::prelude::*;
-use std::collections::BTreeSet;
-use std::collections::HashMap;
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt;
-
-use crate::data_structures::tribool::{all_true, any_true, Tribool};
+use crate::free_standing::tribool::{all_true, any_true, Tribool};
 
 // Offsets here are sizes in bits, not bytes.
 // This means that we don't need to have a separate systems for bit vs byte layouts.
