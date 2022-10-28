@@ -1,13 +1,15 @@
 mod job;
 use job::{FinishType, Job, JobState::*, JobId};
 
-struct JobStore<JobType> {
+pub struct JobStore<JobType> {
     ready: Vec<JobId>,
     jobs: Vec<Job<JobType>>,
     terminating: bool,
 }
 
 impl<JobType> JobStore<JobType> {
+    type JobId = JobId<JobType>;
+
     pub fn num_ready(&self) -> usize {
         self.ready.len()
     }
@@ -95,7 +97,6 @@ impl<JobType> JobStore<JobType> {
     pub fn finish_job(&mut self, job_id: JobId, result: FinishType) {
         let job = &mut self.jobs[job_id.id];
         job.state = Finished(result);
-        self.jobs[job_id.id].state = state;
         for dep_id in job.dependents {
             let dep = self.jobs[dep_id.id];
             self.jobs[dep].dependents.push(id);
