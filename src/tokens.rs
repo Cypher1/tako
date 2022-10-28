@@ -53,21 +53,22 @@ pub fn lex_head<'a>(
     contents = contents.skip_while(|chr| matches!('\n' | '\r' | '\t' | ' ', chr)); // Continue past the character.
     let mut start = contents.as_str();
     // TODO: This should be simplified (make tight loops).
-    let mut tok_type: TokenType = TokenType::Unknown;
+    use TokenType::*;
+    let mut tok_type: TokenType = Unknown;
     while let Some(chr) = contents.peek() {
         tok_type = match (&tok_type, classify_char(*chr)) {
-            (TokenType::Unknown, TokenType::Whitespace) => TokenType::Unknown, // Ignore
-            (TokenType::Unknown, new_tok_type) => new_tok_type, // Start token.
-            (TokenType::Op, TokenType::Op) => TokenType::Op, // Continuation
-            (TokenType::NumLit, TokenType::NumLit) => TokenType::NumLit, // Continuation
-            (TokenType::NumLit, TokenType::Sym) => TokenType::NumLit, // Number with suffix.
-            (TokenType::Sym, TokenType::NumLit | TokenType::Sym) => TokenType::Sym, // Symbol.
-            (_, TokenType::Whitespace) => break, // Token finished whitespace.
+            (Unknown, Whitespace) => Unknown, // Ignore
+            (Unknown, new_tok_type) => new_tok_type, // Start token.
+            (Op, Op) => Op, // Continuation
+            (NumLit, NumLit) => NumLit, // Continuation
+            (NumLit, Sym) => NumLit, // Number with suffix.
+            (Sym, NumLit | Sym) => Sym, // Symbol.
+            (_, Whitespace) => break, // Token finished whitespace.
             _ => break, // Token finished can't continue here.
         };
         contents.next(); // Continue past the character.
     }
-    if tok_type == TokenType::StringLit {
+    if tok_type == StringLit {
         let quote = chr; // We hit a quote.
         contents.next();
         start = contents.as_str(); // start inside the string.
@@ -131,58 +132,58 @@ mod tests {
     use super::super::location::{Loc, Pos};
     use super::classify_char;
     use super::lex_head;
-    use super::TokenType;
+    use super::TokenType::*;
 
     #[test]
     fn classify_whitespace() {
-        assert_eq!(classify_char(' '), TokenType::Whitespace);
-        assert_eq!(classify_char('\n'), TokenType::Whitespace);
-        assert_eq!(classify_char('\r'), TokenType::Whitespace);
+        assert_eq!(classify_char(' '), Whitespace);
+        assert_eq!(classify_char('\n'), Whitespace);
+        assert_eq!(classify_char('\r'), Whitespace);
     }
 
     #[test]
     fn classify_brackets() {
-        assert_eq!(classify_char('('), TokenType::OpenBracket);
-        assert_eq!(classify_char(')'), TokenType::CloseBracket);
-        assert_eq!(classify_char('['), TokenType::OpenBracket);
-        assert_eq!(classify_char(']'), TokenType::CloseBracket);
-        assert_eq!(classify_char('{'), TokenType::OpenBracket);
-        assert_eq!(classify_char('}'), TokenType::CloseBracket);
+        assert_eq!(classify_char('('), OpenBracket);
+        assert_eq!(classify_char(')'), CloseBracket);
+        assert_eq!(classify_char('['), OpenBracket);
+        assert_eq!(classify_char(']'), CloseBracket);
+        assert_eq!(classify_char('{'), OpenBracket);
+        assert_eq!(classify_char('}'), CloseBracket);
     }
 
     #[test]
     fn classify_number() {
-        assert_eq!(classify_char('0'), TokenType::NumLit);
-        assert_eq!(classify_char('1'), TokenType::NumLit);
-        assert_eq!(classify_char('2'), TokenType::NumLit);
+        assert_eq!(classify_char('0'), NumLit);
+        assert_eq!(classify_char('1'), NumLit);
+        assert_eq!(classify_char('2'), NumLit);
     }
 
     #[test]
     fn lex_number() {
         let chars = "123".chars().peekable();
         let (tok, _) = lex_head(chars);
-        assert_eq!(tok.tok_type, TokenType::NumLit);
+        assert_eq!(tok.tok_type, NumLit);
     }
 
     #[test]
     fn lex_symbol() {
         let chars = "a123".chars().peekable();
         let (tok, _) = lex_head(chars);
-        assert_eq!(tok.tok_type, TokenType::Sym);
+        assert_eq!(tok.tok_type, Sym);
     }
 
     #[test]
     fn lex_operator() {
         let chars = "-a123".chars().peekable();
         let (tok, _) = lex_head(chars);
-        assert_eq!(tok.tok_type, TokenType::Op);
+        assert_eq!(tok.tok_type, Op);
     }
 
     #[test]
     fn lex_num_and_newline_linux() {
         let chars = "\n12".chars().peekable();
         let (tok, _) = lex_head(chars);
-        assert_eq!(tok.tok_type, TokenType::NumLit);
+        assert_eq!(tok.tok_type, NumLit);
         assert_eq!(
             pos,
             Loc {
@@ -196,7 +197,7 @@ mod tests {
     fn lex_num_and_newline_windows() {
         let chars = "\r\n12".chars().peekable();
         let (tok, _) = lex_head(chars);
-        assert_eq!(tok.tok_type, TokenType::NumLit);
+        assert_eq!(tok.tok_type, NumLit);
         assert_eq!(
             pos,
             Loc {
@@ -211,7 +212,7 @@ mod tests {
         // For mac systems before OSX
         let chars = "\r12".chars().peekable();
         let (tok, _) = lex_head(chars);
-        assert_eq!(tok.tok_type, TokenType::NumLit);
+        assert_eq!(tok.tok_type, NumLit);
         assert_eq!(
             pos,
             Loc {
@@ -225,7 +226,7 @@ mod tests {
     fn lex_escaped_characters_in_string() {
         let chars = "'\\n\\t2\\r\\\'\"'".chars().peekable();
         let (tok, _) = lex_head(chars);
-        assert_eq!(tok.tok_type, TokenType::StringLit);
+        assert_eq!(tok.tok_type, StringLit);
         assert_eq!(tok.value, "\n\t2\r\'\"");
     }
 
@@ -233,13 +234,13 @@ mod tests {
     fn lex_call() {
         let chars = "x()".chars().peekable();
         let (tok, chars2) = lex_head(chars);
-        assert_eq!(tok.tok_type, TokenType::Sym);
+        assert_eq!(tok.tok_type, Sym);
         assert_eq!(tok.value, "x");
         let (tok, chars3) = lex_head(chars2);
-        assert_eq!(tok.tok_type, TokenType::OpenBracket);
+        assert_eq!(tok.tok_type, OpenBracket);
         assert_eq!(tok.value, "(");
         let (tok, _) = lex_head(chars3);
-        assert_eq!(tok.tok_type, TokenType::CloseBracket);
+        assert_eq!(tok.tok_type, CloseBracket);
         assert_eq!(tok.value, ")");
     }
 
@@ -247,13 +248,13 @@ mod tests {
     fn lex_strings_with_operators() {
         let chars = "!\"hello world\"\n7".chars().peekable();
         let (tok, chars2) = lex_head(chars);
-        assert_eq!(tok.tok_type, TokenType::Op);
+        assert_eq!(tok.tok_type, Op);
         assert_eq!(tok.value, "!");
         let (tok, chars3) = lex_head(chars2);
-        assert_eq!(tok.tok_type, TokenType::StringLit);
+        assert_eq!(tok.tok_type, StringLit);
         assert_eq!(tok.value, "hello world");
         let (tok, _) = lex_head(chars3);
-        assert_eq!(tok.tok_type, TokenType::NumLit);
+        assert_eq!(tok.tok_type, NumLit);
         assert_eq!(tok.value, "7");
     }
 }
