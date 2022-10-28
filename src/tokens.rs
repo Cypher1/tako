@@ -13,7 +13,7 @@ pub enum TokenType {
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
-struct Token<'a> {
+pub struct Token<'a> {
     pub tok_type: TokenType,
     // this stores both the location and length, in the file and gives a way to get the contents.
     pub value: &'a str, // TODO: Avoid string comparisons.

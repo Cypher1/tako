@@ -6,7 +6,6 @@ pub enum FinishType {
     Cancelled,
     Failed,
 }
-use FinishType::*;
 
 #[derive(Debug, Clone, Copy)]
 pub enum JobState {
@@ -14,7 +13,6 @@ pub enum JobState {
     Running, // TODO: Include a handle to the process?
     Finished(FinishType),
 }
-use JobState::*;
 
 #[derive(Debug)]
 pub struct Job<JobType> {
@@ -23,9 +21,10 @@ pub struct Job<JobType> {
     dependents: Vec<JobId>,
     dependencies: Vec<JobId>,
 }
-pub type JobId = TypedIndex<Job>;
+pub type JobId<T> = TypedIndex<Job<T>>;
 
 impl<JobType> Job<JobType> {
+    type JobId = JobId<JobType>;
     pub fn new(ty: JobType, dependencies: Vec<JobId>) -> Self {
         Self {
             ty,

@@ -1,5 +1,5 @@
 mod job;
-use job::{FinishType::{self, *}, Job, JobState, JobId};
+use job::{FinishType, Job, JobState, JobId};
 
 struct JobStore<JobType> {
     ready: Vec<JobId>,

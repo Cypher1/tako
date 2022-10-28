@@ -1,8 +1,6 @@
 #![deny(clippy::all)]
 
 #[macro_use]
-extern crate lazy_static;
-#[macro_use]
 pub mod free_standing;
 
 pub mod cli_options;
@@ -12,10 +10,9 @@ pub mod compiler_tasks;
 pub mod error;
 pub mod primitives;
 pub mod parser;
-
-mod ast;
-mod location;
-mod tokens;
+pub mod ast;
+pub mod location;
+pub mod tokens;
 
 use ast::Visitor;
 use error::TError;
