@@ -5,6 +5,10 @@ mod typed_index;
 #[macro_use]
 extern crate lazy_static;
 
+#[macro_use]
+pub mod map_macros;
+pub mod tribool;
+
 #[cfg(test)]
 #[macro_use]
 mod pretty_assertions;
