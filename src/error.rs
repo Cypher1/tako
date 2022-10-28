@@ -45,7 +45,7 @@ pub struct UserFacingError<'a> {
     file: &'a File,
     entry: &'a EntryPoint,
     location: &'a Location,
-    user_facing_location: UserFacingError,
+    user_facing_location: UserFacingLocation,
 }
 
 impl<'a> UserFacingError<'a> {
@@ -60,13 +60,13 @@ impl<'a> UserFacingError<'a> {
     }
 }
 
-impl std::fmt::Display for UserFacingError {
+impl<'a> std::fmt::Display for UserFacingError<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         <Self as std::fmt::Debug>::write(self, f)
     }
 }
 
-impl std::fmt::Debug for UserFacingError {
+impl<'a> std::fmt::Debug for UserFacingError<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.error {
             CppCompilerError {

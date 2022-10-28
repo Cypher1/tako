@@ -24,8 +24,7 @@ pub struct Job<JobType> {
 pub type JobId<T> = TypedIndex<Job<T>>;
 
 impl<JobType> Job<JobType> {
-    type JobId = JobId<JobType>;
-    pub fn new(ty: JobType, dependencies: Vec<Self::JobId>) -> Self {
+    pub fn new(ty: JobType, dependencies: Vec<JobId<JobType>>) -> Self {
         Self {
             ty,
             state: JobState::Waiting,
@@ -34,7 +33,7 @@ impl<JobType> Job<JobType> {
         }
     }
 
-    pub fn add_dependent(&mut self, id: JobId) {
+    pub fn add_dependent(&mut self, id: JobId<JobType>) {
         self.dependents.push(id);
     }
 }
