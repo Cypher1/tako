@@ -1,12 +1,12 @@
 use crate::concepts::*;
 
 #[derive(Debug, Copy, Clone)]
-pub enum TakoJob {
+pub enum JobTypes {
     Lex(FileId),
     Parse(FileId),
     TypeCheck(ModuleId),
     GlobalTypeCheck,
     Optimise(ModuleId),
     GlobalOptimise,
-    CodeGen(EntryPointId),
+    CodeGen(ModuleId),
 }
