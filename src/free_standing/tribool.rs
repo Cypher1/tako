@@ -9,7 +9,7 @@ pub enum Tribool {
 
 impl fmt::Display for Tribool {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        <Self as Debug>::fmt(self, f)
+        <Self as std::fmt::Debug>::fmt(self, f)
     }
 }
 

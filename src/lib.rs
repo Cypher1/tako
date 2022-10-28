@@ -1,25 +1,11 @@
 #![deny(clippy::all)]
 
-mod typed_index;
-
 #[macro_use]
 extern crate lazy_static;
-
 #[macro_use]
-pub mod map_macros;
-pub mod tribool;
-
-#[cfg(test)]
-#[macro_use]
-mod pretty_assertions;
-
-#[macro_use]
-pub mod data_structures;
-#[macro_use]
-pub mod cpp_ast;
+pub mod free_standing;
 
 pub mod cli_options;
-pub mod jobs;
 pub mod concepts;
 pub mod compiler_context;
 pub mod compiler_tasks;

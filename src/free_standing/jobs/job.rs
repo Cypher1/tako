@@ -1,4 +1,4 @@
-use crate::typed_index::TypedIndex;
+use crate::free_standing::typed_index::TypedIndex;
 
 #[derive(Debug, Clone, Copy)]
 pub enum FinishType {
