@@ -17,6 +17,7 @@ pub mod cpp_ast;
 pub mod cli_options;
 pub mod jobs;
 pub mod concepts;
+pub mod compiler_context;
 pub mod compiler_tasks;
 pub mod error;
 pub mod internal_error;
@@ -28,7 +29,7 @@ mod location;
 mod tokens;
 
 use ast::Visitor;
-use errors::TError;
+use error::TError;
 use std::fs::File;
 use std::io::prelude::*;
 

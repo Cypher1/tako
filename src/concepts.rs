@@ -2,6 +2,7 @@ use crate::error::TError;
 use crate::location::Location;
 use crate::typed_index::TypedIndex;
 use crate::tokens::Token;
+use soa_derive::{StructOfArray};
 
 // TODO: Replace strings where ideal...
 #[derive(StructOfArray, Eq, PartialEq, PartialOrd, Ord, Hash)]

@@ -4,8 +4,8 @@ use std::collections::VecDeque;
 use crate::ast::{
     path_to_string, Abs, Apply, HasInfo, Info, Let, Node, PathRef, Sym, Symbol,
 };
-use crate::database::DBStorage;
-use crate::errors::TError;
+use crate::compiler_context::CompilerContext;
+use crate::error::TError;
 use crate::location::Loc;
 use crate::primitives::{int32, string, Prim, Val};
 use crate::tokens::{lex_head, Token, TokenType};
