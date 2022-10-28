@@ -1,5 +1,6 @@
 use crate::location::Loc;
 use crate::typed_index::TypedIndex;
+use soa_derive::StructOfArray;
 
 // TODO: Replace strings where ideal...
 // TODO: Use macro for defining and registering each of these.

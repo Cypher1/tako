@@ -2,7 +2,7 @@ use log::debug;
 use std::collections::VecDeque;
 
 use crate::ast::{
-    path_to_string, Abs, Apply, HasInfo, Info, Let, Node, PathRef, Sym, Symbol,
+    Abs, Apply, HasInfo, Info, Let, Node, PathRef, Sym, Symbol,
 };
 use crate::compiler_context::CompilerContext;
 use crate::error::TError;
