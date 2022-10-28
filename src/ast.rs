@@ -4,15 +4,6 @@ use crate::typed_index::TypedIndex;
 // TODO: Replace strings where ideal...
 // TODO: Use macro for defining and registering each of these.
 
-type IndexIntoFile = usize;
-
-#[derive(StructOfArray, Eq, PartialEq, PartialOrd, Ord, Hash)]
-#[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
-pub struct Location {
-    location: IndexIntoFile,
-    file_id: FileId,
-}
-
 #[derive(StructOfArray, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
 pub struct Symbol {
