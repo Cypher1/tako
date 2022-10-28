@@ -1,18 +1,49 @@
 use std::fmt;
+use crate::tako_jobs::Filee;
+use crate::ast::Location;
 
-#[derive(PartialEq, Eq, Clone, Copy, Ord, PartialOrd, Hash)]
-pub struct Pos {
+
+#[derive(PartialEq, Eq, Clone, Ord, PartialOrd)]
+pub struct UserFacingLocation {
+    pub filename: Option<String>,
     pub line: u32,
     pub col: u32,
 }
 
-impl std::fmt::Debug for Pos {
+impl std::fmt::Display for UserFacingLocation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        <Self as std::fmt::Debug>::fmt(self, f)
+    }
+}
+
+impl std::fmt::Debug for UserFacingLocation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.filename {
+            Some(file) => write!(f, "{}:", file),
+            None => write!(f, ""),
+        }?;
         write!(f, "{}:{}", self.line, self.col)
     }
 }
 
-impl Pos {
+impl UserFacingLocation {
+    fn new(filename: &str, line: u32, col: u32) -> Self {
+        Self {
+            filename: Some(filename.to_string()),
+            line,
+            col,
+        }
+    }
+
+    fn from(file: &File, location: &Location) -> Self {
+        let mut loc = UserFacingLocation::new(file.path, 1, 1);
+        let mut contents = &file.contents;
+        for _ in 0..location.location {
+            loc.next(file.contents);
+        }
+        loc
+    }
+
     pub fn next(&mut self, chars: &mut std::iter::Peekable<std::str::Chars>) {
         // TODO: Consider just keeping the offsets and then recovering line
         // info later.
@@ -32,48 +63,5 @@ impl Pos {
             self.line += 1;
             self.col = 1;
         }
-    }
-}
-
-impl Default for Pos {
-    fn default() -> Self {
-        Pos { line: 1, col: 1 }
-    }
-}
-
-#[derive(PartialEq, Eq, Clone, Ord, PartialOrd, Hash, Default)]
-pub struct Loc {
-    pub filename: Option<String>,
-    pub pos: Pos,
-}
-
-impl Loc {
-    pub fn new(filename: &str, line: u32, col: u32) -> Loc {
-        Loc {
-            filename: Some(filename.to_string()),
-            pos: Pos { line, col },
-        }
-    }
-}
-
-impl std::fmt::Display for Loc {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        <Self as std::fmt::Debug>::fmt(self, f)
-    }
-}
-
-impl std::fmt::Debug for Loc {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.filename {
-            Some(file) => write!(f, "{}:", file),
-            None => write!(f, ""),
-        }?;
-        write!(f, "{:?}", self.pos)
-    }
-}
-
-impl Loc {
-    pub fn next(&mut self, chars: &mut std::iter::Peekable<std::str::Chars>) {
-        self.pos.next(chars);
     }
 }
