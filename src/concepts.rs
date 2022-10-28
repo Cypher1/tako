@@ -1,4 +1,4 @@
-use crate::errors::TError;
+use crate::error::TError;
 use crate::location::Location;
 use crate::typed_index::TypedIndex;
 use crate::tokens::Token;

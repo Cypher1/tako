@@ -18,7 +18,8 @@ pub mod cli_options;
 pub mod jobs;
 pub mod concepts;
 pub mod compiler_tasks;
-pub mod errors;
+pub mod error;
+pub mod internal_error;
 pub mod primitives;
 pub mod parser;
 
