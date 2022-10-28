@@ -1,13 +1,13 @@
 mod job;
 use job::{FinishType::{self, *}, Job, JobState, JobId};
 
-struct Jobs<JobType> {
+struct JobStore<JobType> {
     ready: Vec<JobId>,
     jobs: Vec<Job<JobType>>,
     terminating: bool,
 }
 
-impl<JobType> Jobs<JobType> {
+impl<JobType> JobStore<JobType> {
     pub fn num_ready(&self) -> usize {
         self.ready.len()
     }
@@ -114,13 +114,13 @@ mod test {
 
     #[test]
     fn jobs_doesnt_invent_jobs_from_nowhere() {
-        let mut jobs = Jobs::default();
+        let mut jobs = JobStore::default();
         assert!(jobs.get().is_none());
     }
 
     #[test]
     fn job_counts_start_at_zero() {
-        let mut jobs: Jobs<JobType> = Jobs::default();
+        let mut jobs: JobStore<JobType> = JobStore::default();
         assert_eq!(jobs.num_finished(), 0);
         assert_eq!(jobs.num_waiting(), 0);
         assert_eq!(jobs.num(), 0);
@@ -130,7 +130,7 @@ mod test {
 
     #[test]
     fn job_counts_update_with_new_jobs() {
-        let mut jobs = Jobs::default();
+        let mut jobs = JobStore::default();
         let job1 = Job::new((), vec![]);
         let job1 = jobs.add_job(job1);
         assert_eq!(jobs.num_finished(), 0);
@@ -142,7 +142,7 @@ mod test {
 
     #[test]
     fn jobs_maintain_their_job_type() {
-        let mut jobs = Jobs::default();
+        let mut jobs = JobStore::default();
         let job1 = jobs.add_job(Job::new("job1", vec![]));
         let job2 = jobs.add_job(Job::new("job2", vec![job1]));
         let todo = jobs.get();
@@ -161,7 +161,7 @@ mod test {
 
     #[test]
     fn jobs_track_their_dependents() {
-        let mut jobs = Jobs::default();
+        let mut jobs = JobStore::default();
         let job1 = jobs.add_job(Job::new("job1", vec![]));
         let job2 = jobs.add_job(Job::new("job2", vec![job1]));
         let todo = jobs.get();
@@ -173,7 +173,7 @@ mod test {
 
     #[test]
     fn num_jobs_counts_are_consistent() {
-        let mut jobs = Jobs::default();
+        let mut jobs = JobStore::default();
         let job1 = jobs.add_job(Job::new("job1", vec![]));
         jobs.add_job(Job::new("job2", vec![job1]));
         assert_eq!(jobs.num_finished(), 0);
@@ -203,7 +203,7 @@ mod test {
 
     #[test]
     fn wind_down_stops_handing_out_new_jobs() {
-        let mut jobs = Jobs::default();
+        let mut jobs = JobStore::default();
         jobs.add_job(Job::new("job1", vec![]));
         jobs.add_job(Job::new("job2", vec![]));
         jobs.wind_down();
