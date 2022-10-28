@@ -1,5 +1,4 @@
 use log::debug;
-use specs::Entity;
 use std::collections::VecDeque;
 
 use crate::ast::{
@@ -8,10 +7,21 @@ use crate::ast::{
 use crate::ast_node::{AstNode, AstTerm, DefinitionHead};
 use crate::database::DBStorage;
 use crate::errors::TError;
-use crate::externs::{Direction, Semantic};
 use crate::location::Loc;
 use crate::primitives::{int32, string, Prim, Val};
 use crate::tokens::{lex_head, Token, TokenType};
+
+#[derive(Debug, Clone)]
+enum Semantic {
+    Operator { binding: u32, associativity: Direction },
+    Func
+}
+
+#[derive(Debug, Copy, Clone)]
+enum Direction {
+    Left,
+    Right,
+}
 
 fn binding(storage: &mut DBStorage, tok: &Token) -> Semantic {
     storage.get_extern_operator(&tok.value)
@@ -28,21 +38,6 @@ fn binding_power(storage: &mut DBStorage, tok: &Token) -> i32 {
     match binding(storage, tok) {
         Semantic::Operator { binding, .. } => binding,
         Semantic::Func => 1000,
-    }
-}
-
-impl Token {
-    pub fn get_info(&self) -> Info {
-        self.pos.clone().get_info()
-    }
-}
-
-impl Loc {
-    pub fn get_info(self) -> Info {
-        Info {
-            loc: Some(self),
-            ..Info::default()
-        }
     }
 }
 

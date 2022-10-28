@@ -1,4 +1,3 @@
-use std::collections::VecDeque;
 use std::fmt;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
