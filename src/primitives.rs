@@ -1,4 +1,4 @@
-use crate::errors::TError;
+use crate::error::TError;
 use bitvec::prelude::*;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
