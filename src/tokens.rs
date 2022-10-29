@@ -12,6 +12,7 @@ pub enum TokenType {
     Sym,
     Unknown,
     Whitespace,
+    Eof,
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
@@ -24,7 +25,7 @@ pub struct Token {
 impl fmt::Debug for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // TODO: Look up the token to get the contents?
-        write!(f, "{:?}({} @ {})", self.tok_type, self.str_id, self.start)
+        write!(f, "{:?}({:?} @ {})", self.tok_type, self.str_id, self.start)
     }
 }
 
@@ -47,16 +48,37 @@ fn classify_char(ch: char) -> TokenType {
     }
 }
 
-type Characters<'a> = std::iter::Peekable<std::str::Chars<'a>>;
+type CharPred = for<'b> fn(&'b (usize, char)) -> bool;
+
+type Characters<'a> = std::iter::Peekable<
+    std::iter::SkipWhile<
+        std::iter::Enumerate<std::str::Chars<'a>>,
+        CharPred
+    >
+>;
+
+fn should_skip((index, chr): (usize, char)) -> bool {
+    matches!(chr, '\n'..='\n' | '\r'..='\r' | '\t'..='\t' | ' '..=' ')
+}
 
 impl File {
+    pub fn start<'a>(&self) -> Characters<'a> {
+        self.contents.chars()
+            .enumerate()
+            .skip_while(should_skip) // Continue past the character.
+            .peekable()
+    }
     // Consumes a single token from a Deque of characters.
     pub fn lex_head<'a>(
         &self,
-        mut characters: Characters<'a>,
+        mut characters: std::str::Chars<'a>,
     ) -> (Token, Characters<'a>) {
-        characters = characters.skip_while(|chr| matches!('\n' | '\r' | '\t' | ' ', chr)); // Continue past the character.
-        let mut start = characters.as_str();
+        let mut start = if let Some((index, _chr)) = characters.peek() {
+            index
+        } else {
+            return (Token::eof(), characters)
+        };
+
         // TODO: This should be simplified (make tight loops).
         use TokenType::*;
         let mut tok_type: TokenType = Unknown;
