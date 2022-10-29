@@ -40,7 +40,7 @@ impl<JobType> Job<JobType> {
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    // use super::*;
 
     #[test]
     fn todo_job_test() {
