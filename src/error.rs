@@ -54,21 +54,15 @@ impl From<std::num::ParseIntError> for TError {
 #[derive(Error, PartialEq, Eq, PartialOrd, Ord)]
 pub struct UserFacingError<'a> {
     error: TError,
-    file: &'a File,
-    module: &'a Module,
-    location: &'a Location,
-    user_facing_location: UserFacingLocation,
+    location: UserFacingLocation,
 }
 
 impl<'a> UserFacingError<'a> {
-    fn new(error: TError, file: &'a File, entry: &'a Module, location: &'a Location) -> Self {
-        let user_facing_location = UserFacingLocation::from(error.file, error.location);
+    fn new(error: TError, file: &'a File, location: &'a Location) -> Self {
+        let location = UserFacingLocation::from(error.file, error.location);
         Self {
             error,
-            file,
-            entry,
             location,
-            user_facing_location,
         }
     }
 }
@@ -82,6 +76,7 @@ impl<'a> std::fmt::Display for UserFacingError<'a> {
 impl<'a> std::fmt::Debug for UserFacingError<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use TError::*;
+        write!(f, "Error in {}", &self.location)?;
         match self.error {
             CppCompilerError {
                 error,
