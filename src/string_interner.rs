@@ -1,9 +1,20 @@
 use crate::keywords::KEYWORDS;
-use string_interner::{StringInterner, backend::BufferBackend};
-pub type Interner = StringInterner<BufferBackend>;
-// TODO: Consider other character widths
-// See: https://docs.rs/string-interner/latest/string_interner/
+use string_interner::{Symbol, StringInterner, backend::BufferBackend};
+use crate::free_standing::TypedIndex;
+pub type Interner = StringInterner<BufferBackend<StrId>>;
 
 pub fn get_new_interner() -> Interner {
     <StringInterner>::from_iter(KEYWORDS)
+}
+
+pub type StrId = TypedIndex<str>;
+
+impl Symbol for StrId {
+    fn try_from_usize(index: usize) -> Option<Self> {
+        Some(Self::new(index))
+    }
+
+    fn to_usize(self) -> usize {
+        self.index
+    }
 }

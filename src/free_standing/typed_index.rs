@@ -5,6 +5,15 @@ pub struct TypedIndex<T, Index=u32> {
     ty: PhantomData<T>,
 }
 
+impl<T, I> TypedIndex<T, I> {
+    pub fn new(index: I) -> Self {
+        Self {
+            index,
+            ty: PhantomData,
+        }
+    }
+}
+
 impl<T, I: PartialEq> PartialEq for TypedIndex<T, I> {
     fn eq(&self, other: &Self) -> bool {
         self.index == other.index
