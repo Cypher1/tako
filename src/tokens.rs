@@ -1,5 +1,6 @@
 use std::fmt;
 use crate::string_interner::StrId;
+use crate::concepts::File;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum TokenType {
@@ -17,12 +18,13 @@ pub enum TokenType {
 pub struct Token {
     pub start: u32,
     pub tok_type: TokenType,
-    pub id: StrId,
+    pub str_id: StrId,
 }
 
 impl fmt::Debug for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}({}, {})", self.tok_type, self.start, self.length)
+        // TODO: Look up the token to get the contents?
+        write!(f, "{:?}({} @ {})", self.tok_type, self.str_id, self.start)
     }
 }
 
@@ -47,83 +49,87 @@ fn classify_char(ch: char) -> TokenType {
 
 type Characters<'a> = std::iter::Peekable<std::str::Chars<'a>>;
 
-// Consumes a single token from a Deque of characters.
-pub fn lex_head<'a>(
-    mut contents: Characters<'a>,
-) -> (Token, Characters<'a>) {
-    contents = contents.skip_while(|chr| matches!('\n' | '\r' | '\t' | ' ', chr)); // Continue past the character.
-    let mut start = contents.as_str();
-    // TODO: This should be simplified (make tight loops).
-    use TokenType::*;
-    let mut tok_type: TokenType = Unknown;
-    while let Some(chr) = contents.peek() {
-        tok_type = match (&tok_type, classify_char(*chr)) {
-            (Unknown, Whitespace) => Unknown, // Ignore
-            (Unknown, new_tok_type) => new_tok_type, // Start token.
-            (Op, Op) => Op, // Continuation
-            (NumLit, NumLit) => NumLit, // Continuation
-            (NumLit, Sym) => NumLit, // Number with suffix.
-            (Sym, NumLit | Sym) => Sym, // Symbol.
-            (_, Whitespace) => break, // Token finished whitespace.
-            _ => break, // Token finished can't continue here.
-        };
-        contents.next(); // Continue past the character.
-    }
-    if tok_type == StringLit {
-        let quote = contents.peek().expect("String literals should starat with a quote");
-        contents.next();
-        start = contents.as_str(); // start inside the string.
-        while let Some(chr) = contents.peek() {
-            if *chr == quote { // reached the end of the quote.
-                break;
-            }
-            contents.next(); // Add the character.
-            if chr == &'\\' {
-                contents.next(); // Read the escaped character.
+impl File {
+    // Consumes a single token from a Deque of characters.
+    pub fn lex_head<'a>(
+        &self,
+        mut characters: Characters<'a>,
+    ) -> (Token, Characters<'a>) {
+        characters = characters.skip_while(|chr| matches!('\n' | '\r' | '\t' | ' ', chr)); // Continue past the character.
+        let mut start = characters.as_str();
+        // TODO: This should be simplified (make tight loops).
+        use TokenType::*;
+        let mut tok_type: TokenType = Unknown;
+        while let Some(chr) = characters.peek() {
+            tok_type = match (&tok_type, classify_char(*chr)) {
+                (Unknown, Whitespace) => Unknown, // Ignore
+                (Unknown, new_tok_type) => new_tok_type, // Start token.
+                (Op, Op) => Op, // Continuation
+                (NumLit, NumLit) => NumLit, // Continuation
+                (NumLit, Sym) => NumLit, // Number with suffix.
+                (Sym, NumLit | Sym) => Sym, // Symbol.
+                (_, Whitespace) => break, // Token finished whitespace.
+                _ => break, // Token finished can't continue here.
             };
+            characters.next(); // Continue past the character.
         }
-        // Drop the quote
-        contents.next();
-    }
-    // Token is finished, covers from `start` to `contents`.
-    let value = start[0..contents-start];
-    let comment = value == COMMENT;
-    let multi_comment = value == MULTI_COMMENT;
-    if !comment && !multi_comment {
-        return (
-            Token {
-                start,
-                length,
-                tok_type,
-            },
-            contents,
-        );
-    }
-    // Track depth of mutli line comments
-    let mut depth = 1;
-    let mut last: Option<char> = None;
-    loop {
-        contents.next();
-        // Add the character.
-        match (last, &mut contents.peek()) {
-            (Some('/'), Some('*')) => {
-                depth += 1;
-            }
-            (Some('*'), Some('/')) => {
-                depth -= 1;
-                if multi_comment && depth == 0 {
-                    contents.next();
-                    return lex_head(contents, pos);
+        if tok_type == StringLit {
+            let quote = characters.peek().expect("String literals should starat with a quote");
+            characters.next();
+            start = characters.as_str(); // start inside the string.
+            while let Some(chr) = characters.peek() {
+                if *chr == quote { // reached the end of the quote.
+                    break;
                 }
+                characters.next(); // Add the character.
+                if chr == &'\\' {
+                    characters.next(); // Read the escaped character.
+                };
             }
-            (_, Some(chr)) => {
-                if comment && (**chr == '\n' || **chr == '\r') {
-                    contents.next();
-                    return lex_head(contents, pos);
+            // Drop the quote
+            characters.next();
+        }
+        // Token is finished, covers from `start` to `characters`.
+        let comment = start.starts_with(COMMENT);
+        let multi_comment = start.starts_with(MULTI_COMMENT);
+        if !comment && !multi_comment {
+            let span = start[0..characters-start];
+            let str_id = self.string_interner.get_or_intern(span);
+            return (
+                Token {
+                    start,
+                    tok_type,
+                    str_id,
+                },
+                characters,
+            );
+        }
+        // Track depth of mutli line comments
+        let mut depth = 1;
+        let mut last: Option<char> = None;
+        loop {
+            characters.next();
+            // Add the character.
+            match (last, &mut characters.peek()) {
+                (Some('/'), Some('*')) => {
+                    depth += 1;
                 }
-                last = Some(**chr);
+                (Some('*'), Some('/')) => {
+                    depth -= 1;
+                    if multi_comment && depth == 0 {
+                        characters.next();
+                        return self.lex_head(characters);
+                    }
+                }
+                (_, Some(chr)) => {
+                    if comment && (**chr == '\n' || **chr == '\r') {
+                        characters.next();
+                        return self.lex_head(characters);
+                    }
+                    last = Some(**chr);
+                }
+                (_, None) => return self.lex_head(characters),
             }
-            (_, None) => return lex_head(contents, pos),
         }
     }
 }
