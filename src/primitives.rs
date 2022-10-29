@@ -99,7 +99,7 @@ impl Val {
 
     #[must_use]
     pub fn is_sat(self: &Val) -> Tribool {
-        use Tribool::{True, Unknown};
+        use Tribool::{True /*, Unknown*/ };
         match self {
             PrimVal(_) => True,
             Pointer(_size, ty) => ty.is_sat(),
