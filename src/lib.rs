@@ -13,6 +13,8 @@ pub mod primitives;
 pub mod ast;
 pub mod location;
 pub mod tokens;
+pub mod string_interner;
+pub mod keywords;
 
 use error::TError;
 use std::fs::File;
