@@ -1,25 +1,26 @@
 use crate::free_standing::typed_index::TypedIndex;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum FinishType {
     Success, // Include a handle to the result?
     Cancelled,
     Failed,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum JobState {
     Waiting,
+    Ready,
     Running, // TODO: Include a handle to the process?
     Finished(FinishType),
 }
 
 #[derive(Debug)]
 pub struct Job<JobType> {
-    ty: JobType,
+    pub ty: JobType,
     pub state: JobState,
-    dependents: Vec<JobId<JobType>>,
-    dependencies: Vec<JobId<JobType>>,
+    pub dependents: Vec<JobId<JobType>>,
+    pub dependencies: Vec<JobId<JobType>>,
 }
 pub type JobId<T> = TypedIndex<Job<T>>;
 

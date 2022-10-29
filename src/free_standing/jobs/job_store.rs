@@ -6,7 +6,7 @@ pub struct JobStore<JobType> {
     terminating: bool,
 }
 
-impl<JobType> JobStore<JobType> {
+impl<JobType: std::fmt::Debug> JobStore<JobType> {
     pub fn num_ready(&self) -> usize {
         self.ready.len()
     }
@@ -49,24 +49,29 @@ impl<JobType> JobStore<JobType> {
             }
             index += 1;
         }
+        let job_id = if let Some(job_id) = ready.pop() { // pop swap to remove in O(1).
+            job_id
+        } else {
+            return None;
+        };
         let index = if let Some((_count, index)) = best {
             index
         } else {
             return None;
         };
-        let job_id = ready.pop(); // pop swap to remove in O(1).
         if index < ready.len() {
             std::mem::swap(&mut job_id, &mut ready[index]);
         }
-        let job = &mut self.jobs[job_id];
+        let job = job_id.get(&mut self.jobs);
         job.state = JobState::Running;
         Some((job_id, job)) // Should not be mutable
     }
 
     pub fn add_job(&mut self, job: Job<JobType>) -> JobId<JobType> {
-        let id = JobId::new(self.jobs.len());
+        use std::convert::TryInto;
+        let id = JobId::new(self.jobs.len().try_into().unwrap_or_else(|e|panic!("Too many job ids: {}", e)));
         for dep in job.dependencies {
-            self.jobs[dep.id].dependents.push(id);
+            dep.get_mut(&mut self.jobs).dependents.push(id);
         }
         self.jobs.push(job);
         self.try_make_ready(id);
@@ -74,21 +79,21 @@ impl<JobType> JobStore<JobType> {
     }
 
     pub fn restart(&mut self, job_id: JobId<JobType>) {
-        let job = &mut self.jobs[job_id.id];
+        let job = job_id.get_mut(&mut self.jobs);
         if job.state == JobState::Running {
-            eprintln!("Job {} {} restarted while still running, may clobber", job_id, &job);
+            eprintln!("Job {:?} {:?} restarted while still running, may clobber", job_id, &job);
         }
         job.state = JobState::Waiting;
         self.try_make_ready(job_id);
     }
 
     fn try_make_ready(&mut self, job_id: JobId<JobType>) {
-        let job = &mut self.jobs[job_id.id];
+        let job = job_id.get_mut(&mut self.jobs);
         if job.state != JobState::Waiting {
             return; // Already running or finished, wait to retry.
         }
         for dep in job.dependencies {
-            if let JobState::Finished(_) = self.jobs[dep.id].state {
+            if let JobState::Finished(_) = dep.get(&self.jobs).state {
                 continue;
             }
             return; // Not ready, leave as is.
@@ -98,7 +103,7 @@ impl<JobType> JobStore<JobType> {
     }
 
     pub fn finish_job(&mut self, job_id: JobId<JobType>, result: FinishType) {
-        let job = &mut self.jobs[job_id.id];
+        let job = job_id.get(&mut self.jobs);
         job.state = JobState::Finished(result);
         for dep_id in job.dependents {
             self.try_make_ready(dep_id);
