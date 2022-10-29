@@ -1,13 +1,14 @@
 use std::marker::PhantomData;
 use std::ops::Index;
+use soa_derive::StructOfArray;
 
-pub struct TypedIndex<T, Idx=u32, Container=()> {
+pub struct TypedIndex<T, Idx=u32, Container: Index<usize> =Vec<T>> {
     index: Idx,
     ty: PhantomData<T>,
     container: PhantomData<Container>,
 }
 
-impl<T, Idx, Container> TypedIndex<T, Idx, Container> {
+impl<T, Idx, Container: Index<usize>> TypedIndex<T, Idx, Container> {
     pub fn new(index: Idx) -> Self {
         Self {
             index,
@@ -29,6 +30,7 @@ impl<T, Idx: Clone> Clone for TypedIndex<T, Idx> {
         Self {
             index: self.index.clone(),
             ty: PhantomData,
+            container: PhantomData,
         }
     }
 }
@@ -36,25 +38,15 @@ impl<T, Idx: Copy> Copy for TypedIndex<T, Idx> {}
 
 impl<T, Idx: std::fmt::Debug> std::fmt::Debug for TypedIndex<T, Idx> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}_{}", std::any::type_name::<T>(), self.index)
+        write!(f, "{}_{:?}", std::any::type_name::<T>(), self.index)
     }
 }
 
-use soa_derive::StructOfArray;
-impl<T, Idx> TypedIndex<T, Idx> {
-    pub fn get(&self, container: &Vec<T>) -> &T {
-        &container.get(self.index)
+impl<T, Idx: std::fmt::Debug + std::convert::TryInto<usize>, Container: Index<usize>> TypedIndex<T, Idx, Container> {
+    pub fn get(&self, container: &Container) -> &Container::Output where Container: Index<usize> {
+        &container[self.index.try_into().unwrap_or_else(|_|panic!("Index too large for accessing into container as usize"))]
     }
-    pub fn get_mut(&self, container: &mut Vec<T>) -> &mut T {
-        &mut container.get(self.index)
-    }
-    pub fn get_inner_mut(&self, container: Vec<&mut T>) -> &mut T {
-        container.get(self.index)
-    }
-    pub fn get_soa<C: StructOfArray>(&self, container: &C) -> &T {
-        &container.get(self.index)
-    }
-    pub fn get_soa_mut<C: StructOfArray>(&self, container: &mut C) -> &mut T {
-        &mut container.get_mut(self.index)
+    pub fn get_mut(&self, container: &mut Container) -> &mut Container::Output where Container: Index<usize> {
+        &mut container[self.index.try_into().unwrap_or_else(|_|panic!("Index too large for accessing into container as usize"))]
     }
 }
