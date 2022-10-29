@@ -10,9 +10,9 @@ use soa_derive::StructOfArray;
 #[derive(StructOfArray)]
 #[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
 pub struct File {
-    path: String, // TODO: Use something 'right'
-    root: ModuleId,
-    contents: String,
+    pub path: String, // TODO: Use something 'right'
+    pub root: ModuleId,
+    pub contents: String,
     string_interner: StrInterner,
     lexed: Option<Vec<Token>>,
     ast: Ast,
@@ -22,19 +22,19 @@ pub type FileId = TypedIndex<File>;
 #[derive(StructOfArray)]
 #[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
 pub struct Module {
-    file: FileId,
-    parent: Option<ModuleId>,
-    children: Vec<ModuleId>,
-    root: NodeId,
+    pub file: FileId,
+    pub parent: Option<ModuleId>,
+    pub children: Vec<ModuleId>,
+    pub root: NodeId,
 }
 pub type ModuleId = TypedIndex<Module>;
 
 #[derive(StructOfArray, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
 pub struct Error {
-    file: FileId,
-    module: ModuleId,
-    location: Location,
-    error: TError,
+    pub file: FileId,
+    pub module: ModuleId,
+    pub location: Location,
+    pub error: TError,
 }
 pub type ErrorId = TypedIndex<Error>;

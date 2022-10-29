@@ -1,6 +1,5 @@
 use std::marker::PhantomData;
 use std::ops::Index;
-use soa_derive::StructOfArray;
 
 pub struct TypedIndex<T, Idx=u32, Container: Index<usize> =Vec<T>> {
     index: Idx,
