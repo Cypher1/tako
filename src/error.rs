@@ -1,4 +1,5 @@
-use crate::location::Location;
+use crate::location::{Location, UserFacingLocation};
+use crate::concepts::*;
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -9,11 +10,11 @@ pub enum TError {
     },
     ParseError {
         message: String,
-        location: Location
+        location: Option<Location>,
     },
     InternalError {
         message: String,
-        location: Location
+        location: Option<Location>
     },
 }
 
@@ -25,35 +26,45 @@ impl<'a> std::fmt::Display for TError {
 
 impl From<std::fmt::Error> for TError {
     fn from(error: std::fmt::Error) -> Self {
-        TError::InternalError(error.to_string())
+        TError::InternalError{
+            message: error.to_string(),
+            location: None,
+        }
     }
 }
 
 impl From<std::io::Error> for TError {
     fn from(error: std::io::Error) -> Self {
-        TError::InternalError(error.to_string())
+        TError::InternalError {
+            message: error.to_string(),
+            location: None,
+        }
     }
 }
 
 impl From<std::num::ParseIntError> for TError {
     fn from(error: std::num::ParseIntError) -> Self {
-        TError::ParseError(error.to_string())
+        TError::ParseError {
+            message: error.to_string(),
+            location: None,
+        }
     }
 }
 
 #[derive(Error, PartialEq, Eq, PartialOrd, Ord)]
 pub struct UserFacingError<'a> {
-    error: Terror,
+    error: TError,
     file: &'a File,
-    entry: &'a EntryPoint,
+    module: &'a Module,
     location: &'a Location,
     user_facing_location: UserFacingLocation,
 }
 
 impl<'a> UserFacingError<'a> {
-    fn new(file: &'a File, entry: &'a EntryPoint, location: &'a Location) -> Self {
-        let user_facing_location = UserFacingLocation::from(self.file, self.location);
+    fn new(error: TError, file: &'a File, entry: &'a Module, location: &'a Location) -> Self {
+        let user_facing_location = UserFacingLocation::from(error.file, error.location);
         Self {
+            error,
             file,
             entry,
             location,
@@ -64,12 +75,13 @@ impl<'a> UserFacingError<'a> {
 
 impl<'a> std::fmt::Display for UserFacingError<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        <Self as std::fmt::Debug>::write(self, f)
+        <Self as std::fmt::Debug>::fmt(self, f)
     }
 }
 
 impl<'a> std::fmt::Debug for UserFacingError<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use TError::*;
         match self.error {
             CppCompilerError {
                 error,
