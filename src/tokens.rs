@@ -13,15 +13,15 @@ pub enum TokenType {
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
-pub struct Token<'a> {
+pub struct Token {
+    pub start: u32,
+    pub length: u16,
     pub tok_type: TokenType,
-    // this stores both the location and length, in the file and gives a way to get the contents.
-    pub value: &'a str, // TODO: Avoid string comparisons.
 }
 
-impl<'a> fmt::Debug for Token<'a> {
+impl fmt::Debug for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}({:?})", self.tok_type, self.value)
+        write!(f, "{:?}({}, {})", self.tok_type, self.start, self.length)
     }
 }
 
@@ -91,9 +91,9 @@ pub fn lex_head<'a>(
     if !comment && !multi_comment {
         return (
             Token {
-                value,
+                start,
+                length,
                 tok_type,
-                pos: start,
             },
             contents,
         );
