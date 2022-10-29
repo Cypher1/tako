@@ -50,7 +50,7 @@ pub enum Val {
     PrimVal(Prim),
     // Complex types
     Pointer(Offset, InnerVal), // Defaults to 8 bytes (64 bit)
-    Lambda(Box<Node>),
+    // Lambda(Box<Node>), // TODO: Use a rust Fn ptr?
     Struct(Vec<(String, Val)>), // Should really just store values, but we can't do that yet.
     Union(TypeSet),
     Product(TypeSet),
@@ -77,7 +77,7 @@ impl From<Prim> for Val {
 }
 
 use Val::{
-    App, BitStr, Function, Lambda, Padded, Pointer, PrimVal, Product, Struct, Union, Variable,
+    App, BitStr, Function, Padded, Pointer, PrimVal, Product, Struct, Union, Variable,
     WithRequirement,
 };
 
@@ -103,7 +103,7 @@ impl Val {
         match self {
             PrimVal(_) => True,
             Pointer(_size, ty) => ty.is_sat(),
-            Lambda(_) => Unknown,
+            // Lambda(_) => Unknown,
             Struct(tys) => all_true(tys.iter().map(|(_name, ty)| ty.is_sat())),
             Product(tys) => all_true(tys.iter().map(Val::is_sat)),
             Union(tys) => any_true(tys.iter().map(Val::is_sat)),
@@ -178,8 +178,8 @@ impl Val {
             | App {
                 inner: _,
                 arguments: _,
-            }
-            | Lambda(_) => never_type(), // TODO
+            } => never_type(), // TODO
+            // Lambda(_) => never_type(), // TODO
             Struct(tys) => {
                 for (param, ty) in tys.iter() {
                     if param == name {
@@ -229,7 +229,7 @@ impl std::fmt::Debug for Val {
         match self {
             PrimVal(prim) => write!(f, "{:?}", prim),
             BitStr(ptr_size) => write!(f, "Pointer<{}b>Code", ptr_size),
-            Lambda(val) => write!(f, "{}", val),
+            // Lambda(val) => write!(f, "{}", val),
             Struct(vals) => {
                 let mut out = f.debug_struct("");
                 for val in vals.iter() {
