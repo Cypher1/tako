@@ -19,7 +19,7 @@ pub enum TError {
 
 impl<'a> std::fmt::Display for TError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        <Self as std::fmt::Debug>::write(self, f)
+        <Self as std::fmt::Debug>::fmt(self, f)
     }
 }
 
