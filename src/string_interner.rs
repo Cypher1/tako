@@ -1,6 +1,6 @@
 use crate::keywords::KEYWORDS;
 use string_interner::{Symbol, StringInterner, backend::BufferBackend};
-use crate::free_standing::TypedIndex;
+use crate::free_standing::typed_index::TypedIndex;
 pub type Interner = StringInterner<BufferBackend<StrId>>;
 
 pub fn get_new_interner() -> Interner {

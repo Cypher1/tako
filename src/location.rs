@@ -1,5 +1,5 @@
 use std::fmt;
-use crate::concepts::FileId;
+use crate::concepts::File;
 use soa_derive::StructOfArray;
 
 type IndexIntoFile = u32;
@@ -13,7 +13,6 @@ type IndexIntoFile = u32;
 pub struct Location {
     location: IndexIntoFile,
     length: IndexIntoFile,
-    file_id: FileId,
 }
 
 #[derive(PartialEq, Eq, Clone, Ord, PartialOrd)]
