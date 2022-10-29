@@ -18,6 +18,22 @@ impl<T, Idx, Container: Index<usize>> TypedIndex<T, Idx, Container> {
     }
 }
 
+impl<T, Idx: std::hash::Hash> std::hash::Hash for TypedIndex<T, Idx> {
+    fn hash<H: std::hash::Hasher>(&self, h: &mut H) {
+        self.index.hash(h)
+    }
+}
+impl<T, Idx: PartialOrd> PartialOrd for TypedIndex<T, Idx> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.index.partial_cmp(&other.index)
+    }
+}
+impl<T, Idx: Ord> Ord for TypedIndex<T, Idx> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.index.cmp(&other.index)
+    }
+}
+
 impl<T, Idx: PartialEq> PartialEq for TypedIndex<T, Idx> {
     fn eq(&self, other: &Self) -> bool {
         self.index == other.index

@@ -2,7 +2,7 @@ use crate::location::{Location, UserFacingLocation};
 use crate::concepts::*;
 use thiserror::Error;
 
-#[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TError {
     CppCompilerError {
         error: String,
@@ -54,12 +54,18 @@ impl From<std::num::ParseIntError> for TError {
 #[derive(Error, PartialEq, Eq, PartialOrd, Ord)]
 pub struct UserFacingError {
     error: TError,
-    location: UserFacingLocation,
+    location: Option<UserFacingLocation>,
 }
 
 impl UserFacingError {
-    fn new<'a>(error: TError, file: &'a File, location: &'a Location) -> Self {
-        let location = UserFacingLocation::from(error.file, error.location);
+    fn new<'a>(error: TError, file: &'a File) -> Self {
+        use TError::*;
+        let location = match error {
+            CppCompilerError {..} => None,
+            ParseError { location, ..} => location,
+            InternalError { location, ..} => location,
+        };
+        let location = location.map(|location| UserFacingLocation::from(file, location));
         Self {
             error,
             location,
@@ -76,20 +82,23 @@ impl std::fmt::Display for UserFacingError {
 impl std::fmt::Debug for UserFacingError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use TError::*;
-        write!(f, "Error in {}", &self.location)?;
+        write!(f, "Error")?;
+        if let Some(location) = &self.location {
+            write!(f, " in {}", &location)?;
+        }
         match self.error {
             CppCompilerError {
                 error,
                 return_code
             } => write!(f, "call to C++ compiler failed with error code: {return_code}\n{error}"),
             ParseError {
-                msg,
-                loc,
-            } => write!(f, "parse failed, {msg} at {loc}"),
+                message,
+                location: _,
+            } => write!(f, "parse failed, {message}"),
             InternalError {
-                msg,
-                loc,
-            } => write!(f, "internal error: {msg} at {loc}"),
+                message,
+                location: _,
+            } => write!(f, "internal error: {message}"),
         }
     }
 }
