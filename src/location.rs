@@ -38,13 +38,14 @@ impl std::fmt::Debug for UserFacingLocation {
 impl UserFacingLocation {
     fn new(filename: &str, line: u32, col: u32) -> Self {
         Self {
-            filename: Some(filename.to_string()),
+            filename: filename.to_string(),
             line,
             col,
         }
     }
 
     pub fn from(file: &File, location: &Location) -> Self {
+        // TODO: Consider walking the module tree to get a fully qualified module name.
         let mut loc = UserFacingLocation::new(file.path, 1, 1);
         let mut contents = &file.contents;
         for _ in 0..location.location {
