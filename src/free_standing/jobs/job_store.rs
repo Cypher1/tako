@@ -1,4 +1,4 @@
-use super::job::{FinishType, Job, JobState::*, JobId};
+use super::job::{FinishType, Job, JobState, JobId};
 
 pub struct JobStore<JobType> {
     ready: Vec<JobId<JobType>>,
@@ -14,7 +14,7 @@ impl<JobType> JobStore<JobType> {
     pub fn num_finished(&self) -> usize {
         let mut num = 0;
         for job in self.jobs.iter().ennumerate() {
-            if let Finished(_) = job.state {
+            if let JobState::Finished(_) = job.state {
                 num += 1;
             }
         }
@@ -56,7 +56,7 @@ impl<JobType> JobStore<JobType> {
             std::mem::swap(&mut job_id, &mut ready[index]);
         }
         let job = &mut self.jobs[job_id];
-        job.state = Running;
+        job.state = JobState::Running;
         Some((job_id, job)) // Should not be mutable
     }
 
@@ -72,34 +72,33 @@ impl<JobType> JobStore<JobType> {
 
     pub fn restart(&mut self, job_id: JobId<JobType>) {
         let job = &mut self.jobs[job_id.id];
-        if job.state == Running {
+        if job.state == JobState::Running {
             eprintln!("Job {} {} restarted while still running, may clobber", job_id, &job);
         }
-        job.state = Waiting;
+        job.state = JobState::Waiting;
         self.try_make_ready(job_id);
     }
 
     fn try_make_ready(&mut self, job_id: JobId<JobType>) {
         let job = &mut self.jobs[job_id.id];
-        if job.state != Waiting {
+        if job.state != JobState::Waiting {
             return; // Already running or finished, wait to retry.
         }
-        if !job.dependencies.is_empty() {
+        for dep in job.dependencies {
+            if let JobState::Finished(_) = self.jobs[dep.id].state {
+                continue;
+            }
             return; // Not ready, leave as is.
         }
-        job.state = Ready;
+        job.state = JobState::Ready;
         self.ready.push(job_id);
     }
 
     pub fn finish_job(&mut self, job_id: JobId<JobType>, result: FinishType) {
         let job = &mut self.jobs[job_id.id];
-        job.state = Finished(result);
+        job.state = JobState::Finished(result);
         for dep_id in job.dependents {
-            let dep = self.jobs[dep_id.id];
-            self.jobs[dep].dependents.push(id);
-            if dep.dependencies.is_empty() {
-                self.ready.push(dep_id);
-            }
+            self.try_make_ready(dep_id);
         }
     }
 }
