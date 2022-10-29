@@ -5,8 +5,6 @@ pub enum Command {
     Build,
     Interpret,
     Repl,
-    StackInterpret,
-    StackRepl,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -51,8 +49,6 @@ impl Options {
                 match f.as_str() {
                     "-i" | "--interactive" => opts.cmd = Command::Repl,
                     "-r" | "--run" => opts.cmd = Command::Interpret,
-                    "-si" | "--stack_interactive" => opts.cmd = Command::StackRepl,
-                    "-sr" | "--stack_run" => opts.cmd = Command::StackInterpret,
                     "--version" => {
                         println!("{}{}", TITLE, VERSION);
                         return opts;

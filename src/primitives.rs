@@ -348,7 +348,6 @@ pub fn card(ty: &Val) -> Result<Offset, TError> {
         Padded(_size, t) => card(t),
         x => Err(TError::UnknownCardOfAbstractType(
             format!("{:#?}", x),
-            Info::default(),
         )),
     }
 }
@@ -373,11 +372,9 @@ pub fn size(ty: &Val) -> Result<Offset, TError> {
         Padded(bits, t) => Ok(bits + size(t)?),
         Variable(name) => Err(TError::UnknownSizeOfVariableType(
             name.clone(),
-            Info::default(),
         )),
         x => Err(TError::UnknownSizeOfAbstractType(
             format!("{:#?}", x),
-            Info::default(),
         )),
     }
 }
