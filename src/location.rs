@@ -1,5 +1,5 @@
 use std::fmt;
-use crate::concepts::File;
+use crate::concepts::FileId;
 use soa_derive::StructOfArray;
 
 type IndexIntoFile = u32;

@@ -8,11 +8,11 @@ pub mod concepts;
 pub mod compiler_context;
 pub mod compiler_tasks;
 pub mod error;
-// TODO: pub mod primitives;
-// TODO: pub mod parser;
-// TODO: pub mod ast;
+pub mod primitives;
+// pub mod parser;
+pub mod ast;
 pub mod location;
-// TODO: pub mod tokens;
+pub mod tokens;
 
 use ast::Visitor;
 use error::TError;

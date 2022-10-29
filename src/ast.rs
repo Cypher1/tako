@@ -19,12 +19,12 @@ pub struct Symbol {
 pub struct Call {
     node: NodeId,
     pub inner: NodeId,
-    pub args: Vec<Entity>, // TODO: Short vec
+    pub args: Vec<NodeId>, // TODO: Short vec
 }
 
 impl Call {
     #[cfg(test)]
-    pub fn new(inner: Entity, args: &[Entity]) -> Self {
+    pub fn new(inner: NodeId, args: &[NodeId]) -> Self {
         Self {
             inner,
             args: args.to_vec(),
@@ -37,7 +37,7 @@ impl Call {
 pub struct Definition {
     node: NodeId,
     pub name: TypedIndex<Symbol>,
-    pub implementation: Entity,
+    pub implementation: NodeId,
 }
 
 #[derive(StructOfArray, Debug, Eq, PartialEq)]
@@ -62,7 +62,7 @@ pub struct Node {
     pub name: TypedIndex<Symbol>,
     pub id: NodeData,
 }
-pub type NodeId = NodeId<Node>;
+pub type NodeId = TypedIndex<Node>;
 
 #[cfg_attr(test, derive(Debug))]
 pub struct Ast { // Abstract syntax tree... forest

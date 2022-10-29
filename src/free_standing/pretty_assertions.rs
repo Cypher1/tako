@@ -1,5 +1,3 @@
-use crate::errors::TError;
-
 // Wrapper around string slice that makes debug output `{:?}` to print string same way as `{}`.
 // Used in different `assert*!` macros in combination with `pretty_assertions` crate to make
 // test failures to show nice diffs.
@@ -28,25 +26,19 @@ macro_rules! assert_str_eq {
     };
 }
 
-pub fn assert_no_err<T: std::fmt::Debug, E: std::fmt::Display>(
+pub fn assert_no_err<T: std::fmt::Debug, E: std::fmt::Debug>(
     res: Result<T, E>,
-) -> Result<T, TError>
-where
-    TError: From<E>,
-{
-    Ok(res.map_err(|err| {
+) -> Result<T, E> {
+    res.map_err(|err| {
         eprintln!("{0}", &err);
         err
-    })?)
+    })
 }
 
-pub fn assert_eq_err<T: PartialEq + std::fmt::Debug, E: std::fmt::Display>(
+pub fn assert_eq_err<T: PartialEq + std::fmt::Debug, E: std::fmt::Debug>(
     res: Result<T, E>,
     rhs: T,
-) -> Result<(), TError>
-where
-    TError: From<E>,
-{
+) -> Result<(), E> {
     assert_eq!(assert_no_err(res)?, rhs);
     Ok(())
 }
