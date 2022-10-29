@@ -17,7 +17,7 @@ pub enum JobState {
 #[derive(Debug)]
 pub struct Job<JobType> {
     ty: JobType,
-    state: JobState,
+    pub state: JobState,
     dependents: Vec<JobId<JobType>>,
     dependencies: Vec<JobId<JobType>>,
 }

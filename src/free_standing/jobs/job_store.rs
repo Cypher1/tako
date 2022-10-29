@@ -13,7 +13,7 @@ impl<JobType> JobStore<JobType> {
 
     pub fn num_finished(&self) -> usize {
         let mut num = 0;
-        for job in self.jobs.iter().ennumerate() {
+        for job in self.jobs.iter() {
             if let JobState::Finished(_) = job.state {
                 num += 1;
             }
@@ -40,11 +40,14 @@ impl<JobType> JobStore<JobType> {
         let mut best = None;
         let ready = &mut self.ready;
         // TODO: consider a sorted datastructure.
-        for (index, job) in ready.iter().ennumerate() {
+        let mut index = 0;
+        for job_id in ready.iter() {
+            let job = job_id.get(&self.jobs);
             let count = job.dependents.len();
             if best.map(|(max, _index)|max < count).unwrap_or(true) {
                 best = Some((count, index));
             }
+            index += 1;
         }
         let index = if let Some((_count, index)) = best {
             index
