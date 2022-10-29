@@ -346,16 +346,14 @@ pub fn card(ty: &Val) -> Result<Offset, TError> {
         }
         Pointer(_ptr_size, t) => card(t),
         Padded(_size, t) => card(t),
-        x => Err(TError::UnknownCardOfAbstractType(
-            format!("{:#?}", x),
-        )),
+        x => todo!("cardinality of {:#?} is unknown", x),
     }
 }
 
 // Calculates the memory needed for a new instance in bits.
 pub fn size(ty: &Val) -> Result<Offset, TError> {
     match ty {
-        PrimVal(Tag(bits)) => Ok(bits.len()),
+        PrimVal(Tag(bits)) => Ok(bits.len() as u32), // TODO: check...
         BitStr(ptr_size) => Ok(*ptr_size),
         Union(s) | Product(s) => {
             let mut res = 0;
@@ -370,12 +368,8 @@ pub fn size(ty: &Val) -> Result<Offset, TError> {
         }
         Pointer(ptr_size, _t) => Ok(*ptr_size),
         Padded(bits, t) => Ok(bits + size(t)?),
-        Variable(name) => Err(TError::UnknownSizeOfVariableType(
-            name.clone(),
-        )),
-        x => Err(TError::UnknownSizeOfAbstractType(
-            format!("{:#?}", x),
-        )),
+        Variable(name) => todo!("unknown size of variable {}", &name),
+        x => todo!("unknown size of abstract type {:#?}", &x),
     }
 }
 
@@ -394,7 +388,7 @@ fn num_bits(n: Offset) -> Offset {
 
 #[must_use]
 pub fn bits(mut n: Offset, len: Offset) -> BitVec {
-    let mut v: BitVec = bitvec![0; len];
+    let mut v: BitVec = bitvec![0; len as usize];
     for mut b in v.iter_mut().rev() {
         if n == 0 {
             break;
@@ -434,7 +428,7 @@ pub fn sum(values: Vec<Val>) -> Result<Val, TError> {
     let mut layout = set![];
     let tag_bits = num_bits(values.len() as Offset);
     for (count, val) in values.into_iter().enumerate() {
-        let mut tagged = tag(bits(count, tag_bits));
+        let mut tagged = tag(bits(count as u32, tag_bits));
         if val != unit_type() {
             tagged = record(vec![tagged, val])?;
         }
