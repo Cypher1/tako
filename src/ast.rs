@@ -1,3 +1,4 @@
+use crate::concepts::FileId;
 use crate::location::Location;
 use crate::free_standing::typed_index::TypedIndex;
 use soa_derive::StructOfArray;

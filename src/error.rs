@@ -18,7 +18,7 @@ pub enum TError {
     },
 }
 
-impl<'a> std::fmt::Display for TError {
+impl std::fmt::Display for TError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         <Self as std::fmt::Debug>::fmt(self, f)
     }
@@ -52,13 +52,13 @@ impl From<std::num::ParseIntError> for TError {
 }
 
 #[derive(Error, PartialEq, Eq, PartialOrd, Ord)]
-pub struct UserFacingError<'a> {
+pub struct UserFacingError {
     error: TError,
     location: UserFacingLocation,
 }
 
-impl<'a> UserFacingError<'a> {
-    fn new(error: TError, file: &'a File, location: &'a Location) -> Self {
+impl UserFacingError {
+    fn new<'a>(error: TError, file: &'a File, location: &'a Location) -> Self {
         let location = UserFacingLocation::from(error.file, error.location);
         Self {
             error,
@@ -67,13 +67,13 @@ impl<'a> UserFacingError<'a> {
     }
 }
 
-impl<'a> std::fmt::Display for UserFacingError<'a> {
+impl std::fmt::Display for UserFacingError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         <Self as std::fmt::Debug>::fmt(self, f)
     }
 }
 
-impl<'a> std::fmt::Debug for UserFacingError<'a> {
+impl std::fmt::Debug for UserFacingError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use TError::*;
         write!(f, "Error in {}", &self.location)?;

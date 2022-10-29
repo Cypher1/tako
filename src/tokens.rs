@@ -1,4 +1,5 @@
 use std::fmt;
+use crate::string_interner::StrId;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum TokenType {
@@ -15,8 +16,8 @@ pub enum TokenType {
 #[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Token {
     pub start: u32,
-    pub length: u16,
     pub tok_type: TokenType,
+    pub id: StrId,
 }
 
 impl fmt::Debug for Token {
