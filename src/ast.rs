@@ -61,6 +61,7 @@ pub enum NodeData {
 pub struct Node {
     pub name: TypedIndex<Symbol>,
     pub id: NodeData,
+    pub location: Location,
 }
 pub type NodeId = TypedIndex<Node>;
 
