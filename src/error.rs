@@ -17,6 +17,12 @@ pub enum TError {
     },
 }
 
+impl<'a> std::fmt::Display for TError<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        <Self as std::fmt::Debug>::write(self, f)
+    }
+}
+
 impl From<std::fmt::Error> for TError {
     fn from(error: std::fmt::Error) -> Self {
         TError::InternalError(error.to_string())

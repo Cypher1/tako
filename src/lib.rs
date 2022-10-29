@@ -14,7 +14,6 @@ pub mod ast;
 pub mod location;
 pub mod tokens;
 
-use ast::Visitor;
 use error::TError;
 use std::fs::File;
 use std::io::prelude::*;
