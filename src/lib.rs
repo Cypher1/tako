@@ -74,27 +74,14 @@ pub fn work_on_string<'a>(
         Command::Build => storage.build_with_gpp(&module_name),
         Command::Interpret | Command::Repl => {
             let root = storage.look_up_definitions(&module_name)?;
-            let mut interp = Interpreter::default();
-            if let Some(print_impl) = print_impl {
-                interp.impls.insert("print".to_string(), print_impl);
-            }
-            let res = interp.visit_root(storage, &root)?;
-            PrettyPrint::process(&res.into_node(), storage)
-                .or_else(|_| panic!("Pretty print failed"))
-        }
-        Command::StackInterpret | Command::StackRepl => {
-            let _root = storage.look_up_definitions(&module_name)?;
-            let root_entity = *storage
-                .path_to_entity
-                .get(&module_name)
-                .expect("Expected an entity for the program");
-            let mut interp = crate::passes::stack_interpreter::Interpreter::new(storage);
-            if let Some(print_impl) = print_impl {
-                interp.default_impls.insert("print".to_string(), print_impl);
-            }
-            let res = interp.eval(root_entity)?;
-            PrettyPrint::process(&res.into_node(), storage)
-                .or_else(|_| panic!("Pretty print failed"))
+            todo!();
+            // let mut interp = Interpreter::default();
+            // if let Some(print_impl) = print_impl {
+                // interp.impls.insert("print".to_string(), print_impl);
+            // }
+            // let res = interp.visit_root(storage, &root)?;
+            // PrettyPrint::process(&res.into_node(), storage)
+                // .or_else(|_| panic!("Pretty print failed"))
         }
     }
 }
