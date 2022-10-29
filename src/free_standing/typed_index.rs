@@ -27,7 +27,7 @@ impl<T, Idx: PartialEq> Eq for TypedIndex<T, Idx> {}
 impl<T, Idx: Clone> Clone for TypedIndex<T, Idx> {
     fn clone(&self) -> Self {
         Self {
-            index: *self.index,
+            index: self.index.clone(),
             ty: PhantomData,
         }
     }
