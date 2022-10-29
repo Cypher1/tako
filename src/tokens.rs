@@ -70,7 +70,7 @@ pub fn lex_head<'a>(
         contents.next(); // Continue past the character.
     }
     if tok_type == StringLit {
-        let quote = chr; // We hit a quote.
+        let quote = contents.peek().expect("String literals should starat with a quote");
         contents.next();
         start = contents.as_str(); // start inside the string.
         while let Some(chr) = contents.peek() {
