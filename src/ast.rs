@@ -1,6 +1,7 @@
 use crate::concepts::FileId;
 use crate::location::Location;
 use crate::free_standing::typed_index::TypedIndex;
+use crate::string_interner::StrId;
 use soa_derive::StructOfArray;
 
 // TODO: Replace strings where ideal...
@@ -11,9 +12,10 @@ use soa_derive::StructOfArray;
 #[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
 pub struct Symbol {
     node: NodeId,
-    name: TypedIndex<Identifier>, // index into the file
+    name: TypedIndex<StrId>, // index into the file
     file_id: FileId,
 }
+pub type SymbolId = TypedIndex<Symbol>;
 
 #[derive(StructOfArray, Debug, Eq, PartialEq)]
 #[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
@@ -22,6 +24,7 @@ pub struct Call {
     pub inner: NodeId,
     pub args: Vec<NodeId>, // TODO: Short vec
 }
+pub type CallId = TypedIndex<Call>;
 
 impl Call {
     #[cfg(test)]
@@ -37,9 +40,10 @@ impl Call {
 #[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
 pub struct Definition {
     node: NodeId,
-    pub name: TypedIndex<Symbol>,
+    pub name: TypedIndex<StrId>,
     pub implementation: NodeId,
 }
+pub type DefinitionId = TypedIndex<Definition>;
 
 #[derive(StructOfArray, Debug, Eq, PartialEq)]
 #[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
@@ -47,6 +51,7 @@ pub struct Primitive {
     node: NodeId,
     pub value: (), // TODO: ???
 }
+pub type PrimitiveId = TypedIndex<Primitive>;
 
 #[derive(Debug, Eq, PartialEq, PartialOrd, Ord)]
 pub enum NodeData {
@@ -55,6 +60,7 @@ pub enum NodeData {
     Symbol(SymbolId),
     Call(CallId),
     Definition(DefinitionId),
+    Primitive(PrimitiveId),
 }
 
 #[derive(StructOfArray, Debug, Eq, PartialEq)]
