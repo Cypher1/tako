@@ -1,5 +1,6 @@
 use super::job::{FinishType, Job, JobState, JobId};
 
+#[derive(Debug)]
 pub struct JobStore<JobType> {
     ready: Vec<JobId<JobType>>,
     jobs: Vec<Job<JobType>>,
@@ -16,7 +17,7 @@ impl<JobType> Default for JobStore<JobType> {
     }
 }
 
-impl<JobType: std::fmt::Debug> JobStore<JobType> {
+impl<JobType> JobStore<JobType> {
     pub fn num_ready(&self) -> usize {
         self.ready.len()
     }
@@ -35,8 +36,24 @@ impl<JobType: std::fmt::Debug> JobStore<JobType> {
         self.jobs.len()
     }
 
+    pub fn num_running(&self) -> usize {
+        let mut num = 0;
+        for job in self.jobs.iter() {
+            if let JobState::Running = job.state {
+                num += 1;
+            }
+        }
+        num
+    }
+
     pub fn num_waiting(&self) -> usize {
-        self.num() - self.num_ready() - self.num_finished()
+        let mut num = 0;
+        for job in self.jobs.iter() {
+            if let JobState::Waiting = job.state {
+                num += 1;
+            }
+        }
+        num
     }
 
     pub fn wind_down(&mut self) {
@@ -88,7 +105,7 @@ impl<JobType: std::fmt::Debug> JobStore<JobType> {
         id
     }
 
-    pub fn restart(&mut self, job_id: JobId<JobType>) {
+    pub fn restart(&mut self, job_id: JobId<JobType>) where JobType: std::fmt::Debug {
         let job = job_id.get_mut(&mut self.jobs);
         if job.state == JobState::Running {
             eprintln!("Job {:?} {:?} restarted while still running, may clobber", job_id, &job);
@@ -131,13 +148,13 @@ mod test {
 
     #[test]
     fn jobs_doesnt_invent_jobs_from_nowhere() {
-        let mut jobs = JobStore::default();
+        let mut jobs: JobStore<JobType> = JobStore::default();
         assert!(jobs.get().is_none());
     }
 
     #[test]
     fn job_counts_start_at_zero() {
-        let mut jobs: JobStore<JobType> = JobStore::default();
+        let jobs: JobStore<JobType> = JobStore::default();
         assert_eq!(jobs.num_finished(), 0);
         assert_eq!(jobs.num_waiting(), 0);
         assert_eq!(jobs.num(), 0);
@@ -148,8 +165,7 @@ mod test {
     #[test]
     fn job_counts_update_with_new_jobs() {
         let mut jobs = JobStore::default();
-        let job1 = Job::new((), vec![]);
-        let job1 = jobs.add_job(job1);
+        jobs.add_job(Job::new((), vec![]));
         assert_eq!(jobs.num_finished(), 0);
         assert_eq!(jobs.num_waiting(), 0);
         assert_eq!(jobs.num(), 1);
@@ -162,12 +178,15 @@ mod test {
         let mut jobs = JobStore::default();
         let job1 = jobs.add_job(Job::new("job1", vec![]));
         let job2 = jobs.add_job(Job::new("job2", vec![job1]));
-        let todo = jobs.get();
-        assert!(todo.is_some());
-        let todo = todo.unwrap();
-        assert_eq!(todo.0, job1);
-        assert_eq!(todo.1.ty, "job1");
-        jobs.finish_job(todo.unwrap(), FinishType::Success);
+        let todo = {
+            let todo = jobs.get();
+            assert!(todo.is_some());
+            let todo = todo.unwrap();
+            assert_eq!(todo.0, job1);
+            assert_eq!(todo.1.ty, "job1");
+            todo.0
+        };
+        jobs.finish_job(todo, FinishType::Success);
         let todo = jobs.get();
         assert!(todo.is_some());
         let todo = todo.unwrap();
@@ -198,19 +217,21 @@ mod test {
         assert_eq!(jobs.num(), 2);
         assert_eq!(jobs.num_ready(), 1);
         assert_eq!(jobs.num_running(), 0);
-
-        let todo = jobs.get();
-        assert!(todo.is_some());
-        let todo = todo.unwrap();
-        assert_eq!(todo.0, job1);
-        assert_eq!(todo.1.ty, "job1");
+        let todo = {
+            let todo = jobs.get();
+            assert!(todo.is_some());
+            let todo = todo.unwrap();
+            assert_eq!(todo.0, job1);
+            assert_eq!(todo.1.ty, "job1");
+            todo.0
+        };
         assert_eq!(jobs.num_finished(), 0);
         assert_eq!(jobs.num_waiting(), 1);
         assert_eq!(jobs.num(), 2);
         assert_eq!(jobs.num_ready(), 0);
         assert_eq!(jobs.num_running(), 1);
 
-        jobs.finish_job(todo.unwrap(), FinishType::Success);
+        jobs.finish_job(todo, FinishType::Success);
         assert_eq!(jobs.num_finished(), 1);
         assert_eq!(jobs.num_waiting(), 0);
         assert_eq!(jobs.num(), 2);

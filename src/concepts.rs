@@ -20,6 +20,26 @@ pub struct File {
 }
 pub type FileId = TypedIndex<File>;
 
+impl File {
+    #[cfg(test)]
+    pub fn dummy_for_test(contents: &str) -> Self {
+        Self {
+            path: "test.tk".to_string(),
+            root: ModuleId::new(0),
+            contents: contents.to_string(),
+            string_interner: crate::string_interner::get_new_interner(),
+            lexed: None,
+            ast: Ast::default(),
+        }
+    }
+
+    pub fn get_str(&mut self, tok: &Token) -> &str {
+        self.string_interner
+            .resolve(tok.str_id)
+            .expect("Token created using different interner")
+    }
+}
+
 #[derive(StructOfArray)]
 #[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
 #[soa_attr(Vec, derive(Default))]

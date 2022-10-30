@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+#![allow(unused_macros)]
 // Wrapper around string slice that makes debug output `{:?}` to print string same way as `{}`.
 // Used in different `assert*!` macros in combination with `pretty_assertions` crate to make
 // test failures to show nice diffs.
@@ -30,7 +32,7 @@ pub fn assert_no_err<T: std::fmt::Debug, E: std::fmt::Debug>(
     res: Result<T, E>,
 ) -> Result<T, E> {
     res.map_err(|err| {
-        eprintln!("{0}", &err);
+        eprintln!("{0:?}", &err);
         err
     })
 }
