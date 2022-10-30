@@ -141,7 +141,7 @@ impl File {
         loop {
             characters.next();
             // Add the character.
-            match (last, &mut characters.peek()) {
+            match (last, characters.peek().map(|(_, chr)| *chr)) {
                 (Some('/'), Some('*')) => {
                     depth += 1;
                 }
@@ -153,11 +153,11 @@ impl File {
                     }
                 }
                 (_, Some(chr)) => {
-                    if comment && (**chr == '\n' || **chr == '\r') {
+                    if comment && (chr == '\n' || chr == '\r') {
                         characters.next();
                         return self.lex_head(characters);
                     }
-                    last = Some(**chr);
+                    last = Some(chr);
                 }
                 (_, None) => return self.lex_head(characters),
             }
