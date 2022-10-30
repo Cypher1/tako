@@ -70,7 +70,8 @@ pub fn work_on_string<'a>(
     // print_impl: Option<ImplFn<'a>>,
 ) -> Result<String, TError> {
     use cli_options::Command;
-
+    todo!("Dunno...");
+    /*
     let module_name = storage.module_name(filename);
     storage.set_file(filename, contents);
 
@@ -88,4 +89,5 @@ pub fn work_on_string<'a>(
                 // .or_else(|_| panic!("Pretty print failed"))
         }
     }
+    */
 }
