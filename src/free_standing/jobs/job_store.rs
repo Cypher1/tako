@@ -49,7 +49,7 @@ impl<JobType: std::fmt::Debug> JobStore<JobType> {
             }
             index += 1;
         }
-        let job_id = if let Some(job_id) = ready.pop() { // pop swap to remove in O(1).
+        let mut job_id = if let Some(job_id) = ready.pop() { // pop swap to remove in O(1).
             job_id
         } else {
             return None;
@@ -62,7 +62,7 @@ impl<JobType: std::fmt::Debug> JobStore<JobType> {
         if index < ready.len() {
             std::mem::swap(&mut job_id, &mut ready[index]);
         }
-        let job = job_id.get(&mut self.jobs);
+        let job = job_id.get_mut(&mut self.jobs);
         job.state = JobState::Running;
         Some((job_id, job)) // Should not be mutable
     }
@@ -70,7 +70,7 @@ impl<JobType: std::fmt::Debug> JobStore<JobType> {
     pub fn add_job(&mut self, job: Job<JobType>) -> JobId<JobType> {
         use std::convert::TryInto;
         let id = JobId::new(self.jobs.len().try_into().unwrap_or_else(|e|panic!("Too many job ids: {}", e)));
-        for dep in job.dependencies {
+        for dep in &job.dependencies {
             dep.get_mut(&mut self.jobs).dependents.push(id);
         }
         self.jobs.push(job);
@@ -88,26 +88,28 @@ impl<JobType: std::fmt::Debug> JobStore<JobType> {
     }
 
     fn try_make_ready(&mut self, job_id: JobId<JobType>) {
-        let job = job_id.get_mut(&mut self.jobs);
+        let job = job_id.get(&self.jobs);
         if job.state != JobState::Waiting {
             return; // Already running or finished, wait to retry.
         }
-        for dep in job.dependencies {
+        for dep in &job.dependencies {
             if let JobState::Finished(_) = dep.get(&self.jobs).state {
                 continue;
             }
             return; // Not ready, leave as is.
         }
+        let job = job_id.get_mut(&mut self.jobs);
         job.state = JobState::Ready;
         self.ready.push(job_id);
     }
 
     pub fn finish_job(&mut self, job_id: JobId<JobType>, result: FinishType) {
-        let job = job_id.get(&mut self.jobs);
-        job.state = JobState::Finished(result);
-        for dep_id in job.dependents {
+        let deps = job_id.get(&self.jobs).dependents.clone();
+        for dep_id in deps {
             self.try_make_ready(dep_id);
         }
+        let job = job_id.get_mut(&mut self.jobs);
+        job.state = JobState::Finished(result);
     }
 }
 
