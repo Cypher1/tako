@@ -69,9 +69,9 @@ pub fn work_on_string<'a>(
     filename: &str,
     // print_impl: Option<ImplFn<'a>>,
 ) -> Result<String, TError> {
-    use cli_options::Command;
     todo!("Dunno...");
     /*
+    use cli_options::Command;
     let module_name = storage.module_name(filename);
     storage.set_file(filename, contents);
 
