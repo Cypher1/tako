@@ -78,7 +78,7 @@ impl File {
 
     // Consumes a single token from a Deque of characters.
     pub fn lex_head<'a>(
-        &self,
+        &mut self,
         mut characters: Characters<'a>,
     ) -> (Token, Characters<'a>) {
         let mut start = if let Some((index, _chr)) = characters.peek() {
@@ -104,15 +104,15 @@ impl File {
             characters.next(); // Continue past the character.
         }
         if tok_type == StringLit {
-            let (index, quote) = characters.peek().expect("String literals should starat with a quote");
-            start = *index+1; // skip the quote.
+            let (index, quote) = *characters.peek().expect("String literals should starat with a quote");
+            start = index+1; // skip the quote.
             characters.next();
-            while let Some((_index, chr)) = characters.peek() {
+            while let Some((_index, chr)) = characters.peek().copied() {
                 if chr == quote { // reached the end of the quote.
                     break;
                 }
                 characters.next(); // Add the character.
-                if chr == &'\\' {
+                if chr == '\\' {
                     characters.next(); // Read the escaped character.
                 };
             }

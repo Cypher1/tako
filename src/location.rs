@@ -42,7 +42,7 @@ impl UserFacingLocation {
         }
     }
 
-    pub fn from(file: &File, location: Location) -> Self {
+    pub fn from(file: &File, location: &Location) -> Self {
         // TODO: Consider walking the module tree to get a fully qualified module name.
         let mut loc = UserFacingLocation::new(&file.path, 1, 1);
         let mut contents = file.contents.chars().peekable();
