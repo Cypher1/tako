@@ -22,6 +22,16 @@ pub struct Token {
     pub str_id: StrId,
 }
 
+impl Token {
+    fn eof() -> Self {
+        Self {
+            start: 0,
+            tok_type: TokenType::Eof,
+            str_id: StrId::new(0), // TODO: Validate that 0 is always EOF.
+        }
+    }
+}
+
 impl fmt::Debug for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // TODO: Look up the token to get the contents?
@@ -48,33 +58,31 @@ fn classify_char(ch: char) -> TokenType {
     }
 }
 
-type CharPred = for<'b> fn(&'b (usize, char)) -> bool;
-
 type Characters<'a> = std::iter::Peekable<
     std::iter::SkipWhile<
         std::iter::Enumerate<std::str::Chars<'a>>,
-        CharPred
+        impl FnMut(&(usize, char)) -> bool
     >
 >;
 
-fn should_skip((index, chr): (usize, char)) -> bool {
-    matches!(chr, '\n'..='\n' | '\r'..='\r' | '\t'..='\t' | ' '..=' ')
-}
-
 impl File {
-    pub fn start<'a>(&self) -> Characters<'a> {
-        self.contents.chars()
+    pub fn start<'a>(&'a self) -> Characters<'a> {
+        self.contents
+            .chars()
             .enumerate()
-            .skip_while(should_skip) // Continue past the character.
+            .skip_while(|(_, chr)|
+                matches!(chr, '\n'..='\n' | '\r'..='\r' | '\t'..='\t' | ' '..=' ')
+            ) // Continue past the character.
             .peekable()
     }
+
     // Consumes a single token from a Deque of characters.
     pub fn lex_head<'a>(
         &self,
-        mut characters: std::str::Chars<'a>,
+        mut characters: Characters<'a>,
     ) -> (Token, Characters<'a>) {
         let mut start = if let Some((index, _chr)) = characters.peek() {
-            index
+            *index
         } else {
             return (Token::eof(), characters)
         };
@@ -82,7 +90,7 @@ impl File {
         // TODO: This should be simplified (make tight loops).
         use TokenType::*;
         let mut tok_type: TokenType = Unknown;
-        while let Some(chr) = characters.peek() {
+        while let Some((_index, chr)) = characters.peek() {
             tok_type = match (&tok_type, classify_char(*chr)) {
                 (Unknown, Whitespace) => Unknown, // Ignore
                 (Unknown, new_tok_type) => new_tok_type, // Start token.
@@ -96,11 +104,11 @@ impl File {
             characters.next(); // Continue past the character.
         }
         if tok_type == StringLit {
-            let quote = characters.peek().expect("String literals should starat with a quote");
+            let (index, quote) = characters.peek().expect("String literals should starat with a quote");
+            start = *index+1; // skip the quote.
             characters.next();
-            start = characters.as_str(); // start inside the string.
-            while let Some(chr) = characters.peek() {
-                if *chr == quote { // reached the end of the quote.
+            while let Some((_index, chr)) = characters.peek() {
+                if chr == quote { // reached the end of the quote.
                     break;
                 }
                 characters.next(); // Add the character.
@@ -112,14 +120,15 @@ impl File {
             characters.next();
         }
         // Token is finished, covers from `start` to `characters`.
-        let comment = start.starts_with(COMMENT);
-        let multi_comment = start.starts_with(MULTI_COMMENT);
+        let end = characters.peek().map(|(end, _)| *end).unwrap_or(self.contents.len());
+        let comment = self.contents[start..end].starts_with(COMMENT);
+        let multi_comment = self.contents[start..end].starts_with(MULTI_COMMENT);
         if !comment && !multi_comment {
-            let span = start[0..characters-start];
+            let span = &self.contents[start..end];
             let str_id = self.string_interner.get_or_intern(span);
             return (
                 Token {
-                    start,
+                    start: start as u32,
                     tok_type,
                     str_id,
                 },

@@ -13,9 +13,9 @@ pub struct File {
     pub path: String, // TODO: Use something 'right'
     pub root: ModuleId,
     pub contents: String,
-    string_interner: StrInterner,
-    lexed: Option<Vec<Token>>,
-    ast: Ast,
+    pub string_interner: StrInterner,
+    pub lexed: Option<Vec<Token>>,
+    pub ast: Ast,
 }
 pub type FileId = TypedIndex<File>;
 
