@@ -8,8 +8,8 @@ use std::error::Error;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 use takolib::cli_options::{print_cli_info, Command, Options};
-use takolib::database::DBStorage;
-use takolib::errors::TError;
+use takolib::compiler_context::CompilerContext;
+use takolib::error::TError;
 use takolib::{work, work_on_string};
 
 fn handle(res: Result<String, TError>) {
@@ -37,7 +37,7 @@ fn handle(res: Result<String, TError>) {
 fn main() {
     takolib::ensure_initialized();
 
-    let mut storage = DBStorage::default();
+    let mut storage = CompilerContext::new();
     {
         let args: Vec<String> = env::args().collect();
         storage.options = Options::new(&args[1..]); // replace options
@@ -55,7 +55,7 @@ fn main() {
     }
 }
 
-fn repl(storage: &mut DBStorage) {
+fn repl(storage: &mut CompilerContext) {
     print_cli_info();
     // `()` can be used when no completer is required
     let rl_config = Config::builder().tab_stop(2).build();

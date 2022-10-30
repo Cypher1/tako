@@ -9,6 +9,7 @@ use soa_derive::StructOfArray;
 // TODO: Replace strings where ideal...
 #[derive(StructOfArray)]
 #[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
+#[soa_attr(Vec, derive(Default))]
 pub struct File {
     pub path: String, // TODO: Use something 'right'
     pub root: ModuleId,
@@ -21,6 +22,7 @@ pub type FileId = TypedIndex<File>;
 
 #[derive(StructOfArray)]
 #[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
+#[soa_attr(Vec, derive(Default))]
 pub struct Module {
     pub file: FileId,
     pub parent: Option<ModuleId>,
@@ -31,6 +33,7 @@ pub type ModuleId = TypedIndex<Module>;
 
 #[derive(StructOfArray, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
+#[soa_attr(Vec, derive(Default))]
 pub struct Error {
     pub file: FileId,
     pub module: ModuleId,
