@@ -60,10 +60,10 @@ pub struct UserFacingError {
 impl UserFacingError {
     fn new<'a>(error: TError, file: &'a File) -> Self {
         use TError::*;
-        let location = match error {
+        let location = match &error {
             CppCompilerError {..} => None,
-            ParseError { location, ..} => location,
-            InternalError { location, ..} => location,
+            ParseError { location, ..} => location.as_ref(),
+            InternalError { location, ..} => location.as_ref(),
         };
         let location = location.map(|location| UserFacingLocation::from(file, location));
         Self {
@@ -86,7 +86,7 @@ impl std::fmt::Debug for UserFacingError {
         if let Some(location) = &self.location {
             write!(f, " in {}", &location)?;
         }
-        match self.error {
+        match &self.error {
             CppCompilerError {
                 error,
                 return_code
