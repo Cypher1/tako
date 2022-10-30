@@ -6,6 +6,16 @@ pub struct JobStore<JobType> {
     terminating: bool,
 }
 
+impl<JobType> Default for JobStore<JobType> {
+    fn default() -> Self {
+        Self {
+            ready: Vec::new(),
+            jobs: Vec::new(),
+            terminating: false,
+        }
+    }
+}
+
 impl<JobType: std::fmt::Debug> JobStore<JobType> {
     pub fn num_ready(&self) -> usize {
         self.ready.len()
