@@ -52,27 +52,30 @@ fn classify_char(ch: char) -> TokenType {
         ')' | ']' | '}' => CloseBracket,
         '0'..='9' => NumLit,
         '"' | '\'' => StringLit,
-        '0'..='9' => NumLit,
         'A'..='Z' | 'a'..='z' | '_' => Sym,
         _ => panic!("Unknown character {}", ch)
     }
 }
 
-type Characters<'a> = std::iter::Peekable<
+type ChPred = fn(&'_ (usize, char)) -> bool;
+
+pub type Characters<'a> = std::iter::Peekable<
     std::iter::SkipWhile<
         std::iter::Enumerate<std::str::Chars<'a>>,
-        impl FnMut(&(usize, char)) -> bool
+        ChPred
     >
 >;
 
+fn is_whitespace((_, chr): &(usize, char)) -> bool {
+    matches!(chr, '\n' | '\r' | '\t' | ' ')
+}
+
 impl File {
-    pub fn start<'a>(&'a self) -> Characters<'a> {
+    pub fn start(&self) -> Characters {
         self.contents
             .chars()
             .enumerate()
-            .skip_while(|(_, chr)|
-                matches!(chr, '\n'..='\n' | '\r'..='\r' | '\t'..='\t' | ' '..=' ')
-            ) // Continue past the character.
+            .skip_while(is_whitespace as ChPred) // Continue past the character.
             .peekable()
     }
 
@@ -149,17 +152,17 @@ impl File {
                     depth -= 1;
                     if multi_comment && depth == 0 {
                         characters.next();
-                        return self.lex_head(characters);
+                        return lex_head(characters);
                     }
                 }
                 (_, Some(chr)) => {
                     if comment && (chr == '\n' || chr == '\r') {
                         characters.next();
-                        return self.lex_head(characters);
+                        return lex_head(characters);
                     }
                     last = Some(chr);
                 }
-                (_, None) => return self.lex_head(characters),
+                (_, None) => return lex_head(characters),
             }
         }
     }
@@ -167,9 +170,8 @@ impl File {
 
 #[cfg(test)]
 mod tests {
-    use super::super::location::{Loc, Pos};
     use super::classify_char;
-    use super::lex_head;
+    use crate::concepts::File;
     use super::TokenType::*;
 
     #[test]
@@ -198,101 +200,92 @@ mod tests {
 
     #[test]
     fn lex_number() {
-        let chars = "123".chars().peekable();
+        let mut file = File::dummy_for_test("123");
+        let chars = file.start();
         let (tok, _) = lex_head(chars);
         assert_eq!(tok.tok_type, NumLit);
     }
 
     #[test]
     fn lex_symbol() {
-        let chars = "a123".chars().peekable();
+        let mut file = File::dummy_for_test("a123");
+        let chars = file.start();
         let (tok, _) = lex_head(chars);
         assert_eq!(tok.tok_type, Sym);
     }
 
     #[test]
     fn lex_operator() {
-        let chars = "-a123".chars().peekable();
+        let mut file = File::dummy_for_test("-a123");
+        let chars = file.start();
         let (tok, _) = lex_head(chars);
         assert_eq!(tok.tok_type, Op);
     }
 
     #[test]
     fn lex_num_and_newline_linux() {
-        let chars = "\n12".chars().peekable();
+        let mut file = File::dummy_for_test("\n12");
+        let chars = file.start();
         let (tok, _) = lex_head(chars);
         assert_eq!(tok.tok_type, NumLit);
-        assert_eq!(
-            pos,
-            Loc {
-                filename: None,
-                pos: Pos { line: 2, col: 3 }
-            }
-        );
+        assert_eq!(tok.start, 1);
     }
 
     #[test]
     fn lex_num_and_newline_windows() {
-        let chars = "\r\n12".chars().peekable();
+        let mut file = File::dummy_for_test("\r\n12");
+        let chars = file.start();
         let (tok, _) = lex_head(chars);
         assert_eq!(tok.tok_type, NumLit);
-        assert_eq!(
-            pos,
-            Loc {
-                filename: None,
-                pos: Pos { line: 2, col: 3 }
-            }
-        );
+        assert_eq!(tok.start, 2);
     }
 
     #[test]
     fn lex_num_and_newline_old_mac() {
         // For mac systems before OSX
-        let chars = "\r12".chars().peekable();
+        let mut file = File::dummy_for_test("\r12");
+        let chars = file.start();
         let (tok, _) = lex_head(chars);
         assert_eq!(tok.tok_type, NumLit);
-        assert_eq!(
-            pos,
-            Loc {
-                filename: None,
-                pos: Pos { line: 2, col: 3 }
-            }
-        );
+        assert_eq!(tok.start, 1);
     }
 
     #[test]
     fn lex_escaped_characters_in_string() {
-        let chars = "'\\n\\t2\\r\\\'\"'".chars().peekable();
+        let mut file = File::dummy_for_test("'\\n\\t2\\r\\\'\"'");
+        let chars = file.start();
         let (tok, _) = lex_head(chars);
         assert_eq!(tok.tok_type, StringLit);
-        assert_eq!(tok.value, "\n\t2\r\'\"");
+        assert_eq!(file.get_str(&tok), "\n\t2\r\'\"");
     }
 
     #[test]
     fn lex_call() {
-        let chars = "x()".chars().peekable();
+        let mut file = File::dummy_for_test("x()");
+        let chars = file.start();
         let (tok, chars2) = lex_head(chars);
         assert_eq!(tok.tok_type, Sym);
-        assert_eq!(tok.value, "x");
+        assert_eq!(file.get_str(&tok), "x");
         let (tok, chars3) = lex_head(chars2);
         assert_eq!(tok.tok_type, OpenBracket);
-        assert_eq!(tok.value, "(");
+        assert_eq!(file.get_str(&tok), "(");
         let (tok, _) = lex_head(chars3);
         assert_eq!(tok.tok_type, CloseBracket);
-        assert_eq!(tok.value, ")");
+        assert_eq!(file.get_str(&tok), ")");
     }
 
     #[test]
     fn lex_strings_with_operators() {
-        let chars = "!\"hello world\"\n7".chars().peekable();
+        let mut file = File::dummy_for_test("!\"hello world\"\n7");
+        let chars = file.start();
         let (tok, chars2) = lex_head(chars);
         assert_eq!(tok.tok_type, Op);
-        assert_eq!(tok.value, "!");
+        assert_eq!(file.get_str(&tok), "!");
         let (tok, chars3) = lex_head(chars2);
         assert_eq!(tok.tok_type, StringLit);
-        assert_eq!(tok.value, "hello world");
+        assert_eq!(file.get_str(&tok), "hello world");
         let (tok, _) = lex_head(chars3);
         assert_eq!(tok.tok_type, NumLit);
-        assert_eq!(tok.value, "7");
+        assert_eq!(file.get_str(&tok), "7");
     }
 }

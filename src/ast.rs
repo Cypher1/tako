@@ -10,6 +10,7 @@ use soa_derive::StructOfArray;
 
 #[derive(StructOfArray, Eq, PartialEq)]
 #[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
+#[soa_attr(Vec, derive(Default))]
 pub struct Symbol {
     node: NodeId,
     name: TypedIndex<StrId>, // index into the file
@@ -19,6 +20,7 @@ pub type SymbolId = TypedIndex<Symbol>;
 
 #[derive(StructOfArray, Debug, Eq, PartialEq)]
 #[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
+#[soa_attr(Vec, derive(Default))]
 pub struct Call {
     node: NodeId,
     pub inner: NodeId,
@@ -28,8 +30,9 @@ pub type CallId = TypedIndex<Call>;
 
 impl Call {
     #[cfg(test)]
-    pub fn new(inner: NodeId, args: &[NodeId]) -> Self {
+    pub fn new(node: NodeId, inner: NodeId, args: &[NodeId]) -> Self {
         Self {
+            node,
             inner,
             args: args.to_vec(),
         }
@@ -38,6 +41,7 @@ impl Call {
 
 #[derive(StructOfArray, Debug, Eq, PartialEq)]
 #[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
+#[soa_attr(Vec, derive(Default))]
 pub struct Definition {
     node: NodeId,
     pub name: TypedIndex<StrId>,
@@ -47,6 +51,7 @@ pub type DefinitionId = TypedIndex<Definition>;
 
 #[derive(StructOfArray, Debug, Eq, PartialEq)]
 #[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
+#[soa_attr(Vec, derive(Default))]
 pub struct Primitive {
     node: NodeId,
     pub value: (), // TODO: ???
@@ -65,6 +70,7 @@ pub enum NodeData {
 
 #[derive(StructOfArray, Debug, Eq, PartialEq)]
 #[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
+#[soa_attr(Vec, derive(Default))]
 pub struct Node {
     pub name: TypedIndex<Symbol>,
     pub id: NodeData,
@@ -72,6 +78,7 @@ pub struct Node {
 }
 pub type NodeId = TypedIndex<Node>;
 
+#[derive(Default)]
 #[cfg_attr(test, derive(Debug))]
 pub struct Ast { // Abstract syntax tree... forest
     pub roots: Vec<NodeId>,
