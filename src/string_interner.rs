@@ -1,6 +1,9 @@
 use crate::keywords::KEYWORDS;
-use string_interner::{Symbol, StringInterner, backend::BufferBackend};
 use crate::free_standing::typed_index::TypedIndex;
+use string_interner::{Symbol, StringInterner, backend::BufferBackend};
+use std::iter::FromIterator;
+use std::convert::TryInto;
+
 pub type StrInterner = StringInterner<BufferBackend<StrId>>;
 
 pub fn get_new_interner() -> StrInterner {
@@ -14,7 +17,7 @@ pub type StrId = TypedIndex<Str>;
 
 impl Symbol for StrId {
     fn try_from_usize(index: usize) -> Option<Self> {
-        Some(Self::new(index))
+        index.try_into().map(|index| Self::new(index)).ok()
     }
 
     fn to_usize(self) -> usize {
