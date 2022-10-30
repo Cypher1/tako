@@ -21,6 +21,6 @@ impl Symbol for StrId {
     }
 
     fn to_usize(self) -> usize {
-        self.index
+        self.raw_index() as usize
     }
 }

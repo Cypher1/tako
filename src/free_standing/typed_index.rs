@@ -17,6 +17,14 @@ impl<T, Idx, Container: Index<usize>> TypedIndex<T, Idx, Container> {
     }
 }
 
+impl<T, Idx> TypedIndex<T, Idx> {
+    pub fn raw_index(&self) -> Idx {
+        self.index
+    }
+    pub fn raw_index_mut(&mut self) -> &mut Idx {
+        &mut self.index
+    }
+}
 impl<T, Idx: std::hash::Hash> std::hash::Hash for TypedIndex<T, Idx> {
     fn hash<H: std::hash::Hasher>(&self, h: &mut H) {
         self.index.hash(h)
