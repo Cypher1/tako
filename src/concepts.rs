@@ -32,12 +32,6 @@ impl File {
             ast: Ast::default(),
         }
     }
-
-    pub fn get_str(&mut self, tok: &Token) -> &str {
-        self.string_interner
-            .resolve(tok.str_id)
-            .expect("Token created using different interner")
-    }
 }
 
 #[derive(StructOfArray)]
