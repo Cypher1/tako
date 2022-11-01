@@ -5,9 +5,9 @@
 // test failures to show nice diffs.
 pub struct MultiPretty<T>(pub T);
 
-impl<T, U: PartialEq<T>> PartialEq<T> for MultiPretty<U> {
-    fn eq(&self, other: T) -> bool {
-        self.0 == other
+impl<T, U: PartialEq<T>> PartialEq<MultiPretty<T>> for MultiPretty<U> {
+    fn eq(&self, other: &MultiPretty<T>) -> bool {
+        self.0 == other.0
     }
 }
 
@@ -27,7 +27,7 @@ impl std::fmt::Debug for MultiPretty<String> {
 macro_rules! assert_str_eq {
     ($left:expr, $right:expr) => {
         pretty_assertions::assert_eq!(
-            crate::free_standing::pretty_assertions::MultiPretty($left),
+            crate::free_standing::pretty_assertions::MultiPretty($left.to_string()),
             crate::free_standing::pretty_assertions::MultiPretty($right.to_string())
         );
     };
