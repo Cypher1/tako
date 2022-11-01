@@ -7,4 +7,4 @@ pub mod cpp_ast;
 
 #[cfg(test)]
 #[macro_use]
-mod pretty_assertions;
+pub mod pretty_assertions;
