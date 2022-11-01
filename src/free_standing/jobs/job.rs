@@ -38,13 +38,3 @@ impl<JobType> Job<JobType> {
         self.dependents.push(id);
     }
 }
-
-#[cfg(test)]
-mod test {
-    // use super::*;
-
-    #[test]
-    fn todo_job_test() {
-        todo!()
-    }
-}
