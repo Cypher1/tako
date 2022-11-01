@@ -7,8 +7,8 @@ use crate::string_interner::StrInterner;
 use soa_derive::StructOfArray;
 
 // TODO: Replace strings where ideal...
-#[derive(StructOfArray)]
-#[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
+#[derive(StructOfArray, Debug)]
+#[soa_attr(Vec, derive(Debug))]
 #[soa_attr(Vec, derive(Default))]
 pub struct File {
     pub path: String, // TODO: Use something 'right'
@@ -34,8 +34,8 @@ impl File {
     }
 }
 
-#[derive(StructOfArray)]
-#[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
+#[derive(StructOfArray, Debug)]
+#[soa_attr(Vec, derive(Debug))]
 #[soa_attr(Vec, derive(Default))]
 pub struct Module {
     pub file: FileId,
@@ -45,8 +45,8 @@ pub struct Module {
 }
 pub type ModuleId = TypedIndex<Module>;
 
-#[derive(StructOfArray, Eq, PartialEq, PartialOrd, Ord, Hash)]
-#[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
+#[derive(StructOfArray, Debug)]
+#[soa_attr(Vec, derive(Debug))]
 #[soa_attr(Vec, derive(Default))]
 pub struct Error {
     pub file: FileId,

@@ -120,7 +120,8 @@ impl<JobType> JobStore<JobType> {
             return; // Already running or finished, wait to retry.
         }
         for dep in &job.dependencies {
-            if let JobState::Finished(_) = dep.get(&self.jobs).state {
+            let state = &dep.get(&self.jobs).state;
+            if let JobState::Finished(_) = state {
                 continue;
             }
             return; // Not ready, leave as is.
@@ -131,12 +132,14 @@ impl<JobType> JobStore<JobType> {
     }
 
     pub fn finish_job(&mut self, job_id: JobId<JobType>, result: FinishType) {
+        {
+            let job = job_id.get_mut(&mut self.jobs);
+            job.state = JobState::Finished(result);
+        }
         let deps = job_id.get(&self.jobs).dependents.clone();
         for dep_id in deps {
             self.try_make_ready(dep_id);
         }
-        let job = job_id.get_mut(&mut self.jobs);
-        job.state = JobState::Finished(result);
     }
 }
 
@@ -187,6 +190,7 @@ mod test {
             todo.0
         };
         jobs.finish_job(todo, FinishType::Success);
+        dbg!(&jobs);
         let todo = jobs.get();
         assert!(todo.is_some());
         let todo = todo.unwrap();
@@ -235,7 +239,7 @@ mod test {
         assert_eq!(jobs.num_finished(), 1);
         assert_eq!(jobs.num_waiting(), 0);
         assert_eq!(jobs.num(), 2);
-        assert_eq!(jobs.num_ready(), 0);
+        assert_eq!(jobs.num_ready(), 1);
         assert_eq!(jobs.num_running(), 0);
     }
 

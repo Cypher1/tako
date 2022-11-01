@@ -37,13 +37,15 @@ fn handle(res: Result<String, TError>) {
 fn main() {
     takolib::ensure_initialized();
 
-    let mut storage = CompilerContext::new();
-    {
-        let args: Vec<String> = env::args().collect();
-        storage.options = Options::new(&args[1..]); // replace options
-        std::fs::create_dir_all(&storage.config_dir()).expect("Could not create config directory");
-    }
+    let args: Vec<String> = env::args().collect();
+    let storage = CompilerContext::from_options(Options::new(&args[1..]));
+    dbg!(storage);
+    todo!();
+}
 
+    /*
+    std::fs::create_dir_all(&storage.config_dir())
+        .expect("Could not create config directory");
     let files = storage.options.files.clone();
 
     for f in &files {
@@ -53,6 +55,7 @@ fn main() {
     if storage.options.cmd == Command::Repl || storage.options.cmd == Command::StackRepl {
         repl(&mut storage);
     }
+ 
 }
 
 fn repl(storage: &mut CompilerContext) {
@@ -96,3 +99,4 @@ fn repl(storage: &mut CompilerContext) {
     rl.save_history(&storage.history_file())
         .expect("Could not save history");
 }
+    */

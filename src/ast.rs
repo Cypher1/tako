@@ -9,7 +9,7 @@ use soa_derive::StructOfArray;
 // TODO: A lambda calculus impl.
 
 #[derive(StructOfArray, Eq, PartialEq)]
-#[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
+#[soa_attr(Vec, derive(Debug))]
 #[soa_attr(Vec, derive(Default))]
 pub struct Symbol {
     node: NodeId,
@@ -19,7 +19,7 @@ pub struct Symbol {
 pub type SymbolId = TypedIndex<Symbol>;
 
 #[derive(StructOfArray, Debug, Eq, PartialEq)]
-#[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
+#[soa_attr(Vec, derive(Debug))]
 #[soa_attr(Vec, derive(Default))]
 pub struct Call {
     node: NodeId,
@@ -40,7 +40,7 @@ impl Call {
 }
 
 #[derive(StructOfArray, Debug, Eq, PartialEq)]
-#[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
+#[soa_attr(Vec, derive(Debug))]
 #[soa_attr(Vec, derive(Default))]
 pub struct Definition {
     node: NodeId,
@@ -50,7 +50,7 @@ pub struct Definition {
 pub type DefinitionId = TypedIndex<Definition>;
 
 #[derive(StructOfArray, Debug, Eq, PartialEq)]
-#[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
+#[soa_attr(Vec, derive(Debug))]
 #[soa_attr(Vec, derive(Default))]
 pub struct Primitive {
     node: NodeId,
@@ -69,7 +69,7 @@ pub enum NodeData {
 }
 
 #[derive(StructOfArray, Debug, Eq, PartialEq)]
-#[soa_attr(Vec, cfg_attr(test, derive(Debug)))]
+#[soa_attr(Vec, derive(Debug))]
 #[soa_attr(Vec, derive(Default))]
 pub struct Node {
     pub name: TypedIndex<Symbol>,
@@ -78,8 +78,7 @@ pub struct Node {
 }
 pub type NodeId = TypedIndex<Node>;
 
-#[derive(Default)]
-#[cfg_attr(test, derive(Debug))]
+#[derive(Default, Debug)]
 pub struct Ast { // Abstract syntax tree... forest
     pub roots: Vec<NodeId>,
     pub nodes: NodeVec,
