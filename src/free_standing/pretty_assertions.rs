@@ -3,8 +3,13 @@
 // Wrapper around string slice that makes debug output `{:?}` to print string same way as `{}`.
 // Used in different `assert*!` macros in combination with `pretty_assertions` crate to make
 // test failures to show nice diffs.
-#[derive(PartialEq, Eq)]
 pub struct MultiPretty<T>(pub T);
+
+impl<T, U: PartialEq<T>> PartialEq<T> for MultiPretty<U> {
+    fn eq(&self, other: T) -> bool {
+        self.0 == other
+    }
+}
 
 /// Make diff to display string as multi-line string
 impl<'a> std::fmt::Debug for MultiPretty<&'a str> {
@@ -22,8 +27,8 @@ impl std::fmt::Debug for MultiPretty<String> {
 macro_rules! assert_str_eq {
     ($left:expr, $right:expr) => {
         pretty_assertions::assert_eq!(
-            crate::pretty_assertions::MultiPretty($left),
-            crate::pretty_assertions::MultiPretty($right.to_string())
+            crate::free_standing::pretty_assertions::MultiPretty($left),
+            crate::free_standing::pretty_assertions::MultiPretty($right.to_string())
         );
     };
 }

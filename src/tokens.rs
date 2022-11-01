@@ -260,7 +260,7 @@ mod tests {
         let chars = start(&file.contents);
         let (tok, _) = lex_head(&file.contents, &mut file.string_interner, chars);
         assert_eq!(tok.tok_type, StringLit);
-    assert_eq!(get_str(&file.string_interner, &tok), "\n\t2\r\'\"");
+        assert_str_eq!(get_str(&file.string_interner, &tok), "\n\t2\r\'\"");
     }
 
     #[test]
@@ -269,13 +269,13 @@ mod tests {
         let chars = start(&file.contents);
         let (tok, chars2) = lex_head(&file.contents, &mut file.string_interner, chars);
         assert_eq!(tok.tok_type, Sym);
-assert_eq!(get_str(&file.string_interner, &tok), "x");
+assert_str_eq!(get_str(&file.string_interner, &tok), "x");
         let (tok, chars3) = lex_head(&file.contents, &mut file.string_interner, chars2);
         assert_eq!(tok.tok_type, OpenBracket);
-        assert_eq!(get_str(&file.string_interner, &tok), "(");
+        assert_str_eq!(get_str(&file.string_interner, &tok), "(");
         let (tok, _) = lex_head(&file.contents, &mut file.string_interner, chars3);
         assert_eq!(tok.tok_type, CloseBracket);
-        assert_eq!(get_str(&file.string_interner, &tok), ")");
+        assert_str_eq!(get_str(&file.string_interner, &tok), ")");
     }
 
     #[test]
@@ -284,12 +284,12 @@ assert_eq!(get_str(&file.string_interner, &tok), "x");
         let chars = start(&file.contents);
         let (tok, chars2) = lex_head(&file.contents, &mut file.string_interner, chars);
         assert_eq!(tok.tok_type, Op);
-        assert_eq!(get_str(&file.string_interner, &tok), "!");
+        assert_str_eq!(get_str(&file.string_interner, &tok), "!");
         let (tok, chars3) = lex_head(&file.contents, &mut file.string_interner, chars2);
         assert_eq!(tok.tok_type, StringLit);
-        assert_eq!(get_str(&file.string_interner, &tok), "hello world");
+        assert_str_eq!(get_str(&file.string_interner, &tok), "hello world");
         let (tok, _) = lex_head(&file.contents, &mut file.string_interner, chars3);
         assert_eq!(tok.tok_type, NumLit);
-        assert_eq!(get_str(&file.string_interner, &tok), "7");
+        assert_str_eq!(get_str(&file.string_interner, &tok), "7");
     }
 }
