@@ -89,17 +89,13 @@ impl<JobType> JobStore<JobType> {
     }
 
     pub fn add_job(&mut self, job: Job<JobType>) -> JobId<JobType> {
-        use std::convert::TryInto;
         let id = JobId::new(
-            self.all_jobs
-                .len()
-                .try_into()
-                .unwrap_or_else(|e| panic!("Too many job ids: {}", e)),
+            &mut self.all_jobs,
+            job
         );
         for dep in &job.dependencies {
             dep.get_mut(&mut self.all_jobs).dependents.push(id);
         }
-        self.all_jobs.push(job);
         self.try_make_ready(id);
         id
     }

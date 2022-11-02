@@ -90,8 +90,22 @@ impl<T, Idx: std::fmt::Debug + std::convert::TryInto<usize>, Container: IndexMut
             .try_into()
             .unwrap_or_else(|_| panic!("Index too large for accessing into container as usize"))]
     }
+}
 
+use soa_derive::StructOfArray;
+impl<T, Idx: std::fmt::Debug + std::convert::TryInto<usize>, Container: std::ops::Index<usize> + StructOfArray> TypedIndex<T, Idx, Container>
+{
     pub fn new(container: &mut Container, value: T) -> Self {
+        let id = container.len();
+        container.push(value);
+        Self.from_raw(id)
+    }
+}
+
+impl<T, Idx: std::fmt::Debug + std::convert::TryInto<usize>>
+    TypedIndex<T, Idx, Vec<T>>
+{
+    pub fn new_in_vec(container: &mut Vec<T>, value: T) -> Self {
         let id = container.len();
         container.push(value);
         Self.from_raw(id)
