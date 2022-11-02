@@ -76,7 +76,7 @@ impl<'opts> CompilerContext<'opts> {
         todo!();
     }
     pub fn plan_jobs(&mut self) {
-        // use crate::cli_options::Command;
+        use crate::cli_options::Command::*;
         match self.options.cmd {
             Build => self.plan_build_jobs(),
             Interpret => self.plan_interpret_jobs(),
