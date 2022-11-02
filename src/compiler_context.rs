@@ -1,7 +1,8 @@
+use crate::ast::Ast;
 use crate::cli_options::Options;
 use crate::compiler_tasks::JobTypes::{self, *};
 use crate::concepts::*;
-use crate::free_standing::jobs::{JobId as BaseJobId, JobStore, FinishType};
+use crate::free_standing::jobs::{FinishType, JobId as BaseJobId, JobStore};
 use crate::string_interner::get_new_interner;
 use log::info;
 
@@ -23,12 +24,16 @@ pub struct CompilerContext<'opts> {
 
 impl<'opts> std::ops::Deref for CompilerContext<'opts> {
     type Target = CompilerStorage;
-    fn deref(&self) -> &CompilerStorage { &self.store }
+    fn deref(&self) -> &CompilerStorage {
+        &self.store
+    }
 }
 
 impl<'opts> std::ops::DerefMut for CompilerContext<'opts> {
     // type Target = CompilerStorage;
-    fn deref_mut(&mut self) -> &mut CompilerStorage { &mut self.store }
+    fn deref_mut(&mut self) -> &mut CompilerStorage {
+        &mut self.store
+    }
 }
 
 impl<'opts> CompilerContext<'opts> {
@@ -44,14 +49,18 @@ impl<'opts> CompilerContext<'opts> {
     }
 
     fn plan_parse_file(&mut self, path: String) -> JobId {
-        let fileid = FileId::new(&mut self.files, File {
-            path,
-            string_interner: get_new_interner(),
-            root: None,
-            contents: None,
-            lexed: None,
-            ast: None,
-        }).expect("Too many file ids");
+        let fileid = FileId::new(
+            &mut self.files,
+            File {
+                path,
+                string_interner: get_new_interner(),
+                root: None,
+                contents: None,
+                lexed: None,
+                ast: Ast::default(),
+            },
+        )
+        .expect("Too many file ids");
         let load_id = self.jobs.add_job(Load(fileid), vec![]);
         let lex_id = self.jobs.add_job(Lex(fileid), vec![load_id]);
         let parse_id = self.jobs.add_job(Parse(fileid), vec![lex_id]);
