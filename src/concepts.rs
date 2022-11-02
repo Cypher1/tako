@@ -4,12 +4,9 @@ use crate::free_standing::typed_index::TypedIndex;
 use crate::location::Location;
 use crate::string_interner::StrInterner;
 use crate::tokens::Token;
-use soa_derive::StructOfArray;
 
 // TODO: Replace strings where ideal...
-#[derive(StructOfArray, Debug)]
-#[soa_attr(Vec, derive(Debug))]
-#[soa_attr(Vec, derive(Default))]
+#[derive(Debug)]
 pub struct File {
     pub path: String, // TODO: Use something 'right'
     pub string_interner: StrInterner,
@@ -34,9 +31,7 @@ impl File {
     }
 }
 
-#[derive(StructOfArray, Debug)]
-#[soa_attr(Vec, derive(Debug))]
-#[soa_attr(Vec, derive(Default))]
+#[derive(Debug)]
 pub struct Module {
     pub file: FileId,
     pub parent: Option<ModuleId>,
@@ -45,9 +40,7 @@ pub struct Module {
 }
 pub type ModuleId = TypedIndex<Module>;
 
-#[derive(StructOfArray, Debug)]
-#[soa_attr(Vec, derive(Debug))]
-#[soa_attr(Vec, derive(Default))]
+#[derive(Debug)]
 pub struct Error {
     pub file: FileId,
     pub module: ModuleId,

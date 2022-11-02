@@ -2,15 +2,11 @@ use crate::concepts::FileId;
 use crate::free_standing::typed_index::TypedIndex;
 use crate::location::Location;
 use crate::string_interner::StrId;
-use soa_derive::StructOfArray;
-
 // TODO: Replace strings where ideal...
 // TODO: Use macro for defining and registering each of these.
 // TODO: A lambda calculus impl.
 
-#[derive(StructOfArray, Eq, PartialEq)]
-#[soa_attr(Vec, derive(Debug))]
-#[soa_attr(Vec, derive(Default))]
+#[derive(Eq, PartialEq)]
 pub struct Symbol {
     node: NodeId,
     name: TypedIndex<StrId>, // index into the file
@@ -18,9 +14,7 @@ pub struct Symbol {
 }
 pub type SymbolId = TypedIndex<Symbol>;
 
-#[derive(StructOfArray, Debug, Eq, PartialEq)]
-#[soa_attr(Vec, derive(Debug))]
-#[soa_attr(Vec, derive(Default))]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Call {
     node: NodeId,
     pub inner: NodeId,
@@ -39,9 +33,7 @@ impl Call {
     }
 }
 
-#[derive(StructOfArray, Debug, Eq, PartialEq)]
-#[soa_attr(Vec, derive(Debug))]
-#[soa_attr(Vec, derive(Default))]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Definition {
     node: NodeId,
     pub name: TypedIndex<StrId>,
@@ -49,9 +41,7 @@ pub struct Definition {
 }
 pub type DefinitionId = TypedIndex<Definition>;
 
-#[derive(StructOfArray, Debug, Eq, PartialEq)]
-#[soa_attr(Vec, derive(Debug))]
-#[soa_attr(Vec, derive(Default))]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Primitive {
     node: NodeId,
     pub value: (), // TODO: ???
@@ -68,9 +58,7 @@ pub enum NodeData {
     Primitive(PrimitiveId),
 }
 
-#[derive(StructOfArray, Debug, Eq, PartialEq)]
-#[soa_attr(Vec, derive(Debug))]
-#[soa_attr(Vec, derive(Default))]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Node {
     pub name: TypedIndex<Symbol>,
     pub id: NodeData,
@@ -82,9 +70,9 @@ pub type NodeId = TypedIndex<Node>;
 pub struct Ast {
     // Abstract syntax tree... forest
     pub roots: Vec<NodeId>,
-    pub nodes: NodeVec,
-    pub calls: CallVec,
-    pub symbols: SymbolVec,
-    pub definitions: DefinitionVec,
-    pub primitives: PrimitiveVec,
+    pub nodes: Vec<Node>,
+    pub calls: Vec<Call>,
+    pub symbols: Vec<Symbol>,
+    pub definitions: Vec<Definition>,
+    pub primitives: Vec<Primitive>,
 }

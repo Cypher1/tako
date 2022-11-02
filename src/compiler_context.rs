@@ -1,7 +1,7 @@
 use crate::cli_options::Options;
 use crate::compiler_tasks::JobTypes::{self, *};
 use crate::concepts::*;
-use crate::free_standing::jobs::{Job, JobId as BaseJobId, JobStore, FinishType};
+use crate::free_standing::jobs::{JobId as BaseJobId, JobStore, FinishType};
 use crate::string_interner::get_new_interner;
 use log::info;
 
@@ -9,9 +9,9 @@ type JobId = BaseJobId<JobTypes>;
 
 #[derive(Default, Debug)]
 pub struct CompilerStorage {
-    files: FileVec,
-    modules: ModuleVec,
-    errors: ErrorVec,
+    files: Vec<File>,
+    modules: Vec<Module>,
+    errors: Vec<Error>,
     jobs: JobStore<JobTypes>,
 }
 
@@ -44,14 +44,14 @@ impl<'opts> CompilerContext<'opts> {
     }
 
     fn plan_parse_file(&mut self, path: String) -> JobId {
-        let fileid = add!(self.files, File {
+        let fileid = FileId::new(&mut self.files, File {
             path,
             string_interner: get_new_interner(),
             root: None,
             contents: None,
             lexed: None,
             ast: None,
-        });
+        }).expect("Too many file ids");
         let load_id = self.jobs.add_job(Load(fileid), vec![]);
         let lex_id = self.jobs.add_job(Lex(fileid), vec![load_id]);
         let parse_id = self.jobs.add_job(Parse(fileid), vec![lex_id]);
@@ -64,7 +64,7 @@ impl<'opts> CompilerContext<'opts> {
             let parse_id = self.plan_parse_file(path);
             prep_jobs.push(parse_id);
         }
-        self.jobs.add_job(Job::new(AllFilesParsed, prep_jobs))
+        self.jobs.add_job(AllFilesParsed, prep_jobs)
     }
 
     fn plan_interpret_jobs(&mut self) {

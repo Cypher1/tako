@@ -1,5 +1,4 @@
 use crate::concepts::File;
-use soa_derive::StructOfArray;
 use std::fmt;
 
 type IndexIntoFile = u32;
@@ -8,7 +7,7 @@ type IndexIntoFile = u32;
 // and `u16` is too small.
 // Source: https://people.csail.mit.edu/smcc/projects/single-file-programs
 
-#[derive(StructOfArray, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Location {
     location: IndexIntoFile,
     length: IndexIntoFile,
