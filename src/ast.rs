@@ -6,7 +6,7 @@ use crate::string_interner::StrId;
 // TODO: Use macro for defining and registering each of these.
 // TODO: A lambda calculus impl.
 
-#[derive(Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Symbol {
     node: NodeId,
     name: TypedIndex<StrId>, // index into the file

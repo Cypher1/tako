@@ -93,11 +93,12 @@ impl<JobType> JobStore<JobType> {
     }
 
     pub fn add(&mut self, job: Job<JobType>) -> JobId<JobType> {
+        let deps = job.dependencies.clone();
         let id = JobId::new(
             &mut self.all_jobs,
             job
         ).expect("Too many job ids to add job");
-        for dep in &job.dependencies {
+        for dep in deps {
             dep.get_mut(&mut self.all_jobs).dependents.push(id);
         }
         self.try_make_ready(id);
