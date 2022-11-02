@@ -10,10 +10,10 @@ use crate::tokens::Token;
 pub struct File {
     pub path: String, // TODO: Use something 'right'
     pub string_interner: StrInterner,
+    pub ast: Ast,
     pub root: Option<ModuleId>,
     pub contents: Option<String>,
     pub lexed: Option<Vec<Token>>,
-    pub ast: Option<Ast>,
 }
 pub type FileId = TypedIndex<File>;
 
@@ -22,7 +22,7 @@ impl File {
     pub fn dummy_for_test(contents: &str) -> Self {
         Self {
             path: "test.tk".to_string(),
-            root: ModuleId::new(0),
+            root: None,
             contents: contents.to_string(),
             string_interner: crate::string_interner::get_new_interner(),
             lexed: None,
