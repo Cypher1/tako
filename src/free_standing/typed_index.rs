@@ -8,7 +8,7 @@ pub struct TypedIndex<T, Idx = u32, Container: Index<usize> = Vec<T>> {
 }
 
 impl<T, Idx, Container: Index<usize>> TypedIndex<T, Idx, Container> {
-    pub fn new(index: Idx) -> Self {
+    pub fn from_raw(index: Idx) -> Self {
         Self {
             index,
             ty: PhantomData,
@@ -89,5 +89,11 @@ impl<T, Idx: std::fmt::Debug + std::convert::TryInto<usize>, Container: IndexMut
             .index
             .try_into()
             .unwrap_or_else(|_| panic!("Index too large for accessing into container as usize"))]
+    }
+
+    pub fn new(container: &mut Container, value: T) -> Self {
+        let id = container.len();
+        container.push(value);
+        Self.from_raw(id)
     }
 }

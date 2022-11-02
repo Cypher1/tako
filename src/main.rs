@@ -36,7 +36,8 @@ fn main() {
     takolib::ensure_initialized();
 
     let args: Vec<String> = env::args().collect();
-    let compiler = CompilerContext::from_options(Options::new(args));
+    let options = Options::new(args);
+    let compiler = CompilerContext::from_options(&options);
     dbg!(compiler);
     todo!();
 }

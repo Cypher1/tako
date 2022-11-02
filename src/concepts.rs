@@ -12,11 +12,11 @@ use soa_derive::StructOfArray;
 #[soa_attr(Vec, derive(Default))]
 pub struct File {
     pub path: String, // TODO: Use something 'right'
-    pub root: ModuleId,
-    pub contents: String,
     pub string_interner: StrInterner,
+    pub root: Option<ModuleId>,
+    pub contents: Option<String>,
     pub lexed: Option<Vec<Token>>,
-    pub ast: Ast,
+    pub ast: Option<Ast>,
 }
 pub type FileId = TypedIndex<File>;
 

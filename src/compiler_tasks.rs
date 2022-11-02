@@ -2,9 +2,10 @@ use crate::concepts::*;
 
 #[derive(Debug, Copy, Clone)]
 pub enum JobTypes {
-    Load(String, FileId),
+    Load(FileId),
     Lex(FileId),
     Parse(FileId),
+    AllFilesParsed,
     TypeCheck(ModuleId),
     GlobalTypeCheck,
     Optimise(ModuleId),
