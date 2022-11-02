@@ -46,6 +46,7 @@ impl UserFacingLocation {
         let mut loc = UserFacingLocation::new(&file.path, 1, 1);
         let mut contents = file
             .contents
+            .as_ref()
             .expect("Must have file contents")
             .chars()
             .peekable();

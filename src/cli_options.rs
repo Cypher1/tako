@@ -103,8 +103,6 @@ Usage:
 Options:
   -i --interactive    Run as a repl (interactive mode).
   -r --run            Run files in interpreter.
-  -si --stack_interactive    Run as a repl (interactive mode) using the experimental stack based interpter.
-  -sr --stack_run            Run files in the experimental stack based interpter.
   -h --help           Show this screen.
   --version           Show compiler version.
 ";

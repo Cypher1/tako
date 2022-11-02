@@ -38,6 +38,10 @@ impl<'opts> std::ops::DerefMut for CompilerContext<'opts> {
 
 impl<'opts> CompilerContext<'opts> {
     pub fn new(options: &'opts Options) -> Self {
+        Self::from_options(options)
+    }
+
+    pub fn from_options(options: &'opts Options) -> Self {
         Self {
             options,
             store: CompilerStorage::default(),
@@ -48,11 +52,11 @@ impl<'opts> CompilerContext<'opts> {
         todo!();
     }
 
-    fn plan_parse_file(&mut self, path: String) -> JobId {
+    fn plan_parse_file(&mut self, path: &str) -> JobId {
         let fileid = FileId::new(
             &mut self.files,
             File {
-                path,
+                path: path.to_string(),
                 string_interner: get_new_interner(),
                 root: None,
                 contents: None,
@@ -69,8 +73,8 @@ impl<'opts> CompilerContext<'opts> {
 
     fn plan_pre_interpret_jobs(&mut self) -> JobId {
         let mut prep_jobs = vec![];
-        for path in self.options.files {
-            let parse_id = self.plan_parse_file(path);
+        for path in &self.options.files {
+            let parse_id = self.plan_parse_file(&path);
             prep_jobs.push(parse_id);
         }
         self.jobs.add_job(AllFilesParsed, prep_jobs)
