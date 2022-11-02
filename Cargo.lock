@@ -905,26 +905,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2fd0db749597d91ff862fd1d55ea87f7855a744a8425a64695b6fca237d1dad1"
 
 [[package]]
-name = "soa_derive"
-version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "327b898354ca1a9e0386aa10b19f684d181ae273c0e8ce9ad22464e9fbe39322"
-dependencies = [
- "soa_derive_internal",
-]
-
-[[package]]
-name = "soa_derive_internal"
-version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7bcbaa3dd35156733d6754fa463a6852a51652deb71490e4c2b67b8c8f5535a9"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "specs"
 version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -993,7 +973,6 @@ dependencies = [
  "pretty_assertions",
  "rand",
  "rustyline",
- "soa_derive",
  "specs",
  "string-interner",
  "termcolor",
