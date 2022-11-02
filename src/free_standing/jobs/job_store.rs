@@ -1,4 +1,5 @@
 use super::job::{FinishType, Job, JobId, JobState};
+use crate::add;
 
 #[derive(Debug)]
 pub struct JobStore<JobType> {
@@ -88,11 +89,12 @@ impl<JobType> JobStore<JobType> {
         Some((job_id, job)) // Should not be mutable
     }
 
-    pub fn add_job(&mut self, job: Job<JobType>) -> JobId<JobType> {
-        let id = JobId::new(
-            &mut self.all_jobs,
-            job
-        );
+    pub fn add_job(&mut self, kind: JobType, dependencies: Vec<JobId<JobType>>) -> JobId<JobType> {
+        self.add(Job::new(kind, dependencies))
+    }
+
+    pub fn add(&mut self, job: Job<JobType>) -> JobId<JobType> {
+        let id: JobId<JobType> = add!(self.all_jobs, job);
         for dep in &job.dependencies {
             dep.get_mut(&mut self.all_jobs).dependents.push(id);
         }

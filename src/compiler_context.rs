@@ -2,7 +2,7 @@ use crate::cli_options::Options;
 use crate::compiler_tasks::JobTypes::{self, *};
 use crate::concepts::*;
 use crate::free_standing::jobs::{Job, JobId as BaseJobId, JobStore, FinishType};
-use crate::string_interner::StrInterner;
+use crate::string_interner::get_new_interner;
 use log::info;
 
 type JobId = BaseJobId<JobTypes>;
@@ -44,17 +44,17 @@ impl<'opts> CompilerContext<'opts> {
     }
 
     fn plan_parse_file(&mut self, path: String) -> JobId {
-        let fileid = FileId::new(&mut self.files, File {
+        let fileid = add!(self.files, File {
             path,
-            string_interner: StrInterner::new(),
+            string_interner: get_new_interner(),
             root: None,
             contents: None,
             lexed: None,
             ast: None,
         });
-        let load_id = self.jobs.add_job(Job::new(Load(fileid), vec![]));
-        let lex_id = self.jobs.add_job(Job::new(Lex(fileid), vec![load_id]));
-        let parse_id = self.jobs.add_job(Job::new(Parse(fileid), vec![lex_id]));
+        let load_id = self.jobs.add_job(Load(fileid), vec![]);
+        let lex_id = self.jobs.add_job(Lex(fileid), vec![load_id]);
+        let parse_id = self.jobs.add_job(Parse(fileid), vec![lex_id]);
         parse_id
     }
 
