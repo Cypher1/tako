@@ -1,4 +1,4 @@
-use crate::string_interner::{StrId, StrInterner, get_new_interner};
+use crate::string_interner::{get_new_interner, StrId, StrInterner};
 use std::fmt;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
@@ -26,7 +26,9 @@ impl Token {
         Self {
             start: 0,
             tok_type: TokenType::Eof,
-            str_id: get_new_interner().get("").expect("Eof/Empty string must be safely resolved"), // TODO: Validate that 0 is always EOF.
+            str_id: get_new_interner()
+                .get("")
+                .expect("Eof/Empty string must be safely resolved"), // TODO: Validate that 0 is always EOF.
         }
     }
 }
