@@ -7,6 +7,7 @@ pub fn parse(file: &mut File) -> Result<(), TError> {
     let tokens = file.tokens.as_ref().ok_or(TError::FileNotLexedError)?;
     let mut tokens = tokens.iter().peekable();
     eprintln!("Parse {}", file.path);
+    std::thread::sleep(std::time::Duration::from_secs(2));
     loop {
         let tok: &Token = if let Some(tok) = tokens.next() {
             tok
