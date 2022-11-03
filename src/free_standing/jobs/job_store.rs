@@ -203,7 +203,7 @@ mod test {
             assert!(todo.is_some());
             let todo = todo.unwrap();
             assert_eq!(todo.0, job1);
-            assert_eq!(todo.1.ty, "job1");
+            assert_eq!(todo.1.kind, "job1");
             todo.0
         };
         jobs.finish_job(todo, FinishType::Success);
@@ -212,7 +212,7 @@ mod test {
         assert!(todo.is_some());
         let todo = todo.unwrap();
         assert_eq!(todo.0, job2);
-        assert_eq!(todo.1.ty, "job2");
+        assert_eq!(todo.1.kind, "job2");
         assert!(jobs.get_job().is_none());
     }
 
@@ -243,7 +243,7 @@ mod test {
             assert!(todo.is_some());
             let todo = todo.unwrap();
             assert_eq!(todo.0, job1);
-            assert_eq!(todo.1.ty, "job1");
+            assert_eq!(todo.1.kind, "job1");
             todo.0
         };
         assert_eq!(jobs.num_finished(), 0);

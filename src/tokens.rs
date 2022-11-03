@@ -117,14 +117,11 @@ impl<'a> Characters<'a> {
 
 // Reads all the tokens.
 pub fn lex<'a>(file: &mut File) -> Result<(), TError> {
-    let contents = file
-        .contents
-        .as_ref()
-        .ok_or_else(|| TError::FileNotLoadedError)?;
-    let mut chars = Characters::new(&contents);
+    let contents = file.contents.as_ref().ok_or(TError::FileNotLoadedError)?;
+    let mut chars = Characters::new(contents);
     let mut tokens = Vec::new();
     loop {
-        let (tok, new_chars) = lex_head(&contents, &mut file.string_interner, chars);
+        let (tok, new_chars) = lex_head(contents, &mut file.string_interner, chars);
         if tok.kind == TokenType::Eof {
             break;
         }
@@ -277,32 +274,36 @@ mod tests {
     #[test]
     fn lex_number() {
         let mut file = File::dummy_for_test("123");
-        let chars = Characters::new(&file.contents);
-        let (tok, _) = lex_head(&file.contents, &mut file.string_interner, chars);
+        let contents = &file.contents.unwrap();
+        let chars = Characters::new(contents);
+        let (tok, _) = lex_head(contents, &mut file.string_interner, chars);
         assert_eq!(tok.kind, NumLit);
     }
 
     #[test]
     fn lex_symbol() {
         let mut file = File::dummy_for_test("a123");
-        let chars = Characters::new(&file.contents);
-        let (tok, _) = lex_head(&file.contents, &mut file.string_interner, chars);
+        let contents = &file.contents.unwrap();
+        let chars = Characters::new(contents);
+        let (tok, _) = lex_head(contents, &mut file.string_interner, chars);
         assert_eq!(tok.kind, Sym);
     }
 
     #[test]
     fn lex_operator() {
         let mut file = File::dummy_for_test("-a123");
-        let chars = Characters::new(&file.contents);
-        let (tok, _) = lex_head(&file.contents, &mut file.string_interner, chars);
+        let contents = &file.contents.unwrap();
+        let chars = Characters::new(contents);
+        let (tok, _) = lex_head(contents, &mut file.string_interner, chars);
         assert_eq!(tok.kind, Op);
     }
 
     #[test]
     fn lex_num_and_newline_linux() {
         let mut file = File::dummy_for_test("\n12");
-        let chars = Characters::new(&file.contents);
-        let (tok, _) = lex_head(&file.contents, &mut file.string_interner, chars);
+        let contents = &file.contents.unwrap();
+        let chars = Characters::new(contents);
+        let (tok, _) = lex_head(contents, &mut file.string_interner, chars);
         assert_eq!(tok.kind, NumLit);
         assert_eq!(tok.start, 1);
     }
@@ -310,8 +311,9 @@ mod tests {
     #[test]
     fn lex_num_and_newline_windows() {
         let mut file = File::dummy_for_test("\r\n12");
-        let chars = Characters::new(&file.contents);
-        let (tok, _) = lex_head(&file.contents, &mut file.string_interner, chars);
+        let contents = &file.contents.unwrap();
+        let chars = Characters::new(contents);
+        let (tok, _) = lex_head(contents, &mut file.string_interner, chars);
         assert_eq!(tok.kind, NumLit);
         assert_eq!(tok.start, 2);
     }
@@ -320,8 +322,9 @@ mod tests {
     fn lex_num_and_newline_old_mac() {
         // For mac systems before OSX
         let mut file = File::dummy_for_test("\r12");
-        let chars = Characters::new(&file.contents);
-        let (tok, _) = lex_head(&file.contents, &mut file.string_interner, chars);
+        let contents = &file.contents.unwrap();
+        let chars = Characters::new(contents);
+        let (tok, _) = lex_head(contents, &mut file.string_interner, chars);
         assert_eq!(tok.kind, NumLit);
         assert_eq!(tok.start, 1);
     }
@@ -330,8 +333,9 @@ mod tests {
     fn lex_escaped_characters_in_string() {
         // TODO: De escape them.
         let mut file = File::dummy_for_test("'\\n\\t2\\r\\\'\"'");
-        let chars = Characters::new(&file.contents);
-        let (tok, _) = lex_head(&file.contents, &mut file.string_interner, chars);
+        let contents = &file.contents.unwrap();
+        let chars = Characters::new(contents);
+        let (tok, _) = lex_head(contents, &mut file.string_interner, chars);
         assert_eq!(tok.kind, StringLit);
         assert_str_eq!(get_str(&file.string_interner, &tok), "\n\t2\r\'\"");
     }
@@ -339,14 +343,15 @@ mod tests {
     #[test]
     fn lex_call() {
         let mut file = File::dummy_for_test("x()");
-        let chars = Characters::new(&file.contents);
-        let (tok, chars2) = lex_head(&file.contents, &mut file.string_interner, chars);
+        let contents = &file.contents.unwrap();
+        let chars = Characters::new(contents);
+        let (tok, chars2) = lex_head(contents, &mut file.string_interner, chars);
         assert_eq!(tok.kind, Sym);
         assert_str_eq!(get_str(&file.string_interner, &tok), "x");
-        let (tok, chars3) = lex_head(&file.contents, &mut file.string_interner, chars2);
+        let (tok, chars3) = lex_head(contents, &mut file.string_interner, chars2);
         assert_eq!(tok.kind, OpenBracket);
         assert_str_eq!(get_str(&file.string_interner, &tok), "(");
-        let (tok, _) = lex_head(&file.contents, &mut file.string_interner, chars3);
+        let (tok, _) = lex_head(contents, &mut file.string_interner, chars3);
         assert_eq!(tok.kind, CloseBracket);
         assert_str_eq!(get_str(&file.string_interner, &tok), ")");
     }
@@ -354,14 +359,15 @@ mod tests {
     #[test]
     fn lex_strings_with_operators() {
         let mut file = File::dummy_for_test("!\"hello world\"\n7");
-        let chars = Characters::new(&file.contents);
-        let (tok, chars2) = lex_head(&file.contents, &mut file.string_interner, chars);
+        let contents = &file.contents.unwrap();
+        let chars = Characters::new(contents);
+        let (tok, chars2) = lex_head(contents, &mut file.string_interner, chars);
         assert_eq!(tok.kind, Op);
         assert_str_eq!(get_str(&file.string_interner, &tok), "!");
-        let (tok, chars3) = lex_head(&file.contents, &mut file.string_interner, chars2);
+        let (tok, chars3) = lex_head(contents, &mut file.string_interner, chars2);
         assert_eq!(tok.kind, StringLit);
         assert_str_eq!(get_str(&file.string_interner, &tok), "hello world");
-        let (tok, _) = lex_head(&file.contents, &mut file.string_interner, chars3);
+        let (tok, _) = lex_head(contents, &mut file.string_interner, chars3);
         assert_eq!(tok.kind, NumLit);
         assert_str_eq!(get_str(&file.string_interner, &tok), "7");
     }

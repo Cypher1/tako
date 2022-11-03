@@ -21,7 +21,7 @@ impl File {
         Self {
             path: "test.tk".to_string(),
             root: None,
-            contents: contents.to_string(),
+            contents: Some(contents.to_string()),
             string_interner: crate::string_interner::get_new_interner(),
             tokens: None,
             ast: Ast::default(),
