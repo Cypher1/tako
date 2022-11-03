@@ -1,4 +1,3 @@
-use crate::ast::Ast;
 use crate::cli_options::Options;
 use crate::compiler_tasks::{
     JobType::{self, *},
@@ -7,7 +6,6 @@ use crate::compiler_tasks::{
 use crate::concepts::*;
 use crate::error::{Error, ErrorId, TError};
 use crate::free_standing::jobs::{FinishType, JobId as BaseJobId, JobStore};
-use crate::string_interner::get_new_interner;
 use crate::ui::UserInterface;
 use log::{info, trace};
 use std::sync::{Arc, Mutex};
@@ -77,14 +75,7 @@ impl<'opts> CompilerContext<'opts> {
     fn plan_parse_jobs(&mut self, path: &str) -> (FileId, JobId) {
         let fileid = FileId::new(
             &mut self.files,
-            File {
-                path: path.to_string(),
-                string_interner: get_new_interner(),
-                root: None,
-                contents: None,
-                tokens: None,
-                ast: Ast::default(),
-            },
+            File::from_path(path),
         )
         .expect("Too many file ids");
         let load_job = self.jobs.add_job(Load(fileid), vec![]);
