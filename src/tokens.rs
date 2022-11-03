@@ -42,8 +42,8 @@ impl fmt::Debug for Token {
     }
 }
 
-const COMMENT: &str = "//";
-const MULTI_COMMENT: &str = "/*";
+const _COMMENT: &str = "//";
+const _MULTI_COMMENT: &str = "/*";
 
 #[inline]
 fn classify_char(ch: char) -> TokenType {

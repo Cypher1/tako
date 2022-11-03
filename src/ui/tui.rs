@@ -10,9 +10,9 @@ extern "C" fn shutdown() {
 
 #[derive(Debug)]
 pub struct ProgressStats {
-    num_successful: usize,
-    num_finished: usize,
-    num_total: usize,
+    _num_successful: usize,
+    _num_finished: usize,
+    _num_total: usize,
 }
 
 #[derive(Debug)]
@@ -43,17 +43,18 @@ impl UserInterface for TUI {
         // rerender
         self.rerender = true;
     }
-    fn report_job_counts(&mut self, num_successful: usize, num_finished: usize, num_total: usize) {
+    fn report_job_counts(&mut self, _num_successful: usize, _num_finished: usize, _num_total: usize) {
         self.progress_stats = Some(ProgressStats {
-            num_successful,
-            num_finished,
-            num_total,
+            _num_successful,
+            _num_finished,
+            _num_total,
         });
         self.rerender = true;
     }
 }
 
 impl TUI {
+    #[allow(unused)]
     fn print_stuff(&self) {
         match &self.progress_stats {
             None => {
@@ -61,23 +62,23 @@ impl TUI {
             }
             Some(stats) => match stats {
                 ProgressStats {
-                    num_successful: _,
-                    num_finished: _,
-                    num_total: 0,
+                    _num_successful: _,
+                    _num_finished: _,
+                    _num_total: 0,
                 } => eprintln!("No tasks."),
                 ProgressStats {
-                    num_successful,
-                    num_finished,
-                    num_total,
+                    _num_successful,
+                    _num_finished,
+                    _num_total,
                 } => {
-                    let failed = num_finished - num_successful;
-                    let s = if *num_total == 1 { "" } else { "s" };
-                    if num_successful == num_total {
-                        eprintln!("Finished all {num_total} job{s}.")
+                    let failed = _num_finished - _num_successful;
+                    let s = if *_num_total == 1 { "" } else { "s" };
+                    if _num_successful == _num_total {
+                        eprintln!("Finished all {_num_total} job{s}.")
                     } else if failed == 0 {
-                        eprintln!("Finished {num_successful}/{num_total} job{s}.")
+                        eprintln!("Finished {_num_successful}/{_num_total} job{s}.")
                     } else {
-                        eprintln!("Finished {num_successful}/{num_total} job{s}. {failed} failed or cancelled.")
+                        eprintln!("Finished {_num_successful}/{_num_total} job{s}. {failed} failed or cancelled.")
                     }
                 }
             },
