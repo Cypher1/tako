@@ -1,4 +1,6 @@
 use crate::string_interner::{get_new_interner, StrId, StrInterner};
+use crate::concepts::File;
+use crate::error::TError;
 use std::fmt;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
@@ -17,7 +19,7 @@ pub enum TokenType {
 #[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Token {
     pub start: u32,
-    pub tok_type: TokenType,
+    pub kind: TokenType,
     pub str_id: StrId,
 }
 
@@ -25,7 +27,7 @@ impl Token {
     fn eof() -> Self {
         Self {
             start: 0,
-            tok_type: TokenType::Eof,
+            kind: TokenType::Eof,
             str_id: get_new_interner()
                 .get("")
                 .expect("Eof/Empty string must be safely resolved"), // TODO: Validate that 0 is always EOF.
@@ -36,7 +38,7 @@ impl Token {
 impl fmt::Debug for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // TODO: Look up the token to get the contents?
-        write!(f, "{:?}({:?} @ {})", self.tok_type, self.str_id, self.start)
+        write!(f, "{:?}({:?} @ {})", self.kind, self.str_id, self.start)
     }
 }
 
@@ -71,8 +73,6 @@ pub fn get_str<'a>(string_interner: &'a StrInterner, tok: &Token) -> &'a str {
         .expect("Token created using different interner")
 }
 
-type ChPred = fn(&'_ (usize, char)) -> bool;
-
 pub struct Characters<'a> {
     s: &'a str,
     it: std::iter::Peekable<std::str::Chars<'a>>,
@@ -101,9 +101,6 @@ impl<'a> Characters<'a> {
         self.start = self.index;
         self.start
     }
-    fn index(&self) -> usize {
-        self.index
-    }
     fn as_str(&self) -> &'a str {
         &self.s[self.start..self.index]
     }
@@ -118,7 +115,26 @@ impl<'a> Characters<'a> {
     }
 }
 
-// Consumes a single token from a Deque of characters.
+// Reads all the tokens.
+pub fn lex<'a>(
+    file: &mut File
+) -> Result<(), TError> {
+    let contents = file.contents.as_ref().ok_or_else(|| TError::FileNotLoadedError)?;
+    let mut chars = Characters::new(&contents);
+    let mut tokens = Vec::new();
+    loop {
+        let (tok, new_chars) = lex_head(&contents, &mut file.string_interner, chars);
+        if tok.kind == TokenType::Eof {
+            break
+        }
+        chars = new_chars;
+        tokens.push(tok);
+    }
+    file.tokens = Some(tokens);
+    Ok(())
+}
+
+// Consumes a single token.
 pub fn lex_head<'a>(
     _contents: &str,
     string_interner: &mut StrInterner,
@@ -171,9 +187,9 @@ pub fn lex_head<'a>(
     characters.set_start();
     // TODO: This should be simplified (make tight loops).
     use TokenType::*;
-    let mut tok_type: TokenType = Unknown;
+    let mut kind: TokenType = Unknown;
     while let Some(chr) = characters.peek() {
-        tok_type = match (tok_type, classify_char(chr)) {
+        kind = match (kind, classify_char(chr)) {
             (Unknown, Whitespace) => Unknown,        // Ignore
             (_, Whitespace) => break,                // Token finished whitespace.
             (Unknown, new_tok_type) => new_tok_type, // Start token.
@@ -185,7 +201,7 @@ pub fn lex_head<'a>(
         };
         characters.next(); // Continue past the character.
     }
-    let str_id = if tok_type == StringLit {
+    let str_id = if kind == StringLit {
         let mut strlit = "".to_string();
         let quote = characters
             .prev()
@@ -220,7 +236,7 @@ pub fn lex_head<'a>(
     (
         Token {
             start: characters.start() as u32,
-            tok_type,
+            kind,
             str_id,
         },
         characters,
@@ -262,7 +278,7 @@ mod tests {
         let mut file = File::dummy_for_test("123");
         let chars = Characters::new(&file.contents);
         let (tok, _) = lex_head(&file.contents, &mut file.string_interner, chars);
-        assert_eq!(tok.tok_type, NumLit);
+        assert_eq!(tok.kind, NumLit);
     }
 
     #[test]
@@ -270,7 +286,7 @@ mod tests {
         let mut file = File::dummy_for_test("a123");
         let chars = Characters::new(&file.contents);
         let (tok, _) = lex_head(&file.contents, &mut file.string_interner, chars);
-        assert_eq!(tok.tok_type, Sym);
+        assert_eq!(tok.kind, Sym);
     }
 
     #[test]
@@ -278,7 +294,7 @@ mod tests {
         let mut file = File::dummy_for_test("-a123");
         let chars = Characters::new(&file.contents);
         let (tok, _) = lex_head(&file.contents, &mut file.string_interner, chars);
-        assert_eq!(tok.tok_type, Op);
+        assert_eq!(tok.kind, Op);
     }
 
     #[test]
@@ -286,7 +302,7 @@ mod tests {
         let mut file = File::dummy_for_test("\n12");
         let chars = Characters::new(&file.contents);
         let (tok, _) = lex_head(&file.contents, &mut file.string_interner, chars);
-        assert_eq!(tok.tok_type, NumLit);
+        assert_eq!(tok.kind, NumLit);
         assert_eq!(tok.start, 1);
     }
 
@@ -295,7 +311,7 @@ mod tests {
         let mut file = File::dummy_for_test("\r\n12");
         let chars = Characters::new(&file.contents);
         let (tok, _) = lex_head(&file.contents, &mut file.string_interner, chars);
-        assert_eq!(tok.tok_type, NumLit);
+        assert_eq!(tok.kind, NumLit);
         assert_eq!(tok.start, 2);
     }
 
@@ -305,7 +321,7 @@ mod tests {
         let mut file = File::dummy_for_test("\r12");
         let chars = Characters::new(&file.contents);
         let (tok, _) = lex_head(&file.contents, &mut file.string_interner, chars);
-        assert_eq!(tok.tok_type, NumLit);
+        assert_eq!(tok.kind, NumLit);
         assert_eq!(tok.start, 1);
     }
 
@@ -315,7 +331,7 @@ mod tests {
         let mut file = File::dummy_for_test("'\\n\\t2\\r\\\'\"'");
         let chars = Characters::new(&file.contents);
         let (tok, _) = lex_head(&file.contents, &mut file.string_interner, chars);
-        assert_eq!(tok.tok_type, StringLit);
+        assert_eq!(tok.kind, StringLit);
         assert_str_eq!(get_str(&file.string_interner, &tok), "\n\t2\r\'\"");
     }
 
@@ -324,13 +340,13 @@ mod tests {
         let mut file = File::dummy_for_test("x()");
         let chars = Characters::new(&file.contents);
         let (tok, chars2) = lex_head(&file.contents, &mut file.string_interner, chars);
-        assert_eq!(tok.tok_type, Sym);
+        assert_eq!(tok.kind, Sym);
         assert_str_eq!(get_str(&file.string_interner, &tok), "x");
         let (tok, chars3) = lex_head(&file.contents, &mut file.string_interner, chars2);
-        assert_eq!(tok.tok_type, OpenBracket);
+        assert_eq!(tok.kind, OpenBracket);
         assert_str_eq!(get_str(&file.string_interner, &tok), "(");
         let (tok, _) = lex_head(&file.contents, &mut file.string_interner, chars3);
-        assert_eq!(tok.tok_type, CloseBracket);
+        assert_eq!(tok.kind, CloseBracket);
         assert_str_eq!(get_str(&file.string_interner, &tok), ")");
     }
 
@@ -339,13 +355,13 @@ mod tests {
         let mut file = File::dummy_for_test("!\"hello world\"\n7");
         let chars = Characters::new(&file.contents);
         let (tok, chars2) = lex_head(&file.contents, &mut file.string_interner, chars);
-        assert_eq!(tok.tok_type, Op);
+        assert_eq!(tok.kind, Op);
         assert_str_eq!(get_str(&file.string_interner, &tok), "!");
         let (tok, chars3) = lex_head(&file.contents, &mut file.string_interner, chars2);
-        assert_eq!(tok.tok_type, StringLit);
+        assert_eq!(tok.kind, StringLit);
         assert_str_eq!(get_str(&file.string_interner, &tok), "hello world");
         let (tok, _) = lex_head(&file.contents, &mut file.string_interner, chars3);
-        assert_eq!(tok.tok_type, NumLit);
+        assert_eq!(tok.kind, NumLit);
         assert_str_eq!(get_str(&file.string_interner, &tok), "7");
     }
 }

@@ -22,6 +22,16 @@ impl<JobType> JobStore<JobType> {
         self.ready.len()
     }
 
+    pub fn num_successful(&self) -> usize {
+        let mut num = 0;
+        for job in self.all_jobs.iter() {
+            if let JobState::Finished(FinishType::Success) = job.state {
+                num += 1;
+            }
+        }
+        num
+    }
+
     pub fn num_finished(&self) -> usize {
         let mut num = 0;
         for job in self.all_jobs.iter() {
@@ -58,6 +68,10 @@ impl<JobType> JobStore<JobType> {
 
     pub fn wind_down(&mut self) {
         self.terminating = true;
+    }
+
+    pub fn get(&mut self, job_id: JobId<JobType>) -> &mut Job<JobType> {
+        job_id.get_mut(&mut self.all_jobs)
     }
 
     pub fn get_job(&mut self) -> Option<(JobId<JobType>, &Job<JobType>)> {
@@ -124,7 +138,7 @@ impl<JobType> JobStore<JobType> {
         }
         for dep in &job.dependencies {
             let state = &dep.get(&self.all_jobs).state;
-            if let JobState::Finished(_) = state {
+            if let JobState::Finished(FinishType::Success) = state {
                 continue;
             }
             return; // Not ready, leave as is.

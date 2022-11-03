@@ -1,4 +1,5 @@
 use log::warn;
+use crate::ui::UiMode;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Command {
@@ -8,11 +9,21 @@ pub enum Command {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CodeGenOptions {
+    // TODO: Add options
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Options {
     pub executable_location: Option<String>,
     pub files: Vec<String>,
     pub cmd: Command,
     pub interpreter_args: Vec<String>,
+    pub ui_mode: UiMode,
+    pub early_exit: bool,
+    /// `optimization_level` should be proportional to maximum time spent on optimisation.
+    pub optimization_level: u32,
+    pub code_gen: Option<CodeGenOptions>,
 }
 
 impl Default for Options {
@@ -22,6 +33,10 @@ impl Default for Options {
             files: vec![],
             cmd: Command::Build,
             interpreter_args: vec![],
+            ui_mode: UiMode::TuiIfAvailable,
+            early_exit: false,
+            optimization_level: 3,
+            code_gen: Some(CodeGenOptions {}),
         }
     }
 }
@@ -55,6 +70,13 @@ impl Options {
                 match f.as_str() {
                     "-i" | "--interactive" => opts.cmd = Command::Repl,
                     "-r" | "--run" => opts.cmd = Command::Interpret,
+                    "-e" | "--early-exit" => opts.early_exit = true,
+                    "--cli" => opts.ui_mode = UiMode::Cli,
+                    "--tui" => opts.ui_mode = UiMode::Tui,
+                    "-O0" => opts.optimization_level = 0,
+                    "-O1" => opts.optimization_level = 1,
+                    "-O2" => opts.optimization_level = 2,
+                    "-O3" => opts.optimization_level = 3,
                     "--version" => {
                         print_cli_info();
                         return opts;
@@ -105,4 +127,10 @@ Options:
   -r --run            Run files in interpreter.
   -h --help           Show this screen.
   --version           Show compiler version.
+
+Configuration:
+  -e --early-exit     Quit after the first error.
+  -O<n>               Optimisation level: 0|1|2|3.
+  --cli               Use a simpler command line interface.
+  --tui               Use an interactive terminal user interface.
 ";

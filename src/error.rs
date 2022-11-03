@@ -1,9 +1,11 @@
+use crate::free_standing::typed_index::TypedIndex;
 use crate::concepts::*;
 use crate::location::{Location, UserFacingLocation};
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TError {
+    FileNotLoadedError,
     CppCompilerError {
         error: String,
         return_code: i32,
@@ -52,38 +54,51 @@ impl From<std::num::ParseIntError> for TError {
 }
 
 #[derive(Error, PartialEq, Eq, PartialOrd, Ord)]
-pub struct UserFacingError {
-    error: TError,
+pub struct Error {
+    pub source: TError,
     location: Option<UserFacingLocation>,
 }
+pub type ErrorId = TypedIndex<Error>;
 
-impl UserFacingError {
-    fn new(error: TError, file: &File) -> Self {
+impl Error {
+    pub fn new(
+        source: TError,
+        file: Option<&File>,
+        module: Option<ModuleId>,
+    ) -> Self {
         use TError::*;
-        let location = match &error {
+        let location = match &source {
+            FileNotLoadedError => None,
             CppCompilerError { .. } => None,
             ParseError { location, .. } => location.as_ref(),
             InternalError { location, .. } => location.as_ref(),
         };
-        let location = location.map(|location| UserFacingLocation::from(file, location));
-        Self { error, location }
+        let location = match (file, location, module) {
+            (Some(file), Some(location), _module) => Some(UserFacingLocation::from(file, location)),
+            _ => None, // TODO: There's more options here...
+        };
+        Self { source, location }
     }
 }
 
-impl std::fmt::Display for UserFacingError {
+impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         <Self as std::fmt::Debug>::fmt(self, f)
     }
 }
 
-impl std::fmt::Debug for UserFacingError {
+impl std::fmt::Debug for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use TError::*;
         write!(f, "Error")?;
         if let Some(location) = &self.location {
             write!(f, " in {}", &location)?;
         }
-        match &self.error {
+        match &self.source {
+            FileNotLoadedError => write!(
+                f,
+                "File was not loaded before parse time"
+            ),
             CppCompilerError { error, return_code } => write!(
                 f,
                 "call to C++ compiler failed with error code: {return_code}\n{error}"

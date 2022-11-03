@@ -17,7 +17,7 @@ pub enum JobState {
 
 #[derive(Debug)]
 pub struct Job<JobType> {
-    pub ty: JobType,
+    pub kind: JobType,
     pub state: JobState,
     pub dependents: Vec<JobId<JobType>>,
     pub dependencies: Vec<JobId<JobType>>,
@@ -25,9 +25,9 @@ pub struct Job<JobType> {
 pub type JobId<T> = TypedIndex<Job<T>>;
 
 impl<JobType> Job<JobType> {
-    pub fn new(ty: JobType, dependencies: Vec<JobId<JobType>>) -> Self {
+    pub fn new(kind: JobType, dependencies: Vec<JobId<JobType>>) -> Self {
         Self {
-            ty,
+            kind,
             state: JobState::Waiting,
             dependents: Vec::new(),
             dependencies,
