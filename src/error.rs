@@ -1,5 +1,5 @@
-use crate::free_standing::typed_index::TypedIndex;
 use crate::concepts::*;
+use crate::free_standing::typed_index::TypedIndex;
 use crate::location::{Location, UserFacingLocation};
 use thiserror::Error;
 
@@ -61,11 +61,7 @@ pub struct Error {
 pub type ErrorId = TypedIndex<Error>;
 
 impl Error {
-    pub fn new(
-        source: TError,
-        file: Option<&File>,
-        module: Option<ModuleId>,
-    ) -> Self {
+    pub fn new(source: TError, file: Option<&File>, module: Option<ModuleId>) -> Self {
         use TError::*;
         let location = match &source {
             FileNotLoadedError => None,
@@ -95,10 +91,7 @@ impl std::fmt::Debug for Error {
             write!(f, " in {}", &location)?;
         }
         match &self.source {
-            FileNotLoadedError => write!(
-                f,
-                "File was not loaded before parse time"
-            ),
+            FileNotLoadedError => write!(f, "File was not loaded before parse time"),
             CppCompilerError { error, return_code } => write!(
                 f,
                 "call to C++ compiler failed with error code: {return_code}\n{error}"

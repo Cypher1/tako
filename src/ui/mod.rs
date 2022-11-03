@@ -1,5 +1,5 @@
-use crate::error::{Error, ErrorId};
 use crate::compiler_tasks::Progress;
+use crate::error::{Error, ErrorId};
 
 mod cli;
 pub use cli::CLI;
@@ -11,7 +11,7 @@ pub use tui::TUI;
 pub enum UiMode {
     Cli,
     Tui,
-    TuiIfAvailable
+    TuiIfAvailable,
 }
 
 pub trait UserInterface: std::fmt::Debug {

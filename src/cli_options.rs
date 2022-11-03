@@ -1,5 +1,5 @@
-use log::warn;
 use crate::ui::UiMode;
+use log::warn;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Command {

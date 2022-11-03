@@ -1,6 +1,9 @@
 use crate::ast::Ast;
 use crate::cli_options::Options;
-use crate::compiler_tasks::{Progress::*, JobType::{self, *}};
+use crate::compiler_tasks::{
+    JobType::{self, *},
+    Progress::*,
+};
 use crate::concepts::*;
 use crate::error::{Error, ErrorId, TError};
 use crate::free_standing::jobs::{FinishType, JobId as BaseJobId, JobStore};
@@ -88,31 +91,56 @@ impl<'opts> CompilerContext<'opts> {
         (fileid, parse_job)
     }
 
-    fn plan_build_job(&mut self, path: &str) -> (JobId, JobId, Option<JobId>, Option<JobId>, JobId) {
+    fn plan_build_job(
+        &mut self,
+        path: &str,
+    ) -> (JobId, JobId, Option<JobId>, Option<JobId>, JobId) {
         let (file_id, parse_job) = self.plan_parse_jobs(path);
-        let type_check_job_discover = self
-            .jobs
-            .add_job(TypeCheckAllModulesStart { file_id, down_stream: None }, vec![parse_job]);
-        let type_check_job = self
-            .jobs
-            .add_job(TypeCheckAllModulesDone(file_id), vec![type_check_job_discover]);
+        let type_check_job_discover = self.jobs.add_job(
+            TypeCheckAllModulesStart {
+                file_id,
+                down_stream: None,
+            },
+            vec![parse_job],
+        );
+        let type_check_job = self.jobs.add_job(
+            TypeCheckAllModulesDone(file_id),
+            vec![type_check_job_discover],
+        );
         // Give the 'starter' a way to link up dependencies
         match &mut self.jobs.get(type_check_job_discover).kind {
-            TypeCheckAllModulesStart { file_id: _, ref mut down_stream } => { *down_stream = Some(type_check_job); }
+            TypeCheckAllModulesStart {
+                file_id: _,
+                ref mut down_stream,
+            } => {
+                *down_stream = Some(type_check_job);
+            }
             _ => panic!("Job ordering changed!?"),
         }
 
         let optimization_level = self.options.optimization_level;
         let optimize_job = if optimization_level > 0 {
-            let optimize_file_discover = self
-                .jobs
-                .add_job(OptimizeAllModulesStart{file_id, down_stream: None, optimization_level}, vec![type_check_job]);
-            let optimize_job = self
-                .jobs
-                .add_job(OptimizeAllModulesDone(file_id), vec![optimize_file_discover]);
+            let optimize_file_discover = self.jobs.add_job(
+                OptimizeAllModulesStart {
+                    file_id,
+                    down_stream: None,
+                    optimization_level,
+                },
+                vec![type_check_job],
+            );
+            let optimize_job = self.jobs.add_job(
+                OptimizeAllModulesDone(file_id),
+                vec![optimize_file_discover],
+            );
             // Give the 'starter' a way to link up dependencies
             match &mut self.jobs.get(optimize_file_discover).kind {
-                OptimizeAllModulesStart { file_id: _, ref mut down_stream, optimization_level: _ } => { *down_stream = Some(optimize_job); }
+                OptimizeAllModulesStart {
+                    file_id: _,
+                    ref mut down_stream,
+                    optimization_level: _,
+                } => {
+                    *down_stream = Some(optimize_job);
+                }
                 _ => panic!("Job ordering changed!?"),
             }
             Some(optimize_job)
@@ -120,17 +148,19 @@ impl<'opts> CompilerContext<'opts> {
             None
         };
         let code_gen = &self.options.code_gen;
-        let code_gen_job = if code_gen.is_some() {
-            todo!()
-        } else {
-            None
-        };
+        let code_gen_job = if code_gen.is_some() { todo!() } else { None };
         let last_job = if let Some(optimize_job) = &optimize_job {
             *optimize_job
         } else {
             type_check_job
         };
-        (parse_job, type_check_job, optimize_job, code_gen_job, last_job)
+        (
+            parse_job,
+            type_check_job,
+            optimize_job,
+            code_gen_job,
+            last_job,
+        )
     }
 
     fn plan_build_jobs(&mut self) {
@@ -139,7 +169,8 @@ impl<'opts> CompilerContext<'opts> {
         let mut optimize_jobs = Vec::new();
         let mut code_gen_jobs = Vec::new();
         for path in &self.options.files {
-            let (parse_job, type_check_job, optimize_job, code_gen_job, _file_ready_job) = self.plan_build_job(path);
+            let (parse_job, type_check_job, optimize_job, code_gen_job, _file_ready_job) =
+                self.plan_build_job(path);
             prep_jobs.push(parse_job);
             type_check_jobs.push(type_check_job);
             if let Some(optimize_job) = optimize_job {
@@ -150,9 +181,12 @@ impl<'opts> CompilerContext<'opts> {
             }
         }
         self.jobs.add_job(ReportProgress(AllFilesParsed), prep_jobs);
-        self.jobs.add_job(ReportProgress(GlobalTypeCheckDone), type_check_jobs);
-        self.jobs.add_job(ReportProgress(GlobalOptimizeDone), optimize_jobs);
-        self.jobs.add_job(ReportProgress(GlobalCodeGenDone), code_gen_jobs);
+        self.jobs
+            .add_job(ReportProgress(GlobalTypeCheckDone), type_check_jobs);
+        self.jobs
+            .add_job(ReportProgress(GlobalOptimizeDone), optimize_jobs);
+        self.jobs
+            .add_job(ReportProgress(GlobalCodeGenDone), code_gen_jobs);
     }
 
     fn plan_interpret_jobs(&mut self) {
@@ -169,7 +203,7 @@ impl<'opts> CompilerContext<'opts> {
     fn plan_repl_jobs(&mut self) {
         let mut loads = Vec::new();
         for path in &self.options.files {
-        let (file_id, init_job_id) = self.plan_parse_jobs(path);
+            let (file_id, init_job_id) = self.plan_parse_jobs(path);
             let load_job = self
                 .jobs
                 .add_job(LoadIntoInterpreter(file_id), vec![init_job_id]);
@@ -205,9 +239,16 @@ impl<'opts> CompilerContext<'opts> {
             JobType::LoadIntoInterpreter(_) => todo!(),
             JobType::RunInInterpreter(_) => todo!(),
             JobType::TypeCheck(_) => todo!(),
-            JobType::TypeCheckAllModulesStart{file_id: _, down_stream: _} => todo!(),
+            JobType::TypeCheckAllModulesStart {
+                file_id: _,
+                down_stream: _,
+            } => todo!(),
             JobType::TypeCheckAllModulesDone(_file) => todo!(),
-            JobType::OptimizeAllModulesStart { file_id: _, down_stream: _, optimization_level: _ } => todo!(),
+            JobType::OptimizeAllModulesStart {
+                file_id: _,
+                down_stream: _,
+                optimization_level: _,
+            } => todo!(),
             JobType::Optimize(_module_id, _optimize_level) => todo!(),
             JobType::OptimizeAllModulesDone(_file_id) => todo!(),
             JobType::GenerateBinary => todo!(),
@@ -237,11 +278,7 @@ impl<'opts> CompilerContext<'opts> {
             let finish_type = match result {
                 Ok(finish_type) => finish_type,
                 Err(error) => {
-                    self.report_error(Error::new(
-                            error,
-                            None,
-                            None,
-                    ));
+                    self.report_error(Error::new(error, None, None));
                     FinishType::Failed
                 }
             };

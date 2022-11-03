@@ -1,6 +1,6 @@
-use crate::string_interner::{get_new_interner, StrId, StrInterner};
 use crate::concepts::File;
 use crate::error::TError;
+use crate::string_interner::{get_new_interner, StrId, StrInterner};
 use std::fmt;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
@@ -116,16 +116,17 @@ impl<'a> Characters<'a> {
 }
 
 // Reads all the tokens.
-pub fn lex<'a>(
-    file: &mut File
-) -> Result<(), TError> {
-    let contents = file.contents.as_ref().ok_or_else(|| TError::FileNotLoadedError)?;
+pub fn lex<'a>(file: &mut File) -> Result<(), TError> {
+    let contents = file
+        .contents
+        .as_ref()
+        .ok_or_else(|| TError::FileNotLoadedError)?;
     let mut chars = Characters::new(&contents);
     let mut tokens = Vec::new();
     loop {
         let (tok, new_chars) = lex_head(&contents, &mut file.string_interner, chars);
         if tok.kind == TokenType::Eof {
-            break
+            break;
         }
         chars = new_chars;
         tokens.push(tok);

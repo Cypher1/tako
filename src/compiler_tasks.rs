@@ -15,7 +15,8 @@ pub enum Progress {
 
 impl std::fmt::Display for Progress {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f,
+        write!(
+            f,
             "{}",
             match self {
                 Progress::AllFilesParsed => "All files parsed!",
