@@ -10,7 +10,7 @@ pub mod concepts;
 pub mod error;
 pub mod primitives;
 pub mod ui;
-// pub mod parser;
+pub mod parser;
 pub mod ast;
 pub mod keywords;
 pub mod location;

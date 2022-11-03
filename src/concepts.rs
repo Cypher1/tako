@@ -1,4 +1,3 @@
-use std::collections::VecDeque;
 use crate::ast::*;
 use crate::free_standing::typed_index::TypedIndex;
 use crate::string_interner::StrInterner;
@@ -12,7 +11,7 @@ pub struct File {
     pub ast: Ast,
     pub root: Option<ModuleId>,
     pub contents: Option<String>,
-    pub tokens: Option<VecDeque<Token>>,
+    pub tokens: Option<Vec<Token>>,
 }
 pub type FileId = TypedIndex<File>;
 

@@ -1,6 +1,24 @@
 use log::debug;
-use std::collections::VecDeque;
+use crate::tokens::{Token, TokenType};
+use crate::error::TError;
+use crate::concepts::File;
 
+pub fn parse(file: &mut File) -> Result<(), TError> {
+    let tokens = file.tokens.as_ref().ok_or(TError::FileNotLexedError)?;
+    let mut tokens = tokens.iter().peekable();
+    eprintln!("Parse {}", file.path);
+    loop {
+        let tok: &Token = if let Some(tok) = tokens.next() {
+            tok
+        } else {
+            break;
+        };
+        eprintln!("tok {:?}", tok);
+    }
+    Ok(())
+}
+
+/*
 use crate::ast::{
     Abs, Apply, HasInfo, Info, Let, Node, PathRef, Sym, Symbol,
 };
@@ -8,8 +26,8 @@ use crate::compiler_context::CompilerContext;
 use crate::error::TError;
 use crate::location::Loc;
 use crate::primitives::{int32, string, Prim, Val};
-use crate::tokens::{lex_head, Token, TokenType};
-
+*/
+/*
 #[derive(Debug, Clone)]
 enum Semantic {
     Operator { binding: u32, associativity: Direction },
@@ -543,7 +561,7 @@ fn lex_string(
             ));
         }
         // If valid, take the token and move on.
-        toks.push_back(next);
+        toks.push(next);
         chars = new_chars;
     }
     Ok(toks)
@@ -568,12 +586,13 @@ pub fn parse_string(
     debug!("ast: {}", root);
     Ok((root, root_entity))
 }
-
+*/
+/*
 #[cfg(test)]
 pub mod tests {
     use super::*;
     use crate::components::*;
-    use crate::errors::TError;
+    use crate::error::TError;
     use crate::matcher::Matcher;
     use crate::pretty_assertions::assert_eq_err;
 
@@ -942,3 +961,4 @@ pub mod tests {
         )
     }
 }
+*/
