@@ -6,6 +6,7 @@ use thiserror::Error;
 #[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TError {
     FileNotLoadedError,
+    FileNotLexedError,
     CppCompilerError {
         error: String,
         return_code: i32,
@@ -65,6 +66,7 @@ impl Error {
         use TError::*;
         let location = match &source {
             FileNotLoadedError => None,
+            FileNotLexedError => None,
             CppCompilerError { .. } => None,
             ParseError { location, .. } => location.as_ref(),
             InternalError { location, .. } => location.as_ref(),
@@ -92,6 +94,7 @@ impl std::fmt::Debug for Error {
         }
         match &self.source {
             FileNotLoadedError => write!(f, "File was not loaded before parse time"),
+            FileNotLexedError => write!(f, "File was not lexed before parse time"),
             CppCompilerError { error, return_code } => write!(
                 f,
                 "call to C++ compiler failed with error code: {return_code}\n{error}"

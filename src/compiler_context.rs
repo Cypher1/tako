@@ -237,7 +237,10 @@ impl<'opts> CompilerContext<'opts> {
                 let file = &mut file_id.get_mut(&mut self.files);
                 crate::tokens::lex(file)?;
             }
-            JobType::Parse(file_id) => todo!("Parse {file_id:?}"),
+            JobType::Parse(file_id) => {
+                let file = &mut file_id.get_mut(&mut self.files);
+                crate::parser::parse(file)?;
+            }
             JobType::LoadIntoInterpreter(_) => todo!(),
             JobType::RunInInterpreter(_) => todo!(),
             JobType::TypeCheck(_) => todo!(),

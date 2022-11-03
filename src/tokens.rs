@@ -1,4 +1,3 @@
-use std::collections::VecDeque;
 use std::fmt;
 use crate::concepts::File;
 use crate::error::TError;
@@ -120,14 +119,14 @@ impl<'a> Characters<'a> {
 pub fn lex<'a>(file: &mut File) -> Result<(), TError> {
     let contents = file.contents.as_ref().ok_or(TError::FileNotLoadedError)?;
     let mut chars = Characters::new(contents);
-    let mut tokens = VecDeque::new();
+    let mut tokens = Vec::new();
     loop {
         let (tok, new_chars) = lex_head(contents, &mut file.string_interner, chars);
         if tok.kind == TokenType::Eof {
             break;
         }
         chars = new_chars;
-        tokens.push_back(tok);
+        tokens.push(tok);
     }
     file.tokens = Some(tokens);
     Ok(())
