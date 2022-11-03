@@ -9,7 +9,7 @@ use crate::error::{Error, ErrorId, TError};
 use crate::free_standing::jobs::{FinishType, JobId as BaseJobId, JobStore};
 use crate::string_interner::get_new_interner;
 use crate::ui::UserInterface;
-use log::trace;
+use log::{info, trace};
 use std::sync::{Arc, Mutex};
 
 type JobId = BaseJobId<JobType>;
@@ -28,6 +28,8 @@ pub struct CompilerContext<'opts> {
     ui: Arc<Mutex<dyn UserInterface>>,
     options: &'opts Options,
 }
+
+pub struct InContext<'a, 'opts, T>(&'a CompilerContext<'opts>, &'a T);
 
 impl<'opts> std::ops::Deref for CompilerContext<'opts> {
     type Target = CompilerStorage;
@@ -269,8 +271,10 @@ impl<'opts> CompilerContext<'opts> {
     pub async fn run_job_loop(&mut self) {
         loop {
             let (job_id, job_kind) = if let Some((job_id, job)) = self.jobs.get_job() {
-                trace!("Starting job: {job_id:?} {job:#?}");
-                (job_id, job.kind)
+                trace!("Job details: {job_id:?} {job:#?}");
+                let job_kind = job.kind;
+                info!("Starting job: {}", InContext(&self, &job_kind));
+                (job_id, job_kind)
             } else {
                 break;
             };
@@ -297,5 +301,15 @@ impl<'opts> CompilerContext<'opts> {
             self.jobs.num_finished(),
             self.jobs.num(),
         ); // Maybe???
+    }
+}
+
+impl<'a, 'source> std::fmt::Display for InContext<'a, 'source, JobType> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // TODO: Use the context (.0) to render the value (.1).
+        write!(
+            f,
+            "JOB {:?}", self.1
+        )
     }
 }
