@@ -17,7 +17,7 @@ type JobId = BaseJobId<JobType>;
 #[derive(Default, Debug)]
 pub struct CompilerStorage {
     files: Vec<File>,
-    modules: Vec<Module>,
+    _modules: Vec<Module>,
     errors: Vec<Error>,
     jobs: JobStore<JobType>,
 }
