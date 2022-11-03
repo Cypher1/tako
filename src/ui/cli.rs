@@ -16,7 +16,7 @@ impl UserInterface for CLI {
         eprintln!("Error: {error:?}");
     }
     fn report_progress(&mut self, progress: Progress) {
-        eprintln!("{}", progress);
+        eprintln!("{progress}");
     }
     fn report_job_counts(&mut self, num_successful: usize, num_finished: usize, num_total: usize) {
         match (num_successful, num_finished, num_total) {

@@ -1,11 +1,7 @@
 use super::UserInterface;
 use crate::compiler_tasks::Progress;
 use crate::error::{Error, ErrorId};
-use crossterm::{
-    style::{Color, Print, ResetColor, SetBackgroundColor, SetForegroundColor},
-    terminal::{disable_raw_mode, enable_raw_mode, size, Clear, ClearType},
-    QueueableCommand, Result,
-};
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use shutdown_hooks::add_shutdown_hook;
 
 extern "C" fn shutdown() {
