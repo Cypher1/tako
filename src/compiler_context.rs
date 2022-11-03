@@ -9,13 +9,13 @@ use crate::free_standing::jobs::{FinishType, JobId as BaseJobId, JobStore};
 use crate::ui::UserInterface;
 use log::{info, trace};
 use std::sync::{Arc, Mutex};
+use tokio::sync::mpsc;
 
 type JobId = BaseJobId<JobType>;
 
 #[derive(Default, Debug)]
 pub struct CompilerStorage {
     files: Vec<File>,
-    _modules: Vec<Module>,
     errors: Vec<Error>,
     jobs: JobStore<JobType>,
 }
@@ -253,7 +253,7 @@ impl<'opts> CompilerContext<'opts> {
     }
 
     pub async fn run_job(&mut self, job_id: JobId, job: JobType) -> Result<FinishType, TError> {
-
+        Ok(())
     }
 
     pub fn report_error(&mut self, error: Error) {
@@ -267,9 +267,13 @@ impl<'opts> CompilerContext<'opts> {
     }
 
     pub async fn run_job_loop(&mut self) {
-        let errors = channel;
-        let stats = channel;
-        let job = channel;
+        const number_waiting: usize = 100;
+        // this corresponds to the number of threads (and therefore processors that we're happy to
+        // have waiting for the scheduler to catch up).
+        // I have no idea how this affects runtime.
+        let (error_sender, error_reader) = mpsc::channel(number_waiting);
+        let (stats_sender, stats_reader) = mpsc::channel(number_waiting);
+        let (job_sender, job_reader) = mpsc::channel(number_waiting);
         loop {
             let (job_id, job_kind) = if let Some((job_id, job)) = self.jobs.get_job() {
                 trace!("Job details: {job_id:?} {job:#?}");
