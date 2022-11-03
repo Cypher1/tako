@@ -213,7 +213,7 @@ impl<'opts> CompilerContext<'opts> {
         }
     }
 
-    pub fn do_job(&mut self, job_id: JobId, job: JobType) -> Result<FinishType, TError> {
+    pub async fn do_job(&mut self, job_id: JobId, job: JobType) -> Result<FinishType, TError> {
         trace!("Running job: {job_id:?} {job:?}");
         match job {
             JobType::ReportProgress(progress) => {
@@ -252,6 +252,10 @@ impl<'opts> CompilerContext<'opts> {
         Ok(FinishType::Success)
     }
 
+    pub async fn run_job(&mut self, job_id: JobId, job: JobType) -> Result<FinishType, TError> {
+
+    }
+
     pub fn report_error(&mut self, error: Error) {
         if self.options.early_exit {
             self.jobs.wind_down();
@@ -263,6 +267,9 @@ impl<'opts> CompilerContext<'opts> {
     }
 
     pub async fn run_job_loop(&mut self) {
+        let errors = channel;
+        let stats = channel;
+        let job = channel;
         loop {
             let (job_id, job_kind) = if let Some((job_id, job)) = self.jobs.get_job() {
                 trace!("Job details: {job_id:?} {job:#?}");
