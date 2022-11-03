@@ -307,9 +307,6 @@ impl<'opts> CompilerContext<'opts> {
 impl<'a, 'source> std::fmt::Display for InContext<'a, 'source, JobType> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // TODO: Use the context (.0) to render the value (.1).
-        write!(
-            f,
-            "JOB {:?}", self.1
-        )
+        write!(f, "JOB {:?}", self.1)
     }
 }
