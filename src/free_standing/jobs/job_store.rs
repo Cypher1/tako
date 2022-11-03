@@ -8,16 +8,16 @@ pub enum GetJob<'a, JobType> {
 }
 
 impl<'a, JobType> GetJob<'a, JobType> {
-    fn has_job(&self) -> bool {
+    pub fn has_job(&self) -> bool {
         matches!(self, GetJob::Job(_, _))
     }
-    fn has_finished(&self) -> bool {
+    pub fn has_finished(&self) -> bool {
         matches!(self, GetJob::Finished)
     }
-    fn has_none_ready(&self) -> bool {
+    pub fn has_none_ready(&self) -> bool {
         matches!(self, GetJob::NoneReady)
     }
-    fn unwrap(self) -> (JobId<JobType>, &'a Job<JobType>) {
+    pub fn unwrap(self) -> (JobId<JobType>, &'a Job<JobType>) {
         if let GetJob::Job(job_id, job) = self {
             return (job_id, job);
         }
@@ -113,7 +113,6 @@ impl<JobType> JobStore<JobType> {
                 best = Some((count, index));
             }
         }
-        let mut job_id = ready.pop()?; // pop swap to remove in O(1).
         let index = if let Some((_count, index)) = best {
             index
         } else {
@@ -124,6 +123,7 @@ impl<JobType> JobStore<JobType> {
                 return GetJob::NoneReady;
             }
         };
+        let mut job_id = ready.pop().unwrap(); // pop swap to remove in O(1).
         if index < ready.len() {
             std::mem::swap(&mut job_id, &mut ready[index]);
         }
