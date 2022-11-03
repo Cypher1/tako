@@ -1,6 +1,6 @@
-use crate::error::{Error, ErrorId};
-use crate::compiler_tasks::Progress;
 use super::UserInterface;
+use crate::compiler_tasks::Progress;
+use crate::error::{Error, ErrorId};
 
 #[derive(Debug)]
 pub struct CLI {}
@@ -19,11 +19,7 @@ impl UserInterface for CLI {
         eprintln!("{}", progress);
     }
     fn report_job_counts(&mut self, num_successful: usize, num_finished: usize, num_total: usize) {
-        match (
-            num_successful,
-            num_finished,
-            num_total,
-        ) {
+        match (num_successful, num_finished, num_total) {
             (_successful, _finished, /*total*/ 0) => eprintln!("No tasks."),
             (successful, finished, total) => {
                 let failed = finished - successful;
@@ -38,5 +34,4 @@ impl UserInterface for CLI {
             }
         }
     }
-
 }

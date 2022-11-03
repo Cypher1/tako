@@ -1,12 +1,12 @@
-use shutdown_hooks::add_shutdown_hook;
+use super::UserInterface;
+use crate::compiler_tasks::Progress;
+use crate::error::{Error, ErrorId};
 use crossterm::{
-    terminal::{size, Clear, ClearType, enable_raw_mode, disable_raw_mode},
     style::{Color, Print, ResetColor, SetBackgroundColor, SetForegroundColor},
+    terminal::{disable_raw_mode, enable_raw_mode, size, Clear, ClearType},
     QueueableCommand, Result,
 };
-use super::UserInterface;
-use crate::error::{Error, ErrorId};
-use crate::compiler_tasks::Progress;
+use shutdown_hooks::add_shutdown_hook;
 
 extern "C" fn shutdown() {
     let _discard = disable_raw_mode();
@@ -48,13 +48,11 @@ impl UserInterface for TUI {
         self.rerender = true;
     }
     fn report_job_counts(&mut self, num_successful: usize, num_finished: usize, num_total: usize) {
-        self.progress_stats = Some(
-            ProgressStats {
-                num_successful,
-                num_finished,
-                num_total,
-            }
-        );
+        self.progress_stats = Some(ProgressStats {
+            num_successful,
+            num_finished,
+            num_total,
+        });
         self.rerender = true;
     }
 }
@@ -66,8 +64,16 @@ impl TUI {
                 eprintln!("Waiting on job status.");
             }
             Some(stats) => match stats {
-                ProgressStats {num_successful: _, num_finished: _, num_total: 0} => eprintln!("No tasks."),
-                ProgressStats {num_successful, num_finished, num_total} => {
+                ProgressStats {
+                    num_successful: _,
+                    num_finished: _,
+                    num_total: 0,
+                } => eprintln!("No tasks."),
+                ProgressStats {
+                    num_successful,
+                    num_finished,
+                    num_total,
+                } => {
                     let failed = num_finished - num_successful;
                     let s = if *num_total == 1 { "" } else { "s" };
                     if num_successful == num_total {
@@ -78,7 +84,7 @@ impl TUI {
                         eprintln!("Finished {num_successful}/{num_total} job{s}. {failed} failed or cancelled.")
                     }
                 }
-            }
+            },
         }
     }
 }
