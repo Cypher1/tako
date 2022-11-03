@@ -28,6 +28,7 @@ impl File {
             root: None,
             tokens: None,
             ast: None,
+            modules: None,
         }
     }
 

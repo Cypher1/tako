@@ -7,6 +7,24 @@ pub enum GetJob<'a, JobType> {
     Job(JobId<JobType>, &'a Job<JobType>)
 }
 
+impl<'a, JobType> GetJob<'a, JobType> {
+    fn has_job(&self) -> bool {
+        matches!(self, GetJob::Job(_, _))
+    }
+    fn has_finished(&self) -> bool {
+        matches!(self, GetJob::Finished)
+    }
+    fn has_none_ready(&self) -> bool {
+        matches!(self, GetJob::NoneReady)
+    }
+    fn unwrap(self) -> (JobId<JobType>, &'a Job<JobType>) {
+        if let GetJob::Job(job_id, job) = self {
+            return (job_id, job);
+        }
+        panic!("Called unwrap on an enpty GetJob");
+    }
+}
+
 #[derive(Debug)]
 pub struct JobStore<JobType> {
     ready: Vec<JobId<JobType>>,
@@ -181,7 +199,7 @@ mod test {
     #[test]
     fn jobs_doesnt_invent_jobs_from_nowhere() {
         let mut jobs: JobStore<JobType> = JobStore::default();
-        assert!(jobs.get_job().is_none());
+        assert!(jobs.get_job().has_finished());
     }
 
     #[test]
@@ -212,20 +230,24 @@ mod test {
         let job2 = jobs.add_job("job2", vec![job1]);
         let todo = {
             let todo = jobs.get_job();
-            assert!(todo.is_some());
+            assert!(todo.has_job());
             let todo = todo.unwrap();
             assert_eq!(todo.0, job1);
             assert_eq!(todo.1.kind, "job1");
             todo.0
         };
+        {
+            let todo = jobs.get_job();
+            assert!(todo.has_none_ready());
+        }
         jobs.finish_job(todo, FinishType::Success);
         dbg!(&jobs);
         let todo = jobs.get_job();
-        assert!(todo.is_some());
+        assert!(todo.has_job());
         let todo = todo.unwrap();
         assert_eq!(todo.0, job2);
         assert_eq!(todo.1.kind, "job2");
-        assert!(jobs.get_job().is_none());
+        assert!(jobs.get_job().has_finished());
     }
 
     #[test]
@@ -234,7 +256,7 @@ mod test {
         let job1 = jobs.add_job("job1", vec![]);
         let job2 = jobs.add_job("job2", vec![job1]);
         let todo = jobs.get_job();
-        assert!(todo.is_some());
+        assert!(todo.has_job());
         let todo = todo.unwrap();
         assert_eq!(todo.0, job1);
         assert_eq!(todo.1.dependents, vec![job2]);
@@ -252,7 +274,7 @@ mod test {
         assert_eq!(jobs.num_running(), 0);
         let todo = {
             let todo = jobs.get_job();
-            assert!(todo.is_some());
+            assert!(todo.has_job());
             let todo = todo.unwrap();
             assert_eq!(todo.0, job1);
             assert_eq!(todo.1.kind, "job1");
@@ -278,6 +300,6 @@ mod test {
         jobs.add_job("job1", vec![]);
         jobs.add_job("job2", vec![]);
         jobs.wind_down();
-        assert!(jobs.get_job().is_none());
+        assert!(jobs.get_job().has_finished());
     }
 }
