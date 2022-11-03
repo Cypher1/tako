@@ -3,6 +3,7 @@ use crate::compiler_tasks::Progress;
 use crate::error::{Error, ErrorId};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use shutdown_hooks::add_shutdown_hook;
+use std::sync::{Arc, Mutex};
 
 extern "C" fn shutdown() {
     let _discard = disable_raw_mode();
@@ -16,10 +17,15 @@ pub struct ProgressStats {
 }
 
 #[derive(Debug)]
-pub struct TUI {
+pub struct TUIState {
     progress: Vec<Progress>,
     rerender: bool,
     progress_stats: Option<ProgressStats>,
+}
+
+#[derive(Debug)]
+pub struct TUI {
+    state: Arc<Mutex<TUIState>>,
 }
 
 impl TUI {
@@ -27,9 +33,11 @@ impl TUI {
         add_shutdown_hook(shutdown);
         enable_raw_mode().expect("TUI failed to enable raw mode");
         Self {
+            state: Arc::new(Mutex::new(TUIState {
             progress: Vec::new(),
             rerender: true,
             progress_stats: None,
+            }       ))
         }
     }
 }
@@ -39,9 +47,10 @@ impl UserInterface for TUI {
         eprintln!("Error: {error:?}");
     }
     fn report_progress(&mut self, progress: Progress) {
-        self.progress.push(progress);
+        let mut state = self.state.lock().expect("Get state");
+        state.progress.push(progress);
         // rerender
-        self.rerender = true;
+        state.rerender = true;
     }
     fn report_job_counts(
         &mut self,
@@ -49,19 +58,21 @@ impl UserInterface for TUI {
         _num_finished: usize,
         _num_total: usize,
     ) {
-        self.progress_stats = Some(ProgressStats {
+        let mut state = self.state.lock().expect("Get state");
+        state.progress_stats = Some(ProgressStats {
             _num_successful,
             _num_finished,
             _num_total,
         });
-        self.rerender = true;
+        state.rerender = true;
     }
 }
 
 impl TUI {
     #[allow(unused)]
     fn print_stuff(&self) {
-        match &self.progress_stats {
+        let state = self.state.lock().expect("Get state");
+        match &state.progress_stats {
             None => {
                 eprintln!("Waiting on job status.");
             }
