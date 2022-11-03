@@ -43,7 +43,12 @@ impl UserInterface for TUI {
         // rerender
         self.rerender = true;
     }
-    fn report_job_counts(&mut self, _num_successful: usize, _num_finished: usize, _num_total: usize) {
+    fn report_job_counts(
+        &mut self,
+        _num_successful: usize,
+        _num_finished: usize,
+        _num_total: usize,
+    ) {
         self.progress_stats = Some(ProgressStats {
             _num_successful,
             _num_finished,

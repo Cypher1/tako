@@ -272,7 +272,7 @@ mod tests {
     }
 
     #[test]
-    fn lex_number() {
+    fn lex_head_number() {
         let mut file = File::dummy_for_test("123");
         let contents = &file.contents.unwrap();
         let chars = Characters::new(contents);
@@ -281,7 +281,7 @@ mod tests {
     }
 
     #[test]
-    fn lex_symbol() {
+    fn lex_head_symbol() {
         let mut file = File::dummy_for_test("a123");
         let contents = &file.contents.unwrap();
         let chars = Characters::new(contents);
@@ -290,7 +290,7 @@ mod tests {
     }
 
     #[test]
-    fn lex_operator() {
+    fn lex_head_operator() {
         let mut file = File::dummy_for_test("-a123");
         let contents = &file.contents.unwrap();
         let chars = Characters::new(contents);
@@ -299,7 +299,7 @@ mod tests {
     }
 
     #[test]
-    fn lex_num_and_newline_linux() {
+    fn lex_head_num_and_newline_linux() {
         let mut file = File::dummy_for_test("\n12");
         let contents = &file.contents.unwrap();
         let chars = Characters::new(contents);
@@ -309,7 +309,7 @@ mod tests {
     }
 
     #[test]
-    fn lex_num_and_newline_windows() {
+    fn lex_head_num_and_newline_windows() {
         let mut file = File::dummy_for_test("\r\n12");
         let contents = &file.contents.unwrap();
         let chars = Characters::new(contents);
@@ -319,7 +319,7 @@ mod tests {
     }
 
     #[test]
-    fn lex_num_and_newline_old_mac() {
+    fn lex_head_num_and_newline_old_mac() {
         // For mac systems before OSX
         let mut file = File::dummy_for_test("\r12");
         let contents = &file.contents.unwrap();
@@ -330,7 +330,7 @@ mod tests {
     }
 
     #[test]
-    fn lex_escaped_characters_in_string() {
+    fn lex_head_escaped_characters_in_string() {
         // TODO: De escape them.
         let mut file = File::dummy_for_test("'\\n\\t2\\r\\\'\"'");
         let contents = &file.contents.unwrap();
@@ -341,7 +341,7 @@ mod tests {
     }
 
     #[test]
-    fn lex_call() {
+    fn lex_head_call() {
         let mut file = File::dummy_for_test("x()");
         let contents = &file.contents.unwrap();
         let chars = Characters::new(contents);
@@ -357,7 +357,7 @@ mod tests {
     }
 
     #[test]
-    fn lex_strings_with_operators() {
+    fn lex_head_strings_with_operators() {
         let mut file = File::dummy_for_test("!\"hello world\"\n7");
         let contents = &file.contents.unwrap();
         let chars = Characters::new(contents);
@@ -370,5 +370,59 @@ mod tests {
         let (tok, _) = lex_head(contents, &mut file.string_interner, chars3);
         assert_eq!(tok.kind, NumLit);
         assert_str_eq!(get_str(&file.string_interner, &tok), "7");
+    }
+
+    #[test]
+    fn lex_parentheses() {
+        let mut file = File::dummy_for_test("(\"hello world\"\n)");
+        lex(&mut file).expect("Couldn't lex");
+
+        let interner = &file.string_interner;
+        let tokens = &file.tokens.unwrap();
+        let expected = vec![
+            OpenBracket,  //, "("),
+            StringLit,    // "hello world"),
+            CloseBracket, // ")")
+        ];
+        assert_eq!(
+            tokens
+                .iter()
+                .map(|tok| tok.kind)
+                .collect::<Vec<TokenType>>(),
+            expected
+        );
+        let expected_strs = vec!["(", "hello world", ")"];
+        assert_eq!(
+            tokens
+                .iter()
+                .map(|tok| get_str(&interner, tok))
+                .collect::<Vec<&str>>(),
+            expected_strs
+        );
+    }
+
+    #[test]
+    fn lex_strings_with_operators() {
+        let mut file = File::dummy_for_test("!\"hello world\"\n7");
+        lex(&mut file).expect("Couldn't lex");
+
+        let interner = &file.string_interner;
+        let tokens = &file.tokens.unwrap();
+        let expected = vec![Op, StringLit, NumLit];
+        assert_eq!(
+            tokens
+                .iter()
+                .map(|tok| tok.kind)
+                .collect::<Vec<TokenType>>(),
+            expected
+        );
+        let expected_strs = vec!["!", "hello world", "7"];
+        assert_eq!(
+            tokens
+                .iter()
+                .map(|tok| get_str(&interner, tok))
+                .collect::<Vec<&str>>(),
+            expected_strs
+        );
     }
 }
