@@ -379,11 +379,7 @@ mod tests {
 
         let interner = &file.string_interner;
         let tokens = &file.tokens.unwrap();
-        let expected = vec![
-            OpenBracket,  //, "("),
-            StringLit,    // "hello world"),
-            CloseBracket, // ")")
-        ];
+        let expected = vec![OpenBracket, StringLit, CloseBracket];
         assert_eq!(
             tokens
                 .iter()
