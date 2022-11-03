@@ -1,15 +1,16 @@
+use std::sync::{Arc, Mutex};
+use std::collections::VecDeque;
+use log::{info, trace};
+use tokio::sync::mpsc;
 use crate::cli_options::Options;
 use crate::compiler_tasks::{
     JobType::{self, *},
-    Progress::*,
+    Progress::{self, *},
 };
 use crate::concepts::*;
 use crate::error::{Error, ErrorId, TError};
-use crate::free_standing::jobs::{FinishType, JobId as BaseJobId, JobStore};
+use crate::free_standing::jobs::{GetJob, FinishType, JobId as BaseJobId, JobStore};
 use crate::ui::UserInterface;
-use log::{info, trace};
-use std::sync::{Arc, Mutex};
-use tokio::sync::mpsc;
 
 type JobId = BaseJobId<JobType>;
 
@@ -46,6 +47,9 @@ impl<'opts> std::ops::DerefMut for CompilerContext<'opts> {
 fn make_ui_arc<T: UserInterface + 'static>(value: T) -> Arc<Mutex<dyn UserInterface>> {
     Arc::new(Mutex::new(value))
 }
+
+type JobResult = Result<FinishType, TError>;
+type JobResultReport = (JobId, JobType, Result<FinishType, TError>);
 
 impl<'opts> CompilerContext<'opts> {
     pub fn new(options: &'opts Options) -> Self {
@@ -213,12 +217,11 @@ impl<'opts> CompilerContext<'opts> {
         }
     }
 
-    pub async fn do_job(&mut self, job_id: JobId, job: JobType) -> Result<FinishType, TError> {
+    pub async fn do_job(&mut self, progress_sender: &mpsc::Sender<Progress>, job_id: JobId, job: JobType) -> JobResult {
         trace!("Running job: {job_id:?} {job:?}");
         match job {
             JobType::ReportProgress(progress) => {
-                let mut ui = self.ui.lock().expect("Getting UI");
-                ui.report_progress(progress);
+                progress_sender.send(progress).await;
             }
             JobType::Load(file_id) => {
                 let mut file = &mut file_id.get_mut(&mut self.files);
@@ -252,8 +255,75 @@ impl<'opts> CompilerContext<'opts> {
         Ok(FinishType::Success)
     }
 
-    pub async fn run_job(&mut self, job_id: JobId, job: JobType) -> Result<FinishType, TError> {
-        Ok(())
+    pub async fn run_job_loop(&mut self) {
+        // This is pretty arbitrary... make it bigger if the compiler starts waiting for the
+        // scheduler.
+        const MAX_SCHEDULE_LENGTH: usize = 2;
+        // This is pretty arbitrary... make it bigger if the compiler starts waiting for the UI.
+        const MAX_RESULT_LAG: usize = 10;
+        const MAX_PROGRESS_LAG: usize = 10;
+        let job_queue: Arc<Mutex<VecDeque<(JobId, JobType)>>> = Arc::new(Mutex::new(VecDeque::new()));
+        let (result_sender, result_reader) = mpsc::channel::<JobResultReport>(MAX_RESULT_LAG);
+        let (progress_sender, progress_reader) = mpsc::channel::<Progress>(MAX_PROGRESS_LAG);
+        {
+            // Job Runner!
+            tokio::spawn(async move {
+                let job_queue = job_queue.clone();
+                let progress_sender = progress_sender.clone();
+                loop {
+                    let mut job_queue = job_queue.lock().expect("Job Runner should be able to get the job_queue");
+                    let (job_id, job_kind) = if let Some((job_id, job_kind)) = job_queue.pop_front() {
+                        (job_id, job_kind)
+                    } else {
+                        continue;
+                    };
+                    info!("Starting job: {}", InContext(&self, &job_kind));
+                    let result = self.do_job(&progress_sender, job_id, job_kind).await;
+                    result_sender.send((job_id, job_kind, result)).await; // Yield this core...
+                }
+            });
+        }
+        // UI Manager
+        tokio::spawn(async move {
+            let mut ui = self.ui.lock().expect("Getting UI");
+            while let Some(progress) = progress_reader.recv().await {
+                ui.report_progress(progress);
+            }
+            self.report_status().await
+        });
+
+        // Scheduler!
+        loop {
+            let mut job_queue = job_queue.lock().expect("Scheduler should be able to get the job_queue");
+            while let Some((job_id, job_kind, result)) = result_reader.recv().await {
+                let finish_type = match result {
+                    Ok(finish_type) => finish_type,
+                    Err(error) => {
+                        self.report_error(Error::new(error, None, None));
+                        FinishType::Failed
+                    }
+                };
+                self.jobs.finish_job(job_id, finish_type);
+            }
+            while job_queue.len() < MAX_SCHEDULE_LENGTH {
+                // TODO: Work out if the jobs are all done or if there are none free...
+                let try_next_job = self.jobs.get_job();
+                let next_job = match try_next_job {
+                    GetJob::Job(job_id, job) => {
+                        trace!("Scheduling job: {job_id:?} {job:#?}");
+                        let job_kind = job.kind;
+                        (job_id, job_kind)
+                    }
+                    GetJob::NoneReady => { break; }
+                    GetJob::Finished => {
+                        self.report_status().await;
+                        return
+                    }
+                };
+                job_queue.push_back(next_job);
+            }
+            // Yield this core...
+        }
     }
 
     pub fn report_error(&mut self, error: Error) {
@@ -266,40 +336,7 @@ impl<'opts> CompilerContext<'opts> {
         ui.report_error(err_id, err_ref);
     }
 
-    pub async fn run_job_loop(&mut self) {
-        const number_waiting: usize = 100;
-        // this corresponds to the number of threads (and therefore processors that we're happy to
-        // have waiting for the scheduler to catch up).
-        // I have no idea how this affects runtime.
-        let (error_sender, error_reader) = mpsc::channel(number_waiting);
-        let (stats_sender, stats_reader) = mpsc::channel(number_waiting);
-        let (job_sender, job_reader) = mpsc::channel(number_waiting);
-        loop {
-            let (job_id, job_kind) = if let Some((job_id, job)) = self.jobs.get_job() {
-                trace!("Job details: {job_id:?} {job:#?}");
-                let job_kind = job.kind;
-                info!("Starting job: {}", InContext(&self, &job_kind));
-                (job_id, job_kind)
-            } else {
-                break;
-            };
-            let result = self.do_job(job_id, job_kind);
-            let finish_type = match result {
-                Ok(finish_type) => finish_type,
-                Err(error) => {
-                    self.report_error(Error::new(error, None, None));
-                    FinishType::Failed
-                }
-            };
-            // Do some stuff
-            self.jobs.finish_job(job_id, finish_type);
-            let mut ui = self.ui.lock().expect("Getting UI");
-            ui.report_job_counts(
-                self.jobs.num_successful(),
-                self.jobs.num_finished(),
-                self.jobs.num(),
-            ); // Maybe???
-        }
+    pub async fn report_status(&mut self) {
         let mut ui = self.ui.lock().expect("Getting UI");
         ui.report_job_counts(
             self.jobs.num_successful(),
