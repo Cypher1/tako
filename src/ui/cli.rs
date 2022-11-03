@@ -1,6 +1,7 @@
 use super::UserInterface;
 use crate::compiler_tasks::Progress;
 use crate::error::{Error, ErrorId};
+use log::info;
 
 #[derive(Debug)]
 pub struct CLI {}
@@ -25,11 +26,11 @@ impl UserInterface for CLI {
                 let failed = finished - successful;
                 let s = if total == 1 { "" } else { "s" };
                 if successful == total {
-                    eprintln!("Finished all {total} job{s}.")
+                    info!("Finished all {total} job{s}.")
                 } else if failed == 0 {
-                    eprintln!("Finished {successful}/{total} job{s}.")
+                    info!("Finished {successful}/{total} job{s}.")
                 } else {
-                    eprintln!("Finished {successful}/{total} job{s}. {failed} failed or cancelled.")
+                    info!("Finished {successful}/{total} job{s}. {failed} failed or cancelled.")
                 }
             }
         }
