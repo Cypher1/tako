@@ -1,6 +1,13 @@
 use super::job::{FinishType, Job, JobId, JobState};
 
 #[derive(Debug)]
+pub enum GetJob<'a, JobType> {
+    NoneReady,
+    Finished,
+    Job(JobId<JobType>, &'a Job<JobType>)
+}
+
+#[derive(Debug)]
 pub struct JobStore<JobType> {
     ready: Vec<JobId<JobType>>,
     all_jobs: Vec<Job<JobType>>,
@@ -74,9 +81,9 @@ impl<JobType> JobStore<JobType> {
         job_id.get_mut(&mut self.all_jobs)
     }
 
-    pub fn get_job(&mut self) -> Option<(JobId<JobType>, &Job<JobType>)> {
+    pub fn get_job(&mut self) -> GetJob<JobType> {
         if self.terminating {
-            return None;
+            return GetJob::Finished;
         }
         let mut best = None;
         let ready = &mut self.ready;
@@ -92,14 +99,19 @@ impl<JobType> JobStore<JobType> {
         let index = if let Some((_count, index)) = best {
             index
         } else {
-            return None;
+            // No available jobs... Are we done!?
+            if self.num_finished() == self.num() {
+                return GetJob::Finished;
+            } else {
+                return GetJob::NoneReady;
+            }
         };
         if index < ready.len() {
             std::mem::swap(&mut job_id, &mut ready[index]);
         }
         let job = job_id.get_mut(&mut self.all_jobs);
         job.state = JobState::Running;
-        Some((job_id, job)) // Should not be mutable
+        GetJob::Job(job_id, job) // Should not be mutable
     }
 
     pub fn add_job(&mut self, kind: JobType, dependencies: Vec<JobId<JobType>>) -> JobId<JobType> {
