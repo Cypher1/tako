@@ -382,7 +382,7 @@ mod tests {
         assert_eq!(
             tokens
                 .iter()
-                .map(|tok| get_str(&interner, tok))
+                .map(|tok| get_str(interner, tok))
                 .collect::<Vec<&str>>(),
             expected_strs
         );
@@ -406,7 +406,7 @@ mod tests {
         assert_eq!(
             tokens
                 .iter()
-                .map(|tok| get_str(&interner, tok))
+                .map(|tok| get_str(interner, tok))
                 .collect::<Vec<&str>>(),
             expected_strs
         );
