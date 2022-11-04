@@ -1,6 +1,6 @@
 use crate::error::TError;
-use std::fmt;
 use crate::location::{IndexIntoFile, SymbolLength};
+use std::fmt;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum TokenType {
@@ -44,7 +44,9 @@ impl Token {
     fn get_str<'a>(&'a self, source: &'a str) -> &'a str {
         // Assuming the token is from the source file...
         match &self.source {
-            Source::Symbol(length) => &source[self.start as usize..self.start as usize+*length as usize],
+            Source::Symbol(length) => {
+                &source[self.start as usize..self.start as usize + *length as usize]
+            }
             Source::Lit(string) => &string,
         }
     }
@@ -237,7 +239,12 @@ pub fn lex_head<'source>(
         Source::Lit(strlit)
     } else {
         // This should find the offset into the source
-        Source::Symbol(characters.index().checked_sub(characters.start()).expect("Token should finish after it starts") as SymbolLength)
+        Source::Symbol(
+            characters
+                .index()
+                .checked_sub(characters.start())
+                .expect("Token should finish after it starts") as SymbolLength,
+        )
     };
     // TODO: Handle comments.
     (
