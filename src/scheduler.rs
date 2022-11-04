@@ -1,12 +1,9 @@
+use crate::cli_options::Options;
+use crate::error::TError;
+use crate::tasks::{LaunchTask, TaskSet};
+use crate::ui::UserInterface;
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
-use crate::cli_options::Options;
-use crate::tasks::{
-    LaunchTask,
-    TaskSet,
-};
-use crate::error::TError;
-use crate::ui::UserInterface;
 
 const MAX_SCHEDULER_LAG: usize = 100;
 
@@ -29,9 +26,8 @@ impl Scheduler {
 
         let store = TaskSet::new(request_receiver, result_sender); // Setup!
         store.launch().await; // launches all the jobs.
-        request_sender.send(Ok(
-            LaunchTask {
-            options: self.options.clone()
+        request_sender.send(Ok(LaunchTask {
+            options: self.options.clone(),
         })); // Launch the cli task.
 
         // Receive the results...
@@ -55,9 +51,6 @@ impl Scheduler {
                 }
             }
         };
-        Self {
-            options,
-            ui,
-        }
+        Self { options, ui }
     }
 }

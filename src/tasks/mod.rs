@@ -1,9 +1,9 @@
-use async_trait::async_trait;
-use std::collections::HashMap;
 use crate::ast::Ast;
 use crate::cli_options::Options;
 use crate::error::{Error, TError};
 use crate::tokens::Token;
+use async_trait::async_trait;
+use std::collections::HashMap;
 use tokio::sync::mpsc;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -72,7 +72,10 @@ pub struct TaskSet {
 }
 
 impl TaskSet {
-    pub fn new(launch_receiver: ReceiverFor<LaunchTask>, result_sender: SenderFor<ParseFileTask>) -> Self {
+    pub fn new(
+        launch_receiver: ReceiverFor<LaunchTask>,
+        result_sender: SenderFor<ParseFileTask>,
+    ) -> Self {
         let (load_file_sender, load_file_receiver) = mpsc::unbounded_channel();
         let request_tasks = TaskManager::<LaunchTask>::new(launch_receiver, load_file_sender);
 
@@ -81,7 +84,8 @@ impl TaskSet {
 
         let (parse_file_sender, parse_file_receiver) = mpsc::unbounded_channel();
         let lex_file_tasks = TaskManager::<LexFileTask>::new(lex_file_receiver, parse_file_sender);
-        let parse_file_tasks = TaskManager::<ParseFileTask>::new(parse_file_receiver, result_sender);
+        let parse_file_tasks =
+            TaskManager::<ParseFileTask>::new(parse_file_receiver, result_sender);
 
         Self {
             request_tasks,
@@ -171,12 +175,10 @@ impl Task for LaunchTask {
     }
     async fn perform(&self, result_sender: SenderFor<Self>) {
         for path in &self.options.files {
-            result_sender.send(
-                Ok(LoadFileTask {
-                    options: self.options.clone(),
-                    path: path.clone(),
-                })
-            );
+            result_sender.send(Ok(LoadFileTask {
+                options: self.options.clone(),
+                path: path.clone(),
+            }));
         }
     }
 }
@@ -202,13 +204,13 @@ impl Task for LoadFileTask {
         // TODO: Use tokio's async read_to_string.
         let contents = std::fs::read_to_string(&self.path);
         result_sender.send(
-            contents.map(|contents| {
-                LexFileTask {
+            contents
+                .map(|contents| LexFileTask {
                     options: self.options.clone(),
                     path: self.path.clone(),
                     contents,
-                }
-            }).map_err(|err| self.decorate_error(err))
+                })
+                .map_err(|err| self.decorate_error(err)),
         );
     }
 }
@@ -234,14 +236,14 @@ impl Task for LexFileTask {
     async fn perform(&self, result_sender: SenderFor<Self>) {
         let tokens = crate::tokens::lex(&self.contents);
         result_sender.send(
-            tokens.map(|tokens| {
-                ParseFileTask {
+            tokens
+                .map(|tokens| ParseFileTask {
                     options: self.options.clone(),
                     path: self.path.clone(),
                     contents: self.contents.clone(),
                     tokens,
-                }
-            }).map_err(|err| self.decorate_error(err))
+                })
+                .map_err(|err| self.decorate_error(err)),
         );
     }
 }
@@ -267,9 +269,7 @@ impl Task for ParseFileTask {
     }
     async fn perform(&self, result_sender: SenderFor<Self>) {
         let ast = crate::parser::parse(&self.path, &self.tokens);
-        result_sender.send(
-            ast.map_err(|err| self.decorate_error(err))
-        );
+        result_sender.send(ast.map_err(|err| self.decorate_error(err)));
     }
 }
 

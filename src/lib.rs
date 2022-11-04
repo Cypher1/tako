@@ -5,14 +5,14 @@ pub mod free_standing;
 
 pub mod ast;
 pub mod cli_options;
-pub mod scheduler;
-pub mod tasks;
 pub mod error;
 pub mod keywords;
 pub mod location;
 pub mod parser;
 pub mod primitives;
+pub mod scheduler;
 pub mod string_interner;
+pub mod tasks;
 pub mod tokens;
 pub mod ui;
 
