@@ -10,7 +10,6 @@ use crate::tokens::Token;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum TaskState<T, E: std::error::Error> {
-    Waiting,
     Running,
     Success(T), // Include a handle to the result?
     Cancelled,  // Include why it was cancelled?
@@ -23,13 +22,19 @@ pub enum TaskState<T, E: std::error::Error> {
 // TODO: Still use hashing to look up tasks and their IDs.
 pub type TaskResults<T> = HashMap<T, TaskState<<T as Task>::Output, Error>>;
 
-#[derive(Default, Debug)]
+pub struct TaskManager<T: Task> {
+    tasks: TaskResults<T>,
+    task_reporter: Reciever<T>,
+    result_reporter: Sender<T>,
+}
+
+#[derive(Debug)]
 pub struct TaskStore {
     // TODO: Track the jobs that are being done...
     // Invalidate these if
-    load_file_tasks: TaskResults<LoadFileTask>,
-    lex_file_tasks: TaskResults<LexFileTask>,
-    parse_file_tasks: TaskResults<ParseFileTask>,
+    load_file_tasks: TaskManager<LoadFileTask>,
+    lex_file_tasks: TaskManager<LexFileTask>,
+    parse_file_tasks: TaskManager<ParseFileTask>,
     // TODO: type_check_inside_module: TaskResults<>,
     // Produces type checked (and optimizable) modules **AND**
     // partially type checked (but) mergable-modules.
