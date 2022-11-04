@@ -1,7 +1,7 @@
 use crate::ui::UiMode;
 use log::warn;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Command {
     Build,
     Interpret,
@@ -13,7 +13,7 @@ pub struct CodeGenOptions {
     // TODO: Add options
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Options {
     pub executable_location: Option<String>,
     pub files: Vec<String>,

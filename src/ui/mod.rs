@@ -4,7 +4,7 @@ pub use cli::CLI;
 mod tui;
 pub use tui::TUI;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum UiMode {
     Cli,
     Tui,
