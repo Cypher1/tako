@@ -23,7 +23,7 @@ pub struct Scheduler {
 }
 
 impl Scheduler {
-    async fn run(&self) -> Result<(), TError> {
+    pub async fn run(&self) -> Result<(), TError> {
         let (request_sender, request_receiver) = mpsc::unbounded_channel();
         let (result_sender, mut result_receiver) = mpsc::unbounded_channel();
 
@@ -32,7 +32,7 @@ impl Scheduler {
         request_sender.send(Ok(
             LaunchTask {
             options: self.options.clone()
-                })); // Launch the cli task.
+        })); // Launch the cli task.
 
         // Receive the results...
         while let Some(ast) = result_receiver.recv().await {

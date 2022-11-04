@@ -40,10 +40,11 @@ impl Token {
         }
     }
 
-    fn get_str(&self, source: &str) -> &str {
+    #[allow(dead_code)] // TODO:: REMOVE!
+    fn get_str<'a>(&'a self, source: &'a str) -> &'a str {
         // Assuming the token is from the source file...
-        match self.source {
-            Source::Symbol(length) => &source[self.start as usize..self.start as usize+length as usize],
+        match &self.source {
+            Source::Symbol(length) => &source[self.start as usize..self.start as usize+*length as usize],
             Source::Lit(string) => &string,
         }
     }

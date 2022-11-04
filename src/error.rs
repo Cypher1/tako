@@ -66,13 +66,10 @@ impl Error {
         contents: Option<&str>,
         module: Option<()>,
     ) -> Self {
-        use TError::*;
         let location = match &source {
-            FileNotLoadedError => None,
-            FileNotLexedError => None,
-            CppCompilerError { .. } => None,
-            ParseError { location, .. } => location.as_ref(),
-            InternalError { location, .. } => location.as_ref(),
+            TError::CppCompilerError { .. } => None,
+            TError::ParseError { location, .. } => location.as_ref(),
+            TError::InternalError { location, .. } => location.as_ref(),
         };
         let location = match (path, contents, location, module) {
             (Some(path), Some(contents), Some(location), _module) => {
@@ -92,23 +89,20 @@ impl std::fmt::Display for Error {
 
 impl std::fmt::Debug for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use TError::*;
         write!(f, "Error")?;
         if let Some(location) = &self.location {
             write!(f, " in {}", &location)?;
         }
         match &self.source {
-            FileNotLoadedError => write!(f, "File was not loaded before parse time"),
-            FileNotLexedError => write!(f, "File was not lexed before parse time"),
-            CppCompilerError { error, return_code } => write!(
+            TError::CppCompilerError { error, return_code } => write!(
                 f,
                 "call to C++ compiler failed with error code: {return_code}\n{error}"
             ),
-            ParseError {
+            TError::ParseError {
                 message,
                 location: _,
             } => write!(f, "parse failed, {message}"),
-            InternalError {
+            TError::InternalError {
                 message,
                 location: _,
             } => write!(f, "internal error: {message}"),

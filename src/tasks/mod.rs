@@ -158,7 +158,7 @@ pub trait Task: std::hash::Hash + Eq + Sized + Send /* + Hash */ {
 /// There's normally only one of these, but it seems elegant to have these fit into the `Task` model.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct LaunchTask {
-    options: Options,
+    pub options: Options,
 }
 
 #[async_trait]
@@ -170,7 +170,7 @@ impl Task for LaunchTask {
         &self.options
     }
     async fn perform(&self, result_sender: SenderFor<Self>) {
-        for path in self.options.files {
+        for path in &self.options.files {
             result_sender.send(
                 Ok(LoadFileTask {
                     options: self.options.clone(),
