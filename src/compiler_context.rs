@@ -1,18 +1,16 @@
-use async_trait::async_trait;
-use std::sync::{Arc, Mutex};
-use std::collections::VecDeque;
-use log::{info, trace};
-use tokio::sync::mpsc;
 use crate::cli_options::Options;
 use crate::compiler_tasks::{
-    Task,
-    TaskState,
-    TaskStore,
+    OptionsRef, Task,
     TaskKind::{self, *},
-    OptionsRef,
+    TaskState, TaskStore,
 };
 use crate::error::{Error, ErrorId, TError};
 use crate::ui::UserInterface;
+use async_trait::async_trait;
+use log::{info, trace};
+use std::collections::VecDeque;
+use std::sync::{Arc, Mutex};
+use tokio::sync::mpsc;
 
 #[derive(Debug)]
 pub struct CompilerContext {
@@ -36,7 +34,9 @@ impl Task for CompilerContext {
     }
 }
 
-fn make_ui_arc<T: UserInterface + Send + 'static>(value: T) -> Arc<Mutex<dyn UserInterface + Send>> {
+fn make_ui_arc<T: UserInterface + Send + 'static>(
+    value: T,
+) -> Arc<Mutex<dyn UserInterface + Send>> {
     Arc::new(Mutex::new(value))
 }
 

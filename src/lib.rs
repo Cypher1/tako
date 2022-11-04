@@ -3,18 +3,18 @@
 #[macro_use]
 pub mod free_standing;
 
+pub mod ast;
 pub mod cli_options;
 pub mod compiler_context;
 pub mod compiler_tasks;
 pub mod error;
-pub mod primitives;
-pub mod ui;
-pub mod parser;
-pub mod ast;
 pub mod keywords;
 pub mod location;
+pub mod parser;
+pub mod primitives;
 pub mod string_interner;
 pub mod tokens;
+pub mod ui;
 
 use compiler_context::CompilerContext;
 use error::TError;

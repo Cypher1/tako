@@ -36,7 +36,7 @@ impl TUI {
                 messages: Vec::new(),
                 rerender: true,
                 progress_stats: None,
-            }       ))
+            })),
         }
     }
 }
