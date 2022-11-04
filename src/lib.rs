@@ -6,7 +6,6 @@ pub mod free_standing;
 pub mod cli_options;
 pub mod compiler_context;
 pub mod compiler_tasks;
-pub mod concepts;
 pub mod error;
 pub mod primitives;
 pub mod ui;

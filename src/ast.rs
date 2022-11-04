@@ -1,4 +1,3 @@
-use crate::concepts::FileId;
 use crate::free_standing::typed_index::TypedIndex;
 use crate::location::Location;
 use crate::string_interner::StrId;
@@ -10,7 +9,6 @@ use crate::string_interner::StrId;
 pub struct Symbol {
     node: NodeId,
     name: TypedIndex<StrId>, // index into the file
-    file_id: FileId,
 }
 pub type SymbolId = TypedIndex<Symbol>;
 

@@ -8,7 +8,7 @@ pub enum Command {
     Repl,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct CodeGenOptions {
     // TODO: Add options
 }

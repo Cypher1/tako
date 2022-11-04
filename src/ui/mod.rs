@@ -1,4 +1,3 @@
-use crate::compiler_tasks::Progress;
 use crate::error::{Error, ErrorId};
 
 mod cli;
@@ -15,7 +14,7 @@ pub enum UiMode {
 }
 
 pub trait UserInterface: std::fmt::Debug {
-    fn report_error(&mut self, error_id: ErrorId, error: &Error);
-    fn report_progress(&mut self, progress: Progress);
-    fn report_job_counts(&mut self, num_successful: usize, num_finished: usize, num_total: usize);
+    // fn report_error(&mut self, error_id: ErrorId, error: &Error);
+    // fn report_progress(&mut self, progress: Progress);
+    // fn report_job_counts(&mut self, num_successful: usize, num_finished: usize, num_total: usize);
 }

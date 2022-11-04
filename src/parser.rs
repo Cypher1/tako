@@ -1,12 +1,11 @@
 use log::debug;
 use crate::tokens::{Token, TokenType};
 use crate::error::TError;
-use crate::concepts::File;
+use crate::ast::Ast;
 
-pub fn parse(file: &mut File) -> Result<(), TError> {
-    let tokens = file.tokens.as_ref().ok_or(TError::FileNotLexedError)?;
+pub fn parse(path: &str, tokens: Vec<Token>) -> Result<(), TError> {
     let mut tokens = tokens.iter().peekable();
-    debug!("Parse {}", file.path);
+    debug!("Parse {}", path);
     // TODO: REMOVE THIS (it's just to test the threading model)
     std::thread::sleep(std::time::Duration::from_secs(2));
     loop {
@@ -17,7 +16,8 @@ pub fn parse(file: &mut File) -> Result<(), TError> {
         };
         eprintln!("tok {:?}", tok);
     }
-    Ok(())
+    // TODO: parsing!!!
+    Ok(Ast::default())
 }
 
 /*

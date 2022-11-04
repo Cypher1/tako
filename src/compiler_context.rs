@@ -1,64 +1,45 @@
+use async_trait::async_trait;
 use std::sync::{Arc, Mutex};
 use std::collections::VecDeque;
 use log::{info, trace};
 use tokio::sync::mpsc;
 use crate::cli_options::Options;
 use crate::compiler_tasks::{
-    Context,
-    JobId,
-    JobType::{self, *},
-    Progress::{self, *},
+    Task,
+    TaskState,
+    TaskStore,
+    TaskKind::{self, *},
+    OptionsRef,
 };
-use crate::concepts::*;
 use crate::error::{Error, ErrorId, TError};
-use crate::free_standing::jobs::{GetJob, FinishType, JobId as BaseJobId, JobStore};
 use crate::ui::UserInterface;
-
-#[derive(Default, Debug, Clone)]
-pub struct CompilerStorage {
-    files: Arc<Mutex<Vec<File>>>,
-    errors: Arc<Mutex<Vec<Error>>>,
-    jobs: Arc<Mutex<JobStore<JobType>>>,
-}
 
 #[derive(Debug, Clone)]
 pub struct CompilerContext {
-    store: CompilerStorage,
+    store: TaskStore,
     ui: Arc<Mutex<dyn UserInterface + Send>>,
-    options: Arc<Options>,
+    options: Arc<Mutex<Options>>,
 }
 
-impl Context for CompilerContext {
-    fn decorate_error(&self, error: TError) -> Error {
-        Error::new(error, None, None)
+#[async_trait]
+impl Task for CompilerContext {
+    type Output = ();
+    const TASK_KIND: TaskKind = TaskKind::Launch;
+
+    fn options(&self) -> &OptionsRef {
+        &self.options
     }
-    fn options(&self) -> &Options {
-        self.options.lock().expect("TODO: remove this")
+
+    async fn perform_impl(self) -> Result<Self::Output, TError> {
+        // TODO: ???
+        Ok(())
     }
 }
-
-pub struct InContext<'a, T>(&'a CompilerContext, &'a T);
-
-impl std::ops::Deref for CompilerContext {
-    type Target = CompilerStorage;
-    fn deref(&self) -> &CompilerStorage {
-        &self.store
-    }
-}
-
-impl std::ops::DerefMut for CompilerContext {
-    // type Target = CompilerStorage;
-    fn deref_mut(&mut self) -> &mut CompilerStorage {
-        &mut self.store
-    }
-}
+/*
 
 fn make_ui_arc<T: UserInterface + Send + 'static>(value: T) -> Arc<Mutex<dyn UserInterface + Send>> {
     Arc::new(Mutex::new(value))
 }
-
-type JobResult = Result<FinishType, TError>;
-type JobResultReport = (JobId, JobType, Result<FinishType, TError>);
 
 impl CompilerContext {
     pub fn new(options: Options) -> Self {
@@ -357,10 +338,4 @@ impl CompilerContext {
         }
     }
 }
-
-impl<'a> std::fmt::Display for InContext<'a, JobType> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // TODO: Use the context (.0) to render the value (.1).
-        write!(f, "JOB {:?}", self.1)
-    }
-}
+*/
