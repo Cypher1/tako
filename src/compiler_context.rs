@@ -4,6 +4,8 @@ use log::{info, trace};
 use tokio::sync::mpsc;
 use crate::cli_options::Options;
 use crate::compiler_tasks::{
+    Context,
+    JobId,
     JobType::{self, *},
     Progress::{self, *},
 };
@@ -11,8 +13,6 @@ use crate::concepts::*;
 use crate::error::{Error, ErrorId, TError};
 use crate::free_standing::jobs::{GetJob, FinishType, JobId as BaseJobId, JobStore};
 use crate::ui::UserInterface;
-
-type JobId = BaseJobId<JobType>;
 
 #[derive(Default, Debug, Clone)]
 pub struct CompilerStorage {
@@ -26,6 +26,15 @@ pub struct CompilerContext {
     store: CompilerStorage,
     ui: Arc<Mutex<dyn UserInterface + Send>>,
     options: Arc<Options>,
+}
+
+impl Context for CompilerContext {
+    fn decorate_error(&self, error: TError) -> Error {
+        Error::new(error, None, None)
+    }
+    fn options(&self) -> &Options {
+        self.options.lock().expect("TODO: remove this")
+    }
 }
 
 pub struct InContext<'a, T>(&'a CompilerContext, &'a T);
