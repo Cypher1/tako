@@ -1,7 +1,7 @@
 use super::UserInterface;
 // use crate::compiler_tasks::Progress;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct CLI {}
 
 impl CLI {
