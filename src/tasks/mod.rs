@@ -40,9 +40,8 @@ impl<T: Task> TaskManager<T> {
     }
 
     pub async fn run_loop(&mut self) {
-        while let Some(_task) = self.task_receiver.recv().await {
-            todo!();
-            // let mut task_entry = &mut self.tasks.entry(task);
+        while let Some(task) = self.task_receiver.recv().await {
+            let mut task_entry = &mut self.tasks.entry(task);
         }
         todo!();
     }
@@ -77,7 +76,22 @@ impl TaskSet {
         result_sender: SenderFor<ParseFileTask>,
     ) -> Self {
         let (load_file_sender, load_file_receiver) = mpsc::unbounded_channel();
-        let request_tasks = TaskManager::<LaunchTask>::new(launch_receiver, load_file_sender);
+        let (load_file_or_error_sender, load_file_or_error_receiver) = mpsc::unbounded_channel();
+        let request_tasks = TaskManager::<LaunchTask>::new(launch_receiver, load_file_or_error_sender);
+
+        {
+            tokio::spawn(async move {
+                while let Some(result) = load_file_or_error_receiver.recv().await {
+                    match result {
+                        Ok(task) => {
+                            load_file_sender.send(task);
+                            todo!()
+                        }
+                        Err(error) => todo!(),
+                    }
+                }
+            });
+        }
 
         let (lex_file_sender, lex_file_receiver) = mpsc::unbounded_channel();
         let load_file_tasks = TaskManager::<LoadFileTask>::new(load_file_receiver, lex_file_sender);
@@ -104,22 +118,21 @@ impl TaskSet {
         } = self;
         // Launch all of the task managers!
         tokio::spawn(async move {
-            request_tasks.run_loop();
+            request_tasks.run_loop().await;
         });
         tokio::spawn(async move {
-            load_file_tasks.run_loop();
+            load_file_tasks.run_loop().await;
         });
         tokio::spawn(async move {
-            lex_file_tasks.run_loop();
+            lex_file_tasks.run_loop().await;
         });
         tokio::spawn(async move {
-            parse_file_tasks.run_loop();
+            parse_file_tasks.run_loop().await;
         });
     }
 }
 
-// Taking Result here allows tasks to recieve upstream errors and propagate them if need be.
-pub type ReceiverFor<T> = mpsc::UnboundedReceiver<Result<T, Error>>;
+pub type ReceiverFor<T> = mpsc::UnboundedReceiver<T>;
 pub type SenderFor<T> = mpsc::UnboundedSender<Result<<T as Task>::Output, Error>>;
 
 #[async_trait]
