@@ -116,7 +116,7 @@ impl<'a> Characters<'a> {
 }
 
 // Reads all the tokens.
-pub fn lex<'a>(contents: &str, string_interner: &mut StrInterner) -> Result<Vec<Token>, TError> {
+pub fn lex(contents: &str, string_interner: &mut StrInterner) -> Result<Vec<Token>, TError> {
     let mut chars = Characters::new(contents);
     let mut tokens = Vec::new();
     loop {
