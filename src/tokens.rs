@@ -1,6 +1,6 @@
 use crate::error::TError;
-use crate::string_interner::{get_new_interner, StrId, StrInterner};
 use std::fmt;
+use crate::location::{IndexIntoFile, SymbolLength};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum TokenType {
@@ -15,11 +15,20 @@ pub enum TokenType {
     Eof,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
+type StringStart = u32;
+
+#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
+pub enum Source {
+    // Most of the time we do the fast, non-owning thing.
+    Symbol(SymbolLength),
+    Lit(String), // Sometimes we have to hold on to a new value.
+}
+
+#[derive(Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Token {
-    pub start: u32,
+    pub start: IndexIntoFile,
     pub kind: TokenType,
-    pub str_id: StrId,
+    pub source: Source,
 }
 
 impl Token {
@@ -27,10 +36,15 @@ impl Token {
         Self {
             start: 0,
             kind: TokenType::Eof,
-            // TODO: Validate that 0 is always EOF.
-            str_id: get_new_interner()
-                .get("")
-                .expect("Eof/Empty string must be safely resolved"),
+            source: Source::Symbol(0), // zero characters == empty str.
+        }
+    }
+
+    fn get_str(&self, source: &str) -> &str {
+        // Assuming the token is from the source file...
+        match self.source {
+            Source::Symbol(length) => &source[self.start as usize..self.start as usize+length as usize],
+            Source::Lit(string) => &string,
         }
     }
 }
@@ -38,7 +52,7 @@ impl Token {
 impl fmt::Debug for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // TODO: Look up the token to get the contents?
-        write!(f, "{:?}({:?} @ {})", self.kind, self.str_id, self.start)
+        write!(f, "{:?}({:?} @ {})", self.kind, self.source, self.start)
     }
 }
 
@@ -67,12 +81,6 @@ fn is_whitespace(chr: char) -> bool {
     classify_char(chr) == TokenType::Whitespace
 }
 
-pub fn get_str<'a>(string_interner: &'a StrInterner, tok: &Token) -> &'a str {
-    string_interner
-        .resolve(tok.str_id)
-        .expect("Token created using different interner")
-}
-
 pub struct Characters<'a> {
     s: &'a str,
     it: std::iter::Peekable<std::str::Chars<'a>>,
@@ -97,6 +105,9 @@ impl<'a> Characters<'a> {
     fn start(&self) -> usize {
         self.start
     }
+    fn index(&self) -> usize {
+        self.index
+    }
     fn set_start(&mut self) -> usize {
         self.start = self.index;
         self.start
@@ -116,11 +127,11 @@ impl<'a> Characters<'a> {
 }
 
 // Reads all the tokens.
-pub fn lex(contents: &str, string_interner: &mut StrInterner) -> Result<Vec<Token>, TError> {
+pub fn lex(contents: &str) -> Result<Vec<Token>, TError> {
     let mut chars = Characters::new(contents);
     let mut tokens = Vec::new();
     loop {
-        let (tok, new_chars) = lex_head(contents, string_interner, chars);
+        let (tok, new_chars) = lex_head(contents, chars);
         if tok.kind == TokenType::Eof {
             break;
         }
@@ -131,11 +142,10 @@ pub fn lex(contents: &str, string_interner: &mut StrInterner) -> Result<Vec<Toke
 }
 
 // Consumes a single token.
-pub fn lex_head<'a>(
-    _contents: &str,
-    string_interner: &mut StrInterner,
-    mut characters: Characters<'a>,
-) -> (Token, Characters<'a>) {
+pub fn lex_head<'source>(
+    contents: &'source str,
+    mut characters: Characters<'source>,
+) -> (Token, Characters<'source>) {
     while let Some(chr) = characters.peek() {
         // skip whitespace.
         if !is_whitespace(chr) {
@@ -163,17 +173,17 @@ pub fn lex_head<'a>(
                 depth -= 1;
                 if multi_comment && depth == 0 {
                     characters.next();
-                    return lex_head(contents, string_interner, characters);
+                    return lex_head(contents, characters);
                 }
             }
             (_, Some(chr)) => {
                 if comment && (chr == '\n' || chr == '\r') {
                     characters.next();
-                    return lex_head(contents, string_interner, characters);
+                    return lex_head(contents, characters);
                 }
                 last = Some(chr);
             }
-            (_, None) => return lex_head(contents, string_interner, characters),
+            (_, None) => return lex_head(contents, characters),
         }
     }
     */
@@ -197,7 +207,7 @@ pub fn lex_head<'a>(
         };
         characters.next(); // Continue past the character.
     }
-    let str_id = if kind == StringLit {
+    let source = if kind == StringLit {
         let mut strlit = "".to_string();
         let quote = characters
             .prev()
@@ -223,17 +233,17 @@ pub fn lex_head<'a>(
         }
         // Drop the quote
         characters.next();
-        string_interner.get_or_intern(strlit)
+        Source::Lit(strlit)
     } else {
-        let span = characters.as_str();
-        string_interner.get_or_intern(span)
+        // This should find the offset into the source
+        Source::Symbol(characters.index().checked_sub(characters.start()).expect("Token should finish after it starts") as SymbolLength)
     };
     // TODO: Handle comments.
     (
         Token {
             start: characters.start() as u32,
             kind,
-            str_id,
+            source,
         },
         characters,
     )
@@ -244,8 +254,8 @@ mod tests {
     use super::TokenType::*;
     use super::*;
 
-    fn setup(contents: &str) -> (String, StrInterner) {
-        (contents.to_string(), get_new_interner())
+    fn setup(contents: &str) -> String {
+        contents.to_string()
     }
 
     #[test]
@@ -274,42 +284,42 @@ mod tests {
 
     #[test]
     fn lex_head_number() {
-        let (contents, mut string_interner) = setup("123");
+        let contents = setup("123");
         let chars = Characters::new(&contents);
-        let (tok, _) = lex_head(&contents, &mut string_interner, chars);
+        let (tok, _) = lex_head(&contents, chars);
         assert_eq!(tok.kind, NumLit);
     }
 
     #[test]
     fn lex_head_symbol() {
-        let (contents, mut string_interner) = setup("a123");
+        let contents = setup("a123");
         let chars = Characters::new(&contents);
-        let (tok, _) = lex_head(&contents, &mut string_interner, chars);
+        let (tok, _) = lex_head(&contents, chars);
         assert_eq!(tok.kind, Sym);
     }
 
     #[test]
     fn lex_head_operator() {
-        let (contents, mut string_interner) = setup("-a123");
+        let contents = setup("-a123");
         let chars = Characters::new(&contents);
-        let (tok, _) = lex_head(&contents, &mut string_interner, chars);
+        let (tok, _) = lex_head(&contents, chars);
         assert_eq!(tok.kind, Op);
     }
 
     #[test]
     fn lex_head_num_and_newline_linux() {
-        let (contents, mut string_interner) = setup("\n12");
+        let contents = setup("\n12");
         let chars = Characters::new(&contents);
-        let (tok, _) = lex_head(&contents, &mut string_interner, chars);
+        let (tok, _) = lex_head(&contents, chars);
         assert_eq!(tok.kind, NumLit);
         assert_eq!(tok.start, 1);
     }
 
     #[test]
     fn lex_head_num_and_newline_windows() {
-        let (contents, mut string_interner) = setup("\r\n12");
+        let contents = setup("\r\n12");
         let chars = Characters::new(&contents);
-        let (tok, _) = lex_head(&contents, &mut string_interner, chars);
+        let (tok, _) = lex_head(&contents, chars);
         assert_eq!(tok.kind, NumLit);
         assert_eq!(tok.start, 2);
     }
@@ -317,9 +327,9 @@ mod tests {
     #[test]
     fn lex_head_num_and_newline_old_mac() {
         // For mac systems before OSX
-        let (contents, mut string_interner) = setup("\r12");
+        let contents = setup("\r12");
         let chars = Characters::new(&contents);
-        let (tok, _) = lex_head(&contents, &mut string_interner, chars);
+        let (tok, _) = lex_head(&contents, chars);
         assert_eq!(tok.kind, NumLit);
         assert_eq!(tok.start, 1);
     }
@@ -327,49 +337,48 @@ mod tests {
     #[test]
     fn lex_head_escaped_characters_in_string() {
         // TODO: De escape them.
-        let (contents, mut string_interner) = setup("'\\n\\t2\\r\\\'\"'");
+        let contents = setup("'\\n\\t2\\r\\\'\"'");
         let chars = Characters::new(&contents);
-        let (tok, _) = lex_head(&contents, &mut string_interner, chars);
+        let (tok, _) = lex_head(&contents, chars);
         assert_eq!(tok.kind, StringLit);
-        assert_str_eq!(get_str(&string_interner, &tok), "\n\t2\r\'\"");
+        assert_str_eq!(tok.get_str(&contents), "\n\t2\r\'\"");
     }
 
     #[test]
     fn lex_head_call() {
-        let (contents, mut string_interner) = setup("x()");
+        let contents = setup("x()");
         let chars = Characters::new(&contents);
-        let (tok, chars2) = lex_head(&contents, &mut string_interner, chars);
+        let (tok, chars2) = lex_head(&contents, chars);
         assert_eq!(tok.kind, Sym);
-        assert_str_eq!(get_str(&string_interner, &tok), "x");
-        let (tok, chars3) = lex_head(&contents, &mut string_interner, chars2);
+        assert_str_eq!(tok.get_str(&contents), "x");
+        let (tok, chars3) = lex_head(&contents, chars2);
         assert_eq!(tok.kind, OpenBracket);
-        assert_str_eq!(get_str(&string_interner, &tok), "(");
-        let (tok, _) = lex_head(&contents, &mut string_interner, chars3);
+        assert_str_eq!(tok.get_str(&contents), "(");
+        let (tok, _) = lex_head(&contents, chars3);
         assert_eq!(tok.kind, CloseBracket);
-        assert_str_eq!(get_str(&string_interner, &tok), ")");
+        assert_str_eq!(tok.get_str(&contents), ")");
     }
 
     #[test]
     fn lex_head_strings_with_operators() {
-        let (contents, mut string_interner) = setup("!\"hello world\"\n7");
+        let contents = setup("!\"hello world\"\n7");
         let chars = Characters::new(&contents);
-        let (tok, chars2) = lex_head(&contents, &mut string_interner, chars);
+        let (tok, chars2) = lex_head(&contents, chars);
         assert_eq!(tok.kind, Op);
-        assert_str_eq!(get_str(&string_interner, &tok), "!");
-        let (tok, chars3) = lex_head(&contents, &mut string_interner, chars2);
+        assert_str_eq!(tok.get_str(&contents), "!");
+        let (tok, chars3) = lex_head(&contents, chars2);
         assert_eq!(tok.kind, StringLit);
-        assert_str_eq!(get_str(&string_interner, &tok), "hello world");
-        let (tok, _) = lex_head(&contents, &mut string_interner, chars3);
+        assert_str_eq!(tok.get_str(&contents), "hello world");
+        let (tok, _) = lex_head(&contents, chars3);
         assert_eq!(tok.kind, NumLit);
-        assert_str_eq!(get_str(&string_interner, &tok), "7");
+        assert_str_eq!(tok.get_str(&contents), "7");
     }
 
     #[test]
     fn lex_parentheses() {
-        let (contents, mut string_interner) = setup("(\"hello world\"\n)");
-        let tokens = lex(&contents, &mut string_interner).expect("Couldn't lex");
+        let contents = setup("(\"hello world\"\n)");
+        let tokens = lex(&contents).expect("Couldn't lex");
 
-        let interner = &string_interner;
         let expected = vec![OpenBracket, StringLit, CloseBracket];
         assert_eq!(
             tokens
@@ -382,7 +391,7 @@ mod tests {
         assert_eq!(
             tokens
                 .iter()
-                .map(|tok| get_str(interner, tok))
+                .map(|tok| tok.get_str(&contents))
                 .collect::<Vec<&str>>(),
             expected_strs
         );
@@ -390,10 +399,9 @@ mod tests {
 
     #[test]
     fn lex_strings_with_operators() {
-        let (contents, mut string_interner) = setup("!\"hello world\"\n7");
-        let tokens = lex(&contents, &mut string_interner).expect("Couldn't lex");
+        let contents = setup("!\"hello world\"\n7");
+        let tokens = lex(&contents).expect("Couldn't lex");
 
-        let interner = &string_interner;
         let expected = vec![Op, StringLit, NumLit];
         assert_eq!(
             tokens
@@ -406,7 +414,7 @@ mod tests {
         assert_eq!(
             tokens
                 .iter()
-                .map(|tok| get_str(interner, tok))
+                .map(|tok| tok.get_str(&contents))
                 .collect::<Vec<&str>>(),
             expected_strs
         );

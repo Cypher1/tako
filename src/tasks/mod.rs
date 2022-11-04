@@ -1,8 +1,5 @@
-use crate::string_interner::{get_new_interner, StrInterner};
 use async_trait::async_trait;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-// use std::hash::Hash;
 use crate::ast::Ast;
 use crate::cli_options::Options;
 use crate::error::{Error, TError};
@@ -29,12 +26,12 @@ pub type TaskResults<T> = HashMap<T, TaskState<<T as Task>::Output, Error>>;
 #[derive(Debug)]
 pub struct TaskManager<T: Task> {
     tasks: TaskResults<T>,
-    task_receiver: mpsc::UnboundedReceiver<T>,
-    result_sender: mpsc::UnboundedSender<T::Output>,
+    task_receiver: ReceiverFor<T>,
+    result_sender: SenderFor<T>,
 }
 
 impl<T: Task> TaskManager<T> {
-    pub fn new(task_receiver: mpsc::Receiver<T>, result_sender: mpsc::Sender<T::Output>) -> Self {
+    pub fn new(task_receiver: ReceiverFor<T>, result_sender: SenderFor<T>) -> Self {
         Self {
             tasks: TaskResults::new(),
             task_receiver,
@@ -43,6 +40,10 @@ impl<T: Task> TaskManager<T> {
     }
 
     pub async fn run_loop(&mut self) {
+        while let Some(_task) = self.task_receiver.recv().await {
+            todo!();
+            // let mut task_entry = &mut self.tasks.entry(task);
+        }
         todo!();
     }
 }
@@ -71,7 +72,7 @@ pub struct TaskSet {
 }
 
 impl TaskSet {
-    pub fn new(launch_receiver: Receiver<LaunchTask>, result_sender: mpsc::UnboundedSender<Result<Ast, Error>>) -> Self {
+    pub fn new(launch_receiver: ReceiverFor<LaunchTask>, result_sender: SenderFor<ParseFileTask>) -> Self {
         let (load_file_sender, load_file_receiver) = mpsc::unbounded_channel();
         let request_tasks = TaskManager::<LaunchTask>::new(launch_receiver, load_file_sender);
 
@@ -92,43 +93,43 @@ impl TaskSet {
 
     pub async fn launch(self) {
         let Self {
-            request_tasks,
-            load_file_tasks,
-            lex_file_tasks,
-            parse_file_tasks,
+            mut request_tasks,
+            mut load_file_tasks,
+            mut lex_file_tasks,
+            mut parse_file_tasks,
         } = self;
         // Launch all of the task managers!
         tokio::spawn(async move {
-            self.request_tasks.run_loop();
+            request_tasks.run_loop();
         });
         tokio::spawn(async move {
-            self.load_file_tasks.run_loop();
+            load_file_tasks.run_loop();
         });
         tokio::spawn(async move {
-            self.lex_file_tasks.run_loop();
+            lex_file_tasks.run_loop();
         });
         tokio::spawn(async move {
-            self.parse_file_tasks.run_loop();
+            parse_file_tasks.run_loop();
         });
     }
 }
 
-pub type OptionsRef = Arc<Mutex<Options>>;
-pub type Receiver<T> = mpsc::UnboundedReceiver<T>;
-pub type Sender<T> = mpsc::UnboundedSender<Result<<T as Task>::Output, Error>>;
+// Taking Result here allows tasks to recieve upstream errors and propagate them if need be.
+pub type ReceiverFor<T> = mpsc::UnboundedReceiver<Result<T, Error>>;
+pub type SenderFor<T> = mpsc::UnboundedSender<Result<<T as Task>::Output, Error>>;
 
 #[async_trait]
-pub trait Task: Sized + Send /* + Hash */ {
+pub trait Task: std::hash::Hash + Eq + Sized + Send /* + Hash */ {
     // TODO: Separate the code that performs the task
     // from the part that generates new tasks.
     // TODO: Store only the options 'relevant' to the task,
     // TODO: Implement a hash table from tasks to results.
     // TODO: Only perform 'new' tasks.
 
-    type Output;
+    type Output: std::fmt::Debug;
     const TASK_KIND: TaskKind;
 
-    fn options(&self) -> &OptionsRef;
+    fn options(&self) -> &Options;
 
     fn has_file_path(&self) -> Option<&str> {
         None
@@ -144,10 +145,10 @@ pub trait Task: Sized + Send /* + Hash */ {
     //}
     // TODO: More...
 
-    async fn perform(&self, result_sender: Sender<Self>);
+    async fn perform(&self, result_sender: SenderFor<Self>);
 
-    fn decorate_error(&self, error: TError) -> Error {
-        Error::new(error, self.has_file_path(), None, None)
+    fn decorate_error<E: Into<TError>>(&self, error: E) -> Error {
+        Error::new(error.into(), self.has_file_path(), None, None)
     }
 }
 
@@ -155,9 +156,9 @@ pub trait Task: Sized + Send /* + Hash */ {
 /// a compiler daemon (or possibly a response to a file watcher notifying of a change).
 ///
 /// There's normally only one of these, but it seems elegant to have these fit into the `Task` model.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct LaunchTask {
-    options: OptionsRef,
+    options: Options,
 }
 
 #[async_trait]
@@ -165,25 +166,24 @@ impl Task for LaunchTask {
     type Output = LoadFileTask;
     const TASK_KIND: TaskKind = TaskKind::Launch;
 
-    fn options(&self) -> &OptionsRef {
+    fn options(&self) -> &Options {
         &self.options
     }
-    async fn perform(&self, result_sender: Sender<Self>) {
-        let options = self.options.lock().expect("Should be able to access options");
-        for file in options {
+    async fn perform(&self, result_sender: SenderFor<Self>) {
+        for path in self.options.files {
             result_sender.send(
                 Ok(LoadFileTask {
                     options: self.options.clone(),
-                    path: self.path.clone(),
+                    path: path.clone(),
                 })
-            ).await;
+            );
         }
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct LoadFileTask {
-    options: OptionsRef,
+    options: Options,
     path: String,
 }
 
@@ -195,24 +195,27 @@ impl Task for LoadFileTask {
     fn has_file_path(&self) -> Option<&str> {
         Some(&self.path)
     }
-    fn options(&self) -> &OptionsRef {
+    fn options(&self) -> &Options {
         &self.options
     }
-    async fn perform(&self, result_sender: Sender<Self>) {
+    async fn perform(&self, result_sender: SenderFor<Self>) {
         // TODO: Use tokio's async read_to_string.
-        let contents = std::fs::read_to_string(&self.path)?;
-
-        Ok(LexFileTask {
-            options: self.options.clone(),
-            path: self.path.clone(),
-            contents,
-        })
+        let contents = std::fs::read_to_string(&self.path);
+        result_sender.send(
+            contents.map(|contents| {
+                LexFileTask {
+                    options: self.options.clone(),
+                    path: self.path.clone(),
+                    contents,
+                }
+            }).map_err(|err| self.decorate_error(err))
+        );
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct LexFileTask {
-    options: OptionsRef,
+    options: Options,
     path: String,
     contents: String,
 }
@@ -225,26 +228,29 @@ impl Task for LexFileTask {
     fn has_file_path(&self) -> Option<&str> {
         Some(&self.path)
     }
-    fn options(&self) -> &OptionsRef {
+    fn options(&self) -> &Options {
         &self.options
     }
-    async fn perform(&self, result_sender: Sender<Self>) {
-        let mut string_interner = get_new_interner();
-        let tokens = crate::tokens::lex(&self.contents, &mut string_interner)?;
-        Ok(ParseFileTask {
-            options: self.options.clone(),
-            path: self.path.clone(),
-            string_interner,
-            tokens,
-        })
+    async fn perform(&self, result_sender: SenderFor<Self>) {
+        let tokens = crate::tokens::lex(&self.contents);
+        result_sender.send(
+            tokens.map(|tokens| {
+                ParseFileTask {
+                    options: self.options.clone(),
+                    path: self.path.clone(),
+                    contents: self.contents.clone(),
+                    tokens,
+                }
+            }).map_err(|err| self.decorate_error(err))
+        );
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct ParseFileTask {
-    options: OptionsRef,
+    options: Options,
     path: String,
-    string_interner: StrInterner,
+    contents: String,
     tokens: Vec<Token>,
 }
 
@@ -256,12 +262,14 @@ impl Task for ParseFileTask {
     fn has_file_path(&self) -> Option<&str> {
         Some(&self.path)
     }
-    fn options(&self) -> &OptionsRef {
+    fn options(&self) -> &Options {
         &self.options
     }
-    async fn perform(&self, result_sender: Sender<Self>) {
-        let ast = crate::parser::parse(&self.path, &self.tokens)?;
-        Ok(ast)
+    async fn perform(&self, result_sender: SenderFor<Self>) {
+        let ast = crate::parser::parse(&self.path, &self.tokens);
+        result_sender.send(
+            ast.map_err(|err| self.decorate_error(err))
+        );
     }
 }
 

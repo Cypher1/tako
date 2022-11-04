@@ -4,8 +4,6 @@ use thiserror::Error;
 
 #[derive(Error, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TError {
-    FileNotLoadedError,
-    FileNotLexedError,
     CppCompilerError {
         error: String,
         return_code: i32,
