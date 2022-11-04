@@ -6,7 +6,7 @@ type IndexIntoFile = u32;
 // and `u16` is too small.
 // Source: https://people.csail.mit.edu/smcc/projects/single-file-programs
 
-#[derive(Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Location {
     location: IndexIntoFile,
     length: IndexIntoFile,

@@ -33,9 +33,9 @@ impl TUI {
         enable_raw_mode().expect("TUI failed to enable raw mode");
         Self {
             state: Arc::new(Mutex::new(TUIState {
-            progress: Vec::new(),
-            rerender: true,
-            progress_stats: None,
+                messages: Vec::new(),
+                rerender: true,
+                progress_stats: None,
             }       ))
         }
     }
