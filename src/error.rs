@@ -1,9 +1,8 @@
-use crate::concepts::*;
 use crate::free_standing::typed_index::TypedIndex;
 use crate::location::{Location, UserFacingLocation};
 use thiserror::Error;
 
-#[derive(Error, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Error, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TError {
     FileNotLoadedError,
     FileNotLexedError,
@@ -54,7 +53,7 @@ impl From<std::num::ParseIntError> for TError {
     }
 }
 
-#[derive(Error, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Error, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Error {
     pub source: TError,
     location: Option<UserFacingLocation>,
@@ -62,7 +61,7 @@ pub struct Error {
 pub type ErrorId = TypedIndex<Error>;
 
 impl Error {
-    pub fn new(source: TError, file: Option<&File>, module: Option<ModuleId>) -> Self {
+    pub fn new(source: TError, file: Option<&str>, module: Option<()>) -> Self {
         use TError::*;
         let location = match &source {
             FileNotLoadedError => None,

@@ -1,5 +1,5 @@
 use super::UserInterface;
-use crate::compiler_tasks::Progress;
+// use crate::compiler_tasks::Progress;
 use crate::error::{Error, ErrorId};
 use log::info;
 
@@ -13,6 +13,7 @@ impl CLI {
 }
 
 impl UserInterface for CLI {
+    /*
     fn report_error(&mut self, _error_id: ErrorId, error: &Error) {
         eprintln!("Error: {error:?}");
     }
@@ -34,5 +35,5 @@ impl UserInterface for CLI {
                 }
             }
         }
-    }
+    }*/
 }

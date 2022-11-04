@@ -1,4 +1,3 @@
-use crate::concepts::File;
 use std::fmt;
 
 type IndexIntoFile = u32;
@@ -41,13 +40,10 @@ impl UserFacingLocation {
         }
     }
 
-    pub fn from(file: &File, location: &Location) -> Self {
+    pub fn from(path: &str, contents: &str, location: &Location) -> Self {
         // TODO: Consider walking the module tree to get a fully qualified module name.
-        let mut loc = UserFacingLocation::new(&file.path, 1, 1);
-        let mut contents = file
-            .contents
-            .as_ref()
-            .expect("Must have file contents")
+        let mut loc = UserFacingLocation::new(path, 1, 1);
+        let mut contents = contents
             .chars()
             .peekable();
         for _ in 0..location.location {
