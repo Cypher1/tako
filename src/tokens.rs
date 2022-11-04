@@ -47,7 +47,7 @@ impl Token {
             Source::Symbol(length) => {
                 &source[self.start as usize..self.start as usize + *length as usize]
             }
-            Source::Lit(string) => &string,
+            Source::Lit(string) => string,
         }
     }
 }
@@ -134,7 +134,7 @@ pub fn lex(contents: &str) -> Result<Vec<Token>, TError> {
     let mut chars = Characters::new(contents);
     let mut tokens = Vec::new();
     loop {
-        let (tok, new_chars) = lex_head(contents, chars);
+        let (tok, new_chars) = lex_head(chars);
         if tok.kind == TokenType::Eof {
             break;
         }
@@ -146,7 +146,6 @@ pub fn lex(contents: &str) -> Result<Vec<Token>, TError> {
 
 // Consumes a single token.
 pub fn lex_head<'source>(
-    contents: &'source str,
     mut characters: Characters<'source>,
 ) -> (Token, Characters<'source>) {
     while let Some(chr) = characters.peek() {
@@ -186,7 +185,7 @@ pub fn lex_head<'source>(
                 }
                 last = Some(chr);
             }
-            (_, None) => return lex_head(contents, characters),
+            (_, None) => return lex_head(characters),
         }
     }
     */
@@ -294,7 +293,7 @@ mod tests {
     fn lex_head_number() {
         let contents = setup("123");
         let chars = Characters::new(&contents);
-        let (tok, _) = lex_head(&contents, chars);
+        let (tok, _) = lex_head(chars);
         assert_eq!(tok.kind, NumLit);
     }
 
@@ -302,7 +301,7 @@ mod tests {
     fn lex_head_symbol() {
         let contents = setup("a123");
         let chars = Characters::new(&contents);
-        let (tok, _) = lex_head(&contents, chars);
+        let (tok, _) = lex_head(chars);
         assert_eq!(tok.kind, Sym);
     }
 
@@ -310,7 +309,7 @@ mod tests {
     fn lex_head_operator() {
         let contents = setup("-a123");
         let chars = Characters::new(&contents);
-        let (tok, _) = lex_head(&contents, chars);
+        let (tok, _) = lex_head(chars);
         assert_eq!(tok.kind, Op);
     }
 
@@ -318,7 +317,7 @@ mod tests {
     fn lex_head_num_and_newline_linux() {
         let contents = setup("\n12");
         let chars = Characters::new(&contents);
-        let (tok, _) = lex_head(&contents, chars);
+        let (tok, _) = lex_head(chars);
         assert_eq!(tok.kind, NumLit);
         assert_eq!(tok.start, 1);
     }
@@ -327,7 +326,7 @@ mod tests {
     fn lex_head_num_and_newline_windows() {
         let contents = setup("\r\n12");
         let chars = Characters::new(&contents);
-        let (tok, _) = lex_head(&contents, chars);
+        let (tok, _) = lex_head(chars);
         assert_eq!(tok.kind, NumLit);
         assert_eq!(tok.start, 2);
     }
@@ -337,7 +336,7 @@ mod tests {
         // For mac systems before OSX
         let contents = setup("\r12");
         let chars = Characters::new(&contents);
-        let (tok, _) = lex_head(&contents, chars);
+        let (tok, _) = lex_head(chars);
         assert_eq!(tok.kind, NumLit);
         assert_eq!(tok.start, 1);
     }
@@ -347,7 +346,7 @@ mod tests {
         // TODO: De escape them.
         let contents = setup("'\\n\\t2\\r\\\'\"'");
         let chars = Characters::new(&contents);
-        let (tok, _) = lex_head(&contents, chars);
+        let (tok, _) = lex_head(chars);
         assert_eq!(tok.kind, StringLit);
         assert_str_eq!(tok.get_str(&contents), "\n\t2\r\'\"");
     }
@@ -356,13 +355,13 @@ mod tests {
     fn lex_head_call() {
         let contents = setup("x()");
         let chars = Characters::new(&contents);
-        let (tok, chars2) = lex_head(&contents, chars);
+        let (tok, chars2) = lex_head(chars);
         assert_eq!(tok.kind, Sym);
         assert_str_eq!(tok.get_str(&contents), "x");
-        let (tok, chars3) = lex_head(&contents, chars2);
+        let (tok, chars3) = lex_head(chars2);
         assert_eq!(tok.kind, OpenBracket);
         assert_str_eq!(tok.get_str(&contents), "(");
-        let (tok, _) = lex_head(&contents, chars3);
+        let (tok, _) = lex_head(chars3);
         assert_eq!(tok.kind, CloseBracket);
         assert_str_eq!(tok.get_str(&contents), ")");
     }
@@ -371,13 +370,13 @@ mod tests {
     fn lex_head_strings_with_operators() {
         let contents = setup("!\"hello world\"\n7");
         let chars = Characters::new(&contents);
-        let (tok, chars2) = lex_head(&contents, chars);
+        let (tok, chars2) = lex_head(chars);
         assert_eq!(tok.kind, Op);
         assert_str_eq!(tok.get_str(&contents), "!");
-        let (tok, chars3) = lex_head(&contents, chars2);
+        let (tok, chars3) = lex_head(chars2);
         assert_eq!(tok.kind, StringLit);
         assert_str_eq!(tok.get_str(&contents), "hello world");
-        let (tok, _) = lex_head(&contents, chars3);
+        let (tok, _) = lex_head(chars3);
         assert_eq!(tok.kind, NumLit);
         assert_str_eq!(tok.get_str(&contents), "7");
     }
