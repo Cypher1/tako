@@ -4,7 +4,7 @@ use log::trace;
 use std::env;
 
 use takolib::cli_options::Options;
-use takolib::compiler_context::Scheduler;
+use takolib::scheduler::Scheduler;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -15,7 +15,7 @@ async fn main() -> Result<()> {
     trace!("Options: {options:#?}");
     let compiler = Scheduler::from_options(options);
     trace!("started: {compiler:#?}");
-    compiler.run_job_loop().await;
+    compiler.run().await;
     trace!("finished: {compiler:#?}");
     Ok(())
 }
