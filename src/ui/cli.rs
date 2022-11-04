@@ -1,7 +1,5 @@
 use super::UserInterface;
 // use crate::compiler_tasks::Progress;
-use crate::error::{Error, ErrorId};
-use log::info;
 
 #[derive(Debug)]
 pub struct CLI {}

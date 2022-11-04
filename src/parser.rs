@@ -1,6 +1,6 @@
 use crate::ast::Ast;
 use crate::error::TError;
-use crate::tokens::{Token, TokenType};
+use crate::tokens::Token;
 use log::debug;
 
 pub fn parse(path: &str, tokens: &Vec<Token>) -> Result<Ast, TError> {
@@ -14,7 +14,7 @@ pub fn parse(path: &str, tokens: &Vec<Token>) -> Result<Ast, TError> {
         } else {
             break;
         };
-        eprintln!("tok {:?}", tok);
+        eprintln!("tok {tok:?}");
     }
     // TODO: parsing!!!
     Ok(Ast::default())

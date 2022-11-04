@@ -1,5 +1,3 @@
-use crate::error::{Error, ErrorId};
-
 mod cli;
 pub use cli::CLI;
 

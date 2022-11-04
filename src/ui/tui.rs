@@ -1,5 +1,5 @@
 use super::UserInterface;
-use crate::error::{Error, ErrorId};
+
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use shutdown_hooks::add_shutdown_hook;
 use std::sync::{Arc, Mutex};
