@@ -15,14 +15,14 @@ pub struct ProgressStats {
     _num_total: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct TUIState {
     messages: Vec<String>, // TODO: A structured message type
     rerender: bool,
     progress_stats: Option<ProgressStats>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct TUI {
     state: Arc<Mutex<TUIState>>,
 }
