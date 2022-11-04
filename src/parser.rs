@@ -3,17 +3,12 @@ use crate::error::TError;
 use crate::tokens::Token;
 use log::debug;
 
-pub fn parse(path: &str, tokens: &Vec<Token>) -> Result<Ast, TError> {
-    let mut tokens = tokens.iter().peekable();
+pub fn parse(path: &str, tokens: &[Token]) -> Result<Ast, TError> {
+    let tokens = tokens.iter().peekable();
     debug!("Parse {}", path);
     // TODO: REMOVE THIS (it's just to test the threading model)
     std::thread::sleep(std::time::Duration::from_secs(2));
-    loop {
-        let tok: &Token = if let Some(tok) = tokens.next() {
-            tok
-        } else {
-            break;
-        };
+    for tok in tokens {
         eprintln!("tok {tok:?}");
     }
     // TODO: parsing!!!
