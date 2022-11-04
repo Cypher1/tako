@@ -24,9 +24,9 @@ impl Scheduler {
 
         let store = TaskSet::new(request_receiver, result_sender); // Setup!
         store.launch().await; // launches all the jobs.
-        request_sender.send(Ok(LaunchTask {
+        request_sender.send(LaunchTask {
             options: self.options.clone(),
-        })); // Launch the cli task.
+        }); // Launch the cli task.
 
         // Receive the results...
         while let Some(ast) = result_receiver.recv().await {
