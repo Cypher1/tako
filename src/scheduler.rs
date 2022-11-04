@@ -1,59 +1,14 @@
+use std::sync::{Arc, Mutex};
+use tokio::sync::mpsc;
 use crate::cli_options::Options;
-use crate::compiler_tasks::{
-    OptionsRef, Task,
-    TaskKind::{self},
-    TaskStore,
+use crate::tasks::{
+    LaunchTask,
+    TaskSet,
 };
 use crate::error::TError;
 use crate::ui::UserInterface;
-use async_trait::async_trait;
-
-use std::sync::{Arc, Mutex};
 
 const MAX_SCHEDULER_LAG: usize = 100;
-
-#[derive(Debug)]
-pub struct Scheduler {
-    store: TaskStore,
-    ui: Arc<Mutex<dyn UserInterface + Send>>,
-    options: Arc<Mutex<Options>>,
-}
-
-#[async_trait]
-impl Task for Scheduler {
-    type Output = ();
-    const TASK_KIND: TaskKind = TaskKind::Launch;
-
-    fn options(&self) -> &OptionsRef {
-        &self.options
-    }
-
-    async fn perform_impl(&self) -> Result<Self::Output, TError> {
-        let (result_sender, mut job_reader) = mpsc::channel::<Progress>(MAX_PROGRESS_LAG);
-        tokio::spawn(async move {
-            let result_sender = result_sender.clone();
-            loop {
-                let (job_id, job_kind) = {
-                    let mut job_queue = job_queue.lock().expect("Job Runner should be able to get the job_queue");
-                    if let Some((job_id, job_kind)) = job_queue.pop_front() {
-                        (job_id, job_kind)
-                    } else {
-                        continue;
-                    }
-                };
-                // info!("Starting job: {}", InContext(&job_runner, &job_kind));
-                let result = job_runner.do_job(&progress_sender, job_id, job_kind).await;
-                result_sender.send((job_id, job_kind, result)).await.expect("send result failed"); // Yield this core...
-            }
-        });
-        loop {
-            // Find readt jobs in the store that are ready...
-            
-        }
-        // TODO: ???
-        Ok(())
-    }
-}
 
 fn make_ui_arc<T: UserInterface + Send + 'static>(
     value: T,
@@ -61,9 +16,30 @@ fn make_ui_arc<T: UserInterface + Send + 'static>(
     Arc::new(Mutex::new(value))
 }
 
+#[derive(Debug)]
+pub struct Scheduler {
+    ui: Arc<Mutex<dyn UserInterface + Send>>,
+    options: Arc<Mutex<Options>>,
+}
+
 impl Scheduler {
-    pub fn new(options: Options) -> Self {
-        Self::from_options(options)
+    async fn run(&self) -> Result<(), TError> {
+        let (request_sender, request_receiver) = mpsc::unbounded_channel();
+        let (result_sender, result_receiver) = mpsc::unbounded_channel();
+
+        let store = TaskSet::new(request_receiver, result_sender); // Setup!
+        store.launch().await; // launches all the jobs.
+        request_sender.send(
+            LaunchTask {
+            options: self.options.clone()
+        }).await; // Launch the cli task.
+
+        // Receive the results...
+        while let Some(ast) = result_receiver.recv().await {
+            dbg!(ast);
+        }
+        // All done!
+        Ok(())
     }
 
     pub fn from_options(options: Options) -> Self {
@@ -82,7 +58,6 @@ impl Scheduler {
         Self {
             options: Arc::new(Mutex::new(options)),
             ui,
-            store: TaskStore::default(),
         }
     }
 }

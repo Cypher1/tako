@@ -6,7 +6,7 @@ pub mod free_standing;
 pub mod ast;
 pub mod cli_options;
 pub mod scheduler;
-pub mod compiler_tasks;
+pub mod tasks;
 pub mod error;
 pub mod keywords;
 pub mod location;
@@ -15,11 +15,6 @@ pub mod primitives;
 pub mod string_interner;
 pub mod tokens;
 pub mod ui;
-
-use scheduler::Scheduler;
-use error::TError;
-use std::fs::File;
-use std::io::prelude::*;
 
 static mut LOGS_UNINITIALISED: bool = true;
 
