@@ -62,7 +62,12 @@ pub type ErrorId = TypedIndex<Error>;
 
 impl Error {
     // TODO: Use a builder for this.
-    pub fn new(source: TError, path: Option<&str>, contents: Option<&str>, module: Option<()>) -> Self {
+    pub fn new(
+        source: TError,
+        path: Option<&str>,
+        contents: Option<&str>,
+        module: Option<()>,
+    ) -> Self {
         use TError::*;
         let location = match &source {
             FileNotLoadedError => None,
@@ -72,7 +77,9 @@ impl Error {
             InternalError { location, .. } => location.as_ref(),
         };
         let location = match (path, contents, location, module) {
-            (Some(path), Some(contents), Some(location), _module) => Some(UserFacingLocation::from(path, contents, location)),
+            (Some(path), Some(contents), Some(location), _module) => {
+                Some(UserFacingLocation::from(path, contents, location))
+            }
             _ => None, // TODO: There's more options here...
         };
         Self { source, location }

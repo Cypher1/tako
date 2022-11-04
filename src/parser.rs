@@ -1,7 +1,7 @@
-use log::debug;
-use crate::tokens::{Token, TokenType};
-use crate::error::TError;
 use crate::ast::Ast;
+use crate::error::TError;
+use crate::tokens::{Token, TokenType};
+use log::debug;
 
 pub fn parse(path: &str, tokens: &Vec<Token>) -> Result<Ast, TError> {
     let mut tokens = tokens.iter().peekable();

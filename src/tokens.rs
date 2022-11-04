@@ -1,6 +1,6 @@
-use std::fmt;
 use crate::error::TError;
 use crate::string_interner::{get_new_interner, StrId, StrInterner};
+use std::fmt;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum TokenType {
@@ -245,10 +245,7 @@ mod tests {
     use super::*;
 
     fn setup(contents: &str) -> (String, StrInterner) {
-        (
-            contents.to_string(),
-            string_interner: get_new_interner(),
-        )
+        (contents.to_string(), string_interner: get_new_interner())
     }
 
     #[test]

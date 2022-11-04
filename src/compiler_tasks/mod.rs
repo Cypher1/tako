@@ -1,22 +1,22 @@
-use async_trait::async_trait;
 use crate::string_interner::{get_new_interner, StrInterner};
+use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 // use std::hash::Hash;
-use tokio::sync::mpsc;
-use log::{info, trace};
+use crate::ast::Ast;
 use crate::cli_options::Options;
 use crate::error::{Error, ErrorId, TError};
-use crate::ui::UserInterface;
 use crate::tokens::Token;
-use crate::ast::Ast;
+use crate::ui::UserInterface;
+use log::{info, trace};
+use tokio::sync::mpsc;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum TaskState<T, E: std::error::Error> {
     Waiting,
     Running,
     Success(T), // Include a handle to the result?
-    Cancelled, // Include why it was cancelled?
+    Cancelled,  // Include why it was cancelled?
     Failed(E),
 }
 
@@ -29,7 +29,7 @@ pub type TaskResults<T> = HashMap<T, TaskState<<T as Task>::Output, Error>>;
 #[derive(Default, Debug)]
 pub struct TaskStore {
     // TODO: Track the jobs that are being done...
-    // Invalidate these if 
+    // Invalidate these if
     load_file_tasks: TaskResults<LoadFileTask>,
     lex_file_tasks: TaskResults<LexFileTask>,
     parse_file_tasks: TaskResults<ParseFileTask>,
@@ -84,7 +84,7 @@ pub trait Task: Sized + Send /* + Hash */ {
     }
     async fn perform(&self) -> Result<Self::Output, Error> {
         let res = self.perform_impl().await;
-        res.map_err(|err|self.decorate_error(err))
+        res.map_err(|err| self.decorate_error(err))
     }
 }
 
@@ -96,7 +96,7 @@ pub struct LoadFileTask {
 
 #[async_trait]
 impl Task for LoadFileTask {
-    type Output=LexFileTask;
+    type Output = LexFileTask;
     const TASK_KIND: TaskKind = TaskKind::LoadFile;
 
     fn has_file_path(&self) -> Option<&str> {
