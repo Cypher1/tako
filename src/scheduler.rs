@@ -5,8 +5,6 @@ use crate::ui::UserInterface;
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
 
-const MAX_SCHEDULER_LAG: usize = 100;
-
 fn make_ui_arc<T: UserInterface + Send + 'static>(
     value: T,
 ) -> Arc<Mutex<dyn UserInterface + Send>> {

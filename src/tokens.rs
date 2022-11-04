@@ -15,8 +15,6 @@ pub enum TokenType {
     Eof,
 }
 
-type StringStart = u32;
-
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum Source {
     // Most of the time we do the fast, non-owning thing.
@@ -85,7 +83,6 @@ fn is_whitespace(chr: char) -> bool {
 }
 
 pub struct Characters<'a> {
-    s: &'a str,
     it: std::iter::Peekable<std::str::Chars<'a>>,
     index: usize,
     start: usize,
@@ -96,7 +93,6 @@ impl<'a> Characters<'a> {
     fn new(s: &'a str) -> Self {
         Self {
             it: s.chars().peekable(),
-            s,
             index: 0,
             start: 0,
             prev: None,
@@ -114,9 +110,6 @@ impl<'a> Characters<'a> {
     fn set_start(&mut self) -> usize {
         self.start = self.index;
         self.start
-    }
-    fn as_str(&self) -> &'a str {
-        &self.s[self.start..self.index]
     }
     fn next(&mut self) -> Option<char> {
         self.prev = self.peek();
