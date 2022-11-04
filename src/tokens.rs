@@ -245,7 +245,7 @@ mod tests {
     use super::*;
 
     fn setup(contents: &str) -> (String, StrInterner) {
-        (contents.to_string(), string_interner: get_new_interner())
+        (contents.to_string(), get_new_interner())
     }
 
     #[test]
@@ -274,42 +274,42 @@ mod tests {
 
     #[test]
     fn lex_head_number() {
-        let (mut contents, mut string_interner) = setup("123");
-        let chars = Characters::new(contents);
-        let (tok, _) = lex_head(contents, &mut string_interner, chars);
+        let (contents, mut string_interner) = setup("123");
+        let chars = Characters::new(&contents);
+        let (tok, _) = lex_head(&contents, &mut string_interner, chars);
         assert_eq!(tok.kind, NumLit);
     }
 
     #[test]
     fn lex_head_symbol() {
-        let (mut contents, mut string_interner) = setup("a123");
-        let chars = Characters::new(contents);
-        let (tok, _) = lex_head(contents, &mut string_interner, chars);
+        let (contents, mut string_interner) = setup("a123");
+        let chars = Characters::new(&contents);
+        let (tok, _) = lex_head(&contents, &mut string_interner, chars);
         assert_eq!(tok.kind, Sym);
     }
 
     #[test]
     fn lex_head_operator() {
-        let (mut contents, mut string_interner) = setup("-a123");
-        let chars = Characters::new(contents);
-        let (tok, _) = lex_head(contents, &mut string_interner, chars);
+        let (contents, mut string_interner) = setup("-a123");
+        let chars = Characters::new(&contents);
+        let (tok, _) = lex_head(&contents, &mut string_interner, chars);
         assert_eq!(tok.kind, Op);
     }
 
     #[test]
     fn lex_head_num_and_newline_linux() {
-        let (mut contents, mut string_interner) = setup("\n12");
-        let chars = Characters::new(contents);
-        let (tok, _) = lex_head(contents, &mut string_interner, chars);
+        let (contents, mut string_interner) = setup("\n12");
+        let chars = Characters::new(&contents);
+        let (tok, _) = lex_head(&contents, &mut string_interner, chars);
         assert_eq!(tok.kind, NumLit);
         assert_eq!(tok.start, 1);
     }
 
     #[test]
     fn lex_head_num_and_newline_windows() {
-        let (mut contents, mut string_interner) = setup("\r\n12");
-        let chars = Characters::new(contents);
-        let (tok, _) = lex_head(contents, &mut string_interner, chars);
+        let (contents, mut string_interner) = setup("\r\n12");
+        let chars = Characters::new(&contents);
+        let (tok, _) = lex_head(&contents, &mut string_interner, chars);
         assert_eq!(tok.kind, NumLit);
         assert_eq!(tok.start, 2);
     }
@@ -317,9 +317,9 @@ mod tests {
     #[test]
     fn lex_head_num_and_newline_old_mac() {
         // For mac systems before OSX
-        let (mut contents, mut string_interner) = setup("\r12");
-        let chars = Characters::new(contents);
-        let (tok, _) = lex_head(contents, &mut string_interner, chars);
+        let (contents, mut string_interner) = setup("\r12");
+        let chars = Characters::new(&contents);
+        let (tok, _) = lex_head(&contents, &mut string_interner, chars);
         assert_eq!(tok.kind, NumLit);
         assert_eq!(tok.start, 1);
     }
@@ -327,47 +327,47 @@ mod tests {
     #[test]
     fn lex_head_escaped_characters_in_string() {
         // TODO: De escape them.
-        let (mut contents, mut string_interner) = setup("'\\n\\t2\\r\\\'\"'");
-        let chars = Characters::new(contents);
-        let (tok, _) = lex_head(contents, &mut string_interner, chars);
+        let (contents, mut string_interner) = setup("'\\n\\t2\\r\\\'\"'");
+        let chars = Characters::new(&contents);
+        let (tok, _) = lex_head(&contents, &mut string_interner, chars);
         assert_eq!(tok.kind, StringLit);
         assert_str_eq!(get_str(&string_interner, &tok), "\n\t2\r\'\"");
     }
 
     #[test]
     fn lex_head_call() {
-        let (mut contents, mut string_interner) = setup("x()");
-        let chars = Characters::new(contents);
-        let (tok, chars2) = lex_head(contents, &mut string_interner, chars);
+        let (contents, mut string_interner) = setup("x()");
+        let chars = Characters::new(&contents);
+        let (tok, chars2) = lex_head(&contents, &mut string_interner, chars);
         assert_eq!(tok.kind, Sym);
         assert_str_eq!(get_str(&string_interner, &tok), "x");
-        let (tok, chars3) = lex_head(contents, &mut string_interner, chars2);
+        let (tok, chars3) = lex_head(&contents, &mut string_interner, chars2);
         assert_eq!(tok.kind, OpenBracket);
         assert_str_eq!(get_str(&string_interner, &tok), "(");
-        let (tok, _) = lex_head(contents, &mut string_interner, chars3);
+        let (tok, _) = lex_head(&contents, &mut string_interner, chars3);
         assert_eq!(tok.kind, CloseBracket);
         assert_str_eq!(get_str(&string_interner, &tok), ")");
     }
 
     #[test]
     fn lex_head_strings_with_operators() {
-        let (mut contents, mut string_interner) = setup("!\"hello world\"\n7");
-        let chars = Characters::new(contents);
-        let (tok, chars2) = lex_head(contents, &mut string_interner, chars);
+        let (contents, mut string_interner) = setup("!\"hello world\"\n7");
+        let chars = Characters::new(&contents);
+        let (tok, chars2) = lex_head(&contents, &mut string_interner, chars);
         assert_eq!(tok.kind, Op);
         assert_str_eq!(get_str(&string_interner, &tok), "!");
-        let (tok, chars3) = lex_head(contents, &mut string_interner, chars2);
+        let (tok, chars3) = lex_head(&contents, &mut string_interner, chars2);
         assert_eq!(tok.kind, StringLit);
         assert_str_eq!(get_str(&string_interner, &tok), "hello world");
-        let (tok, _) = lex_head(contents, &mut string_interner, chars3);
+        let (tok, _) = lex_head(&contents, &mut string_interner, chars3);
         assert_eq!(tok.kind, NumLit);
         assert_str_eq!(get_str(&string_interner, &tok), "7");
     }
 
     #[test]
     fn lex_parentheses() {
-        let (mut contents, mut string_interner) = setup("(\"hello world\"\n)");
-        let tokens = lex(&mut contents, &mut string_interner).expect("Couldn't lex");
+        let (contents, mut string_interner) = setup("(\"hello world\"\n)");
+        let tokens = lex(&contents, &mut string_interner).expect("Couldn't lex");
 
         let interner = &string_interner;
         let expected = vec![OpenBracket, StringLit, CloseBracket];
@@ -390,8 +390,8 @@ mod tests {
 
     #[test]
     fn lex_strings_with_operators() {
-        let (mut contents, mut string_interner) = setup("!\"hello world\"\n7");
-        let tokens = lex(&mut contents, &mut string_interner).expect("Couldn't lex");
+        let (contents, mut string_interner) = setup("!\"hello world\"\n7");
+        let tokens = lex(&contents, &mut string_interner).expect("Couldn't lex");
 
         let interner = &string_interner;
         let expected = vec![Op, StringLit, NumLit];
