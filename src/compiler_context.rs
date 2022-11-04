@@ -14,7 +14,7 @@ use crate::compiler_tasks::{
 use crate::error::{Error, ErrorId, TError};
 use crate::ui::UserInterface;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct CompilerContext {
     store: TaskStore,
     ui: Arc<Mutex<dyn UserInterface + Send>>,
@@ -30,12 +30,11 @@ impl Task for CompilerContext {
         &self.options
     }
 
-    async fn perform_impl(self) -> Result<Self::Output, TError> {
+    async fn perform_impl(&self) -> Result<Self::Output, TError> {
         // TODO: ???
         Ok(())
     }
 }
-/*
 
 fn make_ui_arc<T: UserInterface + Send + 'static>(value: T) -> Arc<Mutex<dyn UserInterface + Send>> {
     Arc::new(Mutex::new(value))
@@ -60,12 +59,14 @@ impl CompilerContext {
             }
         };
         Self {
-            options: Arc::new(options),
+            options: Arc::new(Mutex::new(options)),
             ui,
-            store: CompilerStorage::default(),
+            store: TaskStore::default(),
         }
     }
+}
 
+/*
     fn plan_parse_jobs(&self, jobs: &mut JobStore<JobType>, path: &str) -> (FileId, JobId) {
         let mut files = self.files.lock().expect("Plan job should be able to get files");
         let fileid = FileId::new(

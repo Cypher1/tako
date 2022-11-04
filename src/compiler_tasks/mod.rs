@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use crate::string_interner::{get_new_interner, StrInterner};
-use std::collections::{VecDeque, HashMap};
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 // use std::hash::Hash;
 use tokio::sync::mpsc;
@@ -24,7 +24,7 @@ pub enum TaskState<T, E: std::error::Error> {
 // TODO: Support re-running multiple times for stability testing.
 // TODO: Store the Tasks and their statuses in a contiguous vec.
 // TODO: Still use hashing to look up tasks and their IDs.
-pub type TaskResults<T: Task> = HashMap<T, TaskState<T::Output, Error>>;
+pub type TaskResults<T> = HashMap<T, TaskState<<T as Task>::Output, Error>>;
 
 #[derive(Default, Debug)]
 pub struct TaskStore {
@@ -51,7 +51,7 @@ pub struct TaskStore {
 pub type OptionsRef = Arc<Mutex<Options>>;
 
 #[async_trait]
-pub trait Task: Send /* + Hash */ {
+pub trait Task: Sized + Send /* + Hash */ {
     // TODO: Separate the code that performs the task
     // from the part that generates new tasks.
     // TODO: Store only the options 'relevant' to the task,
@@ -77,22 +77,19 @@ pub trait Task: Send /* + Hash */ {
     //}
     // TODO: More...
 
-    async fn perform_impl(self) -> Result<Self::Output, TError>;
+    async fn perform_impl(&self) -> Result<Self::Output, TError>;
 
     fn decorate_error(&self, error: TError) -> Error {
-        Error::new(error, self.has_file_path(), None)
+        Error::new(error, self.has_file_path(), None, None)
     }
-    async fn perform(self) -> Result<Self::Output, TError> {
-        self.run_decorated(|this| this.perform_impl()).await
-    }
-    fn run_decorated<T, F: Fn(&Self) -> Result<T, TError>>(&self, closure: &F) -> Result<T, Error> {
-        closure(self)
-            .map_err(|err|self.decorate_error(err))
+    async fn perform(&self) -> Result<Self::Output, Error> {
+        let res = self.perform_impl().await;
+        res.map_err(|err|self.decorate_error(err))
     }
 }
 
 #[derive(Debug, Clone)]
-struct LoadFileTask {
+pub struct LoadFileTask {
     options: OptionsRef,
     path: String,
 }
@@ -103,12 +100,12 @@ impl Task for LoadFileTask {
     const TASK_KIND: TaskKind = TaskKind::LoadFile;
 
     fn has_file_path(&self) -> Option<&str> {
-        Some(self.path)
+        Some(&self.path)
     }
     fn options(&self) -> &OptionsRef {
         &self.options
     }
-    async fn perform_impl(self) -> Result<Self::Output, TError> {
+    async fn perform_impl(&self) -> Result<Self::Output, TError> {
         // TODO: Use tokio's async read_to_string.
         let contents = std::fs::read_to_string(&self.path)?;
 
@@ -121,7 +118,7 @@ impl Task for LoadFileTask {
 }
 
 #[derive(Debug, Clone)]
-struct LexFileTask {
+pub struct LexFileTask {
     options: OptionsRef,
     path: String,
     contents: String,
@@ -133,14 +130,14 @@ impl Task for LexFileTask {
     const TASK_KIND: TaskKind = TaskKind::LexFile;
 
     fn has_file_path(&self) -> Option<&str> {
-        Some(self.path)
+        Some(&self.path)
     }
     fn options(&self) -> &OptionsRef {
         &self.options
     }
-    async fn perform_impl(self) -> Result<Self::Output, TError> {
+    async fn perform_impl(&self) -> Result<Self::Output, TError> {
         let mut string_interner = get_new_interner();
-        let tokens = crate::tokens::lex(self.contents, &mut string_interner)?;
+        let tokens = crate::tokens::lex(&self.contents, &mut string_interner)?;
         Ok(ParseFileTask {
             options: self.options.clone(),
             path: self.path.clone(),
@@ -151,7 +148,7 @@ impl Task for LexFileTask {
 }
 
 #[derive(Debug, Clone)]
-struct ParseFileTask {
+pub struct ParseFileTask {
     options: OptionsRef,
     path: String,
     string_interner: StrInterner,
@@ -164,13 +161,13 @@ impl Task for ParseFileTask {
     const TASK_KIND: TaskKind = TaskKind::ParseFile;
 
     fn has_file_path(&self) -> Option<&str> {
-        Some(self.path)
+        Some(&self.path)
     }
     fn options(&self) -> &OptionsRef {
         &self.options
     }
-    async fn perform_impl(self) -> Result<Self::Output, TError> {
-        let ast = crate::parser::parse(&self.path, self.tokens)?;
+    async fn perform_impl(&self) -> Result<Self::Output, TError> {
+        let ast = crate::parser::parse(&self.path, &self.tokens)?;
         Ok(ast)
     }
 }

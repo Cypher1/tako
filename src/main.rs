@@ -16,9 +16,9 @@ async fn main() -> Result<()> {
     trace!("Options: {options:?}");
     let compiler = CompilerContext::from_options(options);
     trace!("Compiler empty: {compiler:?}");
-    compiler.plan_jobs();
+    // compiler.plan_jobs();
     trace!("Compiler setup: {compiler:?}");
-    compiler.run_job_loop().await;
+    // compiler.run_job_loop().await;
     // trace!("Compiler finished: {compiler:?}");
     Ok(())
 }

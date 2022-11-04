@@ -61,7 +61,8 @@ pub struct Error {
 pub type ErrorId = TypedIndex<Error>;
 
 impl Error {
-    pub fn new(source: TError, file: Option<&str>, module: Option<()>) -> Self {
+    // TODO: Use a builder for this.
+    pub fn new(source: TError, path: Option<&str>, contents: Option<&str>, module: Option<()>) -> Self {
         use TError::*;
         let location = match &source {
             FileNotLoadedError => None,
@@ -70,8 +71,8 @@ impl Error {
             ParseError { location, .. } => location.as_ref(),
             InternalError { location, .. } => location.as_ref(),
         };
-        let location = match (file, location, module) {
-            (Some(file), Some(location), _module) => Some(UserFacingLocation::from(file, location)),
+        let location = match (path, contents, location, module) {
+            (Some(path), Some(contents), Some(location), _module) => Some(UserFacingLocation::from(path, contents, location)),
             _ => None, // TODO: There's more options here...
         };
         Self { source, location }

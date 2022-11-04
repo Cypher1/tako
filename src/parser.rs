@@ -3,7 +3,7 @@ use crate::tokens::{Token, TokenType};
 use crate::error::TError;
 use crate::ast::Ast;
 
-pub fn parse(path: &str, tokens: Vec<Token>) -> Result<(), TError> {
+pub fn parse(path: &str, tokens: &Vec<Token>) -> Result<Ast, TError> {
     let mut tokens = tokens.iter().peekable();
     debug!("Parse {}", path);
     // TODO: REMOVE THIS (it's just to test the threading model)
