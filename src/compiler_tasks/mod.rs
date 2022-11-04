@@ -5,11 +5,8 @@ use std::sync::{Arc, Mutex};
 // use std::hash::Hash;
 use crate::ast::Ast;
 use crate::cli_options::Options;
-use crate::error::{Error, ErrorId, TError};
+use crate::error::{Error, TError};
 use crate::tokens::Token;
-use crate::ui::UserInterface;
-use log::{info, trace};
-use tokio::sync::mpsc;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum TaskState<T, E: std::error::Error> {

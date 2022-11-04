@@ -2,7 +2,6 @@
 use crossterm::Result;
 use log::trace;
 use std::env;
-use tokio;
 
 use takolib::cli_options::Options;
 use takolib::compiler_context::CompilerContext;

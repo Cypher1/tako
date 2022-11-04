@@ -1,16 +1,14 @@
 use crate::cli_options::Options;
 use crate::compiler_tasks::{
     OptionsRef, Task,
-    TaskKind::{self, *},
-    TaskState, TaskStore,
+    TaskKind::{self},
+    TaskStore,
 };
-use crate::error::{Error, ErrorId, TError};
+use crate::error::TError;
 use crate::ui::UserInterface;
 use async_trait::async_trait;
-use log::{info, trace};
-use std::collections::VecDeque;
+
 use std::sync::{Arc, Mutex};
-use tokio::sync::mpsc;
 
 #[derive(Debug)]
 pub struct CompilerContext {
