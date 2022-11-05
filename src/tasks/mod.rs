@@ -5,6 +5,7 @@ use crate::tokens::Token;
 use async_trait::async_trait;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
+use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum TaskState<T, E: std::error::Error> {
@@ -12,6 +13,8 @@ pub enum TaskState<T, E: std::error::Error> {
     /// unless invalidated.
     Running,
     Success(T), // Include a handle to the result?
+    // Uncachable result, e.g. side effecting like saving a file
+    SuccessUncachable,
     Failure(E),
     // TODO: Invalidated, // Has previous run correctly, but the previous result is (somehow) 'known' to be stale.
     // TODO: Cancelled,  // Include why it was cancelled?
@@ -40,8 +43,39 @@ impl<T: Task> TaskManager<T> {
     }
 
     pub async fn run_loop(&mut self) {
+        let (result_or_error_sender, result_or_error_receiver) = mpsc::unbounded_channel();
+        let tasks_mutex = Arc::new(Mutex::new(&mut self.tasks));
+        tokio::spawn(async move {
+            while let Some((task, result)) = result_or_error_receiver.recv().await {
+                let tasks = tasks_mutex.lock().expect("Can get tasks");
+                let mut task_entry = &mut tasks.entry(task).or_insert(TaskState::Running);
+                *task_entry = match result {
+                    Ok(result) => {
+                        let res = if T::RESULT_IS_CACHABLE {
+                            TaskState::Success(result.clone())
+                        } else {
+                            TaskState::SuccessUncachable
+                        };
+                        self.result_sender.send(result);
+                        res
+                    }
+                    Err(error) => todo!(),
+                };
+            }
+        });
+
         while let Some(task) = self.task_receiver.recv().await {
-            let mut task_entry = &mut self.tasks.entry(task);
+            let tasks = tasks_mutex.lock().expect("Can get tasks");
+            let mut task_entry = &mut tasks.entry(task);
+            use std::collections::hash_map::Entry;
+            match task_entry {
+                // Occupied(Invalidated) | // Restart
+                Entry::Vacant(entry) => {
+                    entry.insert(TaskState::Running);
+                    task.perform(result_or_error_sender.clone()).await;
+                }
+                Entry::Occupied(_) => {} // Already running
+            }
         }
         todo!();
     }
@@ -76,22 +110,7 @@ impl TaskSet {
         result_sender: SenderFor<ParseFileTask>,
     ) -> Self {
         let (load_file_sender, load_file_receiver) = mpsc::unbounded_channel();
-        let (load_file_or_error_sender, load_file_or_error_receiver) = mpsc::unbounded_channel();
-        let request_tasks = TaskManager::<LaunchTask>::new(launch_receiver, load_file_or_error_sender);
-
-        {
-            tokio::spawn(async move {
-                while let Some(result) = load_file_or_error_receiver.recv().await {
-                    match result {
-                        Ok(task) => {
-                            load_file_sender.send(task);
-                            todo!()
-                        }
-                        Err(error) => todo!(),
-                    }
-                }
-            });
-        }
+        let request_tasks = TaskManager::<LaunchTask>::new(launch_receiver, load_file_sender);
 
         let (lex_file_sender, lex_file_receiver) = mpsc::unbounded_channel();
         let load_file_tasks = TaskManager::<LoadFileTask>::new(load_file_receiver, lex_file_sender);
@@ -143,8 +162,9 @@ pub trait Task: std::hash::Hash + Eq + Sized + Send /* + Hash */ {
     // TODO: Implement a hash table from tasks to results.
     // TODO: Only perform 'new' tasks.
 
-    type Output: std::fmt::Debug;
+    type Output: std::fmt::Debug + Clone;
     const TASK_KIND: TaskKind;
+    const RESULT_IS_CACHABLE: bool = true;
 
     fn options(&self) -> &Options;
 

@@ -5,14 +5,14 @@ use crate::string_interner::StrId;
 // TODO: Use macro for defining and registering each of these.
 // TODO: A lambda calculus impl.
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Symbol {
     node: NodeId,
     name: TypedIndex<StrId>, // index into the file
 }
 pub type SymbolId = TypedIndex<Symbol>;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Call {
     node: NodeId,
     pub inner: NodeId,
@@ -31,7 +31,7 @@ impl Call {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Definition {
     node: NodeId,
     pub name: TypedIndex<StrId>,
@@ -39,14 +39,14 @@ pub struct Definition {
 }
 pub type DefinitionId = TypedIndex<Definition>;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Primitive {
     node: NodeId,
     pub value: (), // TODO: ???
 }
 pub type PrimitiveId = TypedIndex<Primitive>;
 
-#[derive(Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 pub enum NodeData {
     // TODO: consider how to split this up.
     // Use a Array of Enums Structs to Struct of Arrays (i.e. AoES2SoA).
@@ -56,7 +56,7 @@ pub enum NodeData {
     Primitive(PrimitiveId),
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Node {
     pub name: TypedIndex<Symbol>,
     pub id: NodeData,
@@ -64,7 +64,7 @@ pub struct Node {
 }
 pub type NodeId = TypedIndex<Node>;
 
-#[derive(Default, Debug)]
+#[derive(Clone, Default, Debug)]
 pub struct Ast {
     // Abstract syntax tree... forest
     pub roots: Vec<NodeId>,
