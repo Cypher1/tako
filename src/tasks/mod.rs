@@ -7,12 +7,13 @@ use std::collections::HashMap;
 use tokio::sync::mpsc;
 use std::sync::{Arc, Mutex};
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TaskState<T, E: std::error::Error> {
     /// Place holder to record that a job is already running and shouldn't need to be run again
     /// unless invalidated.
-    Running,
-    Success(T), // Include a handle to the result?
+    Started, // Include a handle to the result?
+    Running(Vec<T>), // Include a handle to the result?
+    Success(Vec<T>), // Include a handle to the result?
     // Uncachable result, e.g. side effecting like saving a file
     SuccessUncachable,
     Failure(E),
@@ -24,10 +25,22 @@ pub enum TaskState<T, E: std::error::Error> {
 // TODO: Support re-running multiple times for stability testing.
 // TODO: Store the Tasks and their statuses in a contiguous vec.
 // TODO: Still use hashing to look up tasks and their IDs.
-pub type TaskResults<T> = HashMap<T, TaskState<<T as Task>::Output, Error>>;
+pub type TaskResults<T> = HashMap<TaskId<T>, TaskState<<T as Task>::Output, Error>>;
+
+type TaskId<Task> = Task; // This should be the pre-computed hash, to avoid sending and cloning tasks.
+
+/* TODO:
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct TaskId {
+    kind: TaskKind, // Where to look for the task
+    task_hash: u64, // The hash of the task???
+}
+*/
 
 #[derive(Debug)]
 pub struct TaskManager<T: Task> {
+    // TODO: Each task should get its own channel!!!
+    // Use https://docs.rs/tokio-stream/latest/tokio_stream/struct.StreamMap.html
     tasks: TaskResults<T>,
     task_receiver: ReceiverFor<T>,
     result_sender: SenderFor<T>,
@@ -43,16 +56,23 @@ impl<T: Task> TaskManager<T> {
     }
 
     pub async fn run_loop(&mut self) {
-        let (result_or_error_sender, result_or_error_receiver) = mpsc::unbounded_channel();
-        let tasks_mutex = Arc::new(Mutex::new(&mut self.tasks));
+        let (result_or_error_sender, result_or_error_receiver) = mpsc::unbounded_channel::<(TaskId<T>, Result<T::Output, Error>)>();
         tokio::spawn(async move {
-            while let Some((task, result)) = result_or_error_receiver.recv().await {
+            while let Some(result) = result_or_error_receiver.recv().await {
                 let tasks = tasks_mutex.lock().expect("Can get tasks");
-                let mut task_entry = &mut tasks.entry(task).or_insert(TaskState::Running);
+                let mut task_entry = &mut tasks.entry(task).or_insert(TaskState::Started);
                 *task_entry = match result {
+                    // TODO: Accumulate results
                     Ok(result) => {
                         let res = if T::RESULT_IS_CACHABLE {
-                            TaskState::Success(result.clone())
+                            let results_so_far = match task_entry.value() {
+                                TaskState::SuccessUncachable => Vec::new(),
+                                TaskState::Success(_) => Vec::new(),
+                                TaskState::Started => vec::new(),
+                                TaskState::Running(partials) => partials,
+    // Uncachable result, e.g. side effecting like saving a file
+                            };
+                            TaskState::Running(result.clone())
                         } else {
                             TaskState::SuccessUncachable
                         };
@@ -65,13 +85,11 @@ impl<T: Task> TaskManager<T> {
         });
 
         while let Some(task) = self.task_receiver.recv().await {
-            let tasks = tasks_mutex.lock().expect("Can get tasks");
-            let mut task_entry = &mut tasks.entry(task);
             use std::collections::hash_map::Entry;
             match task_entry {
                 // Occupied(Invalidated) | // Restart
                 Entry::Vacant(entry) => {
-                    entry.insert(TaskState::Running);
+                    // Tasks will report that they are running. Do not report them here.
                     task.perform(result_or_error_sender.clone()).await;
                 }
                 Entry::Occupied(_) => {} // Already running
@@ -152,7 +170,8 @@ impl TaskSet {
 }
 
 pub type ReceiverFor<T> = mpsc::UnboundedReceiver<T>;
-pub type SenderFor<T> = mpsc::UnboundedSender<Result<<T as Task>::Output, Error>>;
+pub type SenderFor<T> = mpsc::UnboundedSender<<T as Task>::Output>;
+pub type SenderWithErrorsFor<T> = mpsc::UnboundedSender<Result<<T as Task>::Output, Error>>;
 
 #[async_trait]
 pub trait Task: std::hash::Hash + Eq + Sized + Send /* + Hash */ {
@@ -182,7 +201,7 @@ pub trait Task: std::hash::Hash + Eq + Sized + Send /* + Hash */ {
     //}
     // TODO: More...
 
-    async fn perform(&self, result_sender: SenderFor<Self>);
+    async fn perform(&self, result_sender: SenderWithErrorsFor<Self>);
 
     fn decorate_error<E: Into<TError>>(&self, error: E) -> Error {
         Error::new(error.into(), self.has_file_path(), None, None)
@@ -206,7 +225,7 @@ impl Task for LaunchTask {
     fn options(&self) -> &Options {
         &self.options
     }
-    async fn perform(&self, result_sender: SenderFor<Self>) {
+    async fn perform(&self, result_sender: SenderWithErrorsFor<Self>) {
         for path in &self.options.files {
             result_sender.send(Ok(LoadFileTask {
                 options: self.options.clone(),
@@ -233,7 +252,7 @@ impl Task for LoadFileTask {
     fn options(&self) -> &Options {
         &self.options
     }
-    async fn perform(&self, result_sender: SenderFor<Self>) {
+    async fn perform(&self, result_sender: SenderWithErrorsFor<Self>) {
         // TODO: Use tokio's async read_to_string.
         let contents = std::fs::read_to_string(&self.path);
         result_sender.send(
@@ -266,7 +285,7 @@ impl Task for LexFileTask {
     fn options(&self) -> &Options {
         &self.options
     }
-    async fn perform(&self, result_sender: SenderFor<Self>) {
+    async fn perform(&self, result_sender: SenderWithErrorsFor<Self>) {
         let tokens = crate::tokens::lex(&self.contents);
         result_sender.send(
             tokens
@@ -300,7 +319,7 @@ impl Task for ParseFileTask {
     fn options(&self) -> &Options {
         &self.options
     }
-    async fn perform(&self, result_sender: SenderFor<Self>) {
+    async fn perform(&self, result_sender: SenderWithErrorsFor<Self>) {
         let ast = crate::parser::parse(&self.path, &self.tokens);
         result_sender.send(ast.map_err(|err| self.decorate_error(err)));
     }
@@ -312,10 +331,4 @@ pub enum TaskKind {
     LoadFile,
     LexFile,
     ParseFile,
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct TaskRef {
-    kind: TaskKind, // Where to look for the task
-    task_hash: u64, // The hash of the task???
 }
