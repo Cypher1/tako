@@ -1,3 +1,4 @@
+use log::trace;
 use crate::ast::Ast;
 use crate::cli_options::Options;
 use crate::error::{Error, TError};
@@ -60,7 +61,7 @@ pub struct TaskId {
 */
 
 #[derive(Debug)]
-pub struct TaskManager<T: Task> {
+pub struct TaskManager<T: std::fmt::Debug + Task> {
     // TODO: Each task should get its own channel!!!
     // Use https://docs.rs/tokio-stream/latest/tokio_stream/struct.StreamMap.html
     result_store: Arc<Mutex<TaskResults<T>>>,
@@ -69,7 +70,9 @@ pub struct TaskManager<T: Task> {
     // status_sender: mpsc::Sender<ManagerStats>,
 }
 
-impl<T: Task + 'static> TaskManager<T> {
+impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
+    const TYPE_NAME: &str = std::any::type_name::<T>();
+
     pub fn new(task_receiver: ReceiverFor<T>, result_sender: SenderFor<T>) -> Self {
         Self {
             result_store: Arc::new(Mutex::new(TaskResults::new())),
@@ -79,18 +82,20 @@ impl<T: Task + 'static> TaskManager<T> {
     }
 
     pub async fn run_loop(&mut self) {
+        trace!("{} starting run_loop", Self::TYPE_NAME);
         let (result_or_error_sender, mut result_or_error_receiver) =
                 mpsc::unbounded_channel::<(T, Update<T::Output, Error>)>();
         let result_store = self.result_store.clone();
         let result_sender = self.result_sender.clone();
         tokio::spawn(async move {
-            while let Some((task, result)) = result_or_error_receiver.recv().await {
+            while let Some((task, update)) = result_or_error_receiver.recv().await {
+                trace!("{} received update from task: {task:?} {update:?}", Self::TYPE_NAME);
                 let mut result_store = result_store.lock().expect("Should be able to get result store");
                 let mut current_results = result_store.entry(task).or_insert(TaskStatus::new());
                 let mut is_complete = false;
                 let mut error = None;
                 let results_so_far = &mut current_results.results;
-                match result {
+                match update {
                     Update::NextResult(res) => {
                         result_sender.send(res.clone()).expect("Should be able to send results");
                         results_so_far.push(res);
@@ -114,26 +119,34 @@ impl<T: Task + 'static> TaskManager<T> {
                     (None, /*is_complete*/ false) => TaskState::Partial,
                 };
             }
+            trace!("{} no more results... Finishing listening loop.", Self::TYPE_NAME);
         });
 
         while let Some(task) = self.task_receiver.recv().await { // Get a new job from 'upstream'.
+            trace!("{} received task: {task:?}", Self::TYPE_NAME);
             let status = {
                 let result_store = self.result_store.lock().expect("Should be able to get result store");
                 // We'll need to forward these on, so we can clone now and drop the result_store lock earlier!
                 result_store.get(&task).cloned()
             };
             let status = status.unwrap_or_else(||TaskStatus::new());
-            match status.state {
+            match (&status.state, T::RESULT_IS_CACHABLE) {
                 // TODO: Consider that partial results 'should' still be safe to re-use and could pre-start later work.
                 /* TaskState::Partial | */
-                TaskState::Complete => {
+                (TaskState::Complete, true) => {
+                    trace!("{} cached task: {task:?}", Self::TYPE_NAME);
                     for result in status.results {
                         self.result_sender.send(result).expect("Should be able to send results");
                     }
                     continue; // i.e. go look for another task.
                 }
+                (TaskState::Complete, false) => {
+                    trace!("{} un-cacheable: {task:?} (will re-run)", Self::TYPE_NAME);
+                }
                 // Continue on and re-launch the job, duplicated work should not propagate if completed.
-                _ => {}
+                _ => {
+                    trace!("{} task: {task:?} status is {status:?}", Self::TYPE_NAME);
+                }
             }
             // Launch the job!!!
             let result_or_error_sender = result_or_error_sender.clone();
@@ -142,6 +155,7 @@ impl<T: Task + 'static> TaskManager<T> {
                 task.perform(result_or_error_sender).await;
             });
         }
+        trace!("{} no more tasks... Finishing run_loop", Self::TYPE_NAME);
     }
 }
 

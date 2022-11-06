@@ -4,6 +4,7 @@ use crate::tasks::{LaunchTask, TaskSet};
 use crate::ui::UserInterface;
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
+use log::trace;
 
 fn make_ui_arc<T: UserInterface + Send + 'static>(
     value: T,
@@ -30,6 +31,7 @@ impl Scheduler {
 
         // Receive the results...
         while let Some(ast) = result_receiver.recv().await {
+            trace!("Receiving 'final' result from compiler: {ast:?}");
             dbg!(ast);
         }
         // All done!
