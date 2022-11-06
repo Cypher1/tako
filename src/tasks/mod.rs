@@ -29,7 +29,7 @@ pub type TaskResults<T> = HashMap<TaskId<T>, TaskState<<T as Task>::Output, Erro
 
 type TaskId<Task> = Task; // This should be the pre-computed hash, to avoid sending and cloning tasks.
 
-/* TODO:
+/* TODO: Avoid repeatedly hashing tasks.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct TaskId {
     kind: TaskKind, // Where to look for the task
@@ -41,9 +41,11 @@ pub struct TaskId {
 pub struct TaskManager<T: Task> {
     // TODO: Each task should get its own channel!!!
     // Use https://docs.rs/tokio-stream/latest/tokio_stream/struct.StreamMap.html
-    tasks: TaskResults<T>,
+    task_states: TaskResults<T>,
+    task_reporters: StreamMap<T::Output>,
     task_receiver: ReceiverFor<T>,
     result_sender: SenderFor<T>,
+    // status_sender: mpsc::Sender<ManagerStats>,
 }
 
 impl<T: Task> TaskManager<T> {
