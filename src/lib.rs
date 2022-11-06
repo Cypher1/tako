@@ -19,9 +19,9 @@ use crate::cli_options::Options;
 use crate::error::TError;
 use crate::tasks::{LaunchTask, TaskSet};
 use crate::ui::UserInterface;
+use log::trace;
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
-use log::trace;
 
 static mut LOGS_UNINITIALISED: bool = true;
 
@@ -80,9 +80,9 @@ pub async fn start(options: Options) -> Result<(), TError> {
 
         let store = TaskSet::new(request_receiver, result_sender, options.clone()); // Setup!
         store.launch().await; // launches all the jobs.
-        request_sender.send(LaunchTask {
-            files,
-        }).expect("Should be able to send launch task"); // Launch the cli task.
+        request_sender
+            .send(LaunchTask { files })
+            .expect("Should be able to send launch task"); // Launch the cli task.
         result_receiver
     };
     // Receive the results...

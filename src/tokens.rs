@@ -138,9 +138,7 @@ pub fn lex(contents: &str) -> Result<Vec<Token>, TError> {
 }
 
 // Consumes a single token.
-pub fn lex_head(
-    mut characters: Characters,
-) -> (Token, Characters) {
+pub fn lex_head(mut characters: Characters) -> (Token, Characters) {
     while let Some(chr) = characters.peek() {
         // skip whitespace.
         if !is_whitespace(chr) {

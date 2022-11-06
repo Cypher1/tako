@@ -1,6 +1,6 @@
 #![deny(clippy::all)]
 use crossterm::Result;
-use log::{trace, error};
+use log::{error, trace};
 use std::env;
 
 use takolib::cli_options::Options;
@@ -19,7 +19,7 @@ async fn main() -> Result<()> {
     let compiler = start(options);
     trace!("Started");
     match compiler.await {
-        Ok(()) => {},
+        Ok(()) => {}
         Err(error) => {
             error!("Internal error: {error:#?}");
             eprintln!("Compiler finished with internal error: {error}");
