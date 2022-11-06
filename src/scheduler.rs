@@ -30,7 +30,8 @@ impl Scheduler {
         }).expect("Should be able to send launch task"); // Launch the cli task.
 
         // Receive the results...
-        while let Some(ast) = result_receiver.recv().await {
+        trace!("Scheduler: Waiting for 'final' result...");
+        if let Some(ast) = result_receiver.recv().await {
             trace!("Receiving 'final' result from compiler: {ast:?}");
             dbg!(ast);
         }
