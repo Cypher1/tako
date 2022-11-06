@@ -88,6 +88,7 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
         let result_store = self.result_store.clone();
         let result_sender = self.result_sender.clone();
         tokio::spawn(async move {
+            trace!("{}: Waiting for results...", Self::TYPE_NAME);
             while let Some((task, update)) = result_or_error_receiver.recv().await {
                 trace!("{} received update from task: {task:?} {update:?}", Self::TYPE_NAME);
                 let mut result_store = result_store.lock().expect("Should be able to get result store");
@@ -122,6 +123,7 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
             trace!("{} no more results... Finishing listening loop.", Self::TYPE_NAME);
         });
 
+        trace!("{}: Waiting for tasks...", Self::TYPE_NAME);
         while let Some(task) = self.task_receiver.recv().await { // Get a new job from 'upstream'.
             trace!("{} received task: {task:?}", Self::TYPE_NAME);
             let status = {

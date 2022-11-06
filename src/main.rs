@@ -13,6 +13,9 @@ async fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
     let options = Options::new(args);
     trace!("Options: {options:#?}");
+    if options.files.is_empty() {
+        return Ok(());
+    }
     let compiler = Scheduler::from_options(options);
     trace!("started: {compiler:#?}");
     match compiler.run().await {
