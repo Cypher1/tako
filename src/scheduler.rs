@@ -27,7 +27,7 @@ impl Scheduler {
             let store = TaskSet::new(request_receiver, result_sender); // Setup!
             store.launch().await; // launches all the jobs.
             request_sender.send(LaunchTask {
-                options: self.options.clone(),
+                files: self.options.files.clone(),
             }).expect("Should be able to send launch task"); // Launch the cli task.
             result_receiver
         };
