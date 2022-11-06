@@ -8,22 +8,30 @@ use tokio::sync::mpsc;
 use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub enum TaskStateKind<T, E: std::error::Error> {
+pub enum TaskState<E: std::error::Error> {
     /// Place holder to record that a job is already running and shouldn't need to be run again
     /// unless invalidated.
     New,
-    Partial(Vec<T>), // Include a handle to the result?
-    Complete(Vec<T>), // Include a handle to the result?
-    // Uncachable result, e.g. side effecting like saving a file
-    PartialUncachable,
-    CompleteUncachable,
+    Partial, // Include a handle to the result?
+    Complete, // Include a handle to the result?
     Failure(E),
     // TODO: Invalidated, // Has previous run correctly, but the previous result is (somehow) 'known' to be stale.
     // TODO: Cancelled,  // Include why it was cancelled?
 }
-pub struct TaskState<T, E: std::error::Error> {
-    state: TaskStateKind<T, E>,
-    results: Vec<T>,
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct TaskStatus<T, E: std::error::Error> {
+    state: TaskState<E>,
+    results: Vec<T>, // TODO: Avoid wasting this if the task is uncachable?
+}
+
+impl<T, E: std::error::Error> TaskStatus<T, E> {
+    pub fn new() -> Self {
+        Self {
+            state: TaskState::New,
+            results: Vec::new(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -39,7 +47,7 @@ pub enum Update<O: Send, E: std::error::Error + Send> {
 // TODO: Support re-running multiple times for stability testing.
 // TODO: Store the Tasks and their statuses in a contiguous vec.
 // TODO: Still use hashing to look up tasks and their IDs.
-pub type TaskResults<T> = HashMap<TaskId<T>, TaskState<<T as Task>::Output, Error>>;
+pub type TaskResults<T> = HashMap<TaskId<T>, TaskStatus<<T as Task>::Output, Error>>;
 
 type TaskId<Task> = Task; // This should be the pre-computed hash, to avoid sending and cloning tasks.
 
@@ -74,26 +82,22 @@ impl<T: Task + 'static> TaskManager<T> {
         let (result_or_error_sender, mut result_or_error_receiver) =
                 mpsc::unbounded_channel::<(T, Update<T::Output, Error>)>();
         let result_store = self.result_store.clone();
+        let result_sender = self.result_sender.clone();
         tokio::spawn(async move {
             while let Some((task, result)) = result_or_error_receiver.recv().await {
                 let mut result_store = result_store.lock().expect("Should be able to get result store");
-                let mut current_results = result_store.entry(task).or_insert(TaskState::New);
+                let mut current_results = result_store.entry(task).or_insert(TaskStatus::new());
                 let mut is_complete = false;
                 let mut error = None;
-                let mut placeholder = Vec::new();
-                let results_so_far = match &mut *current_results {
-                    TaskState::PartialUncachable | TaskState::CompleteUncachable => &mut placeholder, // How did this happen?
-                    TaskState::New | TaskState::Complete(_) | TaskState::Failure(_) => &mut placeholder, // A new task or a redo...
-                    TaskState::Partial(partials) => partials, // Continuing...
-                };
+                let results_so_far = &mut current_results.results;
                 match result {
                     Update::NextResult(res) => {
-                        self.result_sender.send(res.clone());
+                        result_sender.send(res.clone()).expect("Should be able to send results");
                         results_so_far.push(res);
                     }
                     Update::FinalResult(res) => {
                         is_complete = true;
-                        self.result_sender.send(res.clone());
+                        result_sender.send(res.clone()).expect("Should be able to send results");
                         results_so_far.push(res);
                     }
                     Update::Complete => {
@@ -104,44 +108,31 @@ impl<T: Task + 'static> TaskManager<T> {
                         error = Some(err);
                     }
                 };
-                if T::RESULT_IS_CACHABLE {
-                    *current_results = match (error, is_complete) {
-                        (Some(err), _is_complete) => TaskState::Failure(err),
-                        (None, /*is_complete*/ true) => TaskState::Complete(results_so_far),
-                        (None, /*is_complete*/ false) => TaskState::Partial(results_so_far),
-                    };
-                } else {
-                    *current_results = match (error, is_complete) {
-                        (Some(err), _is_complete) => TaskState::Failure(err),
-                        (None, /*is_complete*/ true) => TaskState::CompleteUncachable,
-                        (None, /*is_complete*/ false) => TaskState::PartialUncachable,
-                    };
-                }
+                current_results.state = match (error, is_complete) {
+                    (Some(err), _is_complete) => TaskState::Failure(err),
+                    (None, /*is_complete*/ true) => TaskState::Complete,
+                    (None, /*is_complete*/ false) => TaskState::Partial,
+                };
             }
         });
 
         while let Some(task) = self.task_receiver.recv().await { // Get a new job from 'upstream'.
             let status = {
                 let result_store = self.result_store.lock().expect("Should be able to get result store");
+                // We'll need to forward these on, so we can clone now and drop the result_store lock earlier!
                 result_store.get(&task).cloned()
             };
-            let status = status.unwrap_or(TaskState::New);
-            match status {
-                TaskState::Complete(results) => {
-                    for result in results {
-                        self.result_sender.send(result);
+            let status = status.unwrap_or_else(||TaskStatus::new());
+            match status.state {
+                // TODO: Consider that partial results 'should' still be safe to re-use and could pre-start later work.
+                /* TaskState::Partial | */
+                TaskState::Complete => {
+                    for result in status.results {
+                        self.result_sender.send(result).expect("Should be able to send results");
                     }
                     continue; // i.e. go look for another task.
                 }
-                TaskState::Partial(_partial_results) => {
-                    // TODO: Consider...
-                    // We 'know' these are good, but there's more work to do
-                    // for result in partial_results {
-                        // self.result_sender.send(result);
-                    // }
-                    // Continue on and re-launch the job, duplicated work should not propagate if
-                    // completed.
-                }
+                // Continue on and re-launch the job, duplicated work should not propagate if completed.
                 _ => {}
             }
             // Launch the job!!!
@@ -285,9 +276,9 @@ impl Task for LaunchTask {
             result_sender.send((self.clone(), Update::NextResult(LoadFileTask {
                 options: self.options.clone(),
                 path: path.clone(),
-            })));
+            }))).expect("Should be able to send task result to manager");
         }
-        result_sender.send((self.clone(), Update::Complete));
+        result_sender.send((self.clone(), Update::Complete)).expect("Should be able to send task result to manager");
     }
 }
 
@@ -323,7 +314,7 @@ impl Task for LoadFileTask {
                     Ok(result) => Update::FinalResult(result),
                     Err(err) => Update::Failed(err),
                 }
-        ));
+        )).expect("Should be able to send task result to manager");
     }
 }
 
@@ -361,7 +352,7 @@ impl Task for LexFileTask {
                     Ok(result) => Update::FinalResult(result),
                     Err(err) => Update::Failed(err),
                 }
-        ));
+        )).expect("Should be able to send task result to manager");
     }
 }
 
@@ -393,7 +384,7 @@ impl Task for ParseFileTask {
                     Ok(result) => Update::FinalResult(result),
                     Err(err) => Update::Failed(err),
                 }
-        ));
+        )).expect("Should be able to send task result to manager");
     }
 }
 
