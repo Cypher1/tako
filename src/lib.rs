@@ -10,7 +10,6 @@ pub mod keywords;
 pub mod location;
 pub mod parser;
 pub mod primitives;
-pub mod scheduler;
 pub mod string_interner;
 pub mod tasks;
 pub mod tokens;
@@ -73,7 +72,7 @@ pub async fn start(options: Options) -> Result<(), TError> {
         }
     };
     let files = options.files.clone();
-    let options = Arc::new(Mutex::new(options))
+    let options = Arc::new(Mutex::new(options));
 
     let mut result_receiver = {
         let (request_sender, request_receiver) = mpsc::unbounded_channel();
