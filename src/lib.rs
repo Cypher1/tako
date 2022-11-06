@@ -1,4 +1,3 @@
-#![feature(const_type_name)]
 #![deny(clippy::all)]
 
 #[macro_use]

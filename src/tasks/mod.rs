@@ -71,7 +71,9 @@ pub struct TaskManager<T: std::fmt::Debug + Task> {
 }
 
 impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
-    const TYPE_NAME: &str = std::any::type_name::<T>();
+    fn task_name() -> &'static str {
+        std::any::type_name::<T>()
+    }
 
     pub fn new(task_receiver: ReceiverFor<T>, result_sender: SenderFor<T>) -> Self {
         Self {
@@ -82,15 +84,15 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
     }
 
     pub async fn run_loop(&mut self) {
-        trace!("{} starting run_loop", Self::TYPE_NAME);
+        trace!("{} starting run_loop", Self::task_name());
         let (result_or_error_sender, mut result_or_error_receiver) =
                 mpsc::unbounded_channel::<(T, Update<T::Output, Error>)>();
         let result_store = self.result_store.clone();
         let result_sender = self.result_sender.clone();
         tokio::spawn(async move {
-            trace!("{}: Waiting for results...", Self::TYPE_NAME);
+            trace!("{}: Waiting for results...", Self::task_name());
             while let Some((task, update)) = result_or_error_receiver.recv().await {
-                trace!("{} received update from task: {task:?} {update:?}", Self::TYPE_NAME);
+                trace!("{} received update from task: {task:?} {update:?}", Self::task_name());
                 let mut result_store = result_store.lock().expect("Should be able to get result store");
                 let mut current_results = result_store.entry(task).or_insert(TaskStatus::new());
                 let mut is_complete = false;
@@ -120,12 +122,12 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
                     (None, /*is_complete*/ false) => TaskState::Partial,
                 };
             }
-            trace!("{} no more results... Finishing listening loop.", Self::TYPE_NAME);
+            trace!("{} no more results... Finishing listening loop.", Self::task_name());
         });
 
-        trace!("{}: Waiting for tasks...", Self::TYPE_NAME);
+        trace!("{}: Waiting for tasks...", Self::task_name());
         while let Some(task) = self.task_receiver.recv().await { // Get a new job from 'upstream'.
-            trace!("{} received task: {task:?}", Self::TYPE_NAME);
+            trace!("{} received task: {task:?}", Self::task_name());
             let status = {
                 let result_store = self.result_store.lock().expect("Should be able to get result store");
                 // We'll need to forward these on, so we can clone now and drop the result_store lock earlier!
@@ -136,18 +138,18 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
                 // TODO: Consider that partial results 'should' still be safe to re-use and could pre-start later work.
                 /* TaskState::Partial | */
                 (TaskState::Complete, true) => {
-                    trace!("{} cached task: {task:?}", Self::TYPE_NAME);
+                    trace!("{} cached task: {task:?}", Self::task_name());
                     for result in status.results {
                         self.result_sender.send(result).expect("Should be able to send results");
                     }
                     continue; // i.e. go look for another task.
                 }
                 (TaskState::Complete, false) => {
-                    trace!("{} un-cacheable: {task:?} (will re-run)", Self::TYPE_NAME);
+                    trace!("{} un-cacheable: {task:?} (will re-run)", Self::task_name());
                 }
                 // Continue on and re-launch the job, duplicated work should not propagate if completed.
                 _ => {
-                    trace!("{} task: {task:?} status is {status:?}", Self::TYPE_NAME);
+                    trace!("{} task: {task:?} status is {status:?}", Self::task_name());
                 }
             }
             // Launch the job!!!
@@ -157,7 +159,7 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
                 task.perform(result_or_error_sender).await;
             });
         }
-        trace!("{} no more tasks... Finishing run_loop", Self::TYPE_NAME);
+        trace!("{} no more tasks... Finishing run_loop", Self::task_name());
     }
 }
 
