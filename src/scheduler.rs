@@ -20,15 +20,17 @@ pub struct Scheduler {
 
 impl Scheduler {
     pub async fn run(&self) -> Result<(), TError> {
-        let (request_sender, request_receiver) = mpsc::unbounded_channel();
-        let (result_sender, mut result_receiver) = mpsc::unbounded_channel();
+        let mut result_receiver = {
+            let (request_sender, request_receiver) = mpsc::unbounded_channel();
+            let (result_sender, result_receiver) = mpsc::unbounded_channel();
 
-        let store = TaskSet::new(request_receiver, result_sender); // Setup!
-        store.launch().await; // launches all the jobs.
-        request_sender.send(LaunchTask {
-            options: self.options.clone(),
-        }).expect("Should be able to send launch task"); // Launch the cli task.
-
+            let store = TaskSet::new(request_receiver, result_sender); // Setup!
+            store.launch().await; // launches all the jobs.
+            request_sender.send(LaunchTask {
+                options: self.options.clone(),
+            }).expect("Should be able to send launch task"); // Launch the cli task.
+            result_receiver
+        };
         // Receive the results...
         trace!("Scheduler: Waiting for 'final' result...");
         while let Some(ast) = result_receiver.recv().await {
