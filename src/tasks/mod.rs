@@ -1,12 +1,12 @@
-use log::trace;
 use crate::ast::Ast;
 use crate::cli_options::Options;
 use crate::error::{Error, TError};
 use crate::tokens::Token;
 use async_trait::async_trait;
+use log::trace;
 use std::collections::HashMap;
-use tokio::sync::mpsc;
 use std::sync::{Arc, Mutex};
+use tokio::sync::mpsc;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TaskState<E: std::error::Error> {
@@ -14,7 +14,7 @@ pub enum TaskState<E: std::error::Error> {
     /// unless invalidated.
     New,
     Running,
-    Partial, // Include a handle to the result?
+    Partial,  // Include a handle to the result?
     Complete, // Include a handle to the result?
     Failure(E),
     // TODO: Invalidated, // Has previous run correctly, but the previous result is (somehow) 'known' to be stale.
@@ -50,7 +50,6 @@ pub enum Update<O: Send, E: std::error::Error + Send> {
     Failed(E),
 }
 
-
 // TODO: Add timing information, etc.
 // TODO: Support re-running multiple times for stability testing.
 // TODO: Store the Tasks and their statuses in a contiguous vec.
@@ -83,7 +82,11 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
         std::any::type_name::<T>()
     }
 
-    pub fn new(task_receiver: ReceiverFor<T>, result_sender: SenderFor<T>, options: Arc<Mutex<Options>>) -> Self {
+    pub fn new(
+        task_receiver: ReceiverFor<T>,
+        result_sender: SenderFor<T>,
+        options: Arc<Mutex<Options>>,
+    ) -> Self {
         Self {
             result_store: Arc::new(Mutex::new(TaskResults::new())),
             task_receiver,
@@ -95,26 +98,35 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
     pub async fn run_loop(&mut self) {
         trace!("{} starting run_loop", Self::task_name());
         let (result_or_error_sender, mut result_or_error_receiver) =
-                mpsc::unbounded_channel::<(T, Update<T::Output, Error>)>();
+            mpsc::unbounded_channel::<(T, Update<T::Output, Error>)>();
         let result_store = self.result_store.clone();
         let result_sender = self.result_sender.clone();
         tokio::spawn(async move {
             trace!("{}: Waiting for results...", Self::task_name());
             while let Some((task, update)) = result_or_error_receiver.recv().await {
-                trace!("{} received update from task: {task:#?} {update:#?}", Self::task_name());
-                let mut result_store = result_store.lock().expect("Should be able to get result store");
+                trace!(
+                    "{} received update from task: {task:#?} {update:#?}",
+                    Self::task_name()
+                );
+                let mut result_store = result_store
+                    .lock()
+                    .expect("Should be able to get result store");
                 let mut current_results = result_store.entry(task).or_insert_with(TaskStatus::new);
                 let mut is_complete = false;
                 let mut error = None;
                 let results_so_far = &mut current_results.results;
                 match update {
                     Update::NextResult(res) => {
-                        result_sender.send(res.clone()).expect("Should be able to send results");
+                        result_sender
+                            .send(res.clone())
+                            .expect("Should be able to send results");
                         results_so_far.push(res);
                     }
                     Update::FinalResult(res) => {
                         is_complete = true;
-                        result_sender.send(res.clone()).expect("Should be able to send results");
+                        result_sender
+                            .send(res.clone())
+                            .expect("Should be able to send results");
                         results_so_far.push(res);
                     }
                     Update::Complete => {
@@ -131,14 +143,21 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
                     (None, /*is_complete*/ false) => TaskState::Partial,
                 };
             }
-            trace!("{} no more results... Finishing listening loop.", Self::task_name());
+            trace!(
+                "{} no more results... Finishing listening loop.",
+                Self::task_name()
+            );
         });
 
         trace!("{}: Waiting for tasks...", Self::task_name());
-        while let Some(task) = self.task_receiver.recv().await { // Get a new job from 'upstream'.
+        while let Some(task) = self.task_receiver.recv().await {
+            // Get a new job from 'upstream'.
             trace!("{} received task: {task:#?}", Self::task_name());
             let status = {
-                let mut result_store = self.result_store.lock().expect("Should be able to get result store");
+                let mut result_store = self
+                    .result_store
+                    .lock()
+                    .expect("Should be able to get result store");
                 // We'll need to forward these on, so we can clone now and drop the result_store lock earlier!
                 let status = result_store
                     .entry(task.clone())
@@ -155,16 +174,24 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
                 (TaskState::Complete, true) => {
                     trace!("{} cached task: {task:#?}", Self::task_name());
                     for result in status.results {
-                        self.result_sender.send(result).expect("Should be able to send results");
+                        self.result_sender
+                            .send(result)
+                            .expect("Should be able to send results");
                     }
                     continue; // i.e. go look for another task.
                 }
                 (TaskState::Complete, false) => {
-                    trace!("{} un-cacheable: {task:#?} (will re-run)", Self::task_name());
+                    trace!(
+                        "{} un-cacheable: {task:#?} (will re-run)",
+                        Self::task_name()
+                    );
                 }
                 // Continue on and re-launch the job, duplicated work should not propagate if completed.
                 _ => {
-                    trace!("{} task: {task:#?} status is {status:#?}", Self::task_name());
+                    trace!(
+                        "{} task: {task:#?} status is {status:#?}",
+                        Self::task_name()
+                    );
                 }
             }
             // Launch the job!!!
@@ -205,16 +232,19 @@ impl TaskSet {
     pub fn new(
         launch_receiver: ReceiverFor<LaunchTask>,
         result_sender: SenderFor<ParseFileTask>,
-        options: Arc<Mutex<Options>>
+        options: Arc<Mutex<Options>>,
     ) -> Self {
         let (load_file_sender, load_file_receiver) = mpsc::unbounded_channel();
-        let request_tasks = TaskManager::<LaunchTask>::new(launch_receiver, load_file_sender, options.clone());
+        let request_tasks =
+            TaskManager::<LaunchTask>::new(launch_receiver, load_file_sender, options.clone());
 
         let (lex_file_sender, lex_file_receiver) = mpsc::unbounded_channel();
-        let load_file_tasks = TaskManager::<LoadFileTask>::new(load_file_receiver, lex_file_sender, options.clone());
+        let load_file_tasks =
+            TaskManager::<LoadFileTask>::new(load_file_receiver, lex_file_sender, options.clone());
 
         let (parse_file_sender, parse_file_receiver) = mpsc::unbounded_channel();
-        let lex_file_tasks = TaskManager::<LexFileTask>::new(lex_file_receiver, parse_file_sender, options.clone());
+        let lex_file_tasks =
+            TaskManager::<LexFileTask>::new(lex_file_receiver, parse_file_sender, options.clone());
         let parse_file_tasks =
             TaskManager::<ParseFileTask>::new(parse_file_receiver, result_sender, options);
 
@@ -300,11 +330,16 @@ impl Task for LaunchTask {
 
     async fn perform(self, result_sender: UpdateSender<Self, Self::Output>) {
         for path in &self.files {
-            result_sender.send((self.clone(), Update::NextResult(LoadFileTask {
-                path: path.clone(),
-            }))).expect("Should be able to send task result to manager");
+            result_sender
+                .send((
+                    self.clone(),
+                    Update::NextResult(LoadFileTask { path: path.clone() }),
+                ))
+                .expect("Should be able to send task result to manager");
         }
-        result_sender.send((self, Update::Complete)).expect("Should be able to send task result to manager");
+        result_sender
+            .send((self, Update::Complete))
+            .expect("Should be able to send task result to manager");
     }
 }
 
@@ -324,18 +359,21 @@ impl Task for LoadFileTask {
     async fn perform(self, result_sender: UpdateSender<Self, Self::Output>) {
         // TODO: Use tokio's async read_to_string.
         let contents = std::fs::read_to_string(&self.path);
-        let contents = contents.map(|contents| LexFileTask {
+        let contents = contents
+            .map(|contents| LexFileTask {
                 path: self.path.clone(),
                 contents,
             })
             .map_err(|err| self.decorate_error(err));
-        result_sender.send((
+        result_sender
+            .send((
                 self,
                 match contents {
                     Ok(result) => Update::FinalResult(result),
                     Err(err) => Update::Failed(err),
-                }
-        )).expect("Should be able to send task result to manager");
+                },
+            ))
+            .expect("Should be able to send task result to manager");
     }
 }
 
@@ -362,13 +400,15 @@ impl Task for LexFileTask {
                 tokens,
             })
             .map_err(|err| self.decorate_error(err));
-        result_sender.send((
+        result_sender
+            .send((
                 self,
                 match tokens {
                     Ok(result) => Update::FinalResult(result),
                     Err(err) => Update::Failed(err),
-                }
-        )).expect("Should be able to send task result to manager");
+                },
+            ))
+            .expect("Should be able to send task result to manager");
     }
 }
 
@@ -388,15 +428,17 @@ impl Task for ParseFileTask {
         Some(&self.path)
     }
     async fn perform(self, result_sender: UpdateSender<Self, Self::Output>) {
-        let ast = crate::parser::parse(&self.path, &self.tokens)
-            .map_err(|err| self.decorate_error(err));
-        result_sender.send((
+        let ast =
+            crate::parser::parse(&self.path, &self.tokens).map_err(|err| self.decorate_error(err));
+        result_sender
+            .send((
                 self,
                 match ast {
                     Ok(result) => Update::FinalResult(result),
                     Err(err) => Update::Failed(err),
-                }
-        )).expect("Should be able to send task result to manager");
+                },
+            ))
+            .expect("Should be able to send task result to manager");
     }
 }
 
