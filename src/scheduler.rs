@@ -31,7 +31,7 @@ impl Scheduler {
 
         // Receive the results...
         trace!("Scheduler: Waiting for 'final' result...");
-        if let Some(ast) = result_receiver.recv().await {
+        while let Some(ast) = result_receiver.recv().await {
             trace!("Receiving 'final' result from compiler: {ast:?}");
             dbg!(ast);
         }
