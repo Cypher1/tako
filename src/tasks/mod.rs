@@ -95,7 +95,7 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
         tokio::spawn(async move {
             trace!("{}: Waiting for results...", Self::task_name());
             while let Some((task, update)) = result_or_error_receiver.recv().await {
-                trace!("{} received update from task: {task:?} {update:?}", Self::task_name());
+                trace!("{} received update from task: {task:#?} {update:#?}", Self::task_name());
                 let mut result_store = result_store.lock().expect("Should be able to get result store");
                 let mut current_results = result_store.entry(task).or_insert(TaskStatus::new());
                 let mut is_complete = false;
@@ -130,7 +130,7 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
 
         trace!("{}: Waiting for tasks...", Self::task_name());
         while let Some(task) = self.task_receiver.recv().await { // Get a new job from 'upstream'.
-            trace!("{} received task: {task:?}", Self::task_name());
+            trace!("{} received task: {task:#?}", Self::task_name());
             let status = {
                 let mut result_store = self.result_store.lock().expect("Should be able to get result store");
                 // We'll need to forward these on, so we can clone now and drop the result_store lock earlier!
@@ -147,18 +147,18 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
                 // TODO: Consider that partial results 'should' still be safe to re-use and could pre-start later work.
                 /* TaskState::Partial | */
                 (TaskState::Complete, true) => {
-                    trace!("{} cached task: {task:?}", Self::task_name());
+                    trace!("{} cached task: {task:#?}", Self::task_name());
                     for result in status.results {
                         self.result_sender.send(result).expect("Should be able to send results");
                     }
                     continue; // i.e. go look for another task.
                 }
                 (TaskState::Complete, false) => {
-                    trace!("{} un-cacheable: {task:?} (will re-run)", Self::task_name());
+                    trace!("{} un-cacheable: {task:#?} (will re-run)", Self::task_name());
                 }
                 // Continue on and re-launch the job, duplicated work should not propagate if completed.
                 _ => {
-                    trace!("{} task: {task:?} status is {status:?}", Self::task_name());
+                    trace!("{} task: {task:#?} status is {status:#?}", Self::task_name());
                 }
             }
             // Launch the job!!!
