@@ -60,7 +60,7 @@ fn make_ui_arc<T: UserInterface + Send + 'static>(
 
 pub async fn start(options: Options) -> Result<(), TError> {
     use crate::ui::{UiMode, CLI, TUI};
-    let ui = match options.ui_mode {
+    let _ui = match options.ui_mode {
         UiMode::Cli => make_ui_arc(CLI::new()),
         UiMode::Tui => make_ui_arc(TUI::new()),
         UiMode::TuiIfAvailable => {
