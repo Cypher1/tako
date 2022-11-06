@@ -26,7 +26,7 @@ impl Scheduler {
         store.launch().await; // launches all the jobs.
         request_sender.send(LaunchTask {
             options: self.options.clone(),
-        }); // Launch the cli task.
+        }).expect("Should be able to send launch task"); // Launch the cli task.
 
         // Receive the results...
         while let Some(ast) = result_receiver.recv().await {
