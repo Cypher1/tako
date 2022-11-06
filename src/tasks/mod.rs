@@ -5,7 +5,7 @@ use crate::tokens::Token;
 use async_trait::async_trait;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
-use std::sync::{Arc, Mutex};
+use tokio_stream::StreamMap;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TaskState<T, E: std::error::Error> {
@@ -41,8 +41,8 @@ pub struct TaskId {
 pub struct TaskManager<T: Task> {
     // TODO: Each task should get its own channel!!!
     // Use https://docs.rs/tokio-stream/latest/tokio_stream/struct.StreamMap.html
-    task_states: TaskResults<T>,
-    task_reporters: StreamMap<T::Output>,
+    result_store: TaskResults<T>,
+    task_reporters: StreamMap<T, T::Output>,
     task_receiver: ReceiverFor<T>,
     result_sender: SenderFor<T>,
     // status_sender: mpsc::Sender<ManagerStats>,
@@ -51,7 +51,8 @@ pub struct TaskManager<T: Task> {
 impl<T: Task> TaskManager<T> {
     pub fn new(task_receiver: ReceiverFor<T>, result_sender: SenderFor<T>) -> Self {
         Self {
-            tasks: TaskResults::new(),
+            result_store: TaskResults::new(),
+            task_reporters: StreamMap::new(),
             task_receiver,
             result_sender,
         }
@@ -70,7 +71,7 @@ impl<T: Task> TaskManager<T> {
                             let results_so_far = match task_entry.value() {
                                 TaskState::SuccessUncachable => Vec::new(),
                                 TaskState::Success(_) => Vec::new(),
-                                TaskState::Started => vec::new(),
+                                TaskState::Started => Vec::new(),
                                 TaskState::Running(partials) => partials,
     // Uncachable result, e.g. side effecting like saving a file
                             };
