@@ -8,24 +8,29 @@ use tokio::sync::mpsc;
 use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub enum TaskState<T, E: std::error::Error> {
+pub enum TaskStateKind<T, E: std::error::Error> {
     /// Place holder to record that a job is already running and shouldn't need to be run again
     /// unless invalidated.
     New,
-    Running(Vec<T>), // Include a handle to the result?
-    Success(Vec<T>), // Include a handle to the result?
+    Partial(Vec<T>), // Include a handle to the result?
+    Complete(Vec<T>), // Include a handle to the result?
     // Uncachable result, e.g. side effecting like saving a file
-    SuccessUncachable,
+    PartialUncachable,
+    CompleteUncachable,
     Failure(E),
     // TODO: Invalidated, // Has previous run correctly, but the previous result is (somehow) 'known' to be stale.
     // TODO: Cancelled,  // Include why it was cancelled?
+}
+pub struct TaskState<T, E: std::error::Error> {
+    state: TaskStateKind<T, E>,
+    results: Vec<T>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Update<O: Send, E: std::error::Error + Send> {
     NextResult(O),
     FinalResult(O),
-    Finished,
+    Complete,
     Failed(E),
 }
 
@@ -72,28 +77,46 @@ impl<T: Task + 'static> TaskManager<T> {
         tokio::spawn(async move {
             while let Some((task, result)) = result_or_error_receiver.recv().await {
                 let mut result_store = result_store.lock().expect("Should be able to get result store");
-                let mut current_results = &mut result_store.entry(task).or_insert(TaskState::New);
-                *current_results = match result {
-                    // TODO: Accumulate results
-                    /*
-                    result => {
-                        let res = if T::RESULT_IS_CACHABLE {
-                            let results_so_far = match **current_results {
-                                TaskState::SuccessUncachable => Vec::new(), // How did this happen?
-                                TaskState::New | TaskState::Success(_) | TaskState::Failure(_) => Vec::new(), // A new task or a redo...
-                                TaskState::Running(partials) => partials, // Continuing...
-                            };
-                            TaskState::Running(result.clone())
-                        } else {
-                            // Uncachable result, e.g. side effecting like saving a file
-                            TaskState::SuccessUncachable
-                        };
-                        self.result_sender.send(result);
-                        res
-                    }
-                    Err(error) => todo!(),
-                    */
+                let mut current_results = result_store.entry(task).or_insert(TaskState::New);
+                let mut is_complete = false;
+                let mut error = None;
+                let mut placeholder = Vec::new();
+                let results_so_far = match &mut *current_results {
+                    TaskState::PartialUncachable | TaskState::CompleteUncachable => &mut placeholder, // How did this happen?
+                    TaskState::New | TaskState::Complete(_) | TaskState::Failure(_) => &mut placeholder, // A new task or a redo...
+                    TaskState::Partial(partials) => partials, // Continuing...
                 };
+                match result {
+                    Update::NextResult(res) => {
+                        self.result_sender.send(res.clone());
+                        results_so_far.push(res);
+                    }
+                    Update::FinalResult(res) => {
+                        is_complete = true;
+                        self.result_sender.send(res.clone());
+                        results_so_far.push(res);
+                    }
+                    Update::Complete => {
+                        is_complete = true;
+                    }
+                    Update::Failed(err) => {
+                        is_complete = true; // For completeness...?
+                        error = Some(err);
+                    }
+                };
+                if T::RESULT_IS_CACHABLE {
+                    *current_results = match (error, is_complete) {
+                        (Some(err), _is_complete) => TaskState::Failure(err),
+                        (None, /*is_complete*/ true) => TaskState::Complete(results_so_far),
+                        (None, /*is_complete*/ false) => TaskState::Partial(results_so_far),
+                    };
+                } else {
+                    *current_results = match (error, is_complete) {
+                        (Some(err), _is_complete) => TaskState::Failure(err),
+                        (None, /*is_complete*/ true) => TaskState::CompleteUncachable,
+                        (None, /*is_complete*/ false) => TaskState::PartialUncachable,
+                    };
+                }
             }
         });
 
@@ -104,13 +127,13 @@ impl<T: Task + 'static> TaskManager<T> {
             };
             let status = status.unwrap_or(TaskState::New);
             match status {
-                TaskState::Success(results) => {
+                TaskState::Complete(results) => {
                     for result in results {
                         self.result_sender.send(result);
                     }
                     continue; // i.e. go look for another task.
                 }
-                TaskState::Running(_partial_results) => {
+                TaskState::Partial(_partial_results) => {
                     // TODO: Consider...
                     // We 'know' these are good, but there's more work to do
                     // for result in partial_results {
@@ -264,7 +287,7 @@ impl Task for LaunchTask {
                 path: path.clone(),
             })));
         }
-        result_sender.send((self.clone(), Update::Finished));
+        result_sender.send((self.clone(), Update::Complete));
     }
 }
 
