@@ -27,12 +27,18 @@ pub struct TaskStatus<T, E: std::error::Error> {
     results: Vec<T>, // TODO: Avoid wasting this if the task is uncachable?
 }
 
-impl<T, E: std::error::Error> TaskStatus<T, E> {
-    pub fn new() -> Self {
+impl<T, E: std::error::Error> Default for TaskStatus<T, E> {
+    fn default() -> Self {
         Self {
             state: TaskState::New,
             results: Vec::new(),
         }
+    }
+}
+
+impl<T, E: std::error::Error> TaskStatus<T, E> {
+    pub fn new() -> Self {
+        Self::default()
     }
 }
 
@@ -97,7 +103,7 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
             while let Some((task, update)) = result_or_error_receiver.recv().await {
                 trace!("{} received update from task: {task:#?} {update:#?}", Self::task_name());
                 let mut result_store = result_store.lock().expect("Should be able to get result store");
-                let mut current_results = result_store.entry(task).or_insert(TaskStatus::new());
+                let mut current_results = result_store.entry(task).or_insert_with(TaskStatus::new);
                 let mut is_complete = false;
                 let mut error = None;
                 let results_so_far = &mut current_results.results;
@@ -136,7 +142,7 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
                 // We'll need to forward these on, so we can clone now and drop the result_store lock earlier!
                 let status = result_store
                     .entry(task.clone())
-                    .or_insert(TaskStatus::new());
+                    .or_insert_with(TaskStatus::new);
                 if status.state != TaskState::New {
                     continue; // Already running.
                 }
