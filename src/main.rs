@@ -4,7 +4,7 @@ use log::{trace, error};
 use std::env;
 
 use takolib::cli_options::Options;
-use takolib::scheduler::Scheduler;
+use takolib::start;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -16,15 +16,14 @@ async fn main() -> Result<()> {
     if options.files.is_empty() {
         return Ok(());
     }
-    let compiler = Scheduler::from_options(options);
-    trace!("started: {compiler:#?}");
-    match compiler.run().await {
+    let compiler = start(options);
+    trace!("Started");
+    match compiler.await {
         Ok(()) => {},
         Err(error) => {
             error!("Internal error: {error:?}");
             eprintln!("Compiler finished with internal error: {error}");
         }
     }
-    trace!("finished: {compiler:#?}");
     Ok(())
 }

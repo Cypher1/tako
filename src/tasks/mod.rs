@@ -81,6 +81,7 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
             result_store: Arc::new(Mutex::new(TaskResults::new())),
             task_receiver,
             result_sender,
+            options,
         }
     }
 
