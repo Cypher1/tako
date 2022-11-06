@@ -13,6 +13,7 @@ pub enum TaskState<E: std::error::Error> {
     /// Place holder to record that a job is already running and shouldn't need to be run again
     /// unless invalidated.
     New,
+    Running,
     Partial, // Include a handle to the result?
     Complete, // Include a handle to the result?
     Failure(E),
@@ -131,11 +132,17 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
         while let Some(task) = self.task_receiver.recv().await { // Get a new job from 'upstream'.
             trace!("{} received task: {task:?}", Self::task_name());
             let status = {
-                let result_store = self.result_store.lock().expect("Should be able to get result store");
+                let mut result_store = self.result_store.lock().expect("Should be able to get result store");
                 // We'll need to forward these on, so we can clone now and drop the result_store lock earlier!
-                result_store.get(&task).cloned()
+                let status = result_store
+                    .entry(task.clone())
+                    .or_insert(TaskStatus::new());
+                if status.state != TaskState::New {
+                    continue; // Already running.
+                }
+                status.state = TaskState::Running;
+                status.clone()
             };
-            let status = status.unwrap_or_else(||TaskStatus::new());
             match (&status.state, T::RESULT_IS_CACHABLE) {
                 // TODO: Consider that partial results 'should' still be safe to re-use and could pre-start later work.
                 /* TaskState::Partial | */
