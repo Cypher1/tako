@@ -50,8 +50,6 @@ shutdown_hooks = "0.1.0"
 termimad = "0.20.3"
 tokio = { version = "1.21.2", features = [ "full" ]}
 async-trait = "0.1.58"
-tokio-stream = "0.1.11"
-async-stream = "0.3.3"
 
 [dev-dependencies]
 pretty_assertions = "1.0.0"
