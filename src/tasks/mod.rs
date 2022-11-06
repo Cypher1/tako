@@ -210,7 +210,7 @@ impl TaskSet {
         let (parse_file_sender, parse_file_receiver) = mpsc::unbounded_channel();
         let lex_file_tasks = TaskManager::<LexFileTask>::new(lex_file_receiver, parse_file_sender, options.clone());
         let parse_file_tasks =
-            TaskManager::<ParseFileTask>::new(parse_file_receiver, result_sender, options.clone());
+            TaskManager::<ParseFileTask>::new(parse_file_receiver, result_sender, options);
 
         Self {
             request_tasks,
@@ -298,7 +298,7 @@ impl Task for LaunchTask {
                 path: path.clone(),
             }))).expect("Should be able to send task result to manager");
         }
-        result_sender.send((self.clone(), Update::Complete)).expect("Should be able to send task result to manager");
+        result_sender.send((self, Update::Complete)).expect("Should be able to send task result to manager");
     }
 }
 
