@@ -1,5 +1,6 @@
 use log::trace;
 use crate::ast::Ast;
+use crate::cli_options::Options;
 use crate::error::{Error, TError};
 use crate::tokens::Token;
 use async_trait::async_trait;
@@ -67,6 +68,7 @@ pub struct TaskManager<T: std::fmt::Debug + Task> {
     task_receiver: ReceiverFor<T>,
     result_sender: SenderFor<T>,
     // status_sender: mpsc::Sender<ManagerStats>,
+    options: Arc<Mutex<Options>>,
 }
 
 impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
@@ -74,7 +76,7 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
         std::any::type_name::<T>()
     }
 
-    pub fn new(task_receiver: ReceiverFor<T>, result_sender: SenderFor<T>) -> Self {
+    pub fn new(task_receiver: ReceiverFor<T>, result_sender: SenderFor<T>, options: Arc<Mutex<Options>>) -> Self {
         Self {
             result_store: Arc::new(Mutex::new(TaskResults::new())),
             task_receiver,
@@ -189,17 +191,18 @@ impl TaskSet {
     pub fn new(
         launch_receiver: ReceiverFor<LaunchTask>,
         result_sender: SenderFor<ParseFileTask>,
+        options: Arc<Mutex<Options>>
     ) -> Self {
         let (load_file_sender, load_file_receiver) = mpsc::unbounded_channel();
-        let request_tasks = TaskManager::<LaunchTask>::new(launch_receiver, load_file_sender);
+        let request_tasks = TaskManager::<LaunchTask>::new(launch_receiver, load_file_sender, options.clone());
 
         let (lex_file_sender, lex_file_receiver) = mpsc::unbounded_channel();
-        let load_file_tasks = TaskManager::<LoadFileTask>::new(load_file_receiver, lex_file_sender);
+        let load_file_tasks = TaskManager::<LoadFileTask>::new(load_file_receiver, lex_file_sender, options.clone());
 
         let (parse_file_sender, parse_file_receiver) = mpsc::unbounded_channel();
-        let lex_file_tasks = TaskManager::<LexFileTask>::new(lex_file_receiver, parse_file_sender);
+        let lex_file_tasks = TaskManager::<LexFileTask>::new(lex_file_receiver, parse_file_sender, options.clone());
         let parse_file_tasks =
-            TaskManager::<ParseFileTask>::new(parse_file_receiver, result_sender);
+            TaskManager::<ParseFileTask>::new(parse_file_receiver, result_sender, options.clone());
 
         Self {
             request_tasks,
@@ -238,6 +241,8 @@ pub type UpdateSender<T, O> = mpsc::UnboundedSender<(T, Update<O, Error>)>;
 
 #[async_trait]
 pub trait Task: Clone + std::hash::Hash + Eq + Sized + Send {
+    // TODO: Separate the code that performs the task
+    // from the part that generates new tasks.
     // TODO: Only perform 'new' tasks.
 
     type Output: std::fmt::Debug + Clone + Send;
