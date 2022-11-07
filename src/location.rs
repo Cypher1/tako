@@ -13,6 +13,16 @@ pub struct Location {
     length: SymbolLength,
 }
 
+impl Location {
+    #[cfg(test)]
+    pub fn dummy_for_test() -> Self {
+        Self {
+            location: 0,
+            length: 0,
+        }
+    }
+}
+
 #[derive(PartialEq, Eq, Clone, Ord, PartialOrd)]
 pub struct UserFacingLocation {
     pub filename: String,
