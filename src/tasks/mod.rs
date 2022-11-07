@@ -22,7 +22,7 @@ use task_trait::*;
 // This should be the pre-computed hash, to avoid sending and cloning tasks.
 pub type TaskResults<T> = HashMap<T, TaskStatus<<T as Task>::Output, Error>>;
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug)]
 pub struct TaskStats {
     num_requests: u32,
     total_num_results: u32,
