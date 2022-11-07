@@ -24,12 +24,6 @@ pub type TaskResults<T> = HashMap<T, TaskStatus<<T as Task>::Output, Error>>;
 
 #[derive(Debug)]
 pub struct TaskManager<T: std::fmt::Debug + Task> {
-    // TODO: Add timing information, etc.
-    // TODO: Support re-running multiple times for stability testing.
-    // TODO: Store the Tasks and their statuses in a contiguous vec.
-    // TODO: Still use hashing to look up tasks and their IDs.
-
-    // Use https://docs.rs/tokio-stream/latest/tokio_stream/struct.StreamMap.html
     result_store: Arc<Mutex<TaskResults<T>>>,
     task_receiver: ReceiverFor<T>,
     result_sender: SenderFor<T>,
