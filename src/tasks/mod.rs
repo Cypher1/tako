@@ -45,8 +45,8 @@ pub struct TaskManager<T: std::fmt::Debug + Task> {
 impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
     fn task_name() -> &'static str {
         let name = std::any::type_name::<T>();
-        let last_lt = name.rfind('<').unwrap_or_else(||name.len());
-        let index = name.rfind(':').map(|i|i+1).unwrap_or_else(||1);
+        let last_lt = name.rfind('<').unwrap_or(name.len());
+        let index = name.rfind(':').map(|i|i+1).unwrap_or(1);
         &name[index..last_lt]
     }
 
