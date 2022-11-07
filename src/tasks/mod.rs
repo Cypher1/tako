@@ -1,6 +1,10 @@
+mod manager;
+mod status;
+mod task_trait;
+
 use crate::ast::Ast;
 use crate::cli_options::Options;
-use crate::error::{Error, TError};
+use crate::error::Error;
 use crate::tokens::Token;
 use async_trait::async_trait;
 use log::trace;
@@ -8,67 +12,23 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub enum TaskState<E: std::error::Error> {
-    /// Place holder to record that a job is already running and shouldn't need to be run again
-    /// unless invalidated.
-    New,
-    Running,
-    Partial,  // Include a handle to the result?
-    Complete, // Include a handle to the result?
-    Failure(E),
-    // TODO: Invalidated, // Has previous run correctly, but the previous result is (somehow) 'known' to be stale.
-    // TODO: Cancelled,  // Include why it was cancelled?
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct TaskStatus<T, E: std::error::Error> {
-    state: TaskState<E>,
-    results: Vec<T>, // TODO: Avoid wasting this if the task is uncachable?
-}
-
-impl<T, E: std::error::Error> Default for TaskStatus<T, E> {
-    fn default() -> Self {
-        Self {
-            state: TaskState::New,
-            results: Vec::new(),
-        }
-    }
-}
-
-impl<T, E: std::error::Error> TaskStatus<T, E> {
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub enum Update<O: Send, E: std::error::Error + Send> {
-    NextResult(O),
-    FinalResult(O),
-    Complete,
-    Failed(E),
-}
+use status::*;
+use task_trait::*;
 
 // TODO: Add timing information, etc.
 // TODO: Support re-running multiple times for stability testing.
 // TODO: Store the Tasks and their statuses in a contiguous vec.
 // TODO: Still use hashing to look up tasks and their IDs.
-pub type TaskResults<T> = HashMap<TaskId<T>, TaskStatus<<T as Task>::Output, Error>>;
-
-type TaskId<Task> = Task; // This should be the pre-computed hash, to avoid sending and cloning tasks.
-
-/* TODO: Avoid repeatedly hashing tasks.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct TaskId {
-    kind: TaskKind, // Where to look for the task
-    task_hash: u64, // The hash of the task???
-}
-*/
+// This should be the pre-computed hash, to avoid sending and cloning tasks.
+pub type TaskResults<T> = HashMap<T, TaskStatus<<T as Task>::Output, Error>>;
 
 #[derive(Debug)]
 pub struct TaskManager<T: std::fmt::Debug + Task> {
-    // TODO: Each task should get its own channel!!!
+    // TODO: Add timing information, etc.
+    // TODO: Support re-running multiple times for stability testing.
+    // TODO: Store the Tasks and their statuses in a contiguous vec.
+    // TODO: Still use hashing to look up tasks and their IDs.
+
     // Use https://docs.rs/tokio-stream/latest/tokio_stream/struct.StreamMap.html
     result_store: Arc<Mutex<TaskResults<T>>>,
     task_receiver: ReceiverFor<T>,
@@ -213,19 +173,19 @@ pub struct TaskSet {
     load_file_tasks: TaskManager<LoadFileTask>,
     lex_file_tasks: TaskManager<LexFileTask>,
     parse_file_tasks: TaskManager<ParseFileTask>,
-    // TODO: type_check_inside_module: TaskResults<>,
+    // TODO: type_check_inside_module: TaskManager<>,
     // Produces type checked (and optimizable) modules **AND**
     // partially type checked (but) mergable-modules.
     // Pair-wise merging of type checking information???
-    // TODO: type_check_merge_module_sets: TaskResults<>,
+    // TODO: type_check_merge_module_sets: TaskManager<>,
     // Produces type checked (and optimizable) modules **AND**
     // Partially type checked (but) mergable-modules
-    // TODO: lowering: TaskResults<>,
-    // TODO: optimization: TaskResults<>,
-    // TODO: code_generation: TaskResults<>,
-    // TODO: binary_generation: TaskResults<>,
-    // TODO: load_into_interpreter: TaskResults<>,
-    // TODO: run_in_interpreter: TaskResults<>,
+    // TODO: lowering: TaskManager<>,
+    // TODO: optimization: TaskManager<>,
+    // TODO: code_generation: TaskManager<>,
+    // TODO: binary_generation: TaskManager<>,
+    // TODO: load_into_interpreter: TaskManager<>,
+    // TODO: run_in_interpreter: TaskManager<>,
 }
 
 impl TaskSet {
@@ -276,41 +236,6 @@ impl TaskSet {
         tokio::spawn(async move {
             parse_file_tasks.run_loop().await;
         });
-    }
-}
-
-pub type ReceiverFor<T> = mpsc::UnboundedReceiver<T>;
-pub type SenderFor<T> = mpsc::UnboundedSender<<T as Task>::Output>;
-pub type UpdateSender<T, O> = mpsc::UnboundedSender<(T, Update<O, Error>)>;
-
-#[async_trait]
-pub trait Task: Clone + std::hash::Hash + Eq + Sized + Send {
-    // TODO: Separate the code that performs the task
-    // from the part that generates new tasks.
-    // TODO: Only perform 'new' tasks.
-
-    type Output: std::fmt::Debug + Clone + Send;
-    const TASK_KIND: TaskKind;
-    const RESULT_IS_CACHABLE: bool = true;
-
-    fn has_file_path(&self) -> Option<&str> {
-        None
-    }
-    // fn has_module(&self) -> Option<&Module> {
-    //  None
-    //}
-    // fn has_tokens(&self) -> Option<&Vec<Token>> {
-    //  None
-    //}
-    // fn has_ast(&self) -> Option<&Ast> {
-    //  None
-    //}
-    // TODO: More...
-
-    async fn perform(self, result_sender: UpdateSender<Self, Self::Output>);
-
-    fn decorate_error<E: Into<TError>>(&self, error: E) -> Error {
-        Error::new(error.into(), self.has_file_path(), None, None)
     }
 }
 
