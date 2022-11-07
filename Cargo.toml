@@ -50,6 +50,8 @@ shutdown_hooks = "0.1.0"
 termimad = "0.20.3"
 tokio = { version = "1.21.2", features = [ "full" ]}
 async-trait = "0.1.58"
+# Info: https://nnethercote.github.io/2021/12/08/a-brutally-effective-hash-function-in-rust.html
+fxhash = "0.2.1"
 
 [dev-dependencies]
 pretty_assertions = "1.0.0"

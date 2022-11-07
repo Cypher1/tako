@@ -28,7 +28,7 @@ pub trait Task: Clone + std::hash::Hash + Eq + Sized + Send {
     const RESULT_IS_CACHABLE: bool = true;
 
     fn create_meta(&self) -> TaskMeta {
-        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        let mut hasher = fxhash::FxHasher::default();
         self.hash(&mut hasher);
         let task_id = hasher.finish();
         TaskMeta {

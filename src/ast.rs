@@ -1,6 +1,7 @@
 use crate::free_standing::typed_index::TypedIndex;
 use crate::location::Location;
 use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
 
 // TODO: String interner?
 // TODO: Replace strings where ideal...
@@ -56,6 +57,8 @@ pub enum NodeData {
     Literal(LiteralId),
 }
 
+type StringHash = u64;
+
 #[derive(Clone, Default, Debug)]
 pub struct Ast {
     // Abstract syntax tree... forest
@@ -65,7 +68,9 @@ pub struct Ast {
     pub symbols: Vec<Symbol>,
     pub definitions: Vec<Definition>,
     pub literals: Vec<Literal>,
-    pub strings: HashMap<String, usize>,
+    // This ensures we can look up the string from the hash.
+    // BUT: We can also merge the hashes without losing any information.
+    pub strings: HashMap<StringHash, String>,
 }
 
 make_contains!(nodes, Node, NodeRef, NodeId);
@@ -92,12 +97,15 @@ impl Ast {
         self.roots.push(new_root);
     }
     fn register_str(&mut self, name: String) -> StrId {
-        let len = self.strings.len();
-        TypedIndex::from_raw(*self.strings.entry(name).or_insert(len) as u32)
+        let mut hasher = fxhash::FxHasher::default();
+        name.hash(&mut hasher);
+        let str_hash = hasher.finish();
+        self.strings.entry(str_hash).or_insert(name);
+        TypedIndex::from_raw(str_hash)
     }
 }
 
-type StrId = TypedIndex<String>; // TODO: replace with an interned string id.
+type StrId = TypedIndex<String, StringHash>; // TODO: replace with an interned string id.
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Symbol {
