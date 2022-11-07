@@ -1,9 +1,12 @@
 use crate::free_standing::typed_index::TypedIndex;
 use crate::location::Location;
-use crate::string_interner::StrId;
+
+// TODO: String interner?
 // TODO: Replace strings where ideal...
 // TODO: Use macro for defining and registering each of these.
 // TODO: A lambda calculus impl.
+
+type StrId = String; // TODO: replace with an interned string id.
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Symbol {

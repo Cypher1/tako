@@ -10,7 +10,6 @@ pub mod keywords;
 pub mod location;
 pub mod parser;
 pub mod primitives;
-pub mod string_interner;
 pub mod tasks;
 pub mod tokens;
 pub mod ui;
