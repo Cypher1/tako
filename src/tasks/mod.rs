@@ -22,18 +22,32 @@ use task_trait::*;
 // This should be the pre-computed hash, to avoid sending and cloning tasks.
 pub type TaskResults<T> = HashMap<T, TaskStatus<<T as Task>::Output, Error>>;
 
+#[derive(Default, Debug, Clone)]
+pub struct TaskStats {
+    num_requests: u32,
+    total_num_results: u32,
+    num_already_running: u32,
+    num_cached: u32,
+    num_failed: u32,
+    num_succeeded: u32,
+}
+
 #[derive(Debug)]
 pub struct TaskManager<T: std::fmt::Debug + Task> {
     result_store: Arc<Mutex<TaskResults<T>>>,
     task_receiver: ReceiverFor<T>,
     result_sender: SenderFor<T>,
     // status_sender: mpsc::Sender<ManagerStats>,
+    stats: Arc<Mutex<TaskStats>>,
     options: Arc<Mutex<Options>>,
 }
 
 impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
     fn task_name() -> &'static str {
-        std::any::type_name::<T>()
+        let name = std::any::type_name::<T>();
+        let last_lt = name.rfind('<').unwrap_or_else(||name.len());
+        let index = name.rfind(':').map(|i|i+1).unwrap_or_else(||1);
+        &name[index..last_lt]
     }
 
     pub fn new(
@@ -45,6 +59,7 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
             result_store: Arc::new(Mutex::new(TaskResults::new())),
             task_receiver,
             result_sender,
+            stats: Arc::new(Mutex::new(TaskStats::default())),
             options,
         }
     }
@@ -53,6 +68,7 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
         trace!("{} starting run_loop", Self::task_name());
         let (result_or_error_sender, mut result_or_error_receiver) =
             mpsc::unbounded_channel::<(T, Update<T::Output, Error>)>();
+        let stats = self.stats.clone();
         let result_store = self.result_store.clone();
         let result_sender = self.result_sender.clone();
         tokio::spawn(async move {
@@ -69,28 +85,38 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
                 let mut is_complete = false;
                 let mut error = None;
                 let results_so_far = &mut current_results.results;
-                match update {
-                    Update::NextResult(res) => {
-                        result_sender
-                            .send(res.clone())
-                            .expect("Should be able to send results");
-                        results_so_far.push(res);
-                    }
-                    Update::FinalResult(res) => {
-                        is_complete = true;
-                        result_sender
-                            .send(res.clone())
-                            .expect("Should be able to send results");
-                        results_so_far.push(res);
-                    }
-                    Update::Complete => {
-                        is_complete = true;
-                    }
-                    Update::Failed(err) => {
-                        is_complete = true; // For completeness...?
-                        error = Some(err);
-                    }
-                };
+                {
+                    let mut stats = stats
+                        .lock()
+                        .expect("Should be able to get task stats store");
+                    match update {
+                        Update::NextResult(res) => {
+                            stats.total_num_results += 1;
+                            result_sender
+                                .send(res.clone())
+                                .expect("Should be able to send results");
+                            results_so_far.push(res);
+                        }
+                        Update::FinalResult(res) => {
+                            stats.total_num_results += 1;
+                            stats.num_succeeded += 1;
+                            is_complete = true;
+                            result_sender
+                                .send(res.clone())
+                                .expect("Should be able to send results");
+                            results_so_far.push(res);
+                        }
+                        Update::Complete => {
+                            stats.num_succeeded += 1;
+                            is_complete = true;
+                        }
+                        Update::Failed(err) => {
+                            stats.num_failed += 1;
+                            is_complete = true; // For completeness...?
+                            error = Some(err);
+                        }
+                    };
+                }
                 current_results.state = match (error, is_complete) {
                     (Some(err), _is_complete) => TaskState::Failure(err),
                     (None, /*is_complete*/ true) => TaskState::Complete,
@@ -104,9 +130,16 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
         });
 
         trace!("{}: Waiting for tasks...", Self::task_name());
+        let stats = self.stats.clone();
         'listening: while let Some(task) = self.task_receiver.recv().await {
             // Get a new job from 'upstream'.
-            trace!("{} received task: {task:#?}", Self::task_name());
+            // trace!("{} received task: {task:#?}", Self::task_name());
+            {
+                let mut stats = stats
+                    .lock()
+                    .expect("Should be able to get task stats store");
+                    stats.num_requests += 1;
+            }
             let status = {
                 let mut result_store = self
                     .result_store
@@ -117,6 +150,10 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
                     .entry(task.clone())
                     .or_insert_with(TaskStatus::new);
                 if status.state != TaskState::New {
+                    let mut stats = stats
+                        .lock()
+                        .expect("Should be able to get task stats store");
+                    stats.num_already_running += 1;
                     continue 'listening; // Already running.
                 }
                 status.state = TaskState::Running;
@@ -126,6 +163,10 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
                 // TODO: Consider that partial results 'should' still be safe to re-use and could pre-start later work.
                 /* TaskState::Partial | */
                 (TaskState::Complete, true) => {
+                    let mut stats = stats
+                        .lock()
+                        .expect("Should be able to get task stats store");
+                    stats.num_cached += 1;
                     trace!("{} cached task: {task:#?}", Self::task_name());
                     for result in status.results {
                         self.result_sender
@@ -155,7 +196,14 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
                 task.perform(result_or_error_sender).await;
             });
         }
-        trace!("{} no more tasks... Finishing run_loop", Self::task_name());
+        trace!("{} no more tasks... Finishing run_loop: {}", Self::task_name(),
+                {
+                    let stats = self.stats
+                        .lock()
+                        .expect("Should be able to get task stats store");
+                    format!("{:?}", &stats)
+                }
+            );
     }
 }
 
