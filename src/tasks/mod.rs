@@ -104,7 +104,7 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
         });
 
         trace!("{}: Waiting for tasks...", Self::task_name());
-        while let Some(task) = self.task_receiver.recv().await {
+        'listening: while let Some(task) = self.task_receiver.recv().await {
             // Get a new job from 'upstream'.
             trace!("{} received task: {task:#?}", Self::task_name());
             let status = {
@@ -117,7 +117,7 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
                     .entry(task.clone())
                     .or_insert_with(TaskStatus::new);
                 if status.state != TaskState::New {
-                    continue; // Already running.
+                    continue 'listening; // Already running.
                 }
                 status.state = TaskState::Running;
                 status.clone()
@@ -132,18 +132,18 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
                             .send(result)
                             .expect("Should be able to send results");
                     }
-                    continue; // i.e. go look for another task.
+                    continue 'listening; // i.e. go look for another task.
                 }
                 (TaskState::Complete, false) => {
                     trace!(
-                        "{} un-cacheable: {task:#?} (will re-run)",
+                        "{} un-cacheable (will re-run): {task:#?}",
                         Self::task_name()
                     );
                 }
                 // Continue on and re-launch the job, duplicated work should not propagate if completed.
                 _ => {
                     trace!(
-                        "{} task: {task:#?} status is {status:#?}",
+                        "{} task with status {status:#?}: {task:#?}",
                         Self::task_name()
                     );
                 }
