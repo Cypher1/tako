@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use tokio::sync::mpsc;
+use crate::tasks::{Request, TaskKind, TaskManagerRegistration};
 use async_trait::async_trait;
-use crate::tasks::{Request, TaskManagerRegistration, TaskKind};
+use tokio::sync::mpsc;
 
 mod cli;
 mod tui;
@@ -29,5 +29,6 @@ pub trait UserInterface: std::fmt::Debug {
         _task_manager_registration: mpsc::UnboundedReceiver<TaskManagerRegistration>,
         _user_action_receiver: mpsc::UnboundedReceiver<UserAction>,
         _request_sender: mpsc::UnboundedSender<Request>,
-    ) where Self: Sized;
+    ) where
+        Self: Sized;
 }
