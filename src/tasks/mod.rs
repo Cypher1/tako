@@ -17,8 +17,8 @@ use task_trait::*;
 #[derive(Debug, Clone)]
 pub enum StatusReport {
     StartingUp(TaskKind),
-    ShuttingDown(TaskKind),
     StatsUpdate { kind: TaskKind, stats: TaskStats },
+    ShuttingDown(TaskKind),
 }
 
 // TODO: Add timing information, etc.
