@@ -1,7 +1,7 @@
 mod manager;
 mod status;
 mod task_trait;
-
+use std::fmt::Debug;
 use crate::ast::Ast;
 use crate::cli_options::Options;
 use crate::error::Error;
@@ -32,17 +32,23 @@ pub struct TaskStats {
     num_succeeded: u32,
 }
 
+#[derive(Debug, Default)]
+pub struct ManagerConfig {
+    disable_caching: bool,
+    // TODO: Probably should be able to enable or disable stat & timing collection.
+}
+
 #[derive(Debug)]
-pub struct TaskManager<T: std::fmt::Debug + Task> {
+pub struct TaskManager<T: Debug + Task> {
     result_store: Arc<Mutex<TaskResults<T>>>,
     task_receiver: ReceiverFor<T>,
     result_sender: SenderFor<T>,
     // status_sender: mpsc::Sender<ManagerStats>,
     stats: Arc<Mutex<TaskStats>>,
-    options: Arc<Mutex<Options>>,
+    config: Arc<Mutex<ManagerConfig>>, // TODO: Store this locally and add a channel to update it`.
 }
 
-impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
+impl<T: Debug + Task + 'static> TaskManager<T> {
     fn task_name() -> &'static str {
         let name = std::any::type_name::<T>();
         let last_lt = name.rfind('<').unwrap_or(name.len());
@@ -53,14 +59,14 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
     pub fn new(
         task_receiver: ReceiverFor<T>,
         result_sender: SenderFor<T>,
-        options: Arc<Mutex<Options>>,
+        config: ManagerConfig,
     ) -> Self {
         Self {
             result_store: Arc::new(Mutex::new(TaskResults::new())),
             task_receiver,
             result_sender,
             stats: Arc::new(Mutex::new(TaskStats::default())),
-            options,
+            config: Arc::new(Mutex::new(config)),
         }
     }
 
@@ -71,6 +77,7 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
         let stats = self.stats.clone();
         let result_store = self.result_store.clone();
         let result_sender = self.result_sender.clone();
+        let config = self.config.clone();
         tokio::spawn(async move {
             trace!("{}: Waiting for results...", Self::task_name());
             while let Some((task, update)) = result_or_error_receiver.recv().await {
@@ -84,8 +91,9 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
                 let mut current_results = result_store.entry(task).or_insert_with(TaskStatus::new);
                 let mut is_complete = false;
                 let mut error = None;
-                let results_so_far = &mut current_results.results;
+                let caching_enabled = !config.lock().expect("Should be able to get the manager config").disable_caching;
                 {
+                    let results_so_far = &mut current_results.results;
                     let mut stats = stats
                         .lock()
                         .expect("Should be able to get task stats store");
@@ -95,7 +103,9 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
                             result_sender
                                 .send(res.clone())
                                 .expect("Should be able to send results");
-                            results_so_far.push(res);
+                            if caching_enabled {
+                                results_so_far.push(res);
+                            }
                         }
                         Update::FinalResult(res) => {
                             stats.total_num_results += 1;
@@ -104,7 +114,9 @@ impl<T: std::fmt::Debug + Task + 'static> TaskManager<T> {
                             result_sender
                                 .send(res.clone())
                                 .expect("Should be able to send results");
-                            results_so_far.push(res);
+                            if caching_enabled {
+                                results_so_far.push(res);
+                            }
                         }
                         Update::Complete => {
                             stats.num_succeeded += 1;
@@ -234,21 +246,21 @@ impl TaskSet {
     pub fn new(
         launch_receiver: ReceiverFor<LaunchTask>,
         result_sender: SenderFor<ParseFileTask>,
-        options: Arc<Mutex<Options>>,
+        _options: Arc<Mutex<Options>>,
     ) -> Self {
         let (load_file_sender, load_file_receiver) = mpsc::unbounded_channel();
         let request_tasks =
-            TaskManager::<LaunchTask>::new(launch_receiver, load_file_sender, options.clone());
+            TaskManager::<LaunchTask>::new(launch_receiver, load_file_sender, ManagerConfig::default());
 
         let (lex_file_sender, lex_file_receiver) = mpsc::unbounded_channel();
         let load_file_tasks =
-            TaskManager::<LoadFileTask>::new(load_file_receiver, lex_file_sender, options.clone());
+            TaskManager::<LoadFileTask>::new(load_file_receiver, lex_file_sender, ManagerConfig::default());
 
         let (parse_file_sender, parse_file_receiver) = mpsc::unbounded_channel();
         let lex_file_tasks =
-            TaskManager::<LexFileTask>::new(lex_file_receiver, parse_file_sender, options.clone());
+            TaskManager::<LexFileTask>::new(lex_file_receiver, parse_file_sender, ManagerConfig::default());
         let parse_file_tasks =
-            TaskManager::<ParseFileTask>::new(parse_file_receiver, result_sender, options);
+            TaskManager::<ParseFileTask>::new(parse_file_receiver, result_sender, ManagerConfig::default());
 
         Self {
             request_tasks,
