@@ -14,10 +14,9 @@ pub mod tasks;
 pub mod tokens;
 pub mod ui;
 
-use crate::cli_options::Options;
 use crate::error::TError;
-use crate::tasks::{LaunchTask, TaskSet};
-use crate::ui::{UserInterface, UiReport, UserAction, Request};
+use crate::tasks::{Request, TaskSet};
+use crate::ui::{UserInterface, UiReport, UserAction};
 use log::trace;
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
@@ -61,19 +60,12 @@ pub fn launch_ui<T: UserInterface + Send + 'static>(
     Arc::new(Mutex::new(value))
 }
 
-pub async fn start(ui_report_sender: mpsc::UnboundedSender<UiReport>, request_receiver: mpsc::UnboundedReceiver<Request>, options: Options) -> Result<(), TError> {
-    let files = options.files.clone();
-    let options = Arc::new(Mutex::new(options));
-
+pub async fn start(ui_report_sender: mpsc::UnboundedSender<UiReport>, request_receiver: mpsc::UnboundedReceiver<Request>) -> Result<(), TError> {
     let mut result_receiver = {
-        let (request_sender, request_receiver) = mpsc::unbounded_channel();
         let (result_sender, result_receiver) = mpsc::unbounded_channel();
 
-        let store = TaskSet::new(request_receiver, result_sender, ui_report_sender, options.clone()); // Setup!
+        let store = TaskSet::new(request_receiver, result_sender, ui_report_sender); // Setup!
         store.launch().await; // launches all the jobs.
-        request_sender
-            .send(LaunchTask { files })
-            .expect("Should be able to send launch task"); // Launch the cli task.
         result_receiver
     };
     // Receive the results...

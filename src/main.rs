@@ -7,6 +7,7 @@ use tokio::sync::mpsc;
 use takolib::ui::UserAction;
 use takolib::cli_options::Options;
 use takolib::start;
+use takolib::tasks::Request;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -24,10 +25,15 @@ async fn main() -> Result<()> {
     use takolib::ui::{UiMode, Cli, Tui};
     use takolib::launch_ui;
     let _ui = match options.ui_mode {
-        UiMode::Cli => launch_ui(Cli::new(), ui_report_receiver, user_action_receiver, request_sender),
-        UiMode::Tui => launch_ui(Tui::new(), ui_report_receiver, user_action_receiver, request_sender),
+        UiMode::Cli => launch_ui(Cli::new(), ui_report_receiver, user_action_receiver, request_sender.clone()),
+        UiMode::Tui => launch_ui(Tui::new(), ui_report_receiver, user_action_receiver, request_sender.clone()),
     };
-    let compiler = start(ui_report_sender, request_receiver, options);
+    let compiler = start(ui_report_sender, request_receiver);
+
+    request_sender
+        .send(Request::Launch { files: options.files })
+        .expect("Should be able to send launch task"); // Launch the cli task.
+                                                       //
     trace!("Started");
 
     tokio::spawn(async move {
