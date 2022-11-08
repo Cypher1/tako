@@ -1,8 +1,6 @@
 use crate::error::TError;
 use crate::location::{IndexIntoFile, SymbolLength};
 use std::fmt;
-use tinystring::TinyString;
-
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum TokenType {
     Op,
@@ -114,28 +112,28 @@ impl<'a> Characters<'a> {
 // Reads all the tokens.
 pub fn lex(contents: &str) -> Result<Vec<Token>, TError> {
     let mut chars = Characters::new(contents);
-    let mut tokens = Vec::new();
+    let mut tokens = Vec::with_capacity(1000); // TODO: Bench mark & tune?
     loop {
-        let (tok, new_chars) = lex_head(chars);
+        let tok = lex_head(&mut chars);
         if tok.kind == TokenType::Eof {
             break;
         }
-        chars = new_chars;
         tokens.push(tok);
     }
     Ok(tokens)
 }
 
 // Consumes a single token.
-pub fn lex_head(mut characters: Characters) -> (Token, Characters) {
+pub fn lex_head(characters: &mut Characters) -> Token {
     while let Some(chr) = characters.peek() {
         // skip whitespace.
-        if !is_whitespace(chr) {
+        if !is_whitespace(chr) { // TODO: use trim_start
             break;
         }
         characters.next();
     }
     /*
+    // TODO: Handle comments.
     // Token is finished, covers from `start` to `characters`.
     let comment = contents[start..end].starts_with(COMMENT);
     let multi_comment = contents[start..end].starts_with(MULTI_COMMENT);
@@ -147,7 +145,7 @@ pub fn lex_head(mut characters: Characters) -> (Token, Characters) {
     loop {
         characters.next();
         // Add the character.
-        match (last, characters.peek().map(|(_, chr)| *chr)) {
+        match (last, characters.peek().map(|(_, chr)| *chr)) { // TODO: use .find
             (Some('/'), Some('*')) => {
                 depth += 1;
             }
@@ -170,15 +168,15 @@ pub fn lex_head(mut characters: Characters) -> (Token, Characters) {
     }
     */
     if characters.peek().is_none() {
-        return (Token::eof(), characters);
+        return Token::eof();
     }
     characters.set_start();
     // TODO: This should be simplified (make tight loops).
     use TokenType::*;
     let mut kind: TokenType = Unknown;
     while let Some(chr) = characters.peek() {
+        // TODO: these could be bit strings and we could and them.
         kind = match (kind, classify_char(chr)) {
-            (Unknown, Whitespace) => Unknown,        // Ignore
             (_, Whitespace) => break,                // Token finished whitespace.
             (Unknown, new_tok_type) => new_tok_type, // Start token.
             (Op, Op) => Op,                          // Continuation
@@ -189,51 +187,31 @@ pub fn lex_head(mut characters: Characters) -> (Token, Characters) {
         };
         characters.next(); // Continue past the character.
     }
-    let source = if kind == StringLit {
-        let mut strlit = "".to_string();
+    if kind == StringLit {
         let quote = characters
             .prev()
-            .expect("String literals should starat with a quote");
-        while let Some(chr) = characters.next() {
+            .expect("String literals should start with a quote");
+        while let Some(chr) = characters.next() { // TODO: use .find
             if chr == quote {
-                // reached the end of the quote.
-                break;
+                break; // reached the end of the quote.
             }
-            strlit.push(match chr {
-                '\\' => match characters.next() {
-                    Some('\\') => '\\',
-                    Some('\'') => '\'',
-                    Some('\"') => '"',
-                    Some('r') => '\r',
-                    Some('n') => '\n',
-                    Some('t') => '\t',
-                    Some('0') => '\0',
-                    ch => todo!("escaping for {:?}", ch),
-                },
-                _ => chr,
-            });
+            if chr == '\\' {
+                characters.next() // Skip escaped quotes.
+            }
         }
-        // Drop the quote
+        // Pass the quote
         characters.next();
-        Source::Lit(strlit)
-    } else {
-        // This should find the offset into the source
-        Source::Symbol(
-            characters
+    };
+    let length = characters
                 .index()
                 .checked_sub(characters.start())
                 .expect("Token should finish after it starts") as SymbolLength,
-        )
-    };
-    // TODO: Handle comments.
-    (
-        Token {
-            start: characters.start() as u32,
-            kind,
-            source,
-        },
-        characters,
-    )
+    Token {
+        start: characters.start() as u32,
+        length: characters.index() - characters.start() as u32,
+        kind,
+        source,
+    }
 }
 
 #[cfg(test)]
