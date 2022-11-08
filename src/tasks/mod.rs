@@ -1,7 +1,6 @@
 mod manager;
 mod status;
 mod task_trait;
-use std::fmt::Debug;
 use crate::ast::Ast;
 use crate::cli_options::Options;
 use crate::error::Error;
@@ -9,6 +8,7 @@ use crate::tokens::Token;
 use async_trait::async_trait;
 use log::trace;
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
 use tokio::sync::{mpsc, RwLock};
 
@@ -52,7 +52,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
     fn task_name() -> &'static str {
         let name = std::any::type_name::<T>();
         let last_lt = name.rfind('<').unwrap_or(name.len());
-        let index = name.rfind(':').map(|i|i+1).unwrap_or(1);
+        let index = name.rfind(':').map(|i| i + 1).unwrap_or(1);
         &name[index..last_lt]
     }
 
@@ -87,7 +87,9 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
                 );
                 // Reading from an RwLock should be near instant unless there is writing occuring.
                 let caching_enabled = !config.read().await.disable_caching;
-                let mut result_store = result_store.lock().expect("Should be able to get the result store");
+                let mut result_store = result_store
+                    .lock()
+                    .expect("Should be able to get the result store");
                 let mut current_results = result_store.entry(task).or_insert_with(TaskStatus::new);
                 let mut is_complete = false;
                 let mut error = None;
@@ -149,7 +151,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
                 let mut stats = stats
                     .lock()
                     .expect("Should be able to get task stats store");
-                    stats.num_requests += 1;
+                stats.num_requests += 1;
             }
             let status = {
                 let mut result_store = self
@@ -207,14 +209,17 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
                 task.perform(result_or_error_sender).await;
             });
         }
-        trace!("{} no more tasks... Finishing run_loop: {}", Self::task_name(),
-                {
-                    let stats = self.stats
-                        .lock()
-                        .expect("Should be able to get task stats store");
-                    format!("{:?}", &stats)
-                }
-            );
+        trace!(
+            "{} no more tasks... Finishing run_loop: {}",
+            Self::task_name(),
+            {
+                let stats = self
+                    .stats
+                    .lock()
+                    .expect("Should be able to get task stats store");
+                format!("{:?}", &stats)
+            }
+        );
     }
 }
 
@@ -248,18 +253,30 @@ impl TaskSet {
         _options: Arc<Mutex<Options>>,
     ) -> Self {
         let (load_file_sender, load_file_receiver) = mpsc::unbounded_channel();
-        let request_tasks =
-            TaskManager::<LaunchTask>::new(launch_receiver, load_file_sender, ManagerConfig::default());
+        let request_tasks = TaskManager::<LaunchTask>::new(
+            launch_receiver,
+            load_file_sender,
+            ManagerConfig::default(),
+        );
 
         let (lex_file_sender, lex_file_receiver) = mpsc::unbounded_channel();
-        let load_file_tasks =
-            TaskManager::<LoadFileTask>::new(load_file_receiver, lex_file_sender, ManagerConfig::default());
+        let load_file_tasks = TaskManager::<LoadFileTask>::new(
+            load_file_receiver,
+            lex_file_sender,
+            ManagerConfig::default(),
+        );
 
         let (parse_file_sender, parse_file_receiver) = mpsc::unbounded_channel();
-        let lex_file_tasks =
-            TaskManager::<LexFileTask>::new(lex_file_receiver, parse_file_sender, ManagerConfig::default());
-        let parse_file_tasks =
-            TaskManager::<ParseFileTask>::new(parse_file_receiver, result_sender, ManagerConfig::default());
+        let lex_file_tasks = TaskManager::<LexFileTask>::new(
+            lex_file_receiver,
+            parse_file_sender,
+            ManagerConfig::default(),
+        );
+        let parse_file_tasks = TaskManager::<ParseFileTask>::new(
+            parse_file_receiver,
+            result_sender,
+            ManagerConfig::default(),
+        );
 
         Self {
             request_tasks,

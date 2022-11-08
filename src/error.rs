@@ -1,5 +1,5 @@
-use crate::utils::typed_index::TypedIndex;
 use crate::location::{Location, UserFacingLocation};
+use crate::utils::typed_index::TypedIndex;
 use thiserror::Error;
 
 #[derive(Error, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
