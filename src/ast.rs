@@ -1,5 +1,5 @@
-use crate::utils::typed_index::TypedIndex;
 use crate::location::Location;
+use crate::utils::typed_index::TypedIndex;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 
@@ -12,7 +12,8 @@ pub trait Contains<T> {
     fn get_all(&self) -> &Vec<T>;
     fn get_all_mut(&mut self) -> &mut Vec<T>;
     fn alloc(&mut self, value: T) -> TypedIndex<T> {
-        TypedIndex::new(self.get_all_mut(), value).expect("Should never have that many AstNodes of a particular type...")
+        TypedIndex::new(self.get_all_mut(), value)
+            .expect("Should never have that many AstNodes of a particular type...")
     }
     fn get(&self, id: TypedIndex<T>) -> &T {
         id.get(self.get_all())
@@ -80,9 +81,12 @@ make_contains!(definitions, Definition, Definition, DefinitionId);
 make_contains!(literals, Literal, Literal, LiteralId);
 
 impl Ast {
-    pub fn make_node<T, F: FnOnce(NodeId) -> T>(&mut self, value: F, location: Location) -> NodeId where Self: Contains<T> {
-        let node_id = TypedIndex::next(&self.nodes)
-            .expect("Should never have that many AstNodes..."); // Reserve it...
+    pub fn make_node<T, F: FnOnce(NodeId) -> T>(&mut self, value: F, location: Location) -> NodeId
+    where
+        Self: Contains<T>,
+    {
+        let node_id =
+            TypedIndex::next(&self.nodes).expect("Should never have that many AstNodes..."); // Reserve it...
         let value_id = self.alloc(value(node_id));
         let node = Node {
             id: Self::to_node(value_id),
@@ -140,17 +144,17 @@ pub struct Definition {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum LiteralKind {
-    Bool, // a boolean of arbitrary size :P (true/false)
-    Integer, // of arbitrary size
-    Float, // of arbitrary size
+    Bool,      // a boolean of arbitrary size :P (true/false)
+    Integer,   // of arbitrary size
+    Float,     // of arbitrary size
     Character, // a character of arbitrary size (e.g. UTF-8 or Unicode)
-    Text, // string-like, but of arbitrary size
-    // TODO: Add more complex literals like:
-    // Rational, e.g. 12
-    // Color,
-    // URL,
-    // JSON,
-    // JSON,
+    Text,      // string-like, but of arbitrary size
+               // TODO: Add more complex literals like:
+               // Rational, e.g. 12
+               // Color,
+               // URL,
+               // JSON,
+               // JSON,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -169,14 +173,8 @@ mod tests {
         let mut ast = Ast::default();
         let plus = ast.register_str("+".to_string());
         let a = ast.register_str("a".to_string());
-        let plus = |node| Symbol {
-            node,
-            name: plus,
-        };
-        let a = |node| Symbol {
-            node,
-            name: a,
-        };
+        let plus = |node| Symbol { node, name: plus };
+        let a = |node| Symbol { node, name: a };
         let b = |node| Literal {
             node,
             kind: LiteralKind::Integer,

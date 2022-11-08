@@ -95,9 +95,7 @@ impl<T, Idx: std::fmt::Debug + std::convert::TryInto<usize>, Container: IndexMut
 impl<T, Idx: std::fmt::Debug + std::convert::TryInto<usize> + std::convert::TryFrom<usize>>
     TypedIndex<T, Idx, Vec<T>>
 {
-    pub fn next(
-        container: &Vec<T>,
-    ) -> Result<Self, <Idx as std::convert::TryFrom<usize>>::Error> {
+    pub fn next(container: &Vec<T>) -> Result<Self, <Idx as std::convert::TryFrom<usize>>::Error> {
         Ok(Self::from_raw(Idx::try_from(container.len())?))
     }
     pub fn new(

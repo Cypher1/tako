@@ -40,7 +40,13 @@ impl Token {
 impl fmt::Debug for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // TODO: Look up the token to get the contents?
-        write!(f, "{:?}({}..{})", self.kind, self.start, self.start+self.length)
+        write!(
+            f,
+            "{:?}({}..{})",
+            self.kind,
+            self.start,
+            self.start + self.length
+        )
     }
 }
 
@@ -127,7 +133,8 @@ pub fn lex(contents: &str) -> Result<Vec<Token>, TError> {
 pub fn lex_head(characters: &mut Characters) -> Token {
     while let Some(chr) = characters.peek() {
         // skip whitespace.
-        if !is_whitespace(chr) { // TODO: use trim_start
+        if !is_whitespace(chr) {
+            // TODO: use trim_start
             break;
         }
         characters.next();
@@ -191,7 +198,8 @@ pub fn lex_head(characters: &mut Characters) -> Token {
         let quote = characters
             .prev()
             .expect("String literals should start with a quote");
-        while let Some(chr) = characters.next() { // TODO: use .find
+        while let Some(chr) = characters.next() {
+            // TODO: use .find
             if chr == quote {
                 break; // reached the end of the quote.
             }
@@ -203,9 +211,9 @@ pub fn lex_head(characters: &mut Characters) -> Token {
         characters.next();
     };
     let length = characters
-                .index()
-                .checked_sub(characters.start())
-                .expect("Token should finish after it starts") as SymbolLength;
+        .index()
+        .checked_sub(characters.start())
+        .expect("Token should finish after it starts") as SymbolLength;
     Token {
         start: characters.start() as u32,
         length,
