@@ -1,5 +1,5 @@
 use crate::error::TError;
-use crate::free_standing::tribool::{all_true, any_true, Tribool};
+use crate::utils::tribool::{all_true, any_true, Tribool};
 use bitvec::prelude::*;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt;
