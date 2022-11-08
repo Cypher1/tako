@@ -13,8 +13,8 @@ pub struct TaskMeta {
     task_id: u64,   // the cached hash value
 }
 
-pub type ReceiverFor<T> = mpsc::UnboundedReceiver<T>;
-pub type SenderFor<T> = mpsc::UnboundedSender<<T as Task>::Output>;
+pub type TaskReceiverFor<T> = mpsc::UnboundedReceiver<T>;
+pub type TaskSenderFor<T> = mpsc::UnboundedSender<<T as Task>::Output>;
 pub type UpdateSender<T, O> = mpsc::UnboundedSender<(T, Update<O, Error>)>;
 
 #[async_trait]

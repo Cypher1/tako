@@ -14,6 +14,7 @@ use tokio::sync::{mpsc, RwLock};
 
 use status::*;
 use task_trait::*;
+use crate::ui::UiReport;
 
 // TODO: Add timing information, etc.
 // TODO: Support re-running multiple times for stability testing.
@@ -41,8 +42,9 @@ pub struct ManagerConfig {
 #[derive(Debug)]
 pub struct TaskManager<T: Debug + Task> {
     result_store: Arc<Mutex<TaskResults<T>>>,
-    task_receiver: ReceiverFor<T>,
-    result_sender: SenderFor<T>,
+    task_receiver: TaskReceiverFor<T>,
+    ui_report_sender: mpsc::UnboundedSender<UiReport>,
+    result_sender: TaskSenderFor<T>,
     // status_sender: mpsc::Sender<ManagerStats>,
     stats: Arc<Mutex<TaskStats>>,
     config: Arc<RwLock<ManagerConfig>>, // Use a RwLock so that reads don't block.
@@ -57,14 +59,16 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
     }
 
     pub fn new(
-        task_receiver: ReceiverFor<T>,
-        result_sender: SenderFor<T>,
+        task_receiver: TaskReceiverFor<T>,
+        result_sender: TaskSenderFor<T>,
+        ui_report_sender: mpsc::UnboundedSender<UiReport>,
         config: ManagerConfig,
     ) -> Self {
         Self {
             result_store: Arc::new(Mutex::new(TaskResults::new())),
             task_receiver,
             result_sender,
+            ui_report_sender,
             stats: Arc::new(Mutex::new(TaskStats::default())),
             config: Arc::new(RwLock::new(config)),
         }
@@ -248,14 +252,16 @@ pub struct TaskSet {
 
 impl TaskSet {
     pub fn new(
-        launch_receiver: ReceiverFor<LaunchTask>,
-        result_sender: SenderFor<ParseFileTask>,
+        launch_receiver: TaskReceiverFor<LaunchTask>,
+        result_sender: TaskSenderFor<ParseFileTask>,
+        ui_report_sender: mpsc::UnboundedSender<UiReport>,
         _options: Arc<Mutex<Options>>,
     ) -> Self {
         let (load_file_sender, load_file_receiver) = mpsc::unbounded_channel();
         let request_tasks = TaskManager::<LaunchTask>::new(
             launch_receiver,
             load_file_sender,
+            ui_report_sender.clone(),
             ManagerConfig::default(),
         );
 
@@ -263,6 +269,7 @@ impl TaskSet {
         let load_file_tasks = TaskManager::<LoadFileTask>::new(
             load_file_receiver,
             lex_file_sender,
+            ui_report_sender.clone(),
             ManagerConfig::default(),
         );
 
@@ -270,11 +277,13 @@ impl TaskSet {
         let lex_file_tasks = TaskManager::<LexFileTask>::new(
             lex_file_receiver,
             parse_file_sender,
+            ui_report_sender.clone(),
             ManagerConfig::default(),
         );
         let parse_file_tasks = TaskManager::<ParseFileTask>::new(
             parse_file_receiver,
             result_sender,
+            ui_report_sender,
             ManagerConfig::default(),
         );
 

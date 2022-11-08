@@ -3,6 +3,7 @@ use super::UserInterface;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use shutdown_hooks::add_shutdown_hook;
 use std::sync::{Arc, Mutex};
+use log::{error, info};
 
 extern "C" fn shutdown() {
     let _discard = disable_raw_mode();
@@ -23,11 +24,11 @@ pub struct TUIState {
 }
 
 #[derive(Debug, Default)]
-pub struct TUI {
+pub struct Tui {
     state: Arc<Mutex<TUIState>>,
 }
 
-impl TUI {
+impl Tui {
     pub fn new() -> Self {
         add_shutdown_hook(shutdown);
         enable_raw_mode().expect("TUI failed to enable raw mode");
@@ -41,10 +42,10 @@ impl TUI {
     }
 }
 
-impl UserInterface for TUI {
+impl UserInterface for Tui {
     /*
     fn report_error(&mut self, _error_id: ErrorId, error: &Error) {
-        eprintln!("Error: {error:?}");
+        error!("Error: {error:?}");
     }
     fn report_progress(&mut self, progress: Progress) {
         let mut state = self.state.lock().expect("Get state");
@@ -69,7 +70,7 @@ impl UserInterface for TUI {
     */
 }
 
-impl TUI {
+impl Tui {
     #[allow(unused)]
     fn print_stuff(&self) {
         let state = self.state.lock().expect("Get state");
@@ -91,11 +92,11 @@ impl TUI {
                     let failed = _num_finished - _num_successful;
                     let s = if *_num_total == 1 { "" } else { "s" };
                     if _num_successful == _num_total {
-                        eprintln!("Finished all {_num_total} job{s}.")
+                        info!("Finished all {_num_total} job{s}.")
                     } else if failed == 0 {
-                        eprintln!("Finished {_num_successful}/{_num_total} job{s}.")
+                        info!("Finished {_num_successful}/{_num_total} job{s}.")
                     } else {
-                        eprintln!("Finished {_num_successful}/{_num_total} job{s}. {failed} failed or cancelled.")
+                        info!("Finished {_num_successful}/{_num_total} job{s}. {failed} failed or cancelled.")
                     }
                 }
             },

@@ -1,16 +1,17 @@
 use super::UserInterface;
+use log::{error, info};
 // use crate::compiler_tasks::Progress;
 
 #[derive(Debug, Default)]
-pub struct CLI {}
+pub struct Cli {}
 
-impl CLI {
+impl Cli {
     pub fn new() -> Self {
         Self {}
     }
 }
 
-impl UserInterface for CLI {
+impl UserInterface for Cli {
     /*
     fn report_error(&mut self, _error_id: ErrorId, error: &Error) {
         eprintln!("Error: {error:?}");
