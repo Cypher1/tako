@@ -1,6 +1,7 @@
 use crate::error::TError;
 use crate::location::{IndexIntoFile, SymbolLength};
 use std::fmt;
+use tinystring::TinyString;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum TokenType {
@@ -15,38 +16,26 @@ pub enum TokenType {
     Eof,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
-pub enum Source {
-    // Most of the time we do the fast, non-owning thing.
-    Symbol(SymbolLength),
-    Lit(String), // Sometimes we have to hold on to a new value.
-}
-
 #[derive(Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Token {
     pub start: IndexIntoFile,
+    pub length: SymbolLength,
     pub kind: TokenType,
-    pub source: Source,
 }
 
 impl Token {
     fn eof() -> Self {
         Self {
             start: 0,
+            length: 0, // zero characters == empty str.
             kind: TokenType::Eof,
-            source: Source::Symbol(0), // zero characters == empty str.
         }
     }
 
     #[allow(dead_code)] // TODO:: REMOVE!
-    fn get_str<'a>(&'a self, source: &'a str) -> &'a str {
+    fn get_str<'a>(&self, source: &'a str) -> &'a str {
         // Assuming the token is from the source file...
-        match &self.source {
-            Source::Symbol(length) => {
-                &source[self.start as usize..self.start as usize + *length as usize]
-            }
-            Source::Lit(string) => string,
-        }
+        &source[self.start as usize..self.start as usize + *self.length as usize]
     }
 }
 
