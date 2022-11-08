@@ -1,7 +1,7 @@
 use crate::ast::Ast;
 use crate::error::TError;
 use crate::tokens::Token;
-use log::debug;
+use log::{debug, trace};
 
 pub fn parse(path: &str, tokens: &[Token]) -> Result<Ast, TError> {
     let tokens = tokens.iter().peekable();
@@ -9,7 +9,7 @@ pub fn parse(path: &str, tokens: &[Token]) -> Result<Ast, TError> {
     // TODO: REMOVE THIS (it's just to test the threading model)
     // std::thread::sleep(std::time::Duration::from_secs(2));
     for tok in tokens {
-        eprintln!("tok {tok:?}");
+        trace!("tok {tok:?}");
     }
     // TODO: parsing!!!
     Ok(Ast::default())

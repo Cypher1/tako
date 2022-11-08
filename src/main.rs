@@ -21,8 +21,8 @@ async fn main() -> Result<()> {
     match compiler.await {
         Ok(()) => {}
         Err(error) => {
-            error!("Internal error: {error:#?}");
-            eprintln!("Compiler finished with internal error: {error}");
+            trace!("Internal error: {error:#?}");
+            error!("Compiler finished with internal error: {error}");
         }
     }
     Ok(())

@@ -32,7 +32,7 @@ pub fn build_logger(finish: impl FnOnce(&mut env_logger::Builder)) {
         finish(
             env_logger::Builder::from_env(
                 env_logger::Env::default()
-                    .filter_or("RUST_LOG", "warn")
+                    .filter_or("RUST_LOG", "info")
                     .write_style_or("RUST_LOG_STYLE", "AUTO"),
             )
             .format_timestamp(None),
