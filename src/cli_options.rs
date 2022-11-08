@@ -33,7 +33,7 @@ impl Default for Options {
             files: vec![],
             cmd: Command::Build,
             interpreter_args: vec![],
-            ui_mode: UiMode::TuiIfAvailable,
+            ui_mode: UiMode::Cli,
             early_exit: false,
             optimization_level: 3,
             code_gen: Some(CodeGenOptions {}),

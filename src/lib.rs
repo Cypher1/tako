@@ -17,7 +17,7 @@ pub mod ui;
 use crate::cli_options::Options;
 use crate::error::TError;
 use crate::tasks::{LaunchTask, TaskSet};
-use crate::ui::UserInterface;
+use crate::ui::{UserInterface, UiReport, UserAction, Request};
 use log::trace;
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
@@ -51,25 +51,17 @@ pub fn ensure_initialized() {
     build_logger(env_logger::Builder::init);
 }
 
-fn make_ui_arc<T: UserInterface + Send + 'static>(
-    value: T,
+pub fn launch_ui<T: UserInterface + Send + 'static>(
+    mut value: T,
+    ui_report_receiver: mpsc::UnboundedReceiver<UiReport>,
+    user_action_receiver: mpsc::UnboundedReceiver<UserAction>,
+    request_sender: mpsc::UnboundedSender<Request>,
 ) -> Arc<Mutex<dyn UserInterface + Send>> {
+    value.launch(ui_report_receiver, user_action_receiver, request_sender);
     Arc::new(Mutex::new(value))
 }
 
-pub async fn start(options: Options) -> Result<(), TError> {
-    use crate::ui::{UiMode, CLI, TUI};
-    let _ui = match options.ui_mode {
-        UiMode::Cli => make_ui_arc(CLI::new()),
-        UiMode::Tui => make_ui_arc(TUI::new()),
-        UiMode::TuiIfAvailable => {
-            if false {
-                make_ui_arc(CLI::new())
-            } else {
-                make_ui_arc(TUI::new())
-            }
-        }
-    };
+pub async fn start(ui_report_sender: mpsc::UnboundedSender<UiReport>, request_receiver: mpsc::UnboundedReceiver<Request>, options: Options) -> Result<(), TError> {
     let files = options.files.clone();
     let options = Arc::new(Mutex::new(options));
 
@@ -77,7 +69,7 @@ pub async fn start(options: Options) -> Result<(), TError> {
         let (request_sender, request_receiver) = mpsc::unbounded_channel();
         let (result_sender, result_receiver) = mpsc::unbounded_channel();
 
-        let store = TaskSet::new(request_receiver, result_sender, options.clone()); // Setup!
+        let store = TaskSet::new(request_receiver, result_sender, ui_report_sender, options.clone()); // Setup!
         store.launch().await; // launches all the jobs.
         request_sender
             .send(LaunchTask { files })
