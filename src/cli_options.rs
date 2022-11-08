@@ -23,7 +23,7 @@ pub struct Options {
     pub early_exit: bool,
     /// `optimization_level` should be proportional to maximum time spent on optimisation.
     pub optimization_level: u32,
-    pub code_gen: Option<CodeGenOptions>,
+    pub code_gen: CodeGenOptions,
 }
 
 impl Default for Options {
@@ -36,7 +36,7 @@ impl Default for Options {
             ui_mode: UiMode::Cli,
             early_exit: false,
             optimization_level: 3,
-            code_gen: Some(CodeGenOptions {}),
+            code_gen: CodeGenOptions {},
         }
     }
 }
