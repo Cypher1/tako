@@ -20,14 +20,8 @@ pub enum UiMode {
 
 pub trait UserInterface: std::fmt::Debug {
     fn launch(
-        &mut self,
         _task_manager_registration: mpsc::UnboundedReceiver<TaskManagerRegistration>,
         _user_action_receiver: mpsc::UnboundedReceiver<UserAction>,
         _request_sender: mpsc::UnboundedSender<Request>,
-    ) {
-        // noop... bad default but easy to implement.
-    }
-    // fn report_error(&mut self, error_id: ErrorId, error: &Error);
-    // fn report_progress(&mut self, progress: Progress);
-    // fn report_job_counts(&mut self, num_successful: usize, num_finished: usize, num_total: usize);
+    ) -> Self where Self: Sized;
 }

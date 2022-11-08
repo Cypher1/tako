@@ -52,12 +52,11 @@ pub fn ensure_initialized() {
 }
 
 pub fn launch_ui<T: UserInterface + Send + 'static>(
-    mut value: T,
     task_manager_registration: mpsc::UnboundedReceiver<TaskManagerRegistration>,
     user_action_receiver: mpsc::UnboundedReceiver<UserAction>,
     request_sender: mpsc::UnboundedSender<Request>,
 ) -> Arc<Mutex<dyn UserInterface + Send>> {
-    value.launch(task_manager_registration, user_action_receiver, request_sender);
+    let value = <T as UserInterface>::launch(task_manager_registration, user_action_receiver, request_sender);
     Arc::new(Mutex::new(value))
 }
 
