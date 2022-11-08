@@ -18,6 +18,7 @@ use crate::error::TError;
 use crate::tasks::{Request, StatusReport, TaskSet};
 use crate::ui::{UserAction, UserInterface};
 use log::trace;
+use tasks::TaskManagerRegistration;
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
 
@@ -52,22 +53,22 @@ pub fn ensure_initialized() {
 
 pub fn launch_ui<T: UserInterface + Send + 'static>(
     mut value: T,
-    ui_report_receiver: mpsc::UnboundedReceiver<StatusReport>,
+    task_manager_registration: mpsc::UnboundedReceiver<TaskManagerRegistration>,
     user_action_receiver: mpsc::UnboundedReceiver<UserAction>,
     request_sender: mpsc::UnboundedSender<Request>,
 ) -> Arc<Mutex<dyn UserInterface + Send>> {
-    value.launch(ui_report_receiver, user_action_receiver, request_sender);
+    value.launch(task_manager_registration, user_action_receiver, request_sender);
     Arc::new(Mutex::new(value))
 }
 
 pub async fn start(
-    ui_report_sender: mpsc::UnboundedSender<StatusReport>,
+    task_manager_registration: mpsc::UnboundedSender<TaskManagerRegistration>,
     request_receiver: mpsc::UnboundedReceiver<Request>,
 ) -> Result<(), TError> {
     let mut result_receiver = {
         let (result_sender, result_receiver) = mpsc::unbounded_channel();
 
-        let store = TaskSet::new(request_receiver, result_sender, ui_report_sender); // Setup!
+        let store = TaskSet::new(request_receiver, result_sender, task_manager_registration); // Setup!
         store.launch().await; // launches all the jobs.
         result_receiver
     };

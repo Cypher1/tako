@@ -9,13 +9,14 @@ use log::trace;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
-use tokio::sync::{mpsc, RwLock};
+use tokio::sync::{mpsc, watch, RwLock};
 
 use status::*;
 use task_trait::*;
 
 #[derive(Debug, Clone)]
 pub enum StatusReport {
+    StartingUp(TaskKind),
     ShuttingDown(TaskKind),
     StatsUpdate { kind: TaskKind, stats: TaskStats },
 }
@@ -52,10 +53,10 @@ pub struct ManagerConfig {
 }
 
 #[derive(Debug)]
-pub struct TaskManager<T: Debug + Task> {
+pub struct TaskManager<T: Task> {
     result_store: Arc<Mutex<TaskResults<T>>>,
     task_receiver: TaskReceiverFor<T>,
-    status_report_sender: mpsc::UnboundedSender<StatusReport>,
+    status_report_sender: watch::Sender<StatusReport>,
     result_sender: TaskSenderFor<T>,
     // status_sender: mpsc::Sender<ManagerStats>,
     stats: Arc<Mutex<TaskStats>>,
@@ -73,7 +74,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
     pub fn new(
         task_receiver: TaskReceiverFor<T>,
         result_sender: TaskSenderFor<T>,
-        status_report_sender: mpsc::UnboundedSender<StatusReport>,
+        status_report_sender: watch::Sender<StatusReport>,
         config: ManagerConfig,
     ) -> Self {
         Self {
@@ -247,6 +248,12 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
 }
 
 #[derive(Debug)]
+pub struct TaskManagerRegistration {
+    kind: TaskKind,
+    status_report_receiver: watch::Receiver<StatusReport>,
+}
+
+#[derive(Debug)]
 pub struct TaskSet {
     // TODO: Track the jobs that are being done...
     // Invalidate these if
@@ -270,40 +277,40 @@ pub struct TaskSet {
 }
 
 impl TaskSet {
+    pub fn create<T: Task + 'static>(
+        task_receiver: TaskReceiverFor<T>,
+        result_sender: TaskSenderFor<T>,
+        registration_sender: mpsc::UnboundedSender<TaskManagerRegistration>,
+        config: ManagerConfig
+    ) -> TaskManager<T> {
+        let (status_report_sender, status_report_receiver) = watch::channel(StatusReport::StartingUp(<T as Task>::TASK_KIND));
+        let manager = TaskManager::<T>::new(
+            task_receiver,
+            result_sender,
+            status_report_sender,
+            config,
+        );
+        registration_sender.send(TaskManagerRegistration {
+            kind: T::TASK_KIND,
+            status_report_receiver,
+        });
+        manager
+    }
+
     pub fn new(
         launch_receiver: TaskReceiverFor<Request>,
         result_sender: TaskSenderFor<ParseFileTask>,
-        status_report_sender: mpsc::UnboundedSender<StatusReport>,
+        registration_sender: mpsc::UnboundedSender<TaskManagerRegistration>,
     ) -> Self {
         let (load_file_sender, load_file_receiver) = mpsc::unbounded_channel();
-        let request_tasks = TaskManager::<Request>::new(
-            launch_receiver,
-            load_file_sender,
-            status_report_sender.clone(),
-            ManagerConfig::default(),
-        );
+        let request_tasks = Self::create::<Request>(launch_receiver, load_file_sender, registration_sender.clone(), ManagerConfig::default());
 
         let (lex_file_sender, lex_file_receiver) = mpsc::unbounded_channel();
-        let load_file_tasks = TaskManager::<LoadFileTask>::new(
-            load_file_receiver,
-            lex_file_sender,
-            status_report_sender.clone(),
-            ManagerConfig::default(),
-        );
+        let load_file_tasks = Self::create::<LoadFileTask>(load_file_receiver, lex_file_sender, registration_sender.clone(), ManagerConfig::default());
 
         let (parse_file_sender, parse_file_receiver) = mpsc::unbounded_channel();
-        let lex_file_tasks = TaskManager::<LexFileTask>::new(
-            lex_file_receiver,
-            parse_file_sender,
-            status_report_sender.clone(),
-            ManagerConfig::default(),
-        );
-        let parse_file_tasks = TaskManager::<ParseFileTask>::new(
-            parse_file_receiver,
-            result_sender,
-            status_report_sender,
-            ManagerConfig::default(),
-        );
+        let lex_file_tasks = Self::create::<LexFileTask>(lex_file_receiver, parse_file_sender, registration_sender.clone(), ManagerConfig::default());
+        let parse_file_tasks = Self::create::<ParseFileTask>(parse_file_receiver, result_sender, registration_sender.clone(), ManagerConfig::default());
 
         Self {
             request_tasks,

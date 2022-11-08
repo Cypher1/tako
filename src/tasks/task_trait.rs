@@ -18,7 +18,7 @@ pub type TaskSenderFor<T> = mpsc::UnboundedSender<<T as Task>::Output>;
 pub type UpdateSender<T, O> = mpsc::UnboundedSender<(T, Update<O, Error>)>;
 
 #[async_trait]
-pub trait Task: Clone + std::hash::Hash + Eq + Sized + Send {
+pub trait Task: std::fmt::Debug + Clone + std::hash::Hash + Eq + Sized + Send {
     // TODO: Separate the code that performs the task
     // from the part that generates new tasks.
     // TODO: Only perform 'new' tasks.
