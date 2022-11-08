@@ -1,4 +1,4 @@
-use crate::free_standing::typed_index::TypedIndex;
+use crate::utils::typed_index::TypedIndex;
 use crate::location::Location;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};

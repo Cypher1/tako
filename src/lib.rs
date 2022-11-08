@@ -1,7 +1,7 @@
 #![deny(clippy::all)]
 
 #[macro_use]
-pub mod free_standing;
+pub mod utils;
 
 pub mod ast;
 pub mod cli_options;
