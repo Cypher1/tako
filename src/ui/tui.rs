@@ -1,9 +1,9 @@
-use async_trait::async_trait;
-use tokio::sync::mpsc;
 use super::UserInterface;
-use crate::{Request, UserAction, tasks::TaskManagerRegistration};
+use crate::{tasks::TaskManagerRegistration, Request, UserAction};
+use async_trait::async_trait;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use shutdown_hooks::add_shutdown_hook;
+use tokio::sync::mpsc;
 
 extern "C" fn shutdown() {
     let _discard = disable_raw_mode();
@@ -15,9 +15,9 @@ pub struct Tui {}
 #[async_trait]
 impl UserInterface for Tui {
     async fn launch(
-        task_manager_registration: mpsc::UnboundedReceiver<TaskManagerRegistration>,
-        user_action_receiver: mpsc::UnboundedReceiver<UserAction>,
-        request_sender: mpsc::UnboundedSender<Request>,
+        _task_manager_registration: mpsc::UnboundedReceiver<TaskManagerRegistration>,
+        _user_action_receiver: mpsc::UnboundedReceiver<UserAction>,
+        _request_sender: mpsc::UnboundedSender<Request>,
     ) {
         add_shutdown_hook(shutdown);
         enable_raw_mode().expect("TUI failed to enable raw mode");

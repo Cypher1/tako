@@ -55,7 +55,12 @@ pub async fn launch_ui<T: UserInterface + Send + 'static>(
     user_action_receiver: mpsc::UnboundedReceiver<UserAction>,
     request_sender: mpsc::UnboundedSender<Request>,
 ) {
-    <T as UserInterface>::launch(task_manager_registration, user_action_receiver, request_sender).await;
+    <T as UserInterface>::launch(
+        task_manager_registration,
+        user_action_receiver,
+        request_sender,
+    )
+    .await;
 }
 
 pub async fn start(
