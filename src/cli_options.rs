@@ -118,7 +118,7 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const USAGE: &str = "An experimental programming language for ergonomic software verification.
 
 Usage:
-  tako [-i|-r|-si|-sr] <files>...
+  tako [-i|-r] <files>...
   tako (-h | --help)
   tako --version
 
