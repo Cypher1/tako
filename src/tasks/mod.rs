@@ -293,7 +293,7 @@ impl TaskSet {
         registration_sender.send(TaskManagerRegistration {
             kind: T::TASK_KIND,
             status_report_receiver,
-        });
+        }).expect("Should be able to register task manager");
         manager
     }
 

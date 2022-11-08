@@ -15,11 +15,10 @@ pub mod tokens;
 pub mod ui;
 
 use crate::error::TError;
-use crate::tasks::{Request, StatusReport, TaskSet};
+use crate::tasks::{Request, TaskSet};
 use crate::ui::{UserAction, UserInterface};
 use log::trace;
 use tasks::TaskManagerRegistration;
-use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
 
 static mut LOGS_UNINITIALISED: bool = true;
@@ -51,13 +50,12 @@ pub fn ensure_initialized() {
     build_logger(env_logger::Builder::init);
 }
 
-pub fn launch_ui<T: UserInterface + Send + 'static>(
+pub async fn launch_ui<T: UserInterface + Send + 'static>(
     task_manager_registration: mpsc::UnboundedReceiver<TaskManagerRegistration>,
     user_action_receiver: mpsc::UnboundedReceiver<UserAction>,
     request_sender: mpsc::UnboundedSender<Request>,
-) -> Arc<Mutex<dyn UserInterface + Send>> {
-    let value = <T as UserInterface>::launch(task_manager_registration, user_action_receiver, request_sender);
-    Arc::new(Mutex::new(value))
+) {
+    <T as UserInterface>::launch(task_manager_registration, user_action_receiver, request_sender).await;
 }
 
 pub async fn start(

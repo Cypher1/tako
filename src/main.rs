@@ -24,17 +24,17 @@ async fn main() -> Result<()> {
     let (request_sender, request_receiver) = mpsc::unbounded_channel();
     use takolib::launch_ui;
     use takolib::ui::{Cli, Tui, UiMode};
-    let _ui = match options.ui_mode {
+    match options.ui_mode {
         UiMode::Cli => launch_ui::<Cli>(
             task_manager_registration_receiver,
             user_action_receiver,
             request_sender.clone(),
-        ),
+        ).await,
         UiMode::Tui => launch_ui::<Tui>(
             task_manager_registration_receiver,
             user_action_receiver,
             request_sender.clone(),
-        ),
+        ).await,
     };
     let compiler = start(task_manager_registration_sender, request_receiver);
 
