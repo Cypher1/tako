@@ -1,4 +1,4 @@
-use crate::tasks::{Request, StatusReport};
+use crate::tasks::{Request, StatusReport, TaskManagerRegistration};
 use tokio::sync::mpsc;
 
 mod cli;
@@ -21,7 +21,7 @@ pub enum UiMode {
 pub trait UserInterface: std::fmt::Debug {
     fn launch(
         &mut self,
-        _status_report_receiver: mpsc::UnboundedReceiver<StatusReport>,
+        _task_manager_registration: mpsc::UnboundedReceiver<TaskManagerRegistration>,
         _user_action_receiver: mpsc::UnboundedReceiver<UserAction>,
         _request_sender: mpsc::UnboundedSender<Request>,
     ) {
