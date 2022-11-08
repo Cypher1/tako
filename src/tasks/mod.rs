@@ -10,7 +10,7 @@ use async_trait::async_trait;
 use log::trace;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, RwLock};
 
 use status::*;
 use task_trait::*;
@@ -45,7 +45,7 @@ pub struct TaskManager<T: Debug + Task> {
     result_sender: SenderFor<T>,
     // status_sender: mpsc::Sender<ManagerStats>,
     stats: Arc<Mutex<TaskStats>>,
-    config: Arc<Mutex<ManagerConfig>>, // TODO: Store this locally and add a channel to update it`.
+    config: Arc<RwLock<ManagerConfig>>, // Use a RwLock so that reads don't block.
 }
 
 impl<T: Debug + Task + 'static> TaskManager<T> {
@@ -66,7 +66,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
             task_receiver,
             result_sender,
             stats: Arc::new(Mutex::new(TaskStats::default())),
-            config: Arc::new(Mutex::new(config)),
+            config: Arc::new(RwLock::new(config)),
         }
     }
 
@@ -85,13 +85,12 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
                     "{} received update from task: {task:#?} {update:#?}",
                     Self::task_name()
                 );
-                let mut result_store = result_store
-                    .lock()
-                    .expect("Should be able to get result store");
+                // Reading from an RwLock should be near instant unless there is writing occuring.
+                let caching_enabled = !config.read().await.disable_caching;
+                let mut result_store = result_store.lock().expect("Should be able to get the result store");
                 let mut current_results = result_store.entry(task).or_insert_with(TaskStatus::new);
                 let mut is_complete = false;
                 let mut error = None;
-                let caching_enabled = !config.lock().expect("Should be able to get the manager config").disable_caching;
                 {
                     let results_so_far = &mut current_results.results;
                     let mut stats = stats
@@ -156,7 +155,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
                 let mut result_store = self
                     .result_store
                     .lock()
-                    .expect("Should be able to get result store");
+                    .expect("Should be able to get the result store");
                 // We'll need to forward these on, so we can clone now and drop the result_store lock earlier!
                 let status = result_store
                     .entry(task.clone())
