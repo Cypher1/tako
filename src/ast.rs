@@ -8,7 +8,7 @@ use std::hash::{Hash, Hasher};
 // TODO: Use macro for defining and registering each of these.
 // TODO: A lambda calculus impl.
 
-trait Contains<T> {
+pub trait Contains<T> {
     fn get_all(&self) -> &Vec<T>;
     fn get_all_mut(&mut self) -> &mut Vec<T>;
     fn alloc(&mut self, value: T) -> TypedIndex<T> {
@@ -80,7 +80,7 @@ make_contains!(definitions, Definition, Definition, DefinitionId);
 make_contains!(literals, Literal, Literal, LiteralId);
 
 impl Ast {
-    fn make_node<T, F: FnOnce(NodeId) -> T>(&mut self, value: F, location: Location) -> NodeId where Self: Contains<T> {
+    pub fn make_node<T, F: FnOnce(NodeId) -> T>(&mut self, value: F, location: Location) -> NodeId where Self: Contains<T> {
         let node_id = TypedIndex::next(&self.nodes)
             .expect("Should never have that many AstNodes..."); // Reserve it...
         let value_id = self.alloc(value(node_id));
@@ -93,10 +93,10 @@ impl Ast {
         assert_eq!(node_id, new_node_id);
         new_node_id
     }
-    fn set_root(&mut self, new_root: NodeId) {
+    pub fn set_root(&mut self, new_root: NodeId) {
         self.roots.push(new_root);
     }
-    fn register_str(&mut self, name: String) -> StrId {
+    pub fn register_str(&mut self, name: String) -> StrId {
         let mut hasher = fxhash::FxHasher::default();
         name.hash(&mut hasher);
         let str_hash = hasher.finish();

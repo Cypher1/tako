@@ -33,14 +33,14 @@ impl Token {
     #[allow(dead_code)] // TODO:: REMOVE!
     fn get_str<'a>(&self, source: &'a str) -> &'a str {
         // Assuming the token is from the source file...
-        &source[self.start as usize..self.start as usize + *self.length as usize]
+        &source[self.start as usize..self.start as usize + self.length as usize]
     }
 }
 
 impl fmt::Debug for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // TODO: Look up the token to get the contents?
-        write!(f, "{:?}({:?} @ {})", self.kind, self.source, self.start)
+        write!(f, "{:?}({}..{})", self.kind, self.start, self.start+self.length)
     }
 }
 
@@ -196,7 +196,7 @@ pub fn lex_head(characters: &mut Characters) -> Token {
                 break; // reached the end of the quote.
             }
             if chr == '\\' {
-                characters.next() // Skip escaped quotes.
+                characters.next(); // Skip escaped quotes.
             }
         }
         // Pass the quote
@@ -205,12 +205,11 @@ pub fn lex_head(characters: &mut Characters) -> Token {
     let length = characters
                 .index()
                 .checked_sub(characters.start())
-                .expect("Token should finish after it starts") as SymbolLength,
+                .expect("Token should finish after it starts") as SymbolLength;
     Token {
         start: characters.start() as u32,
-        length: characters.index() - characters.start() as u32,
+        length,
         kind,
-        source,
     }
 }
 
