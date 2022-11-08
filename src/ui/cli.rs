@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use tokio::sync::mpsc;
 use super::UserInterface;
 use crate::{Request, UserAction, tasks::TaskManagerRegistration};
@@ -5,26 +6,15 @@ use crate::{Request, UserAction, tasks::TaskManagerRegistration};
 // use crate::compiler_tasks::Progress;
 
 #[derive(Debug)]
-pub struct Cli {
-    task_manager_registration: mpsc::UnboundedReceiver<TaskManagerRegistration>,
-    user_action_receiver: mpsc::UnboundedReceiver<UserAction>,
-    request_sender: mpsc::UnboundedSender<Request>,
-}
+pub struct Cli {}
 
-impl Cli {
-}
-
+#[async_trait]
 impl UserInterface for Cli {
-    fn launch(
+    async fn launch(
         task_manager_registration: mpsc::UnboundedReceiver<TaskManagerRegistration>,
         user_action_receiver: mpsc::UnboundedReceiver<UserAction>,
         request_sender: mpsc::UnboundedSender<Request>,
-    ) -> Self {
-        Self {
-            task_manager_registration,
-            user_action_receiver,
-            request_sender,
-        }
+    ) {
     }
     /*
     fn report_error(&mut self, _error_id: ErrorId, error: &Error) {

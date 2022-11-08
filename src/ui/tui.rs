@@ -1,52 +1,27 @@
+use async_trait::async_trait;
 use tokio::sync::mpsc;
 use super::UserInterface;
 use crate::{Request, UserAction, tasks::TaskManagerRegistration};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
-use log::info;
 use shutdown_hooks::add_shutdown_hook;
-use std::sync::{Arc, Mutex};
 
 extern "C" fn shutdown() {
     let _discard = disable_raw_mode();
 }
 
 #[derive(Debug)]
-pub struct ProgressStats {
-    _num_successful: usize,
-    _num_finished: usize,
-    _num_total: usize,
-}
+pub struct Tui {}
 
-#[derive(Debug)]
-pub struct TUIState {
-    messages: Vec<String>, // TODO: A structured message type
-    rerender: bool,
-    progress_stats: Option<ProgressStats>,
-}
-
-#[derive(Debug)]
-pub struct Tui {
-    state: Arc<Mutex<TUIState>>,
-}
-
-impl Tui {
-}
-
+#[async_trait]
 impl UserInterface for Tui {
-    fn launch(
-        _task_manager_registration: mpsc::UnboundedReceiver<TaskManagerRegistration>,
-        _user_action_receiver: mpsc::UnboundedReceiver<UserAction>,
-        _request_sender: mpsc::UnboundedSender<Request>,
-    ) -> Self {
+    async fn launch(
+        task_manager_registration: mpsc::UnboundedReceiver<TaskManagerRegistration>,
+        user_action_receiver: mpsc::UnboundedReceiver<UserAction>,
+        request_sender: mpsc::UnboundedSender<Request>,
+    ) {
         add_shutdown_hook(shutdown);
         enable_raw_mode().expect("TUI failed to enable raw mode");
-        Self {
-            state: Arc::new(Mutex::new(TUIState {
-                messages: Vec::new(),
-                rerender: true,
-                progress_stats: None,
-            })),
-        }
+        // TODO: Setup the render tick...
     }
     /*
     fn report_error(&mut self, _error_id: ErrorId, error: &Error) {
@@ -73,40 +48,6 @@ impl UserInterface for Tui {
         state.rerender = true;
     }
     */
-}
-
-impl Tui {
-    #[allow(unused)]
-    fn print_stuff(&self) {
-        let state = self.state.lock().expect("Get state");
-        match &state.progress_stats {
-            None => {
-                eprintln!("Waiting on job status.");
-            }
-            Some(stats) => match stats {
-                ProgressStats {
-                    _num_successful: _,
-                    _num_finished: _,
-                    _num_total: 0,
-                } => eprintln!("No tasks."),
-                ProgressStats {
-                    _num_successful,
-                    _num_finished,
-                    _num_total,
-                } => {
-                    let failed = _num_finished - _num_successful;
-                    let s = if *_num_total == 1 { "" } else { "s" };
-                    if _num_successful == _num_total {
-                        info!("Finished all {_num_total} job{s}.")
-                    } else if failed == 0 {
-                        info!("Finished {_num_successful}/{_num_total} job{s}.")
-                    } else {
-                        info!("Finished {_num_successful}/{_num_total} job{s}. {failed} failed or cancelled.")
-                    }
-                }
-            },
-        }
-    }
 }
 
 /*
