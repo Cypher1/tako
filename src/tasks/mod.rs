@@ -13,7 +13,15 @@ use tokio::sync::{mpsc, RwLock};
 
 use status::*;
 use task_trait::*;
-use crate::ui::UiReport;
+
+#[derive(Debug, Clone)]
+pub enum StatusReport {
+    ShuttingDown(TaskKind),
+    StatsUpdate {
+        kind: TaskKind,
+        stats: TaskStats,
+    }
+}
 
 // TODO: Add timing information, etc.
 // TODO: Support re-running multiple times for stability testing.
@@ -22,7 +30,15 @@ use crate::ui::UiReport;
 // This should be the pre-computed hash, to avoid sending and cloning tasks.
 pub type TaskResults<T> = HashMap<T, TaskStatus<<T as Task>::Output, Error>>;
 
-#[derive(Default, Debug)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TaskKind {
+    Request,
+    LoadFile,
+    LexFile,
+    ParseFile,
+}
+
+#[derive(Default, Debug, Clone)]
 pub struct TaskStats {
     num_requests: u32,
     total_num_results: u32,
@@ -42,7 +58,7 @@ pub struct ManagerConfig {
 pub struct TaskManager<T: Debug + Task> {
     result_store: Arc<Mutex<TaskResults<T>>>,
     task_receiver: TaskReceiverFor<T>,
-    ui_report_sender: mpsc::UnboundedSender<UiReport>,
+    status_report_sender: mpsc::UnboundedSender<StatusReport>,
     result_sender: TaskSenderFor<T>,
     // status_sender: mpsc::Sender<ManagerStats>,
     stats: Arc<Mutex<TaskStats>>,
@@ -60,14 +76,14 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
     pub fn new(
         task_receiver: TaskReceiverFor<T>,
         result_sender: TaskSenderFor<T>,
-        ui_report_sender: mpsc::UnboundedSender<UiReport>,
+        status_report_sender: mpsc::UnboundedSender<StatusReport>,
         config: ManagerConfig,
     ) -> Self {
         Self {
             result_store: Arc::new(Mutex::new(TaskResults::new())),
             task_receiver,
             result_sender,
-            ui_report_sender,
+            status_report_sender,
             stats: Arc::new(Mutex::new(TaskStats::default())),
             config: Arc::new(RwLock::new(config)),
         }
@@ -212,16 +228,15 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
                 task.perform(result_or_error_sender).await;
             });
         }
+        self.status_report_sender.send(StatusReport::ShuttingDown(<T as Task>::TASK_KIND)).expect("status_report_sender should shut down last");
+        let stats = self
+            .stats
+            .lock()
+            .expect("Should be able to get task stats store");
+        self.status_report_sender.send(StatusReport::StatsUpdate { kind: <T as Task>::TASK_KIND, stats: stats.clone() }).expect("status_report_sender should shut down last");
         trace!(
             "{} no more tasks... Finishing run_loop: {}",
-            Self::task_name(),
-            {
-                let stats = self
-                    .stats
-                    .lock()
-                    .expect("Should be able to get task stats store");
-                format!("{:?}", &stats)
-            }
+            Self::task_name(), format!("{:?}", &stats)
         );
     }
 }
@@ -253,13 +268,13 @@ impl TaskSet {
     pub fn new(
         launch_receiver: TaskReceiverFor<Request>,
         result_sender: TaskSenderFor<ParseFileTask>,
-        ui_report_sender: mpsc::UnboundedSender<UiReport>,
+        status_report_sender: mpsc::UnboundedSender<StatusReport>,
     ) -> Self {
         let (load_file_sender, load_file_receiver) = mpsc::unbounded_channel();
         let request_tasks = TaskManager::<Request>::new(
             launch_receiver,
             load_file_sender,
-            ui_report_sender.clone(),
+            status_report_sender.clone(),
             ManagerConfig::default(),
         );
 
@@ -267,7 +282,7 @@ impl TaskSet {
         let load_file_tasks = TaskManager::<LoadFileTask>::new(
             load_file_receiver,
             lex_file_sender,
-            ui_report_sender.clone(),
+            status_report_sender.clone(),
             ManagerConfig::default(),
         );
 
@@ -275,13 +290,13 @@ impl TaskSet {
         let lex_file_tasks = TaskManager::<LexFileTask>::new(
             lex_file_receiver,
             parse_file_sender,
-            ui_report_sender.clone(),
+            status_report_sender.clone(),
             ManagerConfig::default(),
         );
         let parse_file_tasks = TaskManager::<ParseFileTask>::new(
             parse_file_receiver,
             result_sender,
-            ui_report_sender,
+            status_report_sender,
             ManagerConfig::default(),
         );
 
@@ -329,7 +344,7 @@ pub enum Request {
 #[async_trait]
 impl Task for Request {
     type Output = LoadFileTask;
-    const TASK_KIND: TaskKind = TaskKind::Launch;
+    const TASK_KIND: TaskKind = TaskKind::Request;
 
     async fn perform(self, result_sender: UpdateSender<Self, Self::Output>) {
         match &self {
@@ -447,12 +462,4 @@ impl Task for ParseFileTask {
             ))
             .expect("Should be able to send task result to manager");
     }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum TaskKind {
-    Launch,
-    LoadFile,
-    LexFile,
-    ParseFile,
 }

@@ -1,5 +1,5 @@
 use tokio::sync::mpsc;
-use crate::tasks::Request;
+use crate::tasks::{StatusReport, Request};
 
 mod cli;
 mod tui;
@@ -13,11 +13,6 @@ pub enum UserAction {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum UiReport {
-    DidSomethingWorthTellingTheUserAbout,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum UiMode {
     Cli,
     Tui,
@@ -27,7 +22,7 @@ pub trait UserInterface: std::fmt::Debug {
 
     fn launch(
         &mut self,
-        _ui_report_receiver: mpsc::UnboundedReceiver<UiReport>,
+        _status_report_receiver: mpsc::UnboundedReceiver<StatusReport>,
         _user_action_receiver: mpsc::UnboundedReceiver<UserAction>,
         _request_sender: mpsc::UnboundedSender<Request>,
     ) {
