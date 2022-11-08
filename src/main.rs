@@ -4,10 +4,10 @@ use log::{error, trace};
 use std::env;
 use tokio::sync::mpsc;
 
-use takolib::ui::UserAction;
 use takolib::cli_options::Options;
 use takolib::start;
 use takolib::tasks::Request;
+use takolib::ui::UserAction;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -22,23 +22,36 @@ async fn main() -> Result<()> {
     let (status_report_sender, status_report_receiver) = mpsc::unbounded_channel();
     let (user_action_sender, user_action_receiver) = mpsc::unbounded_channel();
     let (request_sender, request_receiver) = mpsc::unbounded_channel();
-    use takolib::ui::{UiMode, Cli, Tui};
     use takolib::launch_ui;
+    use takolib::ui::{Cli, Tui, UiMode};
     let _ui = match options.ui_mode {
-        UiMode::Cli => launch_ui(Cli::new(), status_report_receiver, user_action_receiver, request_sender.clone()),
-        UiMode::Tui => launch_ui(Tui::new(), status_report_receiver, user_action_receiver, request_sender.clone()),
+        UiMode::Cli => launch_ui(
+            Cli::new(),
+            status_report_receiver,
+            user_action_receiver,
+            request_sender.clone(),
+        ),
+        UiMode::Tui => launch_ui(
+            Tui::new(),
+            status_report_receiver,
+            user_action_receiver,
+            request_sender.clone(),
+        ),
     };
     let compiler = start(status_report_sender, request_receiver);
 
     request_sender
-        .send(Request::Launch { files: options.files })
+        .send(Request::Launch {
+            files: options.files,
+        })
         .expect("Should be able to send launch task"); // Launch the cli task.
                                                        //
     trace!("Started");
 
     tokio::spawn(async move {
         trace!("main: Waiting for user actions...");
-        user_action_sender.send(UserAction::Something)
+        user_action_sender
+            .send(UserAction::Something)
             .expect("Should be able to send user action to ui");
     });
 
