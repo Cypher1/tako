@@ -15,8 +15,8 @@ pub mod tokens;
 pub mod ui;
 
 use crate::error::TError;
-use crate::tasks::{Request, TaskSet, StatusReport};
-use crate::ui::{UserInterface, UserAction};
+use crate::tasks::{Request, StatusReport, TaskSet};
+use crate::ui::{UserAction, UserInterface};
 use log::trace;
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
@@ -60,7 +60,10 @@ pub fn launch_ui<T: UserInterface + Send + 'static>(
     Arc::new(Mutex::new(value))
 }
 
-pub async fn start(ui_report_sender: mpsc::UnboundedSender<StatusReport>, request_receiver: mpsc::UnboundedReceiver<Request>) -> Result<(), TError> {
+pub async fn start(
+    ui_report_sender: mpsc::UnboundedSender<StatusReport>,
+    request_receiver: mpsc::UnboundedReceiver<Request>,
+) -> Result<(), TError> {
     let mut result_receiver = {
         let (result_sender, result_receiver) = mpsc::unbounded_channel();
 

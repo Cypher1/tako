@@ -1,9 +1,9 @@
 use super::UserInterface;
 
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
+use log::{error, info};
 use shutdown_hooks::add_shutdown_hook;
 use std::sync::{Arc, Mutex};
-use log::{error, info};
 
 extern "C" fn shutdown() {
     let _discard = disable_raw_mode();

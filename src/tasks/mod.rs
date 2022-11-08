@@ -17,10 +17,7 @@ use task_trait::*;
 #[derive(Debug, Clone)]
 pub enum StatusReport {
     ShuttingDown(TaskKind),
-    StatsUpdate {
-        kind: TaskKind,
-        stats: TaskStats,
-    }
+    StatsUpdate { kind: TaskKind, stats: TaskStats },
 }
 
 // TODO: Add timing information, etc.
@@ -228,15 +225,23 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
                 task.perform(result_or_error_sender).await;
             });
         }
-        self.status_report_sender.send(StatusReport::ShuttingDown(<T as Task>::TASK_KIND)).expect("status_report_sender should shut down last");
+        self.status_report_sender
+            .send(StatusReport::ShuttingDown(<T as Task>::TASK_KIND))
+            .expect("status_report_sender should shut down last");
         let stats = self
             .stats
             .lock()
             .expect("Should be able to get task stats store");
-        self.status_report_sender.send(StatusReport::StatsUpdate { kind: <T as Task>::TASK_KIND, stats: stats.clone() }).expect("status_report_sender should shut down last");
+        self.status_report_sender
+            .send(StatusReport::StatsUpdate {
+                kind: <T as Task>::TASK_KIND,
+                stats: stats.clone(),
+            })
+            .expect("status_report_sender should shut down last");
         trace!(
             "{} no more tasks... Finishing run_loop: {}",
-            Self::task_name(), format!("{:?}", &stats)
+            Self::task_name(),
+            format!("{:?}", &stats)
         );
     }
 }
@@ -340,7 +345,6 @@ pub enum Request {
     Launch { files: Vec<String> },
 }
 
-
 #[async_trait]
 impl Task for Request {
     type Output = LoadFileTask;
@@ -349,13 +353,13 @@ impl Task for Request {
     async fn perform(self, result_sender: UpdateSender<Self, Self::Output>) {
         match &self {
             Request::Launch { files } => {
-            for path in files {
-                result_sender
-                    .send((
-                        self.clone(),
-                        Update::NextResult(LoadFileTask { path: path.clone() }),
-                    ))
-                    .expect("Should be able to send task result to manager");
+                for path in files {
+                    result_sender
+                        .send((
+                            self.clone(),
+                            Update::NextResult(LoadFileTask { path: path.clone() }),
+                        ))
+                        .expect("Should be able to send task result to manager");
                 }
             }
         }
