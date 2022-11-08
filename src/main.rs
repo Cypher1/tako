@@ -25,14 +25,12 @@ async fn main() -> Result<()> {
     use takolib::launch_ui;
     use takolib::ui::{Cli, Tui, UiMode};
     let _ui = match options.ui_mode {
-        UiMode::Cli => launch_ui(
-            Cli::new(),
+        UiMode::Cli => launch_ui::<Cli>(
             task_manager_registration_receiver,
             user_action_receiver,
             request_sender.clone(),
         ),
-        UiMode::Tui => launch_ui(
-            Tui::new(),
+        UiMode::Tui => launch_ui::<Tui>(
             task_manager_registration_receiver,
             user_action_receiver,
             request_sender.clone(),

@@ -1,5 +1,6 @@
+use tokio::sync::mpsc;
 use super::UserInterface;
-
+use crate::{Request, UserAction, tasks::TaskManagerRegistration};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use log::info;
 use shutdown_hooks::add_shutdown_hook;
@@ -16,20 +17,27 @@ pub struct ProgressStats {
     _num_total: usize,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct TUIState {
     messages: Vec<String>, // TODO: A structured message type
     rerender: bool,
     progress_stats: Option<ProgressStats>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Tui {
     state: Arc<Mutex<TUIState>>,
 }
 
 impl Tui {
-    pub fn new() -> Self {
+}
+
+impl UserInterface for Tui {
+    fn launch(
+        _task_manager_registration: mpsc::UnboundedReceiver<TaskManagerRegistration>,
+        _user_action_receiver: mpsc::UnboundedReceiver<UserAction>,
+        _request_sender: mpsc::UnboundedSender<Request>,
+    ) -> Self {
         add_shutdown_hook(shutdown);
         enable_raw_mode().expect("TUI failed to enable raw mode");
         Self {
@@ -40,9 +48,6 @@ impl Tui {
             })),
         }
     }
-}
-
-impl UserInterface for Tui {
     /*
     fn report_error(&mut self, _error_id: ErrorId, error: &Error) {
         error!("Error: {error:?}");
