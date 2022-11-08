@@ -1,5 +1,5 @@
 use super::UserInterface;
-use log::{error, info};
+
 // use crate::compiler_tasks::Progress;
 
 #[derive(Debug, Default)]
