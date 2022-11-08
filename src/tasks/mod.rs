@@ -5,7 +5,7 @@ use crate::ast::Ast;
 use crate::error::Error;
 use crate::tokens::Token;
 use async_trait::async_trait;
-use log::trace;
+use log::{trace, warn};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
@@ -290,10 +290,12 @@ impl TaskSet {
             status_report_sender,
             config,
         );
-        registration_sender.send(TaskManagerRegistration {
+        if let Err(err) = registration_sender.send(TaskManagerRegistration {
             kind: T::TASK_KIND,
             status_report_receiver,
-        }).expect("Should be able to register task manager");
+        }) {
+            warn!("Couldn't register task manager to UI: {}", err);
+        }
         manager
     }
 
