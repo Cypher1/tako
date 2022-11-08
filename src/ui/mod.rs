@@ -1,4 +1,5 @@
 use tokio::sync::mpsc;
+use crate::tasks::Request;
 
 mod cli;
 mod tui;
@@ -14,11 +15,6 @@ pub enum UserAction {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum UiReport {
     DidSomethingWorthTellingTheUserAbout,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Request {
-    Rerun,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

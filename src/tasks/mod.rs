@@ -2,7 +2,6 @@ mod manager;
 mod status;
 mod task_trait;
 use crate::ast::Ast;
-use crate::cli_options::Options;
 use crate::error::Error;
 use crate::tokens::Token;
 use async_trait::async_trait;
@@ -231,7 +230,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
 pub struct TaskSet {
     // TODO: Track the jobs that are being done...
     // Invalidate these if
-    request_tasks: TaskManager<LaunchTask>,
+    request_tasks: TaskManager<Request>,
     load_file_tasks: TaskManager<LoadFileTask>,
     lex_file_tasks: TaskManager<LexFileTask>,
     parse_file_tasks: TaskManager<ParseFileTask>,
@@ -252,13 +251,12 @@ pub struct TaskSet {
 
 impl TaskSet {
     pub fn new(
-        launch_receiver: TaskReceiverFor<LaunchTask>,
+        launch_receiver: TaskReceiverFor<Request>,
         result_sender: TaskSenderFor<ParseFileTask>,
         ui_report_sender: mpsc::UnboundedSender<UiReport>,
-        _options: Arc<Mutex<Options>>,
     ) -> Self {
         let (load_file_sender, load_file_receiver) = mpsc::unbounded_channel();
-        let request_tasks = TaskManager::<LaunchTask>::new(
+        let request_tasks = TaskManager::<Request>::new(
             launch_receiver,
             load_file_sender,
             ui_report_sender.clone(),
@@ -318,28 +316,33 @@ impl TaskSet {
     }
 }
 
-/// LaunchTask represents the task of responding to a set of command line arguments, a request to
+/// Request represents the task of responding to a set of command line arguments, a request to
 /// a compiler daemon (or possibly a response to a file watcher notifying of a change).
 ///
 /// There's normally only one of these, but it seems elegant to have these fit into the `Task` model.
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct LaunchTask {
-    pub files: Vec<String>,
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Request {
+    Launch { files: Vec<String> },
 }
 
+
 #[async_trait]
-impl Task for LaunchTask {
+impl Task for Request {
     type Output = LoadFileTask;
     const TASK_KIND: TaskKind = TaskKind::Launch;
 
     async fn perform(self, result_sender: UpdateSender<Self, Self::Output>) {
-        for path in &self.files {
-            result_sender
-                .send((
-                    self.clone(),
-                    Update::NextResult(LoadFileTask { path: path.clone() }),
-                ))
-                .expect("Should be able to send task result to manager");
+        match &self {
+            Request::Launch { files } => {
+            for path in files {
+                result_sender
+                    .send((
+                        self.clone(),
+                        Update::NextResult(LoadFileTask { path: path.clone() }),
+                    ))
+                    .expect("Should be able to send task result to manager");
+                }
+            }
         }
         result_sender
             .send((self, Update::Complete))
