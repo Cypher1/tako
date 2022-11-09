@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use std::collections::HashMap;
 use std::fmt::Debug;
 
-use tokio::sync::{mpsc, watch};
+use tokio::sync::mpsc;
 
 use manager::{ManagerConfig, TaskManager};
 pub use manager::{StatusReport, TaskStats};
@@ -61,8 +61,6 @@ impl TaskSet {
         stats_sender: mpsc::UnboundedSender<StatusReport>,
         config: ManagerConfig,
     ) -> TaskManager<T> {
-        let (status_report_sender, status_report_receiver) =
-            watch::channel(StatusReport::new(<T as Task>::TASK_KIND));
         TaskManager::<T>::new(task_receiver, result_sender, stats_sender, config)
     }
 
