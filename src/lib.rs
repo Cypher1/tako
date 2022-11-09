@@ -24,6 +24,8 @@ use crate::ui::{UserAction, UserInterface};
 use tasks::StatusReport;
 use tokio::sync::{broadcast, mpsc};
 
+use log::error;
+
 static mut LOGS_UNINITIALISED: bool = true;
 
 pub fn build_logger(finish: impl FnOnce(&mut env_logger::Builder)) {
@@ -65,7 +67,9 @@ pub async fn launch_ui<T: UserInterface + Send + 'static>(
         request_sender,
         stats_requester,
     )
-    .await;
+    .await.unwrap_or_else(|err| {
+        error!("Error in UI: {}", err);
+    });
 }
 
 pub async fn start(
