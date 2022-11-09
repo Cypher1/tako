@@ -28,6 +28,7 @@ pub trait UserInterface: std::fmt::Debug {
         _user_action_receiver: mpsc::UnboundedReceiver<UserAction>,
         _request_sender: Option<mpsc::UnboundedSender<Request>>,
         stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
-    ) -> std::io::Result<()> where
+    ) -> std::io::Result<()>
+    where
         Self: Sized;
 }

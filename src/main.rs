@@ -48,7 +48,7 @@ async fn main() -> Result<()> {
         }
         _ => todo!(),
     };
-    let ui_task = {
+    let _ui_task = {
         let stats_requester = stats_requester.clone();
         let ui_mode = options.ui_mode;
         tokio::spawn(async move {

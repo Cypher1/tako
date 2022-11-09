@@ -19,12 +19,14 @@ use shutdown_hooks::add_shutdown_hook;
 use crokey::{key, KeyEventFormat};
 use std::{
     io::{stdout, Write},
-    thread,
-    time::{Duration, Instant},
+    time::Duration,
 };
 use tokio::{
     self,
-    sync::{broadcast, mpsc::{self, error::TryRecvError}},
+    sync::{
+        broadcast,
+        mpsc::{self, error::TryRecvError},
+    },
 };
 
 extern "C" fn shutdown() {
