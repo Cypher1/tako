@@ -19,8 +19,7 @@ async fn main() -> Result<()> {
     let options = Options::new(args);
     debug!("Options: {options:#?}");
 
-    let (task_manager_status_sender, task_manager_status_receiver) =
-        mpsc::unbounded_channel();
+    let (task_manager_status_sender, task_manager_status_receiver) = mpsc::unbounded_channel();
     let (user_action_sender, user_action_receiver) = mpsc::unbounded_channel();
     let (request_sender, request_receiver) = mpsc::unbounded_channel();
 

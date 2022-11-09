@@ -1,5 +1,8 @@
 use super::UserInterface;
-use crate::{tasks::{TaskStats, TaskKind, StatusReport}, Request, UserAction};
+use crate::{
+    tasks::{StatusReport, TaskKind, TaskStats},
+    Request, UserAction,
+};
 use async_trait::async_trait;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use shutdown_hooks::add_shutdown_hook;

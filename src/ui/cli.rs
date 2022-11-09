@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use super::UserInterface;
-use crate::{Request, UserAction, tasks::StatusReport};
+use crate::{tasks::StatusReport, Request, UserAction};
 use async_trait::async_trait;
 use tokio::sync::mpsc;
 

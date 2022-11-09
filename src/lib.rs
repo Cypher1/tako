@@ -18,7 +18,7 @@ use crate::error::TError;
 use crate::tasks::{Request, TaskSet};
 use crate::ui::{UserAction, UserInterface};
 use log::trace;
-use tasks::{TaskStats, TaskKind, StatusReport};
+use tasks::{StatusReport, TaskKind, TaskStats};
 use tokio::sync::mpsc;
 
 static mut LOGS_UNINITIALISED: bool = true;
@@ -55,12 +55,7 @@ pub async fn launch_ui<T: UserInterface + Send + 'static>(
     user_action_receiver: mpsc::UnboundedReceiver<UserAction>,
     request_sender: mpsc::UnboundedSender<Request>,
 ) {
-    <T as UserInterface>::launch(
-        task_manager_stats,
-        user_action_receiver,
-        request_sender,
-    )
-    .await;
+    <T as UserInterface>::launch(task_manager_stats, user_action_receiver, request_sender).await;
 }
 
 pub async fn start(

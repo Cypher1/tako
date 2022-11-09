@@ -11,9 +11,9 @@ use std::fmt::Debug;
 
 use tokio::sync::{mpsc, watch};
 
-pub use manager::{TaskStats, StatusReport};
-pub use status::*;
 use manager::{ManagerConfig, TaskManager};
+pub use manager::{StatusReport, TaskStats};
+pub use status::*;
 use task_trait::*;
 
 // TODO: Add timing information, etc.
