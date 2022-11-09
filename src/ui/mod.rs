@@ -1,13 +1,9 @@
-use std::collections::HashMap;
-
-use crate::tasks::{Request, TaskKind, TaskManagerRegistration};
+use crate::tasks::{Request, TaskKind, TaskStats, StatusReport};
 use async_trait::async_trait;
 use tokio::sync::mpsc;
 
 mod cli;
 mod tui;
-
-pub type Registrations = HashMap<TaskKind, TaskManagerRegistration>;
 
 pub use cli::Cli;
 pub use tui::Tui;
@@ -26,7 +22,7 @@ pub enum UiMode {
 #[async_trait]
 pub trait UserInterface: std::fmt::Debug {
     async fn launch(
-        _task_manager_registration: mpsc::UnboundedReceiver<TaskManagerRegistration>,
+        task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
         _user_action_receiver: mpsc::UnboundedReceiver<UserAction>,
         _request_sender: mpsc::UnboundedSender<Request>,
     ) where

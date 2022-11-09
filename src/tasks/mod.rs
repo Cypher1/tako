@@ -11,9 +11,9 @@ use std::fmt::Debug;
 
 use tokio::sync::{mpsc, watch};
 
-pub use manager::TaskManagerRegistration;
-use manager::{ManagerConfig, StatusReport, TaskManager};
-use status::*;
+pub use manager::{TaskStats, StatusReport};
+pub use status::*;
+use manager::{ManagerConfig, TaskManager};
 use task_trait::*;
 
 // TODO: Add timing information, etc.
@@ -58,32 +58,24 @@ impl TaskSet {
     pub fn create<T: Task + 'static>(
         task_receiver: TaskReceiverFor<T>,
         result_sender: TaskSenderFor<T>,
-        registration_sender: mpsc::UnboundedSender<TaskManagerRegistration>,
+        stats_sender: mpsc::UnboundedSender<StatusReport>,
         config: ManagerConfig,
     ) -> TaskManager<T> {
         let (status_report_sender, status_report_receiver) =
             watch::channel(StatusReport::new(<T as Task>::TASK_KIND));
-        let manager =
-            TaskManager::<T>::new(task_receiver, result_sender, status_report_sender, config);
-        if let Err(err) = registration_sender.send(TaskManagerRegistration {
-            kind: T::TASK_KIND,
-            status_report_receiver,
-        }) {
-            debug!("Couldn't register task manager to UI: {}", err);
-        }
-        manager
+        TaskManager::<T>::new(task_receiver, result_sender, stats_sender, config)
     }
 
     pub fn new(
         launch_receiver: TaskReceiverFor<Request>,
         result_sender: TaskSenderFor<ParseFileTask>,
-        registration_sender: mpsc::UnboundedSender<TaskManagerRegistration>,
+        stats_sender: mpsc::UnboundedSender<StatusReport>,
     ) -> Self {
         let (load_file_sender, load_file_receiver) = mpsc::unbounded_channel();
         let request_tasks = Self::create::<Request>(
             launch_receiver,
             load_file_sender,
-            registration_sender.clone(),
+            stats_sender.clone(),
             ManagerConfig::default(),
         );
 
@@ -91,7 +83,7 @@ impl TaskSet {
         let load_file_tasks = Self::create::<LoadFileTask>(
             load_file_receiver,
             lex_file_sender,
-            registration_sender.clone(),
+            stats_sender.clone(),
             ManagerConfig::default(),
         );
 
@@ -99,13 +91,13 @@ impl TaskSet {
         let lex_file_tasks = Self::create::<LexFileTask>(
             lex_file_receiver,
             parse_file_sender,
-            registration_sender.clone(),
+            stats_sender.clone(),
             ManagerConfig::default(),
         );
         let parse_file_tasks = Self::create::<ParseFileTask>(
             parse_file_receiver,
             result_sender,
-            registration_sender,
+            stats_sender,
             ManagerConfig::default(),
         );
 

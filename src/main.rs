@@ -19,7 +19,7 @@ async fn main() -> Result<()> {
     let options = Options::new(args);
     debug!("Options: {options:#?}");
 
-    let (task_manager_registration_sender, task_manager_registration_receiver) =
+    let (task_manager_status_sender, task_manager_status_receiver) =
         mpsc::unbounded_channel();
     let (user_action_sender, user_action_receiver) = mpsc::unbounded_channel();
     let (request_sender, request_receiver) = mpsc::unbounded_channel();
@@ -51,7 +51,7 @@ async fn main() -> Result<()> {
             match ui_mode {
                 UiMode::Cli => {
                     launch_ui::<Cli>(
-                        task_manager_registration_receiver,
+                        task_manager_status_receiver,
                         user_action_receiver,
                         request_sender,
                     )
@@ -59,7 +59,7 @@ async fn main() -> Result<()> {
                 }
                 UiMode::Tui => {
                     launch_ui::<Tui>(
-                        task_manager_registration_receiver,
+                        task_manager_status_receiver,
                         user_action_receiver,
                         request_sender,
                     )
@@ -70,7 +70,7 @@ async fn main() -> Result<()> {
     };
 
     let compiler_task = tokio::spawn(async move {
-        let compiler = start(task_manager_registration_sender, request_receiver);
+        let compiler = start(task_manager_status_sender, request_receiver);
         compiler.await.unwrap_or_else(|err| {
             trace!("Internal error: {err:#?}");
             error!("Compiler finished with internal error: {err}");
