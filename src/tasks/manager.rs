@@ -3,7 +3,7 @@ use crate::error::Error;
 use log::{debug, trace};
 use std::collections::HashMap;
 use std::fmt::Debug;
-use tokio::sync::{mpsc, watch};
+use tokio::sync::mpsc;
 
 use super::status::*;
 use super::task_trait::*;
@@ -16,7 +16,7 @@ use super::TaskKind;
 // This should be the pre-computed hash, to avoid sending and cloning tasks.
 pub type TaskResults<T> = HashMap<T, TaskStatus<<T as Task>::Output, Error>>;
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct TaskStats {
     num_requests: u32,
     total_num_results: u32,
@@ -26,16 +26,10 @@ pub struct TaskStats {
     num_succeeded: u32,
 }
 
-#[derive(Debug)]
-pub struct TaskManagerRegistration {
-    pub kind: TaskKind,
-    pub status_report_receiver: watch::Receiver<StatusReport>,
-}
-
 #[derive(Debug, Clone)]
 pub struct StatusReport {
-    kind: TaskKind,
-    stats: TaskStats,
+    pub kind: TaskKind,
+    pub stats: TaskStats,
 }
 
 impl StatusReport {
@@ -57,7 +51,7 @@ pub struct ManagerConfig {
 pub struct TaskManager<T: Task> {
     task_receiver: TaskReceiverFor<T>,
     result_sender: TaskSenderFor<T>,
-    status_report_sender: watch::Sender<StatusReport>,
+    stats_sender: mpsc::UnboundedSender<StatusReport>,
     result_store: TaskResults<T>,
     stats: TaskStats,
     config: ManagerConfig,
@@ -74,13 +68,13 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
     pub fn new(
         task_receiver: TaskReceiverFor<T>,
         result_sender: TaskSenderFor<T>,
-        status_report_sender: watch::Sender<StatusReport>,
+        stats_sender: mpsc::UnboundedSender<StatusReport>,
         config: ManagerConfig,
     ) -> Self {
         Self {
             task_receiver,
             result_sender,
-            status_report_sender,
+            stats_sender,
             result_store: TaskResults::new(),
             stats: TaskStats::default(),
             config,
@@ -198,7 +192,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
                 else => break,
             }
         }
-        self.status_report_sender
+        self.stats_sender
             .send(StatusReport {
                 kind: <T as Task>::TASK_KIND,
                 stats: self.stats.clone(),

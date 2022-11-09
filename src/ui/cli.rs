@@ -1,5 +1,7 @@
+use std::collections::HashMap;
+
 use super::UserInterface;
-use crate::{tasks::TaskManagerRegistration, Request, UserAction};
+use crate::{Request, UserAction, tasks::StatusReport};
 use async_trait::async_trait;
 use tokio::sync::mpsc;
 
@@ -11,10 +13,23 @@ pub struct Cli {}
 #[async_trait]
 impl UserInterface for Cli {
     async fn launch(
-        _task_manager_registration: mpsc::UnboundedReceiver<TaskManagerRegistration>,
-        _user_action_receiver: mpsc::UnboundedReceiver<UserAction>,
+        mut task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
+        mut user_action_receiver: mpsc::UnboundedReceiver<UserAction>,
         _request_sender: mpsc::UnboundedSender<Request>,
     ) {
+        let mut manager_status = HashMap::new();
+        loop {
+            tokio::select! {
+                Some(StatusReport { kind, stats }) = task_manager_status_receiver.recv() => {
+                    eprintln!("TaskManager stats: {:?} => {:?}", kind, stats);
+                    manager_status.insert(kind, stats);
+                },
+                Some(action) = user_action_receiver.recv() => {
+                    eprintln!("User action: {:?}", action);
+                },
+                else => break,
+            }
+        }
     }
     /*
     fn report_error(&mut self, _error_id: ErrorId, error: &Error) {
