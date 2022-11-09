@@ -22,6 +22,7 @@ use crate::ui::{UserAction, UserInterface};
 use log::trace;
 use tasks::StatusReport;
 use tokio::sync::{mpsc, broadcast};
+use crate::ast::Ast;
 
 static mut LOGS_UNINITIALISED: bool = true;
 
@@ -65,9 +66,8 @@ pub async fn start(
     task_manager_stats: mpsc::UnboundedSender<StatusReport>,
     request_receiver: mpsc::UnboundedReceiver<Request>,
     task_manager_stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
-) -> Result<(), TError> {
-    let mut result_receiver = {
-        let (result_sender, result_receiver) = mpsc::unbounded_channel();
+) -> mpsc::UnboundedReceiver<Ast> {
+    let (result_sender, result_receiver) = mpsc::unbounded_channel();
 
         let store = {
             let task_manager_stats_requester = task_manager_stats_requester.lock().expect("TODO");
@@ -75,13 +75,4 @@ pub async fn start(
         }; // Setup!
         store.launch().await; // launches all the jobs.
         result_receiver
-    };
-    // Receive the results...
-    trace!("Waiting for 'final' result...");
-    while let Some(ast) = result_receiver.recv().await {
-        trace!("Receiving 'final' result from compiler: {ast:?}");
-        dbg!(ast);
-    }
-    // All done!
-    Ok(())
 }

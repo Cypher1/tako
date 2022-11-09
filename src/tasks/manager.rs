@@ -27,6 +27,20 @@ pub struct TaskStats {
     num_succeeded: u32,
 }
 
+impl std::fmt::Display for TaskStats {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let TaskStats {
+            num_requests,
+            total_num_results: _,
+            num_already_running,
+            num_cached,
+            num_failed,
+            num_succeeded,
+        } = &self;
+        write!(f, "{num_succeeded}/{num_requests} ({num_cached} cached. {num_succeeded} succeeded. {num_failed} failed. {num_already_running} running when requested.)")
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct StatusReport {
     pub kind: TaskKind,
