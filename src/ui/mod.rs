@@ -1,4 +1,4 @@
-use crate::tasks::{Request, StatusReport, TaskKind, TaskStats};
+use crate::tasks::{Request, StatusReport};
 use async_trait::async_trait;
 use tokio::sync::mpsc;
 

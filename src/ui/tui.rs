@@ -1,8 +1,5 @@
 use super::UserInterface;
-use crate::{
-    tasks::{StatusReport, TaskKind, TaskStats},
-    Request, UserAction,
-};
+use crate::{tasks::StatusReport, Request, UserAction};
 use async_trait::async_trait;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use shutdown_hooks::add_shutdown_hook;
@@ -18,7 +15,7 @@ pub struct Tui {}
 #[async_trait]
 impl UserInterface for Tui {
     async fn launch(
-        task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
+        _task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
         _user_action_receiver: mpsc::UnboundedReceiver<UserAction>,
         _request_sender: mpsc::UnboundedSender<Request>,
     ) {
