@@ -17,10 +17,10 @@ pub mod ui;
 use std::sync::{Arc, Mutex};
 
 use crate::ast::Ast;
-use crate::error::TError;
+
 use crate::tasks::{Request, TaskSet};
 use crate::ui::{UserAction, UserInterface};
-use log::trace;
+
 use tasks::StatusReport;
 use tokio::sync::{broadcast, mpsc};
 

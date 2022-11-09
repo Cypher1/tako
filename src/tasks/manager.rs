@@ -210,7 +210,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
                 _ = self.stats_requester.recv() => {
                     let _ = self.stats_sender.send(StatusReport {
                         kind: <T as Task>::TASK_KIND,
-                        stats: self.stats.clone(),
+                        stats: self.stats,
                     }); // TODO: !?
                 }
                 else => break,
