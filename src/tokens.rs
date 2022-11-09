@@ -1,7 +1,7 @@
 use crate::error::TError;
 use crate::location::{IndexIntoFile, SymbolLength};
-use std::fmt;
 use log::debug;
+use std::fmt;
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum TokenType {
     Op,
