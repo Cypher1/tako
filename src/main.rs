@@ -2,7 +2,8 @@
 use crossterm::Result;
 use log::{debug, error, trace};
 use std::env;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, broadcast};
+use std::sync::{Arc, Mutex};
 
 use takolib::cli_options::{Command, Options};
 use takolib::launch_ui;
@@ -10,6 +11,7 @@ use takolib::start;
 use takolib::tasks::Request;
 use takolib::ui::UserAction;
 use takolib::ui::{Cli, Tui, UiMode};
+
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -22,8 +24,9 @@ async fn main() -> Result<()> {
     let (task_manager_status_sender, task_manager_status_receiver) = mpsc::unbounded_channel();
     let (user_action_sender, user_action_receiver) = mpsc::unbounded_channel();
     let (request_sender, request_receiver) = mpsc::unbounded_channel();
+    let stats_requester = Arc::new(Mutex::new(broadcast::channel(1).0));
 
-    match options.cmd {
+    let request_sender = match options.cmd {
         Command::Repl => {
             trace!("main: Waiting for user actions...");
             user_action_sender
@@ -31,6 +34,7 @@ async fn main() -> Result<()> {
                 .unwrap_or_else(|err| {
                     error!("Ui task has ended: {}", err);
                 });
+            Some(request_sender)
         }
         Command::Build => {
             request_sender
@@ -41,10 +45,12 @@ async fn main() -> Result<()> {
                     error!("Compiler task has ended: {}", err);
                     std::process::exit(1);
                 });
+            None
         }
         _ => todo!(),
-    }
+    };
     let ui_task = {
+        let stats_requester = stats_requester.clone();
         let ui_mode = options.ui_mode;
         tokio::spawn(async move {
             match ui_mode {
@@ -53,6 +59,7 @@ async fn main() -> Result<()> {
                         task_manager_status_receiver,
                         user_action_receiver,
                         request_sender,
+                        stats_requester,
                     )
                     .await
                 }
@@ -61,15 +68,15 @@ async fn main() -> Result<()> {
                         task_manager_status_receiver,
                         user_action_receiver,
                         request_sender,
+                        stats_requester,
                     )
                     .await
                 }
             };
         })
     };
-
     let compiler_task = tokio::spawn(async move {
-        let compiler = start(task_manager_status_sender, request_receiver);
+        let compiler = start(task_manager_status_sender, request_receiver, stats_requester.clone());
         compiler.await.unwrap_or_else(|err| {
             trace!("Internal error: {err:#?}");
             error!("Compiler finished with internal error: {err}");

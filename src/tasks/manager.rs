@@ -1,17 +1,14 @@
 use crate::error::Error;
 
 use log::{debug, trace};
-use tokio::time;
+use tokio::sync::broadcast;
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::time::Duration;
 use tokio::sync::mpsc;
 
 use super::status::*;
 use super::task_trait::*;
 use super::TaskKind;
-
-const TICK: Duration = Duration::from_millis(1000);
 
 // TODO: Add timing information, etc.
 // TODO: Support re-running multiple times for stability testing.
@@ -56,6 +53,7 @@ pub struct TaskManager<T: Task> {
     task_receiver: TaskReceiverFor<T>,
     result_sender: TaskSenderFor<T>,
     stats_sender: mpsc::UnboundedSender<StatusReport>,
+    stats_requester: broadcast::Receiver<()>,
     result_store: TaskResults<T>,
     stats: TaskStats,
     config: ManagerConfig,
@@ -73,12 +71,14 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
         task_receiver: TaskReceiverFor<T>,
         result_sender: TaskSenderFor<T>,
         stats_sender: mpsc::UnboundedSender<StatusReport>,
+        stats_requester: broadcast::Receiver<()>,
         config: ManagerConfig,
     ) -> Self {
         Self {
             task_receiver,
             result_sender,
             stats_sender,
+            stats_requester,
             result_store: TaskResults::new(),
             stats: TaskStats::default(),
             config,
@@ -184,8 +184,6 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
         let (result_or_error_sender, mut result_or_error_receiver) =
             mpsc::unbounded_channel::<(T, Update<T::Output, Error>)>();
 
-        let mut ticker = time::interval(TICK);
-
         loop {
             trace!("{}: Waiting for tasks...", Self::name());
             tokio::select! {
@@ -195,7 +193,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
                 Some(task) = self.task_receiver.recv() => {
                     self.handle_new_task(&result_or_error_sender, task).await;
                 },
-                _ = ticker.tick() => {
+                _ = self.stats_requester.recv() => {
                     let _ = self.stats_sender.send(StatusReport {
                         kind: <T as Task>::TASK_KIND,
                         stats: self.stats.clone(),

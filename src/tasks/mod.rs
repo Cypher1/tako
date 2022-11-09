@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use std::collections::HashMap;
 use std::fmt::Debug;
 
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, broadcast};
 
 use manager::{ManagerConfig, TaskManager};
 pub use manager::{StatusReport, TaskStats};
@@ -59,21 +59,24 @@ impl TaskSet {
         task_receiver: TaskReceiverFor<T>,
         result_sender: TaskSenderFor<T>,
         stats_sender: mpsc::UnboundedSender<StatusReport>,
+        stats_requester: broadcast::Receiver<()>,
         config: ManagerConfig,
     ) -> TaskManager<T> {
-        TaskManager::<T>::new(task_receiver, result_sender, stats_sender, config)
+        TaskManager::<T>::new(task_receiver, result_sender, stats_sender, stats_requester, config)
     }
 
     pub fn new(
         launch_receiver: TaskReceiverFor<Request>,
         result_sender: TaskSenderFor<ParseFileTask>,
         stats_sender: mpsc::UnboundedSender<StatusReport>,
+        stats_requester: &broadcast::Sender<()>,
     ) -> Self {
         let (load_file_sender, load_file_receiver) = mpsc::unbounded_channel();
         let request_tasks = Self::create::<Request>(
             launch_receiver,
             load_file_sender,
             stats_sender.clone(),
+            stats_requester.subscribe(),
             ManagerConfig::default(),
         );
 
@@ -82,6 +85,7 @@ impl TaskSet {
             load_file_receiver,
             lex_file_sender,
             stats_sender.clone(),
+            stats_requester.subscribe(),
             ManagerConfig::default(),
         );
 
@@ -90,12 +94,14 @@ impl TaskSet {
             lex_file_receiver,
             parse_file_sender,
             stats_sender.clone(),
+            stats_requester.subscribe(),
             ManagerConfig::default(),
         );
         let parse_file_tasks = Self::create::<ParseFileTask>(
             parse_file_receiver,
             result_sender,
             stats_sender,
+            stats_requester.subscribe(),
             ManagerConfig::default(),
         );
 

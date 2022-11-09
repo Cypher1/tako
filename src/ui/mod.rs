@@ -1,6 +1,8 @@
+use std::sync::{Mutex, Arc};
+
 use crate::tasks::{Request, StatusReport};
 use async_trait::async_trait;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, broadcast};
 
 mod cli;
 mod tui;
@@ -24,7 +26,8 @@ pub trait UserInterface: std::fmt::Debug {
     async fn launch(
         task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
         _user_action_receiver: mpsc::UnboundedReceiver<UserAction>,
-        _request_sender: mpsc::UnboundedSender<Request>,
+        _request_sender: Option<mpsc::UnboundedSender<Request>>,
+        stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
     ) where
         Self: Sized;
 }
