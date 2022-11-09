@@ -1,3 +1,4 @@
+use log::trace;
 use std::collections::HashMap;
 
 use super::UserInterface;
@@ -66,11 +67,11 @@ impl UserInterface for Tui {
         loop {
             tokio::select! {
                 Some(StatusReport { kind, stats }) = task_manager_status_receiver.recv() => {
-                    eprintln!("TaskManager stats: {kind:?} => {stats:?}");
+                    trace!("TaskManager stats: {kind:?} => {stats:?}");
                     manager_status.insert(kind, stats);
                 },
                 Some(action) = user_action_receiver.recv() => {
-                    eprintln!("User action: {action:?}");
+                    trace!("User action: {action:?}");
                 },
                 _ = ticker.tick() => {
                     let stats_requester = stats_requester.lock().expect("stats requester lock");
@@ -86,7 +87,7 @@ impl UserInterface for Tui {
                                 };
                                 chars = format!("{}{}", chars, key_fmt.to_string(key_event));
                             }
-                            Ok(other) => eprint!("Event: {:?}", other),
+                            Ok(other) => trace!("Event: {:?}", other),
                             Err(TryRecvError::Empty) => break,
                             Err(TryRecvError::Disconnected) => panic!("Key event sender disconnected!?"),
                         }
