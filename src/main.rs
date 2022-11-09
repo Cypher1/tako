@@ -75,8 +75,17 @@ async fn main() -> Result<()> {
             };
         })
     };
-    let compiler_task = tokio::spawn(async move {
-        let compiler = start(task_manager_status_sender, request_receiver, stats_requester.clone());
+    let mut compiler_task = start(task_manager_status_sender, request_receiver, stats_requester.clone()).await;
+
+    // Receive the results...
+    trace!("Waiting for 'final' result...");
+    if let Some(ast) = compiler_task.recv().await {
+        trace!("Receiving 'final' result from compiler: {ast:?}");
+        dbg!(ast);
+    }
+    compiler_task.close();
+    // All done!
+    /*
         compiler.await.unwrap_or_else(|err| {
             trace!("Internal error: {err:#?}");
             error!("Compiler finished with internal error: {err}");
@@ -92,5 +101,6 @@ async fn main() -> Result<()> {
     ui_task
         .await
         .unwrap_or_else(|err| error!("Ui task finished with internal error: {err}"));
+    */
     Ok(())
 }

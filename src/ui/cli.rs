@@ -9,7 +9,6 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::time;
 const TICK: Duration = Duration::from_millis(1000);
-// use crate::compiler_tasks::Progress;
 
 #[derive(Debug)]
 pub struct Cli {}

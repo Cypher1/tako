@@ -1,10 +1,16 @@
+use std::collections::HashMap;
+
 use super::UserInterface;
 use crate::{tasks::StatusReport, Request, UserAction};
 use async_trait::async_trait;
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
-use shutdown_hooks::add_shutdown_hook;
 use tokio::sync::{mpsc, broadcast};
 use std::sync::{Arc, Mutex};
+
+use std::time::Duration;
+use tokio::time;
+const TICK: Duration = Duration::from_millis(1000);
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
+use shutdown_hooks::add_shutdown_hook;
 
 extern "C" fn shutdown() {
     let _discard = disable_raw_mode();
@@ -16,14 +22,32 @@ pub struct Tui {}
 #[async_trait]
 impl UserInterface for Tui {
     async fn launch(
-        _task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
-        _user_action_receiver: mpsc::UnboundedReceiver<UserAction>,
+        mut task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
+        mut user_action_receiver: mpsc::UnboundedReceiver<UserAction>,
+        // User control of the compiler
         _request_sender: Option<mpsc::UnboundedSender<Request>>,
-        _stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
+        stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
     ) {
         add_shutdown_hook(shutdown);
         enable_raw_mode().expect("TUI failed to enable raw mode");
-        // TODO: Setup the render tick...
+        let mut manager_status = HashMap::new();
+        let mut ticker = time::interval(TICK);
+        loop {
+            tokio::select! {
+                Some(StatusReport { kind, stats }) = task_manager_status_receiver.recv() => {
+                    eprintln!("TaskManager stats: {kind:?} => {stats:?}");
+                    manager_status.insert(kind, stats);
+                },
+                Some(action) = user_action_receiver.recv() => {
+                    eprintln!("User action: {action:?}");
+                },
+                _ = ticker.tick() => {
+                    let stats_requester = stats_requester.lock().expect("stats requester lock");
+                    stats_requester.send(()).expect("TODO");
+                }
+                else => break,
+            }
+        }
     }
     /*
     fn report_error(&mut self, _error_id: ErrorId, error: &Error) {
