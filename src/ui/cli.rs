@@ -20,7 +20,7 @@ impl UserInterface for Cli {
         mut task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
         mut user_action_receiver: mpsc::UnboundedReceiver<UserAction>,
         // User control of the compiler
-        request_sender: Option<mpsc::UnboundedSender<Request>>,
+        _request_sender: Option<mpsc::UnboundedSender<Request>>,
         stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
     ) {
         let mut manager_status = HashMap::new();
@@ -36,7 +36,7 @@ impl UserInterface for Cli {
                 },
                 _ = ticker.tick() => {
                     let stats_requester = stats_requester.lock().expect("stats requester lock");
-                    stats_requester.send(());
+                    stats_requester.send(()).expect("TODO");
                 }
                 else => break,
             }

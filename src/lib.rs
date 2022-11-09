@@ -64,12 +64,15 @@ pub async fn launch_ui<T: UserInterface + Send + 'static>(
 pub async fn start(
     task_manager_stats: mpsc::UnboundedSender<StatusReport>,
     request_receiver: mpsc::UnboundedReceiver<Request>,
-    task_manager_stats_requester: &broadcast::Sender<()>,
+    task_manager_stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
 ) -> Result<(), TError> {
     let mut result_receiver = {
         let (result_sender, result_receiver) = mpsc::unbounded_channel();
 
-        let store = TaskSet::new(request_receiver, result_sender, task_manager_stats, task_manager_stats_requester); // Setup!
+        let store = {
+            let task_manager_stats_requester = task_manager_stats_requester.lock().expect("TODO");
+            TaskSet::new(request_receiver, result_sender, task_manager_stats, &*task_manager_stats_requester)
+        }; // Setup!
         store.launch().await; // launches all the jobs.
         result_receiver
     };
