@@ -24,42 +24,6 @@ async fn main() -> Result<()> {
     let (user_action_sender, user_action_receiver) = mpsc::unbounded_channel();
     let (request_sender, request_receiver) = mpsc::unbounded_channel();
 
-    let ui_task = {
-        let ui_mode = options.ui_mode;
-        let request_sender = request_sender.clone();
-        tokio::spawn(async move {
-            match ui_mode {
-                UiMode::Cli => {
-                    launch_ui::<Cli>(
-                        task_manager_registration_receiver,
-                        user_action_receiver,
-                        request_sender.clone(),
-                    )
-                    .await
-                }
-                UiMode::Tui => {
-                    launch_ui::<Tui>(
-                        task_manager_registration_receiver,
-                        user_action_receiver,
-                        request_sender.clone(),
-                    )
-                    .await
-                }
-            };
-        })
-    };
-
-    let compiler_task = tokio::spawn(async move {
-        let compiler = start(task_manager_registration_sender, request_receiver);
-        compiler.await.unwrap_or_else(|err| {
-            trace!("Internal error: {err:#?}");
-            error!("Compiler finished with internal error: {err}");
-            std::process::exit(1);
-        });
-    });
-
-    // Launch the cli task.
-    trace!("Started");
     match options.cmd {
         Command::Repl => {
             trace!("main: Waiting for user actions...");
@@ -81,6 +45,41 @@ async fn main() -> Result<()> {
         }
         _ => todo!(),
     }
+    let ui_task = {
+        let ui_mode = options.ui_mode;
+        tokio::spawn(async move {
+            match ui_mode {
+                UiMode::Cli => {
+                    launch_ui::<Cli>(
+                        task_manager_registration_receiver,
+                        user_action_receiver,
+                        request_sender,
+                    )
+                    .await
+                }
+                UiMode::Tui => {
+                    launch_ui::<Tui>(
+                        task_manager_registration_receiver,
+                        user_action_receiver,
+                        request_sender,
+                    )
+                    .await
+                }
+            };
+        })
+    };
+
+    let compiler_task = tokio::spawn(async move {
+        let compiler = start(task_manager_registration_sender, request_receiver);
+        compiler.await.unwrap_or_else(|err| {
+            trace!("Internal error: {err:#?}");
+            error!("Compiler finished with internal error: {err}");
+            std::process::exit(1);
+        });
+    });
+
+    // Launch the cli task.
+    trace!("Started");
     compiler_task.await.unwrap_or_else(|err|
         error!("Compiler finished with internal error: {err}")
     );
