@@ -7,17 +7,18 @@ use async_trait::async_trait;
 use std::sync::{Arc, Mutex};
 
 use tokio::time;
-const TICK: Duration = Duration::from_millis(1000);
+const STATS_TICK: Duration = Duration::from_millis(1000);
+const UI_TICK: Duration = Duration::from_millis(100);
 use crossterm::{
     cursor::{MoveTo, RestorePosition, SavePosition},
-    event::{self, Event, KeyEvent},
+    event::{self, Event, KeyEvent, KeyCode},
     style::{Color, Print, ResetColor, SetBackgroundColor, SetForegroundColor},
     terminal::{disable_raw_mode, enable_raw_mode, size, Clear, ClearType},
     QueueableCommand, Result,
 };
 use shutdown_hooks::add_shutdown_hook;
 
-use crokey::{key, KeyEventFormat};
+use crokey::{key, KeyEventFormat, as_letter};
 use std::{
     io::{stdout, Write},
     time::Duration,
@@ -34,8 +35,68 @@ extern "C" fn shutdown() {
     let _discard = disable_raw_mode();
 }
 
-#[derive(Debug)]
-pub struct Tui {}
+#[derive(Debug, Default)]
+pub struct Tui {
+    key_fmt: KeyEventFormat,
+    should_exit: bool,
+    input: String,
+    characters: String,
+}
+
+impl Tui {
+    fn render(&self) -> std::io::Result<()> {
+        stdout().queue(Clear(ClearType::All))?;
+        let (cols, rows) = size()?;
+        stdout()
+            .queue(SetForegroundColor(Color::Red))?
+            .queue(SetBackgroundColor(Color::Blue))?
+            .queue(MoveTo(0, 2))?
+            .queue(Print("Styled text here."))?
+            .queue(MoveTo(0, 3))?
+            .queue(Print(&format!("Size: {},{}", &rows, &cols)))?
+            .queue(SetForegroundColor(Color::White))?
+            .queue(SetBackgroundColor(Color::Black))?
+            .queue(MoveTo(0, 4))?
+            .queue(MoveTo(0, 5))?
+            .queue(Print(&format!(">> {}.", self.input)))?;
+        stdout()
+            .queue(ResetColor)?
+            .queue(RestorePosition)?;
+        stdout().flush()?;
+        if self.should_exit {
+            stdout().queue(Clear(ClearType::All))?;
+            stdout().flush()?;
+            std::process::exit(0)
+        }
+        Ok(())
+    }
+
+    fn handle_event(&mut self, event: Event) -> std::io::Result<()> {
+        let mut characters = "".to_string();
+        match event {
+            Event::Key(key_event) => {
+                match key_event {
+                    key!(ctrl-c) | key!(ctrl-q) => self.should_exit = true,
+                    key!(Backspace) => {
+                        self.input.pop(); // Discard
+                    }
+                    KeyEvent { code: KeyCode::Char(letter), modifiers: _ } => {
+                        self.input.push(letter);
+                    }
+                    _ => {
+                        // discard 
+                    },
+                };
+                characters = format!("{}{}", characters, self.key_fmt.to_string(key_event));
+            }
+            other => trace!("Event: {:?}", other),
+        }
+        if !characters.is_empty() {
+            self.characters = characters;
+        }
+        Ok(())
+    }
+}
 
 #[async_trait]
 impl UserInterface for Tui {
@@ -46,10 +107,12 @@ impl UserInterface for Tui {
         _request_sender: Option<mpsc::UnboundedSender<Request>>,
         stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
     ) -> std::io::Result<()> {
+        let mut tui = Self::default();
         add_shutdown_hook(shutdown);
         enable_raw_mode().expect("TUI failed to enable raw mode");
         let mut manager_status = HashMap::new();
-        let mut ticker = time::interval(TICK);
+        let mut stats_ticker = time::interval(STATS_TICK);
+        let mut ui_update_ticker = time::interval(UI_TICK);
 
         let (tx_event, mut rx_event) = mpsc::channel(100);
 
@@ -62,8 +125,6 @@ impl UserInterface for Tui {
             }
         });
 
-        let key_fmt = KeyEventFormat::default();
-        let mut should_exit = false;
         loop {
             tokio::select! {
                 Some(StatusReport { kind, stats }) = task_manager_status_receiver.recv() => {
@@ -73,31 +134,19 @@ impl UserInterface for Tui {
                 Some(action) = user_action_receiver.recv() => {
                     trace!("User action: {action:?}");
                 },
-                _ = ticker.tick() => {
+                _ = stats_ticker.tick() => {
                     let stats_requester = stats_requester.lock().expect("stats requester lock");
                     stats_requester.send(()).expect("TODO");
-
-                    let mut chars = "".to_string();
+                }
+                _ = ui_update_ticker.tick() => {
                     loop {
                         match rx_event.try_recv() {
-                            Ok(Event::Key(key_event)) => {
-                                match key_event {
-                                    key!(ctrl-c) | key!(ctrl-q) => should_exit = true,
-                                    _ => {}
-                                };
-                                chars = format!("{}{}", chars, key_fmt.to_string(key_event));
-                            }
-                            Ok(other) => trace!("Event: {:?}", other),
+                            Ok(event) => tui.handle_event(event)?,
                             Err(TryRecvError::Empty) => break,
                             Err(TryRecvError::Disconnected) => panic!("Key event sender disconnected!?"),
                         }
                     }
-                    eprintln!("Chars: {}", chars);
-                    if should_exit {
-                        stdout().queue(Clear(ClearType::All))?;
-                        stdout().flush()?;
-                        std::process::exit(0)
-                    }
+                    tui.render()?;
                 }
                 else => break,
             }
