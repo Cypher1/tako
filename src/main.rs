@@ -24,7 +24,7 @@ async fn main() -> Result<()> {
     let (user_action_sender, user_action_receiver) = mpsc::unbounded_channel();
     let (request_sender, request_receiver) = mpsc::unbounded_channel();
 
-    {
+    let ui_task = {
         let ui_mode = options.ui_mode;
         let request_sender = request_sender.clone();
         tokio::spawn(async move {
@@ -46,10 +46,10 @@ async fn main() -> Result<()> {
                     .await
                 }
             };
-        });
-    }
+        })
+    };
 
-    tokio::spawn(async move {
+    let compiler_task = tokio::spawn(async move {
         let compiler = start(task_manager_registration_sender, request_receiver);
         compiler.await.unwrap_or_else(|err| {
             trace!("Internal error: {err:#?}");
@@ -81,5 +81,11 @@ async fn main() -> Result<()> {
         }
         _ => todo!(),
     }
+    compiler_task.await.unwrap_or_else(|err|
+        error!("Compiler finished with internal error: {err}")
+    );
+    ui_task.await.unwrap_or_else(|err|
+        error!("Ui task finished with internal error: {err}")
+    );
     Ok(())
 }
