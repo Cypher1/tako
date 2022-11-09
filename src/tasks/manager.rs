@@ -146,9 +146,9 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
         // Get a new job from 'upstream'.
         self.stats.num_requests += 1;
         let status = self
-                .result_store
-                .entry(task.clone())
-                .or_insert_with(TaskStatus::new);
+            .result_store
+            .entry(task.clone())
+            .or_insert_with(TaskStatus::new);
         if status.state != TaskState::New {
             self.stats.num_already_running += 1;
             return; // Done: Already running.

@@ -1,6 +1,6 @@
 #![deny(clippy::all)]
 use crossterm::Result;
-use log::{error, trace, debug};
+use log::{debug, error, trace};
 use std::env;
 use tokio::sync::mpsc;
 
