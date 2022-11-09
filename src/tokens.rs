@@ -1,6 +1,7 @@
 use crate::error::TError;
 use crate::location::{IndexIntoFile, SymbolLength};
 use std::fmt;
+use log::debug;
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum TokenType {
     Op,
@@ -117,6 +118,7 @@ impl<'a> Characters<'a> {
 
 // Reads all the tokens.
 pub fn lex(contents: &str) -> Result<Vec<Token>, TError> {
+    debug!("Lex {}", contents);
     let mut chars = Characters::new(contents);
     let mut tokens = Vec::with_capacity(1000); // TODO: Bench mark & tune?
     loop {

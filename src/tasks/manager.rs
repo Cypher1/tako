@@ -64,7 +64,7 @@ pub struct TaskManager<T: Task> {
 }
 
 impl<T: Debug + Task + 'static> TaskManager<T> {
-    fn task_name() -> &'static str {
+    fn name() -> &'static str {
         let name = std::any::type_name::<T>();
         let last_lt = name.rfind('<').unwrap_or(name.len());
         let index = name.rfind(':').map(|i| i + 1).unwrap_or(1);
@@ -90,7 +90,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
     pub async fn handle_update(&mut self, task: T, update: Update<T::Output, Error>) {
         trace!(
             "{} received update from task: {task:#?} {update:#?}",
-            Self::task_name()
+            Self::name()
         );
         let caching_enabled = !self.config.disable_caching;
         let mut current_results = self
@@ -144,30 +144,23 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
         task: T,
     ) {
         // Get a new job from 'upstream'.
-        // trace!("{} received task: {task:#?}", Self::task_name());
-        {
-            self.stats.num_requests += 1;
-        }
-        let status = {
-            // We'll need to forward these on, so we can clone now and drop the result_store lock earlier!
-            let status = self
+        self.stats.num_requests += 1;
+        let status = self
                 .result_store
                 .entry(task.clone())
                 .or_insert_with(TaskStatus::new);
-            if status.state != TaskState::New {
-                self.stats.num_already_running += 1;
-                return; // Done: Already running.
-            }
-            status.state = TaskState::Running;
-            status.clone()
-        };
+        if status.state != TaskState::New {
+            self.stats.num_already_running += 1;
+            return; // Done: Already running.
+        }
+        status.state = TaskState::Running;
         match (&status.state, T::RESULT_IS_CACHABLE) {
             // TODO: Consider that partial results 'should' still be safe to re-use and could pre-start later work.
             /* TaskState::Partial | */
             (TaskState::Complete, true) => {
                 self.stats.num_cached += 1;
-                trace!("{} cached task: {task:#?}", Self::task_name());
-                for result in status.results {
+                trace!("{} cached task: {task:#?}", Self::name());
+                for result in status.results.iter().cloned() {
                     self.result_sender
                         .send(result)
                         .expect("Should be able to send results");
@@ -175,18 +168,10 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
                 return; // Done: Finished.
             }
             (TaskState::Complete, false) => {
-                trace!(
-                    "{} un-cacheable (will re-run): {task:#?}",
-                    Self::task_name()
-                );
+                trace!("{} un-cacheable (will re-run): {task:#?}", Self::name())
             }
             // Continue on and re-launch the job, duplicated work should not propagate if completed.
-            _ => {
-                trace!(
-                    "{} task with status {status:#?}: {task:#?}",
-                    Self::task_name()
-                );
-            }
+            _ => trace!("{} task with status {status:#?}: {task:#?}", Self::name()),
         }
         // Launch the job!!!
         let result_or_error_sender = result_or_error_sender.clone();
@@ -197,12 +182,12 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
     }
 
     pub async fn run_loop(&mut self) {
-        trace!("{} starting run_loop", Self::task_name());
+        trace!("{} starting run_loop", Self::name());
         let (result_or_error_sender, mut result_or_error_receiver) =
             mpsc::unbounded_channel::<(T, Update<T::Output, Error>)>();
 
         loop {
-            trace!("{}: Waiting for tasks...", Self::task_name());
+            trace!("{}: Waiting for tasks...", Self::name());
             tokio::select! {
                 Some((task, update)) = result_or_error_receiver.recv() => {
                     self.handle_update(task, update).await;
@@ -213,11 +198,6 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
                 else => break,
             }
         }
-        trace!(
-            "{} no more tasks or results. Terminating...",
-            Self::task_name()
-        );
-
         self.status_report_sender
             .send(StatusReport {
                 kind: <T as Task>::TASK_KIND,
@@ -226,10 +206,6 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
             .unwrap_or_else(|err| {
                 debug!("Could not report final task manager stats: {}", err);
             });
-        trace!(
-            "{} no more tasks... Finishing run_loop: {}",
-            Self::task_name(),
-            format!("{:?}", &self.stats)
-        );
+        trace!("{} no more tasks or results. Terminating...", Self::name());
     }
 }
