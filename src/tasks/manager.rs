@@ -1,13 +1,17 @@
 use crate::error::Error;
 
 use log::{debug, trace};
+use tokio::time;
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::time::Duration;
 use tokio::sync::mpsc;
 
 use super::status::*;
 use super::task_trait::*;
 use super::TaskKind;
+
+const TICK: Duration = Duration::from_millis(1000);
 
 // TODO: Add timing information, etc.
 // TODO: Support re-running multiple times for stability testing.
@@ -180,6 +184,8 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
         let (result_or_error_sender, mut result_or_error_receiver) =
             mpsc::unbounded_channel::<(T, Update<T::Output, Error>)>();
 
+        let mut ticker = time::interval(TICK);
+
         loop {
             trace!("{}: Waiting for tasks...", Self::name());
             tokio::select! {
@@ -189,6 +195,12 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
                 Some(task) = self.task_receiver.recv() => {
                     self.handle_new_task(&result_or_error_sender, task).await;
                 },
+                _ = ticker.tick() => {
+                    let _ = self.stats_sender.send(StatusReport {
+                        kind: <T as Task>::TASK_KIND,
+                        stats: self.stats.clone(),
+                    }); // TODO: !?
+                }
                 else => break,
             }
         }
