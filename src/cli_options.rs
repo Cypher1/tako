@@ -9,11 +9,6 @@ pub enum Command {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct CodeGenOptions {
-    // TODO: Add options
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Options {
     pub executable_location: String,
     pub files: Vec<String>,
@@ -23,7 +18,6 @@ pub struct Options {
     pub early_exit: bool,
     /// `optimization_level` should be proportional to maximum time spent on optimisation.
     pub optimization_level: u32,
-    pub code_gen: CodeGenOptions,
 }
 
 impl Default for Options {
@@ -36,7 +30,6 @@ impl Default for Options {
             ui_mode: UiMode::Cli,
             early_exit: false,
             optimization_level: 3,
-            code_gen: CodeGenOptions {},
         }
     }
 }
