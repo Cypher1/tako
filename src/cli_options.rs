@@ -15,7 +15,6 @@ pub struct Options {
     pub cmd: Command,
     pub interpreter_args: Vec<String>,
     pub ui_mode: UiMode,
-    pub early_exit: bool,
     /// `optimization_level` should be proportional to maximum time spent on optimisation.
     pub optimization_level: u32,
 }
@@ -28,7 +27,6 @@ impl Default for Options {
             cmd: Command::Build,
             interpreter_args: vec![],
             ui_mode: UiMode::Cli,
-            early_exit: false,
             optimization_level: 3,
         }
     }
@@ -63,7 +61,6 @@ impl Options {
                 match f.as_str() {
                     "-i" | "--interactive" => opts.cmd = Command::Repl,
                     "-r" | "--run" => opts.cmd = Command::Interpret,
-                    "-e" | "--early-exit" => opts.early_exit = true,
                     "--cli" => opts.ui_mode = UiMode::Cli,
                     "--tui" => opts.ui_mode = UiMode::Tui,
                     "-O0" => opts.optimization_level = 0,
@@ -122,7 +119,6 @@ Options:
   --version           Show compiler version.
 
 Configuration:
-  -e --early-exit     Quit after the first error.
   -O<n>               Optimisation level: 0|1|2|3.
   --cli               Use a simpler command line interface.
   --tui               Use an interactive terminal user interface.
