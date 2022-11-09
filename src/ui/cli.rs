@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use super::UserInterface;
 use crate::{tasks::StatusReport, Request, UserAction};
 use async_trait::async_trait;
-use tokio::sync::{mpsc, broadcast};
 use std::sync::{Arc, Mutex};
+use tokio::sync::{broadcast, mpsc};
 
 use std::time::Duration;
 use tokio::time;
@@ -21,7 +21,7 @@ impl UserInterface for Cli {
         // User control of the compiler
         _request_sender: Option<mpsc::UnboundedSender<Request>>,
         stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
-    ) {
+    ) -> std::io::Result<()> {
         let mut manager_status = HashMap::new();
         let mut ticker = time::interval(TICK);
         loop {
@@ -40,6 +40,7 @@ impl UserInterface for Cli {
                 else => break,
             }
         }
+        Ok(())
     }
     /*
     fn report_error(&mut self, _error_id: ErrorId, error: &Error) {

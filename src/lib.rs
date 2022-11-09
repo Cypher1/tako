@@ -14,15 +14,15 @@ pub mod tasks;
 pub mod tokens;
 pub mod ui;
 
-use std::sync::{Mutex, Arc};
+use std::sync::{Arc, Mutex};
 
+use crate::ast::Ast;
 use crate::error::TError;
 use crate::tasks::{Request, TaskSet};
 use crate::ui::{UserAction, UserInterface};
 use log::trace;
 use tasks::StatusReport;
-use tokio::sync::{mpsc, broadcast};
-use crate::ast::Ast;
+use tokio::sync::{broadcast, mpsc};
 
 static mut LOGS_UNINITIALISED: bool = true;
 
@@ -59,7 +59,13 @@ pub async fn launch_ui<T: UserInterface + Send + 'static>(
     request_sender: Option<mpsc::UnboundedSender<Request>>,
     stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
 ) {
-    <T as UserInterface>::launch(task_manager_stats, user_action_receiver, request_sender, stats_requester).await;
+    <T as UserInterface>::launch(
+        task_manager_stats,
+        user_action_receiver,
+        request_sender,
+        stats_requester,
+    )
+    .await;
 }
 
 pub async fn start(
@@ -69,10 +75,15 @@ pub async fn start(
 ) -> mpsc::UnboundedReceiver<Ast> {
     let (result_sender, result_receiver) = mpsc::unbounded_channel();
 
-        let store = {
-            let task_manager_stats_requester = task_manager_stats_requester.lock().expect("TODO");
-            TaskSet::new(request_receiver, result_sender, task_manager_stats, &*task_manager_stats_requester)
-        }; // Setup!
-        store.launch().await; // launches all the jobs.
-        result_receiver
+    let store = {
+        let task_manager_stats_requester = task_manager_stats_requester.lock().expect("TODO");
+        TaskSet::new(
+            request_receiver,
+            result_sender,
+            task_manager_stats,
+            &*task_manager_stats_requester,
+        )
+    }; // Setup!
+    store.launch().await; // launches all the jobs.
+    result_receiver
 }

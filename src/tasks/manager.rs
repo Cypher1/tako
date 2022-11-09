@@ -1,9 +1,9 @@
 use crate::error::Error;
 
 use log::{debug, trace};
-use tokio::sync::broadcast;
 use std::collections::HashMap;
 use std::fmt::Debug;
+use tokio::sync::broadcast;
 use tokio::sync::mpsc;
 
 use super::status::*;

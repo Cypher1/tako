@@ -3,14 +3,29 @@ use std::collections::HashMap;
 use super::UserInterface;
 use crate::{tasks::StatusReport, Request, UserAction};
 use async_trait::async_trait;
-use tokio::sync::{mpsc, broadcast};
 use std::sync::{Arc, Mutex};
 
-use std::time::Duration;
 use tokio::time;
 const TICK: Duration = Duration::from_millis(1000);
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
+use crossterm::{
+    cursor::{MoveTo, RestorePosition, SavePosition},
+    event::{self, Event, KeyEvent},
+    style::{Color, Print, ResetColor, SetBackgroundColor, SetForegroundColor},
+    terminal::{disable_raw_mode, enable_raw_mode, size, Clear, ClearType},
+    QueueableCommand, Result,
+};
 use shutdown_hooks::add_shutdown_hook;
+
+use crokey::{key, KeyEventFormat};
+use std::{
+    io::{stdout, Write},
+    thread,
+    time::{Duration, Instant},
+};
+use tokio::{
+    self,
+    sync::{broadcast, mpsc::{self, error::TryRecvError}},
+};
 
 extern "C" fn shutdown() {
     let _discard = disable_raw_mode();
@@ -27,11 +42,25 @@ impl UserInterface for Tui {
         // User control of the compiler
         _request_sender: Option<mpsc::UnboundedSender<Request>>,
         stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
-    ) {
+    ) -> std::io::Result<()> {
         add_shutdown_hook(shutdown);
         enable_raw_mode().expect("TUI failed to enable raw mode");
         let mut manager_status = HashMap::new();
         let mut ticker = time::interval(TICK);
+
+        let (tx_event, mut rx_event) = mpsc::channel(100);
+
+        tokio::spawn(async move {
+            loop {
+                let event = event::read().expect("User event read should not fail");
+                if tx_event.send(event).await.is_err() {
+                    panic!("receiver dropped")
+                }
+            }
+        });
+
+        let key_fmt = KeyEventFormat::default();
+        let mut should_exit = false;
         loop {
             tokio::select! {
                 Some(StatusReport { kind, stats }) = task_manager_status_receiver.recv() => {
@@ -44,10 +73,33 @@ impl UserInterface for Tui {
                 _ = ticker.tick() => {
                     let stats_requester = stats_requester.lock().expect("stats requester lock");
                     stats_requester.send(()).expect("TODO");
+
+                    let mut chars = "".to_string();
+                    loop {
+                        match rx_event.try_recv() {
+                            Ok(Event::Key(key_event)) => {
+                                match key_event {
+                                    key!(ctrl-c) | key!(ctrl-q) => should_exit = true,
+                                    _ => {}
+                                };
+                                chars = format!("{}{}", chars, key_fmt.to_string(key_event));
+                            }
+                            Ok(other) => eprint!("Event: {:?}", other),
+                            Err(TryRecvError::Empty) => break,
+                            Err(TryRecvError::Disconnected) => panic!("Key event sender disconnected!?"),
+                        }
+                    }
+                    eprintln!("Chars: {}", chars);
+                    if should_exit {
+                        stdout().queue(Clear(ClearType::All))?;
+                        stdout().flush()?;
+                        std::process::exit(0)
+                    }
                 }
                 else => break,
             }
         }
+        Ok(())
     }
     /*
     fn report_error(&mut self, _error_id: ErrorId, error: &Error) {

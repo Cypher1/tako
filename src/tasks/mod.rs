@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use std::collections::HashMap;
 use std::fmt::Debug;
 
-use tokio::sync::{mpsc, broadcast};
+use tokio::sync::{broadcast, mpsc};
 
 use manager::{ManagerConfig, TaskManager};
 pub use manager::{StatusReport, TaskStats};
@@ -62,7 +62,13 @@ impl TaskSet {
         stats_requester: broadcast::Receiver<()>,
         config: ManagerConfig,
     ) -> TaskManager<T> {
-        TaskManager::<T>::new(task_receiver, result_sender, stats_sender, stats_requester, config)
+        TaskManager::<T>::new(
+            task_receiver,
+            result_sender,
+            stats_sender,
+            stats_requester,
+            config,
+        )
     }
 
     pub fn new(
