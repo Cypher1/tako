@@ -2,8 +2,8 @@
 use crossterm::Result;
 use log::{debug, error, trace};
 use std::env;
-use tokio::sync::{mpsc, broadcast};
 use std::sync::{Arc, Mutex};
+use tokio::sync::{broadcast, mpsc};
 
 use takolib::cli_options::{Command, Options};
 use takolib::launch_ui;
@@ -11,7 +11,6 @@ use takolib::start;
 use takolib::tasks::Request;
 use takolib::ui::UserAction;
 use takolib::ui::{Cli, Tui, UiMode};
-
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -75,7 +74,12 @@ async fn main() -> Result<()> {
             };
         })
     };
-    let mut compiler_task = start(task_manager_status_sender, request_receiver, stats_requester.clone()).await;
+    let mut compiler_task = start(
+        task_manager_status_sender,
+        request_receiver,
+        stats_requester.clone(),
+    )
+    .await;
 
     // Receive the results...
     trace!("Waiting for 'final' result...");
