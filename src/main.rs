@@ -80,11 +80,11 @@ async fn main() -> Result<()> {
 
     // Launch the cli task.
     trace!("Started");
-    compiler_task.await.unwrap_or_else(|err|
-        error!("Compiler finished with internal error: {err}")
-    );
-    ui_task.await.unwrap_or_else(|err|
-        error!("Ui task finished with internal error: {err}")
-    );
+    compiler_task
+        .await
+        .unwrap_or_else(|err| error!("Compiler finished with internal error: {err}"));
+    ui_task
+        .await
+        .unwrap_or_else(|err| error!("Ui task finished with internal error: {err}"));
     Ok(())
 }
