@@ -195,7 +195,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
         self.stats_sender
             .send(StatusReport {
                 kind: <T as Task>::TASK_KIND,
-                stats: self.stats.clone(),
+                stats: self.stats,
             })
             .unwrap_or_else(|err| {
                 debug!("Could not report final task manager stats: {}", err);

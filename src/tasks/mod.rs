@@ -5,7 +5,7 @@ use crate::ast::Ast;
 use crate::error::Error;
 use crate::tokens::Token;
 use async_trait::async_trait;
-use log::debug;
+
 use std::collections::HashMap;
 use std::fmt::Debug;
 

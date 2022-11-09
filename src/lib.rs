@@ -18,7 +18,7 @@ use crate::error::TError;
 use crate::tasks::{Request, TaskSet};
 use crate::ui::{UserAction, UserInterface};
 use log::trace;
-use tasks::{StatusReport, TaskKind, TaskStats};
+use tasks::StatusReport;
 use tokio::sync::mpsc;
 
 static mut LOGS_UNINITIALISED: bool = true;

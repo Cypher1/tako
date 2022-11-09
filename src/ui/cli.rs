@@ -21,11 +21,11 @@ impl UserInterface for Cli {
         loop {
             tokio::select! {
                 Some(StatusReport { kind, stats }) = task_manager_status_receiver.recv() => {
-                    eprintln!("TaskManager stats: {:?} => {:?}", kind, stats);
+                    eprintln!("TaskManager stats: {kind:?} => {stats:?}");
                     manager_status.insert(kind, stats);
                 },
                 Some(action) = user_action_receiver.recv() => {
-                    eprintln!("User action: {:?}", action);
+                    eprintln!("User action: {action:?}");
                 },
                 else => break,
             }
