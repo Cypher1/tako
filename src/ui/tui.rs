@@ -3,7 +3,8 @@ use crate::{tasks::StatusReport, Request, UserAction};
 use async_trait::async_trait;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 use shutdown_hooks::add_shutdown_hook;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, broadcast};
+use std::sync::{Arc, Mutex};
 
 extern "C" fn shutdown() {
     let _discard = disable_raw_mode();
@@ -17,7 +18,8 @@ impl UserInterface for Tui {
     async fn launch(
         _task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
         _user_action_receiver: mpsc::UnboundedReceiver<UserAction>,
-        _request_sender: mpsc::UnboundedSender<Request>,
+        _request_sender: Option<mpsc::UnboundedSender<Request>>,
+        _stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
     ) {
         add_shutdown_hook(shutdown);
         enable_raw_mode().expect("TUI failed to enable raw mode");

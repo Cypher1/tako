@@ -3,8 +3,12 @@ use std::collections::HashMap;
 use super::UserInterface;
 use crate::{tasks::StatusReport, Request, UserAction};
 use async_trait::async_trait;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, broadcast};
+use std::sync::{Arc, Mutex};
 
+use std::time::Duration;
+use tokio::time;
+const TICK: Duration = Duration::from_millis(1000);
 // use crate::compiler_tasks::Progress;
 
 #[derive(Debug)]
@@ -15,9 +19,12 @@ impl UserInterface for Cli {
     async fn launch(
         mut task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
         mut user_action_receiver: mpsc::UnboundedReceiver<UserAction>,
-        _request_sender: mpsc::UnboundedSender<Request>,
+        // User control of the compiler
+        request_sender: Option<mpsc::UnboundedSender<Request>>,
+        stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
     ) {
         let mut manager_status = HashMap::new();
+        let mut ticker = time::interval(TICK);
         loop {
             tokio::select! {
                 Some(StatusReport { kind, stats }) = task_manager_status_receiver.recv() => {
@@ -27,6 +34,10 @@ impl UserInterface for Cli {
                 Some(action) = user_action_receiver.recv() => {
                     eprintln!("User action: {action:?}");
                 },
+                _ = ticker.tick() => {
+                    let stats_requester = stats_requester.lock().expect("stats requester lock");
+                    stats_requester.send(());
+                }
                 else => break,
             }
         }
