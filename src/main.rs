@@ -1,6 +1,6 @@
 #![deny(clippy::all)]
 use crossterm::Result;
-use log::{error, trace};
+use log::{error, trace, debug};
 use std::env;
 use tokio::sync::mpsc;
 
@@ -17,7 +17,7 @@ async fn main() -> Result<()> {
 
     let args: Vec<String> = env::args().collect();
     let options = Options::new(args);
-    trace!("Options: {options:#?}");
+    debug!("Options: {options:#?}");
 
     let (task_manager_registration_sender, task_manager_registration_receiver) =
         mpsc::unbounded_channel();

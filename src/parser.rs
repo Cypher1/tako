@@ -3,9 +3,9 @@ use crate::error::TError;
 use crate::tokens::Token;
 use log::{debug, trace};
 
-pub fn parse(path: &str, tokens: &[Token]) -> Result<Ast, TError> {
+pub fn parse(filepath: &str, tokens: &[Token]) -> Result<Ast, TError> {
     let tokens = tokens.iter().peekable();
-    debug!("Parse {}", path);
+    debug!("Parse {}", filepath);
     // TODO: REMOVE THIS (it's just to test the threading model)
     // std::thread::sleep(std::time::Duration::from_secs(2));
     for tok in tokens {
