@@ -207,7 +207,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
                 Some(task) = self.task_receiver.recv() => {
                     self.handle_new_task(&result_or_error_sender, task).await;
                 },
-                _ = self.stats_requester.recv() => {
+                Ok(()) = self.stats_requester.recv() => {
                     let _ = self.stats_sender.send(StatusReport {
                         kind: <T as Task>::TASK_KIND,
                         stats: self.stats,

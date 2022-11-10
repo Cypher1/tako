@@ -19,7 +19,7 @@ use std::sync::{Arc, Mutex};
 use crate::ast::Ast;
 
 use crate::tasks::{Request, TaskSet};
-use crate::ui::{UserAction, UserInterface};
+use crate::ui::UserInterface;
 
 use tasks::StatusReport;
 use tokio::sync::{broadcast, mpsc};
@@ -57,19 +57,14 @@ pub fn ensure_initialized() {
 
 pub async fn launch_ui<T: UserInterface + Send + 'static>(
     task_manager_stats: mpsc::UnboundedReceiver<StatusReport>,
-    user_action_receiver: mpsc::UnboundedReceiver<UserAction>,
     request_sender: Option<mpsc::UnboundedSender<Request>>,
     stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
 ) {
-    <T as UserInterface>::launch(
-        task_manager_stats,
-        user_action_receiver,
-        request_sender,
-        stats_requester,
-    )
-    .await.unwrap_or_else(|err| {
-        error!("Error in UI: {}", err);
-    });
+    <T as UserInterface>::launch(task_manager_stats, request_sender, stats_requester)
+        .await
+        .unwrap_or_else(|err| {
+            error!("Error in UI: {}", err);
+        });
 }
 
 pub async fn start(

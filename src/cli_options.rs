@@ -26,7 +26,7 @@ impl Default for Options {
             files: vec![],
             cmd: Command::Build,
             interpreter_args: vec![],
-            ui_mode: UiMode::Cli,
+            ui_mode: UiMode::Tui,
             optimization_level: 3,
         }
     }

@@ -2,23 +2,23 @@ use log::trace;
 use std::collections::HashMap;
 
 use super::UserInterface;
-use crate::{tasks::StatusReport, Request, UserAction};
+use crate::{tasks::StatusReport, Request};
 use async_trait::async_trait;
 use std::sync::{Arc, Mutex};
 
 use tokio::time;
-const STATS_TICK: Duration = Duration::from_millis(1000);
-const UI_TICK: Duration = Duration::from_millis(100);
+const TICK: Duration = Duration::from_millis(100);
 use crossterm::{
-    cursor::{MoveTo, RestorePosition, SavePosition},
-    event::{self, Event, KeyEvent, KeyCode},
+    cursor::{MoveTo, RestorePosition},
+    event::{Event, EventStream, KeyCode, KeyEvent},
     style::{Color, Print, ResetColor, SetBackgroundColor, SetForegroundColor},
     terminal::{disable_raw_mode, enable_raw_mode, size, Clear, ClearType},
-    QueueableCommand, Result,
+    QueueableCommand,
 };
+use futures::{future::FutureExt, StreamExt};
 use shutdown_hooks::add_shutdown_hook;
 
-use crokey::{key, KeyEventFormat, as_letter};
+use crokey::{key, KeyEventFormat};
 use std::{
     io::{stdout, Write},
     time::Duration,
@@ -27,7 +27,7 @@ use tokio::{
     self,
     sync::{
         broadcast,
-        mpsc::{self, error::TryRecvError},
+        mpsc::{self},
     },
 };
 
@@ -59,9 +59,7 @@ impl Tui {
             .queue(MoveTo(0, 4))?
             .queue(MoveTo(0, 5))?
             .queue(Print(&format!(">> {}.", self.input)))?;
-        stdout()
-            .queue(ResetColor)?
-            .queue(RestorePosition)?;
+        stdout().queue(ResetColor)?.queue(RestorePosition)?;
         stdout().flush()?;
         if self.should_exit {
             stdout().queue(Clear(ClearType::All))?;
@@ -76,16 +74,19 @@ impl Tui {
         match event {
             Event::Key(key_event) => {
                 match key_event {
-                    key!(ctrl-c) | key!(ctrl-q) => self.should_exit = true,
+                    key!(ctrl - c) | key!(ctrl - q) => self.should_exit = true,
                     key!(Backspace) => {
                         self.input.pop(); // Discard
                     }
-                    KeyEvent { code: KeyCode::Char(letter), modifiers: _ } => {
+                    KeyEvent {
+                        code: KeyCode::Char(letter),
+                        modifiers: _,
+                    } => {
                         self.input.push(letter);
                     }
                     _ => {
-                        // discard 
-                    },
+                        // discard
+                    }
                 };
                 characters = format!("{}{}", characters, self.key_fmt.to_string(key_event));
             }
@@ -102,7 +103,6 @@ impl Tui {
 impl UserInterface for Tui {
     async fn launch(
         mut task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
-        mut user_action_receiver: mpsc::UnboundedReceiver<UserAction>,
         // User control of the compiler
         _request_sender: Option<mpsc::UnboundedSender<Request>>,
         stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
@@ -111,45 +111,33 @@ impl UserInterface for Tui {
         add_shutdown_hook(shutdown);
         enable_raw_mode().expect("TUI failed to enable raw mode");
         let mut manager_status = HashMap::new();
-        let mut stats_ticker = time::interval(STATS_TICK);
-        let mut ui_update_ticker = time::interval(UI_TICK);
-
-        let (tx_event, mut rx_event) = mpsc::channel(100);
-
-        tokio::spawn(async move {
-            loop {
-                let event = event::read().expect("User event read should not fail");
-                if tx_event.send(event).await.is_err() {
-                    panic!("receiver dropped")
-                }
-            }
-        });
+        let mut stats_ticker = time::interval(TICK);
+        let mut reader = EventStream::new();
 
         loop {
+            let event = reader.next().fuse();
+
             tokio::select! {
                 Some(StatusReport { kind, stats }) = task_manager_status_receiver.recv() => {
-                    trace!("TaskManager stats: {kind:?} => {stats:?}");
+                    trace!("TaskManager stats: {kind:?} => {stats}");
                     manager_status.insert(kind, stats);
-                },
-                Some(action) = user_action_receiver.recv() => {
-                    trace!("User action: {action:?}");
                 },
                 _ = stats_ticker.tick() => {
                     let stats_requester = stats_requester.lock().expect("stats requester lock");
                     stats_requester.send(()).expect("TODO");
                 }
-                _ = ui_update_ticker.tick() => {
-                    loop {
-                        match rx_event.try_recv() {
-                            Ok(event) => tui.handle_event(event)?,
-                            Err(TryRecvError::Empty) => break,
-                            Err(TryRecvError::Disconnected) => panic!("Key event sender disconnected!?"),
+                Some(maybe_event) = event => {
+                    match maybe_event {
+                        Ok(event) => tui.handle_event(event)?,
+                        Err(err) => {
+                            trace!("Event stream error: {}", err);
+                            break
                         }
                     }
-                    tui.render()?;
                 }
                 else => break,
             }
+            tui.render()?;
         }
         Ok(())
     }

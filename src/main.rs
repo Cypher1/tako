@@ -9,7 +9,7 @@ use takolib::cli_options::{Command, Options};
 use takolib::launch_ui;
 use takolib::start;
 use takolib::tasks::Request;
-use takolib::ui::UserAction;
+
 use takolib::ui::{Cli, Tui, UiMode};
 
 #[tokio::main]
@@ -21,18 +21,12 @@ async fn main() -> Result<()> {
     debug!("Options: {options:#?}");
 
     let (task_manager_status_sender, task_manager_status_receiver) = mpsc::unbounded_channel();
-    let (user_action_sender, user_action_receiver) = mpsc::unbounded_channel();
     let (request_sender, request_receiver) = mpsc::unbounded_channel();
     let stats_requester = Arc::new(Mutex::new(broadcast::channel(1).0));
 
     let request_sender = match options.cmd {
         Command::Repl => {
             trace!("main: Waiting for user actions...");
-            user_action_sender
-                .send(UserAction::Something)
-                .unwrap_or_else(|err| {
-                    error!("Ui task has ended: {}", err);
-                });
             Some(request_sender)
         }
         Command::Build => {
@@ -56,7 +50,6 @@ async fn main() -> Result<()> {
                 UiMode::Cli => {
                     launch_ui::<Cli>(
                         task_manager_status_receiver,
-                        user_action_receiver,
                         request_sender,
                         stats_requester,
                     )
@@ -65,7 +58,6 @@ async fn main() -> Result<()> {
                 UiMode::Tui => {
                     launch_ui::<Tui>(
                         task_manager_status_receiver,
-                        user_action_receiver,
                         request_sender,
                         stats_requester,
                     )
