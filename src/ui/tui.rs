@@ -118,7 +118,7 @@ impl Tui {
                         self.input_after_cursor = chars.collect();
                     }
                     key!(ctrl - d) => {
-                        if self.input.is_empty() {
+                        if self.input.is_empty() && self.input_after_cursor.is_empty() {
                             self.should_exit = true;
                         }
                         self.input = "".to_string(); // Discard
