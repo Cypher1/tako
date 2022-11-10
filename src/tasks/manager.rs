@@ -37,7 +37,20 @@ impl std::fmt::Display for TaskStats {
             num_failed,
             num_succeeded,
         } = &self;
-        write!(f, "{num_succeeded}/{num_requests} ({num_cached} cached. {num_succeeded} succeeded. {num_failed} failed. {num_already_running} running when requested.)")
+        let num_real = num_requests - num_already_running;
+        write!(f, "{num_succeeded}/{num_real}")?;
+        let items: Vec<String> = vec![
+            (num_cached, "cached"),
+            (num_failed, "failed"),
+            (num_already_running, "duplicate"),
+        ].iter()
+            .filter(|(n, _label)| **n>0)
+            .map(|(n, label)| format!("{} {}", n, label))
+            .collect();
+        if !items.is_empty() {
+            write!(f, "({})", items.join(" "))?;
+        }
+        Ok(())
     }
 }
 
