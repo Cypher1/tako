@@ -147,12 +147,7 @@ impl TaskSet {
 ///
 /// There's normally only one of these, but it seems elegant to have these fit into the `Task` model.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Request {
-    kimd: RequestType,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum RequestType {
+pub enum Request {
     Launch { files: Vec<String> },
 }
 
@@ -160,10 +155,6 @@ pub enum RequestType {
 impl Task for Request {
     type Output = LoadFileTask;
     const TASK_KIND: TaskKind = TaskKind::Request;
-
-    fn get_meta(&self) -> TaskMeta {
-        *self.meta
-    }
 
     async fn perform(self, result_sender: UpdateSender<Self, Self::Output>) {
         match &self {
@@ -193,10 +184,6 @@ pub struct LoadFileTask {
 impl Task for LoadFileTask {
     type Output = LexFileTask;
     const TASK_KIND: TaskKind = TaskKind::LoadFile;
-
-    fn get_meta(&self) -> TaskMeta {
-        *self.meta
-    }
 
     fn has_file_path(&self) -> Option<&str> {
         Some(&self.path)
@@ -233,10 +220,6 @@ impl Task for LexFileTask {
     type Output = ParseFileTask;
     const TASK_KIND: TaskKind = TaskKind::LexFile;
 
-    fn get_meta(&self) -> TaskMeta {
-        *self.meta
-    }
-
     fn has_file_path(&self) -> Option<&str> {
         Some(&self.path)
     }
@@ -272,10 +255,6 @@ pub struct ParseFileTask {
 impl Task for ParseFileTask {
     type Output = Ast; // For now, we'll just store the AST itself.
     const TASK_KIND: TaskKind = TaskKind::ParseFile;
-
-    fn get_meta(&self) -> TaskMeta {
-        *self.meta
-    }
 
     fn has_file_path(&self) -> Option<&str> {
         Some(&self.path)
