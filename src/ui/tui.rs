@@ -1,13 +1,12 @@
 use log::trace;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use super::UserInterface;
-use crate::{tasks::StatusReport, Request};
+use crate::{tasks::{TaskKind, TaskStats, StatusReport}, Request};
 use async_trait::async_trait;
 use std::sync::{Arc, Mutex};
 
 use tokio::time;
-const TICK: Duration = Duration::from_millis(100);
 use crossterm::{
     cursor::{MoveTo, RestorePosition},
     event::{Event, EventStream, KeyCode, KeyEvent},
@@ -31,12 +30,15 @@ use tokio::{
     },
 };
 
+const TICK: Duration = Duration::from_millis(100);
+
 extern "C" fn shutdown() {
     let _discard = disable_raw_mode();
 }
 
 #[derive(Debug, Default)]
 pub struct Tui {
+    manager_status: BTreeMap<TaskKind, TaskStats>,
     key_fmt: KeyEventFormat,
     should_exit: bool,
     input: String,
@@ -57,7 +59,23 @@ impl Tui {
             .queue(SetForegroundColor(Color::White))?
             .queue(SetBackgroundColor(Color::Black))?
             .queue(MoveTo(0, 4))?
-            .queue(MoveTo(0, 5))?
+            .queue(MoveTo(0, 5))?;
+
+        let mut row = 10;
+        stdout()
+            .queue(MoveTo(0, row))?
+            .queue(Print(&format!("Stats")))?;
+        row += 1;
+        for (task_kind, stats) in &self.manager_status {
+            stdout()
+                .queue(MoveTo(0, row))?
+                .queue(Print(&format!("{:?}: {}", task_kind, stats)))?;
+            row += 1;
+        }
+
+        row += 10;
+        stdout()
+            .queue(MoveTo(0, row))?
             .queue(Print(&format!(">> {}.", self.input)))?;
         stdout().queue(ResetColor)?.queue(RestorePosition)?;
         stdout().flush()?;
@@ -110,7 +128,6 @@ impl UserInterface for Tui {
         let mut tui = Self::default();
         add_shutdown_hook(shutdown);
         enable_raw_mode().expect("TUI failed to enable raw mode");
-        let mut manager_status = HashMap::new();
         let mut stats_ticker = time::interval(TICK);
         let mut reader = EventStream::new();
 
@@ -120,7 +137,7 @@ impl UserInterface for Tui {
             tokio::select! {
                 Some(StatusReport { kind, stats }) = task_manager_status_receiver.recv() => {
                     trace!("TaskManager stats: {kind:?} => {stats}");
-                    manager_status.insert(kind, stats);
+                    tui.manager_status.insert(kind, stats);
                 },
                 _ = stats_ticker.tick() => {
                     let stats_requester = stats_requester.lock().expect("stats requester lock");

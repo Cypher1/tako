@@ -23,7 +23,7 @@ use task_trait::*;
 // This should be the pre-computed hash, to avoid sending and cloning tasks.
 pub type TaskResults<T> = HashMap<T, TaskStatus<<T as Task>::Output, Error>>;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub enum TaskKind {
     Request,
     LoadFile,
