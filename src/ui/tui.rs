@@ -44,7 +44,9 @@ pub struct Tui {
     manager_status: BTreeMap<TaskKind, TaskStats>,
     key_fmt: KeyEventFormat,
     should_exit: bool,
+    history: Vec<String>,
     input: String,
+    input_after_cursor: String,
     characters: String,
 }
 
@@ -78,13 +80,28 @@ impl Tui {
             row += 1;
         }
 
-        let row = rows - 1 - (self.input.chars().filter(|c| *c == '\n').count() as u16);
+        let count_lines = |s: &str| {
+            s.chars().filter(|c| *c == '\n').count() as u16
+        };
+        let mut content = "".to_string();
+        for hist_entry in &self.history {
+            content += hist_entry;
+            content += "\n";
+        }
+        content += &format!(">> {}{}", self.input, self.input_after_cursor);
+        let lines = count_lines(&content);
+        let mut row = rows - 1 - lines;
         // TODO: Split into lines...
-        let status = format!(">> {}", self.input);
-        stdout()
-            .queue(MoveTo(0, row))?
-            .queue(Print(&status))?
-            .queue(MoveTo(status.len() as u16, row))?;
+        let mut col = 0;
+        for line in content.lines() {
+            stdout()
+                .queue(MoveTo(0, row))?
+                .queue(Print(line))?;
+            row+=1;
+            col = line.len();
+        }
+            stdout()
+            .queue(MoveTo(col as u16, row))?;
         stdout().queue(ResetColor)?.flush()?;
         if self.should_exit {
             stdout().queue(Clear(ClearType::All))?;
@@ -108,25 +125,32 @@ impl Tui {
                             self.should_exit = true;
                         }
                         self.input = "".to_string(); // Discard
+                        self.input_after_cursor = "".to_string(); // Discard
                     }
                     key!(ctrl - u) => {
                         self.input = "".to_string(); // Discard
+                    }
+                    key!(ctrl - k) => {
+                        self.input_after_cursor = "".to_string(); // Discard
                     }
                     key!(ctrl - w) => {
                         let last_space = self.input.rfind(' ').unwrap_or(0);
                         self.input = self.input[0..last_space].to_string();
                     }
+                    key!(Shift - Enter) => {
+                        self.input.push('\n');
+                    }
                     key!(Enter) => {
                         // Submit the expression
                         if true {
                             // accepted
-                            self.input = "".to_string(); // Discard
+                            let mut line = "".to_string();
+                            std::mem::swap(&mut self.input, &mut line);
+                            self.history.push(line + &self.input_after_cursor);
+                            self.input_after_cursor = "".to_string();
                         } else {
                             // show errr?
                         }
-                    }
-                    key!(Shift - Enter) => {
-                        self.input.push('\n');
                     }
                     KeyEvent {
                         code: KeyCode::Char(letter),
