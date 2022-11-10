@@ -80,7 +80,7 @@ pub async fn start(
             request_receiver,
             result_sender,
             task_manager_stats,
-            &*task_manager_stats_requester,
+            &task_manager_stats_requester,
         )
     }; // Setup!
     store.launch().await; // launches all the jobs.
