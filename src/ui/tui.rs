@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex};
 use crossterm::{
     cursor::MoveTo,
     event::{Event, EventStream, KeyCode, KeyEvent},
-    style::{Color, Print, ResetColor, SetBackgroundColor, SetForegroundColor},
+    style::{/*Color,*/ Print, ResetColor /*, SetBackgroundColor, SetForegroundColor*/},
     terminal::{disable_raw_mode, enable_raw_mode, size, Clear, ClearType},
     QueueableCommand,
 };
@@ -29,7 +29,7 @@ use tokio::{
     self,
     sync::{
         broadcast,
-        mpsc::{self},
+        mpsc,
     },
 };
 
@@ -116,6 +116,11 @@ impl Tui {
                     key!(Backspace) => {
                         self.input.pop(); // Discard
                     }
+                    key!(Delete) => {
+                        let mut chars = self.input_after_cursor.chars();
+                        chars.next();
+                        self.input_after_cursor = chars.collect();
+                    }
                     key!(ctrl - d) => {
                         if self.input.is_empty() {
                             self.should_exit = true;
@@ -136,7 +141,9 @@ impl Tui {
                     key!(right) => {
                         let first = &self.input_after_cursor.chars().next();
                         self.input.extend(first);
-                        self.input_after_cursor = self.input_after_cursor[1..].to_string();
+                        let mut chars = self.input_after_cursor.chars();
+                        chars.next();
+                        self.input_after_cursor = chars.collect();
                     }
                     key!(left) => {
                         let last = self.input.pop();

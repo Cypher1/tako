@@ -7,7 +7,7 @@ pub fn parse(filepath: &str, tokens: &[Token]) -> Result<Ast, TError> {
     let tokens = tokens.iter().peekable();
     debug!("Parse {}", filepath);
     // TODO: REMOVE THIS (it's just to test the threading model)
-    // std::thread::sleep(std::time::Duration::from_secs(2));
+    std::thread::sleep(std::time::Duration::from_secs(10));
     for tok in tokens {
         trace!("tok {tok:?}");
     }
