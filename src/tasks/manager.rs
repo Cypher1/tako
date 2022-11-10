@@ -15,7 +15,7 @@ use super::TaskKind;
 // TODO: Store the Tasks and their statuses in a contiguous vec.
 // TODO: Still use hashing to look up tasks and their IDs.
 // This should be the pre-computed hash, to avoid sending and cloning tasks.
-pub type TaskResults<T> = HashMap<T, TaskStatus<<T as Task>::Output, Error>>;
+pub type TaskResults<T> = HashMap<TaskId, TaskStatus<<T as Task>::Output, Error>>;
 
 #[derive(Default, Debug, Clone, Copy)]
 pub struct TaskStats {
@@ -103,7 +103,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
             result_sender,
             stats_sender,
             stats_requester,
-            result_store: TaskResults::new(),
+            result_store: TaskResults::<T>::new(),
             stats: TaskStats::default(),
             config,
         }
@@ -117,7 +117,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
         let caching_enabled = !self.config.disable_caching;
         let mut current_results = self
             .result_store
-            .entry(task)
+            .entry(task.get_hash())
             .or_insert_with(TaskStatus::new);
         let mut is_complete = false;
         let mut error = None;
@@ -169,7 +169,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
         self.stats.num_requests += 1;
         let status = self
             .result_store
-            .entry(task.clone())
+            .entry(task.get_hash())
             .or_insert_with(TaskStatus::new);
         if status.state != TaskState::New {
             self.stats.num_already_running += 1;

@@ -7,7 +7,7 @@ use super::TaskKind;
 use crate::error::{Error, TError};
 
 type TaskHash = u64;
-type TaskId = TaskHash;
+pub type TaskId = TaskHash;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct TaskMeta {
@@ -30,13 +30,16 @@ pub trait Task: std::fmt::Debug + Clone + std::hash::Hash + Eq + Sized + Send {
     const TASK_KIND: TaskKind;
     const RESULT_IS_CACHABLE: bool = true;
 
+    fn cached_hash(&self) -> Option<TaskHash> {
+        None
+    }
     fn cache_hash(&self, _hash: TaskHash) {
         // default to dropping it... but try not to?
         // Hashing will visit all owned memory, so
         // for small tasks rehashing may be better than not...
     }
 
-    fn compute_hash(&self) -> Option<TaskHash> {
+    fn compute_hash(&self) -> TaskHash {
         let mut hasher = fxhash::FxHasher::default();
         self.hash(&mut hasher);
         let task_hash = hasher.finish();
@@ -44,12 +47,12 @@ pub trait Task: std::fmt::Debug + Clone + std::hash::Hash + Eq + Sized + Send {
         task_hash
     }
 
-    fn get_hash(&self) -> Option<TaskHash> {
-        let task_hash = if let Some(hash) = self.cached_hash() {
+    fn get_hash(&self) -> TaskHash {
+        if let Some(hash) = self.cached_hash() {
             hash
         } else {
             self.compute_hash()
-        };
+        }
     }
 
     fn create_meta(&self) -> TaskMeta {
