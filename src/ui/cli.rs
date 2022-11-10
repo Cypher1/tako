@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 
 use super::UserInterface;
-use crate::{tasks::StatusReport, Request, UserAction};
+use crate::{tasks::StatusReport, Request};
 use async_trait::async_trait;
 use std::sync::{Arc, Mutex};
 use tokio::sync::{broadcast, mpsc};
 
 use std::time::Duration;
 use tokio::time;
-const TICK: Duration = Duration::from_millis(1000);
+const TICK: Duration = Duration::from_millis(5000);
 
 #[derive(Debug)]
 pub struct Cli {}
@@ -17,7 +17,6 @@ pub struct Cli {}
 impl UserInterface for Cli {
     async fn launch(
         mut task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
-        mut user_action_receiver: mpsc::UnboundedReceiver<UserAction>,
         // User control of the compiler
         _request_sender: Option<mpsc::UnboundedSender<Request>>,
         stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
@@ -27,18 +26,21 @@ impl UserInterface for Cli {
         loop {
             tokio::select! {
                 Some(StatusReport { kind, stats }) = task_manager_status_receiver.recv() => {
-                    eprintln!("TaskManager stats: {kind:?} => {stats:?}");
+                    eprintln!("TaskManager stats: {kind:?} => {stats}");
                     manager_status.insert(kind, stats);
-                },
-                Some(action) = user_action_receiver.recv() => {
-                    eprintln!("User action: {action:?}");
                 },
                 _ = ticker.tick() => {
                     let stats_requester = stats_requester.lock().expect("stats requester lock");
-                    stats_requester.send(()).expect("TODO");
+                    if stats_requester.send(()).is_err() {
+                        // If the channels are gone, we should too
+                        break
+                    }
                 }
                 else => break,
             }
+        }
+        for (kind, stats) in manager_status {
+            eprintln!("TaskManager (last) stats: {kind:?} => {stats}");
         }
         Ok(())
     }
