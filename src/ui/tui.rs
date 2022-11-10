@@ -54,17 +54,6 @@ impl Tui {
     fn render(&self) -> std::io::Result<()> {
         stdout().queue(Clear(ClearType::All))?;
         let (cols, rows) = size()?;
-        stdout()
-            .queue(SetForegroundColor(Color::Red))?
-            .queue(SetBackgroundColor(Color::Blue))?
-            .queue(MoveTo(0, 2))?
-            .queue(Print("Styled text here."))?
-            .queue(MoveTo(0, 3))?
-            .queue(Print(&format!("Size: {},{}", &rows, &cols)))?
-            .queue(SetForegroundColor(Color::White))?
-            .queue(SetBackgroundColor(Color::Black))?
-            .queue(MoveTo(0, 4))?
-            .queue(MoveTo(0, 5))?;
 
         let mut row = 0;
         stdout()
@@ -92,6 +81,9 @@ impl Tui {
         let lines = count_lines(&content);
         let mut row = rows - 1 - lines;
         // TODO: Split into lines...
+            //.queue(SetForegroundColor(Color::Red))?
+            //.queue(SetBackgroundColor(Color::Blue))?
+
         let mut col = 0;
         for line in content.lines() {
             stdout()
