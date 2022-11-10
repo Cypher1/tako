@@ -64,7 +64,7 @@ impl Error {
         source: TError,
         path: Option<&str>,
         contents: Option<&str>,
-        module: Option<()>,
+        module: Option<&()>,
     ) -> Self {
         let location = match &source {
             TError::CppCompilerError { .. } => None,

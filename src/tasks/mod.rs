@@ -149,7 +149,6 @@ impl TaskSet {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Request {
     kimd: RequestType,
-    meta: Meta<TaskMeta>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
