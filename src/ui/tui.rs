@@ -2,13 +2,15 @@ use log::trace;
 use std::collections::BTreeMap;
 
 use super::UserInterface;
-use crate::{tasks::{TaskKind, TaskStats, StatusReport}, Request};
+use crate::{
+    tasks::{StatusReport, TaskKind, TaskStats},
+    Request,
+};
 use async_trait::async_trait;
 use std::sync::{Arc, Mutex};
 
-use tokio::time;
 use crossterm::{
-    cursor::{MoveTo, RestorePosition},
+    cursor::MoveTo,
     event::{Event, EventStream, KeyCode, KeyEvent},
     style::{Color, Print, ResetColor, SetBackgroundColor, SetForegroundColor},
     terminal::{disable_raw_mode, enable_raw_mode, size, Clear, ClearType},
@@ -16,11 +18,12 @@ use crossterm::{
 };
 use futures::{future::FutureExt, StreamExt};
 use shutdown_hooks::add_shutdown_hook;
+use tokio::time;
 
 use crokey::{key, KeyEventFormat};
 use std::{
     io::{stdout, Write},
-    time::Duration,
+    time::{Duration, Instant},
 };
 use tokio::{
     self,
@@ -61,24 +64,28 @@ impl Tui {
             .queue(MoveTo(0, 4))?
             .queue(MoveTo(0, 5))?;
 
-        let mut row = 10;
+        let mut row = 0;
         stdout()
             .queue(MoveTo(0, row))?
-            .queue(Print(&format!("Stats")))?;
+            .queue(Print(&"Stats".to_string()))?;
         row += 1;
         for (task_kind, stats) in &self.manager_status {
+            let s = format!("{:?}: {}", task_kind, stats);
+            let len = s.len() as u16;
             stdout()
-                .queue(MoveTo(0, row))?
-                .queue(Print(&format!("{:?}: {}", task_kind, stats)))?;
+                .queue(MoveTo(cols - len - 1, row))?
+                .queue(Print(&s))?;
             row += 1;
         }
 
-        row += 10;
+        let row = rows - 1 - (self.input.chars().filter(|c| *c == '\n').count() as u16);
+        // TODO: Split into lines...
+        let status = format!(">> {}", self.input);
         stdout()
             .queue(MoveTo(0, row))?
-            .queue(Print(&format!(">> {}.", self.input)))?;
-        stdout().queue(ResetColor)?.queue(RestorePosition)?;
-        stdout().flush()?;
+            .queue(Print(&status))?
+            .queue(MoveTo(status.len() as u16, row))?;
+        stdout().queue(ResetColor)?.flush()?;
         if self.should_exit {
             stdout().queue(Clear(ClearType::All))?;
             stdout().flush()?;
@@ -95,6 +102,25 @@ impl Tui {
                     key!(ctrl - c) | key!(ctrl - q) => self.should_exit = true,
                     key!(Backspace) => {
                         self.input.pop(); // Discard
+                    }
+                    key!(ctrl - d) | key!(ctrl - u) => {
+                        self.input = "".to_string(); // Discard
+                    }
+                    key!(ctrl - w) => {
+                        let last_space = self.input.rfind(' ').unwrap_or(0);
+                        self.input = self.input[0..last_space].to_string();
+                    }
+                    key!(Enter) => {
+                        // Submit the expression
+                        if true {
+                            // accepted
+                            self.input = "".to_string(); // Discard
+                        } else {
+                            // show errr?
+                        }
+                    }
+                    key!(Shift - Enter) => {
+                        self.input.push('\n');
                     }
                     KeyEvent {
                         code: KeyCode::Char(letter),
@@ -125,6 +151,7 @@ impl UserInterface for Tui {
         _request_sender: Option<mpsc::UnboundedSender<Request>>,
         stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
     ) -> std::io::Result<()> {
+        let _start_time = Instant::now();
         let mut tui = Self::default();
         add_shutdown_hook(shutdown);
         enable_raw_mode().expect("TUI failed to enable raw mode");
@@ -154,6 +181,7 @@ impl UserInterface for Tui {
                 }
                 else => break,
             }
+            // tui.cursor_blink = (start_time.elapsed().as_secs() % 2) == 0;
             tui.render()?;
         }
         Ok(())
