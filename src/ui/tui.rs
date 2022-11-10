@@ -27,10 +27,7 @@ use std::{
 };
 use tokio::{
     self,
-    sync::{
-        broadcast,
-        mpsc,
-    },
+    sync::{broadcast, mpsc},
 };
 
 const TICK: Duration = Duration::from_millis(100);
@@ -56,11 +53,9 @@ impl Tui {
         let (cols, rows) = size()?;
 
         let mut row = 0;
-        let mut status_lines = vec![
-            "Stats".to_string()
-        ];
+        let mut status_lines = vec!["Stats".to_string()];
         for (task_kind, stats) in &self.manager_status {
-            let s = format!("{:?}: {}", task_kind, stats);
+            let s = format!("{task_kind:?}: {stats}");
             status_lines.push(s);
         }
         row += 1;
@@ -72,9 +67,7 @@ impl Tui {
             row += 1;
         }
 
-        let count_lines = |s: &str| {
-            s.chars().filter(|c| *c == '\n').count() as u16
-        };
+        let count_lines = |s: &str| s.chars().filter(|c| *c == '\n').count() as u16;
         let mut content = "".to_string();
         for hist_entry in &self.history {
             content += hist_entry;
@@ -83,24 +76,24 @@ impl Tui {
         content += &format!(">> {}{}", self.input, self.input_after_cursor);
         let lines = count_lines(&content);
         let lines_after_cursor = count_lines(&self.input_after_cursor);
-        let chars_after_cursor = self.input_after_cursor.find('\n').unwrap_or(self.input_after_cursor.len());
+        let chars_after_cursor = self
+            .input_after_cursor
+            .find('\n')
+            .unwrap_or(self.input_after_cursor.len());
         let mut row = rows - 1 - lines;
         // TODO: Split into lines...
-            //.queue(SetForegroundColor(Color::Red))?
-            //.queue(SetBackgroundColor(Color::Blue))?
+        //.queue(SetForegroundColor(Color::Red))?
+        //.queue(SetBackgroundColor(Color::Blue))?
 
         let mut col = 0;
         for line in content.lines() {
-            stdout()
-                .queue(MoveTo(0, row))?
-                .queue(Print(line))?;
-            row+=1;
+            stdout().queue(MoveTo(0, row))?.queue(Print(line))?;
+            row += 1;
             col = line.len();
         }
         col -= chars_after_cursor;
         row -= lines_after_cursor;
-        stdout()
-            .queue(MoveTo(col as u16, row))?;
+        stdout().queue(MoveTo(col as u16, row))?;
         stdout().queue(ResetColor)?.flush()?;
         if self.should_exit {
             stdout().queue(Clear(ClearType::All))?;
@@ -151,7 +144,7 @@ impl Tui {
                     key!(left) => {
                         let last = self.input.pop();
                         if let Some(last) = last {
-                            self.input_after_cursor = format!("{}{}", last, self.input_after_cursor);
+                            self.input_after_cursor = format!("{last}{}", self.input_after_cursor);
                         }
                     }
                     key!(Shift - Enter) => {
@@ -182,7 +175,7 @@ impl Tui {
                         // discard
                     }
                 };
-                characters = format!("{}{}", characters, self.key_fmt.to_string(key_event));
+                characters = format!("{characters}{}", self.key_fmt.to_string(key_event));
             }
             other => trace!("Event: {:?}", other),
         }

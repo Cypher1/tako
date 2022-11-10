@@ -75,9 +75,9 @@ async fn main() -> Result<()> {
 
     // Receive the results...
     trace!("Waiting for 'final' result...");
-    if let Some(ast) = compiler_task.recv().await {
+    while let Some(ast) = compiler_task.recv().await {
         trace!("Receiving 'final' result from compiler: {ast:?}");
-        dbg!(ast);
+        trace!("AST: {:?}", ast);
     }
     compiler_task.close();
     // All done!

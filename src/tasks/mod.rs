@@ -260,16 +260,18 @@ impl Task for ParseFileTask {
         Some(&self.path)
     }
     async fn perform(self, result_sender: UpdateSender<Self, Self::Output>) {
-        let ast =
-            crate::parser::parse(&self.path, &self.tokens).map_err(|err| self.decorate_error(err));
-        result_sender
-            .send((
-                self,
-                match ast {
-                    Ok(result) => Update::FinalResult(result),
-                    Err(err) => Update::Failed(err),
-                },
-            ))
-            .expect("Should be able to send task result to manager");
+        tokio::task::spawn_blocking(move || {
+            let ast = crate::parser::parse(&self.path, &self.tokens)
+                .map_err(|err| self.decorate_error(err));
+            result_sender
+                .send((
+                    self,
+                    match ast {
+                        Ok(result) => Update::FinalResult(result),
+                        Err(err) => Update::Failed(err),
+                    },
+                ))
+                .expect("Should be able to send task result to manager");
+        });
     }
 }
