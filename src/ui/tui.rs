@@ -79,6 +79,8 @@ impl Tui {
         }
         content += &format!(">> {}{}", self.input, self.input_after_cursor);
         let lines = count_lines(&content);
+        let lines_after_cursor = count_lines(&self.input_after_cursor);
+        let chars_after_cursor = self.input_after_cursor.find('\n').unwrap_or(self.input_after_cursor.len());
         let mut row = rows - 1 - lines;
         // TODO: Split into lines...
             //.queue(SetForegroundColor(Color::Red))?
@@ -92,7 +94,9 @@ impl Tui {
             row+=1;
             col = line.len();
         }
-            stdout()
+        col -= chars_after_cursor;
+        row -= lines_after_cursor;
+        stdout()
             .queue(MoveTo(col as u16, row))?;
         stdout().queue(ResetColor)?.flush()?;
         if self.should_exit {
@@ -128,6 +132,17 @@ impl Tui {
                     key!(ctrl - w) => {
                         let last_space = self.input.rfind(' ').unwrap_or(0);
                         self.input = self.input[0..last_space].to_string();
+                    }
+                    key!(right) => {
+                        let first = &self.input_after_cursor.chars().next();
+                        self.input.extend(first);
+                        self.input_after_cursor = self.input_after_cursor[1..].to_string();
+                    }
+                    key!(left) => {
+                        let last = self.input.pop();
+                        if let Some(last) = last {
+                            self.input_after_cursor = format!("{}{}", last, self.input_after_cursor);
+                        }
                     }
                     key!(Shift - Enter) => {
                         self.input.push('\n');
