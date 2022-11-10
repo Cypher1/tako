@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Meta<T>(pub T);
 
 impl<T> From<T> for Meta<T> {
