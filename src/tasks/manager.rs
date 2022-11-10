@@ -42,7 +42,6 @@ impl std::fmt::Display for TaskStats {
         let items: Vec<String> = vec![
             (num_cached, "cached"),
             (num_failed, "failed"),
-            (num_already_running, "duplicate"),
         ].iter()
             .filter(|(n, _label)| **n>0)
             .map(|(n, label)| format!("{} {}", n, label))
