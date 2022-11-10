@@ -103,7 +103,13 @@ impl Tui {
                     key!(Backspace) => {
                         self.input.pop(); // Discard
                     }
-                    key!(ctrl - d) | key!(ctrl - u) => {
+                    key!(ctrl - d) => {
+                        if self.input.is_empty() {
+                            self.should_exit = true;
+                        }
+                        self.input = "".to_string(); // Discard
+                    }
+                    key!(ctrl - u) => {
                         self.input = "".to_string(); // Discard
                     }
                     key!(ctrl - w) => {
