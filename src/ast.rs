@@ -65,29 +65,29 @@ pub struct Ast {
     // Abstract syntax tree... forest
     pub roots: Vec<NodeId>,
     pub nodes: Vec<Node>,
-    pub calls: Vec<Call>,
-    pub symbols: Vec<Symbol>,
-    pub definitions: Vec<Definition>,
-    pub literals: Vec<Literal>,
+    pub calls: Vec<(NodeId, Call)>,
+    pub symbols: Vec<(NodeId, Symbol)>,
+    pub definitions: Vec<(NodeId, Definition)>,
+    pub literals: Vec<(NodeId, Literal)>,
     // This ensures we can look up the string from the hash.
     // BUT: We can also merge the hashes without losing any information.
     pub strings: HashMap<StringHash, String>,
 }
 
 make_contains!(nodes, Node, NodeRef, NodeId);
-make_contains!(calls, Call, Call, CallId);
-make_contains!(symbols, Symbol, Symbol, SymbolId);
-make_contains!(definitions, Definition, Definition, DefinitionId);
-make_contains!(literals, Literal, Literal, LiteralId);
+make_contains!(calls, (NodeId, Call), Call, CallId);
+make_contains!(symbols, (NodeId, Symbol), Symbol, SymbolId);
+make_contains!(definitions, (NodeId, Definition), Definition, DefinitionId);
+make_contains!(literals, (NodeId, Literal), Literal, LiteralId);
 
 impl Ast {
     pub fn make_node<T, F: FnOnce(NodeId) -> T>(&mut self, value: F, location: Location) -> NodeId
     where
-        Self: Contains<T>,
+        Self: Contains<(NodeId, T)>,
     {
         let node_id =
             TypedIndex::next(&self.nodes).expect("Should never have that many AstNodes..."); // Reserve it...
-        let value_id = self.alloc(value(node_id));
+        let value_id = self.alloc((node_id, value(node_id)));
         let node = Node {
             id: Self::to_node(value_id),
             location,
@@ -113,22 +113,19 @@ type StrId = TypedIndex<String, StringHash>; // TODO: replace with an interned s
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Symbol {
-    node: NodeId,
-    name: StrId, // index into the file
+    pub name: StrId, // index into the file
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Call {
-    node: NodeId,
     pub inner: NodeId,
     pub args: Vec<NodeId>, // TODO: Short vec
 }
 
 impl Call {
     #[cfg(test)]
-    pub fn new(node: NodeId, inner: NodeId, args: &[NodeId]) -> Self {
+    pub fn new(inner: NodeId, args: &[NodeId]) -> Self {
         Self {
-            node,
             inner,
             args: args.to_vec(),
         }
@@ -137,7 +134,6 @@ impl Call {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Definition {
-    node: NodeId,
     pub name: StrId,
     pub implementation: NodeId,
 }
@@ -159,8 +155,7 @@ pub enum LiteralKind {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Literal {
-    node: NodeId,
-    kind: LiteralKind,
+    pub kind: LiteralKind,
     pub encoded: String, // TODO: ???
 }
 
@@ -173,10 +168,9 @@ mod tests {
         let mut ast = Ast::default();
         let plus = ast.register_str("+".to_string());
         let a = ast.register_str("a".to_string());
-        let plus = |node| Symbol { node, name: plus };
-        let a = |node| Symbol { node, name: a };
+        let plus = |node| Symbol { name: plus };
+        let a = |node| Symbol { name: a };
         let b = |node| Literal {
-            node,
             kind: LiteralKind::Integer,
             encoded: "123456789".to_string(),
         };
@@ -184,14 +178,12 @@ mod tests {
         let a = ast.make_node(a, Location::dummy_for_test());
         let b = ast.make_node(b, Location::dummy_for_test());
         let call = |node| Call {
-            node,
             inner: plus,
             args: vec![a, b],
         };
         let call = ast.make_node(call, Location::dummy_for_test());
         let a_prime = ast.register_str("a_prime".to_string());
         let definition = |node| Definition {
-            node,
             name: a_prime,
             implementation: call,
         };
