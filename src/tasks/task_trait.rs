@@ -18,7 +18,7 @@ pub struct TaskMeta {
 
 pub type TaskReceiverFor<T> = mpsc::UnboundedReceiver<T>;
 pub type TaskSenderFor<T> = mpsc::UnboundedSender<<T as Task>::Output>;
-pub type UpdateSender<T, O> = mpsc::UnboundedSender<(TaskId, T, Update<O, Error>)>;
+pub type UpdateSender<T, O> = mpsc::UnboundedSender<(T, Update<O, Error>)>;
 
 #[async_trait]
 pub trait Task: std::fmt::Debug + Clone + std::hash::Hash + Eq + Sized + Send {
@@ -35,23 +35,27 @@ pub trait Task: std::fmt::Debug + Clone + std::hash::Hash + Eq + Sized + Send {
         // Hashing will visit all owned memory, so
         // for small tasks rehashing may be better than not...
     }
-    fn cached_hash(&self) -> Option<TaskHash> {
-        None
+
+    fn compute_hash(&self) -> Option<TaskHash> {
+        let mut hasher = fxhash::FxHasher::default();
+        self.hash(&mut hasher);
+        let task_hash = hasher.finish();
+        self.cache_hash(task_hash);
+        task_hash
     }
 
-    fn create_meta(&self) -> TaskMeta {
+    fn get_hash(&self) -> Option<TaskHash> {
         let task_hash = if let Some(hash) = self.cached_hash() {
             hash
         } else {
-            let mut hasher = fxhash::FxHasher::default();
-            self.hash(&mut hasher);
-            let task_hash = hasher.finish();
-            self.cache_hash(task_hash);
-            task_hash
+            self.compute_hash()
         };
+    }
+
+    fn create_meta(&self) -> TaskMeta {
         TaskMeta {
             kind: Self::TASK_KIND,
-            task_hash,
+            task_hash: self.get_hash(),
         }
     }
 
@@ -69,6 +73,6 @@ pub trait Task: std::fmt::Debug + Clone + std::hash::Hash + Eq + Sized + Send {
     async fn perform(self, result_sender: UpdateSender<Self, Self::Output>);
 
     fn decorate_error<E: Into<TError>>(&self, error: E) -> Error {
-        Error::new(error.into(), self.has_file_path(), self.has_source(), seld.has_module())
+        Error::new(error.into(), self.has_file_path(), self.has_source(), self.has_module())
     }
 }
