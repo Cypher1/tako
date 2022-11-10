@@ -138,7 +138,10 @@ impl Tui {
                             // accepted
                             let mut line = "".to_string();
                             std::mem::swap(&mut self.input, &mut line);
-                            self.history.push(line + &self.input_after_cursor);
+                            line += &self.input_after_cursor;
+                            if !line.is_empty() {
+                                self.history.push(line);
+                            }
                             self.input_after_cursor = "".to_string();
                         } else {
                             // show errr?
