@@ -10,7 +10,7 @@ use crate::error::{Error, TError};
 pub struct TaskMeta {
     // Stores track meta data, like a cached task hash.
     kind: TaskKind, // Where to look for the task
-    task_id: u64,   // the cached hash value
+    task_hash: u64,   // the cached hash value
 }
 
 pub type TaskReceiverFor<T> = mpsc::UnboundedReceiver<T>;
@@ -30,12 +30,15 @@ pub trait Task: std::fmt::Debug + Clone + std::hash::Hash + Eq + Sized + Send {
     fn create_meta(&self) -> TaskMeta {
         let mut hasher = fxhash::FxHasher::default();
         self.hash(&mut hasher);
-        let task_id = hasher.finish();
+        let task_hash = hasher.finish();
         TaskMeta {
             kind: Self::TASK_KIND,
-            task_id,
+            task_hash,
         }
     }
+
+    fn get_meta(&self) -> TaskMeta;
+
     fn has_file_path(&self) -> Option<&str> {
         None
     }
