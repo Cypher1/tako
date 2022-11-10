@@ -56,16 +56,19 @@ impl Tui {
         let (cols, rows) = size()?;
 
         let mut row = 0;
-        stdout()
-            .queue(MoveTo(0, row))?
-            .queue(Print(&"Stats".to_string()))?;
-        row += 1;
+        let mut status_lines = vec![
+            "Stats".to_string()
+        ];
         for (task_kind, stats) in &self.manager_status {
             let s = format!("{:?}: {}", task_kind, stats);
-            let len = s.len() as u16;
+            status_lines.push(s);
+        }
+        row += 1;
+        for line in status_lines {
+            let len = line.len() as u16;
             stdout()
                 .queue(MoveTo(cols - len - 1, row))?
-                .queue(Print(&s))?;
+                .queue(Print(line))?;
             row += 1;
         }
 
