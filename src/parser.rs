@@ -1,3 +1,4 @@
+// use rand::Rng;
 use crate::ast::Ast;
 use crate::error::TError;
 use crate::tokens::Token;
@@ -7,7 +8,8 @@ pub fn parse(filepath: &str, tokens: &[Token]) -> Result<Ast, TError> {
     let tokens = tokens.iter().peekable();
     debug!("Parse {}", filepath);
     // TODO: REMOVE THIS (it's just to test the threading model)
-    // std::thread::sleep(std::time::Duration::from_secs(4));
+    // let mut rng = rand::thread_rng();
+    // std::thread::sleep(std::time::Duration::from_secs(rng.gen_range(0..10)));
     for tok in tokens {
         trace!("tok {tok:?}");
     }
