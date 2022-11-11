@@ -29,7 +29,7 @@ pub mod tests {
     #[test]
     fn parse_literal() -> Result<(), TError> {
         let tokens = lex("123")?;
-        let Ast { roots, literals, .. } = parse(TEST_FILE1, &tokens)?;
+        let Ast { roots: _, literals, .. } = parse(TEST_FILE1, &tokens)?;
         
         dbg!(&literals);
         let lits: Vec<Literal> = literals.into_iter().map(|(_n, lit)| lit).collect();
@@ -76,7 +76,6 @@ pub mod tests {
         dbg!(literals);
 
         todo!();
-        Ok(())
     }
 }
 /*
