@@ -17,26 +17,30 @@ pub fn parse(filepath: &str, tokens: &[Token]) -> Result<Ast, TError> {
     Ok(Ast::default())
 }
 
-
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use crate::tokens::lex;
     use crate::ast::*;
+    use crate::tokens::lex;
 
-    const TEST_FILE1: &str ="test.tk";
+    const TEST_FILE1: &str = "test.tk";
 
     #[test]
     fn parse_literal() -> Result<(), TError> {
         let tokens = lex("123")?;
-        let Ast { roots: _, literals, .. } = parse(TEST_FILE1, &tokens)?;
-        
+        let Ast {
+            roots: _, literals, ..
+        } = parse(TEST_FILE1, &tokens)?;
+
         dbg!(&literals);
         let lits: Vec<Literal> = literals.into_iter().map(|(_n, lit)| lit).collect();
 
         assert_eq!(
             lits,
-            vec![Literal { kind: LiteralKind::Integer, encoded: "123".to_string() }],
+            vec![Literal {
+                kind: LiteralKind::Integer,
+                encoded: "123".to_string()
+            }],
             "Should have parsed a number"
         );
 
@@ -46,7 +50,12 @@ pub mod tests {
     #[test]
     fn parse_add_literals() -> Result<(), TError> {
         let tokens = lex("1+2")?;
-        let Ast { symbols, calls, literals, .. } = parse(TEST_FILE1, &tokens)?;
+        let Ast {
+            symbols,
+            calls,
+            literals,
+            ..
+        } = parse(TEST_FILE1, &tokens)?;
 
         dbg!(symbols);
         dbg!(calls);
@@ -57,7 +66,12 @@ pub mod tests {
     #[test]
     fn parse_add_mul_literals() -> Result<(), TError> {
         let tokens = lex("1+2*3")?;
-        let Ast { symbols, calls, literals, .. } = parse(TEST_FILE1, &tokens)?;
+        let Ast {
+            symbols,
+            calls,
+            literals,
+            ..
+        } = parse(TEST_FILE1, &tokens)?;
 
         dbg!(symbols);
         dbg!(calls);
@@ -69,7 +83,12 @@ pub mod tests {
     #[test]
     fn parse_mul_add_literals() -> Result<(), TError> {
         let tokens = lex("1+2*3")?;
-        let Ast { symbols, calls, literals, .. } = parse(TEST_FILE1, &tokens)?;
+        let Ast {
+            symbols,
+            calls,
+            literals,
+            ..
+        } = parse(TEST_FILE1, &tokens)?;
 
         dbg!(symbols);
         dbg!(calls);

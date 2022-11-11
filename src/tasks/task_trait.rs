@@ -12,8 +12,8 @@ pub type TaskId = TaskHash;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct TaskMeta {
     // Stores track meta data, like a cached task hash.
-    kind: TaskKind, // Where to look for the task
-    task_hash: TaskHash,   // the cached hash value
+    kind: TaskKind,      // Where to look for the task
+    task_hash: TaskHash, // the cached hash value
 }
 
 pub type TaskReceiverFor<T> = mpsc::UnboundedReceiver<T>;
@@ -76,6 +76,11 @@ pub trait Task: std::fmt::Debug + Clone + std::hash::Hash + Eq + Sized + Send {
     async fn perform(self, result_sender: UpdateSender<Self, Self::Output>);
 
     fn decorate_error<E: Into<TError>>(&self, error: E) -> Error {
-        Error::new(error.into(), self.has_file_path(), self.has_source(), self.has_module())
+        Error::new(
+            error.into(),
+            self.has_file_path(),
+            self.has_source(),
+            self.has_module(),
+        )
     }
 }
