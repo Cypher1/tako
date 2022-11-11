@@ -33,14 +33,13 @@ pub mod tests {
         } = parse(TEST_FILE1, &tokens)?;
 
         dbg!(&literals);
-        let lits: Vec<Literal> = literals.into_iter().map(|(_n, lit)| lit).collect();
 
         assert_eq!(
-            lits,
-            vec![Literal {
+            literals,
+            vec![(NodeId::from_raw(0), Literal {
                 kind: LiteralKind::Integer,
                 encoded: "123".to_string()
-            }],
+            })],
             "Should have parsed a number"
         );
 
@@ -49,6 +48,7 @@ pub mod tests {
 
     #[test]
     fn parse_add_literals() -> Result<(), TError> {
+        crate::ensure_initialized();
         let tokens = lex("1+2")?;
         let Ast {
             symbols,
@@ -56,6 +56,19 @@ pub mod tests {
             literals,
             ..
         } = parse(TEST_FILE1, &tokens)?;
+
+        assert_eq!(
+            literals,
+            vec![(NodeId::from_raw(0), Literal {
+                kind: LiteralKind::Integer,
+                encoded: "1".to_string()
+            }),
+            (NodeId::from_raw(2), Literal {
+                kind: LiteralKind::Integer,
+                encoded: "2".to_string()
+            })],
+            "Should have parsed a number"
+        );
 
         dbg!(symbols);
         dbg!(calls);
@@ -65,6 +78,7 @@ pub mod tests {
 
     #[test]
     fn parse_add_mul_literals() -> Result<(), TError> {
+        crate::ensure_initialized();
         let tokens = lex("1+2*3")?;
         let Ast {
             symbols,
@@ -82,6 +96,7 @@ pub mod tests {
 
     #[test]
     fn parse_mul_add_literals() -> Result<(), TError> {
+        crate::ensure_initialized();
         let tokens = lex("1+2*3")?;
         let Ast {
             symbols,
