@@ -168,22 +168,22 @@ mod tests {
         let mut ast = Ast::default();
         let plus = ast.register_str("+".to_string());
         let a = ast.register_str("a".to_string());
-        let plus = |node| Symbol { name: plus };
-        let a = |node| Symbol { name: a };
-        let b = |node| Literal {
+        let plus = |_node| Symbol { name: plus };
+        let a = |_node| Symbol { name: a };
+        let b = |_node| Literal {
             kind: LiteralKind::Integer,
             encoded: "123456789".to_string(),
         };
         let plus = ast.make_node(plus, Location::dummy_for_test());
         let a = ast.make_node(a, Location::dummy_for_test());
         let b = ast.make_node(b, Location::dummy_for_test());
-        let call = |node| Call {
+        let call = |_node| Call {
             inner: plus,
             args: vec![a, b],
         };
         let call = ast.make_node(call, Location::dummy_for_test());
         let a_prime = ast.register_str("a_prime".to_string());
-        let definition = |node| Definition {
+        let definition = |_node| Definition {
             name: a_prime,
             implementation: call,
         };
