@@ -1,5 +1,5 @@
 // use rand::Rng;
-use crate::ast::Ast;
+use crate::ast::{Ast, NodeId};
 use crate::error::TError;
 use crate::tokens::Token;
 use log::{debug, trace};
@@ -7,14 +7,25 @@ use log::{debug, trace};
 pub fn parse(filepath: &str, tokens: &[Token]) -> Result<Ast, TError> {
     let tokens = tokens.iter().peekable();
     debug!("Parse {}", filepath);
+    let mut ast = Ast::default();
+    expr(&mut ast, tokens);
     // TODO: REMOVE THIS (it's just to test the threading model)
     // let mut rng = rand::thread_rng();
     // std::thread::sleep(std::time::Duration::from_secs(rng.gen_range(0..10)));
-    for tok in tokens {
-        trace!("tok {tok:?}");
-    }
     // TODO: parsing!!!
-    Ok(Ast::default())
+    Ok(ast)
+}
+
+fn expr<'a, T: Iterator<Item=&'a Token>>(_ast: &mut Ast, mut tokens: std::iter::Peekable<T>) {
+    let mut stack: Vec<NodeId> = vec![];
+    // let mut left = None;
+    loop {
+        if let Some(tok) = tokens.next() {
+            trace!("tok {tok:?}");
+        } else {
+            break
+        }
+    }
 }
 
 #[cfg(test)]
