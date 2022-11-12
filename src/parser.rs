@@ -4,6 +4,12 @@ use crate::error::TError;
 use crate::tokens::Token;
 use log::{debug, trace};
 
+fn assert_invariants() {
+    use static_assertions::*;
+    assert_eq_size!(Partial, [u8;12]);
+
+}
+
 pub fn parse(filepath: &str, tokens: &[Token]) -> Result<Ast, TError> {
     let tokens = tokens.iter().peekable();
     debug!("Parse {}", filepath);
@@ -16,9 +22,19 @@ pub fn parse(filepath: &str, tokens: &[Token]) -> Result<Ast, TError> {
     Ok(ast)
 }
 
+enum Partial {
+    NoLeft(Token),
+    Left(NodeId, Token),
+}
+
 fn expr<'a, T: Iterator<Item=&'a Token>>(_ast: &mut Ast, mut tokens: std::iter::Peekable<T>) {
-    let mut stack: Vec<NodeId> = vec![];
-    // let mut left = None;
+    let head = if let Some(head) = tokens.next() {
+        *head
+    } else {
+        return;
+    };
+    let mut stack: Vec<Partial> = vec![];
+    let mut left = Partial::NoLeft(head);
     loop {
         if let Some(tok) = tokens.next() {
             trace!("tok {tok:?}");

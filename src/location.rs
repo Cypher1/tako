@@ -1,7 +1,8 @@
 use std::fmt;
 
-pub type IndexIntoFile = u32;
-pub type SymbolLength = IndexIntoFile;
+pub type IndexIntoFile = u16;
+pub type SymbolLength = u8;
+pub type LiteralLength = u16;
 // This is chosen as it's large enough to index the whole of
 // gcc as a single '.c' file at a per-byte level,
 // and `u16` is too small.
@@ -10,7 +11,7 @@ pub type SymbolLength = IndexIntoFile;
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Location {
     location: IndexIntoFile,
-    length: SymbolLength,
+    length: LiteralLength,
 }
 
 impl Location {
