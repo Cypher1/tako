@@ -53,6 +53,7 @@ async-trait = "0.1.58"
 # Info: https://nnethercote.github.io/2021/12/08/a-brutally-effective-hash-function-in-rust.html
 fxhash = "0.2.1"
 rand = "0.8.4"
+static_assertions = "1.1.0"
 
 [dev-dependencies]
 pretty_assertions = "1.0.0"

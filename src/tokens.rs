@@ -1,33 +1,49 @@
 use crate::error::TError;
-use crate::location::{IndexIntoFile, SymbolLength};
+use crate::location::{IndexIntoFile, LiteralLength, SymbolLength};
 use log::debug;
 use std::fmt;
+
+fn assert_invariants() {
+    use static_assertions::*;
+    assert_eq_size!(TokenType, [u8;1]);
+    assert_eq_size!(IndexIntoFile, [u8;2]);
+    assert_eq_size!(SymbolLength, [u8;1]);
+    assert_eq_size!(LiteralLength, [u8;2]);
+    //assert_eq_size!(Literal, [u8;4]);
+    assert_eq_size!(Token, [u8;4]);
+    assert_eq_size!([Token;2], [u8;8]);
+}
+
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum TokenType {
     Op,
     OpenBracket,
     CloseBracket,
-    NumLit,
-    StringLit,
     Sym,
     Unknown,
     Whitespace,
     Eof,
+    NumLit,
+    StringLit, // Short strings can be stored as symbols.
+    StringLitLong,
+    // If the string is too long, rather than increase the size of eveey token,
+    // we can store it (or its details) in a per-file hashmap by start location.
 }
 
-#[derive(Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Token {
     pub start: IndexIntoFile,
-    pub length: SymbolLength,
     pub kind: TokenType,
+    pub length: SymbolLength,
 }
 
 impl Token {
     fn eof() -> Self {
         Self {
             start: 0,
-            length: 0, // zero characters == empty str.
             kind: TokenType::Eof,
+            length: 0, // zero characters == empty str.
         }
     }
 
@@ -46,7 +62,7 @@ impl fmt::Debug for Token {
             "{:?}({}..{})",
             self.kind,
             self.start,
-            self.start + self.length
+            self.start + (self.length as IndexIntoFile)
         )
     }
 }
@@ -213,11 +229,21 @@ pub fn lex_head(characters: &mut Characters) -> Token {
     let length = characters
         .index()
         .checked_sub(characters.start())
-        .expect("Token should finish after it starts") as SymbolLength;
-    Token {
-        start: characters.start() as u32,
-        length,
-        kind,
+        .expect("Token should finish after it starts");
+
+    if length > SymbolLength::MAX as usize {
+        assert_eq!(kind, TokenType::StringLit); // TODO: Error here.
+        Token {
+            start: characters.start() as IndexIntoFile,
+            length: 0,
+            kind: TokenType::StringLitLong,
+        }
+    } else {
+        Token {
+            start: characters.start() as IndexIntoFile,
+            length: length as SymbolLength,
+            kind,
+        }
     }
 }
 
