@@ -1395,6 +1395,7 @@ dependencies = [
  "lazy_static",
  "log",
  "notify",
+ "num-traits",
  "pretty_assertions",
  "rand",
  "rustyline",
