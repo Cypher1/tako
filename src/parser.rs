@@ -1,7 +1,7 @@
 // use rand::Rng;
 use crate::ast::{Ast, NodeId};
 use crate::error::TError;
-use crate::tokens::Token;
+use crate::tokens::{Token, TokenType};
 use log::{debug, trace};
 
 use static_assertions::*;
@@ -20,20 +20,32 @@ pub fn parse(filepath: &str, tokens: &[Token]) -> Result<Ast, TError> {
     Ok(ast)
 }
 
-type Partial = (Token, NodeId);
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+enum Partial {
+    Empty,
+    Joiner(Token),
+    Node(NodeId),
+}
 
-fn expr<'a, T: Iterator<Item = &'a Token>>(_ast: &mut Ast, mut tokens: std::iter::Peekable<T>) {
-    let mut head = if let Some(head) = tokens.next() {
-        *head
-    } else {
-        return;
-    };
-    let _stack: Vec<Partial> = vec![];
-    let mut left: NodeId = NodeId::max();
+fn expr<'a, T: Iterator<Item = &'a Token>>(ast: &mut Ast, mut tokens: std::iter::Peekable<T>) {
+    use Partial::*;
+    let mut stack: Vec<Partial> = vec![];
+    let mut left: Partial = Empty;
     for tok in tokens {
-        match (head, left, tok.kind) {
-            (head, left, new) => {
-                trace!("tok {tok:?} with {left:?} merge via {head:?}");
+        match (left, tok.kind) {
+            (left, TokenType::Op) => {
+                stack.push(left);
+                left = Joiner(*tok);
+            }
+            (Empty, TokenType::NumLit) => {
+                left = Node(ast.add_num_literal(tok));
+            }
+            (Joiner(Token { kind: TokenType::Op, ..}), TokenType::NumLit) => {
+                stack.push(left);
+                left = Node(ast.add_num_literal(tok));
+            }
+            (left, new) => {
+                trace!("tok {tok:?} with {left:?} merge");
             }
         }
     }
