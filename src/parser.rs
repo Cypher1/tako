@@ -5,7 +5,8 @@ use crate::tokens::Token;
 use log::{debug, trace};
 
 use static_assertions::*;
-assert_eq_size!(Partial, [u8;12]);
+assert_eq_size!(Partial, [u8;8]);
+assert_eq_size!([Partial;2], [u8;16]);
 
 pub fn parse(filepath: &str, tokens: &[Token]) -> Result<Ast, TError> {
     let tokens = tokens.iter().peekable();
@@ -19,10 +20,7 @@ pub fn parse(filepath: &str, tokens: &[Token]) -> Result<Ast, TError> {
     Ok(ast)
 }
 
-enum Partial {
-    NoLeft(Token),
-    Left(NodeId, Token),
-}
+type Partial = (Token, NodeId);
 
 fn expr<'a, T: Iterator<Item=&'a Token>>(_ast: &mut Ast, mut tokens: std::iter::Peekable<T>) {
     let head = if let Some(head) = tokens.next() {
@@ -31,7 +29,7 @@ fn expr<'a, T: Iterator<Item=&'a Token>>(_ast: &mut Ast, mut tokens: std::iter::
         return;
     };
     let mut stack: Vec<Partial> = vec![];
-    let mut left = Partial::NoLeft(head);
+    let mut left: Partial = (head, NodeId::max());
     loop {
         if let Some(tok) = tokens.next() {
             trace!("tok {tok:?}");

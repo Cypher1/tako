@@ -7,8 +7,14 @@ pub struct TypedIndex<T, Idx = u32, Container: Index<usize> = Vec<T>> {
     container: PhantomData<Container>,
 }
 
+impl<T, Idx: num_traits::bounds::Bounded, Container: Index<usize>> TypedIndex<T, Idx, Container> {
+    pub fn max() -> Self {
+        Self::from_raw(<Idx as num_traits::bounds::Bounded>::max_value())
+    }
+}
+
 impl<T, Idx, Container: Index<usize>> TypedIndex<T, Idx, Container> {
-    pub fn from_raw(index: Idx) -> Self {
+    pub const fn from_raw(index: Idx) -> Self {
         Self {
             index,
             ty: PhantomData,

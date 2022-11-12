@@ -54,6 +54,7 @@ async-trait = "0.1.58"
 fxhash = "0.2.1"
 rand = "0.8.4"
 static_assertions = "1.1.0"
+num-traits = "0.2.15"
 
 [dev-dependencies]
 pretty_assertions = "1.0.0"
