@@ -3,17 +3,12 @@ use crate::location::{IndexIntoFile, SymbolLength};
 use log::debug;
 use std::fmt;
 
-mod assert_invariants {
-    use super::*;
-    use static_assertions::*;
-    assert_eq_size!(TokenType, [u8;1]);
-    assert_eq_size!(IndexIntoFile, [u8;2]);
-    assert_eq_size!(SymbolLength, [u8;1]);
-    //assert_eq_size!(Literal, [u8;4]);
-    assert_eq_size!(Token, [u8;4]);
-    assert_eq_size!([Token;2], [u8;8]);
-}
-
+use static_assertions::*;
+assert_eq_size!(TokenType, [u8;1]);
+assert_eq_size!(IndexIntoFile, [u8;2]);
+assert_eq_size!(SymbolLength, [u8;1]);
+assert_eq_size!(Token, [u8;4]);
+assert_eq_size!([Token;2], [u8;8]);
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum TokenType {
