@@ -3,7 +3,8 @@ use crate::location::{IndexIntoFile, LiteralLength, SymbolLength};
 use log::debug;
 use std::fmt;
 
-fn assert_invariants() {
+mod assert_invariants {
+    use super::*;
     use static_assertions::*;
     assert_eq_size!(TokenType, [u8;1]);
     assert_eq_size!(IndexIntoFile, [u8;2]);
