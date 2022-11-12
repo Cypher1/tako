@@ -34,9 +34,9 @@ pub struct Token {
 }
 
 impl Token {
-    fn eof() -> Self {
+    fn eof(start: IndexIntoFile) -> Self {
         Self {
-            start: 0,
+            start,
             kind: TokenType::Eof,
             length: 0, // zero characters == empty str.
         }
@@ -188,7 +188,7 @@ pub fn lex_head(characters: &mut Characters) -> Token {
     }
     */
     if characters.peek().is_none() {
-        return Token::eof();
+        return Token::eof(characters.index() as IndexIntoFile);
     }
     characters.set_start();
     // TODO: This should be simplified (make tight loops).
