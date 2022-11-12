@@ -1,4 +1,4 @@
-use crate::location::{Location};
+use crate::location::Location;
 use crate::utils::typed_index::TypedIndex;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
@@ -76,7 +76,7 @@ pub struct Ast {
 }
 
 impl Ast {
-    pub fn new(file:&str)->Self {
+    pub fn new(file: &str) -> Self {
         Self {
             file: file.to_string(),
             ..Self::default()
