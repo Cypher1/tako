@@ -23,18 +23,18 @@ pub fn parse(filepath: &str, tokens: &[Token]) -> Result<Ast, TError> {
 type Partial = (Token, NodeId);
 
 fn expr<'a, T: Iterator<Item = &'a Token>>(_ast: &mut Ast, mut tokens: std::iter::Peekable<T>) {
-    let head = if let Some(head) = tokens.next() {
+    let mut head = if let Some(head) = tokens.next() {
         *head
     } else {
         return;
     };
     let _stack: Vec<Partial> = vec![];
-    let _left: Partial = (head, NodeId::max());
-    loop {
-        if let Some(tok) = tokens.next() {
-            trace!("tok {tok:?}");
-        } else {
-            break;
+    let mut left: NodeId = NodeId::max();
+    for tok in tokens {
+        match (head, left, tok.kind) {
+            (head, left, new) => {
+                trace!("tok {tok:?} with {left:?} merge via {head:?}");
+            }
         }
     }
 }
