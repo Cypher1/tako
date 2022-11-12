@@ -5,8 +5,8 @@ use crate::tokens::Token;
 use log::{debug, trace};
 
 use static_assertions::*;
-assert_eq_size!(Partial, [u8;8]);
-assert_eq_size!([Partial;2], [u8;16]);
+assert_eq_size!(Partial, [u8; 8]);
+assert_eq_size!([Partial; 2], [u8; 16]);
 
 pub fn parse(filepath: &str, tokens: &[Token]) -> Result<Ast, TError> {
     let tokens = tokens.iter().peekable();
@@ -22,7 +22,7 @@ pub fn parse(filepath: &str, tokens: &[Token]) -> Result<Ast, TError> {
 
 type Partial = (Token, NodeId);
 
-fn expr<'a, T: Iterator<Item=&'a Token>>(_ast: &mut Ast, mut tokens: std::iter::Peekable<T>) {
+fn expr<'a, T: Iterator<Item = &'a Token>>(_ast: &mut Ast, mut tokens: std::iter::Peekable<T>) {
     let head = if let Some(head) = tokens.next() {
         *head
     } else {
@@ -34,7 +34,7 @@ fn expr<'a, T: Iterator<Item=&'a Token>>(_ast: &mut Ast, mut tokens: std::iter::
         if let Some(tok) = tokens.next() {
             trace!("tok {tok:?}");
         } else {
-            break
+            break;
         }
     }
 }
@@ -58,10 +58,13 @@ pub mod tests {
 
         assert_eq!(
             literals,
-            vec![(NodeId::from_raw(0), Literal {
-                kind: LiteralKind::Integer,
-                encoded: "123".to_string()
-            })],
+            vec![(
+                NodeId::from_raw(0),
+                Literal {
+                    kind: LiteralKind::Integer,
+                    encoded: "123".to_string()
+                }
+            )],
             "Should have parsed a number"
         );
 
@@ -81,14 +84,22 @@ pub mod tests {
 
         assert_eq!(
             literals,
-            vec![(NodeId::from_raw(0), Literal {
-                kind: LiteralKind::Integer,
-                encoded: "1".to_string()
-            }),
-            (NodeId::from_raw(2), Literal {
-                kind: LiteralKind::Integer,
-                encoded: "2".to_string()
-            })],
+            vec![
+                (
+                    NodeId::from_raw(0),
+                    Literal {
+                        kind: LiteralKind::Integer,
+                        encoded: "1".to_string()
+                    }
+                ),
+                (
+                    NodeId::from_raw(2),
+                    Literal {
+                        kind: LiteralKind::Integer,
+                        encoded: "2".to_string()
+                    }
+                )
+            ],
             "Should have parsed a number"
         );
 
