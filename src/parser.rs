@@ -11,7 +11,7 @@ assert_eq_size!([Partial;2], [u8;16]);
 pub fn parse(filepath: &str, tokens: &[Token]) -> Result<Ast, TError> {
     let tokens = tokens.iter().peekable();
     debug!("Parse {}", filepath);
-    let mut ast = Ast::default();
+    let mut ast = Ast::new(filepath);
     expr(&mut ast, tokens);
     // TODO: REMOVE THIS (it's just to test the threading model)
     // let mut rng = rand::thread_rng();
@@ -28,8 +28,8 @@ fn expr<'a, T: Iterator<Item=&'a Token>>(_ast: &mut Ast, mut tokens: std::iter::
     } else {
         return;
     };
-    let mut stack: Vec<Partial> = vec![];
-    let mut left: Partial = (head, NodeId::max());
+    let _stack: Vec<Partial> = vec![];
+    let _left: Partial = (head, NodeId::max());
     loop {
         if let Some(tok) = tokens.next() {
             trace!("tok {tok:?}");

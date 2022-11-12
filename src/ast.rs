@@ -1,4 +1,4 @@
-use crate::location::Location;
+use crate::location::{Location};
 use crate::utils::typed_index::TypedIndex;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
@@ -63,6 +63,7 @@ type StringHash = u64;
 #[derive(Clone, Default, Debug)]
 pub struct Ast {
     // Abstract syntax tree... forest
+    pub file: String,
     pub roots: Vec<NodeId>,
     pub nodes: Vec<Node>,
     pub calls: Vec<(NodeId, Call)>,
@@ -72,6 +73,15 @@ pub struct Ast {
     // This ensures we can look up the string from the hash.
     // BUT: We can also merge the hashes without losing any information.
     pub strings: HashMap<StringHash, String>,
+}
+
+impl Ast {
+    pub fn new(file:&str)->Self {
+        Self {
+            file: file.to_string(),
+            ..Self::default()
+        }
+    }
 }
 
 make_contains!(nodes, Node, NodeRef, NodeId);
