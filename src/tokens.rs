@@ -20,10 +20,17 @@ pub enum TokenType {
     Whitespace,
     Eof,
     NumLit,
-    StringLit, // Short strings can be stored as symbols.
-    StringLitLong,
+    // Short strings can be stored as symbols.
+    StringLit,
+    FmtStringLitStart,
+    FmtStringLitMid,
+    FmtStringLitEnd,
     // If the string is too long, rather than increase the size of eveey token,
     // we can store it (or its details) in a per-file hashmap by start location.
+    StringLitLong,
+    FmtStringLitLongStart,
+    FmtStringLitLongMid,
+    FmtStringLitLongEnd,
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash)]
