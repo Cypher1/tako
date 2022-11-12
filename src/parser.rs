@@ -4,12 +4,8 @@ use crate::error::TError;
 use crate::tokens::Token;
 use log::{debug, trace};
 
-mod assert_invariants {
-    use super::*;
-    use static_assertions::*;
-    assert_eq_size!(Partial, [u8;12]);
-
-}
+use static_assertions::*;
+assert_eq_size!(Partial, [u8;12]);
 
 pub fn parse(filepath: &str, tokens: &[Token]) -> Result<Ast, TError> {
     let tokens = tokens.iter().peekable();
