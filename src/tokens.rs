@@ -54,7 +54,7 @@ impl fmt::Debug for Token {
         // TODO: Look up the token to get the contents?
         write!(
             f,
-            "{:?}({}..{})",
+            "{:?}@{}..{}",
             self.kind,
             self.start,
             self.start + (self.length as IndexIntoFile)
