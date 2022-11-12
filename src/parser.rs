@@ -4,7 +4,8 @@ use crate::error::TError;
 use crate::tokens::Token;
 use log::{debug, trace};
 
-fn assert_invariants() {
+mod assert_invariants {
+    use super::*;
     use static_assertions::*;
     assert_eq_size!(Partial, [u8;12]);
 
