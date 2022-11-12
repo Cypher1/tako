@@ -1,5 +1,5 @@
 use crate::error::TError;
-use crate::location::{IndexIntoFile, LiteralLength, SymbolLength};
+use crate::location::{IndexIntoFile, SymbolLength};
 use log::debug;
 use std::fmt;
 
@@ -9,7 +9,6 @@ mod assert_invariants {
     assert_eq_size!(TokenType, [u8;1]);
     assert_eq_size!(IndexIntoFile, [u8;2]);
     assert_eq_size!(SymbolLength, [u8;1]);
-    assert_eq_size!(LiteralLength, [u8;2]);
     //assert_eq_size!(Literal, [u8;4]);
     assert_eq_size!(Token, [u8;4]);
     assert_eq_size!([Token;2], [u8;8]);
