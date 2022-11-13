@@ -19,10 +19,17 @@ pub fn parse(filepath: &str, tokens: &[Token]) -> Result<Ast, TError> {
     Ok(ast)
 }
 
+type BindingPower = u8;
+const fn binding_power(token: &str) -> BindingPower {
+    match token {
+
+    }
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 enum Partial {
     Empty,
-    Joiner(Token, /*binding power*/u8),
+    Joiner(Token, /*binding power*/BindingPower),
     Node(NodeId),
 }
 
