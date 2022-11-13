@@ -32,20 +32,40 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(ast: &mut Ast, tokens: std::iter::Pee
     let mut stack: Vec<Partial> = vec![];
     let mut left: Partial = Empty;
     for tok in tokens {
-        match (left, tok.kind) {
-            (_, TokenType::Op) => {
-                stack.push(left);
-                left = Joiner(*tok);
+        dbg!(&left, &tok, &stack);
+        eprintln!();
+        match left {
+            Empty => match tok.kind {
+                TokenType::NumLit => {
+                    left = Node(ast.add_literal(Literal::Numeric, tok.location()));
+                }
+                _ => todo!(),
             }
-            (Empty, TokenType::NumLit) => {
-                left = Node(ast.add_literal(Literal::Numeric, tok.location()));
+            Node(left) => match tok.kind {
+                _ => todo!(),
             }
-            (Joiner(Token { kind: TokenType::Op, ..}), TokenType::NumLit) => {
-                stack.push(left);
-                left = Node(ast.add_literal(Literal::Numeric, tok.location()));
-            }
-            (left, _new) => {
-                trace!("tok {tok:?} with {left:?} merge");
+            Joiner(left_tok) => match (left_tok, tok.kind) {
+                (_, TokenType::Op) => {
+                    stack.push(Joiner(left_tok));
+                    left = Joiner(*tok);
+                }
+                (Token { kind: TokenType::Op, ..}, TokenType::NumLit) => {
+                    // TODO: Something about binding power here?
+                    let op = left;
+                    let curr_left = stack.pop();
+                    let right = tok;
+                    dbg!("Apply ", &curr_left, &op, &right);
+                    let _right = Node(ast.add_literal(Literal::Numeric, right.location()));
+                    todo!();
+                    /*
+                    let op = Node(ast.add_symbol(op, op.location()));
+                    let apply = Node(ast.add_call(Literal::Numeric, tok.location()));
+                    left = apply;
+                    */
+                }
+                (left, _new) => {
+                    trace!("tok {tok:?} with {left:?} merge");
+                }
             }
         }
     }
