@@ -19,6 +19,10 @@ name = "tako"
 path = "src/main.rs"
 
 [[bin]]
+name = "takod"
+path = "src/server.rs"
+
+[[bin]]
 name = "make_test_case"
 path = "tests/bins/make_test_case.rs"
 
@@ -55,6 +59,7 @@ fxhash = "0.2.1"
 rand = "0.8.4"
 static_assertions = "1.1.0"
 num-traits = "0.2.15"
+warp = "0.3.3"
 
 [dev-dependencies]
 pretty_assertions = "1.0.0"
