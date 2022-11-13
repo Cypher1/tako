@@ -3,6 +3,18 @@ use crate::utils::typed_index::TypedIndex;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 
+use static_assertions::*;
+assert_eq_size!(Symbol, [u8; 1]);
+assert_eq_size!([Symbol; 2], [u8; 2]);
+assert_eq_size!(NamedSymbol, [u8; 8]);
+assert_eq_size!([NamedSymbol; 2], [u8; 16]);
+
+#[derive(Debug)]
+struct InContext<'a, T> {
+    value: T,
+    ast: &'a Ast,
+}
+
 // TODO: String interner?
 // TODO: Replace strings where ideal...
 // TODO: Use macro for defining and registering each of these.
@@ -69,6 +81,7 @@ pub enum NodeData {
     // Use a Array of Enums Structs to Struct of Arrays (i.e. AoES2SoA).
     NodeRef(NodeId), // Hopefully don't need this...???
     Symbol(SymbolId),
+    NamedSymbol(NamedSymbolId),
     Call(CallId),
     Definition(DefinitionId),
     Literal(LiteralId),
@@ -84,6 +97,7 @@ pub struct Ast {
     pub nodes: Vec<Node>,
     pub calls: Vec<(NodeId, Call)>,
     pub symbols: Vec<(NodeId, Symbol)>,
+    pub named_symbols: Vec<(NodeId, NamedSymbol)>,
     pub definitions: Vec<(NodeId, Definition)>,
     pub literals: Vec<(NodeId, Literal)>,
     // This ensures we can look up the string from the hash.
@@ -103,6 +117,7 @@ impl Ast {
 make_contains!(nodes, Node, NodeRef, NodeId, unsafe_add_node);
 make_contains!(calls, (NodeId, Call), Call, CallId, add_call);
 make_contains!(symbols, (NodeId, Symbol), Symbol, SymbolId, add_symbol);
+make_contains!(named_symbols, (NodeId, NamedSymbol), NamedSymbol, NamedSymbolId, add_named_symbol);
 make_contains!(definitions, (NodeId, Definition), Definition, DefinitionId, add_definition);
 make_contains!(literals, (NodeId, Literal), Literal, LiteralId, add_literal);
 
@@ -140,13 +155,129 @@ impl Ast {
         self.strings.entry(str_hash).or_insert(name);
         TypedIndex::from_raw(str_hash)
     }
+    pub fn get_str(&self, s: StrId) -> Option<&str> {
+        self.strings.get(&s.raw_index()).map(|ref_string| &**ref_string)
+    }
 }
 
-type StrId = TypedIndex<String, StringHash>; // TODO: replace with an interned string id.
+type StrId = TypedIndex<String, StringHash>;
+// Ensures that str ids are unique per string but also stable across different files etc.
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Symbol {
-    pub name: StrId, // index into the file
+pub enum Symbol {
+    // Basics
+    Add,
+    Sub,
+    Div,
+    DivRounding,
+    Mul,
+    Exp,
+    BitNot,
+    BitAnd,
+    BitXor,
+    BitOr,
+    LogicalAnd,
+    LogicalOr,
+    Modulo,
+    Deref,
+    Reference,
+    PtrTo,
+    HasType,
+    FunctionType,
+    Try,
+    Spread,
+    Dot,
+    Comma,
+    LeftArrow,
+    RightArrow,
+    LeftPipe,
+    RightPipe,
+    // Assignment versions
+    Assign,
+    AddAssign,
+    SubAssign,
+    DivAssign,
+    MulAssign,
+    BitAndAssign,
+    BitXorAssign,
+    BitOrAssign, // TODO: This is also Pipe... might be nice to have both?
+    LogicalAndAssign,
+    LogicalOrAssign,
+    ModuloAssign,
+    // Comparisons
+    Eqs,
+    NotEqs,
+    Lt,
+    Gt,
+    LtEgs,
+    GtEgs,
+    // The rest?
+    // Named(StrId),
+}
+
+impl<'a> std::fmt::Display for Symbol {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", match self {
+            // Basics
+            Symbol::Add => "+",
+            Symbol::Sub => "-",
+            Symbol::Div => "/",
+            Symbol::DivRounding => "//",
+            Symbol::Mul => "*",
+            Symbol::Exp => "**",
+            Symbol::BitNot => "!",
+            Symbol::BitAnd => "&",
+            Symbol::BitXor => "^",
+            Symbol::BitOr => "|",
+            Symbol::LogicalAnd => "&&",
+            Symbol::LogicalOr => "||",
+            Symbol::Modulo => "%",
+            Symbol::Deref => "*",
+            Symbol::Reference => "&",
+            Symbol::PtrTo => "@",
+            Symbol::HasType => ": ", // TODO: Work out a better way of printing pretty spaces.
+            Symbol::FunctionType => "=>",
+            Symbol::Try => "?",
+            Symbol::Spread => "...",
+            Symbol::Dot => ".",
+            Symbol::Comma => ",",
+            Symbol::LeftArrow => "->",
+            Symbol::RightArrow => "<-",
+            Symbol::LeftPipe => "|>",
+            Symbol::RightPipe => "<|",
+            // Assignment versions
+            Symbol::Assign => "=",
+            Symbol::AddAssign => "+=",
+            Symbol::SubAssign => "-=",
+            Symbol::DivAssign => "/=",
+            Symbol::MulAssign => "*=",
+            Symbol::BitAndAssign => "&=",
+            Symbol::BitXorAssign => "^=",
+            Symbol::BitOrAssign => "|=",
+            Symbol::LogicalAndAssign => "&&=",
+            Symbol::LogicalOrAssign => "||=",
+            Symbol::ModuloAssign => "%=",
+            // Comparisons
+            Symbol::Eqs => "==",
+            Symbol::NotEqs => "!=",
+            Symbol::Lt => "<",
+            Symbol::Gt => ">",
+            Symbol::LtEgs => "<=",
+            Symbol::GtEgs => ">=",
+        })
+    }
+}
+
+type NamedSymbol = StrId;
+
+impl<'a> std::fmt::Display for InContext<'a, NamedSymbol> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(s) = self.ast.get_str(self.value) {
+            write!(f, "{}", s)
+        } else {
+            write!(f, "<unknown symbol: {:?}>", self)
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -191,10 +322,8 @@ mod tests {
     #[test]
     fn can_add_nodes_to_ast() {
         let mut ast = Ast::default();
-        let plus = ast.register_str("+".to_string());
         let a = ast.register_str("a".to_string());
-        let plus = Symbol { name: plus };
-        let a = Symbol { name: a };
+        let plus = Symbol::Add;
         let b = Literal::Numeric; // 123456789
         let plus = ast.make_node(plus, Location::dummy_for_test());
         let a = ast.make_node(a, Location::dummy_for_test());
