@@ -7,9 +7,9 @@ pub type SymbolLength = u8;
 // and `u16` is too small.
 // Source: https://people.csail.mit.edu/smcc/projects/single-file-programs
 
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Location {
-    location: IndexIntoFile,
+    start: IndexIntoFile,
     length: SymbolLength,
 }
 
@@ -17,7 +17,7 @@ impl Location {
     #[cfg(test)]
     pub fn dummy_for_test() -> Self {
         Self {
-            location: 0,
+            start: 0,
             length: 0,
         }
     }
@@ -55,7 +55,7 @@ impl UserFacingLocation {
         // TODO: Consider walking the module tree to get a fully qualified module name.
         let mut loc = UserFacingLocation::new(path, 1, 1);
         let mut contents = contents.chars().peekable();
-        for _ in 0..location.location {
+        for _ in 0..location.start {
             loc.next(&mut contents);
         }
         loc
