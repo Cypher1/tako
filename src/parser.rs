@@ -16,14 +16,13 @@ pub fn parse(filepath: &str, tokens: &[Token]) -> Result<Ast, TError> {
     // TODO: REMOVE THIS (it's just to test the threading model)
     // let mut rng = rand::thread_rng();
     // std::thread::sleep(std::time::Duration::from_secs(rng.gen_range(0..10)));
-    // TODO: parsing!!!
     Ok(ast)
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 enum Partial {
     Empty,
-    Joiner(Token),
+    Joiner(Token, /*binding power*/u8),
     Node(NodeId),
 }
 
@@ -44,10 +43,10 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(ast: &mut Ast, tokens: std::iter::Pee
             Node(left) => match tok.kind {
                 _ => todo!(),
             }
-            Joiner(left_tok) => match (left_tok, tok.kind) {
+            Joiner(left_tok, left_bp) => match (left_tok, tok.kind) {
                 (_, TokenType::Op) => {
-                    stack.push(Joiner(left_tok));
-                    left = Joiner(*tok);
+                    stack.push(Joiner(left_tok, left_bp));
+                    left = Joiner(*tok, left_bp); // TODO: look it up
                 }
                 (Token { kind: TokenType::Op, ..}, TokenType::NumLit) => {
                     // TODO: Something about binding power here?
