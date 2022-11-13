@@ -163,7 +163,7 @@ impl Ast {
 type StrId = TypedIndex<String, StringHash>;
 // Ensures that str ids are unique per string but also stable across different files etc.
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Symbol {
     // Basics
     Add,
@@ -172,7 +172,7 @@ pub enum Symbol {
     DivRounding,
     Mul,
     Exp,
-    BitNot,
+    Not,
     BitAnd,
     BitXor,
     BitOr,
@@ -225,7 +225,7 @@ impl<'a> std::fmt::Display for Symbol {
             Symbol::DivRounding => "//",
             Symbol::Mul => "*",
             Symbol::Exp => "**",
-            Symbol::BitNot => "!",
+            Symbol::Not => "!",
             Symbol::BitAnd => "&",
             Symbol::BitXor => "^",
             Symbol::BitOr => "|",
@@ -268,7 +268,7 @@ impl<'a> std::fmt::Display for Symbol {
     }
 }
 
-type NamedSymbol = StrId;
+pub type NamedSymbol = StrId;
 
 impl<'a> std::fmt::Display for InContext<'a, NamedSymbol> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

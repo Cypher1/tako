@@ -1,5 +1,5 @@
 // use rand::Rng;
-use crate::ast::{Ast, NodeId, Literal};
+use crate::ast::{Ast, NodeId, Literal, Symbol, NamedSymbol};
 use crate::error::TError;
 use crate::tokens::{Token, TokenType};
 use log::{debug, trace};
@@ -19,10 +19,45 @@ pub fn parse(filepath: &str, tokens: &[Token]) -> Result<Ast, TError> {
     Ok(ast)
 }
 
-type BindingPower = u8;
-const fn binding_power(token: &str) -> BindingPower {
-    match token {
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+pub struct BindingPowerConfig {
+    prefix_left: Option<u8>,
+    prefix_right: Option<u8>,
+    left: u8,
+    right: u8,
+}
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+pub struct BindingPower {
+    power: u8,
+}
+
+impl BindingPowerConfig {
+    const fn infix(left: u8, right: u8) -> Self {
+        Self {
+            left,
+            right,
+            prefix_left: None,
+            prefix_right: None,
+        }
+    }
+    const fn and_prefix(mut self, prefix_left: u8, prefix_right: u8) -> Self {
+        self.prefix_left = Some(prefix_left);
+        self.prefix_right = Some(prefix_right);
+        self
+    }
+}
+
+const fn binding_power(symbol: Symbol) -> BindingPowerConfig {
+    match symbol {
+        // '(' => (99, 0),
+        // ')' => (0, 100),
+        Symbol::Eqs => BindingPowerConfig::infix(2, 1),
+        Symbol::Add | Symbol::Sub => BindingPowerConfig::infix(5, 6).and_prefix(99, 9),
+        Symbol::Mul | Symbol::Div => BindingPowerConfig::infix(7, 8),
+        Symbol::Not => BindingPowerConfig::infix(11, 100),
+        Symbol::Dot => BindingPowerConfig::infix(14, 13),
+        _ => panic!("Binding power of Symbol"),
     }
 }
 
