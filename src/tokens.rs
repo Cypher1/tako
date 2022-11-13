@@ -25,12 +25,9 @@ pub enum TokenType {
     FmtStringLitStart,
     FmtStringLitMid,
     FmtStringLitEnd,
-    // If the string is too long, rather than increase the size of eveey token,
-    // we can store it (or its details) in a per-file hashmap by start location.
-    StringLitLong,
-    FmtStringLitLongStart,
-    FmtStringLitLongMid,
-    FmtStringLitLongEnd,
+    // If a symbol (normally strings) is too long, we will store it as multiple repeated tokens,
+    // of the same kind preceeded by a 'Group' token.
+    Group,
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash)]
@@ -146,18 +143,12 @@ pub fn lex(contents: &str) -> Result<Vec<Token>, TError> {
     debug!("Lex {}", contents);
     let mut chars = Characters::new(contents);
     let mut tokens = Vec::with_capacity(1000); // TODO: Bench mark & tune?
-    loop {
-        let tok = lex_head(&mut chars);
-        if tok.kind == TokenType::Eof {
-            break;
-        }
-        tokens.push(tok);
-    }
+    while lex_head(&mut chars, &mut tokens) {}
     Ok(tokens)
 }
 
 // Consumes a single token.
-pub fn lex_head(characters: &mut Characters) -> Token {
+pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
     while let Some(chr) = characters.peek() {
         // skip whitespace.
         if !is_whitespace(chr) {
@@ -202,7 +193,7 @@ pub fn lex_head(characters: &mut Characters) -> Token {
     }
     */
     if characters.peek().is_none() {
-        return Token::eof(characters.index() as IndexIntoFile);
+        return false;
     }
     characters.set_start();
     // TODO: This should be simplified (make tight loops).
@@ -242,18 +233,41 @@ pub fn lex_head(characters: &mut Characters) -> Token {
 
     if length > SymbolLength::MAX as usize {
         assert_eq!(kind, TokenType::StringLit); // TODO: Error here.
-        Token {
-            start: characters.start() as IndexIntoFile,
-            length: 0,
-            kind: TokenType::StringLitLong,
+        let mut number_of_tokens = (length + SymbolLength::MAX as usize - 1) / (SymbolLength::MAX as usize);
+        if number_of_tokens >= (u8::MAX as usize) {
+            todo!("Token was too long, implement a recursive group thing...");
         }
+        tokens.push(
+            Token {
+                start: characters.start() as IndexIntoFile,
+                length: number_of_tokens as u8,
+                kind: TokenType::Group,
+            }
+        );
+        let mut length = length;
+        while length > 0 {
+            let curr_len = std::cmp::min(length, u8::MAX as usize);
+            length -= curr_len;
+            number_of_tokens -= 1;
+            tokens.push(
+                Token {
+                    start: characters.start() as IndexIntoFile,
+                    length: curr_len as u8,
+                    kind,
+                }
+            );
+        }
+        assert_eq!(number_of_tokens, 0, "Should generate the calculated number of grouped tokens");
     } else {
-        Token {
-            start: characters.start() as IndexIntoFile,
-            length: length as SymbolLength,
-            kind,
-        }
+        tokens.push(
+            Token {
+                start: characters.start() as IndexIntoFile,
+                length: length as SymbolLength,
+                kind,
+            }
+        )
     }
+    return true;
 }
 
 #[cfg(test)]
@@ -261,8 +275,16 @@ mod tests {
     use super::TokenType::*;
     use super::*;
 
-    fn setup(contents: &str) -> String {
-        contents.to_string()
+    fn setup_many(contents: &str, n: usize) -> Vec<Token> {
+        let mut chars = Characters::new(contents);
+        let mut tokens = Vec::new();
+        for _i in 0..n {
+            lex_head(&mut chars, &mut tokens);
+        }
+        tokens
+    }
+    fn setup(contents: &str) -> Vec<Token> {
+        setup_many(contents, 1)
     }
 
     #[test]
@@ -291,102 +313,83 @@ mod tests {
 
     #[test]
     fn lex_head_number() {
-        let contents = setup("123");
-        let mut chars = Characters::new(&contents);
-        let tok = lex_head(&mut chars);
-        assert_eq!(tok.kind, NumLit);
+        let tokens = setup("123");
+        assert_eq!(tokens, vec![Token { kind: NumLit, start: 0, length: 3}]);
     }
 
     #[test]
     fn lex_head_symbol() {
-        let contents = setup("a123");
-        let mut chars = Characters::new(&contents);
-        let tok = lex_head(&mut chars);
-        assert_eq!(tok.kind, Sym);
+        let tokens = setup("a123");
+        assert_eq!(tokens, vec![Token { kind: Sym, start: 0, length: 4}]);
     }
 
     #[test]
     fn lex_head_operator() {
-        let contents = setup("-a123");
-        let mut chars = Characters::new(&contents);
-        let tok = lex_head(&mut chars);
-        assert_eq!(tok.kind, Op);
+        let tokens = setup("-a123");
+        assert_eq!(tokens, vec![Token { kind: Op, start: 0, length: 1}]);
     }
 
     #[test]
     fn lex_head_num_and_newline_linux() {
-        let contents = setup("\n12");
-        let mut chars = Characters::new(&contents);
-        let tok = lex_head(&mut chars);
-        assert_eq!(tok.kind, NumLit);
-        assert_eq!(tok.start, 1);
+        let tokens = setup("\n12");
+        assert_eq!(tokens, vec![Token { kind: NumLit, start: 1, length: 2}]);
     }
 
     #[test]
     fn lex_head_num_and_newline_windows() {
-        let contents = setup("\r\n12");
-        let mut chars = Characters::new(&contents);
-        let tok = lex_head(&mut chars);
-        assert_eq!(tok.kind, NumLit);
-        assert_eq!(tok.start, 2);
+        let tokens = setup("\r\n12");
+        assert_eq!(tokens, vec![Token { kind: NumLit, start: 2, length: 2}]);
     }
 
     #[test]
     fn lex_head_num_and_newline_old_mac() {
         // For mac systems before OSX
-        let contents = setup("\r12");
-        let mut chars = Characters::new(&contents);
-        let tok = lex_head(&mut chars);
-        assert_eq!(tok.kind, NumLit);
-        assert_eq!(tok.start, 1);
+        let tokens = setup("\r12");
+        assert_eq!(tokens, vec![Token { kind: NumLit, start: 1, length: 2}]);
     }
 
     #[test]
     fn lex_head_escaped_characters_in_string() {
         // TODO: De escape them.
-        let contents = setup("'\\n\\t2\\r\\\'\"'");
-        let mut chars = Characters::new(&contents);
-        let tok = lex_head(&mut chars);
-        assert_eq!(tok.kind, StringLit);
-        assert_str_eq!(tok.get_str(&contents), "\'\\n\\t2\\r\\'\"\'");
+        let contents = "'\\n\\t2\\r\\\'\"'";
+        let tokens = setup(contents);
+        assert_eq!(tokens, vec![Token { kind: StringLit, start: 0, length: 12}]);
+        assert_str_eq!(tokens[0].get_str(contents), "\'\\n\\t2\\r\\'\"\'");
     }
 
     #[test]
     fn lex_head_call() {
-        let contents = setup("x()");
-        let mut chars = Characters::new(&contents);
-        let tok = lex_head(&mut chars);
-        assert_eq!(tok.kind, Sym);
-        assert_str_eq!(tok.get_str(&contents), "x");
-        let tok = lex_head(&mut chars);
-        assert_eq!(tok.kind, OpenBracket);
-        assert_str_eq!(tok.get_str(&contents), "(");
-        let tok = lex_head(&mut chars);
-        assert_eq!(tok.kind, CloseBracket);
-        assert_str_eq!(tok.get_str(&contents), ")");
+        let contents = "x()";
+        let tokens = setup_many(contents, 3);
+        assert_eq!(tokens, vec![
+            Token { kind: Sym, start: 0, length: 1},
+            Token { kind: OpenBracket, start: 1, length: 1},
+            Token { kind: CloseBracket, start: 2, length: 1}
+        ]);
+        assert_str_eq!(tokens[0].get_str(&contents), "x");
+        assert_str_eq!(tokens[1].get_str(&contents), "(");
+        assert_str_eq!(tokens[2].get_str(&contents), ")");
     }
 
     #[test]
     fn lex_head_strings_with_operators() {
-        let contents = setup("!\"hello world\"\n7");
-        let mut chars = Characters::new(&contents);
-        let tok = lex_head(&mut chars);
-        assert_eq!(tok.kind, Op);
-        assert_str_eq!(tok.get_str(&contents), "!");
-        let tok = lex_head(&mut chars);
-        assert_eq!(tok.kind, StringLit);
+        let contents = "!\"hello world\"\n7";
+        let tokens = setup_many(contents, 3);
+        assert_eq!(tokens, vec![
+            Token { kind: Op, start: 0, length: 1 },
+            Token { kind: StringLit, start: 1, length: 13 },
+            Token { kind: NumLit, start: 15, length: 1 },
+        ]);
+        assert_str_eq!(tokens[0].get_str(&contents), "!");
         // The token-izer is not responsible for un-escaping...
-        assert_str_eq!(tok.get_str(&contents), "\"hello world\"");
-        let tok = lex_head(&mut chars);
-        assert_eq!(tok.kind, NumLit);
-        assert_str_eq!(tok.get_str(&contents), "7");
+        assert_str_eq!(tokens[1].get_str(&contents), "\"hello world\"");
+        assert_str_eq!(tokens[2].get_str(&contents), "7");
     }
 
     #[test]
     fn lex_parentheses() {
-        let contents = setup("(\"hello world\"\n)");
-        let tokens = lex(&contents).expect("Couldn't lex");
-
+        let contents = "(\"hello world\"\n)";
+        let tokens = setup_many(contents, 3);
         let expected = vec![OpenBracket, StringLit, CloseBracket];
         assert_eq!(
             tokens
@@ -407,9 +410,8 @@ mod tests {
 
     #[test]
     fn lex_strings_with_operators() {
-        let contents = setup("!\"hello world\"\n7");
-        let tokens = lex(&contents).expect("Couldn't lex");
-
+        let contents = "!\"hello world\"\n7";
+        let tokens = setup_many(contents, 3);
         let expected = vec![Op, StringLit, NumLit];
         assert_eq!(
             tokens
