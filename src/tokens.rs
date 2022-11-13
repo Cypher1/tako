@@ -4,6 +4,8 @@ use log::debug;
 use std::fmt;
 
 use static_assertions::*;
+assert_eq_size!(Symbol, [u8; 1]);
+assert_eq_size!([Symbol; 2], [u8; 2]);
 assert_eq_size!(TokenType, [u8; 1]);
 assert_eq_size!(IndexIntoFile, [u8; 2]);
 assert_eq_size!(SymbolLength, [u8; 1]);
@@ -11,8 +13,119 @@ assert_eq_size!(Token, [u8; 4]);
 assert_eq_size!([Token; 2], [u8; 8]);
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+pub enum Symbol {
+    // Basics
+    Add,
+    Sub,
+    Div,
+    DivRounding,
+    Mul,
+    Exp,
+    BitNot,
+    BitAnd,
+    BitXor,
+    BitOr,
+    LogicalNot,
+    LogicalAnd,
+    LogicalOr,
+    Modulo,
+    Deref,
+    Reference,
+    PtrTo,
+    HasType,
+    FunctionType,
+    Try,
+    Dot,
+    Range,
+    Spread,
+    Comma,
+    Sequence,
+    LeftArrow,
+    RightArrow,
+    LeftPipe,
+    RightPipe,
+    // Assignment versions
+    Assign,
+    AddAssign,
+    SubAssign,
+    DivAssign,
+    MulAssign,
+    BitAndAssign,
+    BitXorAssign,
+    BitOrAssign, // TODO: This is also Pipe... might be nice to have both?
+    LogicalAndAssign,
+    LogicalOrAssign,
+    ModuloAssign,
+    // Comparisons
+    Eqs,
+    LogicalNotEqs,
+    Lt,
+    Gt,
+    LtEgs,
+    GtEgs,
+    // The rest?
+    // Named(StrId),
+}
+
+impl<'a> std::fmt::Display for Symbol {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", match self {
+            // Basics
+            Symbol::Add => "+",
+            Symbol::Sub => "-",
+            Symbol::Div => "/",
+            Symbol::DivRounding => "//",
+            Symbol::Mul => "*",
+            Symbol::Exp => "**",
+            Symbol::LogicalNot => "!",
+            Symbol::BitNot => "~",
+            Symbol::BitAnd => "&",
+            Symbol::BitXor => "^",
+            Symbol::BitOr => "|",
+            Symbol::LogicalAnd => "&&",
+            Symbol::LogicalOr => "||",
+            Symbol::Modulo => "%",
+            Symbol::Deref => "*",
+            Symbol::Reference => "&",
+            Symbol::PtrTo => "@",
+            Symbol::HasType => ": ", // TODO: Work out a better way of printing pretty spaces.
+            Symbol::FunctionType => "=>",
+            Symbol::Try => "?",
+            Symbol::Dot => ".",
+            Symbol::Range => "..",
+            Symbol::Spread => "...",
+            Symbol::Comma => ",",
+            Symbol::Sequence => ";",
+            Symbol::LeftArrow => "->",
+            Symbol::RightArrow => "<-",
+            Symbol::LeftPipe => "|>",
+            Symbol::RightPipe => "<|",
+            // Assignment versions
+            Symbol::Assign => "=",
+            Symbol::AddAssign => "+=",
+            Symbol::SubAssign => "-=",
+            Symbol::DivAssign => "/=",
+            Symbol::MulAssign => "*=",
+            Symbol::BitAndAssign => "&=",
+            Symbol::BitXorAssign => "^=",
+            Symbol::BitOrAssign => "|=",
+            Symbol::LogicalAndAssign => "&&=",
+            Symbol::LogicalOrAssign => "||=",
+            Symbol::ModuloAssign => "%=",
+            // Comparisons
+            Symbol::Eqs => "==",
+            Symbol::LogicalNotEqs => "!=",
+            Symbol::Lt => "<",
+            Symbol::Gt => ">",
+            Symbol::LtEgs => "<=",
+            Symbol::GtEgs => ">=",
+        })
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum TokenType {
-    Op,
+    Op(Symbol),
     OpenBracket,
     CloseBracket,
     Sym,
@@ -82,8 +195,28 @@ fn classify_char(ch: char) -> TokenType {
     use TokenType::*;
     match ch {
         '\n' | '\r' | '\t' | ' ' => Whitespace,
-        '~' | '!' | '@' | '#' | '$' | '%' | '^' | '&' | '*' | '-' | '+' | '=' | '<' | '>' | '|'
-        | '\\' | '/' | '?' | '.' | ',' | ':' | ';' => Op,
+        '~' => Op(Symbol::BitNot),
+        '!' => Op(Symbol::LogicalNot),
+        '@' => Op(Symbol::PtrTo),
+        '%' => Op(Symbol::Modulo),
+        '^' => Op(Symbol::BitXor),
+        '&' => Op(Symbol::BitAnd),
+        '*' => Op(Symbol::Mul),
+        '-' => Op(Symbol::Sub),
+        '+' => Op(Symbol::Add),
+        '=' => Op(Symbol::Assign),
+        '<' => Op(Symbol::Lt),
+        '>' => Op(Symbol::Gt),
+        '|' => Op(Symbol::BitOr),
+        '#' => todo!(),
+        '$' => todo!(),
+        '\\' => todo!(),
+        '/' => Op(Symbol::Div),
+        '?' => Op(Symbol::Try),
+        '.' => Op(Symbol::Dot),
+        ',' => Op(Symbol::Comma),
+        ':' => Op(Symbol::HasType),
+        ';' => Op(Symbol::Sequence),
         '(' | '[' | '{' => OpenBracket,
         ')' | ']' | '}' => CloseBracket,
         '0'..='9' => NumLit,
@@ -204,7 +337,9 @@ pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
         kind = match (kind, classify_char(chr)) {
             (_, Whitespace) => break,                // Token finished whitespace.
             (Unknown, new_tok_type) => new_tok_type, // Start token.
-            (Op, Op) => Op,                          // Continuation
+            (Op(first), Op(second)) => match (first, second) { // Continuation
+                (Symbol::Add, Symbol::Assign) => Symbol::AddAssign,
+            },
             (NumLit, NumLit) => NumLit,              // Continuation
             (NumLit, Sym) => NumLit,                 // Number with suffix.
             (Sym, NumLit | Sym) => Sym,              // Symbol.

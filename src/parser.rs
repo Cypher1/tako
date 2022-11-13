@@ -1,12 +1,12 @@
 // use rand::Rng;
-use crate::ast::{Ast, NodeId, Literal, Symbol, NamedSymbol};
+use crate::ast::{Ast, NodeId, Literal, NamedSymbol};
 use crate::error::TError;
-use crate::tokens::{Token, TokenType};
+use crate::tokens::{Token, Symbol, TokenType};
 use log::{debug, trace};
 
 use static_assertions::*;
-assert_eq_size!(Partial, [u8; 8]);
-assert_eq_size!([Partial; 2], [u8; 16]);
+assert_eq_size!(Partial, [u8; 16]); // TODO: Try to get the size down
+assert_eq_size!([Partial; 2], [u8; 32]);
 
 pub fn parse(filepath: &str, tokens: &[Token]) -> Result<Ast, TError> {
     let tokens = tokens.iter().peekable();
@@ -21,95 +21,118 @@ pub fn parse(filepath: &str, tokens: &[Token]) -> Result<Ast, TError> {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct BindingPowerConfig {
-    prefix_left: Option<u8>,
-    prefix_right: Option<u8>,
-    left: u8,
-    right: u8,
+    prefix: Option<BindingPower>,
+    infix: Option<BindingPower>,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct BindingPower {
-    power: u8,
+    left: u8,
+    right: u8,
+}
+impl BindingPower {
+    const fn new(left: u8, right: u8) -> Self {
+        Self {
+            left,
+            right,
+        }
+    }
 }
 
 impl BindingPowerConfig {
     const fn infix(left: u8, right: u8) -> Self {
         Self {
-            left,
-            right,
-            prefix_left: None,
-            prefix_right: None,
+            infix: Some( BindingPower::new(left, right)),
+            prefix: None,
         }
     }
-    const fn and_prefix(mut self, prefix_left: u8, prefix_right: u8) -> Self {
-        self.prefix_left = Some(prefix_left);
-        self.prefix_right = Some(prefix_right);
+    const fn and_prefix(mut self, left: u8, right: u8) -> Self {
+        self.prefix = Some(BindingPower::new(left, right));
         self
     }
 }
 
-const fn binding_power(symbol: Symbol) -> BindingPowerConfig {
-    match symbol {
+const fn binding_power(symbol: Symbol) -> Option<BindingPowerConfig> {
+    Some(match symbol {
         // '(' => (99, 0),
         // ')' => (0, 100),
         Symbol::Eqs => BindingPowerConfig::infix(2, 1),
         Symbol::Add | Symbol::Sub => BindingPowerConfig::infix(5, 6).and_prefix(99, 9),
         Symbol::Mul | Symbol::Div => BindingPowerConfig::infix(7, 8),
-        Symbol::Not => BindingPowerConfig::infix(11, 100),
+        Symbol::LogicalNot => BindingPowerConfig::infix(11, 100),
         Symbol::Dot => BindingPowerConfig::infix(14, 13),
-        _ => panic!("Binding power of Symbol"),
-    }
+        _ => return None,
+    })
 }
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
-enum Partial {
-    Empty,
-    Joiner(Token, /*binding power*/BindingPower),
-    Node(NodeId),
-}
-
-fn expr<'a, T: Iterator<Item = &'a Token>>(ast: &mut Ast, tokens: std::iter::Peekable<T>) {
-    use Partial::*;
-    let mut stack: Vec<Partial> = vec![];
-    let mut left: Partial = Empty;
-    for tok in tokens {
-        dbg!(&left, &tok, &stack);
-        eprintln!();
-        match left {
-            Empty => match tok.kind {
-                TokenType::NumLit => {
-                    left = Node(ast.add_literal(Literal::Numeric, tok.location()));
-                }
-                _ => todo!(),
-            }
-            Node(left) => match tok.kind {
-                _ => todo!(),
-            }
-            Joiner(left_tok, left_bp) => match (left_tok, tok.kind) {
-                (_, TokenType::Op) => {
-                    stack.push(Joiner(left_tok, left_bp));
-                    left = Joiner(*tok, left_bp); // TODO: look it up
-                }
-                (Token { kind: TokenType::Op, ..}, TokenType::NumLit) => {
-                    // TODO: Something about binding power here?
-                    let op = left;
-                    let curr_left = stack.pop();
-                    let right = tok;
-                    dbg!("Apply ", &curr_left, &op, &right);
-                    let _right = Node(ast.add_literal(Literal::Numeric, right.location()));
-                    todo!();
-                    /*
-                    let op = Node(ast.add_symbol(op, op.location()));
-                    let apply = Node(ast.add_call(Literal::Numeric, tok.location()));
-                    left = apply;
-                    */
-                }
-                (left, _new) => {
-                    trace!("tok {tok:?} with {left:?} merge");
-                }
+/*
+fn get_binding_power(token: Token, is_prefix: bool) -> Option<(Symbol, BindingPower)> {
+    match token.kind {
+        TokenType::OpenBracket => BindingPower::new(99, 0),
+        TokenType::CloseBracket => BindingPower::new(0, 100),
+        TokenType::Op => {
+            let power = binding_power(symbol)?;
+            if is_prefix {
+                power.prefix
+            } else {
+                power.infix
             }
         }
     }
+}
+*/
+
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, PartialOrd, Ord, Hash)]
+struct Partial { // Following along with https://matklad.github.io/2020/04/15/from-pratt-to-dijkstra.html
+    min_bp: u8,
+    left: Option<NodeId>,
+    token: Option<Token>,
+}
+
+fn expr<'a, T: Iterator<Item = &'a Token>>(ast: &mut Ast, tokens: std::iter::Peekable<T>) {
+    let mut stack: Vec<Partial> = vec![];
+    let mut left = Partial::default();
+    /*
+    for token in tokens {
+        let (token, r_bp) = loop {
+            match get_binding_power(token, top.left.is_none()) {
+                Some((t, (l_bp, r_bp))) if top.min_bp <= l_bp =>{
+                    break (t, r_bp)
+                }
+                _ => {
+                    let res = top;
+                    top = match stack.pop() {
+                        Some(it) => it,
+                        None => {
+                            eprintln!();
+                            return res.left;
+                        }
+                    };
+                    let mut args = Vec::new();
+                    args.extend(top.left);
+                    args.extend(res.left);
+                    let token = res.token.unwrap();
+                    eprint!("{} ", token);
+                    top.left = Some(S::Cons(token, args));
+                }
+            };
+        };
+
+        if token == ')' {
+            assert_eq!(top.token, Some('('));
+            let res = top;
+            top = stack.pop().unwrap();
+            top.left = res.left;
+            continue;
+        }
+
+        stack.push(top);
+        top = Partial {
+            min_bp: r_bp,
+            left: None,
+            token: Some(token),
+        };
+    }
+    */
 }
 
 #[cfg(test)]
