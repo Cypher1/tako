@@ -62,9 +62,11 @@ pub mod tests {
     #[test]
     fn parse_literal() -> Result<(), TError> {
         let tokens = lex("123")?;
+        let ast = parse(TEST_FILE1, &tokens)?;
+        dbg!(&ast);
         let Ast {
             roots: _, literals, ..
-        } = parse(TEST_FILE1, &tokens)?;
+        } = ast;
 
         dbg!(&literals);
 
@@ -84,12 +86,14 @@ pub mod tests {
     fn parse_add_literals() -> Result<(), TError> {
         crate::ensure_initialized();
         let tokens = lex("1+2")?;
+        let ast = parse(TEST_FILE1, &tokens)?;
+        dbg!(&ast);
         let Ast {
             symbols,
             calls,
             literals,
             ..
-        } = parse(TEST_FILE1, &tokens)?;
+        } = ast;
 
         assert_eq!(
             literals,
@@ -116,12 +120,14 @@ pub mod tests {
     fn parse_add_mul_literals() -> Result<(), TError> {
         crate::ensure_initialized();
         let tokens = lex("1+2*3")?;
+        let ast = parse(TEST_FILE1, &tokens)?;
+        dbg!(&ast);
         let Ast {
             symbols,
             calls,
             literals,
             ..
-        } = parse(TEST_FILE1, &tokens)?;
+        } = ast;
 
         dbg!(symbols);
         dbg!(calls);
@@ -134,12 +140,14 @@ pub mod tests {
     fn parse_mul_add_literals() -> Result<(), TError> {
         crate::ensure_initialized();
         let tokens = lex("1+2*3")?;
+        let ast = parse(TEST_FILE1, &tokens)?;
+        dbg!(&ast);
         let Ast {
             symbols,
             calls,
             literals,
             ..
-        } = parse(TEST_FILE1, &tokens)?;
+        } = ast;
 
         dbg!(symbols);
         dbg!(calls);
