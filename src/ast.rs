@@ -1,11 +1,10 @@
 use crate::location::Location;
+use crate::tokens::Symbol;
 use crate::utils::typed_index::TypedIndex;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 
 use static_assertions::*;
-assert_eq_size!(Symbol, [u8; 1]);
-assert_eq_size!([Symbol; 2], [u8; 2]);
 assert_eq_size!(NamedSymbol, [u8; 8]);
 assert_eq_size!([NamedSymbol; 2], [u8; 16]);
 
@@ -162,111 +161,6 @@ impl Ast {
 
 type StrId = TypedIndex<String, StringHash>;
 // Ensures that str ids are unique per string but also stable across different files etc.
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum Symbol {
-    // Basics
-    Add,
-    Sub,
-    Div,
-    DivRounding,
-    Mul,
-    Exp,
-    Not,
-    BitAnd,
-    BitXor,
-    BitOr,
-    LogicalAnd,
-    LogicalOr,
-    Modulo,
-    Deref,
-    Reference,
-    PtrTo,
-    HasType,
-    FunctionType,
-    Try,
-    Spread,
-    Dot,
-    Comma,
-    LeftArrow,
-    RightArrow,
-    LeftPipe,
-    RightPipe,
-    // Assignment versions
-    Assign,
-    AddAssign,
-    SubAssign,
-    DivAssign,
-    MulAssign,
-    BitAndAssign,
-    BitXorAssign,
-    BitOrAssign, // TODO: This is also Pipe... might be nice to have both?
-    LogicalAndAssign,
-    LogicalOrAssign,
-    ModuloAssign,
-    // Comparisons
-    Eqs,
-    NotEqs,
-    Lt,
-    Gt,
-    LtEgs,
-    GtEgs,
-    // The rest?
-    // Named(StrId),
-}
-
-impl<'a> std::fmt::Display for Symbol {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", match self {
-            // Basics
-            Symbol::Add => "+",
-            Symbol::Sub => "-",
-            Symbol::Div => "/",
-            Symbol::DivRounding => "//",
-            Symbol::Mul => "*",
-            Symbol::Exp => "**",
-            Symbol::Not => "!",
-            Symbol::BitAnd => "&",
-            Symbol::BitXor => "^",
-            Symbol::BitOr => "|",
-            Symbol::LogicalAnd => "&&",
-            Symbol::LogicalOr => "||",
-            Symbol::Modulo => "%",
-            Symbol::Deref => "*",
-            Symbol::Reference => "&",
-            Symbol::PtrTo => "@",
-            Symbol::HasType => ": ", // TODO: Work out a better way of printing pretty spaces.
-            Symbol::FunctionType => "=>",
-            Symbol::Try => "?",
-            Symbol::Spread => "...",
-            Symbol::Dot => ".",
-            Symbol::Comma => ",",
-            Symbol::LeftArrow => "->",
-            Symbol::RightArrow => "<-",
-            Symbol::LeftPipe => "|>",
-            Symbol::RightPipe => "<|",
-            // Assignment versions
-            Symbol::Assign => "=",
-            Symbol::AddAssign => "+=",
-            Symbol::SubAssign => "-=",
-            Symbol::DivAssign => "/=",
-            Symbol::MulAssign => "*=",
-            Symbol::BitAndAssign => "&=",
-            Symbol::BitXorAssign => "^=",
-            Symbol::BitOrAssign => "|=",
-            Symbol::LogicalAndAssign => "&&=",
-            Symbol::LogicalOrAssign => "||=",
-            Symbol::ModuloAssign => "%=",
-            // Comparisons
-            Symbol::Eqs => "==",
-            Symbol::NotEqs => "!=",
-            Symbol::Lt => "<",
-            Symbol::Gt => ">",
-            Symbol::LtEgs => "<=",
-            Symbol::GtEgs => ">=",
-        })
-    }
-}
 
 pub type NamedSymbol = StrId;
 
