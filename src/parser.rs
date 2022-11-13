@@ -38,11 +38,11 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(ast: &mut Ast, mut tokens: std::iter:
                 left = Joiner(*tok);
             }
             (Empty, TokenType::NumLit) => {
-                left = Node(ast.add_literal(tok));
+                left = Node(ast.add_literal(*tok, tok.location()));
             }
             (Joiner(Token { kind: TokenType::Op, ..}), TokenType::NumLit) => {
                 stack.push(left);
-                left = Node(ast.add_literal(tok));
+                left = Node(ast.add_literal(*tok, tok.location()));
             }
             (left, new) => {
                 trace!("tok {tok:?} with {left:?} merge");

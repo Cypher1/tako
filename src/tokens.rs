@@ -1,5 +1,5 @@
 use crate::error::TError;
-use crate::location::{IndexIntoFile, SymbolLength};
+use crate::location::{Location, IndexIntoFile, SymbolLength};
 use log::debug;
 use std::fmt;
 
@@ -35,13 +35,20 @@ pub enum TokenType {
 
 #[derive(Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Token {
-    pub start: IndexIntoFile,
     pub kind: TokenType,
+    pub start: IndexIntoFile,
     pub length: SymbolLength,
 }
 
 impl Token {
-    fn eof(start: IndexIntoFile) -> Self {
+    pub fn location(self) -> Location {
+        Location {
+            start: self.start,
+            length: self.length,
+        }
+    }
+
+    pub fn eof(start: IndexIntoFile) -> Self {
         Self {
             start,
             kind: TokenType::Eof,

@@ -25,7 +25,7 @@ pub trait Contains<T> {
 }
 
 macro_rules! make_contains(
-    { $field:ident, $type:ty, $kind: ident, $id_type: ident, $alloc_fn_name: $ident } => {
+    { $field:ident, $type:ty, $kind: ident, $id_type: ident, $alloc_fn_name: ident } => {
         impl Contains<$type> for Ast {
             fn get_all(&self) -> &Vec<$type> {
                 &self.$field
@@ -37,8 +37,20 @@ macro_rules! make_contains(
                 NodeData::$kind(index)
             }
         }
-        fn $alloc_fn_name(item: $type) -> $id_type {
 
+        impl Ast {
+            pub fn $alloc_fn_name<T>(&mut self, item: T, location: Location) -> NodeId where (NodeId, T): Into<$type> {
+                let node = TypedIndex::next(&self.nodes)
+                    .expect("Should always be able to allocate a new Ast Node");
+                let id = TypedIndex::new(&mut self.$field, (node, item).into())
+                    .expect("Should always be able to allocate a new Ast Node");
+                let node: TypedIndex<Node> = TypedIndex::new(&mut self.nodes, Node {
+                    id: NodeData::$kind(id),
+                    location,
+                })
+                .expect("Should always be able to allocate a new Ast Node");
+                node
+            }
         }
 
         pub type $id_type = TypedIndex<$type>;
