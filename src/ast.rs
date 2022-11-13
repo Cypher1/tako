@@ -25,7 +25,7 @@ pub trait Contains<T> {
 }
 
 macro_rules! make_contains(
-    { $field:ident, $type:ty, $kind: ident, $id_type: ident } => {
+    { $field:ident, $type:ty, $kind: ident, $id_type: ident, $alloc_fn_name: $ident } => {
         impl Contains<$type> for Ast {
             fn get_all(&self) -> &Vec<$type> {
                 &self.$field
@@ -37,6 +37,10 @@ macro_rules! make_contains(
                 NodeData::$kind(index)
             }
         }
+        fn $alloc_fn_name(item: $type) -> $id_type {
+
+        }
+
         pub type $id_type = TypedIndex<$type>;
      };
 );
@@ -84,11 +88,11 @@ impl Ast {
     }
 }
 
-make_contains!(nodes, Node, NodeRef, NodeId);
-make_contains!(calls, (NodeId, Call), Call, CallId);
-make_contains!(symbols, (NodeId, Symbol), Symbol, SymbolId);
-make_contains!(definitions, (NodeId, Definition), Definition, DefinitionId);
-make_contains!(literals, (NodeId, Literal), Literal, LiteralId);
+make_contains!(nodes, Node, NodeRef, NodeId, unsafe_add_node);
+make_contains!(calls, (NodeId, Call), Call, CallId, add_call);
+make_contains!(symbols, (NodeId, Symbol), Symbol, SymbolId, add_symbol);
+make_contains!(definitions, (NodeId, Definition), Definition, DefinitionId, add_definition);
+make_contains!(literals, (NodeId, Literal), Literal, LiteralId, add_literal);
 
 impl Ast {
     pub fn make_node<T, F: FnOnce(NodeId) -> T>(&mut self, value: F, location: Location) -> NodeId
