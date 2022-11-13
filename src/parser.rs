@@ -1,5 +1,5 @@
 // use rand::Rng;
-use crate::ast::{Ast, NodeId};
+use crate::ast::{Ast, NodeId, Literal};
 use crate::error::TError;
 use crate::tokens::{Token, TokenType};
 use log::{debug, trace};
@@ -27,24 +27,24 @@ enum Partial {
     Node(NodeId),
 }
 
-fn expr<'a, T: Iterator<Item = &'a Token>>(ast: &mut Ast, mut tokens: std::iter::Peekable<T>) {
+fn expr<'a, T: Iterator<Item = &'a Token>>(ast: &mut Ast, tokens: std::iter::Peekable<T>) {
     use Partial::*;
     let mut stack: Vec<Partial> = vec![];
     let mut left: Partial = Empty;
     for tok in tokens {
         match (left, tok.kind) {
-            (left, TokenType::Op) => {
+            (_, TokenType::Op) => {
                 stack.push(left);
                 left = Joiner(*tok);
             }
             (Empty, TokenType::NumLit) => {
-                left = Node(ast.add_literal(*tok, tok.location()));
+                left = Node(ast.add_literal(Literal::Numeric, tok.location()));
             }
             (Joiner(Token { kind: TokenType::Op, ..}), TokenType::NumLit) => {
                 stack.push(left);
-                left = Node(ast.add_literal(*tok, tok.location()));
+                left = Node(ast.add_literal(Literal::Numeric, tok.location()));
             }
-            (left, new) => {
+            (left, _new) => {
                 trace!("tok {tok:?} with {left:?} merge");
             }
         }
@@ -72,10 +72,7 @@ pub mod tests {
             literals,
             vec![(
                 NodeId::from_raw(0),
-                Literal {
-                    kind: LiteralKind::Integer,
-                    encoded: "123".to_string()
-                }
+                Literal::Numeric, // 123
             )],
             "Should have parsed a number"
         );
@@ -99,17 +96,11 @@ pub mod tests {
             vec![
                 (
                     NodeId::from_raw(0),
-                    Literal {
-                        kind: LiteralKind::Integer,
-                        encoded: "1".to_string()
-                    }
+                    Literal::Numeric, // 1
                 ),
                 (
                     NodeId::from_raw(2),
-                    Literal {
-                        kind: LiteralKind::Integer,
-                        encoded: "2".to_string()
-                    }
+                    Literal::Numeric, // 2
                 )
             ],
             "Should have parsed a number"

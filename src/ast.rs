@@ -107,7 +107,14 @@ make_contains!(definitions, (NodeId, Definition), Definition, DefinitionId, add_
 make_contains!(literals, (NodeId, Literal), Literal, LiteralId, add_literal);
 
 impl Ast {
-    pub fn make_node<T, F: FnOnce(NodeId) -> T>(&mut self, value: F, location: Location) -> NodeId
+    pub fn make_node<T>(&mut self, value: T, location: Location) -> NodeId
+    where
+        Self: Contains<(NodeId, T)>
+    {
+        self.make_node_with_id(|_node_id|value, location)
+    }
+
+    pub fn make_node_with_id<T, F: FnOnce(NodeId) -> T>(&mut self, value: F, location: Location) -> NodeId
     where
         Self: Contains<(NodeId, T)>,
     {
@@ -165,24 +172,16 @@ pub struct Definition {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub enum LiteralKind {
+pub enum Literal {
     Bool,      // a boolean of arbitrary size :P (true/false)
-    Integer,   // of arbitrary size
-    Float,     // of arbitrary size
-    Character, // a character of arbitrary size (e.g. UTF-8 or Unicode)
-    Text,      // string-like, but of arbitrary size
+    Numeric,   // an Integer or Float of arbitrary size
+    Text,      // a character or strings of arbitrary size (e.g. UTF-8 or Unicode)
                // TODO: Add more complex literals like:
                // Rational, e.g. 12
                // Color,
                // URL,
                // JSON,
                // JSON,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Literal {
-    pub kind: LiteralKind,
-    pub encoded: String, // TODO: ???
 }
 
 #[cfg(test)]
@@ -194,22 +193,19 @@ mod tests {
         let mut ast = Ast::default();
         let plus = ast.register_str("+".to_string());
         let a = ast.register_str("a".to_string());
-        let plus = |_node| Symbol { name: plus };
-        let a = |_node| Symbol { name: a };
-        let b = |_node| Literal {
-            kind: LiteralKind::Integer,
-            encoded: "123456789".to_string(),
-        };
+        let plus = Symbol { name: plus };
+        let a = Symbol { name: a };
+        let b = Literal::Numeric; // 123456789
         let plus = ast.make_node(plus, Location::dummy_for_test());
         let a = ast.make_node(a, Location::dummy_for_test());
         let b = ast.make_node(b, Location::dummy_for_test());
-        let call = |_node| Call {
+        let call = Call {
             inner: plus,
             args: vec![a, b],
         };
         let call = ast.make_node(call, Location::dummy_for_test());
         let a_prime = ast.register_str("a_prime".to_string());
-        let definition = |_node| Definition {
+        let definition = Definition {
             name: a_prime,
             implementation: call,
         };

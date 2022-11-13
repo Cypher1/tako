@@ -9,8 +9,8 @@ pub type SymbolLength = u8;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Location {
-    start: IndexIntoFile,
-    length: SymbolLength,
+    pub start: IndexIntoFile,
+    pub length: SymbolLength,
 }
 
 impl Location {
