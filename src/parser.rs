@@ -62,22 +62,21 @@ const fn binding_power(symbol: Symbol) -> Option<BindingPowerConfig> {
         _ => return None,
     })
 }
-/*
+
 fn get_binding_power(token: Token, is_prefix: bool) -> Option<(Symbol, BindingPower)> {
     match token.kind {
         TokenType::OpenBracket => BindingPower::new(99, 0),
         TokenType::CloseBracket => BindingPower::new(0, 100),
-        TokenType::Op => {
+        TokenType::Op(s) => {
             let power = binding_power(symbol)?;
             if is_prefix {
-                power.prefix
+                (s, power.prefix)
             } else {
-                power.infix
+                (s, power.infix)
             }
         }
     }
 }
-*/
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, PartialOrd, Ord, Hash)]
 struct Partial {
@@ -93,7 +92,7 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(ast: &mut Ast, tokens: std::iter::Pee
     for token in tokens {
         let (token, r_bp) = loop {
             match get_binding_power(token, top.left.is_none()) {
-                Some((t, (l_bp, r_bp))) if top.min_bp <= l_bp =>{
+                Some((t, BindingPower { left: l_bp, right: r_bp } )) if top.min_bp <= l_bp =>{
                     break (t, r_bp)
                 }
                 _ => {
@@ -110,7 +109,7 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(ast: &mut Ast, tokens: std::iter::Pee
                     args.extend(res.left);
                     let token = res.token.unwrap();
                     eprint!("{:?} ", token);
-                    top.left = Some(S::Cons(token, args));
+                    top.left = Some(ast.add_op((token, args));
                 }
             };
         };
@@ -130,6 +129,8 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(ast: &mut Ast, tokens: std::iter::Pee
             token: Some(token),
         };
     }
+    assert!(stack.is_empty(), "Stack should be empty");
+    top.left
 }
 
 #[cfg(test)]
