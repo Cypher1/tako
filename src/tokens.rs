@@ -346,6 +346,7 @@ pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
                 (Symbol::Div, Symbol::Assign) => Op(Symbol::DivAssign),
                 (Symbol::DivRounding, Symbol::Assign) => Op(Symbol::DivRoundingAssign),
                 (Symbol::Mul, Symbol::Assign) => Op(Symbol::MulAssign),
+                (Symbol::Mul, Symbol::Mul) => Op(Symbol::Exp),
                 (Symbol::Modulo, Symbol::Assign) => Op(Symbol::ModuloAssign),
                 (Symbol::LogicalOr, Symbol::Assign) => Op(Symbol::LogicalOrAssign),
                 (Symbol::LogicalAnd, Symbol::Assign) => Op(Symbol::LogicalAndAssign),
