@@ -19,10 +19,6 @@ name = "tako"
 path = "src/main.rs"
 
 [[bin]]
-name = "takod"
-path = "src/server.rs"
-
-[[bin]]
 name = "make_test_case"
 path = "tests/bins/make_test_case.rs"
 
