@@ -116,19 +116,35 @@ impl Ast {
 make_contains!(nodes, Node, NodeRef, NodeId, unsafe_add_node);
 make_contains!(calls, (NodeId, Call), Call, CallId, add_call);
 make_contains!(symbols, (NodeId, Symbol), Symbol, SymbolId, add_symbol);
-make_contains!(named_symbols, (NodeId, NamedSymbol), NamedSymbol, NamedSymbolId, add_named_symbol);
-make_contains!(definitions, (NodeId, Definition), Definition, DefinitionId, add_definition);
+make_contains!(
+    named_symbols,
+    (NodeId, NamedSymbol),
+    NamedSymbol,
+    NamedSymbolId,
+    add_named_symbol
+);
+make_contains!(
+    definitions,
+    (NodeId, Definition),
+    Definition,
+    DefinitionId,
+    add_definition
+);
 make_contains!(literals, (NodeId, Literal), Literal, LiteralId, add_literal);
 
 impl Ast {
     pub fn make_node<T>(&mut self, value: T, location: Location) -> NodeId
     where
-        Self: Contains<(NodeId, T)>
+        Self: Contains<(NodeId, T)>,
     {
-        self.make_node_with_id(|_node_id|value, location)
+        self.make_node_with_id(|_node_id| value, location)
     }
 
-    pub fn make_node_with_id<T, F: FnOnce(NodeId) -> T>(&mut self, value: F, location: Location) -> NodeId
+    pub fn make_node_with_id<T, F: FnOnce(NodeId) -> T>(
+        &mut self,
+        value: F,
+        location: Location,
+    ) -> NodeId
     where
         Self: Contains<(NodeId, T)>,
     {
@@ -155,7 +171,9 @@ impl Ast {
         TypedIndex::from_raw(str_hash)
     }
     pub fn get_str(&self, s: StrId) -> Option<&str> {
-        self.strings.get(&s.raw_index()).map(|ref_string| &**ref_string)
+        self.strings
+            .get(&s.raw_index())
+            .map(|ref_string| &**ref_string)
     }
 }
 
@@ -198,15 +216,15 @@ pub struct Definition {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Literal {
-    Bool,      // a boolean of arbitrary size :P (true/false)
-    Numeric,   // an Integer or Float of arbitrary size
-    Text,      // a character or strings of arbitrary size (e.g. UTF-8 or Unicode)
-               // TODO: Add more complex literals like:
-               // Rational, e.g. 12
-               // Color,
-               // URL,
-               // JSON,
-               // JSON,
+    Bool,    // a boolean of arbitrary size :P (true/false)
+    Numeric, // an Integer or Float of arbitrary size
+    Text,    // a character or strings of arbitrary size (e.g. UTF-8 or Unicode)
+             // TODO: Add more complex literals like:
+             // Rational, e.g. 12
+             // Color,
+             // URL,
+             // JSON,
+             // JSON,
 }
 
 #[cfg(test)]
