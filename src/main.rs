@@ -10,7 +10,7 @@ use takolib::launch_ui;
 use takolib::start;
 use takolib::tasks::Request;
 
-use takolib::ui::{Cli, Tui, UiMode};
+use takolib::ui::{Cli, Tui, Http, UiMode};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -57,6 +57,14 @@ async fn main() -> Result<()> {
                 }
                 UiMode::Tui => {
                     launch_ui::<Tui>(
+                        task_manager_status_receiver,
+                        request_sender,
+                        stats_requester,
+                    )
+                    .await
+                }
+                UiMode::Http => {
+                    launch_ui::<Http>(
                         task_manager_status_receiver,
                         request_sender,
                         stats_requester,
