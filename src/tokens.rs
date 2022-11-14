@@ -50,6 +50,7 @@ pub enum Symbol {
     SubAssign,
     DivAssign,
     MulAssign,
+    DivRoundingAssign,
     BitAndAssign,
     BitXorAssign,
     BitOrAssign, // TODO: This is also Pipe... might be nice to have both?
@@ -106,6 +107,7 @@ impl<'a> std::fmt::Display for Symbol {
             Symbol::SubAssign => "-=",
             Symbol::DivAssign => "/=",
             Symbol::MulAssign => "*=",
+            Symbol::DivRoundingAssign => "//=",
             Symbol::BitAndAssign => "&=",
             Symbol::BitXorAssign => "^=",
             Symbol::BitOrAssign => "|=",
@@ -338,7 +340,16 @@ pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
             (_, Whitespace) => break,                // Token finished whitespace.
             (Unknown, new_tok_type) => new_tok_type, // Start token.
             (Op(first), Op(second)) => match (first, second) { // Continuation
-                (Symbol::Add, Symbol::Assign) => Symbol::AddAssign,
+                (Symbol::Add, Symbol::Assign) => Op(Symbol::AddAssign),
+                (Symbol::Sub, Symbol::Assign) => Op(Symbol::SubAssign),
+                (Symbol::Div, Symbol::Assign) => Op(Symbol::DivAssign),
+                (Symbol::DivRounding, Symbol::Assign) => Op(Symbol::DivRoundingAssign),
+                (Symbol::Mul, Symbol::Assign) => Op(Symbol::MulAssign),
+                (Symbol::LogicalOr, Symbol::Assign) => Op(Symbol::LogicalOrAssign),
+                (Symbol::LogicalAnd, Symbol::Assign) => Op(Symbol::LogicalAndAssign),
+                (Symbol::BitOr, Symbol::Assign) => Op(Symbol::BitOrAssign),
+                (Symbol::BitAnd, Symbol::Assign) => Op(Symbol::BitAndAssign),
+                (Symbol::Exp | Symbol::BitNot, _) => break,
             },
             (NumLit, NumLit) => NumLit,              // Continuation
             (NumLit, Sym) => NumLit,                 // Number with suffix.
