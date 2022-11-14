@@ -1,8 +1,8 @@
 // use rand::Rng;
-use crate::ast::{Ast, Literal, NamedSymbol, NodeId};
+use crate::ast::{Ast, NodeId};
 use crate::error::TError;
-use crate::tokens::{Symbol, Token, TokenType};
-use log::{debug, trace};
+use crate::tokens::{Symbol, Token};
+use log::{debug};
 
 use static_assertions::*;
 assert_eq_size!(Partial, [u8; 16]); // TODO: Try to get the size down
@@ -86,9 +86,9 @@ struct Partial {
     token: Option<Token>,
 }
 
-fn expr<'a, T: Iterator<Item = &'a Token>>(ast: &mut Ast, tokens: std::iter::Peekable<T>) {
-    let mut stack: Vec<Partial> = vec![];
-    let mut left = Partial::default();
+fn expr<'a, T: Iterator<Item = &'a Token>>(_ast: &mut Ast, _tokens: std::iter::Peekable<T>) {
+    let _stack: Vec<Partial> = vec![];
+    let _left = Partial::default();
     /*
     for token in tokens {
         let (token, r_bp) = loop {

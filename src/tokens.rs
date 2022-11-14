@@ -424,7 +424,7 @@ pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
             kind,
         })
     }
-    return true;
+    true
 }
 
 #[cfg(test)]
