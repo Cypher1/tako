@@ -6,9 +6,11 @@ use tokio::sync::{broadcast, mpsc};
 
 mod cli;
 mod tui;
+mod http;
 
 pub use cli::Cli;
 pub use tui::Tui;
+pub use http::Http;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum UserAction {
@@ -19,6 +21,7 @@ pub enum UserAction {
 pub enum UiMode {
     Cli,
     Tui,
+    Http,
 }
 
 #[async_trait]
