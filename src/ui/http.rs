@@ -13,10 +13,7 @@ use tokio::{
     self,
     sync::{broadcast, mpsc},
 };
-use std::{
-    io::{stdout, Write},
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 
 const TICK: Duration = Duration::from_millis(100);
 
