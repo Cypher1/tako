@@ -12,7 +12,8 @@ pub fn parse(filepath: &str, tokens: &[Token]) -> Result<Ast, TError> {
     let tokens = tokens.iter().peekable();
     debug!("Parse {}", filepath);
     let mut ast = Ast::new(filepath);
-    expr(&mut ast, tokens);
+    let root = expr(&mut ast, tokens);
+    ast.roots.extend(root);
     // TODO: REMOVE THIS (it's just to test the threading model)
     // let mut rng = rand::thread_rng();
     // std::thread::sleep(std::time::Duration::from_secs(rng.gen_range(0..10)));
@@ -86,10 +87,9 @@ struct Partial {
     token: Option<Token>,
 }
 
-fn expr<'a, T: Iterator<Item = &'a Token>>(_ast: &mut Ast, _tokens: std::iter::Peekable<T>) {
-    let _stack: Vec<Partial> = vec![];
-    let _left = Partial::default();
-    /*
+fn expr<'a, T: Iterator<Item = &'a Token>>(ast: &mut Ast, tokens: std::iter::Peekable<T>) -> Option<NodeId> {
+    let stack: Vec<Partial> = vec![];
+    let top = Partial::default();
     for token in tokens {
         let (token, r_bp) = loop {
             match get_binding_power(token, top.left.is_none()) {
@@ -101,15 +101,15 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(_ast: &mut Ast, _tokens: std::iter::P
                     top = match stack.pop() {
                         Some(it) => it,
                         None => {
-                            eprintln!();
-                            return res.left;
+                            todo!("Error!?!?");
+                            // return res.left;
                         }
                     };
                     let mut args = Vec::new();
                     args.extend(top.left);
                     args.extend(res.left);
                     let token = res.token.unwrap();
-                    eprint!("{} ", token);
+                    eprint!("{:?} ", token);
                     top.left = Some(S::Cons(token, args));
                 }
             };
@@ -130,7 +130,6 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(_ast: &mut Ast, _tokens: std::iter::P
             token: Some(token),
         };
     }
-    */
 }
 
 #[cfg(test)]
