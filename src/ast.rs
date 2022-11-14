@@ -200,10 +200,16 @@ pub struct Call {
 
 impl Call {
     #[cfg(test)]
-    pub fn new(inner: NodeId, args: &[NodeId]) -> Self {
+    pub fn from_slice(inner: NodeId, args: &[NodeId]) -> Self {
         Self {
             inner,
             args: args.to_vec(),
+        }
+    }
+    pub fn new(inner: NodeId, args: Vec<NodeId>) -> Self {
+        Self {
+            inner,
+            args,
         }
     }
 }

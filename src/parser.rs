@@ -1,7 +1,7 @@
 // use rand::Rng;
-use crate::ast::{Ast, NodeId};
+use crate::ast::*;
 use crate::error::TError;
-use crate::tokens::{Symbol, Token};
+use crate::tokens::{Symbol, Token, TokenType};
 use log::debug;
 
 use static_assertions::*;
@@ -63,16 +63,16 @@ const fn binding_power(symbol: Symbol) -> Option<BindingPowerConfig> {
     })
 }
 
-fn get_binding_power(token: Token, is_prefix: bool) -> Option<(Symbol, BindingPower)> {
+fn get_binding_power(token: Token, is_prefix: bool) -> Option<(Token, BindingPower)> {
     match token.kind {
-        TokenType::OpenBracket => BindingPower::new(99, 0),
-        TokenType::CloseBracket => BindingPower::new(0, 100),
-        TokenType::Op(s) => {
+        TokenType::OpenBracket => Some((token, BindingPower::new(99, 0))),
+        TokenType::CloseBracket => Some((token, BindingPower::new(0, 100))),
+        TokenType::Op(symbol) => {
             let power = binding_power(symbol)?;
             if is_prefix {
-                (s, power.prefix)
+                power.prefix.map(|prefix| (token, prefix))
             } else {
-                (s, power.infix)
+                power.infix.map(|infix| (token, infix))
             }
         }
     }
@@ -91,7 +91,7 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(ast: &mut Ast, tokens: std::iter::Pee
     let top = Partial::default();
     for token in tokens {
         let (token, r_bp) = loop {
-            match get_binding_power(token, top.left.is_none()) {
+            match get_binding_power(*token, top.left.is_none()) {
                 Some((t, BindingPower { left: l_bp, right: r_bp } )) if top.min_bp <= l_bp =>{
                     break (t, r_bp)
                 }
@@ -109,13 +109,13 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(ast: &mut Ast, tokens: std::iter::Pee
                     args.extend(res.left);
                     let token = res.token.unwrap();
                     eprint!("{:?} ", token);
-                    top.left = Some(ast.add_op((token, args));
+                    top.left = Some(ast.add_call(Call::new(token, args)));
                 }
             };
         };
 
-        if token == ')' {
-            assert_eq!(top.token, Some('('));
+        if token.kind == TokenType::CloseParen {
+            assert_eq!(top.token.map(|t| t.kind), Some(TokenType::OpenParen));
             let res = top;
             top = stack.pop().unwrap();
             top.left = res.left;

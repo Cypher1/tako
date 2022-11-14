@@ -133,6 +133,10 @@ impl<'a> std::fmt::Display for Symbol {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum TokenType {
     Op(Symbol),
+    OpenCurly,
+    CloseCurly,
+    OpenParen,
+    CloseParen,
     OpenBracket,
     CloseBracket,
     Sym,
@@ -224,8 +228,12 @@ fn classify_char(ch: char) -> TokenType {
         ',' => Op(Symbol::Comma),
         ':' => Op(Symbol::HasType),
         ';' => Op(Symbol::Sequence),
-        '(' | '[' | '{' => OpenBracket,
-        ')' | ']' | '}' => CloseBracket,
+        '(' => OpenParen,
+        ')' => CloseParen,
+        '{' => OpenCurly,
+        '}' => CloseCurly,
+        '[' => OpenBracket,
+        ']' => CloseBracket,
         '0'..='9' => NumLit,
         '"' | '\'' => StringLit,
         'A'..='Z' | 'a'..='z' | '_' => Sym,
@@ -463,13 +471,13 @@ mod tests {
     }
 
     #[test]
-    fn classify_brackets() {
-        assert_eq!(classify_char('('), OpenBracket);
-        assert_eq!(classify_char(')'), CloseBracket);
+    fn classify_parens_and_brackets() {
+        assert_eq!(classify_char('('), OpenParen);
+        assert_eq!(classify_char(')'), CloseParen);
         assert_eq!(classify_char('['), OpenBracket);
         assert_eq!(classify_char(']'), CloseBracket);
-        assert_eq!(classify_char('{'), OpenBracket);
-        assert_eq!(classify_char('}'), CloseBracket);
+        assert_eq!(classify_char('{'), OpenCurly);
+        assert_eq!(classify_char('}'), CloseCurly);
     }
 
     #[test]
@@ -637,7 +645,7 @@ mod tests {
     fn lex_parentheses() {
         let contents = "(\"hello world\"\n)";
         let tokens = setup_many(contents, 3);
-        let expected = vec![OpenBracket, StringLit, CloseBracket];
+        let expected = vec![OpenParen, StringLit, CloseParen];
         assert_eq!(
             tokens
                 .iter()
@@ -646,6 +654,50 @@ mod tests {
             expected
         );
         let expected_strs = vec!["(", "\"hello world\"", ")"];
+        assert_eq!(
+            tokens
+                .iter()
+                .map(|tok| tok.get_str(&contents))
+                .collect::<Vec<&str>>(),
+            expected_strs
+        );
+    }
+
+    #[test]
+    fn lex_curlies() {
+        let contents = "{\"hello world\"\n}";
+        let tokens = setup_many(contents, 3);
+        let expected = vec![OpenCurly, StringLit, CloseCurly];
+        assert_eq!(
+            tokens
+                .iter()
+                .map(|tok| tok.kind)
+                .collect::<Vec<TokenType>>(),
+            expected
+        );
+        let expected_strs = vec!["{", "\"hello world\"", "}"];
+        assert_eq!(
+            tokens
+                .iter()
+                .map(|tok| tok.get_str(&contents))
+                .collect::<Vec<&str>>(),
+            expected_strs
+        );
+    }
+
+    #[test]
+    fn lex_brackets() {
+        let contents = "[\"hello world\"\n]";
+        let tokens = setup_many(contents, 3);
+        let expected = vec![OpenBracket, StringLit, CloseBracket];
+        assert_eq!(
+            tokens
+                .iter()
+                .map(|tok| tok.kind)
+                .collect::<Vec<TokenType>>(),
+            expected
+        );
+        let expected_strs = vec!["[", "\"hello world\"", "]"];
         assert_eq!(
             tokens
                 .iter()
