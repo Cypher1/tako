@@ -255,7 +255,8 @@ mod tests {
         dbg!(&ast);
 
         assert_eq!(ast.nodes.len(), 5);
-        assert_eq!(ast.symbols.len(), 2);
+        assert_eq!(ast.symbols.len(), 1);
+        assert_eq!(ast.named_symbols.len(), 1);
         assert_eq!(ast.literals.len(), 1);
         assert_eq!(ast.calls.len(), 1);
         assert_eq!(ast.definitions.len(), 1);
