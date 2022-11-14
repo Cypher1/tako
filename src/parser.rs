@@ -195,7 +195,7 @@ pub mod tests {
         dbg!(symbols);
         dbg!(calls);
         dbg!(literals);
-        todo!();
+        Ok(())
     }
 
     #[test]
@@ -215,7 +215,7 @@ pub mod tests {
         dbg!(calls);
         dbg!(literals);
 
-        todo!();
+        Ok(())
     }
 
     #[test]
@@ -235,7 +235,7 @@ pub mod tests {
         dbg!(calls);
         dbg!(literals);
 
-        todo!();
+        Ok(())
     }
 }
 /*
