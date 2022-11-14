@@ -65,7 +65,9 @@ impl<T, Idx: Clone> Clone for TypedIndex<T, Idx> {
 }
 impl<T, Idx: Copy> Copy for TypedIndex<T, Idx> {}
 
-impl<T, Idx: num_traits::bounds::Bounded + std::fmt::Debug + PartialEq> std::fmt::Debug for TypedIndex<T, Idx> {
+impl<T, Idx: num_traits::bounds::Bounded + std::fmt::Debug + PartialEq> std::fmt::Debug
+    for TypedIndex<T, Idx>
+{
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}_", std::any::type_name::<T>())?;
         if self == &Self::max() {

@@ -1,5 +1,5 @@
 use crate::error::TError;
-use crate::location::{Location, IndexIntoFile, SymbolLength};
+use crate::location::{IndexIntoFile, Location, SymbolLength};
 use log::debug;
 use std::fmt;
 
@@ -15,20 +15,33 @@ assert_eq_size!([Token; 2], [u8; 8]);
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum Symbol {
     // Basics
+    Assign,
     Add,
+    AddAssign,
     Sub,
+    SubAssign,
     Div,
+    DivAssign,
     DivRounding,
+    DivRoundingAssign,
     Mul,
+    MulAssign,
     Exp,
     BitNot,
     BitAnd,
+    BitAndAssign,
     BitXor,
+    BitXorAssign,
     BitOr,
+    BitOrAssign,
+    LeftPipe,
     LogicalNot,
     LogicalAnd,
+    LogicalAndAssign,
     LogicalOr,
+    LogicalOrAssign,
     Modulo,
+    ModuloAssign,
     PtrTo,
     HasType,
     FunctionType,
@@ -38,29 +51,15 @@ pub enum Symbol {
     Spread,
     Comma,
     Sequence,
-    LeftPipe,
-    RightPipe,
-    // Assignment versions
-    Assign,
-    AddAssign,
-    SubAssign,
-    DivAssign,
-    MulAssign,
-    DivRoundingAssign,
-    BitAndAssign,
-    BitXorAssign,
-    BitOrAssign, // TODO: This is also Pipe... might be nice to have both?
-    LogicalAndAssign,
-    LogicalOrAssign,
-    ModuloAssign,
     // Comparisons
     Eqs,
     NotEqs,
     Lt,
-    Gt,
     LtEqs,
-    GtEqs,
     LeftShift,
+    RightPipe,
+    Gt,
+    GtEqs,
     RightShift,
     // The rest?
     // Named(StrId),
@@ -68,56 +67,60 @@ pub enum Symbol {
 
 impl<'a> std::fmt::Display for Symbol {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", match self {
-            // Basics
-            Symbol::Add => "+",
-            Symbol::Sub => "-",
-            Symbol::Div => "/",
-            Symbol::DivRounding => "//",
-            Symbol::Mul => "*",
-            Symbol::Exp => "**",
-            Symbol::LogicalNot => "!",
-            Symbol::BitNot => "~",
-            Symbol::BitAnd => "&",
-            Symbol::BitXor => "^",
-            Symbol::BitOr => "|",
-            Symbol::LogicalAnd => "&&",
-            Symbol::LogicalOr => "||",
-            Symbol::Modulo => "%",
-            Symbol::PtrTo => "@",
-            Symbol::HasType => ": ", // TODO: Work out a better way of printing pretty spaces.
-            Symbol::Try => "?",
-            Symbol::Dot => ".",
-            Symbol::Range => "..",
-            Symbol::Spread => "...",
-            Symbol::Comma => ",",
-            Symbol::Sequence => ";",
-            Symbol::FunctionType => "->",
-            Symbol::LeftShift => "<<",
-            Symbol::RightShift => ">>",
-            Symbol::LeftPipe => "<|",
-            Symbol::RightPipe => "|>",
-            // Assignment versions
-            Symbol::Assign => "=",
-            Symbol::AddAssign => "+=",
-            Symbol::SubAssign => "-=",
-            Symbol::DivAssign => "/=",
-            Symbol::MulAssign => "*=",
-            Symbol::DivRoundingAssign => "//=",
-            Symbol::BitAndAssign => "&=",
-            Symbol::BitXorAssign => "^=",
-            Symbol::BitOrAssign => "|=",
-            Symbol::LogicalAndAssign => "&&=",
-            Symbol::LogicalOrAssign => "||=",
-            Symbol::ModuloAssign => "%=",
-            // Comparisons
-            Symbol::Eqs => "==",
-            Symbol::NotEqs => "!=",
-            Symbol::Lt => "<",
-            Symbol::Gt => ">",
-            Symbol::LtEqs => "<=",
-            Symbol::GtEqs => ">=",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                // Basics
+                Symbol::Add => "+",
+                Symbol::Sub => "-",
+                Symbol::Div => "/",
+                Symbol::DivRounding => "//",
+                Symbol::Mul => "*",
+                Symbol::Exp => "**",
+                Symbol::LogicalNot => "!",
+                Symbol::BitNot => "~",
+                Symbol::BitAnd => "&",
+                Symbol::BitXor => "^",
+                Symbol::BitOr => "|",
+                Symbol::LogicalAnd => "&&",
+                Symbol::LogicalOr => "||",
+                Symbol::Modulo => "%",
+                Symbol::PtrTo => "@",
+                Symbol::HasType => ": ", // TODO: Work out a better way of printing pretty spaces.
+                Symbol::Try => "?",
+                Symbol::Dot => ".",
+                Symbol::Range => "..",
+                Symbol::Spread => "...",
+                Symbol::Comma => ",",
+                Symbol::Sequence => ";",
+                Symbol::FunctionType => "->",
+                Symbol::LeftShift => "<<",
+                Symbol::RightShift => ">>",
+                Symbol::LeftPipe => "<|",
+                Symbol::RightPipe => "|>",
+                // Assignment versions
+                Symbol::Assign => "=",
+                Symbol::AddAssign => "+=",
+                Symbol::SubAssign => "-=",
+                Symbol::DivAssign => "/=",
+                Symbol::MulAssign => "*=",
+                Symbol::DivRoundingAssign => "//=",
+                Symbol::BitAndAssign => "&=",
+                Symbol::BitXorAssign => "^=",
+                Symbol::BitOrAssign => "|=",
+                Symbol::LogicalAndAssign => "&&=",
+                Symbol::LogicalOrAssign => "||=",
+                Symbol::ModuloAssign => "%=",
+                // Comparisons
+                Symbol::Eqs => "==",
+                Symbol::NotEqs => "!=",
+                Symbol::Lt => "<",
+                Symbol::Gt => ">",
+                Symbol::LtEqs => "<=",
+                Symbol::GtEqs => ">=",
+            }
+        )
     }
 }
 
@@ -335,7 +338,8 @@ pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
         kind = match (kind, classify_char(chr)) {
             (_, Whitespace) => break,                // Token finished whitespace.
             (Unknown, new_tok_type) => new_tok_type, // Start token.
-            (Op(first), Op(second)) => match (first, second) { // Continuation
+            (Op(first), Op(second)) => match (first, second) {
+                // Continuation
                 (Symbol::Add, Symbol::Assign) => Op(Symbol::AddAssign),
                 (Symbol::Sub, Symbol::Assign) => Op(Symbol::SubAssign),
                 (Symbol::Sub, Symbol::Gt) => Op(Symbol::FunctionType),
@@ -360,10 +364,10 @@ pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
                 (Symbol::LogicalNot, Symbol::Assign) => Op(Symbol::NotEqs),
                 (_, _) => break,
             },
-            (NumLit, NumLit) => NumLit,              // Continuation
-            (NumLit, Sym) => NumLit,                 // Number with suffix.
-            (Sym, NumLit | Sym) => Sym,              // Symbol.
-            _ => break,                              // Token finished can't continue here.
+            (NumLit, NumLit) => NumLit, // Continuation
+            (NumLit, Sym) => NumLit,    // Number with suffix.
+            (Sym, NumLit | Sym) => Sym, // Symbol.
+            _ => break,                 // Token finished can't continue here.
         };
         characters.next(); // Continue past the character.
     }
@@ -388,39 +392,37 @@ pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
 
     if length > SymbolLength::MAX as usize {
         assert_eq!(kind, TokenType::StringLit); // TODO: Error here.
-        let mut number_of_tokens = (length + SymbolLength::MAX as usize - 1) / (SymbolLength::MAX as usize);
+        let mut number_of_tokens =
+            (length + SymbolLength::MAX as usize - 1) / (SymbolLength::MAX as usize);
         if number_of_tokens >= (u8::MAX as usize) {
             todo!("Token was too long, implement a recursive group thing...");
         }
-        tokens.push(
-            Token {
-                start: characters.start() as IndexIntoFile,
-                length: number_of_tokens as u8,
-                kind: TokenType::Group,
-            }
-        );
+        tokens.push(Token {
+            start: characters.start() as IndexIntoFile,
+            length: number_of_tokens as u8,
+            kind: TokenType::Group,
+        });
         let mut length = length;
         while length > 0 {
             let curr_len = std::cmp::min(length, u8::MAX as usize);
             length -= curr_len;
             number_of_tokens -= 1;
-            tokens.push(
-                Token {
-                    start: characters.start() as IndexIntoFile,
-                    length: curr_len as u8,
-                    kind,
-                }
-            );
-        }
-        assert_eq!(number_of_tokens, 0, "Should generate the calculated number of grouped tokens");
-    } else {
-        tokens.push(
-            Token {
+            tokens.push(Token {
                 start: characters.start() as IndexIntoFile,
-                length: length as SymbolLength,
+                length: curr_len as u8,
                 kind,
-            }
-        )
+            });
+        }
+        assert_eq!(
+            number_of_tokens, 0,
+            "Should generate the calculated number of grouped tokens"
+        );
+    } else {
+        tokens.push(Token {
+            start: characters.start() as IndexIntoFile,
+            length: length as SymbolLength,
+            kind,
+        })
     }
     return true;
 }
@@ -469,38 +471,80 @@ mod tests {
     #[test]
     fn lex_head_number() {
         let tokens = setup("123");
-        assert_eq!(tokens, vec![Token { kind: NumLit, start: 0, length: 3}]);
+        assert_eq!(
+            tokens,
+            vec![Token {
+                kind: NumLit,
+                start: 0,
+                length: 3
+            }]
+        );
     }
 
     #[test]
     fn lex_head_symbol() {
         let tokens = setup("a123");
-        assert_eq!(tokens, vec![Token { kind: Sym, start: 0, length: 4}]);
+        assert_eq!(
+            tokens,
+            vec![Token {
+                kind: Sym,
+                start: 0,
+                length: 4
+            }]
+        );
     }
 
     #[test]
     fn lex_head_operator() {
         let tokens = setup("-a123");
-        assert_eq!(tokens, vec![Token { kind: Op, start: 0, length: 1}]);
+        assert_eq!(
+            tokens,
+            vec![Token {
+                kind: Op,
+                start: 0,
+                length: 1
+            }]
+        );
     }
 
     #[test]
     fn lex_head_num_and_newline_linux() {
         let tokens = setup("\n12");
-        assert_eq!(tokens, vec![Token { kind: NumLit, start: 1, length: 2}]);
+        assert_eq!(
+            tokens,
+            vec![Token {
+                kind: NumLit,
+                start: 1,
+                length: 2
+            }]
+        );
     }
 
     #[test]
     fn lex_head_num_and_newline_windows() {
         let tokens = setup("\r\n12");
-        assert_eq!(tokens, vec![Token { kind: NumLit, start: 2, length: 2}]);
+        assert_eq!(
+            tokens,
+            vec![Token {
+                kind: NumLit,
+                start: 2,
+                length: 2
+            }]
+        );
     }
 
     #[test]
     fn lex_head_num_and_newline_old_mac() {
         // For mac systems before OSX
         let tokens = setup("\r12");
-        assert_eq!(tokens, vec![Token { kind: NumLit, start: 1, length: 2}]);
+        assert_eq!(
+            tokens,
+            vec![Token {
+                kind: NumLit,
+                start: 1,
+                length: 2
+            }]
+        );
     }
 
     #[test]
@@ -508,7 +552,14 @@ mod tests {
         // TODO: De escape them.
         let contents = "'\\n\\t2\\r\\\'\"'";
         let tokens = setup(contents);
-        assert_eq!(tokens, vec![Token { kind: StringLit, start: 0, length: 12}]);
+        assert_eq!(
+            tokens,
+            vec![Token {
+                kind: StringLit,
+                start: 0,
+                length: 12
+            }]
+        );
         assert_str_eq!(tokens[0].get_str(contents), "\'\\n\\t2\\r\\'\"\'");
     }
 
@@ -516,11 +567,26 @@ mod tests {
     fn lex_head_call() {
         let contents = "x()";
         let tokens = setup_many(contents, 3);
-        assert_eq!(tokens, vec![
-            Token { kind: Sym, start: 0, length: 1},
-            Token { kind: OpenBracket, start: 1, length: 1},
-            Token { kind: CloseBracket, start: 2, length: 1}
-        ]);
+        assert_eq!(
+            tokens,
+            vec![
+                Token {
+                    kind: Sym,
+                    start: 0,
+                    length: 1
+                },
+                Token {
+                    kind: OpenBracket,
+                    start: 1,
+                    length: 1
+                },
+                Token {
+                    kind: CloseBracket,
+                    start: 2,
+                    length: 1
+                }
+            ]
+        );
         assert_str_eq!(tokens[0].get_str(&contents), "x");
         assert_str_eq!(tokens[1].get_str(&contents), "(");
         assert_str_eq!(tokens[2].get_str(&contents), ")");
@@ -530,11 +596,26 @@ mod tests {
     fn lex_head_strings_with_operators() {
         let contents = "!\"hello world\"\n7";
         let tokens = setup_many(contents, 3);
-        assert_eq!(tokens, vec![
-            Token { kind: Op, start: 0, length: 1 },
-            Token { kind: StringLit, start: 1, length: 13 },
-            Token { kind: NumLit, start: 15, length: 1 },
-        ]);
+        assert_eq!(
+            tokens,
+            vec![
+                Token {
+                    kind: Op,
+                    start: 0,
+                    length: 1
+                },
+                Token {
+                    kind: StringLit,
+                    start: 1,
+                    length: 13
+                },
+                Token {
+                    kind: NumLit,
+                    start: 15,
+                    length: 1
+                },
+            ]
+        );
         assert_str_eq!(tokens[0].get_str(&contents), "!");
         // The token-izer is not responsible for un-escaping...
         assert_str_eq!(tokens[1].get_str(&contents), "\"hello world\"");

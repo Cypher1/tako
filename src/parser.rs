@@ -1,7 +1,7 @@
 // use rand::Rng;
-use crate::ast::{Ast, NodeId, Literal, NamedSymbol};
+use crate::ast::{Ast, Literal, NamedSymbol, NodeId};
 use crate::error::TError;
-use crate::tokens::{Token, Symbol, TokenType};
+use crate::tokens::{Symbol, Token, TokenType};
 use log::{debug, trace};
 
 use static_assertions::*;
@@ -32,17 +32,14 @@ pub struct BindingPower {
 }
 impl BindingPower {
     const fn new(left: u8, right: u8) -> Self {
-        Self {
-            left,
-            right,
-        }
+        Self { left, right }
     }
 }
 
 impl BindingPowerConfig {
     const fn infix(left: u8, right: u8) -> Self {
         Self {
-            infix: Some( BindingPower::new(left, right)),
+            infix: Some(BindingPower::new(left, right)),
             prefix: None,
         }
     }
@@ -82,7 +79,8 @@ fn get_binding_power(token: Token, is_prefix: bool) -> Option<(Symbol, BindingPo
 */
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, PartialOrd, Ord, Hash)]
-struct Partial { // Following along with https://matklad.github.io/2020/04/15/from-pratt-to-dijkstra.html
+struct Partial {
+    // Following along with https://matklad.github.io/2020/04/15/from-pratt-to-dijkstra.html
     min_bp: u8,
     left: Option<NodeId>,
     token: Option<Token>,
