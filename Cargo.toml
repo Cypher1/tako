@@ -59,10 +59,10 @@ rand = "0.8.4"
 static_assertions = "1.1.0"
 num-traits = "0.2.15"
 warp = "0.3.3"
-strum = "0.24.1"
-strum_macros = "0.24.3"
 
 [dev-dependencies]
+strum = "0.24.1"
+strum_macros = "0.24.3"
 pretty_assertions = "1.0.0"
 rand = "0.8.4"
 
