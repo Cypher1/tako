@@ -2,7 +2,7 @@
 use crate::ast::{Ast, NodeId};
 use crate::error::TError;
 use crate::tokens::{Symbol, Token};
-use log::{debug};
+use log::debug;
 
 use static_assertions::*;
 assert_eq_size!(Partial, [u8; 16]); // TODO: Try to get the size down
@@ -258,24 +258,6 @@ enum Semantic {
 enum Direction {
     Left,
     Right,
-}
-
-fn binding(storage: &mut DBStorage, tok: &Token) -> Semantic {
-    storage.get_extern_operator(&tok.value)
-}
-
-fn binding_dir(storage: &mut DBStorage, tok: &Token) -> Direction {
-    match binding(storage, tok) {
-        Semantic::Operator { assoc, .. } => assoc,
-        Semantic::Func => Direction::Left,
-    }
-}
-
-fn binding_power(storage: &mut DBStorage, tok: &Token) -> i32 {
-    match binding(storage, tok) {
-        Semantic::Operator { binding, .. } => binding,
-        Semantic::Func => 1000,
-    }
 }
 
 fn nud(

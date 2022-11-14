@@ -3,6 +3,9 @@ use crate::location::{IndexIntoFile, Location, SymbolLength};
 use log::debug;
 use std::fmt;
 
+#[cfg(test)]
+use strum_macros::EnumIter;
+
 use static_assertions::*;
 assert_eq_size!(Symbol, [u8; 1]);
 assert_eq_size!([Symbol; 2], [u8; 2]);
@@ -13,6 +16,7 @@ assert_eq_size!(Token, [u8; 4]);
 assert_eq_size!([Token; 2], [u8; 8]);
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[cfg_attr(test, derive(EnumIter))]
 pub enum Symbol {
     // Basics
     Assign,
@@ -24,6 +28,7 @@ pub enum Symbol {
     DivAssign,
     DivRounding,
     DivRoundingAssign,
+    Escape,
     Mul,
     MulAssign,
     Exp,
@@ -76,6 +81,7 @@ impl<'a> std::fmt::Display for Symbol {
                 Symbol::Sub => "-",
                 Symbol::Div => "/",
                 Symbol::DivRounding => "//",
+                Symbol::Escape => "\\",
                 Symbol::Mul => "*",
                 Symbol::Exp => "**",
                 Symbol::LogicalNot => "!",
@@ -87,7 +93,7 @@ impl<'a> std::fmt::Display for Symbol {
                 Symbol::LogicalOr => "||",
                 Symbol::Modulo => "%",
                 Symbol::PtrTo => "@",
-                Symbol::HasType => ": ", // TODO: Work out a better way of printing pretty spaces.
+                Symbol::HasType => ":", // TODO: Work out a better way of printing pretty spaces.
                 Symbol::Try => "?",
                 Symbol::Dot => ".",
                 Symbol::Range => "..",
@@ -211,7 +217,7 @@ fn classify_char(ch: char) -> TokenType {
         '|' => Op(Symbol::BitOr),
         '#' => todo!(),
         '$' => todo!(),
-        '\\' => todo!(),
+        '\\' => Op(Symbol::Escape), // Escape?
         '/' => Op(Symbol::Div),
         '?' => Op(Symbol::Try),
         '.' => Op(Symbol::Dot),
@@ -344,16 +350,19 @@ pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
                 (Symbol::Sub, Symbol::Assign) => Op(Symbol::SubAssign),
                 (Symbol::Sub, Symbol::Gt) => Op(Symbol::FunctionType),
                 (Symbol::Div, Symbol::Assign) => Op(Symbol::DivAssign),
+                (Symbol::Div, Symbol::Div) => Op(Symbol::DivRounding),
                 (Symbol::DivRounding, Symbol::Assign) => Op(Symbol::DivRoundingAssign),
                 (Symbol::Mul, Symbol::Assign) => Op(Symbol::MulAssign),
                 (Symbol::Mul, Symbol::Mul) => Op(Symbol::Exp),
                 (Symbol::Modulo, Symbol::Assign) => Op(Symbol::ModuloAssign),
                 (Symbol::LogicalOr, Symbol::Assign) => Op(Symbol::LogicalOrAssign),
                 (Symbol::LogicalAnd, Symbol::Assign) => Op(Symbol::LogicalAndAssign),
-                (Symbol::BitOr, Symbol::Assign) => Op(Symbol::BitOrAssign),
                 (Symbol::BitAnd, Symbol::Assign) => Op(Symbol::BitAndAssign),
+                (Symbol::BitAnd, Symbol::BitAnd) => Op(Symbol::LogicalAnd),
                 (Symbol::BitXor, Symbol::Assign) => Op(Symbol::BitXorAssign),
                 (Symbol::Lt, Symbol::BitOr) => Op(Symbol::LeftPipe),
+                (Symbol::BitOr, Symbol::Assign) => Op(Symbol::BitOrAssign),
+                (Symbol::BitOr, Symbol::BitOr) => Op(Symbol::LogicalOr),
                 (Symbol::BitOr, Symbol::Gt) => Op(Symbol::RightPipe),
                 (Symbol::Lt, Symbol::Lt) => Op(Symbol::LeftShift),
                 (Symbol::Gt, Symbol::Gt) => Op(Symbol::RightShift),
@@ -432,6 +441,7 @@ pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
 mod tests {
     use super::TokenType::*;
     use super::*;
+    use strum::IntoEnumIterator; // TODO: Make these test only
 
     fn setup_many(contents: &str, n: usize) -> Vec<Token> {
         let mut chars = Characters::new(contents);
@@ -501,7 +511,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![Token {
-                kind: Op,
+                kind: Op(Symbol::Sub),
                 start: 0,
                 length: 1
             }]
@@ -601,7 +611,7 @@ mod tests {
             tokens,
             vec![
                 Token {
-                    kind: Op,
+                    kind: Op(Symbol::LogicalNot),
                     start: 0,
                     length: 1
                 },
@@ -649,7 +659,7 @@ mod tests {
     fn lex_strings_with_operators() {
         let contents = "!\"hello world\"\n7";
         let tokens = setup_many(contents, 3);
-        let expected = vec![Op, StringLit, NumLit];
+        let expected = vec![Op(Symbol::LogicalNot), StringLit, NumLit];
         assert_eq!(
             tokens
                 .iter()
@@ -665,5 +675,32 @@ mod tests {
                 .collect::<Vec<&str>>(),
             expected_strs
         );
+    }
+
+    #[test]
+    fn can_tokenize_operators() {
+        for symbol in Symbol::iter() {
+            let symbol_str = format!("{}", &symbol);
+            let contents = format!("{}123", &symbol);
+            let tokens = setup_many(&contents, 2);
+            assert_eq!(
+                tokens,
+                vec![
+                    Token {
+                        kind: Op(symbol),
+                        start: 0,
+                        length: symbol_str.len() as SymbolLength,
+                    },
+                    Token {
+                        kind: NumLit,
+                        start: symbol_str.len() as IndexIntoFile,
+                        length: 3,
+                    },
+                ],
+                "Failed with operator {}", symbol
+            );
+            assert_str_eq!(tokens[0].get_str(&contents), symbol_str);
+            assert_str_eq!(tokens[1].get_str(&contents), "123");
+        }
     }
 }
