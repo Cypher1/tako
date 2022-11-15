@@ -10,7 +10,7 @@ use takolib::launch_ui;
 use takolib::start;
 use takolib::tasks::Request;
 
-use takolib::ui::{Cli, Tui, Http, UiMode};
+use takolib::ui::{Cli, Http, Tui, UiMode};
 
 #[tokio::main]
 async fn main() -> Result<()> {

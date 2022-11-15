@@ -210,10 +210,7 @@ impl Call {
         }
     }
     pub fn new(inner: NodeId, args: Vec<NodeId>) -> Self {
-        Self {
-            inner,
-            args,
-        }
+        Self { inner, args }
     }
 }
 
@@ -225,10 +222,7 @@ pub struct Op {
 
 impl Op {
     pub fn new(op: Symbol, args: [Option<NodeId>; 2]) -> Self {
-        Self {
-            op,
-            args,
-        }
+        Self { op, args }
     }
 }
 

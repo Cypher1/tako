@@ -1,19 +1,16 @@
-use log::trace;
 use async_trait::async_trait;
+use log::trace;
 use warp::Filter;
 
-use crate::{
-    tasks::{StatusReport},
-    Request,
-};
-use std::sync::{Arc, Mutex};
 use super::UserInterface;
+use crate::{tasks::StatusReport, Request};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 use tokio::time;
 use tokio::{
     self,
     sync::{broadcast, mpsc},
 };
-use std::time::{Duration, Instant};
 
 const TICK: Duration = Duration::from_millis(100);
 
@@ -33,9 +30,7 @@ async fn main() {
 }
 
 impl Http {
-    fn render(&mut self) {
-    }
-
+    fn render(&mut self) {}
 }
 
 #[async_trait]
