@@ -76,7 +76,7 @@ pub enum Symbol {
     CloseBracket,
 }
 
-impl<'a> std::fmt::Display for Symbol {
+impl std::fmt::Display for Symbol {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -612,9 +612,9 @@ mod tests {
                 }
             ]
         );
-        assert_str_eq!(tokens[0].get_str(&contents), "x");
-        assert_str_eq!(tokens[1].get_str(&contents), "(");
-        assert_str_eq!(tokens[2].get_str(&contents), ")");
+        assert_str_eq!(tokens[0].get_str(contents), "x");
+        assert_str_eq!(tokens[1].get_str(contents), "(");
+        assert_str_eq!(tokens[2].get_str(contents), ")");
     }
 
     #[test]
@@ -641,10 +641,10 @@ mod tests {
                 },
             ]
         );
-        assert_str_eq!(tokens[0].get_str(&contents), "!");
+        assert_str_eq!(tokens[0].get_str(contents), "!");
         // The token-izer is not responsible for un-escaping...
-        assert_str_eq!(tokens[1].get_str(&contents), "\"hello world\"");
-        assert_str_eq!(tokens[2].get_str(&contents), "7");
+        assert_str_eq!(tokens[1].get_str(contents), "\"hello world\"");
+        assert_str_eq!(tokens[2].get_str(contents), "7");
     }
 
     #[test]
@@ -663,7 +663,7 @@ mod tests {
         assert_eq!(
             tokens
                 .iter()
-                .map(|tok| tok.get_str(&contents))
+                .map(|tok| tok.get_str(contents))
                 .collect::<Vec<&str>>(),
             expected_strs
         );
@@ -685,7 +685,7 @@ mod tests {
         assert_eq!(
             tokens
                 .iter()
-                .map(|tok| tok.get_str(&contents))
+                .map(|tok| tok.get_str(contents))
                 .collect::<Vec<&str>>(),
             expected_strs
         );
@@ -707,7 +707,7 @@ mod tests {
         assert_eq!(
             tokens
                 .iter()
-                .map(|tok| tok.get_str(&contents))
+                .map(|tok| tok.get_str(contents))
                 .collect::<Vec<&str>>(),
             expected_strs
         );
@@ -729,7 +729,7 @@ mod tests {
         assert_eq!(
             tokens
                 .iter()
-                .map(|tok| tok.get_str(&contents))
+                .map(|tok| tok.get_str(contents))
                 .collect::<Vec<&str>>(),
             expected_strs
         );
