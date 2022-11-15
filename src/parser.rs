@@ -54,8 +54,8 @@ impl BindingPowerConfig {
     }
 }
 
-const fn binding_power(symbol: Symbol) -> Option<BindingPowerConfig> {
-    Some(match symbol {
+const fn binding_power(symbol: Symbol) -> BindingPowerConfig {
+    match symbol {
         Symbol::OpenBracket => BindingPowerConfig::prefix(99, 0),
         Symbol::CloseBracket => BindingPowerConfig::infix(0, 100),
         Symbol::Eqs => BindingPowerConfig::infix(2, 1),
@@ -63,30 +63,29 @@ const fn binding_power(symbol: Symbol) -> Option<BindingPowerConfig> {
         Symbol::Mul | Symbol::Div => BindingPowerConfig::infix(7, 8),
         Symbol::LogicalNot => BindingPowerConfig::infix(11, 100),
         Symbol::Dot => BindingPowerConfig::infix(14, 13),
-        _ => return None,
-    })
+        _ => todo!(),
+    }
 }
 
-fn get_binding_power(token: Option<&Token>, is_prefix: bool) -> Option<(Symbol, Location, BindingPower)> {
+fn get_binding_power(token: Option<&Token>, is_prefix: bool) -> Option<BindingPower> {
     if let Some(token) = token {
         if let Token { kind: TokenType::Op(symbol), ..} = token {
-            let power = binding_power(*symbol)?;
+            let power = binding_power(*symbol);
             if is_prefix {
-                return power.prefix.map(|prefix| (*symbol, token.location(), prefix));
+                return power.prefix;
             } else {
-                return power.infix.map(|infix| (*symbol, token.location(), infix));
+                return power.infix;
             }
         }
     }
-    None
+    Some(BindingPower::new(99, 100))
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 struct Partial {
     min_bp: u8,
     node: Option<NodeId>,
-    symbol: Option<Symbol>,
-    location: Location,
+    token: Token,
 }
 
 fn expr<'a, T: Iterator<Item = &'a Token>>(
@@ -98,28 +97,22 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
     let mut left = Partial {
         min_bp: 0,
         node: None,
-        symbol: None,
-        location: Location { start: 0, length: 0 },
+        token: Token::eof(0),
     };
     loop {
         let token = tokens.next();
         eprintln!("Adding token {:?}", &token);
-        let (symbol, location, r_bp) = loop {
-            if let Some((
-                symbol,
-                location,
-                BindingPower {
+        let r_bp = loop {
+            if let Some(BindingPower {
                     left: l_bp,
                     right: r_bp,
-                },
-            )) = get_binding_power(token, left.node.is_none())
-            {
-                eprintln!("Found symbol {:?} with prec left {:?}, right {:?}", &symbol, &l_bp, &r_bp);
-                if left.min_bp <= l_bp {
-                    // Symbol joins left and the next expression,
-                    // or needs other special handling.
-                    break (symbol, location, r_bp);
-                }
+                }) = get_binding_power(token, left.node.is_none()) {
+            eprintln!("Found token {:?} with prec left {:?}, right {:?}", &token, &l_bp, &r_bp);
+            if token.is_some() && left.min_bp <= l_bp {
+                // Symbol joins left and the next expression,
+                // or needs other special handling.
+                break r_bp;
+            }
             }
             // Reached the end of a sub expression.
             let res = left;
@@ -131,30 +124,38 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
                     return res.node;
                 }
             };
-            eprintln!("Merging {:?} and {:?} with {:?}", res, left, token);
-            let args = [res.node, left.node];
-            let symbol = res.symbol.unwrap(); // TODO: Hmmm....
-            let location = res.location;
-            let node = ast.add_op(Op::new(symbol, args), location);
+            let location = res.token.location();
+            let node = match res.token.kind {
+                TokenType::NumLit => {
+                    eprintln!("Saving literal: {:?}", res);
+                    ast.add_literal(Literal::Numeric, location)
+                }
+                TokenType::Op(symbol) => {
+                    eprintln!("Merging {:?} and {:?} to prep for {:?}", res, left, token);
+                    let args = [res.node, left.node];
+                    ast.add_op(Op::new(symbol, args), location)
+                }
+                _ => todo!("Dunno what to do with this one {:?}", res.token),
+            };
             left.node = Some(node);
         };
-
-        if symbol == Symbol::CloseParen {
-            eprintln!("Special case, close paren");
-            assert_eq!(left.symbol, Some(Symbol::OpenParen));
-            let res = left;
-            left = stack.pop().unwrap();
-            left.node = res.node;
-            continue;
+        if let Some(token) = token {
+            if token.kind == TokenType::Op(Symbol::CloseParen) {
+                eprintln!("Special case, close paren");
+                assert_eq!(left.token.kind, TokenType::Op(Symbol::OpenParen));
+                let res = left;
+                left = stack.pop().unwrap();
+                left.node = res.node;
+                continue;
+            }
+            eprintln!("New partial from token {:?}", token);
+            stack.push(left);
+            left = Partial {
+                min_bp: r_bp,
+                node: None,
+                token: *token,
+            };
         }
-        eprintln!("New partial from token {:?}", token);
-        stack.push(left);
-        left = Partial {
-            min_bp: r_bp,
-            node: None,
-            symbol: Some(symbol),
-            location,
-        };
     }
 }
 
@@ -210,7 +211,7 @@ pub mod tests {
                     Literal::Numeric, // 1
                 ),
                 (
-                    NodeId::from_raw(2),
+                    NodeId::from_raw(1),
                     Literal::Numeric, // 2
                 )
             ],
