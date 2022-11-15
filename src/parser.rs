@@ -1,7 +1,7 @@
 // use rand::Rng;
 use crate::ast::*;
 use crate::error::TError;
-use crate::location::Location;
+
 use crate::tokens::{Symbol, Token, TokenType};
 use log::debug;
 
@@ -68,14 +68,16 @@ const fn binding_power(symbol: Symbol) -> BindingPowerConfig {
 }
 
 fn get_binding_power(token: Option<&Token>, is_prefix: bool) -> Option<BindingPower> {
-    if let Some(token) = token {
-        if let Token { kind: TokenType::Op(symbol), ..} = token {
-            let power = binding_power(*symbol);
-            if is_prefix {
-                return power.prefix;
-            } else {
-                return power.infix;
-            }
+    if let Some(Token {
+        kind: TokenType::Op(symbol),
+        ..
+    }) = token
+    {
+        let power = binding_power(*symbol);
+        if is_prefix {
+            return power.prefix;
+        } else {
+            return power.infix;
         }
     }
     Some(BindingPower::new(99, 100))
@@ -104,15 +106,19 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
         eprintln!("Adding token {:?}", &token);
         let r_bp = loop {
             if let Some(BindingPower {
-                    left: l_bp,
-                    right: r_bp,
-                }) = get_binding_power(token, left.node.is_none()) {
-            eprintln!("Found token {:?} with prec left {:?}, right {:?}", &token, &l_bp, &r_bp);
-            if token.is_some() && left.min_bp <= l_bp {
-                // Symbol joins left and the next expression,
-                // or needs other special handling.
-                break r_bp;
-            }
+                left: l_bp,
+                right: r_bp,
+            }) = get_binding_power(token, left.node.is_none())
+            {
+                eprintln!(
+                    "Found token {:?} with prec left {:?}, right {:?}",
+                    &token, &l_bp, &r_bp
+                );
+                if token.is_some() && left.min_bp <= l_bp {
+                    // Symbol joins left and the next expression,
+                    // or needs other special handling.
+                    break r_bp;
+                }
             }
             // Reached the end of a sub expression.
             let res = left;
