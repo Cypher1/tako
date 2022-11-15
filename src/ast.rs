@@ -82,6 +82,7 @@ pub enum NodeData {
     Symbol(SymbolId),
     NamedSymbol(NamedSymbolId),
     Call(CallId),
+    Op(OpId),
     Definition(DefinitionId),
     Literal(LiteralId),
 }
@@ -95,6 +96,7 @@ pub struct Ast {
     pub roots: Vec<NodeId>,
     pub nodes: Vec<Node>,
     pub calls: Vec<(NodeId, Call)>,
+    pub ops: Vec<(NodeId, Op)>,
     pub symbols: Vec<(NodeId, Symbol)>,
     pub named_symbols: Vec<(NodeId, NamedSymbol)>,
     pub definitions: Vec<(NodeId, Definition)>,
@@ -115,6 +117,7 @@ impl Ast {
 
 make_contains!(nodes, Node, NodeRef, NodeId, unsafe_add_node);
 make_contains!(calls, (NodeId, Call), Call, CallId, add_call);
+make_contains!(ops, (NodeId, Op), Op, OpId, add_op);
 make_contains!(symbols, (NodeId, Symbol), Symbol, SymbolId, add_symbol);
 make_contains!(
     named_symbols,
@@ -209,6 +212,21 @@ impl Call {
     pub fn new(inner: NodeId, args: Vec<NodeId>) -> Self {
         Self {
             inner,
+            args,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Op {
+    pub op: Symbol,
+    pub args: [Option<NodeId>; 2],
+}
+
+impl Op {
+    pub fn new(op: Symbol, args: [Option<NodeId>; 2]) -> Self {
+        Self {
+            op,
             args,
         }
     }
