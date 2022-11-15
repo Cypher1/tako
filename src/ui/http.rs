@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use warp::Filter;
 
 use crate::{
-    tasks::{StatusReport, TaskKind, TaskStats},
+    tasks::{StatusReport},
     Request,
 };
 use std::sync::{Arc, Mutex};
@@ -22,7 +22,7 @@ pub struct Http {}
 
 #[tokio::main]
 async fn main() {
-    let index = warp::path::end().map(|| format!("Hello everyone!"));
+    let index = warp::path::end().map(|| "Hello everyone!".to_string());
 
     // GET /hello/warp => 200 OK with body "Hello, warp!"
     let hello = warp::path!("hello" / String).map(|name| format!("Hello, {}!", name));
@@ -47,7 +47,7 @@ impl UserInterface for Http {
         stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
     ) -> std::io::Result<()> {
         let _start_time = Instant::now();
-        let mut http = Self::default();
+        let _http = Self::default();
         let mut stats_ticker = time::interval(TICK);
 
         loop {

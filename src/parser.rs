@@ -67,16 +67,13 @@ const fn binding_power(symbol: Symbol) -> Option<BindingPowerConfig> {
 }
 
 fn get_binding_power(token: Token, is_prefix: bool) -> Option<(Symbol, BindingPower)> {
-    match token.kind {
-        TokenType::Op(symbol) => {
-            let power = binding_power(symbol)?;
-            if is_prefix {
-                return power.prefix.map(|prefix| (symbol, prefix));
-            } else {
-                return power.infix.map(|infix| (symbol, infix));
-            }
+    if let TokenType::Op(symbol) = token.kind {
+        let power = binding_power(symbol)?;
+        if is_prefix {
+            return power.prefix.map(|prefix| (symbol, prefix));
+        } else {
+            return power.infix.map(|infix| (symbol, infix));
         }
-        _ => {}
     }
     None
 }
@@ -139,7 +136,7 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(ast: &mut Ast, tokens: std::iter::Pee
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use crate::ast::*;
+    
     use crate::tokens::lex;
 
     const TEST_FILE1: &str = "test.tk";
