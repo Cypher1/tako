@@ -85,14 +85,24 @@ struct Partial {
     symbol: Option<Symbol>,
 }
 
-fn expr<'a, T: Iterator<Item = &'a Token>>(ast: &mut Ast, tokens: std::iter::Peekable<T>) -> Option<NodeId> {
+fn expr<'a, T: Iterator<Item = &'a Token>>(
+    ast: &mut Ast,
+    tokens: std::iter::Peekable<T>,
+) -> Option<NodeId> {
     // Following along with https://matklad.github.io/2020/04/15/from-pratt-to-dijkstra.html
     let mut stack: Vec<Partial> = vec![];
     let mut left = Partial::default();
     for token in tokens {
         eprintln!("Adding token {:?}", &token);
         let (symbol, r_bp) = loop {
-            if let Some((symbol, BindingPower { left: l_bp, right: r_bp })) = get_binding_power(*token, left.node.is_none()) {
+            if let Some((
+                symbol,
+                BindingPower {
+                    left: l_bp,
+                    right: r_bp,
+                },
+            )) = get_binding_power(*token, left.node.is_none())
+            {
                 if left.min_bp <= l_bp {
                     // Symbol joins left and the next expression,
                     // or needs other special handling.
@@ -136,7 +146,7 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(ast: &mut Ast, tokens: std::iter::Pee
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    
+
     use crate::tokens::lex;
 
     const TEST_FILE1: &str = "test.tk";

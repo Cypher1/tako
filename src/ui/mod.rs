@@ -5,12 +5,12 @@ use async_trait::async_trait;
 use tokio::sync::{broadcast, mpsc};
 
 mod cli;
-mod tui;
 mod http;
+mod tui;
 
 pub use cli::Cli;
-pub use tui::Tui;
 pub use http::Http;
+pub use tui::Tui;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum UserAction {
