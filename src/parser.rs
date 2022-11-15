@@ -1,12 +1,13 @@
 // use rand::Rng;
 use crate::ast::*;
 use crate::error::TError;
+use crate::location::Location;
 use crate::tokens::{Symbol, Token, TokenType};
 use log::debug;
 
 use static_assertions::*;
-assert_eq_size!(Partial, [u8; 12]); // TODO: Try to get the size down
-assert_eq_size!([Partial; 2], [u8; 24]);
+assert_eq_size!(Partial, [u8; 16]); // TODO: Try to get the size down
+assert_eq_size!([Partial; 2], [u8; 32]);
 
 pub fn parse(filepath: &str, tokens: &[Token]) -> Result<Ast, TError> {
     let tokens = tokens.iter().peekable();
@@ -66,47 +67,58 @@ const fn binding_power(symbol: Symbol) -> Option<BindingPowerConfig> {
     })
 }
 
-fn get_binding_power(token: Token, is_prefix: bool) -> Option<(Symbol, BindingPower)> {
-    if let TokenType::Op(symbol) = token.kind {
-        let power = binding_power(symbol)?;
-        if is_prefix {
-            return power.prefix.map(|prefix| (symbol, prefix));
-        } else {
-            return power.infix.map(|infix| (symbol, infix));
+fn get_binding_power(token: Option<&Token>, is_prefix: bool) -> Option<(Symbol, Location, BindingPower)> {
+    if let Some(token) = token {
+        if let Token { kind: TokenType::Op(symbol), ..} = token {
+            let power = binding_power(*symbol)?;
+            if is_prefix {
+                return power.prefix.map(|prefix| (*symbol, token.location(), prefix));
+            } else {
+                return power.infix.map(|infix| (*symbol, token.location(), infix));
+            }
         }
     }
     None
 }
 
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 struct Partial {
     min_bp: u8,
     node: Option<NodeId>,
     symbol: Option<Symbol>,
+    location: Location,
 }
 
 fn expr<'a, T: Iterator<Item = &'a Token>>(
     ast: &mut Ast,
-    tokens: std::iter::Peekable<T>,
+    mut tokens: std::iter::Peekable<T>,
 ) -> Option<NodeId> {
     // Following along with https://matklad.github.io/2020/04/15/from-pratt-to-dijkstra.html
     let mut stack: Vec<Partial> = vec![];
-    let mut left = Partial::default();
-    for token in tokens {
+    let mut left = Partial {
+        min_bp: 0,
+        node: None,
+        symbol: None,
+        location: Location { start: 0, length: 0 },
+    };
+    loop {
+        let token = tokens.next();
         eprintln!("Adding token {:?}", &token);
-        let (symbol, r_bp) = loop {
+        let (symbol, location, r_bp) = loop {
             if let Some((
                 symbol,
+                location,
                 BindingPower {
                     left: l_bp,
                     right: r_bp,
                 },
-            )) = get_binding_power(*token, left.node.is_none())
+            )) = get_binding_power(token, left.node.is_none())
             {
+                eprintln!("Found symbol {:?} with prec left {:?}, right {:?}", &symbol, &l_bp, &r_bp);
                 if left.min_bp <= l_bp {
                     // Symbol joins left and the next expression,
                     // or needs other special handling.
-                    break (symbol, r_bp);
+                    break (symbol, location, r_bp);
                 }
             }
             // Reached the end of a sub expression.
@@ -115,32 +127,35 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
                 Some(it) => it,
                 None => {
                     //TODO: check we got to the end?
+                    eprintln!("No more stack");
                     return res.node;
                 }
             };
+            eprintln!("Merging {:?} and {:?} with {:?}", res, left, token);
             let args = [res.node, left.node];
-            let symbol = res.symbol.unwrap();
-            eprint!("{:?} ", token);
-            let node = ast.add_op(Op::new(symbol, args), token.location());
+            let symbol = res.symbol.unwrap(); // TODO: Hmmm....
+            let location = res.location;
+            let node = ast.add_op(Op::new(symbol, args), location);
             left.node = Some(node);
         };
 
         if symbol == Symbol::CloseParen {
+            eprintln!("Special case, close paren");
             assert_eq!(left.symbol, Some(Symbol::OpenParen));
             let res = left;
             left = stack.pop().unwrap();
             left.node = res.node;
             continue;
         }
+        eprintln!("New partial from token {:?}", token);
         stack.push(left);
         left = Partial {
             min_bp: r_bp,
             node: None,
             symbol: Some(symbol),
+            location,
         };
     }
-    assert!(stack.is_empty(), "Stack should be empty");
-    left.node
 }
 
 #[cfg(test)]
