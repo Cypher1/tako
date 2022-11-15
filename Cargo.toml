@@ -55,6 +55,7 @@ rand = "0.8.4"
 static_assertions = "1.1.0"
 num-traits = "0.2.15"
 warp = "0.3.3"
+enum-kinds-macros = "0.2.1"
 
 [dev-dependencies]
 strum = "0.24.1"

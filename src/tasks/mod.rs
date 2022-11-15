@@ -23,19 +23,22 @@ use task_trait::*;
 // This should be the pre-computed hash, to avoid sending and cloning tasks.
 pub type TaskResults<T> = HashMap<T, TaskStatus<<T as Task>::Output, Error>>;
 
+#[derive(EnumKind)]
+#[enum_kind_name(TaskKind)]
+#[enum_delegate::implement(Task)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Ord, PartialOrd, Hash)]
-pub enum TaskKind {
-    Request,
-    LoadFile,
-    LexFile,
-    ParseFile,
+pub enum AnyTask {
+    Request(RequestTask),
+    LoadFile(LoadFileTask),
+    LexFile(LexFileTask),
+    ParseFile(ParseFileTask),
 }
 
 #[derive(Debug)]
 pub struct TaskSet {
     // TODO: Track the jobs that are being done...
     // Invalidate these if
-    request_tasks: TaskManager<Request>,
+    request_tasks: TaskManager<RequestTask>,
     load_file_tasks: TaskManager<LoadFileTask>,
     lex_file_tasks: TaskManager<LexFileTask>,
     parse_file_tasks: TaskManager<ParseFileTask>,
@@ -142,28 +145,28 @@ impl TaskSet {
     }
 }
 
-/// Request represents the task of responding to a set of command line arguments, a request to
+/// RequestTask represents the task of responding to a set of command line arguments, a request to
 /// a compiler daemon (or possibly a response to a file watcher notifying of a change).
 ///
 /// There's normally only one of these, but it seems elegant to have these fit into the `Task` model.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Request {
+pub enum RequestTask {
     Launch { files: Vec<String> },
 }
 
 #[async_trait]
-impl Task for Request {
-    type Output = LoadFileTask;
+impl Task for RequestTask {
+    type Output = AnyTask;
     const TASK_KIND: TaskKind = TaskKind::Request;
 
     async fn perform(self, result_sender: UpdateSender<Self, Self::Output>) {
         match &self {
-            Request::Launch { files } => {
+            RequestTask::Launch { files } => {
                 for path in files {
                     result_sender
                         .send((
                             self.clone(),
-                            Update::NextResult(LoadFileTask { path: path.clone() }),
+                            Update::NextResult(LoadFile(LoadFileTask { path: path.clone() })),
                         ))
                         .expect("Should be able to send task result to manager");
                 }
