@@ -1,8 +1,8 @@
-use log::trace;
-use std::collections::BTreeMap;
 use super::UserInterface;
 use crate::tasks::{RequestTask, StatusReport, TaskKind, TaskStats};
 use async_trait::async_trait;
+use log::trace;
+use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
 use crossterm::{
@@ -61,7 +61,6 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> Default for Tui<Out> {
     }
 }
 
-
 impl<Out: Send + std::fmt::Debug + std::fmt::Display> Tui<Out> {
     fn render(&self) -> std::io::Result<()> {
         stdout().queue(Clear(ClearType::All))?;
@@ -97,9 +96,9 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> Tui<Out> {
             .unwrap_or(self.input_after_cursor.len());
         let mut row = (rows as usize).saturating_sub(lines + 1); // TODO: Workout how to drop old lines.
         let missed_rows = lines.saturating_sub(rows as usize - 1); // TODO: Workout how to drop old lines.
-        // TODO: Split into lines...
-        //.queue(SetForegroundColor(Color::Red))?
-        //.queue(SetBackgroundColor(Color::Blue))?
+                                                                   // TODO: Split into lines...
+                                                                   //.queue(SetForegroundColor(Color::Red))?
+                                                                   //.queue(SetBackgroundColor(Color::Blue))?
 
         let mut col = 0;
         for line in content.lines().skip(missed_rows as usize) {
@@ -176,9 +175,12 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> Tui<Out> {
                             if !line.is_empty() {
                                 // TODO: Send the line to the compiler.
                                 if let Some(request_sender) = &self.request_sender {
-                                    request_sender.send(RequestTask::EvalLine(line.to_string())).expect("Need a backend");
+                                    request_sender
+                                        .send(RequestTask::EvalLine(line.to_string()))
+                                        .expect("Need a backend");
                                 } else {
-                                    self.history.push("...not connected to a backend".to_string());
+                                    self.history
+                                        .push("...not connected to a backend".to_string());
                                 }
                                 self.history.push(line);
                             }

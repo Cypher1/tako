@@ -6,6 +6,7 @@ use crate::error::Error;
 use crate::tokens::Token;
 use async_trait::async_trait;
 use enum_kinds::EnumKind;
+use log::warn;
 use manager::{ManagerConfig, TaskManager};
 pub use manager::{StatusReport, TaskStats};
 pub use status::*;
@@ -13,7 +14,6 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use task_trait::*;
 use tokio::sync::{broadcast, mpsc};
-use log::warn;
 
 // TODO: Add timing information, etc.
 // TODO: Support re-running multiple times for stability testing.
@@ -124,7 +124,7 @@ impl TaskSet {
                                     break;
                                 }
                             }
-                        }
+                        },
                     }
                 }
             });
@@ -343,11 +343,10 @@ impl Task for ParseFileTask {
                 .send((
                     self.clone(),
                     match ast {
-                        Ok(result) => Update::NextResult(
-                            EvalFileTask {
-                                path: self.path.to_string(),
-                                ast: result
-                            }),
+                        Ok(result) => Update::NextResult(EvalFileTask {
+                            path: self.path.to_string(),
+                            ast: result,
+                        }),
                         Err(err) => Update::Failed(err),
                     },
                 ))

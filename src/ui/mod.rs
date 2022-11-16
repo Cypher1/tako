@@ -1,6 +1,6 @@
-use std::sync::{Arc, Mutex};
 use crate::tasks::{RequestTask, StatusReport};
 use async_trait::async_trait;
+use std::sync::{Arc, Mutex};
 use tokio::sync::{broadcast, mpsc};
 
 mod cli;
