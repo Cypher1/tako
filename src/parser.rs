@@ -176,8 +176,8 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use std::path::PathBuf;
     use crate::tokens::lex;
+    use std::path::PathBuf;
 
     fn test_file1() -> PathBuf {
         "test.tk".into()

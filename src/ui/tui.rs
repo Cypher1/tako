@@ -1,9 +1,8 @@
 use super::UserInterface;
+use crate::cli_options::Options;
 use crate::tasks::{RequestTask, StatusReport, TaskKind, TaskStats};
 use async_trait::async_trait;
-use log::{debug, trace};
-use std::collections::BTreeMap;
-use std::sync::{Arc, Mutex};
+use crokey::{key, KeyEventFormat};
 use crossterm::{
     cursor::MoveTo,
     event::{Event, EventStream, KeyCode, KeyEvent},
@@ -12,14 +11,15 @@ use crossterm::{
     QueueableCommand,
 };
 use futures::{future::FutureExt, StreamExt};
+use log::{debug, trace};
 use shutdown_hooks::add_shutdown_hook;
-use tokio::time;
-use crate::cli_options::Options;
-use crokey::{key, KeyEventFormat};
+use std::collections::BTreeMap;
+use std::sync::{Arc, Mutex};
 use std::{
     io::{stdout, Write},
     time::{Duration, Instant},
 };
+use tokio::time;
 use tokio::{
     self,
     sync::{broadcast, mpsc},

@@ -1,9 +1,8 @@
+use super::UserInterface;
+use crate::cli_options::Options;
+use crate::tasks::{RequestTask, StatusReport};
 use async_trait::async_trait;
 use log::trace;
-use warp::Filter;
-use crate::cli_options::Options;
-use super::UserInterface;
-use crate::tasks::{RequestTask, StatusReport};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tokio::time;
@@ -11,6 +10,7 @@ use tokio::{
     self,
     sync::{broadcast, mpsc},
 };
+use warp::Filter;
 
 const TICK: Duration = Duration::from_millis(100);
 

@@ -1,4 +1,7 @@
-use std::{fmt, path::{Path, PathBuf}};
+use std::{
+    fmt,
+    path::{Path, PathBuf},
+};
 
 pub type IndexIntoFile = u16;
 pub type SymbolLength = u8;
