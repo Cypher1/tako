@@ -242,9 +242,9 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> UserInterface<Out> for Tui
                     let stats_requester = stats_requester.lock().expect("stats requester lock");
                     stats_requester.send(()).expect("TODO");
                 }
-                Some(ast) = response_getter.recv() => {
-                    trace!("Got result ast: {ast:?}");
-                    tui.history.push(format!("AST: {ast:#?}"));
+                Some(value) = response_getter.recv() => {
+                    trace!("Got result value: {value:?}");
+                    tui.history.push(format!("{value:#?}"));
                 },
                 Some(maybe_event) = event => {
                     match maybe_event {
