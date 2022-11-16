@@ -6,14 +6,14 @@ use crate::error::Error;
 use crate::tokens::Token;
 use async_trait::async_trait;
 use enum_kinds::EnumKind;
-use log::{warn, trace};
+use log::{trace, warn};
 use manager::{ManagerConfig, TaskManager};
 pub use manager::{StatusReport, TaskStats};
 use notify::{RecursiveMode, Watcher};
 pub use status::*;
+use std::fmt::Debug;
 use std::path::PathBuf;
 use std::{collections::HashMap, path::Path};
-use std::fmt::Debug;
 use task_trait::*;
 use tokio::sync::{broadcast, mpsc};
 
@@ -91,22 +91,25 @@ impl TaskSet {
         {
             let load_file_sender = load_file_sender.clone();
             tokio::spawn(async move {
-                let mut watcher = notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
-                    match res {
+                let mut watcher = notify::recommended_watcher(
+                    move |res: Result<notify::Event, notify::Error>| match res {
                         Ok(event) => {
                             trace!("event: {:?}", event);
                             for path in event.paths {
-                                load_file_sender.send(LoadFileTask {
-                                    path,
-                                }).expect("Load file task could not be sent");
+                                load_file_sender
+                                    .send(LoadFileTask { path })
+                                    .expect("Load file task could not be sent");
                             }
                         }
                         Err(e) => {
                             trace!("watch error: {:?}", e);
                         }
-                    }
-                }).expect("Watcher failed to register");
-                watcher.watch(Path::new("."), RecursiveMode::Recursive).expect("Should be able to watch files");
+                    },
+                )
+                .expect("Watcher failed to register");
+                watcher
+                    .watch(Path::new("."), RecursiveMode::Recursive)
+                    .expect("Should be able to watch files");
             });
         }
 

@@ -114,7 +114,9 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
             {
                 trace!(
                     "Found token {:?} with prec left {:?}, right {:?}",
-                    &token, &l_bp, &r_bp
+                    &token,
+                    &l_bp,
+                    &r_bp
                 );
                 if token.is_some() && left.min_bp <= l_bp {
                     // Symbol joins left and the next expression,
