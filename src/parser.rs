@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::Path;
 
 // use rand::Rng;
 use crate::ast::*;
@@ -11,7 +11,7 @@ use static_assertions::*;
 assert_eq_size!(Partial, [u8; 16]); // TODO: Try to get the size down
 assert_eq_size!([Partial; 2], [u8; 32]);
 
-pub fn parse(filepath: &PathBuf, tokens: &[Token]) -> Result<Ast, TError> {
+pub fn parse(filepath: &Path, tokens: &[Token]) -> Result<Ast, TError> {
     let tokens = tokens.iter().peekable();
     debug!("Parse {}", filepath.display());
     let mut ast = Ast::new(filepath.to_path_buf());
@@ -176,7 +176,7 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
 #[cfg(test)]
 pub mod tests {
     use super::*;
-
+    use std::path::PathBuf;
     use crate::tokens::lex;
 
     fn test_file1() -> PathBuf {
