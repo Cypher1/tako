@@ -1,32 +1,30 @@
-use specs::Entity;
-
 #[derive(Clone, Debug)]
-pub enum Code {
-    Partial(Entity),
+pub enum Code<ID> {
+    Partial(ID),
     Empty,
-    Block(Vec<Code>),
-    Struct(Vec<Code>),
+    Block(Vec<Code<ID>>),
+    Struct(Vec<Code<ID>>),
     Expr(String),
     Statement(String),
-    Template(String, Box<Code>),
-    Assignment(String, Box<Code>),
+    Template(String, Box<Code<ID>>),
+    Assignment(String, Box<Code<ID>>),
     If {
-        condition: Box<Code>,
-        then: Box<Code>,
-        then_else: Box<Code>,
+        condition: Box<Code<ID>>,
+        then: Box<Code<ID>>,
+        then_else: Box<Code<ID>>,
     },
     Func {
         name: String,
         args: Vec<String>,
         return_type: String,
-        body: Box<Code>,
+        body: Box<Code<ID>>,
         lambda: bool,
         call: bool,
     },
 }
 
-impl Code {
-    pub fn with_expr(self: Code, f: &dyn Fn(String) -> Code) -> Code {
+impl<ID> Code<ID> {
+    pub fn with_expr(self: Code<ID>, f: &dyn Fn(String) -> Code<ID>) -> Code<ID> {
         match self {
             Code::Partial(ent) => Code::Partial(ent),
             Code::Empty => Code::Empty,
@@ -70,7 +68,7 @@ impl Code {
         }
     }
 
-    pub fn merge(self: Code, other: Code) -> Code {
+    pub fn merge(self: Code<ID>, other: Code<ID>) -> Code<ID> {
         match (self, other) {
             (Code::Empty, right) => right,
             (left, Code::Empty) => left,
