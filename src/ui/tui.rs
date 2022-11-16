@@ -220,9 +220,11 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> UserInterface<Out> for Tui
         stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
     ) -> std::io::Result<()> {
         let _start_time = Instant::now();
-        let mut tui = Self::default();
-        tui.request_sender = request_sender;
-        tui.response_getter = response_getter;
+        let mut tui = Tui {
+            request_sender,
+            response_getter,
+            ..Self::default()
+        };
         add_shutdown_hook(shutdown);
         enable_raw_mode().expect("TUI failed to enable raw mode");
         let mut stats_ticker = time::interval(TICK);
