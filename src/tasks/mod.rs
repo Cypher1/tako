@@ -369,22 +369,19 @@ impl Task for EvalFileTask {
     fn has_file_path(&self) -> Option<&str> {
         Some(&self.path)
     }
-    async fn perform(self, _result_sender: UpdateSender<Self, Self::Output>) {
+    async fn perform(self, result_sender: UpdateSender<Self, Self::Output>) {
         tokio::task::spawn_blocking(move || {
-            let _ast = crate::interpreter::run(&self.path, &self.ast)
+            let result = crate::interpreter::run(&self.path, &self.ast)
                 .map_err(|err| self.decorate_error(err));
-            todo!();
-            /*
             result_sender
                 .send((
                     self,
-                    match ast {
+                    match result {
                         Ok(result) => Update::FinalResult(result),
                         Err(err) => Update::Failed(err),
                     },
                 ))
                 .expect("Should be able to send task result to manager");
-            */
         });
     }
 }
