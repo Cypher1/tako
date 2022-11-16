@@ -3,7 +3,7 @@ use crate::ast::*;
 use crate::error::TError;
 
 use crate::tokens::{Symbol, Token, TokenType};
-use log::debug;
+use log::{debug, trace};
 
 use static_assertions::*;
 assert_eq_size!(Partial, [u8; 16]); // TODO: Try to get the size down
@@ -103,14 +103,14 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
     };
     loop {
         let token = tokens.next();
-        eprintln!("Adding token {:?}", &token);
+        trace!("Adding token {:?}", &token);
         let r_bp = loop {
             if let Some(BindingPower {
                 left: l_bp,
                 right: r_bp,
             }) = get_binding_power(token, left.node.is_none())
             {
-                eprintln!(
+                trace!(
                     "Found token {:?} with prec left {:?}, right {:?}",
                     &token, &l_bp, &r_bp
                 );
@@ -126,18 +126,18 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
                 Some(it) => it,
                 None => {
                     //TODO: check we got to the end?
-                    eprintln!("No more stack");
+                    trace!("No more stack");
                     return res.node;
                 }
             };
             let location = res.token.location();
             let node = match res.token.kind {
                 TokenType::NumLit => {
-                    eprintln!("Saving literal: {res:?}");
+                    trace!("Saving literal: {res:?}");
                     ast.add_literal(Literal::Numeric, location)
                 }
                 TokenType::Op(symbol) => {
-                    eprintln!("Merging {res:?} and {left:?} to prep for {token:?}");
+                    trace!("Merging {res:?} and {left:?} to prep for {token:?}");
                     let args = [res.node, left.node];
                     ast.add_op(Op::new(symbol, args), location)
                 }
@@ -147,14 +147,14 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
         };
         if let Some(token) = token {
             if token.kind == TokenType::Op(Symbol::CloseParen) {
-                eprintln!("Special case, close paren");
+                trace!("Special case, close paren");
                 assert_eq!(left.token.kind, TokenType::Op(Symbol::OpenParen));
                 let res = left;
                 left = stack.pop().unwrap();
                 left.node = res.node;
                 continue;
             }
-            eprintln!("New partial from token {token:?}");
+            trace!("New partial from token {token:?}");
             stack.push(left);
             left = Partial {
                 min_bp: r_bp,
