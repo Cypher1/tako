@@ -16,15 +16,11 @@ pub mod tokens;
 pub mod ui;
 
 use std::sync::{Arc, Mutex};
-
-use crate::ast::Ast;
-
 use crate::tasks::{RequestTask, TaskSet};
 use crate::ui::UserInterface;
-
+use primitives::Prim;
 use tasks::StatusReport;
 use tokio::sync::{broadcast, mpsc};
-
 use log::error;
 
 static mut LOGS_UNINITIALISED: bool = true;
@@ -56,13 +52,13 @@ pub fn ensure_initialized() {
     build_logger(env_logger::Builder::init);
 }
 
-pub async fn launch_ui<T: UserInterface + Send + 'static>(
+pub async fn launch_ui<Out: Send + std::fmt::Debug + std::fmt::Display, T: UserInterface<Out> + Send + 'static>(
     task_manager_stats: mpsc::UnboundedReceiver<StatusReport>,
     request_sender: Option<mpsc::UnboundedSender<RequestTask>>,
-    response_getter: Option<mpsc::UnboundedReceiver<Ast>>,
+    response_getter: Option<mpsc::UnboundedReceiver<Out>>,
     stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
 ) {
-    <T as UserInterface>::launch(task_manager_stats,
+    <T as UserInterface<Out>>::launch(task_manager_stats,
         request_sender,
         response_getter,
         stats_requester
@@ -77,7 +73,7 @@ pub async fn start(
     task_manager_stats: mpsc::UnboundedSender<StatusReport>,
     request_receiver: mpsc::UnboundedReceiver<RequestTask>,
     task_manager_stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
-) -> mpsc::UnboundedReceiver<Ast> {
+) -> mpsc::UnboundedReceiver<Prim> {
     let (result_sender, result_receiver) = mpsc::unbounded_channel();
 
     let store = {

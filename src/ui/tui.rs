@@ -1,6 +1,5 @@
 use log::trace;
 use std::collections::BTreeMap;
-use crate::ast::Ast;
 use super::UserInterface;
 use crate::tasks::{RequestTask, StatusReport, TaskKind, TaskStats};
 use async_trait::async_trait;
@@ -33,11 +32,11 @@ extern "C" fn shutdown() {
     let _discard = disable_raw_mode();
 }
 
-#[derive(Debug, Default)]
-pub struct Tui {
+#[derive(Debug)]
+pub struct Tui<Out: Send + std::fmt::Debug + std::fmt::Display> {
     manager_status: BTreeMap<TaskKind, TaskStats>,
     request_sender: Option<mpsc::UnboundedSender<RequestTask>>,
-    response_getter: Option<mpsc::UnboundedReceiver<Ast>>,
+    response_getter: Option<mpsc::UnboundedReceiver<Out>>,
     key_fmt: KeyEventFormat,
     should_exit: bool,
     history: Vec<String>, // TODO: Mark Input v output.
@@ -46,7 +45,24 @@ pub struct Tui {
     characters: String,
 }
 
-impl Tui {
+impl<Out: Send + std::fmt::Debug + std::fmt::Display> Default for Tui<Out> {
+    fn default() -> Self {
+        Self {
+            manager_status: BTreeMap::default(),
+            request_sender: None,
+            response_getter: None,
+            key_fmt: KeyEventFormat::default(),
+            should_exit: false,
+            history: Vec::default(),
+            input: "".to_string(),
+            input_after_cursor: "".to_string(),
+            characters: "".to_string(),
+        }
+    }
+}
+
+
+impl<Out: Send + std::fmt::Debug + std::fmt::Display> Tui<Out> {
     fn render(&self) -> std::io::Result<()> {
         stdout().queue(Clear(ClearType::All))?;
         let (cols, rows) = size()?;
@@ -193,12 +209,12 @@ impl Tui {
 }
 
 #[async_trait]
-impl UserInterface for Tui {
+impl<Out: Send + std::fmt::Debug + std::fmt::Display> UserInterface<Out> for Tui<Out> {
     async fn launch(
         mut task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
         // User control of the compiler
         request_sender: Option<mpsc::UnboundedSender<RequestTask>>,
-        response_getter: Option<mpsc::UnboundedReceiver<Ast>>,
+        response_getter: Option<mpsc::UnboundedReceiver<Out>>,
         stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
     ) -> std::io::Result<()> {
         let _start_time = Instant::now();

@@ -3,7 +3,6 @@ use log::trace;
 use warp::Filter;
 
 use super::UserInterface;
-use crate::ast::Ast;
 use crate::tasks::{RequestTask, StatusReport};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -32,12 +31,12 @@ async fn main() {
 }
 
 #[async_trait]
-impl UserInterface for Http {
+impl<Out: Send + std::fmt::Debug + std::fmt::Display + 'static> UserInterface<Out> for Http {
     async fn launch(
         mut task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
         // User control of the compiler
         _request_sender: Option<mpsc::UnboundedSender<RequestTask>>,
-        _response_getter: Option<mpsc::UnboundedReceiver<Ast>>,
+        _response_getter: Option<mpsc::UnboundedReceiver<Out>>,
         stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
     ) -> std::io::Result<()> {
         let _start_time = Instant::now();
