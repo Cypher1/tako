@@ -26,7 +26,8 @@ use tokio::{
     sync::{broadcast, mpsc},
 };
 
-const TICK: Duration = Duration::from_millis(100);
+const TICK: Duration = Duration::from_millis(1000);
+const RENDER_UI: bool = true;
 
 extern "C" fn shutdown() {
     let _discard = disable_raw_mode();
@@ -110,11 +111,6 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> Tui<Out> {
         row -= lines_after_cursor;
         stdout().queue(MoveTo(col as u16, row as u16))?;
         stdout().queue(ResetColor)?.flush()?;
-        if self.should_exit {
-            stdout().queue(Clear(ClearType::All))?;
-            stdout().flush()?;
-            std::process::exit(0)
-        }
         Ok(())
     }
 
@@ -174,11 +170,13 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> Tui<Out> {
                             line += &self.input_after_cursor;
                             if !line.is_empty() {
                                 // TODO: Send the line to the compiler.
+                                trace!("Running {line}");
                                 if let Some(request_sender) = &self.request_sender {
                                     request_sender
                                         .send(RequestTask::EvalLine(line.to_string()))
                                         .expect("Need a backend");
                                 } else {
+                                    trace!("No backend?");
                                     self.history
                                         .push("...not connected to a backend".to_string());
                                 }
@@ -206,6 +204,11 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> Tui<Out> {
         if !characters.is_empty() {
             self.characters = characters;
         }
+        if self.should_exit {
+            stdout().queue(Clear(ClearType::All))?;
+            stdout().flush()?;
+            std::process::exit(0)
+        }
         Ok(())
     }
 }
@@ -226,7 +229,9 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> UserInterface<Out> for Tui
             ..Self::default()
         };
         add_shutdown_hook(shutdown);
-        enable_raw_mode().expect("TUI failed to enable raw mode");
+        if RENDER_UI {
+            enable_raw_mode().expect("TUI failed to enable raw mode");
+        }
         let mut stats_ticker = time::interval(TICK);
         let mut reader = EventStream::new();
 
@@ -248,7 +253,10 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> UserInterface<Out> for Tui
                 },
                 Some(maybe_event) = event => {
                     match maybe_event {
-                        Ok(event) => tui.handle_event(event)?,
+                        Ok(event) => {
+                            // trace!("Event: {event:?}");
+                            tui.handle_event(event)?
+                        }
                         Err(err) => {
                             trace!("Event stream error: {}", err);
                             break
@@ -258,7 +266,9 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> UserInterface<Out> for Tui
                 else => break,
             }
             // tui.cursor_blink = (start_time.elapsed().as_secs() % 2) == 0;
-            tui.render()?;
+            if RENDER_UI {
+                tui.render()?;
+            }
         }
         Ok(())
     }

@@ -192,7 +192,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
                 }
                 return; // Done: Finished.
             }
-            (TaskState::Complete, false) => {
+            (_, false) => {
                 trace!("{} un-cacheable (will re-run): {task:#?}", Self::name())
             }
             // Continue on and re-launch the job, duplicated work should not propagate if completed.
@@ -212,7 +212,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
             mpsc::unbounded_channel::<(T, Update<T::Output, Error>)>();
 
         loop {
-            trace!("{}: Waiting for tasks...", Self::name());
+            // trace!("{}: Waiting for tasks...", Self::name());
             tokio::select! {
                 Some((task, update)) = result_or_error_receiver.recv() => {
                     self.handle_update(task, update).await;

@@ -28,7 +28,7 @@ pub trait Task: std::fmt::Debug + Clone + std::hash::Hash + Eq + Sized + Send {
 
     type Output: std::fmt::Debug + Clone + Send;
     const TASK_KIND: TaskKind;
-    const RESULT_IS_CACHABLE: bool = true;
+    const RESULT_IS_CACHABLE: bool = true; // i.e. should not be re-run if cached.
 
     fn cached_hash(&self) -> Option<TaskHash> {
         None
