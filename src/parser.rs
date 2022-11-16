@@ -133,11 +133,11 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
             let location = res.token.location();
             let node = match res.token.kind {
                 TokenType::NumLit => {
-                    eprintln!("Saving literal: {:?}", res);
+                    eprintln!("Saving literal: {res:?}");
                     ast.add_literal(Literal::Numeric, location)
                 }
                 TokenType::Op(symbol) => {
-                    eprintln!("Merging {:?} and {:?} to prep for {:?}", res, left, token);
+                    eprintln!("Merging {res:?} and {left:?} to prep for {token:?}");
                     let args = [res.node, left.node];
                     ast.add_op(Op::new(symbol, args), location)
                 }
@@ -154,7 +154,7 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
                 left.node = res.node;
                 continue;
             }
-            eprintln!("New partial from token {:?}", token);
+            eprintln!("New partial from token {token:?}");
             stack.push(left);
             left = Partial {
                 min_bp: r_bp,
