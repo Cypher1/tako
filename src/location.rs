@@ -1,4 +1,4 @@
-use std::{fmt, path::PathBuf};
+use std::{fmt, path::{Path, PathBuf}};
 
 pub type IndexIntoFile = u16;
 pub type SymbolLength = u8;
@@ -43,7 +43,7 @@ impl std::fmt::Debug for UserFacingLocation {
 }
 
 impl UserFacingLocation {
-    fn new(filename: &PathBuf, line: u32, col: u32) -> Self {
+    fn new(filename: &Path, line: u32, col: u32) -> Self {
         Self {
             filename: filename.to_path_buf(),
             line,
@@ -51,7 +51,7 @@ impl UserFacingLocation {
         }
     }
 
-    pub fn from(path: &PathBuf, contents: &str, location: &Location) -> Self {
+    pub fn from(path: &Path, contents: &str, location: &Location) -> Self {
         // TODO: Consider walking the module tree to get a fully qualified module name.
         let mut loc = UserFacingLocation::new(path, 1, 1);
         let mut contents = contents.chars().peekable();
