@@ -95,7 +95,7 @@ impl Options {
 
     pub fn interactive(&self) -> bool {
         // TODO: Build should have an interactive mode?
-        self.cmd == Command::Interpret
+        self.cmd == Command::Repl
     }
 }
 
