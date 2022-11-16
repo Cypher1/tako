@@ -155,8 +155,8 @@ impl TaskSet {
         );
         let parse_file_tasks = Self::create::<ParseFileTask>(
             parse_file_receiver,
-            result_sender,
-            stats_sender,
+            eval_file_sender,
+            stats_sender.clone(),
             stats_requester.subscribe(),
             ManagerConfig::default(),
         );
@@ -329,7 +329,7 @@ pub struct ParseFileTask {
 
 #[async_trait]
 impl Task for ParseFileTask {
-    type Output = Ast; // For now, we'll just store the AST itself.
+    type Output = EvalFileTask; // For now, we'll just store the AST itself.
     const TASK_KIND: TaskKind = TaskKind::ParseFile;
 
     fn has_file_path(&self) -> Option<&str> {
@@ -341,9 +341,13 @@ impl Task for ParseFileTask {
                 .map_err(|err| self.decorate_error(err));
             result_sender
                 .send((
-                    self,
+                    self.clone(),
                     match ast {
-                        Ok(result) => Update::FinalResult(result),
+                        Ok(result) => Update::NextResult(
+                            EvalFileTask {
+                                path: self.path.to_string(),
+                                ast: result
+                            }),
                         Err(err) => Update::Failed(err),
                     },
                 ))
@@ -366,11 +370,12 @@ impl Task for EvalFileTask {
     fn has_file_path(&self) -> Option<&str> {
         Some(&self.path)
     }
-    async fn perform(self, result_sender: UpdateSender<Self, Self::Output>) {
+    async fn perform(self, _result_sender: UpdateSender<Self, Self::Output>) {
         tokio::task::spawn_blocking(move || {
-            let ast = crate::interpreter::run(&self.path, &self.ast)
+            let _ast = crate::interpreter::run(&self.path, &self.ast)
                 .map_err(|err| self.decorate_error(err));
             todo!();
+            /*
             result_sender
                 .send((
                     self,
@@ -380,6 +385,7 @@ impl Task for EvalFileTask {
                     },
                 ))
                 .expect("Should be able to send task result to manager");
+            */
         });
     }
 }

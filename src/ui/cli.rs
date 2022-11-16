@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use super::UserInterface;
-use crate::{tasks::{RequestTask, StatusReport}, ast::Ast};
+use crate::tasks::{RequestTask, StatusReport};
 use async_trait::async_trait;
 use std::sync::{Arc, Mutex};
 use tokio::sync::{broadcast, mpsc};
@@ -14,12 +14,12 @@ const TICK: Duration = Duration::from_millis(5000);
 pub struct Cli {}
 
 #[async_trait]
-impl UserInterface for Cli {
+impl<Out: Send + std::fmt::Debug + std::fmt::Display + 'static> UserInterface<Out> for Cli {
     async fn launch(
         mut task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
         // User control of the compiler
         _request_sender: Option<mpsc::UnboundedSender<RequestTask>>,
-        _response_getter: Option<mpsc::UnboundedReceiver<Ast>>,
+        _response_getter: Option<mpsc::UnboundedReceiver<Out>>,
         stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
     ) -> std::io::Result<()> {
         let mut manager_status = HashMap::new();

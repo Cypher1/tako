@@ -12,6 +12,8 @@ use takolib::tasks::RequestTask;
 
 use takolib::ui::{Cli, Http, Tui, UiMode};
 
+type Output = takolib::primitives::Prim;
+
 #[tokio::main]
 async fn main() -> Result<()> {
     takolib::ensure_initialized();
@@ -55,7 +57,7 @@ async fn main() -> Result<()> {
         tokio::spawn(async move {
             match ui_mode {
                 UiMode::Cli => {
-                    launch_ui::<Cli>(
+                    launch_ui::<Output, Cli>(
                         task_manager_status_receiver,
                         request_sender,
                         Some(compiler_task),
@@ -64,7 +66,7 @@ async fn main() -> Result<()> {
                     .await
                 }
                 UiMode::Tui => {
-                    launch_ui::<Tui>(
+                    launch_ui::<Output, Tui<Output>>(
                         task_manager_status_receiver,
                         request_sender,
                         Some(compiler_task),
@@ -73,7 +75,7 @@ async fn main() -> Result<()> {
                     .await
                 }
                 UiMode::Http => {
-                    launch_ui::<Http>(
+                    launch_ui::<Output, Http>(
                         task_manager_status_receiver,
                         request_sender,
                         Some(compiler_task),
