@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use super::UserInterface;
-use crate::{tasks::StatusReport, Request};
+use crate::{tasks::{RequestTask, StatusReport}, ast::Ast};
 use async_trait::async_trait;
 use std::sync::{Arc, Mutex};
 use tokio::sync::{broadcast, mpsc};
@@ -18,7 +18,8 @@ impl UserInterface for Cli {
     async fn launch(
         mut task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
         // User control of the compiler
-        _request_sender: Option<mpsc::UnboundedSender<Request>>,
+        _request_sender: Option<mpsc::UnboundedSender<RequestTask>>,
+        _response_getter: Option<mpsc::UnboundedReceiver<Ast>>,
         stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
     ) -> std::io::Result<()> {
         let mut manager_status = HashMap::new();

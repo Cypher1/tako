@@ -1,11 +1,8 @@
 use log::trace;
 use std::collections::BTreeMap;
-
+use crate::ast::Ast;
 use super::UserInterface;
-use crate::{
-    tasks::{StatusReport, TaskKind, TaskStats},
-    Request,
-};
+use crate::tasks::{RequestTask, StatusReport, TaskKind, TaskStats};
 use async_trait::async_trait;
 use std::sync::{Arc, Mutex};
 
@@ -39,9 +36,11 @@ extern "C" fn shutdown() {
 #[derive(Debug, Default)]
 pub struct Tui {
     manager_status: BTreeMap<TaskKind, TaskStats>,
+    request_sender: Option<mpsc::UnboundedSender<RequestTask>>,
+    response_getter: Option<mpsc::UnboundedReceiver<Ast>>,
     key_fmt: KeyEventFormat,
     should_exit: bool,
-    history: Vec<String>,
+    history: Vec<String>, // TODO: Mark Input v output.
     input: String,
     input_after_cursor: String,
     characters: String,
@@ -67,7 +66,7 @@ impl Tui {
             row += 1;
         }
 
-        let count_lines = |s: &str| s.chars().filter(|c| *c == '\n').count() as u16;
+        let count_lines = |s: &str| s.chars().filter(|c| *c == '\n').count();
         let mut content = "".to_string();
         for hist_entry in &self.history {
             content += hist_entry;
@@ -80,20 +79,21 @@ impl Tui {
             .input_after_cursor
             .find('\n')
             .unwrap_or(self.input_after_cursor.len());
-        let mut row = rows - 1 - lines;
+        let mut row = (rows as usize).saturating_sub(lines + 1); // TODO: Workout how to drop old lines.
+        let missed_rows = lines.saturating_sub(rows as usize - 1); // TODO: Workout how to drop old lines.
         // TODO: Split into lines...
         //.queue(SetForegroundColor(Color::Red))?
         //.queue(SetBackgroundColor(Color::Blue))?
 
         let mut col = 0;
-        for line in content.lines() {
-            stdout().queue(MoveTo(0, row))?.queue(Print(line))?;
+        for line in content.lines().skip(missed_rows as usize) {
+            stdout().queue(MoveTo(0, row as u16))?.queue(Print(line))?;
             row += 1;
             col = line.len();
         }
         col -= chars_after_cursor;
         row -= lines_after_cursor;
-        stdout().queue(MoveTo(col as u16, row))?;
+        stdout().queue(MoveTo(col as u16, row as u16))?;
         stdout().queue(ResetColor)?.flush()?;
         if self.should_exit {
             stdout().queue(Clear(ClearType::All))?;
@@ -158,6 +158,12 @@ impl Tui {
                             std::mem::swap(&mut self.input, &mut line);
                             line += &self.input_after_cursor;
                             if !line.is_empty() {
+                                // TODO: Send the line to the compiler.
+                                if let Some(request_sender) = &self.request_sender {
+                                    request_sender.send(RequestTask::EvalLine(line.to_string())).expect("Need a backend");
+                                } else {
+                                    self.history.push("...not connected to a backend".to_string());
+                                }
                                 self.history.push(line);
                             }
                             self.input_after_cursor = "".to_string();
@@ -191,11 +197,14 @@ impl UserInterface for Tui {
     async fn launch(
         mut task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
         // User control of the compiler
-        _request_sender: Option<mpsc::UnboundedSender<Request>>,
+        request_sender: Option<mpsc::UnboundedSender<RequestTask>>,
+        response_getter: Option<mpsc::UnboundedReceiver<Ast>>,
         stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
     ) -> std::io::Result<()> {
         let _start_time = Instant::now();
         let mut tui = Self::default();
+        tui.request_sender = request_sender;
+        tui.response_getter = response_getter;
         add_shutdown_hook(shutdown);
         enable_raw_mode().expect("TUI failed to enable raw mode");
         let mut stats_ticker = time::interval(TICK);
@@ -203,7 +212,7 @@ impl UserInterface for Tui {
 
         loop {
             let event = reader.next().fuse();
-
+            let response_getter = tui.response_getter.as_mut().expect("No response_getter");
             tokio::select! {
                 Some(StatusReport { kind, stats }) = task_manager_status_receiver.recv() => {
                     trace!("TaskManager stats: {kind:?} => {stats}");
@@ -213,6 +222,10 @@ impl UserInterface for Tui {
                     let stats_requester = stats_requester.lock().expect("stats requester lock");
                     stats_requester.send(()).expect("TODO");
                 }
+                Some(ast) = response_getter.recv() => {
+                    trace!("Got result ast: {ast:?}");
+                    tui.history.push(format!("AST: {ast:#?}"));
+                },
                 Some(maybe_event) = event => {
                     match maybe_event {
                         Ok(event) => tui.handle_event(event)?,
