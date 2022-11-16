@@ -30,6 +30,7 @@ pub enum AnyTask {
     LoadFile(LoadFileTask),
     LexFile(LexFileTask),
     ParseFile(ParseFileTask),
+    EvalFile(EvalFileTask),
 }
 
 #[derive(Debug)]
@@ -40,6 +41,7 @@ pub struct TaskSet {
     load_file_tasks: TaskManager<LoadFileTask>,
     lex_file_tasks: TaskManager<LexFileTask>,
     parse_file_tasks: TaskManager<ParseFileTask>,
+    eval_file_tasks: TaskManager<EvalFileTask>,
     // TODO: type_check_inside_module: TaskManager<>,
     // Produces type checked (and optimizable) modules **AND**
     // partially type checked (but) mergable-modules.
@@ -74,7 +76,7 @@ impl TaskSet {
 
     pub fn new(
         request_receiver: TaskReceiverFor<RequestTask>,
-        result_sender: TaskSenderFor<ParseFileTask>,
+        result_sender: TaskSenderFor<EvalFileTask>,
         stats_sender: mpsc::UnboundedSender<StatusReport>,
         stats_requester: &broadcast::Sender<()>,
     ) -> Self {
@@ -82,11 +84,13 @@ impl TaskSet {
         let (load_file_sender, load_file_receiver) = mpsc::unbounded_channel();
         let (lex_file_sender, lex_file_receiver) = mpsc::unbounded_channel();
         let (parse_file_sender, parse_file_receiver) = mpsc::unbounded_channel();
+        let (eval_file_sender, eval_file_receiver) = mpsc::unbounded_channel();
 
         {
             let load_file_sender = load_file_sender.clone();
             let lex_file_sender = lex_file_sender.clone();
             let parse_file_sender = parse_file_sender.clone();
+            let eval_file_sender = eval_file_sender.clone();
             tokio::spawn(async move {
                 loop {
                     let new_task: Option<AnyTask> = any_task_receiver.recv().await;
@@ -111,6 +115,12 @@ impl TaskSet {
                             AnyTask::ParseFile(new_task) => {
                                 if let Err(e) = parse_file_sender.send(new_task) {
                                     warn!("Parse file receiver dropped: {}", e);
+                                    break;
+                                }
+                            }
+                            AnyTask::EvalFile(new_task) => {
+                                if let Err(e) = eval_file_sender.send(new_task) {
+                                    warn!("Eval file receiver dropped: {}", e);
                                     break;
                                 }
                             }
@@ -150,12 +160,20 @@ impl TaskSet {
             stats_requester.subscribe(),
             ManagerConfig::default(),
         );
+        let eval_file_tasks = Self::create::<EvalFileTask>(
+            eval_file_receiver,
+            result_sender,
+            stats_sender,
+            stats_requester.subscribe(),
+            ManagerConfig::default(),
+        );
 
         Self {
             request_tasks,
             load_file_tasks,
             lex_file_tasks,
             parse_file_tasks,
+            eval_file_tasks,
         }
     }
 
@@ -165,6 +183,7 @@ impl TaskSet {
             mut load_file_tasks,
             mut lex_file_tasks,
             mut parse_file_tasks,
+            mut eval_file_tasks,
         } = self;
         // Launch all of the task managers!
         tokio::spawn(async move {
@@ -178,6 +197,9 @@ impl TaskSet {
         });
         tokio::spawn(async move {
             parse_file_tasks.run_loop().await;
+        });
+        tokio::spawn(async move {
+            eval_file_tasks.run_loop().await;
         });
     }
 }
@@ -317,6 +339,38 @@ impl Task for ParseFileTask {
         tokio::task::spawn_blocking(move || {
             let ast = crate::parser::parse(&self.path, &self.tokens)
                 .map_err(|err| self.decorate_error(err));
+            result_sender
+                .send((
+                    self,
+                    match ast {
+                        Ok(result) => Update::FinalResult(result),
+                        Err(err) => Update::Failed(err),
+                    },
+                ))
+                .expect("Should be able to send task result to manager");
+        });
+    }
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct EvalFileTask {
+    path: String,
+    ast: Ast,
+}
+
+#[async_trait]
+impl Task for EvalFileTask {
+    type Output = crate::primitives::Prim; // For now, we'll just store an updated AST itself.
+    const TASK_KIND: TaskKind = TaskKind::EvalFile;
+
+    fn has_file_path(&self) -> Option<&str> {
+        Some(&self.path)
+    }
+    async fn perform(self, result_sender: UpdateSender<Self, Self::Output>) {
+        tokio::task::spawn_blocking(move || {
+            let ast = crate::interpreter::run(&self.path, &self.ast)
+                .map_err(|err| self.decorate_error(err));
+            todo!();
             result_sender
                 .send((
                     self,

@@ -1,7 +1,7 @@
 use crate::location::Location;
 use crate::tokens::Symbol;
 use crate::utils::typed_index::TypedIndex;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
 
 use static_assertions::*;
@@ -68,13 +68,13 @@ macro_rules! make_contains(
      };
 );
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Node {
     pub id: NodeData,
     pub location: Location,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum NodeData {
     // TODO: consider how to split this up.
     // Use a Array of Enums Structs to Struct of Arrays (i.e. AoES2SoA).
@@ -89,7 +89,7 @@ pub enum NodeData {
 
 type StringHash = u64;
 
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default, Debug, Hash, PartialEq, Eq)]
 pub struct Ast {
     // Abstract syntax tree... forest
     pub file: String,
@@ -103,7 +103,7 @@ pub struct Ast {
     pub literals: Vec<(NodeId, Literal)>,
     // This ensures we can look up the string from the hash.
     // BUT: We can also merge the hashes without losing any information.
-    pub strings: HashMap<StringHash, String>,
+    pub strings: BTreeMap<StringHash, String>,
 }
 
 impl Ast {
@@ -195,7 +195,7 @@ impl<'a> std::fmt::Display for InContext<'a, NamedSymbol> {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Call {
     pub inner: NodeId,
     pub args: Vec<NodeId>, // TODO: Short vec
@@ -214,7 +214,7 @@ impl Call {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Op {
     pub op: Symbol,
     pub args: [Option<NodeId>; 2],
@@ -226,13 +226,13 @@ impl Op {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Definition {
     pub name: StrId,
     pub implementation: NodeId,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum Literal {
     Bool,    // a boolean of arbitrary size :P (true/false)
     Numeric, // an Integer or Float of arbitrary size
