@@ -6,11 +6,13 @@ use crate::error::Error;
 use crate::tokens::Token;
 use async_trait::async_trait;
 use enum_kinds::EnumKind;
-use log::warn;
+use log::{warn, trace};
 use manager::{ManagerConfig, TaskManager};
 pub use manager::{StatusReport, TaskStats};
+use notify::{RecursiveMode, Watcher};
 pub use status::*;
-use std::collections::HashMap;
+use std::path::PathBuf;
+use std::{collections::HashMap, path::Path};
 use std::fmt::Debug;
 use task_trait::*;
 use tokio::sync::{broadcast, mpsc};
@@ -85,6 +87,28 @@ impl TaskSet {
         let (lex_file_sender, lex_file_receiver) = mpsc::unbounded_channel();
         let (parse_file_sender, parse_file_receiver) = mpsc::unbounded_channel();
         let (eval_file_sender, eval_file_receiver) = mpsc::unbounded_channel();
+
+        {
+            let load_file_sender = load_file_sender.clone();
+            tokio::spawn(async move {
+                let mut watcher = notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
+                    match res {
+                        Ok(event) => {
+                            trace!("event: {:?}", event);
+                            for path in event.paths {
+                                load_file_sender.send(LoadFileTask {
+                                    path,
+                                }).expect("Load file task could not be sent");
+                            }
+                        }
+                        Err(e) => {
+                            trace!("watch error: {:?}", e);
+                        }
+                    }
+                }).expect("Watcher failed to register");
+                watcher.watch(Path::new("."), RecursiveMode::Recursive).expect("Should be able to watch files");
+            });
+        }
 
         {
             let load_file_sender = load_file_sender;
@@ -210,7 +234,7 @@ impl TaskSet {
 /// There's normally only one of these, but it seems elegant to have these fit into the `Task` model.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RequestTask {
-    Launch { files: Vec<String> },
+    Launch { files: Vec<PathBuf> },
     EvalLine(String),
 }
 
@@ -226,7 +250,7 @@ impl Task for RequestTask {
                     .send((
                         self.clone(),
                         Update::NextResult(AnyTask::LexFile(LexFileTask {
-                            path: "interpreter.tk".to_string(),
+                            path: "interpreter.tk".into(),
                             contents: line.to_string(),
                         })),
                     ))
@@ -253,7 +277,7 @@ impl Task for RequestTask {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct LoadFileTask {
-    path: String,
+    path: PathBuf,
 }
 
 #[async_trait]
@@ -261,7 +285,7 @@ impl Task for LoadFileTask {
     type Output = LexFileTask;
     const TASK_KIND: TaskKind = TaskKind::LoadFile;
 
-    fn has_file_path(&self) -> Option<&str> {
+    fn has_file_path(&self) -> Option<&PathBuf> {
         Some(&self.path)
     }
     async fn perform(self, result_sender: UpdateSender<Self, Self::Output>) {
@@ -287,7 +311,7 @@ impl Task for LoadFileTask {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct LexFileTask {
-    path: String,
+    path: PathBuf,
     contents: String,
 }
 
@@ -296,7 +320,7 @@ impl Task for LexFileTask {
     type Output = ParseFileTask;
     const TASK_KIND: TaskKind = TaskKind::LexFile;
 
-    fn has_file_path(&self) -> Option<&str> {
+    fn has_file_path(&self) -> Option<&PathBuf> {
         Some(&self.path)
     }
     async fn perform(self, result_sender: UpdateSender<Self, Self::Output>) {
@@ -322,7 +346,7 @@ impl Task for LexFileTask {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct ParseFileTask {
-    path: String,
+    path: PathBuf,
     contents: String,
     tokens: Vec<Token>,
 }
@@ -332,7 +356,7 @@ impl Task for ParseFileTask {
     type Output = EvalFileTask; // For now, we'll just store the AST itself.
     const TASK_KIND: TaskKind = TaskKind::ParseFile;
 
-    fn has_file_path(&self) -> Option<&str> {
+    fn has_file_path(&self) -> Option<&PathBuf> {
         Some(&self.path)
     }
     async fn perform(self, result_sender: UpdateSender<Self, Self::Output>) {
@@ -344,7 +368,7 @@ impl Task for ParseFileTask {
                     self.clone(),
                     match ast {
                         Ok(result) => Update::NextResult(EvalFileTask {
-                            path: self.path.to_string(),
+                            path: self.path.to_path_buf(),
                             ast: result,
                         }),
                         Err(err) => Update::Failed(err),
@@ -357,7 +381,7 @@ impl Task for ParseFileTask {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct EvalFileTask {
-    path: String,
+    path: PathBuf,
     ast: Ast,
 }
 
@@ -367,7 +391,7 @@ impl Task for EvalFileTask {
     const TASK_KIND: TaskKind = TaskKind::EvalFile;
     const RESULT_IS_CACHABLE: bool = false;
 
-    fn has_file_path(&self) -> Option<&str> {
+    fn has_file_path(&self) -> Option<&PathBuf> {
         Some(&self.path)
     }
     async fn perform(self, result_sender: UpdateSender<Self, Self::Output>) {

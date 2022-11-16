@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use crate::ui::UiMode;
 use log::warn;
 
@@ -11,7 +13,7 @@ pub enum Command {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Options {
     pub executable_location: String,
-    pub files: Vec<String>,
+    pub files: Vec<PathBuf>,
     pub cmd: Command,
     pub interpreter_args: Vec<String>,
     pub ui_mode: UiMode,
@@ -36,7 +38,7 @@ impl Options {
     #[must_use]
     pub fn with_file(self: Options, filename: &str) -> Options {
         let mut files = self.files;
-        files.push(filename.to_owned());
+        files.push(filename.into());
         Options { files, ..self }
     }
 
@@ -86,7 +88,7 @@ impl Options {
                     // This is the first argument, so it should be the 'main'.
                     opts.interpreter_args.push(f.clone());
                 }
-                opts.files.push(f.to_string());
+                opts.files.push(f.into());
             }
         }
         opts
