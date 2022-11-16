@@ -58,6 +58,10 @@ impl BindingPowerConfig {
 
 const fn binding_power(symbol: Symbol) -> BindingPowerConfig {
     match symbol {
+        Symbol::OpenParen => BindingPowerConfig::prefix(99, 0),
+        Symbol::CloseParen => BindingPowerConfig::infix(0, 100),
+        Symbol::OpenCurly => BindingPowerConfig::prefix(99, 0),
+        Symbol::CloseCurly => BindingPowerConfig::infix(0, 100),
         Symbol::OpenBracket => BindingPowerConfig::prefix(99, 0),
         Symbol::CloseBracket => BindingPowerConfig::infix(0, 100),
         Symbol::Eqs => BindingPowerConfig::infix(2, 1),
