@@ -9,6 +9,7 @@ pub mod error;
 pub mod keywords;
 pub mod location;
 pub mod parser;
+pub mod interpreter;
 pub mod primitives;
 pub mod tasks;
 pub mod tokens;
