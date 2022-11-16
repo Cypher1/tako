@@ -1,8 +1,8 @@
+use crate::cli_options::Options;
 use crate::tasks::{RequestTask, StatusReport};
 use async_trait::async_trait;
 use std::sync::{Arc, Mutex};
 use tokio::sync::{broadcast, mpsc};
-use crate::cli_options::Options;
 
 mod http;
 mod tui;

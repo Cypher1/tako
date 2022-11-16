@@ -15,6 +15,7 @@ pub mod tasks;
 pub mod tokens;
 pub mod ui;
 
+use crate::cli_options::Options;
 use crate::tasks::{RequestTask, TaskSet};
 use crate::ui::UserInterface;
 use log::error;
@@ -22,7 +23,6 @@ use primitives::Prim;
 use std::sync::{Arc, Mutex};
 use tasks::StatusReport;
 use tokio::sync::{broadcast, mpsc};
-use crate::cli_options::Options;
 
 static mut LOGS_UNINITIALISED: bool = true;
 
