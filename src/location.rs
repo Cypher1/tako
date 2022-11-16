@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, path::PathBuf};
 
 pub type IndexIntoFile = u16;
 pub type SymbolLength = u8;
@@ -25,7 +25,7 @@ impl Location {
 
 #[derive(PartialEq, Eq, Clone, Ord, PartialOrd)]
 pub struct UserFacingLocation {
-    pub filename: String,
+    pub filename: PathBuf,
     pub line: u32,
     pub col: u32,
 }
@@ -38,20 +38,20 @@ impl std::fmt::Display for UserFacingLocation {
 
 impl std::fmt::Debug for UserFacingLocation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}:{}:{}", self.filename, self.line, self.col)
+        write!(f, "{}:{}:{}", self.filename.display(), self.line, self.col)
     }
 }
 
 impl UserFacingLocation {
-    fn new(filename: &str, line: u32, col: u32) -> Self {
+    fn new(filename: &PathBuf, line: u32, col: u32) -> Self {
         Self {
-            filename: filename.to_string(),
+            filename: filename.to_path_buf(),
             line,
             col,
         }
     }
 
-    pub fn from(path: &str, contents: &str, location: &Location) -> Self {
+    pub fn from(path: &PathBuf, contents: &str, location: &Location) -> Self {
         // TODO: Consider walking the module tree to get a fully qualified module name.
         let mut loc = UserFacingLocation::new(path, 1, 1);
         let mut contents = contents.chars().peekable();

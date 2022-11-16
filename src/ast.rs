@@ -3,6 +3,7 @@ use crate::tokens::Symbol;
 use crate::utils::typed_index::TypedIndex;
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
+use std::path::PathBuf;
 
 use static_assertions::*;
 assert_eq_size!(NamedSymbol, [u8; 8]);
@@ -92,7 +93,7 @@ type StringHash = u64;
 #[derive(Clone, Default, Debug, Hash, PartialEq, Eq)]
 pub struct Ast {
     // Abstract syntax tree... forest
-    pub file: String,
+    pub file: PathBuf,
     pub roots: Vec<NodeId>,
     pub nodes: Vec<Node>,
     pub calls: Vec<(NodeId, Call)>,
@@ -107,9 +108,9 @@ pub struct Ast {
 }
 
 impl Ast {
-    pub fn new(file: &str) -> Self {
+    pub fn new(file: PathBuf) -> Self {
         Self {
-            file: file.to_string(),
+            file,
             ..Self::default()
         }
     }

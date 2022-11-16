@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use crate::location::{Location, UserFacingLocation};
 use crate::utils::typed_index::TypedIndex;
 use thiserror::Error;
@@ -62,7 +64,7 @@ impl Error {
     // TODO: Use a builder for this.
     pub fn new(
         source: TError,
-        path: Option<&str>,
+        path: Option<&PathBuf>,
         contents: Option<&str>,
         module: Option<&()>,
     ) -> Self {

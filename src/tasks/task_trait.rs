@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use std::hash::Hasher;
+use std::path::PathBuf;
 use tokio::sync::mpsc;
 
 use super::status::*;
@@ -62,7 +63,7 @@ pub trait Task: std::fmt::Debug + Clone + std::hash::Hash + Eq + Sized + Send {
         }
     }
 
-    fn has_file_path(&self) -> Option<&str> {
+    fn has_file_path(&self) -> Option<&PathBuf> {
         None
     }
     fn has_source(&self) -> Option<&str> {

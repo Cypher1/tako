@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 // use rand::Rng;
 use crate::ast::*;
 use crate::error::TError;
@@ -9,10 +11,10 @@ use static_assertions::*;
 assert_eq_size!(Partial, [u8; 16]); // TODO: Try to get the size down
 assert_eq_size!([Partial; 2], [u8; 32]);
 
-pub fn parse(filepath: &str, tokens: &[Token]) -> Result<Ast, TError> {
+pub fn parse(filepath: &PathBuf, tokens: &[Token]) -> Result<Ast, TError> {
     let tokens = tokens.iter().peekable();
-    debug!("Parse {}", filepath);
-    let mut ast = Ast::new(filepath);
+    debug!("Parse {}", filepath.display());
+    let mut ast = Ast::new(filepath.to_path_buf());
     let root = expr(&mut ast, tokens);
     ast.roots.extend(root);
     // TODO: REMOVE THIS (it's just to test the threading model)
@@ -171,12 +173,14 @@ pub mod tests {
 
     use crate::tokens::lex;
 
-    const TEST_FILE1: &str = "test.tk";
+    fn test_file1() -> PathBuf {
+        "test.tk".into()
+    }
 
     #[test]
     fn parse_literal() -> Result<(), TError> {
         let tokens = lex("123")?;
-        let ast = parse(TEST_FILE1, &tokens)?;
+        let ast = parse(&test_file1(), &tokens)?;
         dbg!(&ast);
         let Ast {
             roots: _, literals, ..
@@ -200,7 +204,7 @@ pub mod tests {
     fn parse_add_literals() -> Result<(), TError> {
         crate::ensure_initialized();
         let tokens = lex("1+2")?;
-        let ast = parse(TEST_FILE1, &tokens)?;
+        let ast = parse(&test_file1(), &tokens)?;
         dbg!(&ast);
         let Ast {
             symbols,
@@ -234,7 +238,7 @@ pub mod tests {
     fn parse_add_mul_literals() -> Result<(), TError> {
         crate::ensure_initialized();
         let tokens = lex("1+2*3")?;
-        let ast = parse(TEST_FILE1, &tokens)?;
+        let ast = parse(&test_file1(), &tokens)?;
         dbg!(&ast);
         let Ast {
             symbols,
@@ -254,7 +258,7 @@ pub mod tests {
     fn parse_mul_add_literals() -> Result<(), TError> {
         crate::ensure_initialized();
         let tokens = lex("1+2*3")?;
-        let ast = parse(TEST_FILE1, &tokens)?;
+        let ast = parse(&test_file1(), &tokens)?;
         dbg!(&ast);
         let Ast {
             symbols,
