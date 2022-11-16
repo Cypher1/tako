@@ -26,7 +26,7 @@ use Prim::{Bool, BuiltIn, Str, Tag, I32};
 
 impl std::fmt::Display for Prim {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 

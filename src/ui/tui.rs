@@ -101,7 +101,7 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> Tui<Out> {
                                                                    //.queue(SetBackgroundColor(Color::Blue))?
 
         let mut col = 0;
-        for line in content.lines().skip(missed_rows as usize) {
+        for line in content.lines().skip(missed_rows) {
             stdout().queue(MoveTo(0, row as u16))?.queue(Print(line))?;
             row += 1;
             col = line.len();

@@ -87,7 +87,7 @@ impl TaskSet {
         let (eval_file_sender, eval_file_receiver) = mpsc::unbounded_channel();
 
         {
-            let load_file_sender = load_file_sender.clone();
+            let load_file_sender = load_file_sender;
             let lex_file_sender = lex_file_sender.clone();
             let parse_file_sender = parse_file_sender.clone();
             let eval_file_sender = eval_file_sender.clone();
