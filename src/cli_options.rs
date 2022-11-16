@@ -63,7 +63,6 @@ impl Options {
                 match f.as_str() {
                     "-i" | "--interactive" => opts.cmd = Command::Repl,
                     "-r" | "--run" => opts.cmd = Command::Interpret,
-                    "--cli" => opts.ui_mode = UiMode::Cli,
                     "--tui" => opts.ui_mode = UiMode::Tui,
                     "--http" => opts.ui_mode = UiMode::Http,
                     "-O0" => opts.optimization_level = 0,
@@ -92,6 +91,11 @@ impl Options {
             }
         }
         opts
+    }
+
+    pub fn interactive(&self) -> bool {
+        // TODO: Build should have an interactive mode?
+        self.cmd == Command::Interpret
     }
 }
 
@@ -123,7 +127,6 @@ Options:
 
 Configuration:
   -O<n>               Optimisation level: 0|1|2|3.
-  --cli               Use a simpler command line interface.
-  --tui               Use an interactive terminal user interface.
-  --http              Use an interactive web based interface.
+  --tui               Use a terminal based interface.
+  --http              Use a web based interface.
 ";

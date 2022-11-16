@@ -10,7 +10,7 @@ use takolib::launch_ui;
 use takolib::start;
 use takolib::tasks::RequestTask;
 
-use takolib::ui::{Cli, Http, Tui, UiMode};
+use takolib::ui::{Http, Tui, UiMode};
 
 type Output = takolib::primitives::Prim;
 
@@ -34,7 +34,7 @@ async fn main() -> Result<()> {
         Command::Build => {
             request_sender
                 .send(RequestTask::Launch {
-                    files: options.files,
+                    files: options.files.clone(),
                 })
                 .unwrap_or_else(|err| {
                     error!("Compiler task has ended: {}", err);
@@ -56,21 +56,13 @@ async fn main() -> Result<()> {
         let ui_mode = options.ui_mode;
         tokio::spawn(async move {
             match ui_mode {
-                UiMode::Cli => {
-                    launch_ui::<Output, Cli>(
-                        task_manager_status_receiver,
-                        request_sender,
-                        Some(compiler_task),
-                        stats_requester,
-                    )
-                    .await
-                }
                 UiMode::Tui => {
                     launch_ui::<Output, Tui<Output>>(
                         task_manager_status_receiver,
                         request_sender,
-                        Some(compiler_task),
+                        compiler_task,
                         stats_requester,
+                        options,
                     )
                     .await
                 }
@@ -78,30 +70,19 @@ async fn main() -> Result<()> {
                     launch_ui::<Output, Http>(
                         task_manager_status_receiver,
                         request_sender,
-                        Some(compiler_task),
+                        compiler_task,
                         stats_requester,
+                        options,
                     )
                     .await
                 }
             };
         })
     };
-    // Receive the results...
-    // trace!("Waiting for 'final' result...");
-    // while let Some(ast) = compiler_task.recv().await {
-    // trace!("Receiving 'final' result from compiler: {ast:?}");
-    // trace!("AST: {:?}", ast);
-    // }
-    // compiler_task.close();
-    // All done!
-    /*
-        compiler.await.unwrap_or_else(|err| {
-            trace!("Internal error: {err:#?}");
-            error!("Compiler finished with internal error: {err}");
-            std::process::exit(1);
-        });
+    ui_task.await.unwrap_or_else(|err| {
+        trace!("Internal error: {err:#?}");
+        error!("Compiler interface finished with internal error: {err}");
+        std::process::exit(1);
     });
-    */
-    ui_task.await?;
     Ok(())
 }

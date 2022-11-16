@@ -4,7 +4,6 @@ use async_trait::async_trait;
 use log::trace;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
-
 use crossterm::{
     cursor::MoveTo,
     event::{Event, EventStream, KeyCode, KeyEvent},
@@ -15,7 +14,7 @@ use crossterm::{
 use futures::{future::FutureExt, StreamExt};
 use shutdown_hooks::add_shutdown_hook;
 use tokio::time;
-
+use crate::cli_options::Options;
 use crokey::{key, KeyEventFormat};
 use std::{
     io::{stdout, Write},
@@ -27,7 +26,6 @@ use tokio::{
 };
 
 const TICK: Duration = Duration::from_millis(1000);
-const RENDER_UI: bool = true;
 
 extern "C" fn shutdown() {
     let _discard = disable_raw_mode();
@@ -44,6 +42,7 @@ pub struct Tui<Out: Send + std::fmt::Debug + std::fmt::Display> {
     input: String,
     input_after_cursor: String,
     characters: String,
+    options: Options,
 }
 
 impl<Out: Send + std::fmt::Debug + std::fmt::Display> Default for Tui<Out> {
@@ -58,6 +57,7 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> Default for Tui<Out> {
             input: "".to_string(),
             input_after_cursor: "".to_string(),
             characters: "".to_string(),
+            options: Options::default(),
         }
     }
 }
@@ -219,17 +219,19 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> UserInterface<Out> for Tui
         mut task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
         // User control of the compiler
         request_sender: Option<mpsc::UnboundedSender<RequestTask>>,
-        response_getter: Option<mpsc::UnboundedReceiver<Out>>,
+        response_getter: mpsc::UnboundedReceiver<Out>,
         stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
+        options: Options,
     ) -> std::io::Result<()> {
         let _start_time = Instant::now();
         let mut tui = Tui {
             request_sender,
-            response_getter,
+            response_getter: Some(response_getter),
+            options,
             ..Self::default()
         };
         add_shutdown_hook(shutdown);
-        if RENDER_UI {
+        if tui.options.interactive() {
             enable_raw_mode().expect("TUI failed to enable raw mode");
         }
         let mut stats_ticker = time::interval(TICK);
@@ -266,7 +268,7 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> UserInterface<Out> for Tui
                 else => break,
             }
             // tui.cursor_blink = (start_time.elapsed().as_secs() % 2) == 0;
-            if RENDER_UI {
+            if tui.options.interactive() {
                 tui.render()?;
             }
         }
