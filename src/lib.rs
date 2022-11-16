@@ -18,7 +18,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::ast::Ast;
 
-use crate::tasks::{Request, TaskSet};
+use crate::tasks::{RequestTask, TaskSet};
 use crate::ui::UserInterface;
 
 use tasks::StatusReport;
@@ -57,10 +57,15 @@ pub fn ensure_initialized() {
 
 pub async fn launch_ui<T: UserInterface + Send + 'static>(
     task_manager_stats: mpsc::UnboundedReceiver<StatusReport>,
-    request_sender: Option<mpsc::UnboundedSender<Request>>,
+    request_sender: Option<mpsc::UnboundedSender<RequestTask>>,
+    response_getter: Option<mpsc::UnboundedReceiver<Ast>>,
     stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
 ) {
-    <T as UserInterface>::launch(task_manager_stats, request_sender, stats_requester)
+    <T as UserInterface>::launch(task_manager_stats,
+        request_sender,
+        response_getter,
+        stats_requester
+    )
         .await
         .unwrap_or_else(|err| {
             error!("Error in UI: {}", err);
@@ -69,7 +74,7 @@ pub async fn launch_ui<T: UserInterface + Send + 'static>(
 
 pub async fn start(
     task_manager_stats: mpsc::UnboundedSender<StatusReport>,
-    request_receiver: mpsc::UnboundedReceiver<Request>,
+    request_receiver: mpsc::UnboundedReceiver<RequestTask>,
     task_manager_stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
 ) -> mpsc::UnboundedReceiver<Ast> {
     let (result_sender, result_receiver) = mpsc::unbounded_channel();

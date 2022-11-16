@@ -3,7 +3,8 @@ use log::trace;
 use warp::Filter;
 
 use super::UserInterface;
-use crate::{tasks::StatusReport, Request};
+use crate::ast::Ast;
+use crate::tasks::{RequestTask, StatusReport};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tokio::time;
@@ -17,6 +18,7 @@ const TICK: Duration = Duration::from_millis(100);
 #[derive(Debug, Default)]
 pub struct Http {}
 
+#[allow(unused)]
 #[tokio::main]
 async fn main() {
     let index = warp::path::end().map(|| "Hello everyone!".to_string());
@@ -29,16 +31,13 @@ async fn main() {
         .await;
 }
 
-impl Http {
-    fn render(&mut self) {}
-}
-
 #[async_trait]
 impl UserInterface for Http {
     async fn launch(
         mut task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
         // User control of the compiler
-        _request_sender: Option<mpsc::UnboundedSender<Request>>,
+        _request_sender: Option<mpsc::UnboundedSender<RequestTask>>,
+        _response_getter: Option<mpsc::UnboundedReceiver<Ast>>,
         stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
     ) -> std::io::Result<()> {
         let _start_time = Instant::now();

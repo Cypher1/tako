@@ -5,16 +5,15 @@ use crate::ast::Ast;
 use crate::error::Error;
 use crate::tokens::Token;
 use async_trait::async_trait;
-
-use std::collections::HashMap;
-use std::fmt::Debug;
-
-use tokio::sync::{broadcast, mpsc};
-
+use enum_kinds::EnumKind;
 use manager::{ManagerConfig, TaskManager};
 pub use manager::{StatusReport, TaskStats};
 pub use status::*;
+use std::collections::HashMap;
+use std::fmt::Debug;
 use task_trait::*;
+use tokio::sync::{broadcast, mpsc};
+use log::warn;
 
 // TODO: Add timing information, etc.
 // TODO: Support re-running multiple times for stability testing.
@@ -24,9 +23,8 @@ use task_trait::*;
 pub type TaskResults<T> = HashMap<T, TaskStatus<<T as Task>::Output, Error>>;
 
 #[derive(EnumKind)]
-#[enum_kind_name(TaskKind)]
-#[enum_delegate::implement(Task)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Ord, PartialOrd, Hash)]
+#[enum_kind(TaskKind, derive(Hash, Ord, PartialOrd))]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AnyTask {
     Request(RequestTask),
     LoadFile(LoadFileTask),
@@ -75,21 +73,61 @@ impl TaskSet {
     }
 
     pub fn new(
-        launch_receiver: TaskReceiverFor<Request>,
+        request_receiver: TaskReceiverFor<RequestTask>,
         result_sender: TaskSenderFor<ParseFileTask>,
         stats_sender: mpsc::UnboundedSender<StatusReport>,
         stats_requester: &broadcast::Sender<()>,
     ) -> Self {
+        let (any_task_sender, mut any_task_receiver) = mpsc::unbounded_channel();
         let (load_file_sender, load_file_receiver) = mpsc::unbounded_channel();
-        let request_tasks = Self::create::<Request>(
-            launch_receiver,
-            load_file_sender,
+        let (lex_file_sender, lex_file_receiver) = mpsc::unbounded_channel();
+        let (parse_file_sender, parse_file_receiver) = mpsc::unbounded_channel();
+
+        {
+            let load_file_sender = load_file_sender.clone();
+            let lex_file_sender = lex_file_sender.clone();
+            let parse_file_sender = parse_file_sender.clone();
+            tokio::spawn(async move {
+                loop {
+                    let new_task: Option<AnyTask> = any_task_receiver.recv().await;
+                    match new_task {
+                        None => break,
+                        Some(new_task) => match new_task {
+                            AnyTask::Request(_new_task) => {
+                                todo!("This shouldn't happen!")
+                            }
+                            AnyTask::LoadFile(new_task) => {
+                                if let Err(e) = load_file_sender.send(new_task) {
+                                    warn!("Load file receiver dropped: {}", e);
+                                    break;
+                                }
+                            }
+                            AnyTask::LexFile(new_task) => {
+                                if let Err(e) = lex_file_sender.send(new_task) {
+                                    warn!("Lex file receiver dropped: {}", e);
+                                    break;
+                                }
+                            }
+                            AnyTask::ParseFile(new_task) => {
+                                if let Err(e) = parse_file_sender.send(new_task) {
+                                    warn!("Parse file receiver dropped: {}", e);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        let request_tasks = Self::create::<RequestTask>(
+            request_receiver,
+            any_task_sender,
             stats_sender.clone(),
             stats_requester.subscribe(),
             ManagerConfig::default(),
         );
 
-        let (lex_file_sender, lex_file_receiver) = mpsc::unbounded_channel();
         let load_file_tasks = Self::create::<LoadFileTask>(
             load_file_receiver,
             lex_file_sender,
@@ -98,7 +136,6 @@ impl TaskSet {
             ManagerConfig::default(),
         );
 
-        let (parse_file_sender, parse_file_receiver) = mpsc::unbounded_channel();
         let lex_file_tasks = Self::create::<LexFileTask>(
             lex_file_receiver,
             parse_file_sender,
@@ -152,6 +189,7 @@ impl TaskSet {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RequestTask {
     Launch { files: Vec<String> },
+    EvalLine(String),
 }
 
 #[async_trait]
@@ -161,12 +199,25 @@ impl Task for RequestTask {
 
     async fn perform(self, result_sender: UpdateSender<Self, Self::Output>) {
         match &self {
+            RequestTask::EvalLine(line) => {
+                result_sender
+                    .send((
+                        self.clone(),
+                        Update::NextResult(AnyTask::LexFile(LexFileTask {
+                            path: "interpreter.tk".to_string(),
+                            contents: line.to_string(),
+                        })),
+                    ))
+                    .expect("Should be able to send task result to manager");
+            }
             RequestTask::Launch { files } => {
                 for path in files {
                     result_sender
                         .send((
                             self.clone(),
-                            Update::NextResult(LoadFile(LoadFileTask { path: path.clone() })),
+                            Update::NextResult(AnyTask::LoadFile(LoadFileTask {
+                                path: path.clone(),
+                            })),
                         ))
                         .expect("Should be able to send task result to manager");
                 }

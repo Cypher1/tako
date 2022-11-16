@@ -8,7 +8,7 @@ use tokio::sync::{broadcast, mpsc};
 use takolib::cli_options::{Command, Options};
 use takolib::launch_ui;
 use takolib::start;
-use takolib::tasks::Request;
+use takolib::tasks::RequestTask;
 
 use takolib::ui::{Cli, Http, Tui, UiMode};
 
@@ -31,7 +31,7 @@ async fn main() -> Result<()> {
         }
         Command::Build => {
             request_sender
-                .send(Request::Launch {
+                .send(RequestTask::Launch {
                     files: options.files,
                 })
                 .unwrap_or_else(|err| {
@@ -42,7 +42,14 @@ async fn main() -> Result<()> {
         }
         _ => todo!(),
     };
-    let _ui_task = {
+    let compiler_task = start(
+        task_manager_status_sender,
+        request_receiver,
+        stats_requester.clone(),
+    )
+    .await;
+
+    let ui_task = {
         let stats_requester = stats_requester.clone();
         let ui_mode = options.ui_mode;
         tokio::spawn(async move {
@@ -51,6 +58,7 @@ async fn main() -> Result<()> {
                     launch_ui::<Cli>(
                         task_manager_status_receiver,
                         request_sender,
+                        Some(compiler_task),
                         stats_requester,
                     )
                     .await
@@ -59,6 +67,7 @@ async fn main() -> Result<()> {
                     launch_ui::<Tui>(
                         task_manager_status_receiver,
                         request_sender,
+                        Some(compiler_task),
                         stats_requester,
                     )
                     .await
@@ -67,6 +76,7 @@ async fn main() -> Result<()> {
                     launch_ui::<Http>(
                         task_manager_status_receiver,
                         request_sender,
+                        Some(compiler_task),
                         stats_requester,
                     )
                     .await
@@ -74,20 +84,13 @@ async fn main() -> Result<()> {
             };
         })
     };
-    let mut compiler_task = start(
-        task_manager_status_sender,
-        request_receiver,
-        stats_requester.clone(),
-    )
-    .await;
-
     // Receive the results...
-    trace!("Waiting for 'final' result...");
-    while let Some(ast) = compiler_task.recv().await {
-        trace!("Receiving 'final' result from compiler: {ast:?}");
-        trace!("AST: {:?}", ast);
-    }
-    compiler_task.close();
+    // trace!("Waiting for 'final' result...");
+    // while let Some(ast) = compiler_task.recv().await {
+        // trace!("Receiving 'final' result from compiler: {ast:?}");
+        // trace!("AST: {:?}", ast);
+    // }
+    // compiler_task.close();
     // All done!
     /*
         compiler.await.unwrap_or_else(|err| {
@@ -96,15 +99,7 @@ async fn main() -> Result<()> {
             std::process::exit(1);
         });
     });
-
-    // Launch the cli task.
-    trace!("Started");
-    compiler_task
-        .await
-        .unwrap_or_else(|err| error!("Compiler finished with internal error: {err}"));
-    ui_task
-        .await
-        .unwrap_or_else(|err| error!("Ui task finished with internal error: {err}"));
     */
+    ui_task.await?;
     Ok(())
 }

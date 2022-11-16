@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use crate::tasks::{Request, StatusReport};
+use crate::{tasks::{RequestTask, StatusReport}, ast::Ast};
 use async_trait::async_trait;
 use tokio::sync::{broadcast, mpsc};
 
@@ -28,7 +28,8 @@ pub enum UiMode {
 pub trait UserInterface: std::fmt::Debug {
     async fn launch(
         task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
-        request_sender: Option<mpsc::UnboundedSender<Request>>,
+        request_sender: Option<mpsc::UnboundedSender<RequestTask>>,
+        response_getter: Option<mpsc::UnboundedReceiver<Ast>>,
         stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
     ) -> std::io::Result<()>
     where
