@@ -365,6 +365,7 @@ pub struct EvalFileTask {
 impl Task for EvalFileTask {
     type Output = crate::primitives::Prim; // For now, we'll just store an updated AST itself.
     const TASK_KIND: TaskKind = TaskKind::EvalFile;
+    const RESULT_IS_CACHABLE: bool = false;
 
     fn has_file_path(&self) -> Option<&str> {
         Some(&self.path)
