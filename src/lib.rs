@@ -22,6 +22,7 @@ use primitives::Prim;
 use std::sync::{Arc, Mutex};
 use tasks::StatusReport;
 use tokio::sync::{broadcast, mpsc};
+use crate::cli_options::Options;
 
 static mut LOGS_UNINITIALISED: bool = true;
 
@@ -58,14 +59,16 @@ pub async fn launch_ui<
 >(
     task_manager_stats: mpsc::UnboundedReceiver<StatusReport>,
     request_sender: Option<mpsc::UnboundedSender<RequestTask>>,
-    response_getter: Option<mpsc::UnboundedReceiver<Out>>,
+    response_getter: mpsc::UnboundedReceiver<Out>,
     stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
+    options: Options,
 ) {
     <T as UserInterface<Out>>::launch(
         task_manager_stats,
         request_sender,
         response_getter,
         stats_requester,
+        options,
     )
     .await
     .unwrap_or_else(|err| {

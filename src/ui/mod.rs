@@ -2,12 +2,11 @@ use crate::tasks::{RequestTask, StatusReport};
 use async_trait::async_trait;
 use std::sync::{Arc, Mutex};
 use tokio::sync::{broadcast, mpsc};
+use crate::cli_options::Options;
 
-mod cli;
 mod http;
 mod tui;
 
-pub use cli::Cli;
 pub use http::Http;
 pub use tui::Tui;
 
@@ -18,7 +17,6 @@ pub enum UserAction {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum UiMode {
-    Cli,
     Tui,
     Http,
 }
@@ -28,8 +26,9 @@ pub trait UserInterface<Out: Send + std::fmt::Debug + std::fmt::Display>: std::f
     async fn launch(
         task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
         request_sender: Option<mpsc::UnboundedSender<RequestTask>>,
-        response_getter: Option<mpsc::UnboundedReceiver<Out>>,
+        response_getter: mpsc::UnboundedReceiver<Out>,
         stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
+        options: Options,
     ) -> std::io::Result<()>
     where
         Self: Sized;

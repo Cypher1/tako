@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use log::trace;
 use warp::Filter;
-
+use crate::cli_options::Options;
 use super::UserInterface;
 use crate::tasks::{RequestTask, StatusReport};
 use std::sync::{Arc, Mutex};
@@ -36,8 +36,9 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display + 'static> UserInterface<Ou
         mut task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
         // User control of the compiler
         _request_sender: Option<mpsc::UnboundedSender<RequestTask>>,
-        _response_getter: Option<mpsc::UnboundedReceiver<Out>>,
+        _response_getter: mpsc::UnboundedReceiver<Out>,
         stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
+        _options: Options,
     ) -> std::io::Result<()> {
         let _start_time = Instant::now();
         let _http = Self::default();
