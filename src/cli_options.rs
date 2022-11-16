@@ -78,7 +78,7 @@ impl Options {
                             warn!("unexpected flag '{}'", f);
                         }
                         print_cli_help();
-                        return opts;
+                        std::process::exit(1);
                     }
                 }
             } else {
