@@ -174,7 +174,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
             .result_store
             .entry(task.get_hash())
             .or_insert_with(TaskStatus::new);
-        if status.state != TaskState::New {
+        if status.state == TaskState::Running {
             self.stats.num_already_running += 1;
             return; // Done: Already running.
         }
