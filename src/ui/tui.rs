@@ -1,7 +1,7 @@
 use super::UserInterface;
 use crate::tasks::{RequestTask, StatusReport, TaskKind, TaskStats};
 use async_trait::async_trait;
-use log::trace;
+use log::{debug, trace};
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 use crossterm::{
@@ -25,7 +25,7 @@ use tokio::{
     sync::{broadcast, mpsc},
 };
 
-const TICK: Duration = Duration::from_millis(1000);
+const TICK: Duration = Duration::from_millis(100);
 
 extern "C" fn shutdown() {
     let _discard = disable_raw_mode();
@@ -232,6 +232,7 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> UserInterface<Out> for Tui
         };
         add_shutdown_hook(shutdown);
         if tui.options.interactive() {
+            debug!("Enabling raw mode");
             enable_raw_mode().expect("TUI failed to enable raw mode");
         }
         let mut stats_ticker = time::interval(TICK);
