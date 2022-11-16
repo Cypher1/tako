@@ -370,7 +370,7 @@ impl Task for ParseFileTask {
                 .send((
                     self.clone(),
                     match ast {
-                        Ok(result) => Update::NextResult(EvalFileTask {
+                        Ok(result) => Update::FinalResult(EvalFileTask {
                             path: self.path.to_path_buf(),
                             ast: result,
                         }),

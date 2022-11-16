@@ -41,7 +41,8 @@ impl std::fmt::Display for TaskStats {
             return write!(f, "...");
         }
         let num_real = num_requests - num_already_running;
-        write!(f, "{num_succeeded}/{num_real}")?;
+        let num_done = num_succeeded + num_cached;
+        write!(f, "{num_done}/{num_real}")?;
         let items: Vec<String> = vec![(num_cached, "cached"), (num_failed, "failed")]
             .iter()
             .filter(|(n, _label)| **n > 0)
@@ -178,7 +179,6 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
             self.stats.num_already_running += 1;
             return; // Done: Already running.
         }
-        status.state = TaskState::Running;
         match (&status.state, T::RESULT_IS_CACHABLE) {
             // TODO: Consider that partial results 'should' still be safe to re-use and could pre-start later work.
             /* TaskState::Partial | */
@@ -199,6 +199,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
             _ => trace!("{} task with status {status:#?}: {task:#?}", Self::name()),
         }
         // Launch the job!!!
+        status.state = TaskState::Running;
         let result_or_error_sender = result_or_error_sender.clone();
         tokio::spawn(async move {
             // Tasks will report that they are running. Do not report them here.
