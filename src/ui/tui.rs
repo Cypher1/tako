@@ -68,13 +68,9 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> Tui<Out> {
         let (cols, rows) = size()?;
 
         let mut row = 0;
-        let mut status_lines = vec!["Stats".to_string()];
-        for (task_kind, stats) in &self.manager_status {
-            let s = format!("{task_kind:?}: {stats}");
-            status_lines.push(s);
-        }
         row += 1;
-        for line in status_lines {
+        for (task_kind, stats) in &self.manager_status {
+            let line = format!("{task_kind:?}: {stats}");
             let len = line.len() as u16;
             stdout()
                 .queue(MoveTo(cols - len - 1, row))?
@@ -248,7 +244,7 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> UserInterface<Out> for Tui
                 Some(value) = response_getter.recv() => {
                     trace!("Got result value: {value:?}");
                     tui.history.push(format!("{value:#?}"));
-                    if !tui.options.interactive() {
+                    if tui.options.oneshot() {
                         tui.should_exit = true;
                     }
                 },
