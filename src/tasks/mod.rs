@@ -107,9 +107,11 @@ impl TaskSet {
                     },
                 )
                 .expect("Watcher failed to register");
+                trace!("Waiting on file changes...");
                 watcher
-                    .watch(Path::new("."), RecursiveMode::Recursive)
+                    .watch(Path::new("test.tk"), RecursiveMode::Recursive)
                     .expect("Should be able to watch files");
+                trace!("Finished waiting on file changes");
             });
         }
 
