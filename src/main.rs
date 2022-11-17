@@ -31,21 +31,12 @@ async fn main() -> Result<()> {
         stats_requester.clone(),
     )
     .await;
-    if !options.files.is_empty() {
-    request_sender
-        .send(RequestTask::Launch {
-            files: options.files.clone(),
-        })
-        .unwrap_or_else(|err| {
-            error!("Compiler task has ended: {}", err);
-            std::process::exit(1);
-        });
-    }
     let ui_task = {
+        let options = options.clone();
         let request_sender = match options.cmd {
             Command::Repl => {
                 trace!("main: Waiting for user actions...");
-                Some(request_sender)
+                Some(request_sender.clone())
             }
             _ => None,
         };
@@ -75,6 +66,16 @@ async fn main() -> Result<()> {
             };
         })
     };
+    if !options.files.is_empty() {
+        request_sender
+            .send(RequestTask::Launch {
+                files: options.files.clone(),
+            })
+            .unwrap_or_else(|err| {
+                error!("Compiler task has ended: {}", err);
+                std::process::exit(1);
+            });
+    }
     ui_task.await.unwrap_or_else(|err| {
         trace!("Internal error: {err:#?}");
         error!("Compiler interface finished with internal error: {err}");
