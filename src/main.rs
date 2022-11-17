@@ -25,34 +25,30 @@ async fn main() -> Result<()> {
     let (task_manager_status_sender, task_manager_status_receiver) = mpsc::unbounded_channel();
     let (request_sender, request_receiver) = mpsc::unbounded_channel();
     let stats_requester = Arc::new(Mutex::new(broadcast::channel(1).0));
-
-    let request_sender = match options.cmd {
-        Command::Repl => {
-            trace!("main: Waiting for user actions...");
-            Some(request_sender)
-        }
-        Command::Build => {
-            request_sender
-                .send(RequestTask::Launch {
-                    files: options.files.clone(),
-                })
-                .unwrap_or_else(|err| {
-                    error!("Compiler task has ended: {}", err);
-                    std::process::exit(1);
-                });
-            None
-        }
-        _ => todo!(),
-    };
     let compiler_task = start(
         task_manager_status_sender,
         request_receiver,
         stats_requester.clone(),
     )
     .await;
-
+    if !options.files.is_empty() {
+    request_sender
+        .send(RequestTask::Launch {
+            files: options.files.clone(),
+        })
+        .unwrap_or_else(|err| {
+            error!("Compiler task has ended: {}", err);
+            std::process::exit(1);
+        });
+    }
     let ui_task = {
-        let stats_requester = stats_requester.clone();
+        let request_sender = match options.cmd {
+            Command::Repl => {
+                trace!("main: Waiting for user actions...");
+                Some(request_sender)
+            }
+            _ => None,
+        };
         let ui_mode = options.ui_mode;
         tokio::spawn(async move {
             match ui_mode {
