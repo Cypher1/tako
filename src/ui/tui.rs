@@ -1,5 +1,6 @@
 use super::UserInterface;
 use crate::cli_options::Options;
+use crate::error::Error;
 use crate::tasks::{RequestTask, StatusReport, TaskKind, TaskStats};
 use async_trait::async_trait;
 use crokey::{key, KeyEventFormat};
@@ -14,18 +15,17 @@ use futures::{future::FutureExt, StreamExt};
 use log::{debug, trace};
 use shutdown_hooks::add_shutdown_hook;
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::{
     io::{stdout, Write},
     time::{Duration, Instant},
 };
-use std::path::PathBuf;
 use tokio::time;
 use tokio::{
     self,
     sync::{broadcast, mpsc},
 };
-use crate::error::Error;
 
 const TICK: Duration = Duration::from_millis(100);
 
@@ -82,7 +82,10 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> Tui<Out> {
             row += 1;
         }
         for (filename, errs) in &self.errors_for_file {
-            let filename = filename.as_ref().map(|f|f.display().to_string()).unwrap_or_else(||"<unknown>".to_string());
+            let filename = filename
+                .as_ref()
+                .map(|f| f.display().to_string())
+                .unwrap_or_else(|| "<unknown>".to_string());
             let line = format!("Errors in {filename}");
             let len = line.len() as u16;
             stdout()

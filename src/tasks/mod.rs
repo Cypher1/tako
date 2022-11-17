@@ -14,8 +14,8 @@ pub use status::*;
 use std::fmt::Debug;
 use std::path::PathBuf;
 use std::{collections::HashMap, path::Path};
-use task_trait::*;
 pub use task_trait::TaskId;
+use task_trait::*;
 use tokio::sync::{broadcast, mpsc};
 
 // TODO: Add timing information, etc.
@@ -97,8 +97,8 @@ impl TaskSet {
             tokio::spawn(async move {
                 let mut watcher = {
                     let load_file_sender = load_file_sender.clone();
-                    notify::recommended_watcher(
-                        move |res: Result<notify::Event, notify::Error>| match res {
+                    notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
+                        match res {
                             Ok(event) => {
                                 trace!("event: {:?}", event);
                                 for path in event.paths {
@@ -110,8 +110,9 @@ impl TaskSet {
                             Err(e) => {
                                 trace!("watch error: {:?}", e);
                             }
-                        },
-                    ).expect("Watcher failed to register")
+                        }
+                    })
+                    .expect("Watcher failed to register")
                 };
                 trace!("Waiting on file changes...");
                 watcher
