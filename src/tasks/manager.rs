@@ -229,11 +229,11 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
             }
             match self.stats_requester.try_recv() {
                 Ok(()) => {
-                    if let Err(_) = self.stats_sender.send(StatusReport {
+                    if self.stats_sender.send(StatusReport {
                         kind: <T as Task>::TASK_KIND,
                         stats: self.stats,
                         errors: self.errors.clone(),
-                    }) {
+                    }).is_err() {
                         debug!("Stats receiver closed");
                         break;
                     }
