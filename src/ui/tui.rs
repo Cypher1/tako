@@ -267,7 +267,7 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> UserInterface<Out> for Tui
                 else => break,
             }
             if tui.should_exit {
-                stdout().queue(Clear(ClearType::All))?;
+                // stdout().queue(Clear(ClearType::All))?;
                 stdout().flush()?;
                 std::process::exit(0)
             }
