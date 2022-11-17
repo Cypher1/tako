@@ -221,13 +221,24 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
                 Some(task) = self.task_receiver.recv() => {
                     self.handle_new_task(&result_or_error_sender, task).await;
                 },
-                Ok(()) = self.stats_requester.recv() => {
-                    let _ = self.stats_sender.send(StatusReport {
+                else => break,
+            }
+            match self.stats_requester.try_recv() {
+                Ok(()) => {
+                    if let Err(_) = self.stats_sender.send(StatusReport {
                         kind: <T as Task>::TASK_KIND,
                         stats: self.stats,
-                    }); // TODO: !?
+                    }) {
+                        debug!("Stats receiver closed");
+                        break;
+                    }
                 }
-                else => break,
+                Err(broadcast::error::TryRecvError::Empty) => {}
+                Err(broadcast::error::TryRecvError::Lagged(_n)) => {}
+                Err(broadcast::error::TryRecvError::Closed) => {
+                    debug!("Stats requester closed");
+                    break;
+                }
             }
         }
         self.stats_sender

@@ -204,11 +204,6 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> Tui<Out> {
         if !characters.is_empty() {
             self.characters = characters;
         }
-        if self.should_exit {
-            stdout().queue(Clear(ClearType::All))?;
-            stdout().flush()?;
-            std::process::exit(0)
-        }
         Ok(())
     }
 }
@@ -253,6 +248,9 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> UserInterface<Out> for Tui
                 Some(value) = response_getter.recv() => {
                     trace!("Got result value: {value:?}");
                     tui.history.push(format!("{value:#?}"));
+                    if !tui.options.interactive() {
+                        tui.should_exit = true;
+                    }
                 },
                 Some(maybe_event) = event => {
                     match maybe_event {
@@ -267,6 +265,11 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> UserInterface<Out> for Tui
                     }
                 }
                 else => break,
+            }
+            if tui.should_exit {
+                stdout().queue(Clear(ClearType::All))?;
+                stdout().flush()?;
+                std::process::exit(0)
             }
             // tui.cursor_blink = (start_time.elapsed().as_secs() % 2) == 0;
             if tui.options.interactive() {
