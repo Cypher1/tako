@@ -15,6 +15,7 @@ use std::fmt::Debug;
 use std::path::PathBuf;
 use std::{collections::HashMap, path::Path};
 use task_trait::*;
+pub use task_trait::TaskId;
 use tokio::sync::{broadcast, mpsc};
 
 // TODO: Add timing information, etc.

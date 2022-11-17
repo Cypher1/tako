@@ -13,17 +13,19 @@ use crossterm::{
 use futures::{future::FutureExt, StreamExt};
 use log::{debug, trace};
 use shutdown_hooks::add_shutdown_hook;
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::{
     io::{stdout, Write},
     time::{Duration, Instant},
 };
+use std::path::PathBuf;
 use tokio::time;
 use tokio::{
     self,
     sync::{broadcast, mpsc},
 };
+use crate::error::Error;
 
 const TICK: Duration = Duration::from_millis(100);
 
@@ -33,12 +35,13 @@ extern "C" fn shutdown() {
 
 #[derive(Debug)]
 pub struct Tui<Out: Send + std::fmt::Debug + std::fmt::Display> {
-    manager_status: BTreeMap<TaskKind, TaskStats>,
+    manager_status: HashMap<TaskKind, TaskStats>,
     request_sender: Option<mpsc::UnboundedSender<RequestTask>>,
     response_getter: Option<mpsc::UnboundedReceiver<Out>>,
     key_fmt: KeyEventFormat,
     should_exit: bool,
     history: Vec<String>, // TODO: Mark Input v output.
+    errors_for_file: HashMap<Option<PathBuf>, Vec<Error>>,
     input: String,
     input_after_cursor: String,
     characters: String,
@@ -48,12 +51,13 @@ pub struct Tui<Out: Send + std::fmt::Debug + std::fmt::Display> {
 impl<Out: Send + std::fmt::Debug + std::fmt::Display> Default for Tui<Out> {
     fn default() -> Self {
         Self {
-            manager_status: BTreeMap::default(),
+            manager_status: HashMap::default(),
             request_sender: None,
             response_getter: None,
             key_fmt: KeyEventFormat::default(),
             should_exit: false,
             history: Vec::default(),
+            errors_for_file: HashMap::default(),
             input: "".to_string(),
             input_after_cursor: "".to_string(),
             characters: "".to_string(),
@@ -76,6 +80,23 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> Tui<Out> {
                 .queue(MoveTo(cols - len - 1, row))?
                 .queue(Print(line))?;
             row += 1;
+        }
+        for (filename, errs) in &self.errors_for_file {
+            let filename = filename.as_ref().map(|f|f.display().to_string()).unwrap_or_else(||"<unknown>".to_string());
+            let line = format!("Errors in {filename}");
+            let len = line.len() as u16;
+            stdout()
+                .queue(MoveTo(cols - len - 1, row))?
+                .queue(Print(line))?;
+            row += 1;
+            for err in errs {
+                let line = format!("{err:?}");
+                let len = line.len() as u16;
+                stdout()
+                    .queue(MoveTo(cols - len - 1, row))?
+                    .queue(Print(line))?;
+                row += 1;
+            }
         }
 
         let count_lines = |s: &str| s.chars().filter(|c| *c == '\n').count();
@@ -233,8 +254,13 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> UserInterface<Out> for Tui
             let event = reader.next().fuse();
             let response_getter = tui.response_getter.as_mut().expect("No response_getter");
             tokio::select! {
-                Some(StatusReport { kind, stats }) = task_manager_status_receiver.recv() => {
-                    trace!("TaskManager stats: {kind:?} => {stats}");
+                Some(StatusReport { kind, stats, errors }) = task_manager_status_receiver.recv() => {
+                    trace!("TaskManager status: {kind:?} => {stats}\nerrors: {errors:#?}");
+                    for (_id, err) in errors {
+                        let file = err.location.as_ref().map(|loc| loc.filename.clone());
+                        let errs = tui.errors_for_file.entry(file).or_insert(Vec::new());
+                        errs.push(err);
+                    }
                     tui.manager_status.insert(kind, stats);
                 },
                 _ = stats_ticker.tick() => {

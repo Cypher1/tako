@@ -46,8 +46,8 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display + 'static> UserInterface<Ou
 
         loop {
             tokio::select! {
-                Some(StatusReport { kind, stats }) = task_manager_status_receiver.recv() => {
-                    trace!("TaskManager stats: {kind:?} => {stats}");
+                Some(StatusReport { kind, stats, errors }) = task_manager_status_receiver.recv() => {
+                    trace!("TaskManager stats: {kind:?} => {stats}\nerrors: {errors:#?}");
                     // http.manager_status.insert(kind, stats);
                 },
                 _ = stats_ticker.tick() => {
