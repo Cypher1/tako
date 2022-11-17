@@ -56,7 +56,7 @@ impl From<std::num::ParseIntError> for TError {
 #[derive(Error, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Error {
     pub source: TError,
-    location: Option<UserFacingLocation>,
+    pub location: Option<UserFacingLocation>,
 }
 pub type ErrorId = TypedIndex<Error>;
 

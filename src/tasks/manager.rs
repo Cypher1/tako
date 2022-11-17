@@ -59,6 +59,7 @@ impl std::fmt::Display for TaskStats {
 pub struct StatusReport {
     pub kind: TaskKind,
     pub stats: TaskStats,
+    pub errors: HashMap<TaskId, Error>,
 }
 
 impl StatusReport {
@@ -66,6 +67,7 @@ impl StatusReport {
         Self {
             kind,
             stats: TaskStats::default(),
+            errors: HashMap::default(),
         }
     }
 }
@@ -84,6 +86,7 @@ pub struct TaskManager<T: Task> {
     stats_requester: broadcast::Receiver<()>,
     result_store: TaskResults<T>,
     stats: TaskStats,
+    errors: HashMap<TaskId, Error>,
     config: ManagerConfig,
 }
 
@@ -109,6 +112,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
             stats_requester,
             result_store: TaskResults::<T>::new(),
             stats: TaskStats::default(),
+            errors: HashMap::new(),
             config,
         }
     }
@@ -228,6 +232,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
                     if let Err(_) = self.stats_sender.send(StatusReport {
                         kind: <T as Task>::TASK_KIND,
                         stats: self.stats,
+                        errors: self.errors.clone(),
                     }) {
                         debug!("Stats receiver closed");
                         break;
@@ -245,6 +250,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
             .send(StatusReport {
                 kind: <T as Task>::TASK_KIND,
                 stats: self.stats,
+                errors: self.errors.clone(),
             })
             .unwrap_or_else(|err| {
                 debug!("Could not report final task manager stats: {}", err);
