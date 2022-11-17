@@ -71,7 +71,7 @@ impl Options {
                     "-O3" => opts.optimization_level = 3,
                     "--version" => {
                         print_cli_info();
-                        return opts;
+                        std::process::exit(1);
                     }
                     "--" => got_dashdash = true,
                     arg => {
