@@ -89,38 +89,34 @@ impl TaskSet {
         let (eval_file_sender, eval_file_receiver) = mpsc::unbounded_channel();
 
         {
-            let load_file_sender = load_file_sender.clone();
-            tokio::spawn(async move {
-                let mut watcher = notify::recommended_watcher(
-                    move |res: Result<notify::Event, notify::Error>| match res {
-                        Ok(event) => {
-                            trace!("event: {:?}", event);
-                            for path in event.paths {
-                                load_file_sender
-                                    .send(LoadFileTask { path })
-                                    .expect("Load file task could not be sent");
-                            }
-                        }
-                        Err(e) => {
-                            trace!("watch error: {:?}", e);
-                        }
-                    },
-                )
-                .expect("Watcher failed to register");
-                trace!("Waiting on file changes...");
-                watcher
-                    .watch(Path::new("test.tk"), RecursiveMode::Recursive)
-                    .expect("Should be able to watch files");
-                trace!("Finished waiting on file changes");
-            });
-        }
-
-        {
             let load_file_sender = load_file_sender;
             let lex_file_sender = lex_file_sender.clone();
             let parse_file_sender = parse_file_sender.clone();
             let eval_file_sender = eval_file_sender.clone();
             tokio::spawn(async move {
+                let mut watcher = {
+                    let load_file_sender = load_file_sender.clone();
+                    notify::recommended_watcher(
+                        move |res: Result<notify::Event, notify::Error>| match res {
+                            Ok(event) => {
+                                trace!("event: {:?}", event);
+                                for path in event.paths {
+                                    load_file_sender
+                                        .send(LoadFileTask { path })
+                                        .expect("Load file task could not be sent");
+                                }
+                            }
+                            Err(e) => {
+                                trace!("watch error: {:?}", e);
+                            }
+                        },
+                    ).expect("Watcher failed to register")
+                };
+                trace!("Waiting on file changes...");
+                watcher
+                    .watch(Path::new("test.tk"), RecursiveMode::Recursive)
+                    .expect("Should be able to watch files");
+
                 loop {
                     let new_task: Option<AnyTask> = any_task_receiver.recv().await;
                     match new_task {
