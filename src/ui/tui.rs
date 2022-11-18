@@ -14,7 +14,7 @@ use crossterm::{
 use futures::{future::FutureExt, StreamExt};
 use log::{debug, trace};
 use shutdown_hooks::add_shutdown_hook;
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeSet};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::{
@@ -41,7 +41,7 @@ pub struct Tui<Out: Send + std::fmt::Debug + std::fmt::Display> {
     key_fmt: KeyEventFormat,
     should_exit: bool,
     history: Vec<String>, // TODO: Mark Input v output.
-    errors_for_file: HashMap<Option<PathBuf>, Vec<Error>>,
+    errors_for_file: HashMap<Option<PathBuf>, BTreeSet<Error>>,
     input: String,
     input_after_cursor: String,
     characters: String,
@@ -81,19 +81,9 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> Tui<Out> {
                 .queue(Print(line))?;
             row += 1;
         }
-        for (filename, errs) in &self.errors_for_file {
-            let filename = filename
-                .as_ref()
-                .map(|f| f.display().to_string())
-                .unwrap_or_else(|| "<unknown>".to_string());
-            let line = format!("Errors in {filename}");
-            let len = line.len() as u16;
-            stdout()
-                .queue(MoveTo(cols - len - 1, row))?
-                .queue(Print(line))?;
-            row += 1;
+        for (_filename, errs) in &self.errors_for_file {
             for err in errs {
-                let line = format!("{err:?}");
+                let line = format!("{err}");
                 let len = line.len() as u16;
                 stdout()
                     .queue(MoveTo(cols - len - 1, row))?
@@ -261,8 +251,8 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> UserInterface<Out> for Tui
                     trace!("TaskManager status: {kind:?} => {stats}\nerrors: {errors:#?}");
                     for (_id, err) in errors {
                         let file = err.location.as_ref().map(|loc| loc.filename.clone());
-                        let errs = tui.errors_for_file.entry(file).or_insert(Vec::new());
-                        errs.push(err);
+                        let errs = tui.errors_for_file.entry(file).or_insert(BTreeSet::new());
+                        errs.insert(err);
                     }
                     tui.manager_status.insert(kind, stats);
                 },

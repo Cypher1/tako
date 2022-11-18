@@ -41,7 +41,11 @@ impl std::fmt::Display for UserFacingLocation {
 
 impl std::fmt::Debug for UserFacingLocation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}:{}:{}", self.filename.display(), self.line, self.col)
+        write!(f, "{}", self.filename.display())?;
+        if self.line != 0 || self.col != 0 {
+            write!(f, ":{}:{}", self.line, self.col)?;
+        }
+        Ok(())
     }
 }
 
@@ -52,6 +56,10 @@ impl UserFacingLocation {
             line,
             col,
         }
+    }
+
+    pub fn from_path(path: &Path) -> Self {
+        UserFacingLocation::new(path, 0, 0)
     }
 
     pub fn from(path: &Path, contents: &str, location: &Location) -> Self {

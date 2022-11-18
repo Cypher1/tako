@@ -37,6 +37,12 @@ impl From<std::fmt::Error> for TError {
 
 impl From<std::io::Error> for TError {
     fn from(error: std::io::Error) -> Self {
+        if error.kind() == std::io::ErrorKind::NotFound {
+            return TError::InternalError {
+                message: "File not found".to_string(),
+                location: None,
+            }
+        }
         TError::InternalError {
             message: error.to_string(),
             location: None,
@@ -77,6 +83,9 @@ impl Error {
             (Some(path), Some(contents), Some(location), _module) => {
                 Some(UserFacingLocation::from(path, contents, location))
             }
+            (Some(path), _, _, _) => {
+                Some(UserFacingLocation::from_path(path))
+            }
             _ => None, // TODO: There's more options here...
         };
         Self { source, location }
@@ -91,23 +100,23 @@ impl std::fmt::Display for Error {
 
 impl std::fmt::Debug for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Error")?;
-        if let Some(location) = &self.location {
-            write!(f, " in {}", &location)?;
-        }
         match &self.source {
             TError::CppCompilerError { error, return_code } => write!(
                 f,
                 "call to C++ compiler failed with error code: {return_code}\n{error}"
-            ),
+            )?,
             TError::ParseError {
                 message,
                 location: _,
-            } => write!(f, "parse failed, {message}"),
+            } => write!(f, "{message}")?,
             TError::InternalError {
                 message,
                 location: _,
-            } => write!(f, "internal error: {message}"),
+            } => write!(f, "{message}")?,
         }
+        if let Some(location) = &self.location {
+            write!(f, " {}", &location)?;
+        }
+        Ok(())
     }
 }
