@@ -1,6 +1,7 @@
 mod manager;
 mod status;
 mod task_trait;
+use crate::ast::NodeId;
 use crate::ast::Ast;
 use crate::error::Error;
 use crate::tokens::Token;
@@ -373,6 +374,7 @@ impl Task for ParseFileTask {
                         Ok(result) => Update::FinalResult(EvalFileTask {
                             path: self.path.to_path_buf(),
                             ast: result,
+                            root: None, // Dont assume which root to run (yet?)
                         }),
                         Err(err) => Update::Failed(err),
                     },
@@ -386,6 +388,7 @@ impl Task for ParseFileTask {
 pub struct EvalFileTask {
     path: PathBuf,
     ast: Ast,
+    root: Option<NodeId>,
 }
 
 #[async_trait]
@@ -399,7 +402,7 @@ impl Task for EvalFileTask {
     }
     async fn perform(self, result_sender: UpdateSender<Self, Self::Output>) {
         tokio::task::spawn_blocking(move || {
-            let result = crate::interpreter::run(&self.path, &self.ast)
+            let result = crate::interpreter::run(&self.path, &self.ast, self.root.clone())
                 .map_err(|err| self.decorate_error(err));
             result_sender
                 .send((
