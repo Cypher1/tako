@@ -123,9 +123,10 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
             Self::name()
         );
         let caching_enabled = !self.config.disable_caching;
+        let task_id = task.get_hash();
         let mut current_results = self
             .result_store
-            .entry(task.get_hash())
+            .entry(task_id)
             .or_insert_with(TaskStatus::new);
         let mut is_complete = false;
         let mut error = None;
@@ -156,6 +157,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
                 is_complete = true;
             }
             Update::Failed(err) => {
+                self.errors.insert(task_id, err.clone());
                 self.stats.num_failed += 1;
                 is_complete = true; // For completeness...?
                 error = Some(err);
@@ -225,10 +227,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
                 Some(task) = self.task_receiver.recv() => {
                     self.handle_new_task(&result_or_error_sender, task).await;
                 },
-                else => break,
-            }
-            match self.stats_requester.try_recv() {
-                Ok(()) => {
+                Ok(()) = self.stats_requester.recv() => {
                     if self
                         .stats_sender
                         .send(StatusReport {
@@ -241,13 +240,8 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
                         debug!("Stats receiver closed");
                         break;
                     }
-                }
-                Err(broadcast::error::TryRecvError::Empty) => {}
-                Err(broadcast::error::TryRecvError::Lagged(_n)) => {}
-                Err(broadcast::error::TryRecvError::Closed) => {
-                    debug!("Stats requester closed");
-                    break;
-                }
+                },
+                else => break,
             }
         }
         self.stats_sender
