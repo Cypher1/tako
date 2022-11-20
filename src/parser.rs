@@ -1,9 +1,7 @@
-use std::path::Path;
-
 // use rand::Rng;
+use std::path::Path;
 use crate::ast::*;
 use crate::error::TError;
-
 use crate::tokens::{Symbol, Token, TokenType};
 use log::{debug, trace};
 
@@ -11,11 +9,11 @@ use static_assertions::*;
 assert_eq_size!(Partial, [u8; 16]); // TODO: Try to get the size down
 assert_eq_size!([Partial; 2], [u8; 32]);
 
-pub fn parse(filepath: &Path, tokens: &[Token]) -> Result<Ast, TError> {
+pub fn parse(filepath: &Path, contents: &str, tokens: &[Token]) -> Result<Ast, TError> {
     let tokens = tokens.iter().peekable();
     debug!("Parse {}", filepath.display());
     let mut ast = Ast::new(filepath.to_path_buf());
-    let root = expr(&mut ast, tokens);
+    let root = expr(&mut ast, contents, tokens);
     ast.roots.extend(root);
     // TODO: REMOVE THIS (it's just to test the threading model)
     // let mut rng = rand::thread_rng();
@@ -98,6 +96,7 @@ struct Partial {
 
 fn expr<'a, T: Iterator<Item = &'a Token>>(
     ast: &mut Ast,
+    contents: &str,
     mut tokens: std::iter::Peekable<T>,
 ) -> Option<NodeId> {
     // Following along with https://matklad.github.io/2020/04/15/from-pratt-to-dijkstra.html
@@ -142,6 +141,7 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
             let node = match res.token.kind {
                 TokenType::NumLit => {
                     trace!("Saving literal: {res:?}");
+                    ast.literal_values.register_str_by_loc(res.token.get_str(contents).to_string(), location.start);
                     ast.add_literal(Literal::Numeric, location)
                 }
                 TokenType::Op(symbol) => {
@@ -183,10 +183,15 @@ pub mod tests {
         "test.tk".into()
     }
 
+    fn setup(s: &str) -> Result<Ast, TError> {
+        crate::ensure_initialized();
+        let tokens = lex(s)?;
+        parse(&test_file1(), s, &tokens)
+    }
+
     #[test]
     fn parse_literal() -> Result<(), TError> {
-        let tokens = lex("123")?;
-        let ast = parse(&test_file1(), &tokens)?;
+        let ast = setup("123")?;
         dbg!(&ast);
         let Ast {
             roots: _, literals, ..
@@ -198,7 +203,7 @@ pub mod tests {
             literals,
             vec![(
                 NodeId::from_raw(0),
-                Literal::Numeric("123".to_string()),
+                Literal::Numeric, // ("123".to_string()),
             )],
             "Should have parsed a number"
         );
@@ -208,9 +213,7 @@ pub mod tests {
 
     #[test]
     fn parse_add_literals() -> Result<(), TError> {
-        crate::ensure_initialized();
-        let tokens = lex("1+2")?;
-        let ast = parse(&test_file1(), &tokens)?;
+        let ast = setup("1+2")?;
         dbg!(&ast);
         let Ast {
             calls,
@@ -223,11 +226,11 @@ pub mod tests {
             vec![
                 (
                     NodeId::from_raw(0),
-                    Literal::Numeric("1".to_string()),
+                    Literal::Numeric, // ("1".to_string()),
                 ),
                 (
                     NodeId::from_raw(1),
-                    Literal::Numeric("2".to_string()),
+                    Literal::Numeric, // ("2".to_string()),
                 )
             ],
             "Should have parsed a number"
@@ -240,9 +243,7 @@ pub mod tests {
 
     #[test]
     fn parse_add_mul_literals() -> Result<(), TError> {
-        crate::ensure_initialized();
-        let tokens = lex("1+2*3")?;
-        let ast = parse(&test_file1(), &tokens)?;
+        let ast = setup("1+2*3")?;
         dbg!(&ast);
         let Ast {
             calls,
@@ -258,9 +259,7 @@ pub mod tests {
 
     #[test]
     fn parse_mul_add_literals() -> Result<(), TError> {
-        crate::ensure_initialized();
-        let tokens = lex("1+2*3")?;
-        let ast = parse(&test_file1(), &tokens)?;
+        let ast = setup("1+2*3")?;
         dbg!(&ast);
         let Ast {
             calls,

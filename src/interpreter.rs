@@ -13,7 +13,7 @@ struct Ctx<'a> {
 }
 
 
-pub fn run(path: &Path, ast: &Ast, literals: &LiteralValues, root: Option<NodeId>) -> Result<Prim, TError> {
+pub fn run(path: &Path, ast: &Ast, root: Option<NodeId>) -> Result<Prim, TError> {
     let start = root.unwrap_or_else(|| {
         if ast.roots.len() == 1 {
             ast.roots[0]
@@ -25,7 +25,7 @@ pub fn run(path: &Path, ast: &Ast, literals: &LiteralValues, root: Option<NodeId
     let mut ctx = Ctx {
         mem: HashMap::new(),
         ast,
-        literals,
+        literals: &ast.literal_values,
     };
     ctx.eval(start)
 }
@@ -43,11 +43,11 @@ impl<'a> Ctx<'a> {
             NodeData::Literal(id) => {
                 let (_id, lit) = id.get(&self.ast.literals);
                 let s = self.literals.get_str_by_loc(node.location.start);
-                match lit {
-                    Literal::Bool => todo!("Bool {lit:?} {s:?}"),
-                    Literal::Numeric => todo!("Numeric {lit:?} {s:?}"),
-                    Literal::Text => todo!("Text {lit:?} {s:?}"),
-                }
+                Ok(match lit {
+                    Literal::Bool => todo!("{lit:?} {s:?}"),
+                    Literal::Numeric => Prim::I32(s.expect("Should have string for literal").parse::<i32>()?),
+                    Literal::Text => todo!("{lit:?} {s:?}"),
+                })
             }
         }
     }
@@ -66,8 +66,9 @@ mod tests {
     }
 
     fn setup(s: &str) -> Result<Ast, TError> {
+        crate::ensure_initialized();
         let tokens = lex(s)?;
-        parse(&test_path(), &tokens)
+        parse(&test_path(), s, &tokens)
     }
 
     #[test]

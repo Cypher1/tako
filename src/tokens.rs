@@ -183,7 +183,7 @@ impl Token {
         }
     }
 
-    fn get_str<'a>(&self, source: &'a str) -> &'a str {
+    pub fn get_str<'a>(&self, source: &'a str) -> &'a str {
         // Assuming the token is from the source file...
         &source[self.start as usize..self.start as usize + self.length as usize]
     }

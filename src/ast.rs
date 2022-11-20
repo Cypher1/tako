@@ -1,14 +1,15 @@
 use crate::location::Location;
-use crate::literal_values::NamedSymbol;
+use crate::literal_values::{NamedSymbol, LiteralValues};
 use crate::tokens::Symbol;
 use crate::utils::typed_index::TypedIndex;
 use std::path::PathBuf;
 
-#[derive(Debug)]
+/*
 struct InContext<'a, T> {
     value: T,
     ast: &'a Ast,
 }
+*/
 
 // TODO: String interner?
 // TODO: Replace strings where ideal...
@@ -93,6 +94,7 @@ pub struct Ast {
     pub named_symbols: Vec<(NodeId, NamedSymbol)>,
     pub definitions: Vec<(NodeId, Definition)>,
     pub literals: Vec<(NodeId, Literal)>,
+    pub literal_values: LiteralValues,
 }
 
 impl Ast {
@@ -216,7 +218,7 @@ mod tests {
         let mut lits = LiteralValues::default();
         let mut ast = Ast::default();
         let a = lits.register_str("a".to_string());
-        let b = Literal::Numeric("123456789".to_string());
+        let b = Literal::Numeric; // ("123456789".to_string());
         let a = ast.make_node(a, Location::dummy_for_test());
         let b = ast.make_node(b, Location::dummy_for_test());
         let call = Op {
@@ -233,10 +235,11 @@ mod tests {
         ast.set_root(definition);
         dbg!(&ast);
 
-        assert_eq!(ast.nodes.len(), 5);
+        assert_eq!(ast.nodes.len(), 4);
         assert_eq!(ast.named_symbols.len(), 1);
         assert_eq!(ast.literals.len(), 1);
-        assert_eq!(ast.calls.len(), 1);
+        assert_eq!(ast.ops.len(), 1);
+        assert_eq!(ast.calls.len(), 0);
         assert_eq!(ast.definitions.len(), 1);
         assert_eq!(ast.roots, vec![definition]);
     }
