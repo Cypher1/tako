@@ -142,7 +142,7 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
             let node = match res.token.kind {
                 TokenType::NumLit => {
                     trace!("Saving literal: {res:?}");
-                    ast.add_literal(Literal::Numeric, location)
+                    ast.add_literal(Literal::Numeric(s), location)
                 }
                 TokenType::Op(symbol) => {
                     trace!("Merging {res:?} and {left:?} to prep for {token:?}");
@@ -198,7 +198,7 @@ pub mod tests {
             literals,
             vec![(
                 NodeId::from_raw(0),
-                Literal::Numeric, // 123
+                Literal::Numeric("123".to_string()),
             )],
             "Should have parsed a number"
         );
@@ -213,7 +213,6 @@ pub mod tests {
         let ast = parse(&test_file1(), &tokens)?;
         dbg!(&ast);
         let Ast {
-            symbols,
             calls,
             literals,
             ..
@@ -224,17 +223,16 @@ pub mod tests {
             vec![
                 (
                     NodeId::from_raw(0),
-                    Literal::Numeric, // 1
+                    Literal::Numeric("1".to_string()),
                 ),
                 (
                     NodeId::from_raw(1),
-                    Literal::Numeric, // 2
+                    Literal::Numeric("2".to_string()),
                 )
             ],
             "Should have parsed a number"
         );
 
-        dbg!(symbols);
         dbg!(calls);
         dbg!(literals);
         Ok(())
@@ -247,13 +245,11 @@ pub mod tests {
         let ast = parse(&test_file1(), &tokens)?;
         dbg!(&ast);
         let Ast {
-            symbols,
             calls,
             literals,
             ..
         } = ast;
 
-        dbg!(symbols);
         dbg!(calls);
         dbg!(literals);
 
@@ -267,13 +263,11 @@ pub mod tests {
         let ast = parse(&test_file1(), &tokens)?;
         dbg!(&ast);
         let Ast {
-            symbols,
             calls,
             literals,
             ..
         } = ast;
 
-        dbg!(symbols);
         dbg!(calls);
         dbg!(literals);
 

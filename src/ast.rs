@@ -1,13 +1,10 @@
 use crate::location::Location;
+use crate::literal_values::{NamedSymbol, LiteralValues};
 use crate::tokens::Symbol;
 use crate::utils::typed_index::TypedIndex;
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
-
-use static_assertions::*;
-assert_eq_size!(NamedSymbol, [u8; 8]);
-assert_eq_size!([NamedSymbol; 2], [u8; 16]);
 
 #[derive(Debug)]
 struct InContext<'a, T> {
@@ -80,7 +77,6 @@ pub enum NodeData {
     // TODO: consider how to split this up.
     // Use a Array of Enums Structs to Struct of Arrays (i.e. AoES2SoA).
     NodeRef(NodeId), // Hopefully don't need this...???
-    Symbol(SymbolId),
     NamedSymbol(NamedSymbolId),
     Call(CallId),
     Op(OpId),
@@ -88,29 +84,23 @@ pub enum NodeData {
     Literal(LiteralId),
 }
 
-type StringHash = u64;
-
 #[derive(Clone, Default, Debug, Hash, PartialEq, Eq)]
 pub struct Ast {
     // Abstract syntax tree... forest
-    pub file: PathBuf,
+    pub filepath: PathBuf,
     pub roots: Vec<NodeId>,
     pub nodes: Vec<Node>,
     pub calls: Vec<(NodeId, Call)>,
     pub ops: Vec<(NodeId, Op)>,
-    pub symbols: Vec<(NodeId, Symbol)>,
     pub named_symbols: Vec<(NodeId, NamedSymbol)>,
     pub definitions: Vec<(NodeId, Definition)>,
     pub literals: Vec<(NodeId, Literal)>,
-    // This ensures we can look up the string from the hash.
-    // BUT: We can also merge the hashes without losing any information.
-    pub strings: BTreeMap<StringHash, String>,
 }
 
 impl Ast {
-    pub fn new(file: PathBuf) -> Self {
+    pub fn new(filepath: PathBuf) -> Self {
         Self {
-            file,
+            filepath,
             ..Self::default()
         }
     }
@@ -119,7 +109,6 @@ impl Ast {
 make_contains!(nodes, Node, NodeRef, NodeId, unsafe_add_node);
 make_contains!(calls, (NodeId, Call), Call, CallId, add_call);
 make_contains!(ops, (NodeId, Op), Op, OpId, add_op);
-make_contains!(symbols, (NodeId, Symbol), Symbol, SymbolId, add_symbol);
 make_contains!(
     named_symbols,
     (NodeId, NamedSymbol),
@@ -167,24 +156,7 @@ impl Ast {
     pub fn set_root(&mut self, new_root: NodeId) {
         self.roots.push(new_root);
     }
-    pub fn register_str(&mut self, name: String) -> StrId {
-        let mut hasher = fxhash::FxHasher::default();
-        name.hash(&mut hasher);
-        let str_hash = hasher.finish();
-        self.strings.entry(str_hash).or_insert(name);
-        TypedIndex::from_raw(str_hash)
-    }
-    pub fn get_str(&self, s: StrId) -> Option<&str> {
-        self.strings
-            .get(&s.raw_index())
-            .map(|ref_string| &**ref_string)
-    }
 }
-
-type StrId = TypedIndex<String, StringHash>;
-// Ensures that str ids are unique per string but also stable across different files etc.
-
-pub type NamedSymbol = StrId;
 
 impl<'a> std::fmt::Display for InContext<'a, NamedSymbol> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -229,15 +201,15 @@ impl Op {
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Definition {
-    pub name: StrId,
+    pub name: NamedSymbol,
     pub implementation: NodeId,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum Literal {
-    Bool,    // a boolean of arbitrary size :P (true/false)
-    Numeric, // an Integer or Float of arbitrary size
-    Text,    // a character or strings of arbitrary size (e.g. UTF-8 or Unicode)
+    Bool(bool),    // a boolean of arbitrary size :P (true/false)
+    Numeric(String), // an Integer or Float of arbitrary size
+    Text(String),    // a character or strings of arbitrary size (e.g. UTF-8 or Unicode)
              // TODO: Add more complex literals like:
              // Rational, e.g. 12
              // Color,
@@ -252,19 +224,18 @@ mod tests {
 
     #[test]
     fn can_add_nodes_to_ast() {
+        let mut lits = LiteralValues::default();
         let mut ast = Ast::default();
-        let a = ast.register_str("a".to_string());
-        let plus = Symbol::Add;
-        let b = Literal::Numeric; // 123456789
-        let plus = ast.make_node(plus, Location::dummy_for_test());
+        let a = lits.register_str("a".to_string());
+        let b = Literal::Numeric("123456789".to_string());
         let a = ast.make_node(a, Location::dummy_for_test());
         let b = ast.make_node(b, Location::dummy_for_test());
-        let call = Call {
-            inner: plus,
-            args: vec![a, b],
+        let call = Op {
+            op: Symbol::Add,
+            args: [Some(a), Some(b)],
         };
         let call = ast.make_node(call, Location::dummy_for_test());
-        let a_prime = ast.register_str("a_prime".to_string());
+        let a_prime = lits.register_str("a_prime".to_string());
         let definition = Definition {
             name: a_prime,
             implementation: call,
@@ -274,7 +245,6 @@ mod tests {
         dbg!(&ast);
 
         assert_eq!(ast.nodes.len(), 5);
-        assert_eq!(ast.symbols.len(), 1);
         assert_eq!(ast.named_symbols.len(), 1);
         assert_eq!(ast.literals.len(), 1);
         assert_eq!(ast.calls.len(), 1);
