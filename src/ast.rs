@@ -1,9 +1,7 @@
 use crate::location::Location;
-use crate::literal_values::{NamedSymbol, LiteralValues};
+use crate::literal_values::NamedSymbol;
 use crate::tokens::Symbol;
 use crate::utils::typed_index::TypedIndex;
-use std::collections::BTreeMap;
-use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 
 #[derive(Debug)]
@@ -207,9 +205,9 @@ pub struct Definition {
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum Literal {
-    Bool(bool),    // a boolean of arbitrary size :P (true/false)
-    Numeric(String), // an Integer or Float of arbitrary size
-    Text(String),    // a character or strings of arbitrary size (e.g. UTF-8 or Unicode)
+    Bool,    // a boolean of arbitrary size :P (true/false)
+    Numeric, // an Integer or Float of arbitrary size
+    Text,    // a character or strings of arbitrary size (e.g. UTF-8 or Unicode)
              // TODO: Add more complex literals like:
              // Rational, e.g. 12
              // Color,
@@ -221,6 +219,7 @@ pub enum Literal {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::literal_values::LiteralValues;
 
     #[test]
     fn can_add_nodes_to_ast() {

@@ -142,7 +142,7 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
             let node = match res.token.kind {
                 TokenType::NumLit => {
                     trace!("Saving literal: {res:?}");
-                    ast.add_literal(Literal::Numeric(s), location)
+                    ast.add_literal(Literal::Numeric, location)
                 }
                 TokenType::Op(symbol) => {
                     trace!("Merging {res:?} and {left:?} to prep for {token:?}");

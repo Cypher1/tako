@@ -3,9 +3,17 @@ use std::collections::HashMap;
 use crate::ast::*;
 use crate::error::TError;
 use crate::primitives::Prim;
+use crate::literal_values::LiteralValues;
 use log::*;
 
-pub fn run(path: &Path, ast: &Ast, root: Option<NodeId>) -> Result<Prim, TError> {
+struct Ctx<'a> {
+    mem: HashMap<usize, Prim>,
+    ast: &'a Ast,
+    literals: &'a LiteralValues,
+}
+
+
+pub fn run(path: &Path, ast: &Ast, literals: &LiteralValues, root: Option<NodeId>) -> Result<Prim, TError> {
     let start = root.unwrap_or_else(|| {
         if ast.roots.len() == 1 {
             ast.roots[0]
@@ -14,24 +22,31 @@ pub fn run(path: &Path, ast: &Ast, root: Option<NodeId>) -> Result<Prim, TError>
             todo!()
         }
     });
-    let mut mem = HashMap::new();
-    eval(&mut mem, ast, start)
+    let mut ctx = Ctx {
+        mem: HashMap::new(),
+        ast,
+        literals,
+    };
+    ctx.eval(start)
 }
 
-pub fn eval(mem: &mut HashMap<usize, Prim>, ast: &Ast, node: NodeId) -> Result<Prim, TError> {
-    // TODO: ???
-    match node.get(&ast.nodes).id {
-        NodeData::NodeRef(_id) => todo!(),
-        NodeData::NamedSymbol(_id) => todo!(),
-        NodeData::Call(_id) => todo!(),
-        NodeData::Op(_id) => todo!(),
-        NodeData::Definition(_id) => todo!(),
-        NodeData::Literal(id) => {
-            let (_id, lit) = id.get(&ast.literals);
-            match lit {
-                Literal::Bool(b) => todo!("{b:?}"),
-                Literal::Numeric(n) => todo!("{n:?}"),
-                Literal::Text(t) => todo!("{t:?}"),
+impl<'a> Ctx<'a> {
+    pub fn eval(&mut self, node: NodeId) -> Result<Prim, TError> {
+        // TODO: ???
+        match node.get(&self.ast.nodes).id {
+            NodeData::NodeRef(_id) => todo!(),
+            NodeData::NamedSymbol(_id) => todo!(),
+            NodeData::Call(_id) => todo!(),
+            NodeData::Op(_id) => todo!(),
+            NodeData::Definition(_id) => todo!(),
+            NodeData::Literal(id) => {
+                let (_id, lit) = id.get(&self.ast.literals);
+                let s = self.literals.get_str_by_loc(node.location.start);
+                match lit {
+                    Literal::Bool => todo!("Bool {lit:?} {s:?}"),
+                    Literal::Numeric => todo!("Numeric {lit:?} {s:?}"),
+                    Literal::Text => todo!("Text {lit:?} {s:?}"),
+                }
             }
         }
     }
