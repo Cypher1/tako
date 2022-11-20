@@ -365,7 +365,7 @@ impl Task for ParseFileTask {
     }
     async fn perform(self, result_sender: UpdateSender<Self, Self::Output>) {
         tokio::task::spawn_blocking(move || {
-            let ast = crate::parser::parse(&self.path, &self.tokens)
+            let ast = crate::parser::parse(&self.path, &self.contents, &self.tokens)
                 .map_err(|err| self.decorate_error(err));
             result_sender
                 .send((

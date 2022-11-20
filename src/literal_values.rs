@@ -49,12 +49,12 @@ impl LiteralValues {
 #[derive(Debug)]
 struct InContext<'a, T> {
     value: T,
-    literalValues: &'a LiteralValues,
+    literal_values: &'a LiteralValues,
 }
 
 impl<'a> std::fmt::Display for InContext<'a, NamedSymbol> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(s) = self.literalValues.get_str(self.value) {
+        if let Some(s) = self.literal_values.get_str(self.value) {
             write!(f, "{s}")
         } else {
             write!(f, "<unknown symbol: {self:?}>")
