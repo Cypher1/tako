@@ -1,7 +1,7 @@
 use std::hash::{Hash, Hasher};
 use crate::utils::typed_index::TypedIndex;
 use std::collections::BTreeMap;
-use crate::location::{Location, IndexIntoFile};
+use crate::location::IndexIntoFile;
 
 type StringHash = u64;
 // Ensures that str ids are unique per string but also stable across different files etc.
