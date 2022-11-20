@@ -22,14 +22,17 @@ pub fn eval(mem: &mut HashMap<usize, Prim>, ast: &Ast, node: NodeId) -> Result<P
     // TODO: ???
     match node.get(&ast.nodes).id {
         NodeData::NodeRef(_id) => todo!(),
-        NodeData::Symbol(_id) => todo!(),
         NodeData::NamedSymbol(_id) => todo!(),
         NodeData::Call(_id) => todo!(),
         NodeData::Op(_id) => todo!(),
         NodeData::Definition(_id) => todo!(),
         NodeData::Literal(id) => {
-            let lit = id.get(&ast.literals);
-            todo!("{:?}", lit);
+            let (_id, lit) = id.get(&ast.literals);
+            match lit {
+                Literal::Bool(b) => todo!("{b:?}"),
+                Literal::Numeric(n) => todo!("{n:?}"),
+                Literal::Text(t) => todo!("{t:?}"),
+            }
         }
     }
 }

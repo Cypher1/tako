@@ -8,6 +8,7 @@ pub mod cli_options;
 pub mod error;
 pub mod interpreter;
 pub mod keywords;
+pub mod literal_values;
 pub mod location;
 pub mod parser;
 pub mod primitives;
