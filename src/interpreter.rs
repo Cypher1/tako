@@ -33,7 +33,8 @@ pub fn run(path: &Path, ast: &Ast, literals: &LiteralValues, root: Option<NodeId
 impl<'a> Ctx<'a> {
     pub fn eval(&mut self, node: NodeId) -> Result<Prim, TError> {
         // TODO: ???
-        match node.get(&self.ast.nodes).id {
+        let node = node.get(&self.ast.nodes);
+        match node.id {
             NodeData::NodeRef(_id) => todo!(),
             NodeData::NamedSymbol(_id) => todo!(),
             NodeData::Call(_id) => todo!(),
