@@ -4,6 +4,7 @@
 pub mod utils;
 
 pub mod ast;
+pub mod compiler_context;
 pub mod cli_options;
 pub mod error;
 pub mod interpreter;

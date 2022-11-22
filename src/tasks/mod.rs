@@ -1,6 +1,6 @@
 mod manager;
 mod status;
-mod task_trait;
+pub mod task_trait;
 use crate::ast::NodeId;
 use crate::ast::Ast;
 use crate::error::Error;
