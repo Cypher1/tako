@@ -1,7 +1,6 @@
 use crate::cli_options::Options;
 use crate::tasks::{RequestTask, StatusReport};
 use async_trait::async_trait;
-use std::sync::{Arc, Mutex};
 use tokio::sync::{broadcast, mpsc};
 
 mod http;
@@ -27,7 +26,7 @@ pub trait UserInterface<Out: Send + std::fmt::Debug + std::fmt::Display>: std::f
         task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
         request_sender: Option<mpsc::UnboundedSender<RequestTask>>,
         response_getter: mpsc::UnboundedReceiver<Out>,
-        stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
+        stats_requester: broadcast::Sender<()>,
         options: Options,
     ) -> std::io::Result<()>
     where

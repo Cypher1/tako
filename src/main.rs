@@ -2,9 +2,7 @@
 use crossterm::Result;
 use log::{debug, error, trace};
 use std::env;
-use std::sync::{Arc, Mutex};
 use tokio::sync::{broadcast, mpsc};
-
 use takolib::cli_options::{Command, Options};
 use takolib::launch_ui;
 use takolib::start;
@@ -24,7 +22,7 @@ async fn main() -> Result<()> {
 
     let (task_manager_status_sender, task_manager_status_receiver) = mpsc::unbounded_channel();
     let (request_sender, request_receiver) = mpsc::unbounded_channel();
-    let stats_requester = Arc::new(Mutex::new(broadcast::channel(1).0));
+    let (stats_requester, _) = broadcast::channel(1);
     let compiler_task = start(
         task_manager_status_sender,
         request_receiver,

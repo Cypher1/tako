@@ -3,11 +3,9 @@ use crate::error::TError;
 use crate::literal_values::LiteralValues;
 use crate::primitives::Prim;
 use log::*;
-use std::collections::HashMap;
 use std::path::Path;
 
 struct Ctx<'a> {
-    mem: HashMap<usize, Prim>,
     ast: &'a Ast,
     literals: &'a LiteralValues,
 }
@@ -25,7 +23,6 @@ pub fn run(path: &Path, ast: &Ast, root: Option<NodeId>) -> Result<Prim, TError>
         }
     });
     let mut ctx = Ctx {
-        mem: HashMap::new(),
         ast,
         literals: &ast.literal_values,
     };
