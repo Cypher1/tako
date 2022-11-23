@@ -21,31 +21,28 @@ async fn main() -> Result<()> {
     debug!("Options: {options:#?}");
 
     let (task_manager_status_sender, task_manager_status_receiver) = mpsc::unbounded_channel();
-    let (request_sender, request_receiver) = mpsc::unbounded_channel();
     let (stats_requester, _) = broadcast::channel(1);
-    let compiler_task = start(
+    let compiler = start(
         task_manager_status_sender,
-        request_receiver,
         stats_requester.clone(),
     )
     .await;
+    // if !options.files.is_empty() {
+        // compiler.send_command(
+            // RequestTask::Launch {
+                // files: options.files.clone(),
+            // }
+        // );
+    // }
     let ui_task = {
         let options = options.clone();
-        let request_sender = match options.cmd {
-            Command::Repl => {
-                trace!("main: Waiting for user actions...");
-                Some(request_sender.clone())
-            }
-            _ => None,
-        };
         let ui_mode = options.ui_mode;
         tokio::spawn(async move {
             match ui_mode {
                 UiMode::Tui => {
-                    launch_ui::<Output, Tui<Output>>(
+                    launch_ui::<Output, Tui>(
                         task_manager_status_receiver,
-                        request_sender,
-                        compiler_task,
+                        compiler,
                         stats_requester,
                         options,
                     )
@@ -54,8 +51,7 @@ async fn main() -> Result<()> {
                 UiMode::Http => {
                     launch_ui::<Output, Http>(
                         task_manager_status_receiver,
-                        request_sender,
-                        compiler_task,
+                        compiler,
                         stats_requester,
                         options,
                     )
@@ -64,16 +60,6 @@ async fn main() -> Result<()> {
             };
         })
     };
-    if !options.files.is_empty() {
-        request_sender
-            .send(RequestTask::Launch {
-                files: options.files.clone(),
-            })
-            .unwrap_or_else(|err| {
-                error!("Compiler task has ended: {}", err);
-                std::process::exit(1);
-            });
-    }
     ui_task.await.unwrap_or_else(|err| {
         trace!("Internal error: {err:#?}");
         error!("Compiler interface finished with internal error: {err}");

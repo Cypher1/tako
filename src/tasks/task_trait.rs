@@ -18,7 +18,9 @@ pub struct TaskMeta {
 }
 
 pub type TaskReceiverFor<T> = mpsc::UnboundedReceiver<T>;
-pub type TaskSenderFor<T> = mpsc::UnboundedSender<<T as Task>::Output>;
+pub type TaskSenderFor<T> = mpsc::UnboundedSender<T>;
+pub type ResultReceiverFor<T> = mpsc::UnboundedReceiver<<T as Task>::Output>;
+pub type ResultSenderFor<T> = mpsc::UnboundedSender<<T as Task>::Output>;
 pub type UpdateSender<T, O> = mpsc::UnboundedSender<(T, Update<O, Error>)>;
 
 #[async_trait]

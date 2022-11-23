@@ -3,19 +3,19 @@ pub mod status;
 pub mod task_trait;
 use crate::ast::Ast;
 use crate::ast::NodeId;
-use crate::error::Error;
 use crate::tokens::Token;
 use async_trait::async_trait;
 use enum_kinds::EnumKind;
-
+use log::trace;
 pub use manager::{StatusReport, TaskStats};
-
 pub use status::*;
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 pub use task_trait::TaskId;
 use task_trait::*;
+use crate::error::Error;
+use notify::{RecursiveMode, Watcher};
 
 // TODO: Add timing information, etc.
 // TODO: Support re-running multiple times for stability testing.
@@ -28,7 +28,7 @@ pub type TaskResults<T> = HashMap<T, TaskStatus<<T as Task>::Output, Error>>;
 #[enum_kind(TaskKind, derive(Hash, Ord, PartialOrd))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AnyTask {
-    Request(RequestTask),
+    WatchFile(WatchFileTask),
     LoadFile(LoadFileTask),
     LexFile(LexFileTask),
     ParseFile(ParseFileTask),
@@ -45,40 +45,42 @@ pub enum RequestTask {
     EvalLine(String),
 }
 
-#[async_trait]
-impl Task for RequestTask {
-    type Output = AnyTask;
-    const TASK_KIND: TaskKind = TaskKind::Request;
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct WatchFileTask {
+    pub path: PathBuf,
+}
 
+#[async_trait]
+impl Task for WatchFileTask {
+    type Output = LoadFileTask;
+    const TASK_KIND: TaskKind = TaskKind::WatchFile;
+
+    fn has_file_path(&self) -> Option<&PathBuf> {
+        Some(&self.path)
+    }
     async fn perform(self, result_sender: UpdateSender<Self, Self::Output>) {
-        match &self {
-            RequestTask::EvalLine(line) => {
-                result_sender
-                    .send((
-                        self.clone(),
-                        Update::NextResult(AnyTask::LexFile(LexFileTask {
-                            path: "interpreter.tk".into(),
-                            contents: line.to_string(),
-                        })),
-                    ))
-                    .expect("Should be able to send task result to manager");
-            }
-            RequestTask::Launch { files } => {
-                for path in files {
-                    result_sender
-                        .send((
-                            self.clone(),
-                            Update::NextResult(AnyTask::LoadFile(LoadFileTask {
-                                path: path.clone(),
-                            })),
-                        ))
-                        .expect("Should be able to send task result to manager");
+        let mut watcher = {
+            notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
+                match res {
+                    Ok(event) => {
+                        trace!("event: {:?}", event);
+                        for path in event.paths {
+                            result_sender
+                                .send((self.clone(), Update::NextResult(LoadFileTask { path })))
+                                .expect("Load file task could not be sent");
+                        }
+                    }
+                    Err(e) => {
+                        trace!("watch error: {:?}", e);
+                    }
                 }
-            }
-        }
-        result_sender
-            .send((self, Update::Complete))
-            .expect("Should be able to send task result to manager");
+            })
+            .expect("Watcher failed to register")
+        };
+        trace!("Waiting on file changes...");
+        watcher
+            .watch(Path::new("test.tk"), RecursiveMode::Recursive)
+            .expect("Should be able to watch files");
     }
 }
 
@@ -89,7 +91,7 @@ pub struct LoadFileTask {
 
 #[async_trait]
 impl Task for LoadFileTask {
-    type Output = LexFileTask;
+    type Output = String;
     const TASK_KIND: TaskKind = TaskKind::LoadFile;
 
     fn has_file_path(&self) -> Option<&PathBuf> {
@@ -98,12 +100,7 @@ impl Task for LoadFileTask {
     async fn perform(self, result_sender: UpdateSender<Self, Self::Output>) {
         // TODO: Use tokio's async read_to_string.
         let contents = std::fs::read_to_string(&self.path);
-        let contents = contents
-            .map(|contents| LexFileTask {
-                path: self.path.clone(),
-                contents,
-            })
-            .map_err(|err| self.decorate_error(err));
+        let contents = contents.map_err(|err| self.decorate_error(err));
         result_sender
             .send((
                 self,
@@ -118,8 +115,8 @@ impl Task for LoadFileTask {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct LexFileTask {
-    path: PathBuf,
-    contents: String,
+    pub path: PathBuf,
+    pub contents: String,
 }
 
 #[async_trait]
@@ -153,9 +150,9 @@ impl Task for LexFileTask {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct ParseFileTask {
-    path: PathBuf,
-    contents: String,
-    tokens: Vec<Token>,
+    pub path: PathBuf,
+    pub contents: String,
+    pub tokens: Vec<Token>,
 }
 
 #[async_trait]
@@ -189,9 +186,9 @@ impl Task for ParseFileTask {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct EvalFileTask {
-    path: PathBuf,
-    ast: Ast,
-    root: Option<NodeId>,
+    pub path: PathBuf,
+    pub ast: Ast,
+    pub root: Option<NodeId>,
 }
 
 #[async_trait]

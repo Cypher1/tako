@@ -1,5 +1,6 @@
 use super::UserInterface;
 use crate::cli_options::Options;
+use crate::compiler_context::Compiler;
 use crate::tasks::{RequestTask, StatusReport};
 use async_trait::async_trait;
 use log::trace;
@@ -30,12 +31,11 @@ async fn main() {
 }
 
 #[async_trait]
-impl<Out: Send + std::fmt::Debug + std::fmt::Display + 'static> UserInterface<Out> for Http {
+impl UserInterface for Http {
     async fn launch(
         mut task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
         // User control of the compiler
-        _request_sender: Option<mpsc::UnboundedSender<RequestTask>>,
-        _response_getter: mpsc::UnboundedReceiver<Out>,
+        _compiler: Compiler,
         stats_requester: broadcast::Sender<()>,
         _options: Options,
     ) -> std::io::Result<()> {

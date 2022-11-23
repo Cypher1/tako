@@ -1,4 +1,4 @@
-use crate::tasks::task_trait::{Task, TaskReceiverFor, TaskSenderFor};
+use crate::tasks::task_trait::{Task, TaskReceiverFor, TaskSenderFor, ResultReceiverFor, ResultSenderFor};
 use crate::tasks::*;
 use tokio::sync::{broadcast, mpsc};
 
@@ -6,114 +6,65 @@ use crate::tasks::manager::TaskManager;
 pub use crate::tasks::manager::{StatusReport, TaskStats};
 pub use crate::tasks::status::*;
 pub use crate::tasks::task_trait::TaskId;
-use log::{trace, warn};
-use notify::{RecursiveMode, Watcher};
 use std::fmt::Debug;
-use std::path::Path;
+use std::path::PathBuf;
 
 #[derive(Debug)]
-pub struct Compiler {
-    request_receiver: Option<TaskReceiverFor<RequestTask>>,
-    result_sender: TaskSenderFor<EvalFileTask>,
+pub struct Compiler { // TODO: Make a trait...
     stats_sender: mpsc::UnboundedSender<StatusReport>,
     stats_requester: broadcast::Sender<()>,
+
+    watch_file_sender: TaskSenderFor<WatchFileTask>,
+    load_file_sender: TaskSenderFor<LoadFileTask>,
+    lex_file_sender: TaskSenderFor<LexFileTask>,
+    parse_file_sender: TaskSenderFor<ParseFileTask>,
+    eval_file_sender: TaskSenderFor<EvalFileTask>,
+
+    watch_file_result_receiver: ResultReceiverFor<WatchFileTask>,
+    load_file_result_receiver: ResultReceiverFor<LoadFileTask>,
+    lex_file_result_receiver: ResultReceiverFor<LexFileTask>,
+    parse_file_result_receiver: ResultReceiverFor<ParseFileTask>,
+    eval_file_result_receiver: ResultReceiverFor<EvalFileTask>,
 }
 
 impl Compiler {
     pub fn new(
-        request_receiver: Option<TaskReceiverFor<RequestTask>>,
-        result_sender: TaskSenderFor<EvalFileTask>,
         stats_sender: mpsc::UnboundedSender<StatusReport>,
         stats_requester: broadcast::Sender<()>,
     ) -> Self {
-        Self {
-            request_receiver,
-            result_sender,
-            stats_sender,
-            stats_requester,
-        }
-    }
-
-    pub async fn launch(mut self) {
-        let (any_task_sender, mut any_task_receiver) = mpsc::unbounded_channel();
+        let (watch_file_sender, watch_file_receiver) = mpsc::unbounded_channel();
         let (load_file_sender, load_file_receiver) = mpsc::unbounded_channel();
         let (lex_file_sender, lex_file_receiver) = mpsc::unbounded_channel();
         let (parse_file_sender, parse_file_receiver) = mpsc::unbounded_channel();
         let (eval_file_sender, eval_file_receiver) = mpsc::unbounded_channel();
 
-        {
-            let load_file_sender = load_file_sender;
-            let lex_file_sender = lex_file_sender.clone();
-            let parse_file_sender = parse_file_sender.clone();
-            let eval_file_sender = eval_file_sender.clone();
-            tokio::spawn(async move {
-                let mut watcher = {
-                    let load_file_sender = load_file_sender.clone();
-                    notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
-                        match res {
-                            Ok(event) => {
-                                trace!("event: {:?}", event);
-                                for path in event.paths {
-                                    load_file_sender
-                                        .send(LoadFileTask { path })
-                                        .expect("Load file task could not be sent");
-                                }
-                            }
-                            Err(e) => {
-                                trace!("watch error: {:?}", e);
-                            }
-                        }
-                    })
-                    .expect("Watcher failed to register")
-                };
-                trace!("Waiting on file changes...");
-                watcher
-                    .watch(Path::new("test.tk"), RecursiveMode::Recursive)
-                    .expect("Should be able to watch files");
+        let (watch_file_result_sender, watch_file_result_receiver) = mpsc::unbounded_channel();
+        let (load_file_result_sender, load_file_result_receiver) = mpsc::unbounded_channel();
+        let (lex_file_result_sender, lex_file_result_receiver) = mpsc::unbounded_channel();
+        let (parse_file_result_sender, parse_file_result_receiver) = mpsc::unbounded_channel();
+        let (eval_file_result_sender, eval_file_result_receiver) = mpsc::unbounded_channel();
 
-                loop {
-                    let new_task: Option<AnyTask> = any_task_receiver.recv().await;
-                    match new_task {
-                        None => break,
-                        Some(new_task) => match new_task {
-                            AnyTask::Request(_new_task) => {
-                                todo!("This shouldn't happen!")
-                            }
-                            AnyTask::LoadFile(new_task) => {
-                                if let Err(e) = load_file_sender.send(new_task) {
-                                    warn!("Load file receiver dropped: {}", e);
-                                    break;
-                                }
-                            }
-                            AnyTask::LexFile(new_task) => {
-                                if let Err(e) = lex_file_sender.send(new_task) {
-                                    warn!("Lex file receiver dropped: {}", e);
-                                    break;
-                                }
-                            }
-                            AnyTask::ParseFile(new_task) => {
-                                if let Err(e) = parse_file_sender.send(new_task) {
-                                    warn!("Parse file receiver dropped: {}", e);
-                                    break;
-                                }
-                            }
-                            AnyTask::EvalFile(new_task) => {
-                                if let Err(e) = eval_file_sender.send(new_task) {
-                                    warn!("Eval file receiver dropped: {}", e);
-                                    break;
-                                }
-                            }
-                        },
-                    }
-                }
-            });
-        }
-        let request_receiver = self.request_receiver.take().expect("TODO");
-        self.launch_manager::<RequestTask>(request_receiver, any_task_sender);
-        self.launch_manager::<LoadFileTask>(load_file_receiver, lex_file_sender);
-        self.launch_manager::<LexFileTask>(lex_file_receiver, parse_file_sender);
-        self.launch_manager::<ParseFileTask>(parse_file_receiver, eval_file_sender);
-        self.launch_manager::<EvalFileTask>(eval_file_receiver, self.result_sender.clone());
+        let this = Self {
+            stats_sender,
+            stats_requester,
+
+            watch_file_sender,
+            load_file_sender,
+            lex_file_sender,
+            parse_file_sender,
+            eval_file_sender,
+
+            watch_file_result_receiver,
+            load_file_result_receiver,
+            lex_file_result_receiver,
+            parse_file_result_receiver,
+            eval_file_result_receiver,
+        };
+        this.launch_manager::<WatchFileTask>(watch_file_receiver, watch_file_result_sender);
+        this.launch_manager::<LoadFileTask>(load_file_receiver, load_file_result_sender);
+        this.launch_manager::<LexFileTask>(lex_file_receiver, lex_file_result_sender);
+        this.launch_manager::<ParseFileTask>(parse_file_receiver, parse_file_result_sender);
+        this.launch_manager::<EvalFileTask>(eval_file_receiver, eval_file_result_sender);
         // TODO: type_check_inside_module: TaskManager<>,
         // Produces type checked (and optimizable) modules **AND**
         // partially type checked (but) mergable-modules.
@@ -127,12 +78,14 @@ impl Compiler {
         // TODO: binary_generation: TaskManager<>,
         // TODO: load_into_interpreter: TaskManager<>,
         // TODO: run_in_interpreter: TaskManager<>,
+
+        this
     }
 
     fn launch_manager<T: Task + 'static>(
         &self,
         in_channel: TaskReceiverFor<T>,
-        out_channel: TaskSenderFor<T>,
+        out_channel: ResultSenderFor<T>,
     ) {
         let mut manager = TaskManager::<T>::new(
             in_channel,
@@ -143,5 +96,47 @@ impl Compiler {
         tokio::spawn(async move {
             manager.run_loop().await;
         });
+    }
+
+    pub fn watch_file(&self, path: PathBuf, response_sender: ResultSenderFor<WatchFileTask>) {
+    }
+
+    pub fn load_file(&self, path: PathBuf, response_sender: ResultSenderFor<LoadFileTask>) {
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        self.watch_file(path, tx);
+        tokio::spawn(async move {
+            while let Some(task) = rx.recv().await {
+                self.load_file_sender.send(task);
+            }
+        });
+    }
+
+    pub fn lex(&self, path: PathBuf, contents: Option<String>, response_sender: ResultSenderFor<LexFileTask>) {
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        if let Some(contents) = contents {
+            tx.send(contents);
+        } else {
+            self.load_file(path, tx);
+        }
+        tokio::spawn(async move {
+            while let Some(contents) = rx.recv().await {
+                self.lex_file_sender.send(LexFileTask {
+                    path,
+                    contents,
+                });
+            }
+        });
+    }
+    pub fn parse(&self, path: PathBuf, contents: Option<String>, response_sender: ResultSenderFor<ParseFileTask>) {
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        self.lex(path, contents, tx);
+        tokio::spawn(async move {
+            while let Some(task) = rx.recv().await {
+                self.parse_file_sender.send(task);
+            }
+        });
+    }
+
+    pub fn send_command(&self, cmd: RequestTask, response_sender: mpsc::UnboundedSender<()>) {
     }
 }
