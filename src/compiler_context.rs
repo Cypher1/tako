@@ -1,4 +1,4 @@
-use crate::tasks::task_trait::{TaskReceiverFor, TaskSenderFor};
+use crate::tasks::task_trait::{TaskReceiverFor, TaskSenderFor, Task};
 use crate::tasks::*;
 use tokio::sync::{broadcast, mpsc};
 
@@ -7,43 +7,34 @@ pub use crate::tasks::status::*;
 use log::{trace, warn};
 use notify::{RecursiveMode, Watcher};
 use std::fmt::Debug;
-
-use crate::tasks::manager::{ManagerConfig, TaskManager};
+use crate::tasks::manager::TaskManager;
 pub use crate::tasks::task_trait::TaskId;
-use crate::tasks::task_trait::*;
 use std::path::Path;
 
 #[derive(Debug)]
 pub struct Compiler {
-    // TODO: Track the jobs that are being done...
-    // Invalidate these if
-    request_tasks: TaskManager<RequestTask>,
-    load_file_tasks: TaskManager<LoadFileTask>,
-    lex_file_tasks: TaskManager<LexFileTask>,
-    parse_file_tasks: TaskManager<ParseFileTask>,
-    eval_file_tasks: TaskManager<EvalFileTask>,
-    // TODO: type_check_inside_module: TaskManager<>,
-    // Produces type checked (and optimizable) modules **AND**
-    // partially type checked (but) mergable-modules.
-    // Pair-wise merging of type checking information???
-    // TODO: type_check_merge_module_sets: TaskManager<>,
-    // Produces type checked (and optimizable) modules **AND**
-    // Partially type checked (but) mergable-modules
-    // TODO: lowering: TaskManager<>,
-    // TODO: optimization: TaskManager<>,
-    // TODO: code_generation: TaskManager<>,
-    // TODO: binary_generation: TaskManager<>,
-    // TODO: load_into_interpreter: TaskManager<>,
-    // TODO: run_in_interpreter: TaskManager<>,
+    request_receiver: Option<TaskReceiverFor<RequestTask>>,
+    result_sender: TaskSenderFor<EvalFileTask>,
+    stats_sender: mpsc::UnboundedSender<StatusReport>,
+    stats_requester: broadcast::Sender<()>,
 }
 
 impl Compiler {
     pub fn new(
-        request_receiver: TaskReceiverFor<RequestTask>,
+        request_receiver: Option<TaskReceiverFor<RequestTask>>,
         result_sender: TaskSenderFor<EvalFileTask>,
         stats_sender: mpsc::UnboundedSender<StatusReport>,
-        stats_requester: &broadcast::Sender<()>,
+        stats_requester: broadcast::Sender<()>,
     ) -> Self {
+        Self {
+            request_receiver,
+            result_sender,
+            stats_sender,
+            stats_requester,
+        }
+    }
+
+    pub async fn launch(mut self) {
         let (any_task_sender, mut any_task_receiver) = mpsc::unbounded_channel();
         let (load_file_sender, load_file_receiver) = mpsc::unbounded_channel();
         let (lex_file_sender, lex_file_receiver) = mpsc::unbounded_channel();
@@ -117,93 +108,36 @@ impl Compiler {
                 }
             });
         }
-
-        let request_tasks = Self::create::<RequestTask>(
-            request_receiver,
-            any_task_sender,
-            stats_sender.clone(),
-            stats_requester.subscribe(),
-            ManagerConfig::default(),
-        );
-
-        let load_file_tasks = Self::create::<LoadFileTask>(
-            load_file_receiver,
-            lex_file_sender,
-            stats_sender.clone(),
-            stats_requester.subscribe(),
-            ManagerConfig::default(),
-        );
-
-        let lex_file_tasks = Self::create::<LexFileTask>(
-            lex_file_receiver,
-            parse_file_sender,
-            stats_sender.clone(),
-            stats_requester.subscribe(),
-            ManagerConfig::default(),
-        );
-        let parse_file_tasks = Self::create::<ParseFileTask>(
-            parse_file_receiver,
-            eval_file_sender,
-            stats_sender.clone(),
-            stats_requester.subscribe(),
-            ManagerConfig::default(),
-        );
-        let eval_file_tasks = Self::create::<EvalFileTask>(
-            eval_file_receiver,
-            result_sender,
-            stats_sender,
-            stats_requester.subscribe(),
-            ManagerConfig::default(),
-        );
-
-        Self {
-            request_tasks,
-            load_file_tasks,
-            lex_file_tasks,
-            parse_file_tasks,
-            eval_file_tasks,
-        }
+        let request_receiver = self.request_receiver.take().expect("TODO");
+        self.launch_manager::<RequestTask>(request_receiver, any_task_sender);
+        self.launch_manager::<LoadFileTask>(load_file_receiver, lex_file_sender);
+        self.launch_manager::<LexFileTask>(lex_file_receiver, parse_file_sender);
+        self.launch_manager::<ParseFileTask>(parse_file_receiver, eval_file_sender);
+        self.launch_manager::<EvalFileTask>(eval_file_receiver, self.result_sender.clone());
+        // TODO: type_check_inside_module: TaskManager<>,
+        // Produces type checked (and optimizable) modules **AND**
+        // partially type checked (but) mergable-modules.
+        // Pair-wise merging of type checking information???
+        // TODO: type_check_merge_module_sets: TaskManager<>,
+        // Produces type checked (and optimizable) modules **AND**
+        // Partially type checked (but) mergable-modules
+        // TODO: lowering: TaskManager<>,
+        // TODO: optimization: TaskManager<>,
+        // TODO: code_generation: TaskManager<>,
+        // TODO: binary_generation: TaskManager<>,
+        // TODO: load_into_interpreter: TaskManager<>,
+        // TODO: run_in_interpreter: TaskManager<>,
     }
 
-    pub fn create<T: Task + 'static>(
-        task_receiver: TaskReceiverFor<T>,
-        result_sender: TaskSenderFor<T>,
-        stats_sender: mpsc::UnboundedSender<StatusReport>,
-        stats_requester: broadcast::Receiver<()>,
-        config: ManagerConfig,
-    ) -> TaskManager<T> {
-        TaskManager::<T>::new(
-            task_receiver,
-            result_sender,
-            stats_sender,
-            stats_requester,
-            config,
-        )
-    }
-
-    pub async fn launch(self) {
-        let Self {
-            mut request_tasks,
-            mut load_file_tasks,
-            mut lex_file_tasks,
-            mut parse_file_tasks,
-            mut eval_file_tasks,
-        } = self;
-        // Launch all of the task managers!
+    fn launch_manager<T: Task + 'static>(&self, in_channel: TaskReceiverFor<T>, out_channel: TaskSenderFor<T>) {
+        let mut manager = TaskManager::<T>::new(
+            in_channel,
+            out_channel,
+            self.stats_sender.clone(),
+            self.stats_requester.subscribe(),
+        );
         tokio::spawn(async move {
-            request_tasks.run_loop().await;
-        });
-        tokio::spawn(async move {
-            load_file_tasks.run_loop().await;
-        });
-        tokio::spawn(async move {
-            lex_file_tasks.run_loop().await;
-        });
-        tokio::spawn(async move {
-            parse_file_tasks.run_loop().await;
-        });
-        tokio::spawn(async move {
-            eval_file_tasks.run_loop().await;
+            manager.run_loop().await;
         });
     }
 }

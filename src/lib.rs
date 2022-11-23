@@ -23,7 +23,6 @@ use crate::tasks::RequestTask;
 use crate::ui::UserInterface;
 use log::error;
 use primitives::Prim;
-use std::sync::{Arc, Mutex};
 use tasks::StatusReport;
 use tokio::sync::{broadcast, mpsc};
 
@@ -63,7 +62,7 @@ pub async fn launch_ui<
     task_manager_stats: mpsc::UnboundedReceiver<StatusReport>,
     request_sender: Option<mpsc::UnboundedSender<RequestTask>>,
     response_getter: mpsc::UnboundedReceiver<Out>,
-    stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
+    stats_requester: broadcast::Sender<()>,
     options: Options,
 ) {
     <T as UserInterface<Out>>::launch(
@@ -82,19 +81,15 @@ pub async fn launch_ui<
 pub async fn start(
     task_manager_stats: mpsc::UnboundedSender<StatusReport>,
     request_receiver: mpsc::UnboundedReceiver<RequestTask>,
-    task_manager_stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
+    task_manager_stats_requester: broadcast::Sender<()>,
 ) -> mpsc::UnboundedReceiver<Prim> {
     let (result_sender, result_receiver) = mpsc::unbounded_channel();
-
-    let compiler = {
-        let task_manager_stats_requester = task_manager_stats_requester.lock().expect("TODO");
-        Compiler::new(
-            request_receiver,
-            result_sender,
-            task_manager_stats,
-            &task_manager_stats_requester,
-        )
-    }; // Setup!
+    let compiler = Compiler::new(
+        Some(request_receiver),
+        result_sender,
+        task_manager_stats,
+        task_manager_stats_requester,
+    );
     compiler.launch().await; // launches all the jobs.
     result_receiver
 }

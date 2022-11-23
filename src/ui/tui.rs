@@ -16,7 +16,6 @@ use log::{debug, trace};
 use shutdown_hooks::add_shutdown_hook;
 use std::collections::{BTreeSet, HashMap};
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
 use std::{
     io::{stdout, Write},
     time::{Duration, Instant},
@@ -225,7 +224,7 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> UserInterface<Out> for Tui
         // User control of the compiler
         request_sender: Option<mpsc::UnboundedSender<RequestTask>>,
         response_getter: mpsc::UnboundedReceiver<Out>,
-        stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
+        stats_requester: broadcast::Sender<()>,
         options: Options,
     ) -> std::io::Result<()> {
         let _start_time = Instant::now();
@@ -257,7 +256,6 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> UserInterface<Out> for Tui
                     tui.manager_status.insert(kind, stats);
                 },
                 _ = stats_ticker.tick() => {
-                    let stats_requester = stats_requester.lock().expect("stats requester lock");
                     stats_requester.send(()).expect("TODO");
                 }
                 Some(value) = response_getter.recv() => {

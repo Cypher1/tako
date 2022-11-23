@@ -3,7 +3,6 @@ use crate::cli_options::Options;
 use crate::tasks::{RequestTask, StatusReport};
 use async_trait::async_trait;
 use log::trace;
-use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tokio::time;
 use tokio::{
@@ -37,7 +36,7 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display + 'static> UserInterface<Ou
         // User control of the compiler
         _request_sender: Option<mpsc::UnboundedSender<RequestTask>>,
         _response_getter: mpsc::UnboundedReceiver<Out>,
-        stats_requester: Arc<Mutex<broadcast::Sender<()>>>,
+        stats_requester: broadcast::Sender<()>,
         _options: Options,
     ) -> std::io::Result<()> {
         let _start_time = Instant::now();
@@ -51,7 +50,6 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display + 'static> UserInterface<Ou
                     // http.manager_status.insert(kind, stats);
                 },
                 _ = stats_ticker.tick() => {
-                    let stats_requester = stats_requester.lock().expect("stats requester lock");
                     stats_requester.send(()).expect("TODO");
                 }
                 else => break,

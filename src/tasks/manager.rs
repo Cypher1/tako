@@ -72,12 +72,6 @@ impl StatusReport {
     }
 }
 
-#[derive(Debug, Default)]
-pub struct ManagerConfig {
-    pub disable_caching: bool,
-    // TODO: Probably should be able to enable or disable stat & timing collection.
-}
-
 #[derive(Debug)]
 pub struct TaskManager<T: Task> {
     task_receiver: TaskReceiverFor<T>,
@@ -87,7 +81,6 @@ pub struct TaskManager<T: Task> {
     result_store: TaskResults<T>,
     stats: TaskStats,
     errors: HashMap<TaskId, Error>,
-    config: ManagerConfig,
 }
 
 impl<T: Debug + Task + 'static> TaskManager<T> {
@@ -103,7 +96,6 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
         result_sender: TaskSenderFor<T>,
         stats_sender: mpsc::UnboundedSender<StatusReport>,
         stats_requester: broadcast::Receiver<()>,
-        config: ManagerConfig,
     ) -> Self {
         Self {
             task_receiver,
@@ -113,7 +105,6 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
             result_store: TaskResults::<T>::new(),
             stats: TaskStats::default(),
             errors: HashMap::new(),
-            config,
         }
     }
 
@@ -122,7 +113,6 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
             "{} received update from task: {task:#?} {update:#?}",
             Self::name()
         );
-        let caching_enabled = !self.config.disable_caching;
         let task_id = task.get_hash();
         let mut current_results = self
             .result_store
@@ -137,7 +127,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
                 self.result_sender
                     .send(res.clone())
                     .expect("Should be able to send results");
-                if caching_enabled {
+                if T::RESULT_IS_CACHABLE {
                     results_so_far.push(res);
                 }
             }
@@ -148,7 +138,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
                 self.result_sender
                     .send(res.clone())
                     .expect("Should be able to send results");
-                if caching_enabled {
+                if T::RESULT_IS_CACHABLE {
                     results_so_far.push(res);
                 }
             }
