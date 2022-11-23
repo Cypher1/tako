@@ -80,7 +80,7 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> Tui<Out> {
                 .queue(Print(line))?;
             row += 1;
         }
-        for (_filename, errs) in &self.errors_for_file {
+        for errs in self.errors_for_file.values() {
             for err in errs {
                 let line = format!("{err}");
                 let len = line.len() as u16;
@@ -250,7 +250,7 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> UserInterface<Out> for Tui
                     trace!("TaskManager status: {kind:?} => {stats}\nerrors: {errors:#?}");
                     for (_id, err) in errors {
                         let file = err.location.as_ref().map(|loc| loc.filename.clone());
-                        let errs = tui.errors_for_file.entry(file).or_insert(BTreeSet::new());
+                        let errs = tui.errors_for_file.entry(file).or_insert_with(BTreeSet::new);
                         errs.insert(err);
                     }
                     tui.manager_status.insert(kind, stats);
