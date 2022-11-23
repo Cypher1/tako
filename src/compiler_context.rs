@@ -1,14 +1,14 @@
-use crate::tasks::task_trait::{TaskReceiverFor, TaskSenderFor, Task};
+use crate::tasks::task_trait::{Task, TaskReceiverFor, TaskSenderFor};
 use crate::tasks::*;
 use tokio::sync::{broadcast, mpsc};
 
+use crate::tasks::manager::TaskManager;
 pub use crate::tasks::manager::{StatusReport, TaskStats};
 pub use crate::tasks::status::*;
+pub use crate::tasks::task_trait::TaskId;
 use log::{trace, warn};
 use notify::{RecursiveMode, Watcher};
 use std::fmt::Debug;
-use crate::tasks::manager::TaskManager;
-pub use crate::tasks::task_trait::TaskId;
 use std::path::Path;
 
 #[derive(Debug)]
@@ -129,7 +129,11 @@ impl Compiler {
         // TODO: run_in_interpreter: TaskManager<>,
     }
 
-    fn launch_manager<T: Task + 'static>(&self, in_channel: TaskReceiverFor<T>, out_channel: TaskSenderFor<T>) {
+    fn launch_manager<T: Task + 'static>(
+        &self,
+        in_channel: TaskReceiverFor<T>,
+        out_channel: TaskSenderFor<T>,
+    ) {
         let mut manager = TaskManager::<T>::new(
             in_channel,
             out_channel,
