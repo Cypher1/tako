@@ -1,5 +1,6 @@
 use super::UserInterface;
 use crate::cli_options::Options;
+use crate::compiler_context::Compiler;
 use crate::error::Error;
 use crate::tasks::{RequestTask, StatusReport, TaskKind, TaskStats};
 use async_trait::async_trait;
@@ -33,10 +34,9 @@ extern "C" fn shutdown() {
 }
 
 #[derive(Debug)]
-pub struct Tui<Out: Send + std::fmt::Debug + std::fmt::Display> {
+pub struct Tui {
     manager_status: HashMap<TaskKind, TaskStats>,
-    request_sender: Option<mpsc::UnboundedSender<RequestTask>>,
-    response_getter: Option<mpsc::UnboundedReceiver<Out>>,
+    compiler: Option<Compiler>,
     key_fmt: KeyEventFormat,
     should_exit: bool,
     history: Vec<String>, // TODO: Mark Input v output.
@@ -45,14 +45,16 @@ pub struct Tui<Out: Send + std::fmt::Debug + std::fmt::Display> {
     input_after_cursor: String,
     characters: String,
     options: Options,
+    result_receiver: mpsc::UnboundedReceiver<()>,
+    result_sender: mpsc::UnboundedSender<()>,
 }
 
-impl<Out: Send + std::fmt::Debug + std::fmt::Display> Default for Tui<Out> {
+impl Default for Tui {
     fn default() -> Self {
+        let (result_sender, result_receiver) = mpsc::unbounded_channel();
         Self {
             manager_status: HashMap::default(),
-            request_sender: None,
-            response_getter: None,
+            compiler: None,
             key_fmt: KeyEventFormat::default(),
             should_exit: false,
             history: Vec::default(),
@@ -61,11 +63,13 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> Default for Tui<Out> {
             input_after_cursor: "".to_string(),
             characters: "".to_string(),
             options: Options::default(),
+            result_receiver,
+            result_sender,
         }
     }
 }
 
-impl<Out: Send + std::fmt::Debug + std::fmt::Display> Tui<Out> {
+impl Tui {
     fn render(&self) -> std::io::Result<()> {
         stdout().queue(Clear(ClearType::All))?;
         let (cols, rows) = size()?;
@@ -180,10 +184,8 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> Tui<Out> {
                             if !line.is_empty() {
                                 // TODO: Send the line to the compiler.
                                 trace!("Running {line}");
-                                if let Some(request_sender) = &self.request_sender {
-                                    request_sender
-                                        .send(RequestTask::EvalLine(line.to_string()))
-                                        .expect("Need a backend");
+                                if let Some(compiler) = &self.compiler {
+                                    compiler.send_command(RequestTask::EvalLine(line.to_string()), self.result_sender.clone());
                                 } else {
                                     trace!("No backend?");
                                     self.history
@@ -218,19 +220,17 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> Tui<Out> {
 }
 
 #[async_trait]
-impl<Out: Send + std::fmt::Debug + std::fmt::Display> UserInterface<Out> for Tui<Out> {
+impl UserInterface for Tui {
     async fn launch(
         mut task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
         // User control of the compiler
-        request_sender: Option<mpsc::UnboundedSender<RequestTask>>,
-        response_getter: mpsc::UnboundedReceiver<Out>,
+        compiler: Compiler,
         stats_requester: broadcast::Sender<()>,
         options: Options,
     ) -> std::io::Result<()> {
         let _start_time = Instant::now();
         let mut tui = Tui {
-            request_sender,
-            response_getter: Some(response_getter),
+            compiler: Some(compiler),
             options,
             ..Self::default()
         };
@@ -244,7 +244,7 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> UserInterface<Out> for Tui
 
         loop {
             let event = reader.next().fuse();
-            let response_getter = tui.response_getter.as_mut().expect("No response_getter");
+            let result_receiver = &mut tui.result_receiver;
             tokio::select! {
                 Some(StatusReport { kind, stats, errors }) = task_manager_status_receiver.recv() => {
                     trace!("TaskManager status: {kind:?} => {stats}\nerrors: {errors:#?}");
@@ -258,7 +258,7 @@ impl<Out: Send + std::fmt::Debug + std::fmt::Display> UserInterface<Out> for Tui
                 _ = stats_ticker.tick() => {
                     stats_requester.send(()).expect("TODO");
                 }
-                Some(value) = response_getter.recv() => {
+                Some(value) = result_receiver.recv() => {
                     trace!("Got result value: {value:?}");
                     tui.history.push(format!("{value:#?}"));
                     if tui.options.oneshot() {

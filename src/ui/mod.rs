@@ -1,5 +1,6 @@
 use crate::cli_options::Options;
-use crate::tasks::{RequestTask, StatusReport};
+use crate::compiler_context::Compiler;
+use crate::tasks::StatusReport;
 use async_trait::async_trait;
 use tokio::sync::{broadcast, mpsc};
 
@@ -21,11 +22,10 @@ pub enum UiMode {
 }
 
 #[async_trait]
-pub trait UserInterface<Out: Send + std::fmt::Debug + std::fmt::Display>: std::fmt::Debug {
+pub trait UserInterface {
     async fn launch(
         task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
-        request_sender: Option<mpsc::UnboundedSender<RequestTask>>,
-        response_getter: mpsc::UnboundedReceiver<Out>,
+        compiler: Compiler,
         stats_requester: broadcast::Sender<()>,
         options: Options,
     ) -> std::io::Result<()>

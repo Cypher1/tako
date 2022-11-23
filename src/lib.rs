@@ -57,18 +57,16 @@ pub fn ensure_initialized() {
 
 pub async fn launch_ui<
     Out: Send + std::fmt::Debug + std::fmt::Display,
-    T: UserInterface<Out> + Send + 'static,
+    T: UserInterface + Send + 'static,
 >(
     task_manager_stats: mpsc::UnboundedReceiver<StatusReport>,
-    request_sender: Option<mpsc::UnboundedSender<RequestTask>>,
-    response_getter: mpsc::UnboundedReceiver<Out>,
+    compiler: Compiler,
     stats_requester: broadcast::Sender<()>,
     options: Options,
 ) {
-    <T as UserInterface<Out>>::launch(
+    <T as UserInterface>::launch(
         task_manager_stats,
-        request_sender,
-        response_getter,
+        compiler,
         stats_requester,
         options,
     )
@@ -80,16 +78,10 @@ pub async fn launch_ui<
 
 pub async fn start(
     task_manager_stats: mpsc::UnboundedSender<StatusReport>,
-    request_receiver: mpsc::UnboundedReceiver<RequestTask>,
     task_manager_stats_requester: broadcast::Sender<()>,
-) -> mpsc::UnboundedReceiver<Prim> {
-    let (result_sender, result_receiver) = mpsc::unbounded_channel();
-    let compiler = Compiler::new(
-        Some(request_receiver),
-        result_sender,
+) -> Compiler {
+    Compiler::new(
         task_manager_stats,
         task_manager_stats_requester,
-    );
-    compiler.launch().await; // launches all the jobs.
-    result_receiver
+    )
 }

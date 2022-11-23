@@ -75,7 +75,7 @@ impl StatusReport {
 #[derive(Debug)]
 pub struct TaskManager<T: Task> {
     task_receiver: TaskReceiverFor<T>,
-    result_sender: TaskSenderFor<T>,
+    result_sender: ResultSenderFor<T>,
     stats_sender: mpsc::UnboundedSender<StatusReport>,
     stats_requester: broadcast::Receiver<()>,
     result_store: TaskResults<T>,
@@ -93,7 +93,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
 
     pub fn new(
         task_receiver: TaskReceiverFor<T>,
-        result_sender: TaskSenderFor<T>,
+        result_sender: ResultSenderFor<T>,
         stats_sender: mpsc::UnboundedSender<StatusReport>,
         stats_requester: broadcast::Receiver<()>,
     ) -> Self {
