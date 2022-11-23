@@ -4,8 +4,8 @@
 pub mod utils;
 
 pub mod ast;
-pub mod compiler_context;
 pub mod cli_options;
+pub mod compiler_context;
 pub mod error;
 pub mod interpreter;
 pub mod keywords;
@@ -18,7 +18,8 @@ pub mod tokens;
 pub mod ui;
 
 use crate::cli_options::Options;
-use crate::tasks::{RequestTask, TaskSet};
+use crate::compiler_context::Compiler;
+use crate::tasks::RequestTask;
 use crate::ui::UserInterface;
 use log::error;
 use primitives::Prim;
@@ -85,15 +86,15 @@ pub async fn start(
 ) -> mpsc::UnboundedReceiver<Prim> {
     let (result_sender, result_receiver) = mpsc::unbounded_channel();
 
-    let store = {
+    let compiler = {
         let task_manager_stats_requester = task_manager_stats_requester.lock().expect("TODO");
-        TaskSet::new(
+        Compiler::new(
             request_receiver,
             result_sender,
             task_manager_stats,
             &task_manager_stats_requester,
         )
     }; // Setup!
-    store.launch().await; // launches all the jobs.
+    compiler.launch().await; // launches all the jobs.
     result_receiver
 }
