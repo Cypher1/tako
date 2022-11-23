@@ -1,9 +1,9 @@
 // use rand::Rng;
-use std::path::Path;
 use crate::ast::*;
 use crate::error::TError;
 use crate::tokens::{Symbol, Token, TokenType};
 use log::{debug, trace};
+use std::path::Path;
 
 use static_assertions::*;
 assert_eq_size!(Partial, [u8; 16]); // TODO: Try to get the size down
@@ -141,7 +141,10 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
             let node = match res.token.kind {
                 TokenType::NumLit => {
                     trace!("Saving literal: {res:?}");
-                    ast.literal_values.register_str_by_loc(res.token.get_str(contents).to_string(), location.start);
+                    ast.literal_values.register_str_by_loc(
+                        res.token.get_str(contents).to_string(),
+                        location.start,
+                    );
                     ast.add_literal(Literal::Numeric, location)
                 }
                 TokenType::Op(symbol) => {
@@ -216,9 +219,7 @@ pub mod tests {
         let ast = setup("1+2")?;
         dbg!(&ast);
         let Ast {
-            calls,
-            literals,
-            ..
+            calls, literals, ..
         } = ast;
 
         assert_eq!(
@@ -246,9 +247,7 @@ pub mod tests {
         let ast = setup("1+2*3")?;
         dbg!(&ast);
         let Ast {
-            calls,
-            literals,
-            ..
+            calls, literals, ..
         } = ast;
 
         dbg!(calls);
@@ -262,9 +261,7 @@ pub mod tests {
         let ast = setup("1+2*3")?;
         dbg!(&ast);
         let Ast {
-            calls,
-            literals,
-            ..
+            calls, literals, ..
         } = ast;
 
         dbg!(calls);

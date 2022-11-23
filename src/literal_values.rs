@@ -1,7 +1,7 @@
-use std::hash::{Hash, Hasher};
+use crate::location::IndexIntoFile;
 use crate::utils::typed_index::TypedIndex;
 use std::collections::BTreeMap;
-use crate::location::IndexIntoFile;
+use std::hash::{Hash, Hasher};
 
 type StringHash = u64;
 // Ensures that str ids are unique per string but also stable across different files etc.
@@ -35,13 +35,10 @@ impl LiteralValues {
         id
     }
     pub fn get_str(&self, s: StrId) -> Option<&str> {
-        self.strings
-            .get(&s)
-            .map(|ref_string| &**ref_string)
+        self.strings.get(&s).map(|ref_string| &**ref_string)
     }
     pub fn get_str_by_loc(&self, s: IndexIntoFile) -> Option<&str> {
-        let s = self.loc2string
-            .get(&s)?;
+        let s = self.loc2string.get(&s)?;
         self.get_str(*s)
     }
 }
@@ -61,4 +58,3 @@ impl<'a> std::fmt::Display for InContext<'a, NamedSymbol> {
         }
     }
 }
-

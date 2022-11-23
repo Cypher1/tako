@@ -41,7 +41,7 @@ impl From<std::io::Error> for TError {
             return TError::InternalError {
                 message: "File not found".to_string(),
                 location: None,
-            }
+            };
         }
         TError::InternalError {
             message: error.to_string(),
@@ -83,9 +83,7 @@ impl Error {
             (Some(path), Some(contents), Some(location), _module) => {
                 Some(UserFacingLocation::from(path, contents, location))
             }
-            (Some(path), _, _, _) => {
-                Some(UserFacingLocation::from_path(path))
-            }
+            (Some(path), _, _, _) => Some(UserFacingLocation::from_path(path)),
             _ => None, // TODO: There's more options here...
         };
         Self { source, location }

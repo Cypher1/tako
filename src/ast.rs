@@ -1,5 +1,5 @@
+use crate::literal_values::{LiteralValues, NamedSymbol};
 use crate::location::Location;
-use crate::literal_values::{NamedSymbol, LiteralValues};
 use crate::tokens::Symbol;
 use crate::utils::typed_index::TypedIndex;
 use std::path::PathBuf;

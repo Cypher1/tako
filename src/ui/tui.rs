@@ -14,7 +14,7 @@ use crossterm::{
 use futures::{future::FutureExt, StreamExt};
 use log::{debug, trace};
 use shutdown_hooks::add_shutdown_hook;
-use std::collections::{HashMap, BTreeSet};
+use std::collections::{BTreeSet, HashMap};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::{
