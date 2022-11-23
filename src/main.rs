@@ -2,11 +2,11 @@
 use crossterm::Result;
 use log::{debug, error, trace};
 use std::env;
-use tokio::sync::{broadcast, mpsc};
 use takolib::cli_options::{Command, Options};
 use takolib::launch_ui;
 use takolib::start;
 use takolib::tasks::RequestTask;
+use tokio::sync::{broadcast, mpsc};
 
 use takolib::ui::{Http, Tui, UiMode};
 
