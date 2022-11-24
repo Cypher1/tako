@@ -99,14 +99,18 @@ impl Compiler {
     }
 
     pub fn watch_file(&self, path: PathBuf, response_sender: ResultSenderFor<WatchFileTask>) {
+        self.watch_file_sender.send(WatchFileTask {
+            path,
+        });
     }
 
     pub fn load_file(&self, path: PathBuf, response_sender: ResultSenderFor<LoadFileTask>) {
         let (tx, mut rx) = mpsc::unbounded_channel();
         self.watch_file(path, tx);
+        let load_file_sender = self.load_file_sender.clone();
         tokio::spawn(async move {
             while let Some(task) = rx.recv().await {
-                self.load_file_sender.send(task);
+                load_file_sender.send(task);
             }
         });
     }
@@ -116,12 +120,13 @@ impl Compiler {
         if let Some(contents) = contents {
             tx.send(contents);
         } else {
-            self.load_file(path, tx);
+            self.load_file(path.clone(), tx);
         }
+        let lex_file_sender = self.lex_file_sender.clone();
         tokio::spawn(async move {
             while let Some(contents) = rx.recv().await {
-                self.lex_file_sender.send(LexFileTask {
-                    path,
+                lex_file_sender.send(LexFileTask {
+                    path: path.clone(),
                     contents,
                 });
             }
@@ -130,9 +135,10 @@ impl Compiler {
     pub fn parse(&self, path: PathBuf, contents: Option<String>, response_sender: ResultSenderFor<ParseFileTask>) {
         let (tx, mut rx) = mpsc::unbounded_channel();
         self.lex(path, contents, tx);
+        let parse_file_sender = self.parse_file_sender.clone();
         tokio::spawn(async move {
             while let Some(task) = rx.recv().await {
-                self.parse_file_sender.send(task);
+                parse_file_sender.send(task);
             }
         });
     }

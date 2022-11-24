@@ -59,6 +59,7 @@ impl Task for WatchFileTask {
         Some(&self.path)
     }
     async fn perform(self, result_sender: UpdateSender<Self, Self::Output>) {
+        let other = self.clone();
         let mut watcher = {
             notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
                 match res {
@@ -66,7 +67,7 @@ impl Task for WatchFileTask {
                         trace!("event: {:?}", event);
                         for path in event.paths {
                             result_sender
-                                .send((self.clone(), Update::NextResult(LoadFileTask { path })))
+                                .send((other.clone(), Update::NextResult(LoadFileTask { path })))
                                 .expect("Load file task could not be sent");
                         }
                     }
@@ -79,7 +80,7 @@ impl Task for WatchFileTask {
         };
         trace!("Waiting on file changes...");
         watcher
-            .watch(Path::new("test.tk"), RecursiveMode::Recursive)
+            .watch(&self.path, RecursiveMode::Recursive)
             .expect("Should be able to watch files");
     }
 }
