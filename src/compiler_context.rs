@@ -130,8 +130,10 @@ impl Compiler {
             RequestTask::EvalLine(line) => {
                 self.eval("interpreter.tk".into(), Some(line), response_sender);
             }
-            RequestTask::Launch { files: _ } => {
-                todo!()
+            RequestTask::Launch { files } => {
+                for file in files {
+                    self.eval(file, None, response_sender.clone());
+                }
             }
         }
     }

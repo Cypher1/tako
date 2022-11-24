@@ -2,13 +2,12 @@
 use crossterm::Result;
 use log::{debug, error, trace};
 use std::env;
-use takolib::cli_options::{Command, Options};
-use takolib::launch_ui;
-use takolib::start;
-use takolib::tasks::RequestTask;
+use takolib::{
+    cli_options::Options,
+    launch_ui, start,
+    ui::{Http, Tui, UiMode},
+};
 use tokio::sync::{broadcast, mpsc};
-
-use takolib::ui::{Http, Tui, UiMode};
 
 type Output = takolib::primitives::Prim;
 
@@ -23,18 +22,6 @@ async fn main() -> Result<()> {
     let (task_manager_status_sender, task_manager_status_receiver) = mpsc::unbounded_channel();
     let (stats_requester, _) = broadcast::channel(1);
     let compiler = start(task_manager_status_sender, stats_requester.clone()).await;
-    if options.cmd != Command::Repl && !options.files.is_empty() {
-        let (tx, mut rx) = mpsc::unbounded_channel();
-        compiler.send_command(
-            RequestTask::Launch {
-                files: options.files.clone(),
-            },
-            tx,
-        );
-        let result = rx.recv().await;
-        eprintln!("{result:?}");
-        return Ok(());
-    }
     let ui_task = {
         let options = options.clone();
         let ui_mode = options.ui_mode;

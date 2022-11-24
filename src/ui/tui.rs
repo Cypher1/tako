@@ -37,7 +37,7 @@ extern "C" fn shutdown() {
 #[derive(Debug)]
 pub struct Tui {
     manager_status: HashMap<TaskKind, TaskStats>,
-    compiler: Option<Compiler>,
+    compiler: Compiler,
     key_fmt: KeyEventFormat,
     should_exit: bool,
     history: Vec<String>, // TODO: Mark Input v output.
@@ -50,12 +50,11 @@ pub struct Tui {
     result_sender: mpsc::UnboundedSender<Prim>,
 }
 
-impl Default for Tui {
-    fn default() -> Self {
+impl Tui {
+    fn new(compiler: Compiler, options: Options) -> Self {
         let (result_sender, result_receiver) = mpsc::unbounded_channel();
         Self {
             manager_status: HashMap::default(),
-            compiler: None,
             key_fmt: KeyEventFormat::default(),
             should_exit: false,
             history: Vec::default(),
@@ -63,14 +62,13 @@ impl Default for Tui {
             input: "".to_string(),
             input_after_cursor: "".to_string(),
             characters: "".to_string(),
-            options: Options::default(),
+            compiler,
+            options,
             result_receiver,
             result_sender,
         }
     }
-}
 
-impl Tui {
     fn render(&self) -> std::io::Result<()> {
         stdout().queue(Clear(ClearType::All))?;
         let (cols, rows) = size()?;
@@ -185,16 +183,10 @@ impl Tui {
                             if !line.is_empty() {
                                 // TODO: Send the line to the compiler.
                                 trace!("Running {line}");
-                                if let Some(compiler) = &self.compiler {
-                                    compiler.send_command(
-                                        RequestTask::EvalLine(line.to_string()),
-                                        self.result_sender.clone(),
-                                    );
-                                } else {
-                                    trace!("No backend?");
-                                    self.history
-                                        .push("...not connected to a backend".to_string());
-                                }
+                                self.compiler.send_command(
+                                    RequestTask::EvalLine(line.to_string()),
+                                    self.result_sender.clone(),
+                                );
                                 self.history.push(line);
                             }
                             self.input_after_cursor = "".to_string();
@@ -233,16 +225,20 @@ impl UserInterface for Tui {
         options: Options,
     ) -> std::io::Result<()> {
         let _start_time = Instant::now();
-        let mut tui = Tui {
-            compiler: Some(compiler),
-            options,
-            ..Self::default()
-        };
+        let mut tui = Tui::new(compiler, options);
         add_shutdown_hook(shutdown);
         if tui.options.interactive() {
             debug!("Enabling raw mode");
             enable_raw_mode().expect("TUI failed to enable raw mode");
         }
+
+        tui.compiler.send_command(
+            RequestTask::Launch {
+                files: tui.options.files.clone(),
+            },
+            tui.result_sender.clone(),
+        );
+
         let mut stats_ticker = time::interval(TICK);
         let mut reader = EventStream::new();
 
