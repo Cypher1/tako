@@ -81,6 +81,9 @@ impl Compiler {
 
     pub fn load_file(&self, path: PathBuf, response_sender: ResultSenderFor<LoadFileTask>) {
         let (tx, rx) = mpsc::unbounded_channel();
+        if tx.send(LoadFileTask { path: path.clone() }).is_err() {
+            return;
+        }
         self.watch_file(path, tx);
         Self::with_manager(rx, &self.load_file_manager, response_sender);
     }
