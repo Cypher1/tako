@@ -26,8 +26,9 @@ use tokio::{
     self,
     sync::{broadcast, mpsc},
 };
+use crate::primitives::Prim;
 
-const TICK: Duration = Duration::from_millis(100);
+const TICK: Duration = Duration::from_millis(1000);
 
 extern "C" fn shutdown() {
     let _discard = disable_raw_mode();
@@ -45,8 +46,8 @@ pub struct Tui {
     input_after_cursor: String,
     characters: String,
     options: Options,
-    result_receiver: mpsc::UnboundedReceiver<()>,
-    result_sender: mpsc::UnboundedSender<()>,
+    result_receiver: mpsc::UnboundedReceiver<Prim>,
+    result_sender: mpsc::UnboundedSender<Prim>,
 }
 
 impl Default for Tui {
