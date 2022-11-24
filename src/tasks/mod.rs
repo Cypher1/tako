@@ -11,7 +11,7 @@ pub use manager::{StatusReport, TaskStats};
 pub use status::*;
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 pub use task_trait::TaskId;
 use task_trait::*;
 use crate::error::Error;
@@ -58,7 +58,7 @@ impl Task for WatchFileTask {
     fn has_file_path(&self) -> Option<&PathBuf> {
         Some(&self.path)
     }
-    async fn perform(self, result_sender: UpdateSender<Self, Self::Output>) {
+    async fn perform(self, result_sender: UpdateSenderFor<Self>) {
         let other = self.clone();
         let mut watcher = {
             notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
@@ -67,7 +67,7 @@ impl Task for WatchFileTask {
                         trace!("event: {:?}", event);
                         for path in event.paths {
                             result_sender
-                                .send((other.clone(), Update::NextResult(LoadFileTask { path })))
+                                .send(Update::NextResult(LoadFileTask { path }))
                                 .expect("Load file task could not be sent");
                         }
                     }
@@ -92,24 +92,26 @@ pub struct LoadFileTask {
 
 #[async_trait]
 impl Task for LoadFileTask {
-    type Output = String;
+    type Output = LexFileTask;
     const TASK_KIND: TaskKind = TaskKind::LoadFile;
 
     fn has_file_path(&self) -> Option<&PathBuf> {
         Some(&self.path)
     }
-    async fn perform(self, result_sender: UpdateSender<Self, Self::Output>) {
+    async fn perform(self, result_sender: UpdateSenderFor<Self>) {
         // TODO: Use tokio's async read_to_string.
         let contents = std::fs::read_to_string(&self.path);
         let contents = contents.map_err(|err| self.decorate_error(err));
         result_sender
-            .send((
-                self,
+            .send(
                 match contents {
-                    Ok(result) => Update::FinalResult(result),
+                    Ok(result) => Update::FinalResult(LexFileTask {
+                        path: self.path.clone(),
+                        contents: result,
+                    }),
                     Err(err) => Update::Failed(err),
                 },
-            ))
+            )
             .expect("Should be able to send task result to manager");
     }
 }
@@ -128,7 +130,7 @@ impl Task for LexFileTask {
     fn has_file_path(&self) -> Option<&PathBuf> {
         Some(&self.path)
     }
-    async fn perform(self, result_sender: UpdateSender<Self, Self::Output>) {
+    async fn perform(self, result_sender: UpdateSenderFor<Self>) {
         let tokens = crate::tokens::lex(&self.contents);
         let tokens = tokens
             .map(|tokens| ParseFileTask {
@@ -138,13 +140,12 @@ impl Task for LexFileTask {
             })
             .map_err(|err| self.decorate_error(err));
         result_sender
-            .send((
-                self,
+            .send(
                 match tokens {
                     Ok(result) => Update::FinalResult(result),
                     Err(err) => Update::Failed(err),
                 },
-            ))
+            )
             .expect("Should be able to send task result to manager");
     }
 }
@@ -164,13 +165,12 @@ impl Task for ParseFileTask {
     fn has_file_path(&self) -> Option<&PathBuf> {
         Some(&self.path)
     }
-    async fn perform(self, result_sender: UpdateSender<Self, Self::Output>) {
+    async fn perform(self, result_sender: UpdateSenderFor<Self>) {
         tokio::task::spawn_blocking(move || {
             let ast = crate::parser::parse(&self.path, &self.contents, &self.tokens)
                 .map_err(|err| self.decorate_error(err));
             result_sender
-                .send((
-                    self.clone(),
+                .send(
                     match ast {
                         Ok(result) => Update::FinalResult(EvalFileTask {
                             path: self.path.to_path_buf(),
@@ -179,7 +179,7 @@ impl Task for ParseFileTask {
                         }),
                         Err(err) => Update::Failed(err),
                     },
-                ))
+                )
                 .expect("Should be able to send task result to manager");
         });
     }
@@ -201,18 +201,17 @@ impl Task for EvalFileTask {
     fn has_file_path(&self) -> Option<&PathBuf> {
         Some(&self.path)
     }
-    async fn perform(self, result_sender: UpdateSender<Self, Self::Output>) {
+    async fn perform(self, result_sender: UpdateSenderFor<Self>) {
         tokio::task::spawn_blocking(move || {
             let result = crate::interpreter::run(&self.path, &self.ast, self.root)
                 .map_err(|err| self.decorate_error(err));
             result_sender
-                .send((
-                    self,
+                .send(
                     match result {
                         Ok(result) => Update::FinalResult(result),
                         Err(err) => Update::Failed(err),
                     },
-                ))
+                )
                 .expect("Should be able to send task result to manager");
         });
     }

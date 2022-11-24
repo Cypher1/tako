@@ -27,13 +27,18 @@ async fn main() -> Result<()> {
         stats_requester.clone(),
     )
     .await;
-    // if !options.files.is_empty() {
-        // compiler.send_command(
-            // RequestTask::Launch {
-                // files: options.files.clone(),
-            // }
-        // );
-    // }
+    if options.cmd != Command::Repl && !options.files.is_empty() {
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        compiler.send_command(
+            RequestTask::Launch {
+                files: options.files.clone(),
+            },
+            tx
+        );
+        let result = rx.recv().await;
+        eprintln!("{:?}", result);
+        return Ok(());
+    }
     let ui_task = {
         let options = options.clone();
         let ui_mode = options.ui_mode;
