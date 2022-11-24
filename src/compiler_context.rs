@@ -1,7 +1,6 @@
 use crate::tasks::task_trait::{ResultSenderFor, Task, TaskReceiverFor};
 use crate::tasks::*;
 use tokio::sync::{broadcast, mpsc};
-
 use crate::tasks::manager::TaskManager;
 pub use crate::tasks::manager::{StatusReport, TaskStats};
 pub use crate::tasks::status::*;
@@ -9,6 +8,7 @@ pub use crate::tasks::task_trait::TaskId;
 use std::fmt::Debug;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use crate::primitives::Prim;
 
 #[derive(Debug)]
 pub struct Compiler {
@@ -114,5 +114,26 @@ impl Compiler {
         Self::with_manager(rx, &self.parse_file_manager, response_sender);
     }
 
-    pub fn send_command(&self, _cmd: RequestTask, _response_sender: mpsc::UnboundedSender<()>) {}
+    pub fn eval(
+        &self,
+        path: PathBuf,
+        contents: Option<String>,
+        response_sender: ResultSenderFor<EvalFileTask>,
+    ) {
+        let (tx, rx) = mpsc::unbounded_channel();
+        self.parse(path, contents, tx);
+        Self::with_manager(rx, &self.eval_file_manager, response_sender);
+    }
+
+    pub fn send_command(&self, cmd: RequestTask, response_sender: mpsc::UnboundedSender<Prim>) {
+        match cmd {
+            RequestTask::EvalLine(line) => {
+                self.eval("interpreter.tk".into(), Some(line), response_sender);
+            }
+            RequestTask::Launch { files: _ } => {
+                todo!()
+            }
+
+        }
+    }
 }
