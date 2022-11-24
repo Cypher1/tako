@@ -226,7 +226,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
     ) {
         trace!("{} starting report_stats", Self::name());
         // trace!("{}: Waiting for tasks...", Self::name());
-        while let Ok(_) = stats_requester.recv().await {
+        while stats_requester.recv().await.is_ok() {
             let this = this.lock().expect("");
             if stats_sender
                 .send(StatusReport {

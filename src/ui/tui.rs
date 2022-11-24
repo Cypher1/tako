@@ -2,6 +2,7 @@ use super::UserInterface;
 use crate::cli_options::Options;
 use crate::compiler_context::Compiler;
 use crate::error::Error;
+use crate::primitives::Prim;
 use crate::tasks::{RequestTask, StatusReport, TaskKind, TaskStats};
 use async_trait::async_trait;
 use crokey::{key, KeyEventFormat};
@@ -26,7 +27,6 @@ use tokio::{
     self,
     sync::{broadcast, mpsc},
 };
-use crate::primitives::Prim;
 
 const TICK: Duration = Duration::from_millis(1000);
 

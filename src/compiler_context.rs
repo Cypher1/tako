@@ -1,14 +1,14 @@
-use crate::tasks::task_trait::{ResultSenderFor, Task, TaskReceiverFor};
-use crate::tasks::*;
-use tokio::sync::{broadcast, mpsc};
+use crate::primitives::Prim;
 use crate::tasks::manager::TaskManager;
 pub use crate::tasks::manager::{StatusReport, TaskStats};
 pub use crate::tasks::status::*;
 pub use crate::tasks::task_trait::TaskId;
+use crate::tasks::task_trait::{ResultSenderFor, Task, TaskReceiverFor};
+use crate::tasks::*;
 use std::fmt::Debug;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use crate::primitives::Prim;
+use tokio::sync::{broadcast, mpsc};
 
 #[derive(Debug)]
 pub struct Compiler {
@@ -73,7 +73,7 @@ impl Compiler {
 
     pub fn watch_file(&self, path: PathBuf, response_sender: ResultSenderFor<WatchFileTask>) {
         let (tx, rx) = mpsc::unbounded_channel();
-        if let Err(_) = tx.send(WatchFileTask { path }) {
+        if tx.send(WatchFileTask { path }).is_err() {
             return;
         }
         Self::with_manager(rx, &self.watch_file_manager, response_sender);
@@ -93,7 +93,7 @@ impl Compiler {
     ) {
         let (tx, rx) = mpsc::unbounded_channel();
         if let Some(contents) = contents {
-            if let Err(_) = tx.send(LexFileTask { path, contents }) {
+            if tx.send(LexFileTask { path, contents }).is_err() {
                 return;
             }
         } else {
@@ -133,7 +133,6 @@ impl Compiler {
             RequestTask::Launch { files: _ } => {
                 todo!()
             }
-
         }
     }
 }
