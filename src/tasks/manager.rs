@@ -97,7 +97,11 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
         }
     }
 
-    pub fn start(this: &Arc<Mutex<Self>>, mut task_receiver: TaskReceiverFor<T>, results_sender: ResultSenderFor<T>) {
+    pub fn start(
+        this: &Arc<Mutex<Self>>,
+        mut task_receiver: TaskReceiverFor<T>,
+        results_sender: ResultSenderFor<T>,
+    ) {
         let this = this.clone();
         tokio::spawn(async move {
             let (tx, mut rx) = mpsc::unbounded_channel();
@@ -114,7 +118,12 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
         });
     }
 
-    pub fn handle_update(&mut self, task: T, update: Update<T::Output, Error>, results_sender: ResultSenderFor<T>) {
+    pub fn handle_update(
+        &mut self,
+        task: T,
+        update: Update<T::Output, Error>,
+        results_sender: ResultSenderFor<T>,
+    ) {
         trace!(
             "{} received update from task: {task:#?} {update:#?}",
             Self::name()
@@ -210,7 +219,11 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
         });
     }
 
-    pub async fn report_stats(this: Arc<Mutex<Self>>, mut stats_requester: broadcast::Receiver<()>, stats_sender: mpsc::UnboundedSender<StatusReport>) {
+    pub async fn report_stats(
+        this: Arc<Mutex<Self>>,
+        mut stats_requester: broadcast::Receiver<()>,
+        stats_sender: mpsc::UnboundedSender<StatusReport>,
+    ) {
         trace!("{} starting report_stats", Self::name());
         // trace!("{}: Waiting for tasks...", Self::name());
         while let Ok(_) = stats_requester.recv().await {
@@ -221,7 +234,8 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
                     stats: this.stats,
                     errors: this.errors.clone(),
                 })
-                .is_err() {
+                .is_err()
+            {
                 debug!("Stats receiver closed");
                 break;
             }

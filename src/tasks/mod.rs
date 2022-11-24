@@ -3,19 +3,19 @@ pub mod status;
 pub mod task_trait;
 use crate::ast::Ast;
 use crate::ast::NodeId;
+use crate::error::Error;
 use crate::tokens::Token;
 use async_trait::async_trait;
 use enum_kinds::EnumKind;
 use log::trace;
 pub use manager::{StatusReport, TaskStats};
+use notify::{RecursiveMode, Watcher};
 pub use status::*;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::path::PathBuf;
 pub use task_trait::TaskId;
 use task_trait::*;
-use crate::error::Error;
-use notify::{RecursiveMode, Watcher};
 
 // TODO: Add timing information, etc.
 // TODO: Support re-running multiple times for stability testing.
@@ -59,10 +59,10 @@ impl Task for WatchFileTask {
         Some(&self.path)
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        let other = self.clone();
+        let _other = self.clone();
         let mut watcher = {
-            notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
-                match res {
+            notify::recommended_watcher(
+                move |res: Result<notify::Event, notify::Error>| match res {
                     Ok(event) => {
                         trace!("event: {:?}", event);
                         for path in event.paths {
@@ -74,8 +74,8 @@ impl Task for WatchFileTask {
                     Err(e) => {
                         trace!("watch error: {:?}", e);
                     }
-                }
-            })
+                },
+            )
             .expect("Watcher failed to register")
         };
         trace!("Waiting on file changes...");
@@ -103,15 +103,13 @@ impl Task for LoadFileTask {
         let contents = std::fs::read_to_string(&self.path);
         let contents = contents.map_err(|err| self.decorate_error(err));
         result_sender
-            .send(
-                match contents {
-                    Ok(result) => Update::FinalResult(LexFileTask {
-                        path: self.path.clone(),
-                        contents: result,
-                    }),
-                    Err(err) => Update::Failed(err),
-                },
-            )
+            .send(match contents {
+                Ok(result) => Update::FinalResult(LexFileTask {
+                    path: self.path,
+                    contents: result,
+                }),
+                Err(err) => Update::Failed(err),
+            })
             .expect("Should be able to send task result to manager");
     }
 }
@@ -140,12 +138,10 @@ impl Task for LexFileTask {
             })
             .map_err(|err| self.decorate_error(err));
         result_sender
-            .send(
-                match tokens {
-                    Ok(result) => Update::FinalResult(result),
-                    Err(err) => Update::Failed(err),
-                },
-            )
+            .send(match tokens {
+                Ok(result) => Update::FinalResult(result),
+                Err(err) => Update::Failed(err),
+            })
             .expect("Should be able to send task result to manager");
     }
 }
@@ -170,16 +166,14 @@ impl Task for ParseFileTask {
             let ast = crate::parser::parse(&self.path, &self.contents, &self.tokens)
                 .map_err(|err| self.decorate_error(err));
             result_sender
-                .send(
-                    match ast {
-                        Ok(result) => Update::FinalResult(EvalFileTask {
-                            path: self.path.to_path_buf(),
-                            ast: result,
-                            root: None, // Dont assume which root to run (yet?)
-                        }),
-                        Err(err) => Update::Failed(err),
-                    },
-                )
+                .send(match ast {
+                    Ok(result) => Update::FinalResult(EvalFileTask {
+                        path: self.path.to_path_buf(),
+                        ast: result,
+                        root: None, // Dont assume which root to run (yet?)
+                    }),
+                    Err(err) => Update::Failed(err),
+                })
                 .expect("Should be able to send task result to manager");
         });
     }
@@ -206,12 +200,10 @@ impl Task for EvalFileTask {
             let result = crate::interpreter::run(&self.path, &self.ast, self.root)
                 .map_err(|err| self.decorate_error(err));
             result_sender
-                .send(
-                    match result {
-                        Ok(result) => Update::FinalResult(result),
-                        Err(err) => Update::Failed(err),
-                    },
-                )
+                .send(match result {
+                    Ok(result) => Update::FinalResult(result),
+                    Err(err) => Update::Failed(err),
+                })
                 .expect("Should be able to send task result to manager");
         });
     }

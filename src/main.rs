@@ -22,21 +22,17 @@ async fn main() -> Result<()> {
 
     let (task_manager_status_sender, task_manager_status_receiver) = mpsc::unbounded_channel();
     let (stats_requester, _) = broadcast::channel(1);
-    let compiler = start(
-        task_manager_status_sender,
-        stats_requester.clone(),
-    )
-    .await;
+    let compiler = start(task_manager_status_sender, stats_requester.clone()).await;
     if options.cmd != Command::Repl && !options.files.is_empty() {
         let (tx, mut rx) = mpsc::unbounded_channel();
         compiler.send_command(
             RequestTask::Launch {
                 files: options.files.clone(),
             },
-            tx
+            tx,
         );
         let result = rx.recv().await;
-        eprintln!("{:?}", result);
+        eprintln!("{result:?}");
         return Ok(());
     }
     let ui_task = {

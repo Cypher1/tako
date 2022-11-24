@@ -185,7 +185,10 @@ impl Tui {
                                 // TODO: Send the line to the compiler.
                                 trace!("Running {line}");
                                 if let Some(compiler) = &self.compiler {
-                                    compiler.send_command(RequestTask::EvalLine(line.to_string()), self.result_sender.clone());
+                                    compiler.send_command(
+                                        RequestTask::EvalLine(line.to_string()),
+                                        self.result_sender.clone(),
+                                    );
                                 } else {
                                     trace!("No backend?");
                                     self.history
