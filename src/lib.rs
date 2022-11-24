@@ -62,24 +62,16 @@ pub async fn launch_ui<
     stats_requester: broadcast::Sender<()>,
     options: Options,
 ) {
-    <T as UserInterface>::launch(
-        task_manager_stats,
-        compiler,
-        stats_requester,
-        options,
-    )
-    .await
-    .unwrap_or_else(|err| {
-        error!("Error in UI: {}", err);
-    });
+    <T as UserInterface>::launch(task_manager_stats, compiler, stats_requester, options)
+        .await
+        .unwrap_or_else(|err| {
+            error!("Error in UI: {}", err);
+        });
 }
 
 pub async fn start(
     task_manager_stats: mpsc::UnboundedSender<StatusReport>,
     task_manager_stats_requester: broadcast::Sender<()>,
 ) -> Compiler {
-    Compiler::new(
-        task_manager_stats,
-        task_manager_stats_requester,
-    )
+    Compiler::new(task_manager_stats, task_manager_stats_requester)
 }
