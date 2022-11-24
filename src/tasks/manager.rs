@@ -3,6 +3,8 @@ use crate::error::Error;
 use log::{debug, trace};
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::sync::Arc;
+use std::sync::Mutex;
 use tokio::sync::broadcast;
 use tokio::sync::mpsc;
 
@@ -74,10 +76,6 @@ impl StatusReport {
 
 #[derive(Debug)]
 pub struct TaskManager<T: Task> {
-    task_receiver: TaskReceiverFor<T>,
-    result_sender: ResultSenderFor<T>,
-    stats_sender: mpsc::UnboundedSender<StatusReport>,
-    stats_requester: broadcast::Receiver<()>,
     result_store: TaskResults<T>,
     stats: TaskStats,
     errors: HashMap<TaskId, Error>,
@@ -91,24 +89,32 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
         &name[index..last_lt]
     }
 
-    pub fn new(
-        task_receiver: TaskReceiverFor<T>,
-        result_sender: ResultSenderFor<T>,
-        stats_sender: mpsc::UnboundedSender<StatusReport>,
-        stats_requester: broadcast::Receiver<()>,
-    ) -> Self {
+    pub fn new() -> Self {
         Self {
-            task_receiver,
-            result_sender,
-            stats_sender,
-            stats_requester,
             result_store: TaskResults::<T>::new(),
             stats: TaskStats::default(),
             errors: HashMap::new(),
         }
     }
 
-    pub async fn handle_update(&mut self, task: T, update: Update<T::Output, Error>) {
+    pub fn start(this: &Arc<Mutex<Self>>, mut task_receiver: TaskReceiverFor<T>, results_sender: ResultSenderFor<T>) {
+        let this = this.clone();
+        tokio::spawn(async move {
+            let (tx, mut rx) = mpsc::unbounded_channel();
+            while let Some(task) = task_receiver.recv().await {
+                {
+                    let mut this = this.lock().expect("");
+                    this.handle_new_task(task.clone(), &tx, results_sender.clone());
+                }
+                while let Some(update) = rx.recv().await {
+                    let mut this = this.lock().expect("");
+                    this.handle_update(task.clone(), update, results_sender.clone());
+                }
+            }
+        });
+    }
+
+    pub fn handle_update(&mut self, task: T, update: Update<T::Output, Error>, results_sender: ResultSenderFor<T>) {
         trace!(
             "{} received update from task: {task:#?} {update:#?}",
             Self::name()
@@ -124,7 +130,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
         match update {
             Update::NextResult(res) => {
                 self.stats.total_num_results += 1;
-                self.result_sender
+                results_sender
                     .send(res.clone())
                     .expect("Should be able to send results");
                 if T::RESULT_IS_CACHABLE {
@@ -135,7 +141,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
                 self.stats.total_num_results += 1;
                 self.stats.num_succeeded += 1;
                 is_complete = true;
-                self.result_sender
+                results_sender
                     .send(res.clone())
                     .expect("Should be able to send results");
                 if T::RESULT_IS_CACHABLE {
@@ -160,10 +166,11 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
         };
     }
 
-    pub async fn handle_new_task(
+    pub fn handle_new_task(
         &mut self,
-        result_or_error_sender: &mpsc::UnboundedSender<(T, Update<T::Output, Error>)>,
         task: T,
+        result_or_error_sender: &mpsc::UnboundedSender<Update<T::Output, Error>>,
+        results_sender: ResultSenderFor<T>,
     ) {
         // Get a new job from 'upstream'.
         self.stats.num_requests += 1;
@@ -182,7 +189,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
                 self.stats.num_cached += 1;
                 trace!("{} cached task: {task:#?}", Self::name());
                 for result in status.results.iter().cloned() {
-                    self.result_sender
+                    results_sender
                         .send(result)
                         .expect("Should be able to send results");
                 }
@@ -203,42 +210,28 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
         });
     }
 
-    pub async fn run_loop(&mut self) {
-        trace!("{} starting run_loop", Self::name());
-        let (result_or_error_sender, mut result_or_error_receiver) =
-            mpsc::unbounded_channel::<(T, Update<T::Output, Error>)>();
-
-        loop {
-            // trace!("{}: Waiting for tasks...", Self::name());
-            tokio::select! {
-                Some((task, update)) = result_or_error_receiver.recv() => {
-                    self.handle_update(task, update).await;
-                },
-                Some(task) = self.task_receiver.recv() => {
-                    self.handle_new_task(&result_or_error_sender, task).await;
-                },
-                Ok(()) = self.stats_requester.recv() => {
-                    if self
-                        .stats_sender
-                        .send(StatusReport {
-                            kind: <T as Task>::TASK_KIND,
-                            stats: self.stats,
-                            errors: self.errors.clone(),
-                        })
-                        .is_err()
-                    {
-                        debug!("Stats receiver closed");
-                        break;
-                    }
-                },
-                else => break,
+    pub async fn report_stats(this: Arc<Mutex<Self>>, mut stats_requester: broadcast::Receiver<()>, stats_sender: mpsc::UnboundedSender<StatusReport>) {
+        trace!("{} starting report_stats", Self::name());
+        // trace!("{}: Waiting for tasks...", Self::name());
+        while let Ok(_) = stats_requester.recv().await {
+            let this = this.lock().expect("");
+            if stats_sender
+                .send(StatusReport {
+                    kind: <T as Task>::TASK_KIND,
+                    stats: this.stats,
+                    errors: this.errors.clone(),
+                })
+                .is_err() {
+                debug!("Stats receiver closed");
+                break;
             }
         }
-        self.stats_sender
+        let this = this.lock().expect("");
+        stats_sender
             .send(StatusReport {
                 kind: <T as Task>::TASK_KIND,
-                stats: self.stats,
-                errors: self.errors.clone(),
+                stats: this.stats,
+                errors: this.errors.clone(),
             })
             .unwrap_or_else(|err| {
                 debug!("Could not report final task manager stats: {}", err);

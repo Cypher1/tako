@@ -19,10 +19,8 @@ pub mod ui;
 
 use crate::cli_options::Options;
 use crate::compiler_context::Compiler;
-use crate::tasks::RequestTask;
 use crate::ui::UserInterface;
 use log::error;
-use primitives::Prim;
 use tasks::StatusReport;
 use tokio::sync::{broadcast, mpsc};
 

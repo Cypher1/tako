@@ -1,7 +1,7 @@
 use super::UserInterface;
 use crate::cli_options::Options;
 use crate::compiler_context::Compiler;
-use crate::tasks::{RequestTask, StatusReport};
+use crate::tasks::StatusReport;
 use async_trait::async_trait;
 use log::trace;
 use std::time::{Duration, Instant};
