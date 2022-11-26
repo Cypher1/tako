@@ -116,7 +116,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
                     Some(task) = task_receiver.recv() => {
                         let mut this = this.lock().expect("");
                         trace!("New task: {task:?}");
-                        this.handle_new_task(task.clone(), &tx, results_sender.clone());
+                        this.handle_new_task(task, &tx, results_sender.clone());
                     }
                     Some((task, update)) = rx.recv() => {
                         let mut this = this.lock().expect("");
@@ -200,10 +200,11 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
         if task.invalidate() {
             *status = TaskStatus::new(); // Forget the previous value!
         }
-        if status.state == TaskState::Running {
-            self.stats.num_already_running += 1;
-            return; // Done: Already running.
-        }
+        // TODO: Find the running one and listen for it's results.
+        //if status.state == TaskState::Running {
+            //self.stats.num_already_running += 1;
+            //return; // Done: Already running.
+        //}
         match (&status.state, T::RESULT_IS_CACHABLE) {
             // TODO: Consider that partial results 'should' still be safe to re-use and could pre-start later work.
             /* TaskState::Partial | */
