@@ -12,12 +12,12 @@ use log::trace;
 pub use manager::{StatusReport, TaskStats};
 use notify::{RecursiveMode, Watcher};
 pub use status::*;
-use tokio::sync::mpsc;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::path::PathBuf;
 pub use task_trait::TaskId;
 use task_trait::*;
+use tokio::sync::mpsc;
 
 // TODO: Add timing information, etc.
 // TODO: Support re-running multiple times for stability testing.
@@ -83,12 +83,16 @@ impl Task for WatchFileTask {
             .watch(&self.path, RecursiveMode::Recursive)
             .expect("Should be able to watch files");
 
-        while let Some(path) = rx.recv().await { // This avoids dropping the watcher.
+        while let Some(path) = rx.recv().await {
+            // This avoids dropping the watcher.
             result_sender
-                .send((self.clone(), Update::NextResult(LoadFileTask {
-                    path,
-                    invalidate: Meta(true),
-                })))
+                .send((
+                    self.clone(),
+                    Update::NextResult(LoadFileTask {
+                        path,
+                        invalidate: Meta(true),
+                    }),
+                ))
                 .expect("Load file task could not be sent");
         }
     }
@@ -115,13 +119,16 @@ impl Task for LoadFileTask {
         let contents = std::fs::read_to_string(&self.path);
         let contents = contents.map_err(|err| self.decorate_error(err));
         result_sender
-            .send((self.clone(), match contents {
-                Ok(result) => Update::FinalResult(LexFileTask {
-                    path: self.path,
-                    contents: result,
-                }),
-                Err(err) => Update::Failed(err),
-            }))
+            .send((
+                self.clone(),
+                match contents {
+                    Ok(result) => Update::FinalResult(LexFileTask {
+                        path: self.path,
+                        contents: result,
+                    }),
+                    Err(err) => Update::Failed(err),
+                },
+            ))
             .expect("Should be able to send task result to manager");
     }
 }
@@ -150,10 +157,13 @@ impl Task for LexFileTask {
             })
             .map_err(|err| self.decorate_error(err));
         result_sender
-            .send((self.clone(), match tokens {
-                Ok(result) => Update::FinalResult(result),
-                Err(err) => Update::Failed(err),
-            }))
+            .send((
+                self,
+                match tokens {
+                    Ok(result) => Update::FinalResult(result),
+                    Err(err) => Update::Failed(err),
+                },
+            ))
             .expect("Should be able to send task result to manager");
     }
 }
@@ -178,14 +188,17 @@ impl Task for ParseFileTask {
             let ast = crate::parser::parse(&self.path, &self.contents, &self.tokens)
                 .map_err(|err| self.decorate_error(err));
             result_sender
-                .send((self.clone(), match ast {
-                    Ok(result) => Update::FinalResult(EvalFileTask {
-                        path: self.path.to_path_buf(),
-                        ast: result,
-                        root: None, // Dont assume which root to run (yet?)
-                    }),
-                    Err(err) => Update::Failed(err),
-                }))
+                .send((
+                    self.clone(),
+                    match ast {
+                        Ok(result) => Update::FinalResult(EvalFileTask {
+                            path: self.path.to_path_buf(),
+                            ast: result,
+                            root: None, // Dont assume which root to run (yet?)
+                        }),
+                        Err(err) => Update::Failed(err),
+                    },
+                ))
                 .expect("Should be able to send task result to manager");
         });
     }
@@ -212,10 +225,13 @@ impl Task for EvalFileTask {
             let result = crate::interpreter::run(&self.path, &self.ast, self.root)
                 .map_err(|err| self.decorate_error(err));
             result_sender
-                .send((self.clone(), match result {
-                    Ok(result) => Update::FinalResult(result),
-                    Err(err) => Update::Failed(err),
-                }))
+                .send((
+                    self.clone(),
+                    match result {
+                        Ok(result) => Update::FinalResult(result),
+                        Err(err) => Update::Failed(err),
+                    },
+                ))
                 .expect("Should be able to send task result to manager");
         });
     }
