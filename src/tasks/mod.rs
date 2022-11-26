@@ -184,23 +184,21 @@ impl Task for ParseFileTask {
         Some(&self.path)
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        tokio::task::spawn_blocking(move || {
-            let ast = crate::parser::parse(&self.path, &self.contents, &self.tokens)
-                .map_err(|err| self.decorate_error(err));
-            result_sender
-                .send((
-                    self.clone(),
-                    match ast {
-                        Ok(result) => Update::FinalResult(EvalFileTask {
-                            path: self.path.to_path_buf(),
-                            ast: result,
-                            root: None, // Dont assume which root to run (yet?)
-                        }),
-                        Err(err) => Update::Failed(err),
-                    },
-                ))
-                .expect("Should be able to send task result to manager");
-        });
+        let ast = crate::parser::parse(&self.path, &self.contents, &self.tokens)
+            .map_err(|err| self.decorate_error(err));
+        result_sender
+            .send((
+                self.clone(),
+                match ast {
+                    Ok(result) => Update::FinalResult(EvalFileTask {
+                        path: self.path.to_path_buf(),
+                        ast: result,
+                        root: None, // Dont assume which root to run (yet?)
+                    }),
+                    Err(err) => Update::Failed(err),
+                },
+            ))
+            .expect("Should be able to send task result to manager");
     }
 }
 
@@ -221,18 +219,16 @@ impl Task for EvalFileTask {
         Some(&self.path)
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        tokio::task::spawn_blocking(move || {
-            let result = crate::interpreter::run(&self.path, &self.ast, self.root)
-                .map_err(|err| self.decorate_error(err));
-            result_sender
-                .send((
-                    self.clone(),
-                    match result {
-                        Ok(result) => Update::FinalResult(result),
-                        Err(err) => Update::Failed(err),
-                    },
-                ))
-                .expect("Should be able to send task result to manager");
-        });
+        let result = crate::interpreter::run(&self.path, &self.ast, self.root)
+            .map_err(|err| self.decorate_error(err));
+        result_sender
+            .send((
+                self.clone(),
+                match result {
+                    Ok(result) => Update::FinalResult(result),
+                    Err(err) => Update::Failed(err),
+                },
+            ))
+            .expect("Should be able to send task result to manager");
     }
 }
