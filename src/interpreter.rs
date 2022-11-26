@@ -4,8 +4,8 @@ use crate::literal_values::LiteralValues;
 use crate::primitives::Prim;
 use crate::tokens::Symbol;
 use log::*;
-use std::path::Path;
 use std::convert::TryInto;
+use std::path::Path;
 
 struct Ctx<'a> {
     ast: &'a Ast,

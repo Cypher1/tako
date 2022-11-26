@@ -191,7 +191,7 @@ impl Task for ParseFileTask {
                 self.clone(),
                 match ast {
                     Ok(result) => Update::FinalResult(EvalFileTask {
-                        path: self.path.to_path_buf(),
+                        path: self.path,
                         ast: result,
                         root: None, // Dont assume which root to run (yet?)
                     }),
@@ -223,7 +223,7 @@ impl Task for EvalFileTask {
             .map_err(|err| self.decorate_error(err));
         result_sender
             .send((
-                self.clone(),
+                self,
                 match result {
                     Ok(result) => Update::FinalResult(result),
                     Err(err) => Update::Failed(err),
