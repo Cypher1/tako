@@ -111,14 +111,18 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
         let this = this.clone();
         tokio::spawn(async move {
             let (tx, mut rx) = mpsc::unbounded_channel();
-            while let Some(task) = task_receiver.recv().await {
-                {
-                    let mut this = this.lock().expect("");
-                    this.handle_new_task(task.clone(), &tx, results_sender.clone());
-                }
-                while let Some(update) = rx.recv().await {
-                    let mut this = this.lock().expect("");
-                    this.handle_update(task.clone(), update, results_sender.clone());
+            loop {
+                tokio::select! {
+                    Some(task) = task_receiver.recv() => {
+                        let mut this = this.lock().expect("");
+                        trace!("New task: {task:?}");
+                        this.handle_new_task(task.clone(), &tx, results_sender.clone());
+                    }
+                    Some((task, update)) = rx.recv() => {
+                        let mut this = this.lock().expect("");
+                        trace!("New update: {update:?}");
+                        this.handle_update(task, update, results_sender.clone());
+                    }
                 }
             }
         });
@@ -184,7 +188,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
     pub fn handle_new_task(
         &mut self,
         task: T,
-        result_or_error_sender: &mpsc::UnboundedSender<Update<T::Output, Error>>,
+        result_or_error_sender: &mpsc::UnboundedSender<(T, Update<T::Output, Error>)>,
         results_sender: ResultSenderFor<T>,
     ) {
         // Get a new job from 'upstream'.

@@ -21,7 +21,7 @@ pub type TaskReceiverFor<T> = mpsc::UnboundedReceiver<T>;
 pub type TaskSenderFor<T> = mpsc::UnboundedSender<T>;
 pub type ResultReceiverFor<T> = mpsc::UnboundedReceiver<<T as Task>::Output>;
 pub type ResultSenderFor<T> = mpsc::UnboundedSender<<T as Task>::Output>;
-pub type UpdateSenderFor<T> = mpsc::UnboundedSender<Update<<T as Task>::Output, Error>>;
+pub type UpdateSenderFor<T> = mpsc::UnboundedSender<(T, Update<<T as Task>::Output, Error>)>;
 
 #[async_trait]
 pub trait Task: std::fmt::Debug + Clone + std::hash::Hash + Eq + Sized + Send {
