@@ -260,6 +260,9 @@ impl UserInterface for Tui {
                 }
                 Some(value) = result_receiver.recv() => {
                     trace!("Got result value: {value:?}");
+                    if !tui.options.interactive() {
+                        println!("{value:?}");
+                    }
                     tui.history.push(format!("{value:#?}"));
                     if tui.options.oneshot() {
                         tui.should_exit = true;
