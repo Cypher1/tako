@@ -5,6 +5,7 @@ use crate::primitives::Prim;
 use crate::tokens::Symbol;
 use log::*;
 use std::path::Path;
+use std::convert::TryInto;
 
 struct Ctx<'a> {
     ast: &'a Ast,
@@ -81,7 +82,96 @@ impl<'a> Ctx<'a> {
                 [Prim::I32(l), Prim::I32(r)] => Prim::I32(l / r),
                 _ => todo!(),
             },
-            _ => todo!(),
+            Symbol::DivRounding => match self.eval2(op.args)? {
+                [Prim::I32(l), Prim::I32(r)] => Prim::I32(l / r),
+                _ => todo!(),
+            },
+            Symbol::Exp => match self.eval2(op.args)? {
+                [Prim::I32(l), Prim::I32(r)] => Prim::I32(l.pow(r.try_into().unwrap())),
+                _ => todo!(),
+            },
+            Symbol::Modulo => match self.eval2(op.args)? {
+                [Prim::I32(l), Prim::I32(r)] => Prim::I32(l % r),
+                _ => todo!(),
+            },
+            Symbol::BitAnd => match self.eval2(op.args)? {
+                [Prim::I32(l), Prim::I32(r)] => Prim::I32(l & r),
+                _ => todo!(),
+            },
+            Symbol::BitXor => match self.eval2(op.args)? {
+                [Prim::I32(l), Prim::I32(r)] => Prim::I32(l ^ r),
+                _ => todo!(),
+            },
+            Symbol::BitOr => match self.eval2(op.args)? {
+                [Prim::I32(l), Prim::I32(r)] => Prim::I32(l | r),
+                _ => todo!(),
+            },
+            Symbol::Eqs => match self.eval2(op.args)? {
+                [Prim::I32(l), Prim::I32(r)] => Prim::Bool(l == r),
+                _ => todo!(),
+            },
+            Symbol::NotEqs => match self.eval2(op.args)? {
+                [Prim::I32(l), Prim::I32(r)] => Prim::Bool(l != r),
+                _ => todo!(),
+            },
+            Symbol::Lt => match self.eval2(op.args)? {
+                [Prim::I32(l), Prim::I32(r)] => Prim::Bool(l < r),
+                _ => todo!(),
+            },
+            Symbol::LtEqs => match self.eval2(op.args)? {
+                [Prim::I32(l), Prim::I32(r)] => Prim::Bool(l <= r),
+                _ => todo!(),
+            },
+            Symbol::LeftShift => match self.eval2(op.args)? {
+                [Prim::I32(l), Prim::I32(r)] => Prim::I32(l << r),
+                _ => todo!(),
+            },
+            Symbol::Gt => match self.eval2(op.args)? {
+                [Prim::I32(l), Prim::I32(r)] => Prim::Bool(l > r),
+                _ => todo!(),
+            },
+            Symbol::GtEqs => match self.eval2(op.args)? {
+                [Prim::I32(l), Prim::I32(r)] => Prim::Bool(l >= r),
+                _ => todo!(),
+            },
+            Symbol::RightShift => match self.eval2(op.args)? {
+                [Prim::I32(l), Prim::I32(r)] => Prim::I32(l >> r),
+                _ => todo!(),
+            },
+            Symbol::BitNot => todo!(),
+            Symbol::LogicalNot => todo!(),
+            Symbol::LogicalAnd => todo!(),
+            Symbol::LogicalOr => todo!(),
+            Symbol::GetAddress => todo!(),
+            Symbol::LeftPipe => todo!(),
+            Symbol::RightPipe => todo!(),
+            Symbol::Escape => todo!(),
+            Symbol::HasType => todo!(),
+            Symbol::FunctionType => todo!(),
+            Symbol::Try => todo!(),
+            Symbol::Dot => todo!(),
+            Symbol::Range => todo!(),
+            Symbol::Spread => todo!(),
+            Symbol::Comma => todo!(),
+            Symbol::Sequence => todo!(),
+            Symbol::OpenCurly => todo!(),
+            Symbol::CloseCurly => todo!(),
+            Symbol::OpenParen => todo!(),
+            Symbol::CloseParen => todo!(),
+            Symbol::OpenBracket => todo!(),
+            Symbol::CloseBracket => todo!(),
+            Symbol::Assign
+            | Symbol::AddAssign
+            | Symbol::SubAssign
+            | Symbol::DivAssign
+            | Symbol::DivRoundingAssign
+            | Symbol::MulAssign
+            | Symbol::BitAndAssign
+            | Symbol::BitXorAssign
+            | Symbol::BitOrAssign
+            | Symbol::LogicalAndAssign
+            | Symbol::LogicalOrAssign
+            | Symbol::ModuloAssign => todo!("Support assignment"),
         })
     }
 }

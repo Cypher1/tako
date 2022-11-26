@@ -65,9 +65,9 @@ const fn binding_power(symbol: Symbol) -> BindingPowerConfig {
         Symbol::Eqs => BindingPowerConfig::infix(2, 1),
         Symbol::Add | Symbol::Sub => BindingPowerConfig::infix(5, 6).and_prefix(99, 9),
         Symbol::Mul | Symbol::Div => BindingPowerConfig::infix(7, 8),
-        Symbol::LogicalNot => BindingPowerConfig::infix(11, 100),
+        Symbol::LogicalNot => BindingPowerConfig::prefix(11, 100),
         Symbol::Dot => BindingPowerConfig::infix(14, 13),
-        _ => todo!(),
+        _ => BindingPowerConfig::infix(3, 4),
     }
 }
 
@@ -149,7 +149,7 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
                 }
                 TokenType::Op(symbol) => {
                     trace!("Merging {res:?} and {left:?} to prep for {token:?}");
-                    let args = [res.node, left.node];
+                    let args = [left.node, res.node];
                     ast.add_op(Op::new(symbol, args), location)
                 }
                 _ => todo!("Dunno what to do with this one {:?}", res.token),
