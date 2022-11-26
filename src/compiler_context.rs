@@ -5,6 +5,7 @@ pub use crate::tasks::status::*;
 pub use crate::tasks::task_trait::TaskId;
 use crate::tasks::task_trait::{ResultSenderFor, Task, TaskReceiverFor};
 use crate::tasks::*;
+use crate::utils::meta::Meta;
 use std::fmt::Debug;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -81,7 +82,13 @@ impl Compiler {
 
     pub fn load_file(&self, path: PathBuf, response_sender: ResultSenderFor<LoadFileTask>) {
         let (tx, rx) = mpsc::unbounded_channel();
-        if tx.send(LoadFileTask { path: path.clone() }).is_err() {
+        if tx
+            .send(LoadFileTask {
+                path: path.clone(),
+                invalidate: Meta(false),
+            })
+            .is_err()
+        {
             return;
         }
         self.watch_file(path, tx);

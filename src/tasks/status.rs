@@ -3,6 +3,7 @@ pub enum TaskState<E: std::error::Error> {
     /// Place holder to record that a job is already running and shouldn't need to be run again
     /// unless invalidated.
     New,
+    Invalidated,
     Running,
     Partial,  // Include a handle to the result?
     Complete, // Include a handle to the result?
