@@ -76,6 +76,10 @@ pub trait Task: std::fmt::Debug + Clone + std::hash::Hash + Eq + Sized + Send {
     }
     // TODO: More...
 
+    fn invalidate(&self) -> bool {
+        false
+    }
+
     async fn perform(self, result_sender: UpdateSenderFor<Self>);
 
     fn decorate_error<E: Into<TError>>(&self, error: E) -> Error {

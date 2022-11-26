@@ -1,8 +1,8 @@
 use crate::ast::*;
 use crate::error::TError;
-use crate::tokens::Symbol;
 use crate::literal_values::LiteralValues;
 use crate::primitives::Prim;
+use crate::tokens::Symbol;
 use log::*;
 use std::path::Path;
 
@@ -46,9 +46,9 @@ impl<'a> Ctx<'a> {
             NodeData::NodeRef(_id) => todo!(),
             NodeData::NamedSymbol(_id) => todo!(),
             NodeData::Call(_id) => todo!(),
-            NodeData::Op(id) => self.eval_op(&node, id),
+            NodeData::Op(id) => self.eval_op(node, id),
             NodeData::Definition(_id) => todo!(),
-            NodeData::Literal(id) => self.eval_lit(&node, id),
+            NodeData::Literal(id) => self.eval_lit(node, id),
         }
     }
     pub fn eval_lit(&mut self, node: &Node, id: LiteralId) -> Result<Prim, TError> {
@@ -66,21 +66,21 @@ impl<'a> Ctx<'a> {
         let (_node_id, op) = id.get(&self.ast.ops);
         Ok(match op.op {
             Symbol::Add => match self.eval2(op.args)? {
-                [Prim::I32(l), Prim::I32(r)] => Prim::I32(l+r),
+                [Prim::I32(l), Prim::I32(r)] => Prim::I32(l + r),
                 _ => todo!(),
-            }
+            },
             Symbol::Sub => match self.eval2(op.args)? {
-                [Prim::I32(l), Prim::I32(r)] => Prim::I32(l-r),
+                [Prim::I32(l), Prim::I32(r)] => Prim::I32(l - r),
                 _ => todo!(),
-            }
+            },
             Symbol::Mul => match self.eval2(op.args)? {
-                [Prim::I32(l), Prim::I32(r)] => Prim::I32(l*r),
+                [Prim::I32(l), Prim::I32(r)] => Prim::I32(l * r),
                 _ => todo!(),
-            }
+            },
             Symbol::Div => match self.eval2(op.args)? {
-                [Prim::I32(l), Prim::I32(r)] => Prim::I32(l/r),
+                [Prim::I32(l), Prim::I32(r)] => Prim::I32(l / r),
                 _ => todo!(),
-            }
+            },
             _ => todo!(),
         })
     }

@@ -81,6 +81,16 @@ pub struct TaskManager<T: Task> {
     errors: HashMap<TaskId, Error>,
 }
 
+impl<T: Debug + Task + 'static> Default for TaskManager<T> {
+    fn default() -> Self {
+        Self {
+            result_store: TaskResults::<T>::new(),
+            stats: TaskStats::default(),
+            errors: HashMap::new(),
+        }
+    }
+}
+
 impl<T: Debug + Task + 'static> TaskManager<T> {
     fn name() -> &'static str {
         let name = std::any::type_name::<T>();
@@ -90,11 +100,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
     }
 
     pub fn new() -> Self {
-        Self {
-            result_store: TaskResults::<T>::new(),
-            stats: TaskStats::default(),
-            errors: HashMap::new(),
-        }
+        Self::default()
     }
 
     pub fn start(
@@ -187,6 +193,9 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
             .result_store
             .entry(task.get_hash())
             .or_insert_with(TaskStatus::new);
+        if task.invalidate() {
+            *status = TaskStatus::new(); // Forget the previous value!
+        }
         if status.state == TaskState::Running {
             self.stats.num_already_running += 1;
             return; // Done: Already running.

@@ -5,6 +5,7 @@ use crate::ast::Ast;
 use crate::ast::NodeId;
 use crate::error::Error;
 use crate::tokens::Token;
+use crate::utils::meta::Meta;
 use async_trait::async_trait;
 use enum_kinds::EnumKind;
 use log::trace;
@@ -67,7 +68,10 @@ impl Task for WatchFileTask {
                         trace!("event: {:?}", event);
                         for path in event.paths {
                             result_sender
-                                .send(Update::NextResult(LoadFileTask { path }))
+                                .send(Update::NextResult(LoadFileTask {
+                                    path,
+                                    invalidate: Meta(true),
+                                }))
                                 .expect("Load file task could not be sent");
                         }
                     }
@@ -88,13 +92,16 @@ impl Task for WatchFileTask {
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct LoadFileTask {
     pub path: PathBuf,
+    pub invalidate: Meta<bool>,
 }
 
 #[async_trait]
 impl Task for LoadFileTask {
     type Output = LexFileTask;
     const TASK_KIND: TaskKind = TaskKind::LoadFile;
-
+    fn invalidate(&self) -> bool {
+        *self.invalidate
+    }
     fn has_file_path(&self) -> Option<&PathBuf> {
         Some(&self.path)
     }
