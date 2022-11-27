@@ -123,6 +123,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
                         trace!("New update: {update:?}");
                         this.handle_update(task, update, results_sender.clone());
                     }
+                    else => break,
                 }
             }
         });
