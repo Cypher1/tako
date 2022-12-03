@@ -1,5 +1,5 @@
-use super::UserInterface;
 use super::client::Client;
+use super::UserInterface;
 use crate::cli_options::Options;
 use crate::compiler_context::Compiler;
 use crate::tasks::{RequestTask, StatusReport};
@@ -15,7 +15,6 @@ use crossterm::{
 use futures::{future::FutureExt, StreamExt};
 use log::{debug, trace};
 use shutdown_hooks::add_shutdown_hook;
-use std::collections::BTreeSet;
 use std::{
     io::{stdout, Write},
     time::{Duration, Instant},
@@ -43,9 +42,9 @@ pub struct Tui {
 }
 
 impl Tui {
-    fn new(compiler: Compiler, options: Options) -> Self {
+    fn new(client: Client) -> Self {
         Self {
-            client: Client::new(compiler, options),
+            client,
             key_fmt: KeyEventFormat::default(),
             should_exit: false,
             input: "".to_string(),
@@ -168,11 +167,8 @@ impl Tui {
                             if !line.is_empty() {
                                 // TODO: Send the line to the compiler.
                                 trace!("Running {line}");
-                                self.client.compiler.send_command(
-                                    RequestTask::EvalLine(line.to_string()),
-                                    self.client.result_sender.clone(),
-                                );
-                                self.client.history.push(line);
+                                self.client
+                                    .send_command(RequestTask::EvalLine(line.to_string()));
                             }
                             self.input_after_cursor = "".to_string();
                         } else {
@@ -198,30 +194,20 @@ impl Tui {
         }
         Ok(())
     }
-}
 
-#[async_trait]
-impl UserInterface for Tui {
-    async fn launch(
-        mut task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
-        // User control of the compiler
-        compiler: Compiler,
-        stats_requester: broadcast::Sender<()>,
-        options: Options,
-    ) -> std::io::Result<()> {
+    async fn run(&mut self) -> std::io::Result<()> {
         let _start_time = Instant::now();
-        let mut tui = Tui::new(compiler, options);
         add_shutdown_hook(shutdown);
-        if tui.client.options.interactive() {
+        if self.client.interactive() {
             debug!("Enabling raw mode");
             enable_raw_mode().expect("TUI failed to enable raw mode");
         }
 
-        tui.client.compiler.send_command(
+        self.client.compiler.send_command(
             RequestTask::Launch {
-                files: tui.client.options.files.clone(),
+                files: self.client.options.files.clone(),
             },
-            tui.client.result_sender.clone(),
+            self.client.result_sender.clone(),
         );
 
         let mut stats_ticker = time::interval(TICK);
@@ -229,35 +215,18 @@ impl UserInterface for Tui {
 
         loop {
             let event = reader.next().fuse();
-            let result_receiver = &mut tui.client.result_receiver;
             tokio::select! {
-                Some(StatusReport { kind, stats, errors }) = task_manager_status_receiver.recv() => {
-                    trace!("TaskManager status: {kind:?} => {stats}\nerrors: {errors:#?}");
-                    for (_id, err) in errors {
-                        let file = err.location.as_ref().map(|loc| loc.filename.clone());
-                        let errs = tui.client.errors_for_file.entry(file).or_insert_with(BTreeSet::new);
-                        errs.insert(err);
+                got_last_result = self.client.wait_for_updates() => {
+                    if got_last_result {
+                        self.should_exit = true;
                     }
-                    tui.client.manager_status.insert(kind, stats);
-                },
-                _ = stats_ticker.tick() => {
-                    stats_requester.send(()).expect("TODO");
                 }
-                Some(value) = result_receiver.recv() => {
-                    trace!("Got result value: {value:?}");
-                    if !tui.client.options.interactive() {
-                        println!("{value:?}");
-                    }
-                    tui.client.history.push(format!("{value:#?}"));
-                    if tui.client.options.oneshot() {
-                        tui.should_exit = true;
-                    }
-                },
+                _ = stats_ticker.tick() => self.client.get_stats(),
                 Some(maybe_event) = event => {
                     match maybe_event {
                         Ok(event) => {
                             // trace!("Event: {event:?}");
-                            tui.handle_event(event)?
+                            self.handle_event(event)?
                         }
                         Err(err) => {
                             trace!("Event stream error: {}", err);
@@ -267,16 +236,37 @@ impl UserInterface for Tui {
                 }
                 else => break,
             }
-            if tui.should_exit {
+            if self.should_exit {
                 // stdout().queue(Clear(ClearType::All))?;
                 stdout().flush()?;
                 std::process::exit(0)
             }
-            // tui.cursor_blink = (start_time.elapsed().as_secs() % 2) == 0;
-            if tui.client.options.interactive() {
-                tui.render()?;
+            // self.cursor_blink = (start_time.elapsed().as_secs() % 2) == 0;
+            if self.client.interactive() {
+                self.render()?;
             }
         }
         Ok(())
+    }
+}
+
+#[async_trait]
+impl UserInterface for Tui {
+    async fn launch(
+        task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
+        // User control of the compiler
+        compiler: Compiler,
+        stats_requester: broadcast::Sender<()>,
+        options: Options,
+    ) -> std::io::Result<()> {
+        let client = Client::new(
+            stats_requester,
+            task_manager_status_receiver,
+            compiler,
+            options,
+        );
+        add_shutdown_hook(shutdown);
+        let mut tui = Tui::new(client);
+        tui.run().await
     }
 }
