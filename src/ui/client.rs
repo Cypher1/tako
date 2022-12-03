@@ -12,15 +12,15 @@ use tokio::{self, sync::mpsc};
 
 #[derive(Debug)]
 pub struct Client {
-    stats_requester: broadcast::Sender<()>,
-    task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
     pub manager_status: HashMap<TaskKind, TaskStats>,
-    pub compiler: Compiler,
     pub history: Vec<String>, // TODO: Mark Input v output.
     pub errors_for_file: HashMap<Option<PathBuf>, BTreeSet<Error>>,
     pub options: Options,
+    stats_requester: broadcast::Sender<()>,
+    task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
+    compiler: Compiler,
     result_receiver: mpsc::UnboundedReceiver<Prim>,
-    pub result_sender: mpsc::UnboundedSender<Prim>,
+    result_sender: mpsc::UnboundedSender<Prim>,
 }
 
 impl Client {
