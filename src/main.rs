@@ -2,11 +2,7 @@
 use crossterm::Result;
 use log::{debug, error, trace};
 use std::env;
-use takolib::{
-    cli_options::Options,
-    launch_ui, start,
-    ui::{Http, Tui, UiMode},
-};
+use takolib::ui::{Http, Tui, UiMode};
 use tokio::sync::{broadcast, mpsc};
 
 type Output = takolib::primitives::Prim;
@@ -16,19 +12,19 @@ async fn main() -> Result<()> {
     takolib::ensure_initialized();
 
     let args: Vec<String> = env::args().collect();
-    let options = Options::new(args);
+    let options = takolib::cli_options::Options::new(args);
     debug!("Options: {options:#?}");
 
     let (task_manager_status_sender, task_manager_status_receiver) = mpsc::unbounded_channel();
     let (stats_requester, _) = broadcast::channel(1);
-    let compiler = start(task_manager_status_sender, stats_requester.clone()).await;
+    let compiler = takolib::start(task_manager_status_sender, stats_requester.clone()).await;
     let ui_task = {
         let options = options.clone();
         let ui_mode = options.ui_mode;
         tokio::spawn(async move {
             match ui_mode {
                 UiMode::Tui => {
-                    launch_ui::<Output, Tui>(
+                    takolib::launch_ui::<Output, Tui>(
                         task_manager_status_receiver,
                         compiler,
                         stats_requester,
@@ -37,7 +33,7 @@ async fn main() -> Result<()> {
                     .await
                 }
                 UiMode::Http => {
-                    launch_ui::<Output, Http>(
+                    takolib::launch_ui::<Output, Http>(
                         task_manager_status_receiver,
                         compiler,
                         stats_requester,
