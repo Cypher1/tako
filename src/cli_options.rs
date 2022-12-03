@@ -95,15 +95,6 @@ impl Options {
         }
         opts
     }
-
-    pub fn interactive(&self) -> bool {
-        // TODO: Build should have an interactive mode?
-        self.cmd == Command::Repl && !self.minimal_ui
-    }
-    pub fn oneshot(&self) -> bool {
-        // TODO: Build should have an interactive mode?
-        self.cmd == Command::Build || self.cmd == Command::Interpret
-    }
 }
 
 pub fn print_cli_info() {
