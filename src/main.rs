@@ -14,8 +14,13 @@ async fn main() {
     debug!("Options: {options:#?}");
 
     let (task_manager_status_sender, task_manager_status_receiver) = mpsc::unbounded_channel();
+    let (request_sender, request_receiver) = mpsc::unbounded_channel();
     let (stats_requester, _) = broadcast::channel(1);
-    let compiler = takolib::start(task_manager_status_sender, stats_requester.clone()).await;
+    let compiler = takolib::compiler_context::Compiler::new(
+        request_receiver,
+        task_manager_status_sender,
+        stats_requester.clone(),
+    );
     let ui_task = {
         let options = options.clone();
         let ui_mode = options.ui_mode;
@@ -24,7 +29,7 @@ async fn main() {
                 UiMode::Tui => {
                     takolib::launch_ui::<Output, Tui>(
                         task_manager_status_receiver,
-                        compiler,
+                        request_sender,
                         stats_requester,
                         options,
                     )
@@ -33,7 +38,7 @@ async fn main() {
                 UiMode::Http => {
                     takolib::launch_ui::<Output, Http>(
                         task_manager_status_receiver,
-                        compiler,
+                        request_sender,
                         stats_requester,
                         options,
                     )

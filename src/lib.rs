@@ -21,7 +21,8 @@ use crate::cli_options::Options;
 use crate::compiler_context::Compiler;
 use crate::ui::UserInterface;
 use log::error;
-use tasks::StatusReport;
+use primitives::Prim;
+use tasks::{RequestTask, StatusReport};
 use tokio::sync::{broadcast, mpsc};
 
 static mut LOGS_UNINITIALISED: bool = true;
@@ -58,11 +59,11 @@ pub async fn launch_ui<
     T: UserInterface + Send + 'static,
 >(
     task_manager_stats: mpsc::UnboundedReceiver<StatusReport>,
-    compiler: Compiler,
+    request_sender: mpsc::UnboundedSender<(RequestTask, mpsc::UnboundedSender<Prim>)>,
     stats_requester: broadcast::Sender<()>,
     options: Options,
 ) {
-    <T as UserInterface>::launch(task_manager_stats, compiler, stats_requester, options)
+    <T as UserInterface>::launch(task_manager_stats, request_sender, stats_requester, options)
         .await
         .unwrap_or_else(|err| {
             error!("Error in UI: {}", err);
@@ -70,8 +71,13 @@ pub async fn launch_ui<
 }
 
 pub async fn start(
+    request_sender: mpsc::UnboundedReceiver<(RequestTask, mpsc::UnboundedSender<Prim>)>,
     task_manager_stats: mpsc::UnboundedSender<StatusReport>,
     task_manager_stats_requester: broadcast::Sender<()>,
 ) -> Compiler {
-    Compiler::new(task_manager_stats, task_manager_stats_requester)
+    Compiler::new(
+        request_sender,
+        task_manager_stats,
+        task_manager_stats_requester,
+    )
 }

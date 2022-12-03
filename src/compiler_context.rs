@@ -14,6 +14,7 @@ use tokio::sync::{broadcast, mpsc};
 #[derive(Debug)]
 pub struct Compiler {
     // TODO: Make a trait...
+    request_sender: mpsc::UnboundedReceiver<(RequestTask, mpsc::UnboundedSender<Prim>)>,
     watch_file_manager: Arc<Mutex<TaskManager<WatchFileTask>>>,
     load_file_manager: Arc<Mutex<TaskManager<LoadFileTask>>>,
     lex_file_manager: Arc<Mutex<TaskManager<LexFileTask>>>,
@@ -23,10 +24,12 @@ pub struct Compiler {
 
 impl Compiler {
     pub fn new(
+        request_sender: mpsc::UnboundedReceiver<(RequestTask, mpsc::UnboundedSender<Prim>)>,
         stats_sender: mpsc::UnboundedSender<StatusReport>,
         stats_requester: broadcast::Sender<()>,
     ) -> Self {
         Self {
+            request_sender,
             watch_file_manager: Self::manager(&stats_sender, &stats_requester),
             load_file_manager: Self::manager(&stats_sender, &stats_requester),
             lex_file_manager: Self::manager(&stats_sender, &stats_requester),
@@ -46,6 +49,17 @@ impl Compiler {
             // TODO: load_into_interpreter: TaskManager<>,
             // TODO: run_in_interpreter: TaskManager<>,
         }
+    }
+
+    fn make_client(&self) -> crate::ui::Client {
+        todo!()
+        /*
+        Client::new(
+            stats_requester,
+            task_manager_status_receiver,
+            compiler,
+            options,
+        )*/
     }
 
     fn manager<T: Task + 'static>(
@@ -135,7 +149,13 @@ impl Compiler {
         Self::with_manager(rx, &self.eval_file_manager, response_sender);
     }
 
-    pub fn send_command(&self, cmd: RequestTask, response_sender: mpsc::UnboundedSender<Prim>) {
+    pub async fn run_loop(&mut self) {
+        while let Some((cmd, response_sender)) = self.request_sender.recv().await {
+            self.start_command(cmd, response_sender);
+        }
+    }
+
+    pub fn start_command(&self, cmd: RequestTask, response_sender: mpsc::UnboundedSender<Prim>) {
         match cmd {
             RequestTask::EvalLine(line) => {
                 self.eval("interpreter.tk".into(), Some(line), response_sender);
