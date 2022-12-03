@@ -26,7 +26,7 @@ use tokio::sync::{broadcast, mpsc};
 
 static mut LOGS_UNINITIALISED: bool = true;
 
-pub fn build_logger(finish: impl FnOnce(&mut env_logger::Builder)) {
+fn build_logger(finish: impl FnOnce(&mut env_logger::Builder)) {
     if unsafe { LOGS_UNINITIALISED } {
         unsafe {
             LOGS_UNINITIALISED = false;
