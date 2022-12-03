@@ -1,17 +1,15 @@
 #![deny(clippy::all)]
-use crossterm::Result;
 use log::{debug, error, trace};
-use std::env;
 use takolib::ui::{Http, Tui, UiMode};
 use tokio::sync::{broadcast, mpsc};
 
 type Output = takolib::primitives::Prim;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() {
     takolib::ensure_initialized();
 
-    let args: Vec<String> = env::args().collect();
+    let args: Vec<String> = std::env::args().collect();
     let options = takolib::cli_options::Options::new(args);
     debug!("Options: {options:#?}");
 
@@ -49,5 +47,4 @@ async fn main() -> Result<()> {
         error!("Compiler interface finished with internal error: {err}");
         std::process::exit(1);
     });
-    Ok(())
 }
