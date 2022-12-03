@@ -159,21 +159,16 @@ impl Tui {
                     }
                     key!(Enter) => {
                         // Submit the expression
-                        if true {
-                            // accepted
-                            let mut line = "".to_string();
-                            std::mem::swap(&mut self.input, &mut line);
-                            line += &self.input_after_cursor;
-                            if !line.is_empty() {
-                                // TODO: Send the line to the compiler.
-                                trace!("Running {line}");
-                                self.client
-                                    .send_command(RequestTask::EvalLine(line.to_string()));
-                            }
-                            self.input_after_cursor = "".to_string();
-                        } else {
-                            // show errr?
+                        let mut line = "".to_string();
+                        std::mem::swap(&mut self.input, &mut line);
+                        line += &self.input_after_cursor;
+                        if !line.is_empty() {
+                            // TODO: Send the line to the compiler.
+                            trace!("Running {line}");
+                            self.client
+                                .send_command(RequestTask::EvalLine(line.to_string()));
                         }
+                        self.input_after_cursor = "".to_string();
                     }
                     KeyEvent {
                         code: KeyCode::Char(letter),
