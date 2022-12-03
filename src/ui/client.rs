@@ -45,11 +45,9 @@ impl Client {
     }
 
     pub fn start(&mut self) {
-        self.send_command(
-            RequestTask::Launch {
-                files: self.options.files.clone(),
-            }
-        );
+        self.send_command(RequestTask::Launch {
+            files: self.options.files.clone(),
+        });
     }
 
     pub fn interactive(&self) -> bool {
