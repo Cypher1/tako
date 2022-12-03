@@ -1,14 +1,11 @@
-use crate::cli_options::Command;
-use crate::cli_options::Options;
-use crate::compiler_context::Compiler;
+use crate::cli_options::{Command, Options};
 use crate::error::Error;
 use crate::primitives::Prim;
 use crate::tasks::{RequestTask, StatusReport, TaskKind, TaskStats};
 use log::trace;
 use std::collections::{BTreeSet, HashMap};
 use std::path::PathBuf;
-use tokio::sync::broadcast;
-use tokio::{self, sync::mpsc};
+use tokio::sync::{broadcast, mpsc};
 
 #[derive(Debug)]
 pub struct Client {
@@ -18,7 +15,7 @@ pub struct Client {
     pub options: Options,
     stats_requester: broadcast::Sender<()>,
     task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
-    compiler: Compiler,
+    request_sender: mpsc::UnboundedSender<(RequestTask, mpsc::UnboundedSender<Prim>)>,
     result_receiver: mpsc::UnboundedReceiver<Prim>,
     result_sender: mpsc::UnboundedSender<Prim>,
 }
@@ -27,7 +24,7 @@ impl Client {
     pub fn new(
         stats_requester: broadcast::Sender<()>,
         task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
-        compiler: Compiler,
+        request_sender: mpsc::UnboundedSender<(RequestTask, mpsc::UnboundedSender<Prim>)>,
         options: Options,
     ) -> Self {
         let (result_sender, result_receiver) = mpsc::unbounded_channel();
@@ -37,7 +34,7 @@ impl Client {
             manager_status: HashMap::default(),
             history: Vec::default(),
             errors_for_file: HashMap::default(),
-            compiler,
+            request_sender,
             options,
             result_receiver,
             result_sender,
@@ -64,7 +61,7 @@ impl Client {
         if let RequestTask::EvalLine(line) = &cmd {
             self.history.push(line.to_string());
         }
-        self.compiler.send_command(cmd, self.result_sender.clone());
+        self.request_sender.send((cmd, self.result_sender.clone()));
     }
 
     pub fn get_stats(&mut self) {
