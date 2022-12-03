@@ -61,7 +61,7 @@ impl Client {
         if let RequestTask::EvalLine(line) = &cmd {
             self.history.push(line.to_string());
         }
-        self.request_sender.send((cmd, self.result_sender.clone()));
+        self.request_sender.send((cmd, self.result_sender.clone())).expect("TODO");
     }
 
     pub fn get_stats(&mut self) {

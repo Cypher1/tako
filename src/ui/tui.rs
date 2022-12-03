@@ -1,7 +1,6 @@
 use super::client::Client;
 use super::UserInterface;
 use crate::cli_options::Options;
-use crate::compiler_context::Compiler;
 use crate::primitives::Prim;
 use crate::tasks::{RequestTask, StatusReport};
 use async_trait::async_trait;
