@@ -1,6 +1,6 @@
 use super::UserInterface;
 use crate::cli_options::Options;
-use crate::compiler_context::Compiler;
+
 use crate::primitives::Prim;
 use crate::tasks::{RequestTask, StatusReport};
 use async_trait::async_trait;
@@ -36,7 +36,7 @@ impl UserInterface for Http {
     async fn launch(
         mut task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
         // User control of the compiler
-        request_sender: mpsc::UnboundedSender<(RequestTask, mpsc::UnboundedSender<Prim>)>,
+        _request_sender: mpsc::UnboundedSender<(RequestTask, mpsc::UnboundedSender<Prim>)>,
         stats_requester: broadcast::Sender<()>,
         _options: Options,
     ) -> std::io::Result<()> {

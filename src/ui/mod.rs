@@ -1,4 +1,3 @@
-use crate::compiler_context::Compiler;
 use crate::primitives::Prim;
 use crate::tasks::StatusReport;
 use crate::{cli_options::Options, tasks::RequestTask};
