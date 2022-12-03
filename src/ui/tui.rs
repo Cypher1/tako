@@ -197,12 +197,7 @@ impl Tui {
             debug!("Enabling raw mode");
             enable_raw_mode().expect("TUI failed to enable raw mode");
         }
-
-        self.client.send_command(
-            RequestTask::Launch {
-                files: self.client.options.files.clone(),
-            }
-        );
+        self.client.start();
 
         let mut stats_ticker = time::interval(TICK);
         let mut reader = EventStream::new();
