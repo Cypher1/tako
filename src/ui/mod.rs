@@ -4,6 +4,7 @@ use crate::tasks::StatusReport;
 use async_trait::async_trait;
 use tokio::sync::{broadcast, mpsc};
 
+mod client;
 mod http;
 mod tui;
 
