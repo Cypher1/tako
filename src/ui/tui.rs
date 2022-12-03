@@ -1,4 +1,5 @@
 use super::UserInterface;
+use super::client::Client;
 use crate::cli_options::Options;
 use crate::compiler_context::Compiler;
 use crate::error::Error;
@@ -36,36 +37,32 @@ extern "C" fn shutdown() {
 
 #[derive(Debug)]
 pub struct Tui {
-    manager_status: HashMap<TaskKind, TaskStats>,
-    compiler: Compiler,
     key_fmt: KeyEventFormat,
     should_exit: bool,
-    history: Vec<String>, // TODO: Mark Input v output.
-    errors_for_file: HashMap<Option<PathBuf>, BTreeSet<Error>>,
     input: String,
     input_after_cursor: String,
     characters: String,
-    options: Options,
-    result_receiver: mpsc::UnboundedReceiver<Prim>,
-    result_sender: mpsc::UnboundedSender<Prim>,
+    client: Client,
 }
 
 impl Tui {
     fn new(compiler: Compiler, options: Options) -> Self {
         let (result_sender, result_receiver) = mpsc::unbounded_channel();
         Self {
-            manager_status: HashMap::default(),
+            client: Client {
+                manager_status: HashMap::default(),
+                history: Vec::default(),
+                errors_for_file: HashMap::default(),
+                compiler,
+                options,
+                result_receiver,
+                result_sender,
+            },
             key_fmt: KeyEventFormat::default(),
             should_exit: false,
-            history: Vec::default(),
-            errors_for_file: HashMap::default(),
             input: "".to_string(),
             input_after_cursor: "".to_string(),
             characters: "".to_string(),
-            compiler,
-            options,
-            result_receiver,
-            result_sender,
         }
     }
 
@@ -75,7 +72,7 @@ impl Tui {
 
         let mut row = 0;
         row += 1;
-        for (task_kind, stats) in &self.manager_status {
+        for (task_kind, stats) in &self.client.manager_status {
             let line = format!("{task_kind:?}: {stats}");
             let len = line.len() as u16;
             stdout()
@@ -83,7 +80,7 @@ impl Tui {
                 .queue(Print(line))?;
             row += 1;
         }
-        for errs in self.errors_for_file.values() {
+        for errs in self.client.errors_for_file.values() {
             for err in errs {
                 let line = format!("{err}");
                 let len = line.len() as u16;
@@ -96,7 +93,7 @@ impl Tui {
 
         let count_lines = |s: &str| s.chars().filter(|c| *c == '\n').count();
         let mut content = "".to_string();
-        for hist_entry in &self.history {
+        for hist_entry in &self.client.history {
             content += hist_entry;
             content += "\n";
         }
@@ -183,11 +180,11 @@ impl Tui {
                             if !line.is_empty() {
                                 // TODO: Send the line to the compiler.
                                 trace!("Running {line}");
-                                self.compiler.send_command(
+                                self.client.compiler.send_command(
                                     RequestTask::EvalLine(line.to_string()),
-                                    self.result_sender.clone(),
+                                    self.client.result_sender.clone(),
                                 );
-                                self.history.push(line);
+                                self.client.history.push(line);
                             }
                             self.input_after_cursor = "".to_string();
                         } else {
@@ -227,16 +224,16 @@ impl UserInterface for Tui {
         let _start_time = Instant::now();
         let mut tui = Tui::new(compiler, options);
         add_shutdown_hook(shutdown);
-        if tui.options.interactive() {
+        if tui.client.options.interactive() {
             debug!("Enabling raw mode");
             enable_raw_mode().expect("TUI failed to enable raw mode");
         }
 
-        tui.compiler.send_command(
+        tui.client.compiler.send_command(
             RequestTask::Launch {
-                files: tui.options.files.clone(),
+                files: tui.client.options.files.clone(),
             },
-            tui.result_sender.clone(),
+            tui.client.result_sender.clone(),
         );
 
         let mut stats_ticker = time::interval(TICK);
@@ -244,27 +241,27 @@ impl UserInterface for Tui {
 
         loop {
             let event = reader.next().fuse();
-            let result_receiver = &mut tui.result_receiver;
+            let result_receiver = &mut tui.client.result_receiver;
             tokio::select! {
                 Some(StatusReport { kind, stats, errors }) = task_manager_status_receiver.recv() => {
                     trace!("TaskManager status: {kind:?} => {stats}\nerrors: {errors:#?}");
                     for (_id, err) in errors {
                         let file = err.location.as_ref().map(|loc| loc.filename.clone());
-                        let errs = tui.errors_for_file.entry(file).or_insert_with(BTreeSet::new);
+                        let errs = tui.client.errors_for_file.entry(file).or_insert_with(BTreeSet::new);
                         errs.insert(err);
                     }
-                    tui.manager_status.insert(kind, stats);
+                    tui.client.manager_status.insert(kind, stats);
                 },
                 _ = stats_ticker.tick() => {
                     stats_requester.send(()).expect("TODO");
                 }
                 Some(value) = result_receiver.recv() => {
                     trace!("Got result value: {value:?}");
-                    if !tui.options.interactive() {
+                    if !tui.client.options.interactive() {
                         println!("{value:?}");
                     }
-                    tui.history.push(format!("{value:#?}"));
-                    if tui.options.oneshot() {
+                    tui.client.history.push(format!("{value:#?}"));
+                    if tui.client.options.oneshot() {
                         tui.should_exit = true;
                     }
                 },
@@ -288,7 +285,7 @@ impl UserInterface for Tui {
                 std::process::exit(0)
             }
             // tui.cursor_blink = (start_time.elapsed().as_secs() % 2) == 0;
-            if tui.options.interactive() {
+            if tui.client.options.interactive() {
                 tui.render()?;
             }
         }
