@@ -2,9 +2,7 @@ use super::UserInterface;
 use super::client::Client;
 use crate::cli_options::Options;
 use crate::compiler_context::Compiler;
-use crate::error::Error;
-use crate::primitives::Prim;
-use crate::tasks::{RequestTask, StatusReport, TaskKind, TaskStats};
+use crate::tasks::{RequestTask, StatusReport};
 use async_trait::async_trait;
 use crokey::{key, KeyEventFormat};
 use crossterm::{
@@ -17,8 +15,7 @@ use crossterm::{
 use futures::{future::FutureExt, StreamExt};
 use log::{debug, trace};
 use shutdown_hooks::add_shutdown_hook;
-use std::collections::{BTreeSet, HashMap};
-use std::path::PathBuf;
+use std::collections::BTreeSet;
 use std::{
     io::{stdout, Write},
     time::{Duration, Instant},
@@ -47,17 +44,8 @@ pub struct Tui {
 
 impl Tui {
     fn new(compiler: Compiler, options: Options) -> Self {
-        let (result_sender, result_receiver) = mpsc::unbounded_channel();
         Self {
-            client: Client {
-                manager_status: HashMap::default(),
-                history: Vec::default(),
-                errors_for_file: HashMap::default(),
-                compiler,
-                options,
-                result_receiver,
-                result_sender,
-            },
+            client: Client::new(compiler, options),
             key_fmt: KeyEventFormat::default(),
             should_exit: false,
             input: "".to_string(),

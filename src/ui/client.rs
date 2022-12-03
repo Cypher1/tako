@@ -2,10 +2,7 @@ use crate::cli_options::Options;
 use crate::compiler_context::Compiler;
 use crate::error::Error;
 use crate::primitives::Prim;
-use crate::tasks::{RequestTask, StatusReport, TaskKind, TaskStats};
-use async_trait::async_trait;
-use futures::{future::FutureExt, StreamExt};
-use log::{debug, trace};
+use crate::tasks::{TaskKind, TaskStats};
 use std::collections::{BTreeSet, HashMap};
 use std::path::PathBuf;
 use tokio::{
@@ -25,7 +22,7 @@ pub struct Client {
 }
 
 impl Client {
-    fn new(compiler: Compiler, options: Options) -> Self {
+    pub fn new(compiler: Compiler, options: Options) -> Self {
         let (result_sender, result_receiver) = mpsc::unbounded_channel();
         Self {
             manager_status: HashMap::default(),
