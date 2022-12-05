@@ -14,7 +14,7 @@ use tokio::sync::{broadcast, mpsc};
 #[derive(Debug)]
 pub struct Compiler {
     // TODO: Make a trait...
-    request_sender: mpsc::UnboundedReceiver<(RequestTask, mpsc::UnboundedSender<Prim>)>,
+    request_receiver: mpsc::UnboundedReceiver<(RequestTask, mpsc::UnboundedSender<Prim>)>,
     watch_file_manager: Arc<Mutex<TaskManager<WatchFileTask>>>,
     load_file_manager: Arc<Mutex<TaskManager<LoadFileTask>>>,
     lex_file_manager: Arc<Mutex<TaskManager<LexFileTask>>>,
@@ -24,12 +24,12 @@ pub struct Compiler {
 
 impl Compiler {
     pub fn new(
-        request_sender: mpsc::UnboundedReceiver<(RequestTask, mpsc::UnboundedSender<Prim>)>,
+        request_receiver: mpsc::UnboundedReceiver<(RequestTask, mpsc::UnboundedSender<Prim>)>,
         stats_sender: mpsc::UnboundedSender<StatusReport>,
         stats_requester: broadcast::Sender<()>,
     ) -> Self {
         Self {
-            request_sender,
+            request_receiver,
             watch_file_manager: Self::manager(&stats_sender, &stats_requester),
             load_file_manager: Self::manager(&stats_sender, &stats_requester),
             lex_file_manager: Self::manager(&stats_sender, &stats_requester),
@@ -150,7 +150,7 @@ impl Compiler {
     }
 
     pub async fn run_loop(&mut self) {
-        while let Some((cmd, response_sender)) = self.request_sender.recv().await {
+        while let Some((cmd, response_sender)) = self.request_receiver.recv().await {
             self.start_command(cmd, response_sender);
         }
     }

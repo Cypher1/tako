@@ -16,7 +16,7 @@ async fn main() {
     let (task_manager_status_sender, task_manager_status_receiver) = mpsc::unbounded_channel();
     let (request_sender, request_receiver) = mpsc::unbounded_channel();
     let (stats_requester, _) = broadcast::channel(1);
-    let _compiler = takolib::compiler_context::Compiler::new(
+    let mut compiler = takolib::compiler_context::Compiler::new(
         request_receiver,
         task_manager_status_sender,
         stats_requester.clone(),
@@ -47,6 +47,9 @@ async fn main() {
             };
         })
     };
+    tokio::spawn(async move {
+        compiler.run_loop().await;
+    });
     ui_task.await.unwrap_or_else(|err| {
         trace!("Internal error: {err:#?}");
         error!("Compiler interface finished with internal error: {err}");
