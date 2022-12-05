@@ -219,11 +219,9 @@ impl Tui {
                         }
                         Err(err) => {
                             trace!("Event stream error: {}", err);
-                            break
                         }
                     }
                 }
-                else => break,
             }
             if self.should_exit {
                 // stdout().queue(Clear(ClearType::All))?;
@@ -235,7 +233,6 @@ impl Tui {
                 self.render()?;
             }
         }
-        Ok(())
     }
 }
 
