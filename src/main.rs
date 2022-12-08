@@ -21,6 +21,9 @@ async fn main() {
         task_manager_status_sender,
         stats_requester.clone(),
     );
+    tokio::spawn(async move {
+        compiler.run_loop().await;
+    });
     let ui_task = {
         let options = options.clone();
         let ui_mode = options.ui_mode;
@@ -47,9 +50,6 @@ async fn main() {
             };
         })
     };
-    tokio::spawn(async move {
-        compiler.run_loop().await;
-    });
     ui_task.await.unwrap_or_else(|err| {
         trace!("Internal error: {err:#?}");
         error!("Compiler interface finished with internal error: {err}");
