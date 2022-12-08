@@ -18,9 +18,7 @@ const TICK: Duration = Duration::from_millis(100);
 #[derive(Debug, Default)]
 pub struct Http {}
 
-#[allow(unused)]
-#[tokio::main]
-async fn main() {
+async fn run_server() {
     let index = warp::path::end().map(|| "Hello everyone!".to_string());
 
     // GET /hello/warp => 200 OK with body "Hello, warp!"
@@ -43,6 +41,10 @@ impl UserInterface for Http {
         let _start_time = Instant::now();
         let _http = Self::default();
         let mut stats_ticker = time::interval(TICK);
+
+        tokio::spawn(async move {
+            run_server().await;
+        });
 
         loop {
             tokio::select! {
