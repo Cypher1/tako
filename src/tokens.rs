@@ -67,8 +67,7 @@ pub enum Symbol {
     Gt,
     GtEqs,
     RightShift,
-    // The rest?
-    // Named(StrId),
+    // Parens
     OpenCurly,
     CloseCurly,
     OpenParen,
