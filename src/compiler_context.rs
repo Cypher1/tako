@@ -21,6 +21,7 @@ pub struct Compiler {
     lex_file_manager: Arc<Mutex<TaskManager<LexFileTask>>>,
     parse_file_manager: Arc<Mutex<TaskManager<ParseFileTask>>>,
     eval_file_manager: Arc<Mutex<TaskManager<EvalFileTask>>>,
+    // Broadcast the accumulation to all clients.
     stats_receiver: mpsc::UnboundedReceiver<StatusReport>,
     pub stats_requester: broadcast::Sender<()>,
     pub status_sender: broadcast::Sender<StatusReport>,
@@ -158,7 +159,7 @@ impl Compiler {
         Self::with_manager(rx, &self.eval_file_manager, response_sender);
     }
 
-    pub async fn run_loop(&mut self) {
+    pub async fn run_loop(mut self) {
         while let Some((cmd, response_sender)) = self.request_receiver.recv().await {
             self.start_command(cmd, response_sender);
         }

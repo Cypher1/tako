@@ -15,7 +15,7 @@ const TICK: Duration = Duration::from_millis(100);
 pub struct Http {
     task_manager_status_receiver: broadcast::Receiver<StatusReport>,
     stats_requester: broadcast::Sender<()>,
-    options: Options,
+    _options: Options,
 }
 
 async fn run_server() {
@@ -33,18 +33,18 @@ async fn run_server() {
 impl UserInterface for Http {
     async fn launch(
         compiler: &Compiler,
-        options: Options,
+        _options: Options,
     ) -> std::io::Result<Self> {
-        let mut task_manager_status_receiver = compiler.status_sender.subscribe();
+        let task_manager_status_receiver = compiler.status_sender.subscribe();
         let stats_requester = compiler.stats_requester.clone();
         Ok(Self {
             task_manager_status_receiver,
             stats_requester,
-            options,
+            _options,
         })
     }
 
-    async fn run_loop(&mut self) -> std::io::Result<()> {
+    async fn run_loop(mut self) -> std::io::Result<()> {
         let _start_time = Instant::now();
         let mut stats_ticker = time::interval(TICK);
 

@@ -30,5 +30,5 @@ pub trait UserInterface {
     where
         Self: Sized;
 
-    async fn run_loop(&mut self) -> std::io::Result<()>;
+    async fn run_loop(self) -> std::io::Result<()>;
 }

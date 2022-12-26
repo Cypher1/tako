@@ -198,7 +198,7 @@ impl UserInterface for Tui {
         Ok(Tui::new(client))
     }
 
-    async fn run_loop(&mut self) -> std::io::Result<()> {
+    async fn run_loop(mut self) -> std::io::Result<()> {
         let _start_time = Instant::now();
         add_shutdown_hook(shutdown);
         if self.client.interactive() {
