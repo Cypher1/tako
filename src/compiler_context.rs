@@ -32,9 +32,8 @@ pub struct Compiler {
     stats_request_receiver: broadcast::Receiver<()>,
 }
 
-impl Compiler {
-    pub fn new(
-    ) -> Self {
+impl Default for Compiler {
+    fn default() -> Self {
         let (request_sender, request_receiver) = mpsc::unbounded_channel();
         let (stats_sender, stats_receiver) = mpsc::unbounded_channel();
         let (stats_requester, stats_request_receiver) = broadcast::channel(1);
@@ -67,7 +66,9 @@ impl Compiler {
             request_sender,
         }
     }
+}
 
+impl Compiler {
     pub fn make_client(&self, options: Options) -> crate::ui::Client {
         use crate::ui::Client;
         Client::new(
