@@ -1,9 +1,12 @@
 use super::{UserInterface, Client};
+use crate::cli_options::{TITLE, VERSION};
 use crate::cli_options::Options;
 use crate::compiler_context::Compiler;
-use crate::tasks::StatusReport;
+use crate::primitives::Prim;
+use crate::tasks::{StatusReport, RequestTask};
 use async_trait::async_trait;
 use log::{debug, trace};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tokio::sync::{broadcast, mpsc};
 use tokio::time;
@@ -21,21 +24,27 @@ pub struct Http {
 
 #[derive(Debug)]
 enum CompilerRequest {
-    GetVersion,
+    RequestTask(RequestTask, mpsc::UnboundedSender<Prim>),
 }
 
-async fn run_server(tx: mpsc::UnboundedSender<CompilerRequest>) {
-    let index = warp::path::end().map(|| "Hello everyone! (try /hello/name)".to_string());
+async fn run_server(request_sender: mpsc::UnboundedSender<CompilerRequest>) {
+    let index = warp::path::end().map(|| "Hello everyone! (try /request/name)".to_string());
+    let version = warp::path!("version").map(|| format!("{TITLE}{VERSION}"));
 
-    // GET /hello/warp => 200 OK with body "Hello, warp!"
-    let hello = warp::path!("hello" / String).map(|name| format!("Hello, {name}!"));
-    let version = warp::path!("version").map(move || {
-        tx.send(CompilerRequest::GetVersion).expect("Sending...");
-        use crate::cli_options::{TITLE, VERSION};
-        format!("{TITLE}{VERSION}")
+    let request_sender = Arc::new(Mutex::new(request_sender));
+
+    // GET /request/warp => 200 OK with body "Hello, warp!"
+    let request = warp::path!("request" / String).then(|client_id| {
+        async {
+            let (tx, mut rx) = mpsc::unbounded_channel();
+            let request_sender = request_sender.lock().expect("TODO");
+            request_sender.send(CompilerRequest::RequestTask(RequestTask::EvalLine("1+2".to_string()), tx));
+            let result = rx.recv().await;
+            format!("Hello, {client_id}!")
+        }
     });
 
-    warp::serve(index.or(hello).or(version))
+    warp::serve(index.or(request).or(version))
         .run(([127, 0, 0, 1], 3030))
         .await;
 }
@@ -56,9 +65,7 @@ impl UserInterface for Http {
     async fn run_loop(mut self) -> std::io::Result<()> {
         let _start_time = Instant::now();
         let mut stats_ticker = time::interval(TICK);
-
         let (tx, mut rx) = mpsc::unbounded_channel();
-
         tokio::spawn(async move {
             run_server(tx).await;
         });
@@ -71,6 +78,12 @@ impl UserInterface for Http {
                 },
                 Some(req) = rx.recv() => {
                     debug!("Http request to compiler: {:?}", &req);
+                    match req {
+                        CompilerRequest::RequestTask(request, tx) => {
+                            debug!("{:?}", request);
+                            tx.send(Prim::I32(1)).expect("TODO");
+                        }
+                    }
                 },
                 _ = stats_ticker.tick() => {
                     self.stats_requester.send(()).expect("TODO");
