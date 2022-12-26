@@ -1,3 +1,4 @@
+use crate::cli_options::Options;
 use crate::primitives::Prim;
 use crate::tasks::manager::TaskManager;
 pub use crate::tasks::manager::{StatusReport, TaskStats};
@@ -20,14 +21,20 @@ pub struct Compiler {
     lex_file_manager: Arc<Mutex<TaskManager<LexFileTask>>>,
     parse_file_manager: Arc<Mutex<TaskManager<ParseFileTask>>>,
     eval_file_manager: Arc<Mutex<TaskManager<EvalFileTask>>>,
+    stats_requester: broadcast::Sender<()>,
+    status_sender: broadcast::Sender<StatusReport>,
+    result_sender: mpsc::UnboundedSender<Prim>,
+    request_sender: mpsc::UnboundedSender<(RequestTask, mpsc::UnboundedSender<Prim>)>,
 }
 
 impl Compiler {
     pub fn new(
-        request_receiver: mpsc::UnboundedReceiver<(RequestTask, mpsc::UnboundedSender<Prim>)>,
-        stats_sender: mpsc::UnboundedSender<StatusReport>,
-        stats_requester: broadcast::Sender<()>,
     ) -> Self {
+        let (request_sender, request_receiver) = mpsc::unbounded_channel();
+        let (result_sender, result_receiver) = mpsc::unbounded_channel();
+        let (stats_sender, stats_receiver) = mpsc::unbounded_channel();
+        let (stats_requester, stats_request_receiver) = broadcast::channel(1);
+        let (status_sender, status_receiver) = broadcast::channel(1);
         Self {
             request_receiver,
             watch_file_manager: Self::manager(&stats_sender, &stats_requester),
@@ -48,18 +55,21 @@ impl Compiler {
             // TODO: binary_generation: TaskManager<>,
             // TODO: load_into_interpreter: TaskManager<>,
             // TODO: run_in_interpreter: TaskManager<>,
+            status_sender,
+            stats_requester,
+            request_sender,
+            result_sender,
         }
     }
 
-    fn make_client(&self) -> crate::ui::Client {
-        todo!()
-        /*
+    fn make_client(&self, options: Options) -> crate::ui::Client {
+        use crate::ui::Client;
         Client::new(
-            stats_requester,
-            task_manager_status_receiver,
-            compiler,
+            self.stats_requester.clone(),
+            self.status_sender.subscribe(),
+            self.request_sender.clone(),
             options,
-        )*/
+        )
     }
 
     fn manager<T: Task + 'static>(

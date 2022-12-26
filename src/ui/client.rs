@@ -14,7 +14,7 @@ pub struct Client {
     pub errors_for_file: HashMap<Option<PathBuf>, BTreeSet<Error>>,
     pub options: Options,
     stats_requester: broadcast::Sender<()>,
-    task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
+    task_manager_status_receiver: broadcast::Receiver<StatusReport>,
     request_sender: mpsc::UnboundedSender<(RequestTask, mpsc::UnboundedSender<Prim>)>,
     result_receiver: mpsc::UnboundedReceiver<Prim>,
     result_sender: mpsc::UnboundedSender<Prim>,
@@ -23,7 +23,7 @@ pub struct Client {
 impl Client {
     pub fn new(
         stats_requester: broadcast::Sender<()>,
-        task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
+        task_manager_status_receiver: broadcast::Receiver<StatusReport>,
         request_sender: mpsc::UnboundedSender<(RequestTask, mpsc::UnboundedSender<Prim>)>,
         options: Options,
     ) -> Self {
@@ -73,7 +73,7 @@ impl Client {
     pub async fn wait_for_updates(&mut self) -> bool {
         let result_receiver = &mut self.result_receiver;
         tokio::select! {
-            Some(StatusReport { kind, stats, errors }) = self.task_manager_status_receiver.recv() => {
+            Ok(StatusReport { kind, stats, errors }) = self.task_manager_status_receiver.recv() => {
                 trace!("TaskManager status: {kind:?} => {stats}\nerrors: {errors:#?}");
                 for (_id, err) in errors {
                     let file = err.location.as_ref().map(|loc| loc.filename.clone());
