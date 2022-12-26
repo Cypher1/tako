@@ -6,17 +6,19 @@ use crate::primitives::Prim;
 use crate::tasks::{StatusReport, RequestTask};
 use async_trait::async_trait;
 use log::{debug, trace};
-use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tokio::sync::{broadcast, mpsc};
 use tokio::time;
+use std::collections::HashMap;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use warp::Filter;
 
 const TICK: Duration = Duration::from_millis(100);
 
 #[derive(Debug)]
 pub struct Http {
-    clients: Vec<Client>,
+    clients: HashMap<u64, Client>,
     task_manager_status_receiver: broadcast::Receiver<StatusReport>,
     stats_requester: broadcast::Sender<()>,
     _options: Options,
@@ -24,23 +26,21 @@ pub struct Http {
 
 #[derive(Debug)]
 enum CompilerRequest {
-    RequestTask(RequestTask, mpsc::UnboundedSender<Prim>),
+    RequestTask(RequestTask, u64, mpsc::UnboundedSender<Prim>),
 }
 
 async fn run_server(request_sender: mpsc::UnboundedSender<CompilerRequest>) {
     let index = warp::path::end().map(|| "Hello everyone! (try /request/name)".to_string());
     let version = warp::path!("version").map(|| format!("{TITLE}{VERSION}"));
 
-    let request_sender = Arc::new(Mutex::new(request_sender));
-
     // GET /request/warp => 200 OK with body "Hello, warp!"
-    let request = warp::path!("request" / String).then(|client_id| {
-        async {
+    let request = warp::path!("request" / String).then(move |client_id: String| {
+        let request_sender = request_sender.clone();
+        async move {
             let (tx, mut rx) = mpsc::unbounded_channel();
-            let request_sender = request_sender.lock().expect("TODO");
-            request_sender.send(CompilerRequest::RequestTask(RequestTask::EvalLine("1+2".to_string()), tx));
+            request_sender.send(CompilerRequest::RequestTask(RequestTask::EvalLine("1+2".to_string()), to_client_id(&client_id), tx)).expect("TODO");
             let result = rx.recv().await;
-            format!("Hello, {client_id}!")
+            format!("Hello, {client_id}!\n{result:?}")
         }
     });
 
@@ -49,13 +49,19 @@ async fn run_server(request_sender: mpsc::UnboundedSender<CompilerRequest>) {
         .await;
 }
 
+fn to_client_id(t: &str) -> u64 {
+    let mut s = DefaultHasher::new();
+    t.hash(&mut s);
+    s.finish()
+}
+
 #[async_trait]
 impl UserInterface for Http {
     async fn launch(compiler: &Compiler, _options: Options) -> std::io::Result<Self> {
         let task_manager_status_receiver = compiler.status_sender.subscribe();
         let stats_requester = compiler.stats_requester.clone();
         Ok(Self {
-            clients: Vec::new(),
+            clients: HashMap::new(),
             task_manager_status_receiver,
             stats_requester,
             _options,
@@ -79,8 +85,9 @@ impl UserInterface for Http {
                 Some(req) = rx.recv() => {
                     debug!("Http request to compiler: {:?}", &req);
                     match req {
-                        CompilerRequest::RequestTask(request, tx) => {
-                            debug!("{:?}", request);
+                        CompilerRequest::RequestTask(request, client_id, tx) => {
+                            debug!("{:?}: {:?}", client_id, request);
+                            debug!("{:?}", self.clients.entry(client_id));
                             tx.send(Prim::I32(1)).expect("TODO");
                         }
                     }
