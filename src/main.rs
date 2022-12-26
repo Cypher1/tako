@@ -1,7 +1,7 @@
 #![deny(clippy::all)]
 
 use log::{debug, error, trace};
-use takolib::{ui::{Http, Tui, UiMode}, compiler_context::Compiler};
+use takolib::{ui::{UserInterface, Http, Tui, UiMode}, compiler_context::Compiler};
 
 type Output = takolib::primitives::Prim;
 
@@ -23,7 +23,7 @@ async fn main() {
             .await;
             tokio::spawn(async move {
                 ui.run_loop()
-            });
+            })
         }
         UiMode::Http => {
             let ui = takolib::launch_ui::<Output, Http>(
@@ -33,7 +33,7 @@ async fn main() {
             .await;
             tokio::spawn(async move {
                 ui.run_loop()
-            });
+            })
         }
     };
     tokio::spawn(async move {
