@@ -189,10 +189,7 @@ impl Tui {
 
 #[async_trait]
 impl UserInterface for Tui {
-    async fn launch(
-        compiler: &Compiler,
-        options: Options,
-    ) -> std::io::Result<Self> {
+    async fn launch(compiler: &Compiler, options: Options) -> std::io::Result<Self> {
         let client = compiler.make_client(options);
         add_shutdown_hook(shutdown);
         Ok(Tui::new(client))
