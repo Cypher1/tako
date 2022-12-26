@@ -5,8 +5,8 @@ use crate::tasks::StatusReport;
 use async_trait::async_trait;
 use log::trace;
 use std::time::{Duration, Instant};
-use tokio::time;
 use tokio::sync::broadcast;
+use tokio::time;
 use warp::Filter;
 
 const TICK: Duration = Duration::from_millis(100);
@@ -31,10 +31,7 @@ async fn run_server() {
 
 #[async_trait]
 impl UserInterface for Http {
-    async fn launch(
-        compiler: &Compiler,
-        _options: Options,
-    ) -> std::io::Result<Self> {
+    async fn launch(compiler: &Compiler, _options: Options) -> std::io::Result<Self> {
         let task_manager_status_receiver = compiler.status_sender.subscribe();
         let stats_requester = compiler.stats_requester.clone();
         Ok(Self {

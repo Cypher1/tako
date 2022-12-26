@@ -1,5 +1,5 @@
-use crate::compiler_context::Compiler;
 use crate::cli_options::Options;
+use crate::compiler_context::Compiler;
 use async_trait::async_trait;
 
 mod client;
@@ -23,10 +23,7 @@ pub enum UiMode {
 
 #[async_trait]
 pub trait UserInterface {
-    async fn launch(
-        compiler: &Compiler,
-        options: Options,
-    ) -> std::io::Result<Self>
+    async fn launch(compiler: &Compiler, options: Options) -> std::io::Result<Self>
     where
         Self: Sized;
 
