@@ -67,5 +67,5 @@ pub async fn launch_ui<
 }
 
 pub async fn start() -> Compiler {
-    Compiler::new()
+    Compiler::default()
 }

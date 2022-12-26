@@ -756,8 +756,7 @@ mod tests {
                         length: 3,
                     },
                 ],
-                "Failed with operator {}",
-                symbol
+                "Failed with operator {symbol}"
             );
             assert_str_eq!(tokens[0].get_str(&contents), symbol_str);
             assert_str_eq!(tokens[1].get_str(&contents), "123");

@@ -1,19 +1,19 @@
 #![deny(clippy::all)]
 
 use log::{debug, error, trace};
-use takolib::{ui::{UserInterface, Http, Tui, UiMode}, compiler_context::Compiler};
+use takolib::{ui::{UserInterface, Http, Tui, UiMode}, start};
 
 type Output = takolib::primitives::Prim;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> std::io::Result<()> {
     takolib::ensure_initialized();
 
     let args: Vec<String> = std::env::args().collect();
     let options = takolib::cli_options::Options::new(args);
     debug!("Options: {options:#?}");
 
-    let compiler = Compiler::new();
+    let compiler = start().await;
     let ui_task = match options.ui_mode {
         UiMode::Tui => {
             let ui = takolib::launch_ui::<Output, Tui>(
@@ -22,7 +22,7 @@ async fn main() {
             )
             .await;
             tokio::spawn(async move {
-                ui.run_loop()
+                ui.run_loop().await
             })
         }
         UiMode::Http => {
@@ -32,16 +32,16 @@ async fn main() {
             )
             .await;
             tokio::spawn(async move {
-                ui.run_loop()
+                ui.run_loop().await
             })
         }
     };
     tokio::spawn(async move {
-        compiler.run_loop()
+        compiler.run_loop().await
     });
     ui_task.await.unwrap_or_else(|err| {
         trace!("Internal error: {err:#?}");
         error!("Compiler interface finished with internal error: {err}");
         std::process::exit(1);
-    });
+    })
 }
