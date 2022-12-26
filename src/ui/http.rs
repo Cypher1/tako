@@ -32,7 +32,7 @@ async fn run_server() {
 #[async_trait]
 impl UserInterface for Http {
     async fn launch(
-        mut task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
+        mut task_manager_status_receiver: broadcast::Receiver<StatusReport>,
         // User control of the compiler
         _request_sender: mpsc::UnboundedSender<(RequestTask, mpsc::UnboundedSender<Prim>)>,
         stats_requester: broadcast::Sender<()>,
@@ -48,7 +48,7 @@ impl UserInterface for Http {
 
         loop {
             tokio::select! {
-                Some(StatusReport { kind, stats, errors }) = task_manager_status_receiver.recv() => {
+                Ok(StatusReport { kind, stats, errors }) = task_manager_status_receiver.recv() => {
                     trace!("TaskManager stats: {kind:?} => {stats}\nerrors: {errors:#?}");
                     // http.manager_status.insert(kind, stats);
                 },

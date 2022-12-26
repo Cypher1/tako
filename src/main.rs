@@ -13,14 +13,7 @@ async fn main() {
     let options = takolib::cli_options::Options::new(args);
     debug!("Options: {options:#?}");
 
-    let (task_manager_status_sender, task_manager_status_receiver) = mpsc::unbounded_channel();
-    let (request_sender, request_receiver) = mpsc::unbounded_channel();
-    let (stats_requester, _) = broadcast::channel(1);
-    let mut compiler = takolib::compiler_context::Compiler::new(
-        request_receiver,
-        task_manager_status_sender,
-        stats_requester.clone(),
-    );
+    let mut compiler = takolib::compiler_context::Compiler::new();
     tokio::spawn(async move {
         compiler.run_loop().await;
     });

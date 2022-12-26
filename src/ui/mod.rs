@@ -26,7 +26,7 @@ pub enum UiMode {
 #[async_trait]
 pub trait UserInterface {
     async fn launch(
-        task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
+        task_manager_status_receiver: broadcast::Receiver<StatusReport>,
         request_sender: mpsc::UnboundedSender<(RequestTask, mpsc::UnboundedSender<Prim>)>,
         stats_requester: broadcast::Sender<()>,
         options: Options,

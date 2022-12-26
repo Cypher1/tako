@@ -239,7 +239,7 @@ impl Tui {
 #[async_trait]
 impl UserInterface for Tui {
     async fn launch(
-        task_manager_status_receiver: mpsc::UnboundedReceiver<StatusReport>,
+        task_manager_status_receiver: broadcast::Receiver<StatusReport>,
         // User control of the compiler
         request_sender: mpsc::UnboundedSender<(RequestTask, mpsc::UnboundedSender<Prim>)>,
         stats_requester: broadcast::Sender<()>,

@@ -58,7 +58,7 @@ pub async fn launch_ui<
     Out: Send + std::fmt::Debug + std::fmt::Display,
     T: UserInterface + Send + 'static,
 >(
-    task_manager_stats: mpsc::UnboundedReceiver<StatusReport>,
+    task_manager_stats: broadcast::Receiver<StatusReport>,
     request_sender: mpsc::UnboundedSender<(RequestTask, mpsc::UnboundedSender<Prim>)>,
     stats_requester: broadcast::Sender<()>,
     options: Options,
@@ -70,14 +70,6 @@ pub async fn launch_ui<
         });
 }
 
-pub async fn start(
-    request_sender: mpsc::UnboundedReceiver<(RequestTask, mpsc::UnboundedSender<Prim>)>,
-    task_manager_stats: mpsc::UnboundedSender<StatusReport>,
-    task_manager_stats_requester: broadcast::Sender<()>,
-) -> Compiler {
-    Compiler::new(
-        request_sender,
-        task_manager_stats,
-        task_manager_stats_requester,
-    )
+pub async fn start() -> Compiler {
+    Compiler::new()
 }
