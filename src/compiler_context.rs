@@ -21,9 +21,9 @@ pub struct Compiler {
     lex_file_manager: Arc<Mutex<TaskManager<LexFileTask>>>,
     parse_file_manager: Arc<Mutex<TaskManager<ParseFileTask>>>,
     eval_file_manager: Arc<Mutex<TaskManager<EvalFileTask>>>,
-    stats_requester: broadcast::Sender<()>,
-    status_sender: broadcast::Sender<StatusReport>,
-    result_sender: mpsc::UnboundedSender<Prim>,
+    stats_receiver: mpsc::UnboundedReceiver<StatusReport>,
+    pub stats_requester: broadcast::Sender<()>,
+    pub status_sender: broadcast::Sender<StatusReport>,
     request_sender: mpsc::UnboundedSender<(RequestTask, mpsc::UnboundedSender<Prim>)>,
 }
 
@@ -31,10 +31,9 @@ impl Compiler {
     pub fn new(
     ) -> Self {
         let (request_sender, request_receiver) = mpsc::unbounded_channel();
-        let (result_sender, result_receiver) = mpsc::unbounded_channel();
         let (stats_sender, stats_receiver) = mpsc::unbounded_channel();
-        let (stats_requester, stats_request_receiver) = broadcast::channel(1);
-        let (status_sender, status_receiver) = broadcast::channel(1);
+        let (stats_requester, _stats_request_receiver) = broadcast::channel(1);
+        let (status_sender, _status_receiver) = broadcast::channel(1);
         Self {
             request_receiver,
             watch_file_manager: Self::manager(&stats_sender, &stats_requester),
@@ -56,13 +55,13 @@ impl Compiler {
             // TODO: load_into_interpreter: TaskManager<>,
             // TODO: run_in_interpreter: TaskManager<>,
             status_sender,
+            stats_receiver,
             stats_requester,
             request_sender,
-            result_sender,
         }
     }
 
-    fn make_client(&self, options: Options) -> crate::ui::Client {
+    pub fn make_client(&self, options: Options) -> crate::ui::Client {
         use crate::ui::Client;
         Client::new(
             self.stats_requester.clone(),

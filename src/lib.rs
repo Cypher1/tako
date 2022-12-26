@@ -21,9 +21,6 @@ use crate::cli_options::Options;
 use crate::compiler_context::Compiler;
 use crate::ui::UserInterface;
 use log::error;
-use primitives::Prim;
-use tasks::{RequestTask, StatusReport};
-use tokio::sync::{broadcast, mpsc};
 
 static mut LOGS_UNINITIALISED: bool = true;
 
@@ -58,16 +55,15 @@ pub async fn launch_ui<
     Out: Send + std::fmt::Debug + std::fmt::Display,
     T: UserInterface + Send + 'static,
 >(
-    task_manager_stats: broadcast::Receiver<StatusReport>,
-    request_sender: mpsc::UnboundedSender<(RequestTask, mpsc::UnboundedSender<Prim>)>,
-    stats_requester: broadcast::Sender<()>,
+    compiler: &Compiler,
     options: Options,
-) {
-    <T as UserInterface>::launch(task_manager_stats, request_sender, stats_requester, options)
+) -> T {
+    <T as UserInterface>::launch(compiler, options)
         .await
         .unwrap_or_else(|err| {
             error!("Error in UI: {}", err);
-        });
+            std::process::exit(1);
+        })
 }
 
 pub async fn start() -> Compiler {

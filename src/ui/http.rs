@@ -1,22 +1,22 @@
 use super::UserInterface;
 use crate::cli_options::Options;
-
-use crate::primitives::Prim;
-use crate::tasks::{RequestTask, StatusReport};
+use crate::compiler_context::Compiler;
+use crate::tasks::StatusReport;
 use async_trait::async_trait;
 use log::trace;
 use std::time::{Duration, Instant};
 use tokio::time;
-use tokio::{
-    self,
-    sync::{broadcast, mpsc},
-};
+use tokio::sync::broadcast;
 use warp::Filter;
 
 const TICK: Duration = Duration::from_millis(100);
 
-#[derive(Debug, Default)]
-pub struct Http {}
+#[derive(Debug)]
+pub struct Http {
+    task_manager_status_receiver: broadcast::Receiver<StatusReport>,
+    stats_requester: broadcast::Sender<()>,
+    options: Options,
+}
 
 async fn run_server() {
     let index = warp::path::end().map(|| "Hello everyone!".to_string());
@@ -32,14 +32,20 @@ async fn run_server() {
 #[async_trait]
 impl UserInterface for Http {
     async fn launch(
-        mut task_manager_status_receiver: broadcast::Receiver<StatusReport>,
-        // User control of the compiler
-        _request_sender: mpsc::UnboundedSender<(RequestTask, mpsc::UnboundedSender<Prim>)>,
-        stats_requester: broadcast::Sender<()>,
-        _options: Options,
-    ) -> std::io::Result<()> {
+        compiler: &Compiler,
+        options: Options,
+    ) -> std::io::Result<Self> {
+        let mut task_manager_status_receiver = compiler.status_sender.subscribe();
+        let stats_requester = compiler.stats_requester.clone();
+        Ok(Self {
+            task_manager_status_receiver,
+            stats_requester,
+            options,
+        })
+    }
+
+    async fn run_loop(&mut self) -> std::io::Result<()> {
         let _start_time = Instant::now();
-        let _http = Self::default();
         let mut stats_ticker = time::interval(TICK);
 
         tokio::spawn(async move {
@@ -48,12 +54,12 @@ impl UserInterface for Http {
 
         loop {
             tokio::select! {
-                Ok(StatusReport { kind, stats, errors }) = task_manager_status_receiver.recv() => {
+                Ok(StatusReport { kind, stats, errors }) = self.task_manager_status_receiver.recv() => {
                     trace!("TaskManager stats: {kind:?} => {stats}\nerrors: {errors:#?}");
                     // http.manager_status.insert(kind, stats);
                 },
                 _ = stats_ticker.tick() => {
-                    stats_requester.send(()).expect("TODO");
+                    self.stats_requester.send(()).expect("TODO");
                 }
                 else => break,
             }
