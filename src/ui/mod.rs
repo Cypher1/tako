@@ -1,8 +1,6 @@
-use crate::primitives::Prim;
-use crate::tasks::StatusReport;
-use crate::{cli_options::Options, tasks::RequestTask};
+use crate::compiler_context::Compiler;
+use crate::cli_options::Options;
 use async_trait::async_trait;
-use tokio::sync::{broadcast, mpsc};
 
 mod client;
 mod http;
@@ -26,11 +24,11 @@ pub enum UiMode {
 #[async_trait]
 pub trait UserInterface {
     async fn launch(
-        task_manager_status_receiver: broadcast::Receiver<StatusReport>,
-        request_sender: mpsc::UnboundedSender<(RequestTask, mpsc::UnboundedSender<Prim>)>,
-        stats_requester: broadcast::Sender<()>,
+        compiler: &Compiler,
         options: Options,
-    ) -> std::io::Result<()>
+    ) -> std::io::Result<Self>
     where
         Self: Sized;
+
+    async fn run_loop(&mut self) -> std::io::Result<()>;
 }

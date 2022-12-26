@@ -1,8 +1,8 @@
 use super::client::Client;
 use super::UserInterface;
 use crate::cli_options::Options;
-use crate::primitives::Prim;
-use crate::tasks::{RequestTask, StatusReport};
+use crate::compiler_context::Compiler;
+use crate::tasks::RequestTask;
 use async_trait::async_trait;
 use crokey::{key, KeyEventFormat};
 use crossterm::{
@@ -20,10 +20,6 @@ use std::{
     time::{Duration, Instant},
 };
 use tokio::time;
-use tokio::{
-    self,
-    sync::{broadcast, mpsc},
-};
 
 const TICK: Duration = Duration::from_millis(1000);
 
@@ -189,8 +185,20 @@ impl Tui {
         }
         Ok(())
     }
+}
 
-    async fn run(&mut self) -> std::io::Result<()> {
+#[async_trait]
+impl UserInterface for Tui {
+    async fn launch(
+        compiler: &Compiler,
+        options: Options,
+    ) -> std::io::Result<Self> {
+        let client = compiler.make_client(options);
+        add_shutdown_hook(shutdown);
+        Ok(Tui::new(client))
+    }
+
+    async fn run_loop(&mut self) -> std::io::Result<()> {
         let _start_time = Instant::now();
         add_shutdown_hook(shutdown);
         if self.client.interactive() {
@@ -233,26 +241,5 @@ impl Tui {
                 self.render()?;
             }
         }
-    }
-}
-
-#[async_trait]
-impl UserInterface for Tui {
-    async fn launch(
-        task_manager_status_receiver: broadcast::Receiver<StatusReport>,
-        // User control of the compiler
-        request_sender: mpsc::UnboundedSender<(RequestTask, mpsc::UnboundedSender<Prim>)>,
-        stats_requester: broadcast::Sender<()>,
-        options: Options,
-    ) -> std::io::Result<()> {
-        let client = Client::new(
-            stats_requester,
-            task_manager_status_receiver,
-            request_sender,
-            options,
-        );
-        add_shutdown_hook(shutdown);
-        let mut tui = Tui::new(client);
-        tui.run().await
     }
 }
