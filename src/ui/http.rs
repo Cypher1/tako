@@ -1,17 +1,17 @@
-use super::{UserInterface, Client};
-use crate::cli_options::{TITLE, VERSION};
+use super::{Client, UserInterface};
 use crate::cli_options::Options;
+use crate::cli_options::{TITLE, VERSION};
 use crate::compiler_context::Compiler;
 use crate::primitives::Prim;
-use crate::tasks::{StatusReport, RequestTask};
+use crate::tasks::{RequestTask, StatusReport};
 use async_trait::async_trait;
 use log::{debug, trace};
+use std::collections::hash_map::DefaultHasher;
+use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
 use std::time::{Duration, Instant};
 use tokio::sync::{broadcast, mpsc};
 use tokio::time;
-use std::collections::HashMap;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
 use warp::Filter;
 
 const TICK: Duration = Duration::from_millis(100);
@@ -38,7 +38,13 @@ async fn run_server(request_sender: mpsc::UnboundedSender<CompilerRequest>) {
         let request_sender = request_sender.clone();
         async move {
             let (tx, mut rx) = mpsc::unbounded_channel();
-            request_sender.send(CompilerRequest::RequestTask(RequestTask::EvalLine("1+2".to_string()), to_client_id(&client_id), tx)).expect("TODO");
+            request_sender
+                .send(CompilerRequest::RequestTask(
+                    RequestTask::EvalLine("1+2".to_string()),
+                    to_client_id(&client_id),
+                    tx,
+                ))
+                .expect("TODO");
             let result = rx.recv().await;
             format!("Hello, {client_id}!\n{result:?}")
         }
