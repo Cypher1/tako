@@ -87,15 +87,15 @@ impl Tui {
             .input_after_cursor
             .find('\n')
             .unwrap_or(self.input_after_cursor.len());
-        let mut row = (rows as usize).saturating_sub(lines + 1); // TODO: Workout how to drop old lines.
-        let missed_rows = lines.saturating_sub(rows as usize - 1); // TODO: Workout how to drop old lines.
-                                                                   // TODO: Split into lines...
-                                                                   //.queue(SetForegroundColor(Color::Red))?
-                                                                   //.queue(SetBackgroundColor(Color::Blue))?
+        // TODO(usability): Workout how to drop old lines.
+        let mut row = (rows as usize).saturating_sub(lines + 1);
+        let missed_rows = lines.saturating_sub(rows as usize - 1);
 
         let mut col = 0;
         for line in content.lines().skip(missed_rows) {
             stdout().queue(MoveTo(0, row as u16))?.queue(Print(line))?;
+            //  .queue(SetForegroundColor(Color::Red))?
+            //  .queue(SetBackgroundColor(Color::Blue))?
             row += 1;
             col = line.len();
         }
@@ -159,7 +159,6 @@ impl Tui {
                         std::mem::swap(&mut self.input, &mut line);
                         line += &self.input_after_cursor;
                         if !line.is_empty() {
-                            // TODO: Send the line to the compiler.
                             trace!("Running {line}");
                             self.client
                                 .send_command(RequestTask::EvalLine(line.to_string()));

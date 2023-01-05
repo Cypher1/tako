@@ -10,7 +10,7 @@ use tokio::sync::{broadcast, mpsc};
 #[derive(Debug)]
 pub struct Client {
     pub manager_status: HashMap<TaskKind, TaskStats>,
-    pub history: Vec<String>, // TODO: Mark Input v output.
+    pub history: Vec<String>, // TODO(usability): Mark Input v output.
     pub errors_for_file: HashMap<Option<PathBuf>, BTreeSet<Error>>,
     pub options: Options,
     stats_requester: broadcast::Sender<()>,
@@ -48,12 +48,12 @@ impl Client {
     }
 
     pub fn interactive(&self) -> bool {
-        // TODO: Build should have an interactive mode?
+        // TODO(usability): Build should have an interactive mode?
         self.options.cmd == Command::Repl && !self.options.minimal_ui
     }
 
     pub fn oneshot(&self) -> bool {
-        // TODO: Build should have an interactive mode?
+        // TODO(usability): Build should have an interactive mode?
         self.options.cmd == Command::Build || self.options.cmd == Command::Interpret
     }
 
