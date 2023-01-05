@@ -25,9 +25,8 @@ pub type UpdateSenderFor<T> = mpsc::UnboundedSender<(T, Update<<T as Task>::Outp
 
 #[async_trait]
 pub trait Task: std::fmt::Debug + Clone + std::hash::Hash + Eq + Sized + Send {
-    // TODO: Separate the code that performs the task
+    // TODO(clarity): Separate the code that performs the task
     // from the part that generates new tasks.
-    // TODO: Only perform 'new' tasks.
 
     type Output: std::fmt::Debug + Clone + Send;
     const TASK_KIND: TaskKind;
@@ -74,7 +73,7 @@ pub trait Task: std::fmt::Debug + Clone + std::hash::Hash + Eq + Sized + Send {
     fn has_module(&self) -> Option<&()> {
         None
     }
-    // TODO: More...
+    // TODO(debugging): More...
 
     fn invalidate(&self) -> bool {
         false

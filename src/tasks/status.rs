@@ -8,15 +8,15 @@ pub enum TaskState<E: std::error::Error> {
     Partial,  // Include a handle to the result?
     Complete, // Include a handle to the result?
     Failure(E),
-    // TODO: Invalidated, // Has previous run correctly, but the previous result is (somehow) 'known' to be stale.
-    // TODO: Cancelled,  // Include why it was cancelled?
+    // TODO(feature): Invalidated, // Has previous run correctly, but the previous result is (somehow) 'known' to be stale.
+    // TODO(feature): Cancelled,  // Include why it was cancelled?
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct TaskStatus<T, E: std::error::Error> {
     pub index: Option<usize>,
     pub state: TaskState<E>,
-    pub results: Vec<T>, // TODO: Avoid wasting this if the task is uncachable?
+    pub results: Vec<T>,
 }
 
 impl<T, E: std::error::Error> Default for TaskStatus<T, E> {

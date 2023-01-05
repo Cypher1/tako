@@ -44,7 +44,7 @@ async fn run_server(request_sender: mpsc::UnboundedSender<CompilerRequest>) {
                     to_client_id(&client_id),
                     tx,
                 ))
-                .expect("TODO");
+                .expect("");
             let result = rx.recv().await;
             format!("Hello, {client_id}!\n{result:?}")
         }
@@ -94,12 +94,12 @@ impl UserInterface for Http {
                         CompilerRequest::RequestTask(request, client_id, tx) => {
                             debug!("{:?}: {:?}", client_id, request);
                             debug!("{:?}", self.clients.entry(client_id));
-                            tx.send(Prim::I32(1)).expect("TODO");
+                            tx.send(Prim::I32(1)).expect("Server task closed");
                         }
                     }
                 },
                 _ = stats_ticker.tick() => {
-                    self.stats_requester.send(()).expect("TODO");
+                    self.stats_requester.send(()).expect("Server task closed");
                 }
                 else => break,
             }
