@@ -12,10 +12,10 @@ use super::status::*;
 use super::task_trait::*;
 use super::TaskKind;
 
-// TODO: Add timing information, etc.
-// TODO: Support re-running multiple times for stability testing.
-// TODO: Store the Tasks and their statuses in a contiguous vec.
-// TODO: Still use hashing to look up tasks and their IDs.
+// TODO(debugging): Add timing information, etc.
+// TODO(debugging): Support re-running multiple times for stability testing.
+// TODO(perf): Store the Tasks and their statuses in a contiguous vec.
+// TODO(perf): Still use hashing to look up tasks and their IDs.
 // This should be the pre-computed hash, to avoid sending and cloning tasks.
 pub type TaskResults<T> = HashMap<TaskId, TaskStatus<<T as Task>::Output, Error>>;
 
@@ -201,13 +201,13 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
         if task.invalidate() {
             *status = TaskStatus::new(); // Forget the previous value!
         }
-        // TODO: Find the running one and listen for it's results.
+        // TODO(caching): Find the running one and listen for it's results.
         //if status.state == TaskState::Running {
         //self.stats.num_already_running += 1;
         //return; // Done: Already running.
         //}
         match (&status.state, T::RESULT_IS_CACHABLE) {
-            // TODO: Consider that partial results 'should' still be safe to re-use and could pre-start later work.
+            // TODO(caching): Consider that partial results 'should' still be safe to re-use and could pre-start later work.
             /* TaskState::Partial | */
             (TaskState::Complete, true) => {
                 self.stats.num_cached += 1;
