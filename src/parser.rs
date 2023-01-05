@@ -132,7 +132,7 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
             left = match stack.pop() {
                 Some(it) => it,
                 None => {
-                    //TODO(correctness): check we got to the end?
+                    assert!(tokens.next().is_none(), "Left over tokens");
                     trace!("No more stack");
                     return res.node;
                 }
