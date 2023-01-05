@@ -63,7 +63,7 @@ impl UserFacingLocation {
     }
 
     pub fn from(path: &Path, contents: &str, location: &Location) -> Self {
-        // TODO: Consider walking the module tree to get a fully qualified module name.
+        // TODO(usability): Consider walking the module tree to get a fully qualified module name.
         let mut loc = UserFacingLocation::new(path, 1, 1);
         let mut contents = contents.chars().peekable();
         for _ in 0..location.start {

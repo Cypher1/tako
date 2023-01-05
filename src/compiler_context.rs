@@ -45,7 +45,7 @@ impl Default for Compiler {
             lex_file_manager: Self::manager(&stats_sender, &stats_requester),
             parse_file_manager: Self::manager(&stats_sender, &stats_requester),
             eval_file_manager: Self::manager(&stats_sender, &stats_requester),
-            // TODO: More passes:
+            // TODO(features): More passes:
             // - type_check_inside_module: TaskManager<>,
             // Produces type checked (and optimizable) modules **AND**
             // partially type checked (but) mergable-modules.

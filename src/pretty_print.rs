@@ -8,7 +8,6 @@ use std::fmt::Write;
 #[derive(Default)]
 pub struct PrettyPrint {}
 
-// TODO: Return nodes.
 type Res = Result<(), TError>;
 type State = String;
 
