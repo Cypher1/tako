@@ -14,7 +14,7 @@ use tokio::sync::{broadcast, mpsc};
 
 #[derive(Debug)]
 pub struct Compiler {
-    // TODO: Make a trait...
+    // IDEA: Make a trait...
     request_receiver: mpsc::UnboundedReceiver<(RequestTask, mpsc::UnboundedSender<Prim>)>,
     watch_file_manager: Arc<Mutex<TaskManager<WatchFileTask>>>,
     load_file_manager: Arc<Mutex<TaskManager<LoadFileTask>>>,
@@ -45,19 +45,20 @@ impl Default for Compiler {
             lex_file_manager: Self::manager(&stats_sender, &stats_requester),
             parse_file_manager: Self::manager(&stats_sender, &stats_requester),
             eval_file_manager: Self::manager(&stats_sender, &stats_requester),
-            // TODO: type_check_inside_module: TaskManager<>,
+            // TODO: More passes:
+            // - type_check_inside_module: TaskManager<>,
             // Produces type checked (and optimizable) modules **AND**
             // partially type checked (but) mergable-modules.
             // Pair-wise merging of type checking information???
-            // TODO: type_check_merge_module_sets: TaskManager<>,
+            // - type_check_merge_module_sets: TaskManager<>,
             // Produces type checked (and optimizable) modules **AND**
             // Partially type checked (but) mergable-modules
-            // TODO: lowering: TaskManager<>,
-            // TODO: optimization: TaskManager<>,
-            // TODO: code_generation: TaskManager<>,
-            // TODO: binary_generation: TaskManager<>,
-            // TODO: load_into_interpreter: TaskManager<>,
-            // TODO: run_in_interpreter: TaskManager<>,
+            // - lowering: TaskManager<>,
+            // - optimization: TaskManager<>,
+            // - code_generation: TaskManager<>,
+            // - binary_generation: TaskManager<>,
+            // - load_into_interpreter: TaskManager<>,
+            // - run_in_interpreter: TaskManager<>,
             status_sender,
             status_receiver,
             stats_request_receiver,
@@ -140,7 +141,7 @@ impl Compiler {
         } else {
             self.load_file(path, tx);
         }
-        // TODO: Look into Streams
+        // IDEA: Look into Streams
         Self::with_manager(rx, &self.lex_file_manager, response_sender);
     }
 

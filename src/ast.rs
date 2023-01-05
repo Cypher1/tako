@@ -11,10 +11,9 @@ struct InContext<'a, T> {
 }
 */
 
-// TODO: String interner?
-// TODO: Replace strings where ideal...
-// TODO: Use macro for defining and registering each of these.
-// TODO: A lambda calculus impl.
+// TODO(perf): String interner?
+// TODO(clarity): Use macro for defining and registering each of these.
+// TODO(core): A lambda calculus impl.
 
 pub trait Contains<T> {
     fn get_all(&self) -> &Vec<T>;
@@ -73,7 +72,7 @@ pub struct Node {
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum NodeData {
-    // TODO: consider how to split this up.
+    // TODO(clarity): consider how to split this up.
     // Use a Array of Enums Structs to Struct of Arrays (i.e. AoES2SoA).
     NodeRef(NodeId), // Hopefully don't need this...???
     NamedSymbol(NamedSymbolId),
@@ -161,7 +160,7 @@ impl Ast {
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Call {
     pub inner: NodeId,
-    pub args: Vec<NodeId>, // TODO: Short vec
+    pub args: Vec<NodeId>, // TODO(perf): Short vec
 }
 
 impl Call {
@@ -200,7 +199,7 @@ pub enum Literal {
     Bool,    // a boolean of arbitrary size :P (true/false)
     Numeric, // an Integer or Float of arbitrary size
     Text,    // a character or strings of arbitrary size (e.g. UTF-8 or Unicode)
-             // TODO: Add more complex literals like:
+             // TODO(usability): Add more complex literals like:
              // Rational, e.g. 12
              // Color,
              // URL,
