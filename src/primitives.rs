@@ -6,7 +6,7 @@ use std::fmt;
 
 // Offsets here are sizes in bits, not bytes.
 // This means that we don't need to have a separate systems for bit vs byte layouts.
-pub type Offset = u32; // TODO: Check that this size is okay...
+pub type Offset = u32; // TODO(correctness): Check that this size is okay...
 
 // A list of types with an offset to get to the first bit (used for padding, frequently 0).
 type Layout = Vec<Val>; // Use a deque
@@ -56,7 +56,6 @@ pub enum Val {
     PrimVal(Prim),
     // Complex types
     Pointer(Offset, InnerVal), // Defaults to 8 bytes (64 bit)
-    // Lambda(Box<Node>), // TODO: Use a rust Fn ptr?
     Struct(Vec<(String, Val)>), // Should really just store values, but we can't do that yet.
     Union(TypeSet),
     Product(TypeSet),
@@ -118,7 +117,7 @@ impl Val {
                 intros: _,
                 arguments: _,
                 results,
-            } => results.is_sat(), // TODO: arguments?
+            } => results.is_sat(),
             App {
                 inner,
                 arguments: _,
@@ -161,7 +160,7 @@ impl Val {
     pub fn unify(self: &Val, other: &Val, env: &mut [Frame]) -> Result<Val, TError> {
         match (self, other) {
             (Variable(name), ty) => {
-                // TODO check if already assigned (and if so unify again)
+                // TODO(correctness) check if already assigned (and if so unify again)
                 env.last_mut()
                     .expect("unexpected empty env")
                     .insert(name.to_string(), ty.clone());
@@ -359,7 +358,7 @@ pub fn card(ty: &Val) -> Result<Offset, TError> {
 // Calculates the memory needed for a new instance in bits.
 pub fn size(ty: &Val) -> Result<Offset, TError> {
     match ty {
-        PrimVal(Tag(bits)) => Ok(bits.len() as u32), // TODO: check...
+        PrimVal(Tag(bits)) => Ok(bits.len() as u32), // TODO(correctness): check this.
         BitStr(ptr_size) => Ok(*ptr_size),
         Union(s) | Product(s) => {
             let mut res = 0;

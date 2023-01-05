@@ -19,10 +19,10 @@ pub use task_trait::TaskId;
 use task_trait::*;
 use tokio::sync::mpsc;
 
-// TODO: Add timing information, etc.
-// TODO: Support re-running multiple times for stability testing.
-// TODO: Store the Tasks and their statuses in a contiguous vec.
-// TODO: Still use hashing to look up tasks and their IDs.
+// TODO(debugging): Add timing information, etc.
+// TODO(debugging): Support re-running multiple times for stability testing.
+// TODO(perf): Store the Tasks and their statuses in a contiguous vec.
+// TODO(perf): Still use hashing to look up tasks and their IDs.
 // This should be the pre-computed hash, to avoid sending and cloning tasks.
 pub type TaskResults<T> = HashMap<T, TaskStatus<<T as Task>::Output, Error>>;
 
@@ -68,7 +68,7 @@ impl Task for WatchFileTask {
                     Ok(event) => {
                         trace!("event: {:?}", event);
                         for path in event.paths {
-                            tx.send(path).expect("TODO");
+                            tx.send(path).expect("File watcher terminated");
                         }
                     }
                     Err(e) => {
@@ -115,7 +115,7 @@ impl Task for LoadFileTask {
         Some(&self.path)
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        // TODO: Use tokio's async read_to_string.
+        // TODO(perf): Use tokio's async read_to_string.
         let contents = std::fs::read_to_string(&self.path);
         let contents = contents.map_err(|err| self.decorate_error(err));
         result_sender
