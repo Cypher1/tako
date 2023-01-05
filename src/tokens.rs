@@ -299,7 +299,7 @@ impl<'a> Characters<'a> {
 pub fn lex(contents: &str) -> Result<Vec<Token>, TError> {
     debug!("Lex {}", contents);
     let mut chars = Characters::new(contents);
-    let mut tokens = Vec::with_capacity(1000); // TODO: Bench mark & tune?
+    let mut tokens = Vec::with_capacity(1000); // TODO(perf): Bench mark & tune?
     while lex_head(&mut chars, &mut tokens) {}
     Ok(tokens)
 }
