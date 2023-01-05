@@ -183,8 +183,7 @@ impl Val {
             | App {
                 inner: _,
                 arguments: _,
-            } => never_type(), // TODO
-            // Lambda(_) => never_type(), // TODO
+            } => never_type(), // TODO(feature): Accesses into applications.
             Struct(tys) => {
                 for (param, ty) in tys.iter() {
                     if param == name {

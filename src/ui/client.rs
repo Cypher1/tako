@@ -63,11 +63,11 @@ impl Client {
         }
         self.request_sender
             .send((cmd, self.result_sender.clone()))
-            .expect("TODO");
+            .expect("Request sender closed");
     }
 
     pub fn get_stats(&mut self) {
-        self.stats_requester.send(()).expect("TODO");
+        self.stats_requester.send(()).expect("Stats requester closed");
     }
 
     pub async fn wait_for_updates(&mut self) -> bool {

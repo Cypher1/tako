@@ -6,7 +6,7 @@ use log::{debug, trace};
 use std::path::Path;
 
 use static_assertions::*;
-assert_eq_size!(Partial, [u8; 16]); // TODO: Try to get the size down
+assert_eq_size!(Partial, [u8; 16]); // TODO(perf): Try to get the size down
 assert_eq_size!([Partial; 2], [u8; 32]);
 
 pub fn parse(filepath: &Path, contents: &str, tokens: &[Token]) -> Result<Ast, TError> {
@@ -15,7 +15,7 @@ pub fn parse(filepath: &Path, contents: &str, tokens: &[Token]) -> Result<Ast, T
     let mut ast = Ast::new(filepath.to_path_buf());
     let root = expr(&mut ast, contents, tokens);
     ast.roots.extend(root);
-    // TODO: REMOVE THIS (it's just to test the threading model)
+    // TODO(testing): REMOVE THIS (it's just to test the threading model)
     // let mut rng = rand::thread_rng();
     // std::thread::sleep(std::time::Duration::from_secs(rng.gen_range(0..10)));
     Ok(ast)
@@ -132,7 +132,7 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
             left = match stack.pop() {
                 Some(it) => it,
                 None => {
-                    //TODO: check we got to the end?
+                    //TODO(correctness): check we got to the end?
                     trace!("No more stack");
                     return res.node;
                 }
