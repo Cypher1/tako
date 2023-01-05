@@ -99,7 +99,7 @@ impl std::fmt::Display for Symbol {
                 Symbol::LogicalOr => "||",
                 Symbol::Modulo => "%",
                 Symbol::GetAddress => "@",
-                Symbol::HasType => ":", // TODO: Work out a better way of printing pretty spaces.
+                Symbol::HasType => ":",
                 Symbol::Try => "?",
                 Symbol::Dot => ".",
                 Symbol::Range => "..",
@@ -184,7 +184,11 @@ impl Token {
         }
     }
 
-    pub fn get_str<'a>(&self, source: &'a str) -> &'a str {
+    pub fn to_prim(&self) -> i32 {
+        todo!("Provide a 'to_prim' that also de escapes tokens.")
+    }
+
+    pub fn get_src<'a>(&self, source: &'a str) -> &'a str {
         // Assuming the token is from the source file...
         &source[self.start as usize..self.start as usize + self.length as usize]
     }
@@ -192,7 +196,7 @@ impl Token {
 
 impl fmt::Debug for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // TODO: Look up the token to get the contents?
+        // TODO(usability): Look up the token to get the contents?
         write!(
             f,
             "{:?}@{}..{}",
@@ -208,7 +212,6 @@ const _MULTI_COMMENT: &str = "/*";
 
 #[inline]
 fn classify_char(ch: char) -> TokenType {
-    // TODO: replace this with an array with a value for each character.
     use TokenType::*;
     match ch {
         '\n' | '\r' | '\t' | ' ' => Whitespace,
@@ -306,13 +309,14 @@ pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
     while let Some(chr) = characters.peek() {
         // skip whitespace.
         if !is_whitespace(chr) {
-            // TODO: use trim_start
+            // TODO(perf): use trim_start
             break;
         }
         characters.next();
     }
+    // TODO(usability): Work out a better way of printing pretty spaces.
     /*
-    // TODO: Handle comments.
+    // TODO(usability): Handle comments.
     // Token is finished, covers from `start` to `characters`.
     let comment = contents[start..end].starts_with(COMMENT);
     let multi_comment = contents[start..end].starts_with(MULTI_COMMENT);
@@ -324,7 +328,7 @@ pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
     loop {
         characters.next();
         // Add the character.
-        match (last, characters.peek().map(|(_, chr)| *chr)) { // TODO: use .find
+        match (last, characters.peek().map(|(_, chr)| *chr)) { // TODO(perf): use .find
             (Some('/'), Some('*')) => {
                 depth += 1;
             }
@@ -350,11 +354,10 @@ pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
         return false;
     }
     characters.set_start();
-    // TODO: This should be simplified (make tight loops).
     use TokenType::*;
     let mut kind: TokenType = Unknown;
     while let Some(chr) = characters.peek() {
-        // TODO: these could be bit strings and we could and them.
+        // TODO(perf): these could be bit strings and we could and them.
         kind = match (kind, classify_char(chr)) {
             (_, Whitespace) => break,                // Token finished whitespace.
             (Unknown, new_tok_type) => new_tok_type, // Start token.
@@ -401,7 +404,7 @@ pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
             .prev()
             .expect("String literals should start with a quote");
         while let Some(chr) = characters.next() {
-            // TODO: use .find
+            // TODO(perf): use .find
             if chr == quote {
                 break; // reached the end of the quote.
             }
@@ -416,7 +419,7 @@ pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
         .expect("Token should finish after it starts");
 
     if length > SymbolLength::MAX as usize {
-        assert_eq!(kind, TokenType::StringLit); // TODO: Error here.
+        assert_eq!(kind, TokenType::StringLit); // TODO(usability): Error here.
         let mut number_of_tokens =
             (length + SymbolLength::MAX as usize - 1) / (SymbolLength::MAX as usize);
         if number_of_tokens >= (u8::MAX as usize) {
@@ -456,7 +459,7 @@ pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
 mod tests {
     use super::TokenType::*;
     use super::*;
-    use strum::IntoEnumIterator; // TODO: Make these test only
+    use strum::IntoEnumIterator; // TODO(cleanup): Make these test only
 
     fn setup_many(contents: &str, n: usize) -> Vec<Token> {
         let mut chars = Characters::new(contents);
@@ -575,7 +578,6 @@ mod tests {
 
     #[test]
     fn lex_head_escaped_characters_in_string() {
-        // TODO: De escape them.
         let contents = "'\\n\\t2\\r\\\'\"'";
         let tokens = setup(contents);
         assert_eq!(
@@ -586,7 +588,7 @@ mod tests {
                 length: 12
             }]
         );
-        assert_str_eq!(tokens[0].get_str(contents), "\'\\n\\t2\\r\\'\"\'");
+        assert_str_eq!(tokens[0].get_src(contents), "\'\\n\\t2\\r\\'\"\'");
     }
 
     #[test]
@@ -613,9 +615,9 @@ mod tests {
                 }
             ]
         );
-        assert_str_eq!(tokens[0].get_str(contents), "x");
-        assert_str_eq!(tokens[1].get_str(contents), "(");
-        assert_str_eq!(tokens[2].get_str(contents), ")");
+        assert_str_eq!(tokens[0].get_src(contents), "x");
+        assert_str_eq!(tokens[1].get_src(contents), "(");
+        assert_str_eq!(tokens[2].get_src(contents), ")");
     }
 
     #[test]
@@ -642,10 +644,10 @@ mod tests {
                 },
             ]
         );
-        assert_str_eq!(tokens[0].get_str(contents), "!");
+        assert_str_eq!(tokens[0].get_src(contents), "!");
         // The token-izer is not responsible for un-escaping...
-        assert_str_eq!(tokens[1].get_str(contents), "\"hello world\"");
-        assert_str_eq!(tokens[2].get_str(contents), "7");
+        assert_str_eq!(tokens[1].get_src(contents), "\"hello world\"");
+        assert_str_eq!(tokens[2].get_src(contents), "7");
     }
 
     #[test]
@@ -664,7 +666,7 @@ mod tests {
         assert_eq!(
             tokens
                 .iter()
-                .map(|tok| tok.get_str(contents))
+                .map(|tok| tok.get_src(contents))
                 .collect::<Vec<&str>>(),
             expected_strs
         );
@@ -686,7 +688,7 @@ mod tests {
         assert_eq!(
             tokens
                 .iter()
-                .map(|tok| tok.get_str(contents))
+                .map(|tok| tok.get_src(contents))
                 .collect::<Vec<&str>>(),
             expected_strs
         );
@@ -708,7 +710,7 @@ mod tests {
         assert_eq!(
             tokens
                 .iter()
-                .map(|tok| tok.get_str(contents))
+                .map(|tok| tok.get_src(contents))
                 .collect::<Vec<&str>>(),
             expected_strs
         );
@@ -730,7 +732,7 @@ mod tests {
         assert_eq!(
             tokens
                 .iter()
-                .map(|tok| tok.get_str(contents))
+                .map(|tok| tok.get_src(contents))
                 .collect::<Vec<&str>>(),
             expected_strs
         );
@@ -758,8 +760,8 @@ mod tests {
                 ],
                 "Failed with operator {symbol}"
             );
-            assert_str_eq!(tokens[0].get_str(&contents), symbol_str);
-            assert_str_eq!(tokens[1].get_str(&contents), "123");
+            assert_str_eq!(tokens[0].get_src(&contents), symbol_str);
+            assert_str_eq!(tokens[1].get_src(&contents), "123");
         }
     }
 }
