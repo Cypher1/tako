@@ -41,7 +41,7 @@ impl<'a> Ctx<'a> {
     }
 
     pub fn eval(&mut self, node: NodeId) -> Result<Prim, TError> {
-        // TODO(core): ???
+        // TODO(core): implement evaluation of the AST
         let node = node.get(&self.ast.nodes);
         match node.id {
             NodeData::NodeRef(_id) => todo!(),
