@@ -142,7 +142,7 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
                 TokenType::NumLit => {
                     trace!("Saving literal: {res:?}");
                     ast.literal_values.register_str_by_loc(
-                        res.token.get_str(contents).to_string(),
+                        res.token.get_src(contents).to_string(),
                         location.start,
                     );
                     ast.add_literal(Literal::Numeric, location)

@@ -67,7 +67,7 @@ pub struct Error {
 pub type ErrorId = TypedIndex<Error>;
 
 impl Error {
-    // TODO: Use a builder for this.
+    // TODO(clarity): Use a builder for this.
     pub fn new(
         source: TError,
         path: Option<&PathBuf>,
@@ -84,7 +84,7 @@ impl Error {
                 Some(UserFacingLocation::from(path, contents, location))
             }
             (Some(path), _, _, _) => Some(UserFacingLocation::from_path(path)),
-            _ => None, // TODO: There's more options here...
+            _ => None, // TODO(: There's more options here...
         };
         Self { source, location }
     }
