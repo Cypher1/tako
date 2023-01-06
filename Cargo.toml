@@ -39,7 +39,7 @@ crossterm = { version = "0.24.0", features = [ "event-stream" ] }
 futures = "0.3.25"
 notify = "5.0.0"
 shutdown_hooks = "0.1.0"
-tokio = { version = "1.21.2", features = [ "full" ]}
+tokio = { version = "1.23.1", features = [ "full" ]}
 async-trait = "0.1.58"
 # Info: https://nnethercote.github.io/2021/12/08/a-brutally-effective-hash-function-in-rust.html
 fxhash = "0.2.1"
