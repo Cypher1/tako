@@ -145,14 +145,17 @@ impl std::fmt::Display for Symbol {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum TokenType {
-    Unknown,
-    Op(Symbol),
-    Sym,
-    Whitespace,
-    Eof,
+    Op(Symbol),         // An operator (i.e. a known symbol used as a prefix or infix operator).
+    Sym,                // A named value.
+    Atom,               // A symbol starting with a #, used differently to symbols which have values.
+    Whitespace,         // A special discardable token representing whitespace.
+    Eof,                // A special discardable token representing end of file.
+
+    // Literals (i.e. tokens representing values):
     NumLit,
     // Short strings can be stored as symbols.
     StringLit,
+    // Format string parts:
     FmtStringLitStart,
     FmtStringLitMid,
     FmtStringLitEnd,
@@ -241,12 +244,11 @@ fn classify_char(ch: char) -> TokenType {
         '[' => Op(Symbol::OpenBracket),
         ']' => Op(Symbol::CloseBracket),
         '\\' => Op(Symbol::Escape), // Escape?
-        '#' => todo!(),
-        '$' => todo!(),
+        '#' => TokenType::Atom,
         '0'..='9' => NumLit,
         '"' | '\'' => StringLit,
         'A'..='Z' | 'a'..='z' | '_' => Sym,
-        _ => panic!("Unknown character {}", ch),
+        _ => panic!("Unknown token character {}", ch),
     }
 }
 
@@ -350,17 +352,18 @@ pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
         }
     }
     */
-    if characters.peek().is_none() {
-        return false;
-    }
     characters.set_start();
     use TokenType::*;
-    let mut kind: TokenType = Unknown;
+    let mut kind = if let Some(chr) = characters.peek() {
+        classify_char(chr) // Start token with the first character.
+    } else {
+        return false;
+    };
+    characters.next();
     while let Some(chr) = characters.peek() {
         // TODO(perf): these could be bit strings and we could and them.
         kind = match (kind, classify_char(chr)) {
             (_, Whitespace) => break,                // Token finished whitespace.
-            (Unknown, new_tok_type) => new_tok_type, // Start token.
             (Op(first), Op(second)) => match (first, second) {
                 // Continuation
                 (Symbol::Add, Symbol::Assign) => Op(Symbol::AddAssign),
@@ -394,6 +397,7 @@ pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
             },
             (NumLit, NumLit) => NumLit, // Continuation
             (NumLit, Sym) => NumLit,    // Number with suffix.
+            (Atom, NumLit | Sym) => Atom, // Atom.
             (Sym, NumLit | Sym) => Sym, // Symbol.
             _ => break,                 // Token finished can't continue here.
         };
@@ -506,6 +510,32 @@ mod tests {
                 kind: NumLit,
                 start: 0,
                 length: 3
+            }]
+        );
+    }
+
+    #[test]
+    fn lex_head_atom() {
+        let tokens = setup("#a1_2_3");
+        assert_eq!(
+            tokens,
+            vec![Token {
+                kind: Atom,
+                start: 0,
+                length: 7
+            }]
+        );
+    }
+
+    #[test]
+    fn lex_head_symbol_with_underscores() {
+        let tokens = setup("a1_2_3");
+        assert_eq!(
+            tokens,
+            vec![Token {
+                kind: Sym,
+                start: 0,
+                length: 6
             }]
         );
     }
