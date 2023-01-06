@@ -145,19 +145,19 @@ impl std::fmt::Display for Symbol {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum CharacterType {
-    Unknown,            // '' no characters yet!
-    AtomHead,           // '$' on it's own (invalid).
-    ColorLitHead,       // '#' on it's own (invalid).
-    Whitespace,         // A special discardable token representing whitespace.
-    HexSym,             // A subset of symbol characters that can be used in Hex strings (e.g. Colors).
-    PartialToken(TokenType)    // Already a valid token!
+    Unknown,                 // '' no characters yet!
+    AtomHead,                // '$' on it's own (invalid).
+    ColorLitHead,            // '#' on it's own (invalid).
+    Whitespace,              // A special discardable token representing whitespace.
+    HexSym, // A subset of symbol characters that can be used in Hex strings (e.g. Colors).
+    PartialToken(TokenType), // Already a valid token!
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum TokenType {
-    Op(Symbol),         // An operator (i.e. a known symbol used as a prefix or infix operator).
-    Sym,                // A named value.
-    Atom,               // A symbol starting with a '$', used differently to symbols which have values.
+    Op(Symbol), // An operator (i.e. a known symbol used as a prefix or infix operator).
+    Sym,        // A named value.
+    Atom,       // A symbol starting with a '$', used differently to symbols which have values.
     // Literals (i.e. tokens representing values):
     NumLit,
     ColorLit,
@@ -171,7 +171,7 @@ pub enum TokenType {
     // of the same kind preceeded by a 'Group' token.
     Group,
     // TODO(clarity): Remove from the token types if possible.
-    Eof,                // A special discardable token representing end of file.
+    Eof, // A special discardable token representing end of file.
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash)]
@@ -266,7 +266,8 @@ fn classify_char(ch: char) -> CharacterType {
 }
 
 #[inline]
-pub fn assign_op(s: Symbol) -> Option<Symbol> { // TODO(clarity): Move to a symbol module.
+pub fn assign_op(s: Symbol) -> Option<Symbol> {
+    // TODO(clarity): Move to a symbol module.
     Some(match s {
         Symbol::AddAssign => Symbol::Add,
         Symbol::SubAssign => Symbol::Sub,
@@ -284,7 +285,8 @@ pub fn assign_op(s: Symbol) -> Option<Symbol> { // TODO(clarity): Move to a symb
 }
 
 #[inline]
-pub fn is_assign(s: Symbol) -> bool { // TODO(clarity): Move to a symbol module.
+pub fn is_assign(s: Symbol) -> bool {
+    // TODO(clarity): Move to a symbol module.
     s == Symbol::Assign || assign_op(s).is_some()
 }
 
@@ -390,53 +392,55 @@ pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
     }
     */
     characters.set_start();
-    use TokenType::*;
     use CharacterType::*;
+    use TokenType::*;
     let mut kind = Unknown;
     while let Some(chr) = characters.peek() {
         // TODO(perf): these could be bit strings and we could and them.
         kind = match (kind, classify_char(chr)) {
-            (Unknown, new_kind) => new_kind,         // Start the token!
-            (_, Whitespace) => break,                // Token finished whitespace.
-            (PartialToken(Op(first)), PartialToken(Op(second))) => PartialToken(Op(match (first, second) {
-                // Continuation
-                (Symbol::Add, Symbol::Assign) => Symbol::AddAssign,
-                (Symbol::Sub, Symbol::Assign) => Symbol::SubAssign,
-                (Symbol::Sub, Symbol::Gt) => Symbol::Lambda,
-                (Symbol::Div, Symbol::Assign) => Symbol::DivAssign,
-                (Symbol::Div, Symbol::Div) => Symbol::DivRounding,
-                (Symbol::DivRounding, Symbol::Assign) => Symbol::DivRoundingAssign,
-                (Symbol::Mul, Symbol::Assign) => Symbol::MulAssign,
-                (Symbol::Mul, Symbol::Mul) => Symbol::Exp,
-                (Symbol::Modulo, Symbol::Assign) => Symbol::ModuloAssign,
-                (Symbol::LogicalOr, Symbol::Assign) => Symbol::LogicalOrAssign,
-                (Symbol::LogicalAnd, Symbol::Assign) => Symbol::LogicalAndAssign,
-                (Symbol::And, Symbol::Assign) => Symbol::AndAssign,
-                (Symbol::And, Symbol::And) => Symbol::LogicalAnd,
-                (Symbol::BitXor, Symbol::Assign) => Symbol::BitXorAssign,
-                (Symbol::Lt, Symbol::Or) => Symbol::LeftPipe,
-                (Symbol::Or, Symbol::Assign) => Symbol::OrAssign,
-                (Symbol::Or, Symbol::Or) => Symbol::LogicalOr,
-                (Symbol::Or, Symbol::Gt) => Symbol::RightPipe,
-                (Symbol::Lt, Symbol::Lt) => Symbol::LeftShift,
-                (Symbol::Gt, Symbol::Gt) => Symbol::RightShift,
-                (Symbol::Dot, Symbol::Dot) => Symbol::Range,
-                (Symbol::Range, Symbol::Dot) => Symbol::Spread,
-                (Symbol::Assign, Symbol::Assign) => Symbol::Eqs,
-                (Symbol::Assign, Symbol::Gt) => Symbol::Implies,
-                (Symbol::Gt, Symbol::Assign) => Symbol::GtEqs,
-                (Symbol::Lt, Symbol::Assign) => Symbol::LtEqs,
-                (Symbol::LogicalNot, Symbol::Assign) => Symbol::NotEqs,
-                (_, _) => break,
-            })),
+            (Unknown, new_kind) => new_kind, // Start the token!
+            (_, Whitespace) => break,        // Token finished whitespace.
+            (PartialToken(Op(first)), PartialToken(Op(second))) => {
+                PartialToken(Op(match (first, second) {
+                    // Continuation
+                    (Symbol::Add, Symbol::Assign) => Symbol::AddAssign,
+                    (Symbol::Sub, Symbol::Assign) => Symbol::SubAssign,
+                    (Symbol::Sub, Symbol::Gt) => Symbol::Lambda,
+                    (Symbol::Div, Symbol::Assign) => Symbol::DivAssign,
+                    (Symbol::Div, Symbol::Div) => Symbol::DivRounding,
+                    (Symbol::DivRounding, Symbol::Assign) => Symbol::DivRoundingAssign,
+                    (Symbol::Mul, Symbol::Assign) => Symbol::MulAssign,
+                    (Symbol::Mul, Symbol::Mul) => Symbol::Exp,
+                    (Symbol::Modulo, Symbol::Assign) => Symbol::ModuloAssign,
+                    (Symbol::LogicalOr, Symbol::Assign) => Symbol::LogicalOrAssign,
+                    (Symbol::LogicalAnd, Symbol::Assign) => Symbol::LogicalAndAssign,
+                    (Symbol::And, Symbol::Assign) => Symbol::AndAssign,
+                    (Symbol::And, Symbol::And) => Symbol::LogicalAnd,
+                    (Symbol::BitXor, Symbol::Assign) => Symbol::BitXorAssign,
+                    (Symbol::Lt, Symbol::Or) => Symbol::LeftPipe,
+                    (Symbol::Or, Symbol::Assign) => Symbol::OrAssign,
+                    (Symbol::Or, Symbol::Or) => Symbol::LogicalOr,
+                    (Symbol::Or, Symbol::Gt) => Symbol::RightPipe,
+                    (Symbol::Lt, Symbol::Lt) => Symbol::LeftShift,
+                    (Symbol::Gt, Symbol::Gt) => Symbol::RightShift,
+                    (Symbol::Dot, Symbol::Dot) => Symbol::Range,
+                    (Symbol::Range, Symbol::Dot) => Symbol::Spread,
+                    (Symbol::Assign, Symbol::Assign) => Symbol::Eqs,
+                    (Symbol::Assign, Symbol::Gt) => Symbol::Implies,
+                    (Symbol::Gt, Symbol::Assign) => Symbol::GtEqs,
+                    (Symbol::Lt, Symbol::Assign) => Symbol::LtEqs,
+                    (Symbol::LogicalNot, Symbol::Assign) => Symbol::NotEqs,
+                    (_, _) => break,
+                }))
+            }
             (ColorLitHead, HexSym | PartialToken(NumLit)) => PartialToken(ColorLit), // Color Literal.
             (PartialToken(ColorLit), HexSym | PartialToken(NumLit)) => PartialToken(ColorLit), // Color Literal.
             (AtomHead, HexSym | PartialToken(NumLit | Sym)) => PartialToken(Atom), // Atom.
             (PartialToken(Atom), HexSym | PartialToken(NumLit | Sym)) => PartialToken(Atom), // Atom.
             (HexSym | PartialToken(Sym), HexSym | PartialToken(NumLit | Sym)) => PartialToken(Sym), // Symbol.
             (PartialToken(NumLit), PartialToken(NumLit)) => PartialToken(NumLit), // Continuation
-            (PartialToken(NumLit), PartialToken(Sym)) => PartialToken(NumLit),    // Number with suffix.
-            _ => break,                 // Token finished can't continue here.
+            (PartialToken(NumLit), PartialToken(Sym)) => PartialToken(NumLit), // Number with suffix.
+            _ => break, // Token finished can't continue here.
         };
         characters.next(); // Continue past the character.
     }
@@ -509,8 +513,8 @@ pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{TokenType::*, CharacterType::*};
     use super::*;
+    use super::{CharacterType::*, TokenType::*};
     use strum::IntoEnumIterator; // TODO(cleanup): Make these test only
 
     fn setup_many(contents: &str, n: usize) -> Vec<Token> {
