@@ -13,3 +13,6 @@ tako
 flamegraph.svg
 perf.data*
 .vscode
+node_modules
+.bundle
+.jekyll-metadata
