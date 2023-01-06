@@ -143,7 +143,7 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
             let node = match res.token.kind {
                 TokenType::NumLit => {
                     trace!("Saving literal: {res:?}");
-                    ast.literal_values.register_str_by_loc(
+                    let _id = ast.string_interner.register_str_by_loc(
                         res.token.get_src(contents).to_string(),
                         location.start,
                     );
@@ -159,10 +159,16 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
                     ast.add_op(Op::new(symbol, args), location)
                 }
                 TokenType::Atom => {
-                    todo!("Atom {:?}", &res.token);
+                    let name = ast.string_interner.register_str(
+                        res.token.get_src(contents).to_string()
+                    );
+                    ast.add_atom(Atom { name }, location)
                 }
                 TokenType::Sym => {
-                    todo!("Symbol {:?}", &res.token);
+                    let name = ast.string_interner.register_str(
+                        res.token.get_src(contents).to_string()
+                    );
+                    ast.add_identifier(name, location)
                 }
                 _ => todo!("Dunno what to do with this one {:?}", res.token),
             };

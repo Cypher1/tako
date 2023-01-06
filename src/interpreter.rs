@@ -1,6 +1,6 @@
 use crate::ast::*;
 use crate::error::TError;
-use crate::literal_values::LiteralValues;
+use crate::string_interner::StringInterner;
 use crate::primitives::Prim;
 use crate::tokens::Symbol;
 use log::*;
@@ -9,7 +9,7 @@ use std::path::Path;
 
 struct Ctx<'a> {
     ast: &'a Ast,
-    literals: &'a LiteralValues,
+    literals: &'a StringInterner,
 }
 
 pub fn run(path: &Path, ast: &Ast, root: Option<NodeId>) -> Result<Prim, TError> {
@@ -26,7 +26,7 @@ pub fn run(path: &Path, ast: &Ast, root: Option<NodeId>) -> Result<Prim, TError>
     });
     let mut ctx = Ctx {
         ast,
-        literals: &ast.literal_values,
+        literals: &ast.string_interner,
     };
     ctx.eval(start)
 }
