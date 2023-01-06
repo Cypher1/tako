@@ -55,6 +55,8 @@ impl BindingPowerConfig {
 }
 
 const fn binding_power(symbol: Symbol) -> BindingPowerConfig {
+    // TODO(usability): Use binding trees to avoid complex expressions producing unexpected ASTs.
+    // TODO(clarity): Use binding trees to avoid arbitrary binding power numbers.
     match symbol {
         Symbol::OpenParen => BindingPowerConfig::prefix(99, 0),
         Symbol::CloseParen => BindingPowerConfig::infix(0, 100),
