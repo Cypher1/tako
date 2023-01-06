@@ -150,10 +150,10 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
                     ast.add_literal(Literal::Numeric, location)
                 }
                 TokenType::Op(symbol) => {
-                    use crate::tokens::is_assign;
+                    use crate::tokens::{is_assign, assign_op};
                     if is_assign(symbol) {
                         // TODO(clarity): Lowering for assign ops.
-                        todo!("Assignment {symbol:#?} {res:#?} {left:#?}");
+                        todo!("Assignment\n{symbol:#?}\n{res:#?}\n{left:#?}\n{op:?}", op=assign_op(symbol));
                     }
                     trace!("Merging {res:?} and {left:?} to prep for {token:?}");
                     let args = [left.node, res.node];
@@ -318,6 +318,22 @@ pub mod tests {
     #[test]
     fn parse_definition() -> Result<(), TError> {
         let ast = setup("x=1")?;
+        dbg!(&ast);
+        let Ast {
+            identifiers, literals, definitions, ..
+        } = ast;
+
+        dbg!(identifiers);
+        dbg!(literals);
+        dbg!(definitions);
+
+        Ok(())
+    }
+
+
+    #[test]
+    fn parse_add_assign() -> Result<(), TError> {
+        let ast = setup("x+=1")?;
         dbg!(&ast);
         let Ast {
             identifiers, literals, definitions, ..
