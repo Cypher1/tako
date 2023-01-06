@@ -341,7 +341,6 @@ pub mod tests {
         dbg!(identifiers);
         dbg!(literals);
         dbg!(definitions);
-        assert_eq!(0, 1);
         Ok(())
     }
 
