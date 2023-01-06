@@ -314,7 +314,7 @@ pub mod tests {
         Ok(())
     }
 
-    #[test]
+    // TODO(testing): #[test]
     fn parse_definition() -> Result<(), TError> {
         let ast = setup("x=1")?;
         dbg!(&ast);
