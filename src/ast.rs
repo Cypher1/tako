@@ -13,7 +13,6 @@ struct InContext<'a, T> {
 
 // TODO(perf): String interner?
 // TODO(clarity): Use macro for defining and registering each of these.
-// TODO(core): A lambda calculus impl.
 
 pub trait Contains<T> {
     fn get_all(&self) -> &Vec<T>;
@@ -74,12 +73,21 @@ pub struct Node {
 pub enum NodeData {
     // TODO(clarity): consider how to split this up.
     // Use a Array of Enums Structs to Struct of Arrays (i.e. AoES2SoA).
-    NodeRef(NodeId), // Hopefully don't need this...???
+
+    // Variable:
     NamedSymbol(NamedSymbolId),
+
+    // Apply & Abstract:
     Call(CallId),
     Op(OpId),
-    Definition(DefinitionId),
+
+    // Value:
     Literal(LiteralId),
+
+    // Sugar:
+    Definition(DefinitionId),
+    NodeRef(NodeId), // Represents an indirection (i.e. when two things have been found to be
+                     // truely identical, leave a NodeRef behind to avoid dangling references.
 }
 
 #[derive(Clone, Default, Debug, Hash, PartialEq, Eq)]

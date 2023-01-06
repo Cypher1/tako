@@ -94,7 +94,7 @@ impl<'a> Ctx<'a> {
                 [Prim::I32(l), Prim::I32(r)] => Prim::I32(l % r),
                 _ => todo!(),
             },
-            Symbol::BitAnd => match self.eval2(op.args)? {
+            Symbol::And => match self.eval2(op.args)? {
                 [Prim::I32(l), Prim::I32(r)] => Prim::I32(l & r),
                 _ => todo!(),
             },
@@ -102,7 +102,7 @@ impl<'a> Ctx<'a> {
                 [Prim::I32(l), Prim::I32(r)] => Prim::I32(l ^ r),
                 _ => todo!(),
             },
-            Symbol::BitOr => match self.eval2(op.args)? {
+            Symbol::Or => match self.eval2(op.args)? {
                 [Prim::I32(l), Prim::I32(r)] => Prim::I32(l | r),
                 _ => todo!(),
             },
@@ -167,9 +167,9 @@ impl<'a> Ctx<'a> {
             | Symbol::DivAssign
             | Symbol::DivRoundingAssign
             | Symbol::MulAssign
-            | Symbol::BitAndAssign
+            | Symbol::AndAssign
             | Symbol::BitXorAssign
-            | Symbol::BitOrAssign
+            | Symbol::OrAssign
             | Symbol::LogicalAndAssign
             | Symbol::LogicalOrAssign
             | Symbol::ModuloAssign => todo!("Support assignment"),
