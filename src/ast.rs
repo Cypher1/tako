@@ -1,5 +1,5 @@
-use crate::string_interner::{StringInterner, Identifier};
 use crate::location::Location;
+use crate::string_interner::{Identifier, StringInterner};
 use crate::tokens::Symbol;
 use crate::utils::typed_index::TypedIndex;
 use std::path::PathBuf;
@@ -119,13 +119,7 @@ impl Ast {
 make_contains!(nodes, Node, NodeRef, NodeId, unsafe_add_node);
 make_contains!(calls, (NodeId, Call), Call, CallId, add_call);
 make_contains!(ops, (NodeId, Op), Op, OpId, add_op);
-make_contains!(
-    atoms,
-    (NodeId, Atom),
-    Atom,
-    AtomId,
-    add_atom
-);
+make_contains!(atoms, (NodeId, Atom), Atom, AtomId, add_atom);
 make_contains!(
     identifiers,
     (NodeId, Identifier),
@@ -224,7 +218,7 @@ pub enum Literal {
     Text,    // A character or strings of arbitrary size (e.g. UTF-8 or Unicode)
     Color,   // A color of arbitrary size in Hex. e.g. #ff00ff (purple)
     Array,   // An abstract array literal, any of Vector, Array, List, Set, etc. (e.g. [123, 234])
-    Map,     // An abstract map literal, any of OrderedMap, HashMap, Dictionary, etc. (e.g. { 'a': 123, 'b': 234 })
+    Map, // An abstract map literal, any of OrderedMap, HashMap, Dictionary, etc. (e.g. { 'a': 123, 'b': 234 })
 }
 
 #[cfg(test)]

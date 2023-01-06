@@ -55,7 +55,7 @@ type InnerVal = Box<Val>;
 pub enum Val {
     PrimVal(Prim),
     // Complex types
-    Pointer(Offset, InnerVal), // Defaults to 8 bytes (64 bit)
+    Pointer(Offset, InnerVal),  // Defaults to 8 bytes (64 bit)
     Struct(Vec<(String, Val)>), // Should really just store values, but we can't do that yet.
     Union(TypeSet),
     Product(TypeSet),

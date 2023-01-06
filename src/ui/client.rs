@@ -67,7 +67,9 @@ impl Client {
     }
 
     pub fn get_stats(&mut self) {
-        self.stats_requester.send(()).expect("Stats requester closed");
+        self.stats_requester
+            .send(())
+            .expect("Stats requester closed");
     }
 
     pub async fn wait_for_updates(&mut self) -> bool {

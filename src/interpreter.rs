@@ -1,7 +1,7 @@
 use crate::ast::*;
 use crate::error::TError;
-use crate::string_interner::StringInterner;
 use crate::primitives::Prim;
+use crate::string_interner::StringInterner;
 use crate::tokens::Symbol;
 use log::*;
 use std::convert::TryInto;

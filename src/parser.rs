@@ -150,25 +150,28 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
                     ast.add_literal(Literal::Numeric, location)
                 }
                 TokenType::Op(symbol) => {
-                    use crate::tokens::{is_assign, assign_op};
+                    use crate::tokens::{assign_op, is_assign};
                     if is_assign(symbol) {
                         // TODO(clarity): Lowering for assign ops.
-                        todo!("Assignment\n{symbol:#?}\n{res:#?}\n{left:#?}\n{op:?}", op=assign_op(symbol));
+                        todo!(
+                            "Assignment\n{symbol:#?}\n{res:#?}\n{left:#?}\n{op:?}",
+                            op = assign_op(symbol)
+                        );
                     }
                     trace!("Merging {res:?} and {left:?} to prep for {token:?}");
                     let args = [left.node, res.node];
                     ast.add_op(Op::new(symbol, args), location)
                 }
                 TokenType::Atom => {
-                    let name = ast.string_interner.register_str(
-                        res.token.get_src(contents).to_string()
-                    );
+                    let name = ast
+                        .string_interner
+                        .register_str(res.token.get_src(contents).to_string());
                     ast.add_atom(Atom { name }, location)
                 }
                 TokenType::Sym => {
-                    let name = ast.string_interner.register_str(
-                        res.token.get_src(contents).to_string()
-                    );
+                    let name = ast
+                        .string_interner
+                        .register_str(res.token.get_src(contents).to_string());
                     ast.add_identifier(name, location)
                 }
                 _ => todo!("Dunno what to do with this one {:?}", res.token),
@@ -293,9 +296,7 @@ pub mod tests {
     fn parse_atom() -> Result<(), TError> {
         let ast = setup("$x")?;
         dbg!(&ast);
-        let Ast {
-            atoms, ..
-        } = ast;
+        let Ast { atoms, .. } = ast;
 
         dbg!(atoms);
 
@@ -306,9 +307,7 @@ pub mod tests {
     fn parse_identifier() -> Result<(), TError> {
         let ast = setup("x")?;
         dbg!(&ast);
-        let Ast {
-            identifiers, ..
-        } = ast;
+        let Ast { identifiers, .. } = ast;
 
         dbg!(identifiers);
 
@@ -320,7 +319,10 @@ pub mod tests {
         let ast = setup("x=1")?;
         dbg!(&ast);
         let Ast {
-            identifiers, literals, definitions, ..
+            identifiers,
+            literals,
+            definitions,
+            ..
         } = ast;
 
         dbg!(identifiers);
@@ -330,37 +332,36 @@ pub mod tests {
         Ok(())
     }
 
-
     #[test]
     #[should_panic] // TODO(feature): Implement!
     fn parse_add_assign() {
         setup("x+=1").expect("NOT YET SUPPORTED");
     }
 
-/*
-    TODO(testing): Type annotations:
-        - "12 : Int"
-        - "3 * 4 : Int"
-        - "3 * (4 : Int)"
-        - "(3 * 4) : 12"
-        - "\"hello world\" : String"
+    /*
+        TODO(testing): Type annotations:
+            - "12 : Int"
+            - "3 * 4 : Int"
+            - "3 * (4 : Int)"
+            - "(3 * 4) : 12"
+            - "\"hello world\" : String"
 
-    TODO(testing): String literals:
-        - "\"hello world\""
+        TODO(testing): String literals:
+            - "\"hello world\""
 
-    TODO(testing): Numeric literals:
-        - "-12"
+        TODO(testing): Numeric literals:
+            - "-12"
 
-    TODO(testing): Operations:
-        - "14-12"
-        - "\"hello\"+\" world\""
+        TODO(testing): Operations:
+            - "14-12"
+            - "\"hello\"+\" world\""
 
-    TODO(testing): Errors:
-        - "\"hello world\"\n7"
+        TODO(testing): Errors:
+            - "\"hello world\"\n7"
 
-    TODO(testing): Definitions:
-        - "f(arg=\"hello world\")"
-        - "mul(x, y)= x*y"
-        - "x()= !\"hello world\";\n7"
-*/
+        TODO(testing): Definitions:
+            - "f(arg=\"hello world\")"
+            - "mul(x, y)= x*y"
+            - "x()= !\"hello world\";\n7"
+    */
 }
