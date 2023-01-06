@@ -60,7 +60,10 @@ impl<'a> Ctx<'a> {
             Literal::Numeric => {
                 Prim::I32(s.expect("Should have string for literal").parse::<i32>()?)
             }
-            Literal::Text => todo!("{lit:?} {s:?}"),
+            Literal::Text => todo!("text {lit:?} {s:?}"),
+            Literal::Color => todo!("color {lit:?} {s:?}"),
+            Literal::Array => todo!("array {lit:?} {s:?}"),
+            Literal::Map => todo!("map {lit:?} {s:?}"),
         })
     }
     pub fn eval_op(&mut self, _node: &Node, id: OpId) -> Result<Prim, TError> {
