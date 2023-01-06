@@ -152,7 +152,8 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
                 TokenType::Op(symbol) => {
                     use crate::tokens::is_assign;
                     if is_assign(symbol) {
-                        todo!("Assignment {symbol:?}");
+                        // TODO(clarity): Lowering for assign ops.
+                        todo!("Assignment {symbol:#?} {res:#?} {left:#?}");
                     }
                     trace!("Merging {res:?} and {left:?} to prep for {token:?}");
                     let args = [left.node, res.node];
