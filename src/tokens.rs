@@ -266,21 +266,26 @@ fn classify_char(ch: char) -> CharacterType {
 }
 
 #[inline]
+pub fn assign_op(s: Symbol) -> Option<Symbol> { // TODO(clarity): Move to a symbol module.
+    Some(match s {
+        Symbol::AddAssign => Symbol::Add,
+        Symbol::SubAssign => Symbol::Sub,
+        Symbol::DivAssign => Symbol::Div,
+        Symbol::DivRoundingAssign => Symbol::DivRounding,
+        Symbol::MulAssign => Symbol::Mul,
+        Symbol::AndAssign => Symbol::And,
+        Symbol::OrAssign => Symbol::Or,
+        Symbol::BitXorAssign => Symbol::BitXor,
+        Symbol::LogicalAndAssign => Symbol::LogicalAnd,
+        Symbol::LogicalOrAssign => Symbol::LogicalOr,
+        Symbol::ModuloAssign => Symbol::Modulo,
+        _ => return None,
+    })
+}
+
+#[inline]
 pub fn is_assign(s: Symbol) -> bool { // TODO(clarity): Move to a symbol module.
-    matches!(s,
-        Symbol::Assign
-        | Symbol::AddAssign
-        | Symbol::SubAssign
-        | Symbol::DivAssign
-        | Symbol::DivRoundingAssign
-        | Symbol::MulAssign
-        | Symbol::AndAssign
-        | Symbol::OrAssign
-        | Symbol::BitXorAssign
-        | Symbol::LogicalAndAssign
-        | Symbol::LogicalOrAssign
-        | Symbol::ModuloAssign
-    )
+    s == Symbol::Assign || assign_op(s).is_some()
 }
 
 #[inline]
