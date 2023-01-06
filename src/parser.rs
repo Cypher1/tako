@@ -332,18 +332,9 @@ pub mod tests {
 
 
     #[test]
-    fn parse_add_assign() -> Result<(), TError> {
-        let ast = setup("x+=1")?;
-        dbg!(&ast);
-        let Ast {
-            identifiers, literals, definitions, ..
-        } = ast;
-
-        dbg!(identifiers);
-        dbg!(literals);
-        dbg!(definitions);
-
-        Ok(())
+    #[should_panic] // TODO(feature): Implement!
+    fn parse_add_assign() {
+        setup("x+=1").expect("NOT YET SUPPORTED");
     }
 
 /*
