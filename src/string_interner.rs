@@ -13,14 +13,15 @@ assert_eq_size!(Identifier, [u8; 8]);
 assert_eq_size!([Identifier; 2], [u8; 16]);
 
 #[derive(Clone, Default, Debug, Hash, PartialEq, Eq)]
-pub struct LiteralValues {
+pub struct StringInterner {
     // This ensures we can look up the string from the hash.
     // BUT: We can also merge the hashes without losing any information.
     pub loc2string: BTreeMap<IndexIntoFile, StrId>,
     pub strings: BTreeMap<StrId, String>,
 }
 
-impl LiteralValues {
+impl StringInterner {
+    #[must_use]
     pub fn register_str_by_loc(&mut self, name: String, ind: IndexIntoFile) -> StrId {
         let id = self.register_str(name);
         self.loc2string.insert(ind, id);
@@ -46,12 +47,12 @@ impl LiteralValues {
 #[derive(Debug)]
 struct InContext<'a, T> {
     value: T,
-    literal_values: &'a LiteralValues,
+    string_interner: &'a StringInterner,
 }
 
 impl<'a> std::fmt::Display for InContext<'a, Identifier> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(s) = self.literal_values.get_str(self.value) {
+        if let Some(s) = self.string_interner.get_str(self.value) {
             write!(f, "{s}")
         } else {
             write!(f, "<unknown symbol: {self:?}>")

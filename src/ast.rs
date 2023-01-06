@@ -1,4 +1,4 @@
-use crate::literal_values::{LiteralValues, Identifier};
+use crate::string_interner::{StringInterner, Identifier};
 use crate::location::Location;
 use crate::tokens::Symbol;
 use crate::utils::typed_index::TypedIndex;
@@ -103,7 +103,7 @@ pub struct Ast {
     pub atoms: Vec<(NodeId, Atom)>,
     pub definitions: Vec<(NodeId, Definition)>,
     pub literals: Vec<(NodeId, Literal)>,
-    pub literal_values: LiteralValues,
+    pub string_interner: StringInterner,
 }
 
 impl Ast {
@@ -176,7 +176,7 @@ impl Ast {
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Atom {
-    name: Identifier,
+    pub name: Identifier,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
@@ -229,11 +229,11 @@ pub enum Literal {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::literal_values::LiteralValues;
+    use crate::string_interner::StringInterner;
 
     #[test]
     fn can_add_nodes_to_ast() {
-        let mut lits = LiteralValues::default();
+        let mut lits = StringInterner::default();
         let mut ast = Ast::default();
         let a = lits.register_str("a".to_string());
         let b = Literal::Numeric; // ("123456789".to_string());
