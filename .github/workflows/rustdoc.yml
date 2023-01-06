@@ -1,0 +1,20 @@
+name: Takolang Rust doc
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+jobs:
+    - name: Build docs using cargo doc
+      run: cargo doc
+    - name: Move docs to docs folder
+      run: mv ./target/doc/* ./docs/
+    - name: Deploy 🚀
+      uses: JamesIves/github-pages-deploy-action@v4.2.5
+      with:
+        branch: pages # The branch the action should deploy to.
+        folder: . # The folder the action should deploy.
+        clean-exclude: pkg/*
