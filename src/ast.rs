@@ -93,6 +93,7 @@ pub enum NodeData {
 
 #[derive(Clone, Default, Debug, Hash, PartialEq, Eq)]
 pub struct Ast {
+    // TODO(usability): Add a range tree for mapping from locations to nodes.
     // Abstract syntax tree... forest
     pub filepath: PathBuf,
     pub roots: Vec<NodeId>,
