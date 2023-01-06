@@ -150,9 +150,19 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
                     ast.add_literal(Literal::Numeric, location)
                 }
                 TokenType::Op(symbol) => {
+                    use crate::tokens::is_assign;
+                    if is_assign(symbol) {
+                        todo!("Assignment {symbol:?}");
+                    }
                     trace!("Merging {res:?} and {left:?} to prep for {token:?}");
                     let args = [left.node, res.node];
                     ast.add_op(Op::new(symbol, args), location)
+                }
+                TokenType::Atom => {
+                    todo!("Atom {:?}", &res.token);
+                }
+                TokenType::Sym => {
+                    todo!("Symbol {:?}", &res.token);
                 }
                 _ => todo!("Dunno what to do with this one {:?}", res.token),
             };
@@ -271,106 +281,72 @@ pub mod tests {
 
         Ok(())
     }
-}
+
+    #[test]
+    fn parse_atom() -> Result<(), TError> {
+        let ast = setup("$x")?;
+        dbg!(&ast);
+        let Ast {
+            atoms, ..
+        } = ast;
+
+        dbg!(atoms);
+
+        Ok(())
+    }
+
+    #[test]
+    fn parse_identifier() -> Result<(), TError> {
+        let ast = setup("x")?;
+        dbg!(&ast);
+        let Ast {
+            identifiers, ..
+        } = ast;
+
+        dbg!(identifiers);
+
+        Ok(())
+    }
+
+    #[test]
+    fn parse_definition() -> Result<(), TError> {
+        let ast = setup("x=1")?;
+        dbg!(&ast);
+        let Ast {
+            identifiers, literals, definitions, ..
+        } = ast;
+
+        dbg!(identifiers);
+        dbg!(literals);
+        dbg!(definitions);
+
+        Ok(())
+    }
 
 /*
-#[cfg(test)]
-pub mod tests {
-    fn parse_entities(contents: &str) -> Result<(Entity, DBStorage), TError> {
-        let mut storage = DBStorage::default();
-        let module = storage.module_name(TEST_FN);
-        let root = parse_string(&mut storage, &module, &Arc::new(contents.to_string()))?.1;
-        Ok((root, storage))
-    }
+    TODO(testing): Type annotations:
+        - "12 : Int"
+        - "3 * 4 : Int"
+        - "3 * (4 : Int)"
+        - "(3 * 4) : 12"
+        - "\"hello world\" : String"
 
-    #[test]
-    fn parse_num() -> Test {
-        let (root, storage) = parse_entities("12")?;
-    }
+    TODO(testing): String literals:
+        - "\"hello world\""
 
-    #[test]
-    fn parse_num_with_type_annotation() -> Test {
-        let (root, storage) = parse_entities("12 : Int")?;
-    }
+    TODO(testing): Numeric literals:
+        - "-12"
 
-    #[test]
-    fn parse_expr_with_type_annotation() -> Test {
-        let (root, storage) = parse_entities("3 * 4 : Int")?;
-    }
+    TODO(testing): Operations:
+        - "14-12"
+        - "\"hello\"+\" world\""
 
-    #[test]
-    fn parse_expr_containing_value_with_type_annotation() -> Test {
-        let (root, storage) = parse_entities("3 * (4 : Int)")?;
-    }
+    TODO(testing): Errors:
+        - "\"hello world\"\n7"
 
-    #[test]
-    fn parse_expr_with_value_type_annotation() -> Test {
-        let (root, storage) = parse_entities("(3 * 4) : 12")?;
-    }
-
-    #[test]
-    fn parse_str() -> Test {
-        let (root, storage) = parse_entities("\"hello world\"")?;
-    }
-
-    #[test]
-    fn parse_str_with_type_annotation() -> Test {
-        let (root, storage) = parse_entities("\"hello world\" : String")?;
-    }
-
-    #[test]
-    fn parse_un_op() -> Test {
-        let (root, storage) = parse_entities("-12")?;
-    }
-
-    #[test]
-    fn parse_min_op() -> Test {
-        let (root, storage) = parse_entities("14-12")?;
-    }
-
-    #[test]
-    fn parse_mul_op() -> Test {
-        let (root, storage) = parse_entities("14+12")?;
-    }
-
-    #[test]
-    fn parse_add_mul_precedence() -> Test {
-        let (root, storage) = parse_entities("3+2*4")?;
-    }
-
-    #[test]
-    fn parse_mul_add_precedence() -> Test {
-        let (root, storage) = parse_entities("3*2+4")?;
-    }
-
-    #[test]
-    fn parse_mul_add_parens() -> Test {
-        let (root, storage) = parse_entities("3*(2+4)")?;
-    }
-
-    #[test]
-    fn parse_add_str() -> Test {
-        let (root, storage) = parse_entities("\"hello\"+\" world\"")?;
-    }
-
-    #[test]
-    fn parse_strings_followed_by_raw_values() -> Test {
-        let (root, storage) = parse_entities("\"hello world\"\n7")?;
-    }
-
-    #[test]
-    fn parse_kwargs() -> Test {
-        let (root, storage) = parse_entities("f(arg=\"hello world\")")?;
-    }
-
-    #[test]
-    fn parse_mul_functions() -> Test {
-        let (root, storage) = parse_entities("mul(x, y)= x*y")?;
-    }
-
-    #[test]
-    fn parse_strings_with_operators_and_trailing_values_in_let() -> Test {
-        let (root, storage) = parse_entities("x()= !\"hello world\";\n7")?;
-    }
-}
+    TODO(testing): Definitions:
+        - "f(arg=\"hello world\")"
+        - "mul(x, y)= x*y"
+        - "x()= !\"hello world\";\n7"
 */
+}

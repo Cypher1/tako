@@ -45,7 +45,8 @@ impl<'a> Ctx<'a> {
         let node = node.get(&self.ast.nodes);
         match node.id {
             NodeData::NodeRef(_id) => todo!(),
-            NodeData::NamedSymbol(_id) => todo!(),
+            NodeData::Identifier(_id) => todo!(),
+            NodeData::Atom(_id) => todo!(),
             NodeData::Call(_id) => todo!(),
             NodeData::Op(id) => self.eval_op(node, id),
             NodeData::Definition(_id) => todo!(),

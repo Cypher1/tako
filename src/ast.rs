@@ -1,4 +1,4 @@
-use crate::literal_values::{LiteralValues, NamedSymbol};
+use crate::literal_values::{LiteralValues, Identifier};
 use crate::location::Location;
 use crate::tokens::Symbol;
 use crate::utils::typed_index::TypedIndex;
@@ -75,7 +75,8 @@ pub enum NodeData {
     // Use a Array of Enums Structs to Struct of Arrays (i.e. AoES2SoA).
 
     // Variable:
-    NamedSymbol(NamedSymbolId),
+    Identifier(IdentifierId),
+    Atom(AtomId),
 
     // Apply & Abstract:
     Call(CallId),
@@ -98,7 +99,8 @@ pub struct Ast {
     pub nodes: Vec<Node>,
     pub calls: Vec<(NodeId, Call)>,
     pub ops: Vec<(NodeId, Op)>,
-    pub named_symbols: Vec<(NodeId, NamedSymbol)>,
+    pub identifiers: Vec<(NodeId, Identifier)>,
+    pub atoms: Vec<(NodeId, Atom)>,
     pub definitions: Vec<(NodeId, Definition)>,
     pub literals: Vec<(NodeId, Literal)>,
     pub literal_values: LiteralValues,
@@ -117,11 +119,18 @@ make_contains!(nodes, Node, NodeRef, NodeId, unsafe_add_node);
 make_contains!(calls, (NodeId, Call), Call, CallId, add_call);
 make_contains!(ops, (NodeId, Op), Op, OpId, add_op);
 make_contains!(
-    named_symbols,
-    (NodeId, NamedSymbol),
-    NamedSymbol,
-    NamedSymbolId,
-    add_named_symbol
+    atoms,
+    (NodeId, Atom),
+    Atom,
+    AtomId,
+    add_atom
+);
+make_contains!(
+    identifiers,
+    (NodeId, Identifier),
+    Identifier,
+    IdentifierId,
+    add_identifier
 );
 make_contains!(
     definitions,
@@ -166,6 +175,11 @@ impl Ast {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+pub struct Atom {
+    name: Identifier,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Call {
     pub inner: NodeId,
     pub args: Vec<NodeId>, // TODO(perf): Short vec
@@ -198,7 +212,7 @@ impl Op {
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Definition {
-    pub name: NamedSymbol,
+    pub name: Identifier,
     pub implementation: NodeId,
 }
 
@@ -240,7 +254,7 @@ mod tests {
         dbg!(&ast);
 
         assert_eq!(ast.nodes.len(), 4);
-        assert_eq!(ast.named_symbols.len(), 1);
+        assert_eq!(ast.identifiers.len(), 1);
         assert_eq!(ast.literals.len(), 1);
         assert_eq!(ast.ops.len(), 1);
         assert_eq!(ast.calls.len(), 0);

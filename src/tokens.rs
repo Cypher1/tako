@@ -266,6 +266,24 @@ fn classify_char(ch: char) -> CharacterType {
 }
 
 #[inline]
+pub fn is_assign(s: Symbol) -> bool { // TODO(clarity): Move to a symbol module.
+    matches!(s,
+        Symbol::Assign
+        | Symbol::AddAssign
+        | Symbol::SubAssign
+        | Symbol::DivAssign
+        | Symbol::DivRoundingAssign
+        | Symbol::MulAssign
+        | Symbol::AndAssign
+        | Symbol::OrAssign
+        | Symbol::BitXorAssign
+        | Symbol::LogicalAndAssign
+        | Symbol::LogicalOrAssign
+        | Symbol::ModuloAssign
+    )
+}
+
+#[inline]
 fn is_whitespace(chr: char) -> bool {
     classify_char(chr) == CharacterType::Whitespace
 }
