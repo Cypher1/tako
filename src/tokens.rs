@@ -144,15 +144,23 @@ impl std::fmt::Display for Symbol {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+pub enum CharacterType {
+    Unknown,            // '' no characters yet!
+    AtomHead,           // '$' on it's own (invalid).
+    ColorLitHead,       // '#' on it's own (invalid).
+    Whitespace,         // A special discardable token representing whitespace.
+    HexSym,             // A subset of symbol characters that can be used in Hex strings (e.g. Colors).
+    PartialToken(TokenType)    // Already a valid token!
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum TokenType {
     Op(Symbol),         // An operator (i.e. a known symbol used as a prefix or infix operator).
     Sym,                // A named value.
-    Atom,               // A symbol starting with a #, used differently to symbols which have values.
-    Whitespace,         // A special discardable token representing whitespace.
-    Eof,                // A special discardable token representing end of file.
-
+    Atom,               // A symbol starting with a '$', used differently to symbols which have values.
     // Literals (i.e. tokens representing values):
     NumLit,
+    ColorLit,
     // Short strings can be stored as symbols.
     StringLit,
     // Format string parts:
@@ -162,6 +170,8 @@ pub enum TokenType {
     // If a symbol (normally strings) is too long, we will store it as multiple repeated tokens,
     // of the same kind preceeded by a 'Group' token.
     Group,
+    // TODO(clarity): Remove from the token types if possible.
+    Eof,                // A special discardable token representing end of file.
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash)]
@@ -214,10 +224,14 @@ const _COMMENT: &str = "//";
 const _MULTI_COMMENT: &str = "/*";
 
 #[inline]
-fn classify_char(ch: char) -> TokenType {
+fn classify_char(ch: char) -> CharacterType {
+    use CharacterType::*;
     use TokenType::*;
-    match ch {
-        '\n' | '\r' | '\t' | ' ' => Whitespace,
+    PartialToken(match ch {
+        '\n' | '\r' | '\t' | ' ' => return Whitespace,
+        '$' => return AtomHead,
+        '#' => return ColorLitHead,
+        'A'..='F' | 'a'..='f' => return HexSym,
         '~' => Op(Symbol::BitNot),
         '!' => Op(Symbol::LogicalNot),
         '@' => Op(Symbol::GetAddress),
@@ -244,24 +258,24 @@ fn classify_char(ch: char) -> TokenType {
         '[' => Op(Symbol::OpenBracket),
         ']' => Op(Symbol::CloseBracket),
         '\\' => Op(Symbol::Escape), // Escape?
-        '#' => TokenType::Atom,
         '0'..='9' => NumLit,
+        'A'..='Z' | 'a'..='z' | '_' => Sym, // Overlapped by colors.
         '"' | '\'' => StringLit,
-        'A'..='Z' | 'a'..='z' | '_' => Sym,
         _ => panic!("Unknown token character {}", ch),
-    }
+    })
 }
 
 #[inline]
 fn is_whitespace(chr: char) -> bool {
-    classify_char(chr) == TokenType::Whitespace
+    classify_char(chr) == CharacterType::Whitespace
 }
 
+#[derive(Debug)]
 pub struct Characters<'a> {
     it: std::iter::Peekable<std::str::Chars<'a>>,
     index: usize,
     start: usize,
-    prev: Option<char>,
+    curr: Option<char>,
 }
 
 impl<'a> Characters<'a> {
@@ -270,11 +284,12 @@ impl<'a> Characters<'a> {
             it: s.chars().peekable(),
             index: 0,
             start: 0,
-            prev: None,
+            curr: None,
         }
     }
-    fn prev(&self) -> Option<char> {
-        self.prev
+    #[allow(unused)]
+    fn curr(&self) -> Option<char> {
+        self.curr
     }
     fn start(&self) -> usize {
         self.start
@@ -287,13 +302,12 @@ impl<'a> Characters<'a> {
         self.start
     }
     fn next(&mut self) -> Option<char> {
-        self.prev = self.peek();
         self.index += 1;
-        self.it.next()
+        self.curr = self.it.next();
+        self.curr
     }
-    fn peek(&self) -> Option<char> {
-        let mut it = self.it.clone();
-        it.next()
+    fn peek(&mut self) -> Option<char> {
+        self.it.peek().copied()
     }
 }
 
@@ -354,58 +368,69 @@ pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
     */
     characters.set_start();
     use TokenType::*;
-    let mut kind = if let Some(chr) = characters.peek() {
-        classify_char(chr) // Start token with the first character.
-    } else {
-        return false;
-    };
-    characters.next();
+    use CharacterType::*;
+    let mut kind = Unknown;
     while let Some(chr) = characters.peek() {
         // TODO(perf): these could be bit strings and we could and them.
         kind = match (kind, classify_char(chr)) {
+            (Unknown, new_kind) => new_kind,         // Start the token!
             (_, Whitespace) => break,                // Token finished whitespace.
-            (Op(first), Op(second)) => match (first, second) {
+            (PartialToken(Op(first)), PartialToken(Op(second))) => PartialToken(Op(match (first, second) {
                 // Continuation
-                (Symbol::Add, Symbol::Assign) => Op(Symbol::AddAssign),
-                (Symbol::Sub, Symbol::Assign) => Op(Symbol::SubAssign),
-                (Symbol::Sub, Symbol::Gt) => Op(Symbol::Lambda),
-                (Symbol::Div, Symbol::Assign) => Op(Symbol::DivAssign),
-                (Symbol::Div, Symbol::Div) => Op(Symbol::DivRounding),
-                (Symbol::DivRounding, Symbol::Assign) => Op(Symbol::DivRoundingAssign),
-                (Symbol::Mul, Symbol::Assign) => Op(Symbol::MulAssign),
-                (Symbol::Mul, Symbol::Mul) => Op(Symbol::Exp),
-                (Symbol::Modulo, Symbol::Assign) => Op(Symbol::ModuloAssign),
-                (Symbol::LogicalOr, Symbol::Assign) => Op(Symbol::LogicalOrAssign),
-                (Symbol::LogicalAnd, Symbol::Assign) => Op(Symbol::LogicalAndAssign),
-                (Symbol::And, Symbol::Assign) => Op(Symbol::AndAssign),
-                (Symbol::And, Symbol::And) => Op(Symbol::LogicalAnd),
-                (Symbol::BitXor, Symbol::Assign) => Op(Symbol::BitXorAssign),
-                (Symbol::Lt, Symbol::Or) => Op(Symbol::LeftPipe),
-                (Symbol::Or, Symbol::Assign) => Op(Symbol::OrAssign),
-                (Symbol::Or, Symbol::Or) => Op(Symbol::LogicalOr),
-                (Symbol::Or, Symbol::Gt) => Op(Symbol::RightPipe),
-                (Symbol::Lt, Symbol::Lt) => Op(Symbol::LeftShift),
-                (Symbol::Gt, Symbol::Gt) => Op(Symbol::RightShift),
-                (Symbol::Dot, Symbol::Dot) => Op(Symbol::Range),
-                (Symbol::Range, Symbol::Dot) => Op(Symbol::Spread),
-                (Symbol::Assign, Symbol::Assign) => Op(Symbol::Eqs),
-                (Symbol::Assign, Symbol::Gt) => Op(Symbol::Implies),
-                (Symbol::Gt, Symbol::Assign) => Op(Symbol::GtEqs),
-                (Symbol::Lt, Symbol::Assign) => Op(Symbol::LtEqs),
-                (Symbol::LogicalNot, Symbol::Assign) => Op(Symbol::NotEqs),
+                (Symbol::Add, Symbol::Assign) => Symbol::AddAssign,
+                (Symbol::Sub, Symbol::Assign) => Symbol::SubAssign,
+                (Symbol::Sub, Symbol::Gt) => Symbol::Lambda,
+                (Symbol::Div, Symbol::Assign) => Symbol::DivAssign,
+                (Symbol::Div, Symbol::Div) => Symbol::DivRounding,
+                (Symbol::DivRounding, Symbol::Assign) => Symbol::DivRoundingAssign,
+                (Symbol::Mul, Symbol::Assign) => Symbol::MulAssign,
+                (Symbol::Mul, Symbol::Mul) => Symbol::Exp,
+                (Symbol::Modulo, Symbol::Assign) => Symbol::ModuloAssign,
+                (Symbol::LogicalOr, Symbol::Assign) => Symbol::LogicalOrAssign,
+                (Symbol::LogicalAnd, Symbol::Assign) => Symbol::LogicalAndAssign,
+                (Symbol::And, Symbol::Assign) => Symbol::AndAssign,
+                (Symbol::And, Symbol::And) => Symbol::LogicalAnd,
+                (Symbol::BitXor, Symbol::Assign) => Symbol::BitXorAssign,
+                (Symbol::Lt, Symbol::Or) => Symbol::LeftPipe,
+                (Symbol::Or, Symbol::Assign) => Symbol::OrAssign,
+                (Symbol::Or, Symbol::Or) => Symbol::LogicalOr,
+                (Symbol::Or, Symbol::Gt) => Symbol::RightPipe,
+                (Symbol::Lt, Symbol::Lt) => Symbol::LeftShift,
+                (Symbol::Gt, Symbol::Gt) => Symbol::RightShift,
+                (Symbol::Dot, Symbol::Dot) => Symbol::Range,
+                (Symbol::Range, Symbol::Dot) => Symbol::Spread,
+                (Symbol::Assign, Symbol::Assign) => Symbol::Eqs,
+                (Symbol::Assign, Symbol::Gt) => Symbol::Implies,
+                (Symbol::Gt, Symbol::Assign) => Symbol::GtEqs,
+                (Symbol::Lt, Symbol::Assign) => Symbol::LtEqs,
+                (Symbol::LogicalNot, Symbol::Assign) => Symbol::NotEqs,
                 (_, _) => break,
-            },
-            (NumLit, NumLit) => NumLit, // Continuation
-            (NumLit, Sym) => NumLit,    // Number with suffix.
-            (Atom, NumLit | Sym) => Atom, // Atom.
-            (Sym, NumLit | Sym) => Sym, // Symbol.
+            })),
+            (ColorLitHead, HexSym | PartialToken(NumLit)) => PartialToken(ColorLit), // Color Literal.
+            (PartialToken(ColorLit), HexSym | PartialToken(NumLit)) => PartialToken(ColorLit), // Color Literal.
+            (AtomHead, HexSym | PartialToken(NumLit | Sym)) => PartialToken(Atom), // Atom.
+            (PartialToken(Atom), HexSym | PartialToken(NumLit | Sym)) => PartialToken(Atom), // Atom.
+            (HexSym | PartialToken(Sym), HexSym | PartialToken(NumLit | Sym)) => PartialToken(Sym), // Symbol.
+            (PartialToken(NumLit), PartialToken(NumLit)) => PartialToken(NumLit), // Continuation
+            (PartialToken(NumLit), PartialToken(Sym)) => PartialToken(NumLit),    // Number with suffix.
             _ => break,                 // Token finished can't continue here.
         };
         characters.next(); // Continue past the character.
     }
+    if kind == Unknown {
+        return false; // Eof...
+    }
+    if kind == CharacterType::HexSym {
+        kind = PartialToken(TokenType::Sym);
+    }
+    let kind = if let PartialToken(kind) = kind {
+        kind
+    } else {
+        todo!("Invalid / unfinished token: {kind:?} {characters:?}");
+    };
     if kind == StringLit {
         let quote = characters
-            .prev()
+            .curr()
             .expect("String literals should start with a quote");
         while let Some(chr) = characters.next() {
             // TODO(perf): use .find
@@ -461,7 +486,7 @@ pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::TokenType::*;
+    use super::{TokenType::*, CharacterType::*};
     use super::*;
     use strum::IntoEnumIterator; // TODO(cleanup): Make these test only
 
@@ -486,19 +511,19 @@ mod tests {
 
     #[test]
     fn classify_parens_and_brackets() {
-        assert_eq!(classify_char('('), Op(Symbol::OpenParen));
-        assert_eq!(classify_char(')'), Op(Symbol::CloseParen));
-        assert_eq!(classify_char('['), Op(Symbol::OpenBracket));
-        assert_eq!(classify_char(']'), Op(Symbol::CloseBracket));
-        assert_eq!(classify_char('{'), Op(Symbol::OpenCurly));
-        assert_eq!(classify_char('}'), Op(Symbol::CloseCurly));
+        assert_eq!(classify_char('('), PartialToken(Op(Symbol::OpenParen)));
+        assert_eq!(classify_char(')'), PartialToken(Op(Symbol::CloseParen)));
+        assert_eq!(classify_char('['), PartialToken(Op(Symbol::OpenBracket)));
+        assert_eq!(classify_char(']'), PartialToken(Op(Symbol::CloseBracket)));
+        assert_eq!(classify_char('{'), PartialToken(Op(Symbol::OpenCurly)));
+        assert_eq!(classify_char('}'), PartialToken(Op(Symbol::CloseCurly)));
     }
 
     #[test]
     fn classify_number() {
-        assert_eq!(classify_char('0'), NumLit);
-        assert_eq!(classify_char('1'), NumLit);
-        assert_eq!(classify_char('2'), NumLit);
+        assert_eq!(classify_char('0'), PartialToken(NumLit));
+        assert_eq!(classify_char('1'), PartialToken(NumLit));
+        assert_eq!(classify_char('2'), PartialToken(NumLit));
     }
 
     #[test]
@@ -515,8 +540,40 @@ mod tests {
     }
 
     #[test]
+    #[should_panic]
+    fn lex_head_color_invalid() {
+        setup("#");
+    }
+
+    #[test]
+    fn lex_head_color_hex() {
+        let tokens = setup("#f9F");
+        assert_eq!(
+            tokens,
+            vec![Token {
+                kind: ColorLit,
+                start: 0,
+                length: 4
+            }]
+        );
+    }
+
+    #[test]
+    fn lex_head_color_black() {
+        let tokens = setup("#000000");
+        assert_eq!(
+            tokens,
+            vec![Token {
+                kind: ColorLit,
+                start: 0,
+                length: 7
+            }]
+        );
+    }
+
+    #[test]
     fn lex_head_atom() {
-        let tokens = setup("#a1_2_3");
+        let tokens = setup("$a1_2_3");
         assert_eq!(
             tokens,
             vec![Token {
