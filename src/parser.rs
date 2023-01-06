@@ -153,14 +153,27 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
                     use crate::tokens::{assign_op, is_assign};
                     if is_assign(symbol) {
                         // TODO(clarity): Lowering for assign ops.
-                        todo!(
-                            "Assignment\n{symbol:#?}\n{res:#?}\n{left:#?}\n{op:?}",
-                            op = assign_op(symbol)
-                        );
+                        if let Some(op) = assign_op(symbol) {
+                            todo!(
+                                "Assignment (with op):\n{symbol:#?}\n{res:#?}\n{left:#?}\n{op:?}"
+                            );
+                        } else {
+                            // Create a definition
+                            let name_id = left.node.expect("Requires a name");
+                            // TODO(clarity): This is horrible code...
+                            let ident_id = match &ast.get(name_id).id {
+                                NodeData::Identifier(name) => name,
+                                node => todo!("Can't assign to a {node:?}"),
+                            };
+                            let name = (*ast.get(*ident_id)).1;
+                            let implementation = res.node.expect("Requires an implementation");
+                            ast.add_definition(Definition { name, implementation }, location)
+                        }
+                    } else {
+                        trace!("Merging {res:?} and {left:?} to prep for {token:?}");
+                        let args = [left.node, res.node];
+                        ast.add_op(Op::new(symbol, args), location)
                     }
-                    trace!("Merging {res:?} and {left:?} to prep for {token:?}");
-                    let args = [left.node, res.node];
-                    ast.add_op(Op::new(symbol, args), location)
                 }
                 TokenType::Atom => {
                     let name = ast
@@ -314,7 +327,7 @@ pub mod tests {
         Ok(())
     }
 
-    // TODO(testing): #[test]
+    #[test]
     fn parse_definition() -> Result<(), TError> {
         let ast = setup("x=1")?;
         dbg!(&ast);
@@ -328,7 +341,7 @@ pub mod tests {
         dbg!(identifiers);
         dbg!(literals);
         dbg!(definitions);
-
+        assert_eq!(0, 1);
         Ok(())
     }
 
