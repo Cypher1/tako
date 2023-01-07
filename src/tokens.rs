@@ -497,22 +497,22 @@ pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
         assert_eq!(kind, TokenType::StringLit); // TODO(usability): Error here.
         let mut number_of_tokens =
             (length + SymbolLength::MAX as usize - 1) / (SymbolLength::MAX as usize);
-        if number_of_tokens >= (u8::MAX as usize) {
+        if number_of_tokens >= (SymbolLength::MAX as usize) {
             todo!("Token was too long, implement a recursive group thing...");
         }
         tokens.push(Token {
             start: characters.start() as IndexIntoFile,
-            length: number_of_tokens as u8,
+            length: number_of_tokens as SymbolLength,
             kind: TokenType::Group,
         });
         let mut length = length;
         while length > 0 {
-            let curr_len = std::cmp::min(length, u8::MAX as usize);
+            let curr_len = std::cmp::min(length, SymbolLength::MAX as usize);
             length -= curr_len;
             number_of_tokens -= 1;
             tokens.push(Token {
                 start: characters.start() as IndexIntoFile,
-                length: curr_len as u8,
+                length: curr_len as SymbolLength,
                 kind,
             });
         }
