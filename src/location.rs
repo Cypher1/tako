@@ -12,6 +12,8 @@ pub type SymbolLength = u8;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Location {
+    // These are byte indexes and byte lengths. They may need to be interpreted before being shown
+    // to the user.
     pub start: IndexIntoFile,
     pub length: SymbolLength,
 }

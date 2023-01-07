@@ -49,7 +49,7 @@ pub enum Symbol {
     ModuloAssign,
     GetAddress,
     HasType,
-    Lambda,
+    Arrow,
     Implies,
     Try,
     Dot,
@@ -67,6 +67,11 @@ pub enum Symbol {
     Gt,
     GtEqs,
     RightShift,
+    // Quantification
+    Forall,
+    Lambda,
+    Pi,
+    Exists,
     // Parens
     OpenCurly,
     CloseCurly,
@@ -106,7 +111,7 @@ impl std::fmt::Display for Symbol {
                 Symbol::Spread => "...",
                 Symbol::Comma => ",",
                 Symbol::Sequence => ";",
-                Symbol::Lambda => "->",
+                Symbol::Arrow => "->",
                 Symbol::Implies => "=>",
                 Symbol::LeftShift => "<<",
                 Symbol::RightShift => ">>",
@@ -125,6 +130,11 @@ impl std::fmt::Display for Symbol {
                 Symbol::LogicalAndAssign => "&&=",
                 Symbol::LogicalOrAssign => "||=",
                 Symbol::ModuloAssign => "%=",
+                // Quantification
+                Symbol::Lambda => "λ",
+                Symbol::Pi => "Π",
+                Symbol::Forall => "∀",
+                Symbol::Exists => "∃",
                 // Comparisons
                 Symbol::Eqs => "==",
                 Symbol::NotEqs => "!=",
@@ -145,7 +155,6 @@ impl std::fmt::Display for Symbol {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum CharacterType {
-    Unknown,                 // '' no characters yet!
     AtomHead,                // '$' on it's own (invalid).
     ColorLitHead,            // '#' on it's own (invalid).
     Whitespace,              // A special discardable token representing whitespace.
@@ -177,6 +186,8 @@ pub enum TokenType {
 #[derive(Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Token {
     pub kind: TokenType,
+    // These are byte indexes and byte lengths. They may need to be interpreted before being shown
+    // to the user.
     pub start: IndexIntoFile,
     pub length: SymbolLength,
 }
@@ -258,6 +269,10 @@ fn classify_char(ch: char) -> CharacterType {
         '[' => Op(Symbol::OpenBracket),
         ']' => Op(Symbol::CloseBracket),
         '\\' => Op(Symbol::Escape), // Escape?
+        'λ' => Op(Symbol::Lambda),
+        'Π' => Op(Symbol::Pi),
+        '∀' => Op(Symbol::Forall),
+        '∃' => Op(Symbol::Exists),
         '0'..='9' => NumLit,
         'A'..='Z' | 'a'..='z' | '_' => Sym, // Overlapped by colors.
         '"' | '\'' => StringLit,
@@ -319,6 +334,14 @@ impl<'a> Characters<'a> {
     fn start(&self) -> usize {
         self.start
     }
+    fn curr_char_bytes(&self) -> usize {
+        self.curr.map(|c|c.len_utf8()).unwrap_or(0)
+    }
+    fn length(&self) -> usize {
+        (self.index+self.curr_char_bytes()).checked_sub(self.start())
+            .expect("Token should finish after it starts")
+    }
+    #[allow(unused)]
     fn index(&self) -> usize {
         self.index
     }
@@ -327,7 +350,7 @@ impl<'a> Characters<'a> {
         self.start
     }
     fn next(&mut self) -> Option<char> {
-        self.index += 1;
+        self.index += self.curr_char_bytes();
         self.curr = self.it.next();
         self.curr
     }
@@ -391,21 +414,24 @@ pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
         }
     }
     */
-    characters.set_start();
     use CharacterType::*;
     use TokenType::*;
-    let mut kind = Unknown;
+    let chr = if let Some(chr) = characters.next() {
+        chr
+    } else {
+        return false;
+    };
+    let mut kind = classify_char(chr);
+    characters.set_start(); // Start the token!
     while let Some(chr) = characters.peek() {
         // TODO(perf): these could be bit strings and we could and them.
         kind = match (kind, classify_char(chr)) {
-            (Unknown, new_kind) => new_kind, // Start the token!
-            (_, Whitespace) => break,        // Token finished whitespace.
             (PartialToken(Op(first)), PartialToken(Op(second))) => {
                 PartialToken(Op(match (first, second) {
                     // Continuation
                     (Symbol::Add, Symbol::Assign) => Symbol::AddAssign,
                     (Symbol::Sub, Symbol::Assign) => Symbol::SubAssign,
-                    (Symbol::Sub, Symbol::Gt) => Symbol::Lambda,
+                    (Symbol::Sub, Symbol::Gt) => Symbol::Arrow,
                     (Symbol::Div, Symbol::Assign) => Symbol::DivAssign,
                     (Symbol::Div, Symbol::Div) => Symbol::DivRounding,
                     (Symbol::DivRounding, Symbol::Assign) => Symbol::DivRoundingAssign,
@@ -444,9 +470,6 @@ pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
         };
         characters.next(); // Continue past the character.
     }
-    if kind == Unknown {
-        return false; // Eof...
-    }
     if kind == CharacterType::HexSym {
         kind = PartialToken(TokenType::Sym);
     }
@@ -468,12 +491,8 @@ pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
                 characters.next(); // Skip escaped quotes.
             }
         }
-    };
-    let length = characters
-        .index()
-        .checked_sub(characters.start())
-        .expect("Token should finish after it starts");
-
+    }
+    let length = characters.length();
     if length > SymbolLength::MAX as usize {
         assert_eq!(kind, TokenType::StringLit); // TODO(usability): Error here.
         let mut number_of_tokens =
@@ -858,17 +877,18 @@ mod tests {
             let symbol_str = format!("{}", &symbol);
             let contents = format!("{}123", &symbol);
             let tokens = setup_many(&contents, 2);
+            let length = symbol_str.len();
             assert_eq!(
                 tokens,
                 vec![
                     Token {
                         kind: Op(symbol),
                         start: 0,
-                        length: symbol_str.len() as SymbolLength,
+                        length: length as SymbolLength,
                     },
                     Token {
                         kind: NumLit,
-                        start: symbol_str.len() as IndexIntoFile,
+                        start: length as IndexIntoFile,
                         length: 3,
                     },
                 ],
