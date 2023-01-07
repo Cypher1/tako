@@ -165,7 +165,7 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
                                 NodeData::Identifier(name) => name,
                                 node => todo!("Can't assign to a {node:?}"),
                             };
-                            let name = (*ast.get(*ident_id)).1;
+                            let name = ast.get(*ident_id).1;
                             let implementation = res.node.expect("Requires an implementation");
                             ast.add_definition(Definition { name, implementation }, location)
                         }
