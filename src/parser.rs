@@ -65,6 +65,7 @@ const fn binding_power(symbol: Symbol) -> BindingPowerConfig {
         Symbol::OpenBracket => BindingPowerConfig::prefix(99, 0),
         Symbol::CloseBracket => BindingPowerConfig::infix(0, 100),
         Symbol::Eqs => BindingPowerConfig::infix(2, 1),
+        Symbol::Forall | Symbol::Pi | Symbol::Exists | Symbol::Lambda => BindingPowerConfig::prefix(99, 99),
         Symbol::Add | Symbol::Sub => BindingPowerConfig::infix(5, 6).and_prefix(99, 9),
         Symbol::Mul | Symbol::Div => BindingPowerConfig::infix(7, 8),
         Symbol::LogicalNot => BindingPowerConfig::prefix(11, 100),
@@ -73,13 +74,10 @@ const fn binding_power(symbol: Symbol) -> BindingPowerConfig {
     }
 }
 
-fn get_binding_power(token: Option<&Token>, is_prefix: bool) -> Option<BindingPower> {
-    if let Some(Token {
-        kind: TokenType::Op(symbol),
-        ..
-    }) = token
+fn get_binding_power(kind: TokenType, is_prefix: bool) -> Option<BindingPower> {
+    if let TokenType::Op(symbol) = kind
     {
-        let power = binding_power(*symbol);
+        let power = binding_power(symbol);
         if is_prefix {
             return power.prefix;
         } else {
@@ -112,10 +110,25 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
         let token = tokens.next();
         trace!("Adding token {:?}", &token);
         let r_bp = loop {
+            let name = ast
+                .string_interner
+                .register_str(left.token.get_src(contents));
+            let kind = if name == ast.string_interner.lambda {
+                TokenType::Op(Symbol::Lambda)
+            } else if name == ast.string_interner.pi {
+                TokenType::Op(Symbol::Pi)
+            } else if name == ast.string_interner.forall {
+                TokenType::Op(Symbol::Forall)
+            } else if name == ast.string_interner.exists {
+                TokenType::Op(Symbol::Exists)
+            } else {
+                left.token.kind
+            };
+            left.token.kind = kind;
             if let Some(BindingPower {
                 left: l_bp,
                 right: r_bp,
-            }) = get_binding_power(token, left.node.is_none())
+            }) = get_binding_power(kind, left.node.is_none())
             {
                 trace!(
                     "Found token {:?} with prec left {:?}, right {:?}",
@@ -152,6 +165,7 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
                     use crate::tokens::{assign_op, is_assign};
                     if is_assign(symbol) {
                         // TODO(clarity): Lowering for assign ops.
+                        dbg!(&left, &symbol, &res);
                         if let Some(op) = assign_op(symbol) {
                             todo!(
                                 "Assignment (with op):\n{symbol:#?}\n{res:#?}\n{left:#?}\n{op:?}"
@@ -270,7 +284,7 @@ pub mod tests {
                     Literal::Numeric, // ("1".to_string()),
                 ),
                 (
-                    NodeId::from_raw(1),
+                    NodeId::from_raw(2),
                     Literal::Numeric, // ("2".to_string()),
                 )
             ],
@@ -329,6 +343,36 @@ pub mod tests {
 
         dbg!(identifiers);
 
+        Ok(())
+    }
+
+    #[test]
+    fn parse_lambda() -> Result<(), TError> {
+        let ast = setup("λx")?;
+        dbg!(&ast);
+        let Ast {
+            ops,
+            identifiers,
+            ..
+        } = ast;
+
+        dbg!(ops);
+        dbg!(identifiers);
+        Ok(())
+    }
+
+    #[test]
+    fn parse_lambda_keyword() -> Result<(), TError> {
+        let ast = setup("lambda x")?;
+        dbg!(&ast);
+        let Ast {
+            ops,
+            identifiers,
+            ..
+        } = ast;
+
+        dbg!(ops);
+        dbg!(identifiers);
         Ok(())
     }
 

@@ -228,7 +228,7 @@ mod tests {
 
     #[test]
     fn can_add_nodes_to_ast() {
-        let mut lits = StringInterner::default();
+        let mut lits = StringInterner::new();
         let mut ast = Ast::default();
         let a = lits.register_str("a");
         let b = Literal::Numeric; // ("123456789");

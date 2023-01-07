@@ -13,22 +13,45 @@ use static_assertions::*;
 assert_eq_size!(Identifier, [u8; 8]);
 assert_eq_size!([Identifier; 2], [u8; 16]);
 
-#[derive(Clone, Default, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct StringInterner {
     // This ensures we can look up the string from the hash.
     // BUT: We can also merge the hashes without losing any information.
     pub loc2string: BTreeMap<IndexIntoFile, StrId>,
     pub strings: BTreeMap<StrId, String>,
+    pub lambda: StrId,
+    pub pi: StrId,
+    pub forall: StrId,
+    pub exists: StrId,
 }
 
-impl StringInterner {
-    pub fn new() -> Self {
-        let mut n = Self::default();
+impl Default for StringInterner {
+    fn default() -> Self {
+        let mut n = Self {
+            loc2string: BTreeMap::new(),
+            strings: BTreeMap::new(),
+            // These are, temporarily, invalid.
+            lambda: TypedIndex::max(),
+            pi: TypedIndex::max(),
+            forall: TypedIndex::max(),
+            exists: TypedIndex::max(),
+        };
+        n.lambda = n.register_str("lambda");
+        n.pi = n.register_str("pi");
+        n.forall = n.register_str("forall");
+        n.exists = n.register_str("exists");
         for key in KEYWORDS {
             n.register_str(key);
         }
         n
     }
+}
+
+impl StringInterner {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     #[must_use]
     pub fn register_str_by_loc(&mut self, name: &str, ind: IndexIntoFile) -> StrId {
         let id = self.register_str(name);
