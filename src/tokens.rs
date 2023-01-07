@@ -335,10 +335,11 @@ impl<'a> Characters<'a> {
         self.start
     }
     fn curr_char_bytes(&self) -> usize {
-        self.curr.map(|c|c.len_utf8()).unwrap_or(0)
+        self.curr.map(|c| c.len_utf8()).unwrap_or(0)
     }
     fn length(&self) -> usize {
-        (self.index+self.curr_char_bytes()).checked_sub(self.start())
+        (self.index + self.curr_char_bytes())
+            .checked_sub(self.start())
             .expect("Token should finish after it starts")
     }
     #[allow(unused)]

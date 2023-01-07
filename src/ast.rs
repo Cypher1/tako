@@ -230,8 +230,8 @@ mod tests {
     fn can_add_nodes_to_ast() {
         let mut lits = StringInterner::default();
         let mut ast = Ast::default();
-        let a = lits.register_str("a".to_string());
-        let b = Literal::Numeric; // ("123456789".to_string());
+        let a = lits.register_str("a");
+        let b = Literal::Numeric; // ("123456789");
         let a = ast.make_node(a, Location::dummy_for_test());
         let b = ast.make_node(b, Location::dummy_for_test());
         let call = Op {
@@ -239,7 +239,7 @@ mod tests {
             args: [Some(a), Some(b)],
         };
         let call = ast.make_node(call, Location::dummy_for_test());
-        let a_prime = lits.register_str("a_prime".to_string());
+        let a_prime = lits.register_str("a_prime");
         let definition = Definition {
             name: a_prime,
             implementation: call,

@@ -1,3 +1,4 @@
+use crate::keywords::KEYWORDS;
 use crate::location::IndexIntoFile;
 use crate::utils::typed_index::TypedIndex;
 use std::collections::BTreeMap;
@@ -21,18 +22,25 @@ pub struct StringInterner {
 }
 
 impl StringInterner {
+    pub fn new() -> Self {
+        let mut n = Self::default();
+        for key in KEYWORDS {
+            n.register_str(key);
+        }
+        n
+    }
     #[must_use]
-    pub fn register_str_by_loc(&mut self, name: String, ind: IndexIntoFile) -> StrId {
+    pub fn register_str_by_loc(&mut self, name: &str, ind: IndexIntoFile) -> StrId {
         let id = self.register_str(name);
         self.loc2string.insert(ind, id);
         id
     }
-    pub fn register_str(&mut self, name: String) -> StrId {
+    pub fn register_str(&mut self, name: &str) -> StrId {
         let mut hasher = fxhash::FxHasher::default();
         name.hash(&mut hasher);
         let str_hash = hasher.finish();
         let id = TypedIndex::from_raw(str_hash);
-        self.strings.entry(id).or_insert(name);
+        self.strings.entry(id).or_insert_with(|| name.to_string());
         id
     }
     pub fn get_str(&self, s: StrId) -> Option<&str> {
