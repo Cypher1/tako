@@ -498,7 +498,7 @@ pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
         let mut number_of_tokens =
             (length + SymbolLength::MAX as usize - 1) / (SymbolLength::MAX as usize);
         if number_of_tokens >= (SymbolLength::MAX as usize) {
-            todo!("Token was too long, implement a recursive group thing...");
+            todo!("Token was too long ({length:?}), implement a recursive group thing...");
         }
         tokens.push(Token {
             start: characters.start() as IndexIntoFile,
