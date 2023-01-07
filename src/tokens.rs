@@ -281,7 +281,7 @@ fn classify_char(ch: char) -> CharacterType {
 }
 
 #[inline]
-pub fn assign_op(s: Symbol) -> Option<Symbol> {
+pub const fn assign_op(s: Symbol) -> Option<Symbol> {
     // TODO(clarity): Move to a symbol module.
     Some(match s {
         Symbol::AddAssign => Symbol::Add,
@@ -300,9 +300,9 @@ pub fn assign_op(s: Symbol) -> Option<Symbol> {
 }
 
 #[inline]
-pub fn is_assign(s: Symbol) -> bool {
+pub const fn is_assign(s: Symbol) -> bool {
     // TODO(clarity): Move to a symbol module.
-    s == Symbol::Assign || assign_op(s).is_some()
+    matches!(s, Symbol::Assign) || assign_op(s).is_some()
 }
 
 #[inline]

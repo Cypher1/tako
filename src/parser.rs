@@ -1,7 +1,7 @@
 // use rand::Rng;
 use crate::ast::*;
 use crate::error::TError;
-use crate::tokens::{Symbol, Token, TokenType};
+use crate::tokens::{Symbol, Token, TokenType, is_assign};
 use log::{debug, trace};
 use std::path::Path;
 
@@ -70,12 +70,16 @@ const fn binding_power(symbol: Symbol) -> BindingPowerConfig {
         Symbol::Mul | Symbol::Div => BindingPowerConfig::infix(7, 8),
         Symbol::LogicalNot => BindingPowerConfig::prefix(11, 100),
         Symbol::Dot => BindingPowerConfig::infix(14, 13),
-        _ => BindingPowerConfig::infix(3, 4),
+        _ => if is_assign(symbol) {
+            BindingPowerConfig::infix(0, 0)
+        } else {
+            BindingPowerConfig::infix(3, 4)
+        }
     }
 }
 
-fn get_binding_power(kind: TokenType, is_prefix: bool) -> Option<BindingPower> {
-    if let TokenType::Op(symbol) = kind
+fn get_binding_power(kind: Option<TokenType>, is_prefix: bool) -> Option<BindingPower> {
+    if let Some(TokenType::Op(symbol)) = kind
     {
         let power = binding_power(symbol);
         if is_prefix {
@@ -107,24 +111,30 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
         token: Token::eof(0),
     };
     loop {
-        let token = tokens.next();
+        let mut token = tokens.next().cloned();
         trace!("Adding token {:?}", &token);
         let r_bp = loop {
-            let name = ast
-                .string_interner
-                .register_str(left.token.get_src(contents));
-            let kind = if name == ast.string_interner.lambda {
-                TokenType::Op(Symbol::Lambda)
-            } else if name == ast.string_interner.pi {
-                TokenType::Op(Symbol::Pi)
-            } else if name == ast.string_interner.forall {
-                TokenType::Op(Symbol::Forall)
-            } else if name == ast.string_interner.exists {
-                TokenType::Op(Symbol::Exists)
+            let kind = if let Some(token) = token.as_mut() {
+                let src = token.get_src(contents);
+                let name = ast
+                    .string_interner
+                    .register_str(src);
+                let kind = if name == ast.string_interner.lambda {
+                    TokenType::Op(Symbol::Lambda)
+                } else if name == ast.string_interner.pi {
+                    TokenType::Op(Symbol::Pi)
+                } else if name == ast.string_interner.forall {
+                    TokenType::Op(Symbol::Forall)
+                } else if name == ast.string_interner.exists {
+                    TokenType::Op(Symbol::Exists)
+                } else {
+                    token.kind
+                };
+                token.kind = kind;
+                Some(kind)
             } else {
-                left.token.kind
+                None
             };
-            left.token.kind = kind;
             if let Some(BindingPower {
                 left: l_bp,
                 right: r_bp,
@@ -137,8 +147,9 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
                     &r_bp
                 );
                 if token.is_some() && left.min_bp <= l_bp {
-                    // Symbol joins left and the next expression,
+                    // `token` is a symbol that joins left and the next expression,
                     // or needs other special handling.
+                    dbg!("breaking on ", &token);
                     break r_bp;
                 }
             }
@@ -162,7 +173,7 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
                     ast.add_literal(Literal::Numeric, location)
                 }
                 TokenType::Op(symbol) => {
-                    use crate::tokens::{assign_op, is_assign};
+                    use crate::tokens::assign_op;
                     if is_assign(symbol) {
                         // TODO(clarity): Lowering for assign ops.
                         dbg!(&left, &symbol, &res);
@@ -224,7 +235,7 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
             left = Partial {
                 min_bp: r_bp,
                 node: None,
-                token: *token,
+                token,
             };
         }
     }
@@ -284,7 +295,7 @@ pub mod tests {
                     Literal::Numeric, // ("1".to_string()),
                 ),
                 (
-                    NodeId::from_raw(2),
+                    NodeId::from_raw(1),
                     Literal::Numeric, // ("2".to_string()),
                 )
             ],
