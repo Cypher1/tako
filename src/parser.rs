@@ -1,7 +1,7 @@
 // use rand::Rng;
 use crate::ast::*;
 use crate::error::TError;
-use crate::tokens::{Symbol, Token, TokenType, is_assign};
+use crate::tokens::{is_assign, Symbol, Token, TokenType};
 use log::{debug, trace};
 use std::path::Path;
 
@@ -65,22 +65,25 @@ const fn binding_power(symbol: Symbol) -> BindingPowerConfig {
         Symbol::OpenBracket => BindingPowerConfig::prefix(99, 0),
         Symbol::CloseBracket => BindingPowerConfig::infix(0, 100),
         Symbol::Eqs => BindingPowerConfig::infix(2, 1),
-        Symbol::Forall | Symbol::Pi | Symbol::Exists | Symbol::Lambda => BindingPowerConfig::prefix(99, 99),
+        Symbol::Forall | Symbol::Pi | Symbol::Exists | Symbol::Lambda => {
+            BindingPowerConfig::prefix(99, 99)
+        }
         Symbol::Add | Symbol::Sub => BindingPowerConfig::infix(5, 6).and_prefix(99, 9),
         Symbol::Mul | Symbol::Div => BindingPowerConfig::infix(7, 8),
         Symbol::LogicalNot => BindingPowerConfig::prefix(11, 100),
         Symbol::Dot => BindingPowerConfig::infix(14, 13),
-        _ => if is_assign(symbol) {
-            BindingPowerConfig::infix(0, 0)
-        } else {
-            BindingPowerConfig::infix(3, 4)
+        _ => {
+            if is_assign(symbol) {
+                BindingPowerConfig::infix(0, 0)
+            } else {
+                BindingPowerConfig::infix(3, 4)
+            }
         }
     }
 }
 
 fn get_binding_power(kind: Option<TokenType>, is_prefix: bool) -> Option<BindingPower> {
-    if let Some(TokenType::Op(symbol)) = kind
-    {
+    if let Some(TokenType::Op(symbol)) = kind {
         let power = binding_power(symbol);
         if is_prefix {
             return power.prefix;
@@ -116,9 +119,7 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
         let r_bp = loop {
             let kind = if let Some(token) = token.as_mut() {
                 let src = token.get_src(contents);
-                let name = ast
-                    .string_interner
-                    .register_str(src);
+                let name = ast.string_interner.register_str(src);
                 let kind = if name == ast.string_interner.lambda {
                     TokenType::Op(Symbol::Lambda)
                 } else if name == ast.string_interner.pi {
@@ -362,9 +363,7 @@ pub mod tests {
         let ast = setup("λx")?;
         dbg!(&ast);
         let Ast {
-            ops,
-            identifiers,
-            ..
+            ops, identifiers, ..
         } = ast;
 
         dbg!(ops);
@@ -377,9 +376,7 @@ pub mod tests {
         let ast = setup("lambda x")?;
         dbg!(&ast);
         let Ast {
-            ops,
-            identifiers,
-            ..
+            ops, identifiers, ..
         } = ast;
 
         dbg!(ops);
