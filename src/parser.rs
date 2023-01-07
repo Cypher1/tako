@@ -167,7 +167,13 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
                             };
                             let name = ast.get(*ident_id).1;
                             let implementation = res.node.expect("Requires an implementation");
-                            ast.add_definition(Definition { name, implementation }, location)
+                            ast.add_definition(
+                                Definition {
+                                    name,
+                                    implementation,
+                                },
+                                location,
+                            )
                         }
                     } else {
                         trace!("Merging {res:?} and {left:?} to prep for {token:?}");
