@@ -13,7 +13,7 @@ use crossterm::{
     QueueableCommand,
 };
 use futures::{future::FutureExt, StreamExt};
-use log::{debug, trace};
+use log::trace;
 use shutdown_hooks::add_shutdown_hook;
 use std::{
     io::{stdout, Write},
@@ -198,7 +198,7 @@ impl UserInterface for Tui {
         let _start_time = Instant::now();
         add_shutdown_hook(shutdown);
         if self.client.interactive() {
-            debug!("Enabling raw mode");
+            trace!("Enabling raw mode");
             enable_raw_mode().expect("TUI failed to enable raw mode");
         }
         self.client.start();

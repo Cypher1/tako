@@ -17,11 +17,11 @@ pub mod tasks;
 pub mod tokens;
 pub mod ui;
 
-use std::fs::OpenOptions;
 use crate::cli_options::Options;
 use crate::compiler_context::Compiler;
 use crate::ui::UserInterface;
 use log::error;
+use std::fs::OpenOptions;
 
 static mut LOGS_UNINITIALISED: bool = true;
 
@@ -39,7 +39,7 @@ fn build_logger(finish: impl FnOnce(&mut env_logger::Builder)) {
             env_logger::Builder::from_env(
                 env_logger::Env::default()
                     .filter_or("RUST_LOG", "info")
-                    .write_style_or("RUST_LOG_STYLE", "AUTO")
+                    .write_style_or("RUST_LOG_STYLE", "AUTO"),
             )
             .target(env_logger::fmt::Target::Pipe(Box::new(log_file)))
             .format_timestamp(None),

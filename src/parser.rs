@@ -150,7 +150,7 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
                 if token.is_some() && left.min_bp <= l_bp {
                     // `token` is a symbol that joins left and the next expression,
                     // or needs other special handling.
-                    dbg!("breaking on ", &token);
+                    debug!("breaking on {:?}", &token);
                     break r_bp;
                 }
             }
@@ -177,7 +177,7 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
                     use crate::tokens::assign_op;
                     if is_assign(symbol) {
                         // TODO(clarity): Lowering for assign ops.
-                        dbg!(&left, &symbol, &res);
+                        debug!("assignment: {:?} {:?} {:?}", &left, &symbol, &res);
                         if let Some(op) = assign_op(symbol) {
                             todo!(
                                 "Assignment (with op):\n{symbol:#?}\n{res:#?}\n{left:#?}\n{op:?}"
