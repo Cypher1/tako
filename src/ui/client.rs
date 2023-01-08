@@ -49,7 +49,7 @@ impl Client {
 
     pub fn interactive(&self) -> bool {
         // TODO(usability): Build should have an interactive mode?
-        self.options.cmd == Command::Repl && !self.options.minimal_ui
+        self.options.cmd == Command::Repl
     }
 
     pub fn oneshot(&self) -> bool {

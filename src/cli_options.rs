@@ -17,7 +17,6 @@ pub struct Options {
     pub cmd: Command,
     pub interpreter_args: Vec<String>,
     pub ui_mode: UiMode,
-    pub minimal_ui: bool,
     /// `optimization_level` should be proportional to maximum time spent on optimisation.
     pub optimization_level: u32,
 }
@@ -30,7 +29,6 @@ impl Default for Options {
             cmd: Command::Build,
             interpreter_args: vec![],
             ui_mode: UiMode::Tui,
-            minimal_ui: false,
             optimization_level: 3,
         }
     }
@@ -67,7 +65,6 @@ impl Options {
                     "-r" | "--run" => opts.cmd = Command::Interpret,
                     "--tui" => opts.ui_mode = UiMode::Tui,
                     "--http" => opts.ui_mode = UiMode::Http,
-                    "--minimal_ui" | "--minimal-ui" => opts.minimal_ui = true,
                     "-O0" => opts.optimization_level = 0,
                     "-O1" => opts.optimization_level = 1,
                     "-O2" => opts.optimization_level = 2,
