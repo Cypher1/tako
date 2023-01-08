@@ -38,7 +38,7 @@ fn build_logger(finish: impl FnOnce(&mut env_logger::Builder)) {
         finish(
             env_logger::Builder::from_env(
                 env_logger::Env::default()
-                    .filter_or("RUST_LOG", "info")
+                    .filter_or("RUST_LOG", "debug")
                     .write_style_or("RUST_LOG_STYLE", "AUTO"),
             )
             .target(env_logger::fmt::Target::Pipe(Box::new(log_file)))
