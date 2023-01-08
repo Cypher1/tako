@@ -1,34 +1,38 @@
 import { LitElement, html, css } from 'lit';
 import { property, customElement } from 'lit/decorators.js';
 
-const logo = new URL('../../assets/tako.png', import.meta.url).href;
+const takoLogo = new URL('../../assets/tako.png', import.meta.url).href;
 
 @customElement('tako-webui')
 export class TakoWebui extends LitElement {
   @property({ type: String }) header = 'Tako';
+
+  @property({ type: String }) tagline =
+    'An experiment in software verification';
+
+  @property({ type: URL }) logo = takoLogo;
 
   static styles = css`
     :host {
       min-height: 100vh;
       display: flex;
       flex-direction: column;
-      align-items: center;
+      align-items: left;
       justify-content: flex-start;
-      font-size: calc(10px + 2vmin);
+      font-size: calc(10px + 1vmin);
       color: #1a2b42;
-      max-width: 960px;
+      max-width: calc(100vw - 20px);
       margin: 0 auto;
-      text-align: center;
+      text-align: left;
       background-color: var(--tako-webui-background-color);
     }
 
     main {
       flex-grow: 1;
     }
-
     .logo {
-      margin-top: 36px;
       animation: app-logo-spin infinite 20s linear;
+      text-align: center;
     }
 
     @keyframes app-logo-spin {
@@ -39,24 +43,50 @@ export class TakoWebui extends LitElement {
         transform: rotate(360deg);
       }
     }
-
-    .app-footer {
-      font-size: calc(12px + 0.5vmin);
-      align-items: center;
-    }
-
-    .app-footer a {
-      margin-left: 5px;
-    }
   `;
 
   render() {
     return html`
-      <main>
-        <div class="logo"><img alt="tako logo" src=${logo} /></div>
-        <h1>${this.header}</h1>
+      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+      <nav class="navbar" role="navigation" aria-label="main navigation">
+        <div class="navbar-brand">
+          <a class="navbar-item" href="/">
+            <img src="${this.logo}" alt="Tako logo (a helpful octopus)">
+            ${this.header}
+          </a>
 
-        <p>Edit <code>src/tako-webui.ts</code> and save to reload.</p>
+          <div role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbarBasicExample">
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+          </div>
+        </div>
+
+        <div id="navbarBasicExample" class="navbar-menu">
+          <div class="navbar-start">
+            <a class="navbar-item" href="https://github.com/Cypher1/tako/actions"><img src="https://github.com/Cypher1/tako/workflows/Rust/badge.svg" alt="Build Status"></a>
+            <a class="navbar-item" href="https://github.com/Cypher1/tako/issues"><img src="https://img.shields.io/github/issues/Cypher1/tako.svg" alt="GitHub issues"></a>
+            </div>
+          </div>
+
+          <div class="navbar-end">
+            <div class="navbar-item">
+              <div class="buttons">
+                <a class="button is-primary" href="https://github.com/Cypher1/tako">
+                  View the project on&nbsp;<strong> Github!</strong>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </nav>
+        </h2>
+      <main>
+
+        <section class="banner">
+          <h1 id="coming-soon">Coming soon…</h1>
+        </section>
+
         <a
           class="app-link"
           href="https://open-wc.org/guides/developing-components/code-examples"
@@ -68,14 +98,14 @@ export class TakoWebui extends LitElement {
       </main>
 
       <p class="app-footer">
-        🚽 Made with love by
+        Made with love by
         <a
           target="_blank"
           rel="noopener noreferrer"
-          href="https://github.com/open-wc"
-          >open-wc</a
+          href="https://github.com/Cypher1"
+          >Cypher1</a
         >.
       </p>
-    `;
+  `;
   }
 }
