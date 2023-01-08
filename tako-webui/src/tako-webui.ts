@@ -21,13 +21,16 @@ export class TakoWebui extends LitElement {
       justify-content: flex-start;
       font-size: calc(10px + 1vmin);
       color: #1a2b42;
-      max-width: calc(100vw - 20px);
       margin: 0 auto;
       text-align: left;
       background-color: var(--tako-webui-background-color);
     }
 
+    .app-footer {
+      padding: 10px 10px;
+    }
     main {
+      padding: 10px 10px;
       flex-grow: 1;
     }
     .logo {
@@ -54,35 +57,22 @@ export class TakoWebui extends LitElement {
             <img src="${this.logo}" alt="Tako logo (a helpful octopus)">
             ${this.header}
           </a>
-
-          <div role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbarBasicExample">
-            <span aria-hidden="true"></span>
-            <span aria-hidden="true"></span>
-            <span aria-hidden="true"></span>
-          </div>
         </div>
 
         <div id="navbarBasicExample" class="navbar-menu">
           <div class="navbar-start">
+          </div>
+          <div class="navbar-end">
             <a class="navbar-item" href="https://github.com/Cypher1/tako/actions"><img src="https://github.com/Cypher1/tako/workflows/Rust/badge.svg" alt="Build Status"></a>
             <a class="navbar-item" href="https://github.com/Cypher1/tako/issues"><img src="https://img.shields.io/github/issues/Cypher1/tako.svg" alt="GitHub issues"></a>
             </div>
-          </div>
-
-          <div class="navbar-end">
-            <div class="navbar-item">
-              <div class="buttons">
-                <a class="button is-primary" href="https://github.com/Cypher1/tako">
-                  View the project on&nbsp;<strong> Github!</strong>
-                </a>
-              </div>
-            </div>
+            <a class="navbar-item" href="https://github.com/Cypher1/tako">
+              Github
+            </a>
           </div>
         </div>
       </nav>
-        </h2>
       <main>
-
         <section class="banner">
           <h1 id="coming-soon">Coming soon…</h1>
         </section>
