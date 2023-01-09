@@ -12,6 +12,8 @@ export class TakoWebui extends LitElement {
 
   @property({ type: URL }) logo = takoLogo;
 
+  @property({ type: Boolean }) navbarActive = false;
+
   static styles = css`
     :host {
       min-height: 100vh;
@@ -21,16 +23,13 @@ export class TakoWebui extends LitElement {
       justify-content: flex-start;
       font-size: calc(10px + 1vmin);
       color: #1a2b42;
+      max-width: calc(100vw - 20px);
       margin: 0 auto;
       text-align: left;
       background-color: var(--tako-webui-background-color);
     }
 
-    .app-footer {
-      padding: 10px 10px;
-    }
     main {
-      padding: 10px 10px;
       flex-grow: 1;
     }
     .logo {
@@ -54,48 +53,63 @@ export class TakoWebui extends LitElement {
       <nav class="navbar" role="navigation" aria-label="main navigation">
         <div class="navbar-brand">
           <a class="navbar-item" href="/">
-            <img src="${this.logo}" alt="Tako logo (a helpful octopus)">
+          <img src="${this.logo}" alt="Tako octopus logo">
             ${this.header}
           </a>
-        </div>
+          <a class="navbar-item" href="https://github.com/Cypher1/tako/actions"><img src="https://github.com/Cypher1/tako/workflows/Rust/badge.svg" alt="Build Status"></a>
+          <a class="navbar-item" href="https://github.com/Cypher1/tako/issues"><img src="https://img.shields.io/github/issues/Cypher1/tako.svg" alt="GitHub issues"></a>
 
-        <div id="navbarBasicExample" class="navbar-menu">
+        <button class="navbar-burger ${
+          this.navbarActive ? 'is-active' : ''
+        }" aria-label="menu" aria-expanded="false" data-target="navbarMenu" @click="${() => {
+      this.navbarActive = !this.navbarActive;
+    }}">
+          <span aria-hidden="true"></span>
+          <span aria-hidden="true"></span>
+          <span aria-hidden="true"></span>
+        </button>
+        </div>
+        <div id="navbarMenu" class="navbar-menu ${
+          this.navbarActive ? 'is-active' : ''
+        }">
           <div class="navbar-start">
           </div>
           <div class="navbar-end">
-            <a class="navbar-item" href="https://github.com/Cypher1/tako/actions"><img src="https://github.com/Cypher1/tako/workflows/Rust/badge.svg" alt="Build Status"></a>
-            <a class="navbar-item" href="https://github.com/Cypher1/tako/issues"><img src="https://img.shields.io/github/issues/Cypher1/tako.svg" alt="GitHub issues"></a>
+            <div class="navbar-item">
+              <a class="navbar-item" href="https://github.com/Cypher1/tako">
+                View the project on&nbsp;<strong> Github!</strong>
+              </a>
             </div>
-            <a class="navbar-item" href="https://github.com/Cypher1/tako">
-              Github
-            </a>
           </div>
         </div>
+      </div>
       </nav>
+      </h2>
       <main>
-        <section class="banner">
-          <h1 id="coming-soon">Coming soon…</h1>
-        </section>
 
-        <a
-          class="app-link"
-          href="https://open-wc.org/guides/developing-components/code-examples"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Code examples
-        </a>
+      <section class="banner">
+      <h1 id="coming-soon">Coming soon…</h1>
+      </section>
+
+      <a
+      class="app-link"
+      href="https://open-wc.org/guides/developing-components/code-examples"
+        target="_blank"
+      rel="noopener noreferrer"
+      >
+      Code examples
+      </a>
       </main>
 
       <p class="app-footer">
-        Made with love by
-        <a
-          target="_blank"
-          rel="noopener noreferrer"
-          href="https://github.com/Cypher1"
-          >Cypher1</a
-        >.
-      </p>
-  `;
+      Made with love by
+      <a
+      target="_blank"
+      rel="noopener noreferrer"
+      href="https://github.com/Cypher1"
+        >Cypher1</a
+      >.
+        </p>
+      `;
   }
 }
