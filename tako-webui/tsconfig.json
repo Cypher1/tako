@@ -1,20 +1,15 @@
 {
-  "compilerOptions": {
-    "target": "es2018",
-    "module": "esnext",
-    "moduleResolution": "node",
-    "noEmitOnError": true,
-    "lib": ["es2017", "dom"],
-    "strict": true,
-    "esModuleInterop": false,
-    "allowSyntheticDefaultImports": true,
-    "experimentalDecorators": true,
-    "importHelpers": true,
-    "outDir": "out-tsc",
-    "sourceMap": true,
-    "inlineSources": true,
-    "rootDir": "./",
-    "incremental": true
-  },
-  "include": ["**/*.ts"]
+    "include": [
+        "src/**/*"
+    ],
+    "compilerOptions": {
+        "esModuleInterop": true,
+        "experimentalDecorators": true,
+        "lib": [
+            "dom"
+        ],
+        "target": "ES6",
+        "moduleResolution": "Node",
+        "strict": true
+    }
 }

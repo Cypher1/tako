@@ -1,9 +1,10 @@
 import { LitElement, html, css } from 'lit';
 import { property, customElement } from 'lit/decorators.js';
+import './tako-interface';
 
-const takoLogo = new URL('../../assets/tako.png', import.meta.url).href;
+const takoLogo = new URL('./tako.png', import.meta.url).href;
 
-@customElement('tako-webui')
+@customElement("app-root")
 export class TakoWebui extends LitElement {
   @property({ type: String }) header = 'Tako';
 
@@ -22,10 +23,11 @@ export class TakoWebui extends LitElement {
       align-items: left;
       justify-content: flex-start;
       font-size: calc(10px + 1vmin);
+      font-family: sans-serif;
       color: #1a2b42;
       margin: 0 auto;
       text-align: left;
-      background-color: var(--tako-webui-background-color);
+      background-color: #ededed; /*var(--tako-webui-background-color);*/
     }
 
     main {

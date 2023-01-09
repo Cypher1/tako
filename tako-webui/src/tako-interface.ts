@@ -1,6 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { property, customElement } from 'lit/decorators.js';
-import { TakoModule } from './tako-module.js';
+import { TakoModule } from './tako-module';
+import './tako-module';
 
 @customElement('tako-interface')
 export class TakoInterface extends LitElement {
