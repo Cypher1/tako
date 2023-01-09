@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="Description" content="Put your description here.">
+  <base href="/">
+  <link rel="stylesheet" href="./src/prism.css">
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+      background-color: #ededed;
+    }
+  </style>
+  <title>Tako</title>
+</head>
+
+<body>
+  <!-- <tako-webui></tako-webui> -->
+<pre><code class="line-numbers language-python">
+print("hi")
+for x in range(1, 100):
+    print(x)
+</code></pre>
+<pre><code class="line-numbers language-clike">
+int foo() {
+    int i = 3;
+    return i;
+}
+</code></pre>
+<pre data-line="2,4-5"><code class="line-numbers language-rust">
+impl Foo {
+  fn foo(mut self) -> Self {
+    let i: u32 = 3;
+    todo!()
+  }
+}
+</code></pre>
+<script src="./src/prism.js"></script>
+</body>
+
+</html>
