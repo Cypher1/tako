@@ -31,8 +31,9 @@ export class TakoInterface extends LitElement {
           Code examples
         </a>
       </section>
-
-      <div>${this.modules}</div>
+      <section class="container">
+        <div>${this.modules}</div>
+      </section>
     `;
   }
 }
