@@ -3,6 +3,27 @@ import { property, customElement } from 'lit/decorators.js';
 import { TakoModule } from './tako-module';
 import './tako-module';
 
+const pythonCode = `
+print("hi")
+for x in range(1, 100):
+    print(x)
+`;
+
+const clikeCode = `
+int foo() {
+    int i = 3;
+    return i;
+}
+`;
+const rustCode = `
+impl Foo {
+  fn foo(mut self) -> Self {
+    let i: u32 = 3;
+    todo!()
+  }
+}
+`;
+
 @customElement('tako-interface')
 export class TakoInterface extends LitElement {
   static styles = css`
@@ -14,8 +35,9 @@ export class TakoInterface extends LitElement {
   `;
 
   @property({ type: Array<TakoModule> }) modules = [
-    html`<tako-module path="test.tk"></tako-module>`,
-    html`<tako-module path="example.tk"></tako-module>`,
+    html`<tako-module path="test.py" language="python" source="${pythonCode}"></tako-module>`,
+    html`<tako-module path="example.tk" language="clike" source="${clikeCode}"></tako-module>`,
+    html`<tako-module path="example.rs" language="rust" source="${rustCode}"></tako-module>`,
   ];
 
   render() {
