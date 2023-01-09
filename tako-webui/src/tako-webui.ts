@@ -23,7 +23,6 @@ export class TakoWebui extends LitElement {
       justify-content: flex-start;
       font-size: calc(10px + 1vmin);
       color: #1a2b42;
-      max-width: calc(100vw - 20px);
       margin: 0 auto;
       text-align: left;
       background-color: var(--tako-webui-background-color);
@@ -86,19 +85,8 @@ export class TakoWebui extends LitElement {
       </nav>
       </h2>
       <main>
-
-      <section class="banner">
-      <h1 id="coming-soon">Coming soon…</h1>
-      </section>
-
-      <a
-      class="app-link"
-      href="https://open-wc.org/guides/developing-components/code-examples"
-        target="_blank"
-      rel="noopener noreferrer"
-      >
-      Code examples
-      </a>
+        <tako-interface>
+        </tako-interface>
       </main>
 
       <p class="app-footer">
