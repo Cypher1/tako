@@ -4,6 +4,7 @@ import { nodeResolve } from "@rollup/plugin-node-resolve";
 import copy from "rollup-plugin-copy";
 import livereload from 'rollup-plugin-livereload';
 import serve from 'rollup-plugin-serve';
+import watch from "rollup-plugin-watch";
 
 export default [
   {
@@ -25,6 +26,7 @@ export default [
       typescript({ sourceMap: true }),
       livereload(),
       serve('public'),
+      watch({ dir: "static" })
     ],
   },
 ];
