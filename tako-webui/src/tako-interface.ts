@@ -21,15 +21,6 @@ export class TakoInterface extends LitElement {
     return html`
       <section class="banner">
         <h1 id="coming-soon">Coming soon…</h1>
-
-        <a
-          class="app-link"
-          href="https://open-wc.org/guides/developing-components/code-examples"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Code examples
-        </a>
       </section>
       <section class="container">
         <div>${this.modules}</div>

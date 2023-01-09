@@ -3,36 +3,34 @@ import { property, customElement } from 'lit/decorators.js';
 
 @customElement('tako-module')
 export class TakoModule extends LitElement {
-  static styles = css``;
+  static styles = css`
+    @import ('./src/prism.css');
+  `;
 
   @property({ type: String }) path = [];
 
   render() {
     return html`
-    <head>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
-    <div class="card">
-      <header class="card-header">
-        <p class="card-header-title">
-          Component
-        </p>
-        <button class="card-header-icon" aria-label="more options">
-          <span class="icon">
-            <i class="fas fa-angle-down" aria-hidden="true"></i>
-          </span>
-        </button>
-      </header>
-      <div class="card-content">
-        <div class="content">
-          <syntax-highlight language="javascript">
-            for (const item of items) {
-              item.x += item.y;
-            }
-          </syntax-highlight>
-        </div>
-      </div>
-    </div>
-`;
+      <pre><code class="line-numbers language-python">
+print("hi")
+for x in range(1, 100):
+    print(x)
+</code></pre>
+      <pre><code class="line-numbers language-clike">
+int foo() {
+    int i = 3;
+    return i;
+}
+</code></pre>
+      <pre data-line="2,4-5"><code class="line-numbers language-rust">
+impl Foo {
+  fn foo(mut self) -> Self {
+    let i: u32 = 3;
+    todo!()
+  }
+}
+</code></pre>
+    `;
   }
 }
 
