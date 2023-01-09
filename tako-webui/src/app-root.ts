@@ -6,14 +6,14 @@ const takoLogo = new URL('./tako.png', import.meta.url).href;
 
 @customElement("app-root")
 export class TakoWebui extends LitElement {
-  @property({ type: String }) header = 'Tako';
+  @property({ type: String }) header: string = 'Tako';
 
-  @property({ type: String }) tagline =
+  @property({ type: String }) tagline: string =
     'An experiment in software verification';
 
-  @property({ type: URL }) logo = takoLogo;
+  @property({ type: URL }) logo: string = takoLogo; // TODO(correctness): should be URL...
 
-  @property({ type: Boolean }) navbarActive = false;
+  @property({ type: Boolean }) navbarActive: boolean = false;
 
   static styles = css`
     :host {
