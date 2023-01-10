@@ -1,4 +1,4 @@
-name: pr_check
+name: Tako WebUi Checks
 
 on:
   workflow_dispatch:
