@@ -1,10 +1,6 @@
 name: Tako WebUi Checks
 
-on:
-  workflow_dispatch:
-  push:
-  pull_request:
-    branches: [ master ]
+on: [push]
 
 env:
   CARGO_TERM_COLOR: always
