@@ -4,7 +4,6 @@ version = "0.2.0"
 authors = ["J Pratt <jp10010101010000@gmail.com>"]
 edition = "2018"
 include = ["src/**/*", "LICENSE.md", "README.md"]
-default-run = "takoc"
 
 [features]
 bench = ["criterion"]
@@ -13,10 +12,6 @@ default = []
 [lib]
 name = "tako"
 path = "src/lib.rs"
-
-[[bin]]
-name = "takoc"
-path = "src/main.rs"
 
 [[bin]]
 name = "make_test_case"
