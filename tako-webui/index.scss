@@ -14,7 +14,9 @@
 
 main {
   flex-grow: 1;
+  min-height: 100vh;
 }
+
 .logo {
   animation: app-logo-spin infinite 20s linear;
   text-align: center;
