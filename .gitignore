@@ -18,3 +18,5 @@ node_modules
 .jekyll-metadata
 public
 dist
+/dist/
+/target/
