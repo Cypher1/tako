@@ -2,6 +2,9 @@ name: Rust
 
 on: [push]
 
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
   test:
     name: Test using ${{ matrix.os }}
@@ -91,4 +94,22 @@ jobs:
       run: cargo fmt --all -- --check
     - name: Format takoc
       working-directory: ./takoc
+    - name: install wasm toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: wasm32-unknown-unknown
+        override: true
+        profile: minimal
+    - name: Install trunk
+      working-directory: ./tako-webui
+      uses: jetli/trunk-action@v0.1.0
+      with:
+        version: 'latest'
+    - name: Build webui
+      working-directory: ./tako-webui
+      run: trunk build
+    - name: Run webui tests
+      working-directory: ./tako-webui
+      run: cargo test --verbose
       run: cargo fmt --all -- --check
