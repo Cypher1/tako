@@ -55,13 +55,13 @@ jobs:
       uses: actions/upload-artifact@v1
       with:
         name: takoc
-        path: target/release/takoc
+        path: takoc/target/release/takoc
     - name: Upload executable Windows
       if: runner.os == 'Windows'
       uses: actions/upload-artifact@v1
       with:
         name: takoc.exe
-        path: target/release/takoc.exe
+        path: takoc/target/release/takoc.exe
   
   lint:
     name: Lint using ${{ matrix.os }}
