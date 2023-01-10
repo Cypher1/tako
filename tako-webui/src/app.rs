@@ -123,7 +123,7 @@ pub fn module(props: &ModuleProps) -> Html {
         <>
             <div class="card">
                 <div class="card-title">{&props.path}{" ("}{&props.language}{")"}</div>
-                <pre data-line="2,4-5"><code class="line-numbers language-${this.language}">
+                <pre><code class={format!("line-numbers language-{}", props.language)}>
                 {&props.source}
                 </code></pre>
             </div>
