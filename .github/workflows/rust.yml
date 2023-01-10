@@ -45,14 +45,14 @@ jobs:
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v1
       with:
-        name: tako
-        path: target/release/tako
+        name: takoc
+        path: target/release/takoc
     - name: Upload executable Windows
       if: runner.os == 'Windows'
       uses: actions/upload-artifact@v1
       with:
-        name: tako.exe
-        path: target/release/tako.exe
+        name: takoc.exe
+        path: target/release/takoc.exe
   
   lint:
     name: Lint using ${{ matrix.os }}
