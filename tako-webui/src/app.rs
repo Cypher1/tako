@@ -13,6 +13,7 @@ pub fn app() -> Html {
     html! {
         <>
             <head>
+                <link rel="shortcut icon" type="image/png" href="./static/favicon.ico"/>
                 <link rel="stylesheet" href="./static/prism.css" />
             </head>
             <main>
