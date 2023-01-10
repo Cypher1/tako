@@ -1,15 +1,26 @@
 use yew::prelude::*;
-use yew::{function_component, html, Callback, Html};
+use yew::{function_component, html, Properties, Callback, Html};
+
+#[derive(PartialEq, Properties, Clone, Eq)]
+pub struct ModuleProps {
+    pub path: String,
+    pub language: String,
+    pub source: String,
+}
 
 #[function_component(App)]
 pub fn app() -> Html {
     html! {
         <>
-        <main>
-            <Navbar></Navbar>
-            <Interface></Interface>
-        </main>
-        <Footer></Footer>
+            <head>
+                <link rel="stylesheet" href="./static/prism.css" />
+            </head>
+            <main>
+                <Navbar></Navbar>
+                <Interface></Interface>
+            </main>
+            <Footer></Footer>
+            <script src="./static/prism.js"></script>
         </>
     }
 }
@@ -74,18 +85,48 @@ pub fn navbar() -> Html {
 
 #[function_component(Interface)]
 pub fn interface() -> Html {
+let python_code: &str = "
+print(\"hi\")
+for x in range(1, 100):
+    print(x)
+";
+
+let clike_code: &str = "
+int foo() {
+    int i = 3;
+    return i;
+}
+";
+let rust_code: &str = "
+impl Foo {
+  fn foo(mut self) -> Self {
+    let i: u32 = 3;
+    todo!()
+  }
+}
+";
+
     html! {
-        <span class="subtitle">{ "INTERFACE GOES HERE" }<i class="heart" /></span>
+        <>
+            <span class="subtitle">{ "INTERFACE GOES HERE" }<i class="heart" /></span>
+            <Module path="test.py" language="python" source={python_code}></Module>
+            <Module path="example.tk" language="clike" source={clike_code}></Module>
+            <Module path="example.rs" language="rust" source={rust_code}></Module>
+        </>
     }
 }
 
 #[function_component(Module)]
-pub fn module() -> Html {
+pub fn module(props: &ModuleProps) -> Html {
     html! {
-        <main>
-            <h1>{ "Hello World!" }</h1>
-            <span class="subtitle">{ "from Yew with " }<i class="heart" /></span>
-        </main>
+        <>
+            <div class="card">
+                <div class="card-title">{&props.path}{" ("}{&props.language}{")"}</div>
+                <pre data-line="2,4-5"><code class="line-numbers language-${this.language}">
+                {&props.source}
+                </code></pre>
+            </div>
+        </>
     }
 }
 
