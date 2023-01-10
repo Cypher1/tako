@@ -19,9 +19,15 @@ jobs:
           ~/.cargo/git
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    - name: Run tests
+    - name: Run tests takolib
       run: cargo test --locked --release --verbose
-    - name: Run ignored tests
+    - name: Run tests takoc
+      work-directory: ./takoc
+      run: cargo test --locked --release --verbose
+    - name: Run ignored tests takolib
+      run: cargo test --locked --release --verbose -- --ignored
+    - name: Run ignored tests takoc
+      work-directory: ./takoc
       run: cargo test --locked --release --verbose -- --ignored
   
   build:
@@ -39,7 +45,10 @@ jobs:
           ~/.cargo/git
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    - name: Build
+    - name: Build takolib
+      run: cargo build --locked --release --verbose
+    - name: Build takoc
+      working-directory: ./takoc
       run: cargo build --locked --release --verbose
     - name: Upload executable Linux
       if: runner.os == 'Linux'
@@ -71,9 +80,15 @@ jobs:
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     - name: Install clippy
       run: rustup component add clippy
-    - name: Clippy
+    - name: Clippy takolib
+      run: cargo clippy --all-features -- -D warnings
+    - name: Clippy takoc
+      working-directory: ./takoc
       run: cargo clippy --all-features -- -D warnings
     - name: Install fmt
       run: rustup component add rustfmt
     - name: Format
+      run: cargo fmt --all -- --check
+    - name: Format takoc
+      working-directory: ./takoc
       run: cargo fmt --all -- --check
