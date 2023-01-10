@@ -4,18 +4,18 @@ version = "0.2.0"
 authors = ["J Pratt <jp10010101010000@gmail.com>"]
 edition = "2018"
 include = ["src/**/*", "LICENSE.md", "README.md"]
-default-run = "tako"
+default-run = "takoc"
 
 [features]
 bench = ["criterion"]
 default = []
 
 [lib]
-name = "takolib"
+name = "tako"
 path = "src/lib.rs"
 
 [[bin]]
-name = "tako"
+name = "takoc"
 path = "src/main.rs"
 
 [[bin]]
