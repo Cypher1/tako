@@ -65,7 +65,7 @@ jobs:
       with:
         name: takoc.exe
         path: takoc/target/release/takoc.exe
-  
+
   lint:
     name: Lint using ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -94,6 +94,15 @@ jobs:
       run: cargo fmt --all -- --check
     - name: Format takoc
       working-directory: ./takoc
+      run: cargo test --verbose
+
+  check_webui:
+    name: Check webui using ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    steps:
     - name: install wasm toolchain
       uses: actions-rs/toolchain@v1
       with:
@@ -111,5 +120,4 @@ jobs:
       run: trunk build
     - name: Run webui tests
       working-directory: ./tako-webui
-      run: cargo test --verbose
       run: cargo fmt --all -- --check
