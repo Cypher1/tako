@@ -1,4 +1,4 @@
-name: Check and upload WebUI
+name: Check and upload tako-webui
 
 on: [push]
 
