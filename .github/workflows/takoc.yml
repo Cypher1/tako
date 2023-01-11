@@ -1,9 +1,13 @@
-name: Rust
+name: Check and upload takoc
 
 on: [push]
 
 env:
   CARGO_TERM_COLOR: always
+
+defaults:
+  run:
+    working-directory: ./takoc
 
 jobs:
   test:
@@ -15,22 +19,16 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
-    - uses: actions/cache@v2
+    - uses: actions/cache@v3
       with:
         path: |
           ~/.cargo/registry
           ~/.cargo/git
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    - name: Run tests takolib
+    - name: Run tests
       run: cargo test --locked --release --verbose
-    - name: Run tests takoc
-      work-directory: ./takoc
-      run: cargo test --locked --release --verbose
-    - name: Run ignored tests takolib
-      run: cargo test --locked --release --verbose -- --ignored
-    - name: Run ignored tests takoc
-      work-directory: ./takoc
+    - name: Run ignored tests
       run: cargo test --locked --release --verbose -- --ignored
   
   build:
@@ -41,17 +39,14 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     steps:
     - uses: actions/checkout@v1
-    - uses: actions/cache@v2
+    - uses: actions/cache@v3
       with:
         path: |
           ~/.cargo/registry
           ~/.cargo/git
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    - name: Build takolib
-      run: cargo build --locked --release --verbose
-    - name: Build takoc
-      working-directory: ./takoc
+    - name: Build
       run: cargo build --locked --release --verbose
     - name: Upload executable Linux
       if: runner.os == 'Linux'
@@ -74,7 +69,7 @@ jobs:
         os: [ubuntu-latest]
     steps:
     - uses: actions/checkout@v1
-    - uses: actions/cache@v2
+    - uses: actions/cache@v3
       with:
         path: |
           ~/.cargo/registry
@@ -86,38 +81,8 @@ jobs:
     - name: Clippy takolib
       run: cargo clippy --all-features -- -D warnings
     - name: Clippy takoc
-      working-directory: ./takoc
       run: cargo clippy --all-features -- -D warnings
     - name: Install fmt
       run: rustup component add rustfmt
     - name: Format
-      run: cargo fmt --all -- --check
-    - name: Format takoc
-      working-directory: ./takoc
-      run: cargo test --verbose
-
-  check_webui:
-    name: Check webui using ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    steps:
-    - name: install wasm toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        target: wasm32-unknown-unknown
-        override: true
-        profile: minimal
-    - name: Install trunk
-      working-directory: ./tako-webui
-      uses: jetli/trunk-action@v0.1.0
-      with:
-        version: 'latest'
-    - name: Build webui
-      working-directory: ./tako-webui
-      run: trunk build
-    - name: Run webui tests
-      working-directory: ./tako-webui
       run: cargo fmt --all -- --check
