@@ -1,0 +1,13 @@
+[workspace]
+
+members = [
+    "takolib",
+    "takoc",
+    "tako-webui",
+]
+
+[profile.test]
+opt-level = 3
+
+[profile.release]
+debug = true

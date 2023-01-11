@@ -48,9 +48,3 @@ strum = "0.24"
 strum_macros = "0.24"
 pretty_assertions = "1.0"
 rand = "0.8"
-
-[profile.test]
-opt-level = 3
-
-[profile.release]
-debug = true
