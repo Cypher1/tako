@@ -263,7 +263,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
                 errors: this.errors.clone(),
             })
             .unwrap_or_else(|err| {
-                debug!("Could not report final task manager stats: {}", err);
+                debug!("Could not report final task manager stats: {err}");
             });
         trace!("{} no more tasks or results. Terminating...", Self::name());
     }

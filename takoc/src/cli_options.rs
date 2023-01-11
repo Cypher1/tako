@@ -1,7 +1,7 @@
-use std::path::PathBuf;
-
 use crate::ui::UiMode;
 use log::warn;
+use std::path::PathBuf;
+use tako::ui::OptionsTrait;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Command {
@@ -19,6 +19,20 @@ pub struct Options {
     pub ui_mode: UiMode,
     /// `optimization_level` should be proportional to maximum time spent on optimisation.
     pub optimization_level: u32,
+}
+
+impl OptionsTrait for Options {
+    fn interactive(&self) -> bool {
+        self.cmd == Command::Repl
+    }
+
+    fn oneshot(&self) -> bool {
+        self.cmd == Command::Build || self.cmd == Command::Interpret
+    }
+
+    fn files(&self) -> &Vec<PathBuf> {
+        &self.files
+    }
 }
 
 impl Default for Options {
@@ -105,7 +119,7 @@ pub fn print_cli_help() {
 
 pub const TITLE: &str = "tako v";
 
-pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const VERSION: &str = tako::VERSION;
 
 pub const USAGE: &str = "An experimental programming language for ergonomic software verification.
 

@@ -1,4 +1,4 @@
-use crate::cli_options::{Command, Options};
+use super::OptionsTrait;
 use crate::error::Error;
 use crate::primitives::Prim;
 use crate::tasks::{RequestTask, StatusReport, TaskKind, TaskStats};
@@ -12,12 +12,14 @@ pub struct Client {
     pub manager_status: HashMap<TaskKind, TaskStats>,
     pub history: Vec<String>, // TODO(usability): Mark Input v output.
     pub errors_for_file: HashMap<Option<PathBuf>, BTreeSet<Error>>,
-    pub options: Options,
+    pub options: Box<dyn OptionsTrait>,
     stats_requester: broadcast::Sender<()>,
     task_manager_status_receiver: broadcast::Receiver<StatusReport>,
     request_sender: mpsc::UnboundedSender<(RequestTask, mpsc::UnboundedSender<Prim>)>,
-    result_receiver: mpsc::UnboundedReceiver<Prim>,
+    pub result_receiver: mpsc::UnboundedReceiver<Prim>,
     result_sender: mpsc::UnboundedSender<Prim>,
+    file_watch_requester: mpsc::UnboundedSender<PathBuf>,
+    file_updater: broadcast::Receiver<PathBuf>,
 }
 
 impl Client {
@@ -25,7 +27,9 @@ impl Client {
         stats_requester: broadcast::Sender<()>,
         task_manager_status_receiver: broadcast::Receiver<StatusReport>,
         request_sender: mpsc::UnboundedSender<(RequestTask, mpsc::UnboundedSender<Prim>)>,
-        options: Options,
+        file_watch_requester: mpsc::UnboundedSender<PathBuf>,
+        file_updater: broadcast::Receiver<PathBuf>,
+        options: Box<dyn OptionsTrait>,
     ) -> Self {
         let (result_sender, result_receiver) = mpsc::unbounded_channel();
         Self {
@@ -38,23 +42,25 @@ impl Client {
             options,
             result_receiver,
             result_sender,
+            file_watch_requester,
+            file_updater,
         }
     }
 
     pub fn start(&mut self) {
         self.send_command(RequestTask::Launch {
-            files: self.options.files.clone(),
+            files: self.options.files().clone(),
         });
     }
 
     pub fn interactive(&self) -> bool {
         // TODO(usability): Build should have an interactive mode?
-        self.options.cmd == Command::Repl
+        self.options.interactive()
     }
 
     pub fn oneshot(&self) -> bool {
         // TODO(usability): Build should have an interactive mode?
-        self.options.cmd == Command::Build || self.options.cmd == Command::Interpret
+        self.options.oneshot()
     }
 
     pub fn send_command(&mut self, cmd: RequestTask) {

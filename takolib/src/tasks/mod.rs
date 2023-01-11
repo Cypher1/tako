@@ -8,16 +8,13 @@ use crate::tokens::Token;
 use crate::utils::meta::Meta;
 use async_trait::async_trait;
 use enum_kinds::EnumKind;
-use log::trace;
 pub use manager::{StatusReport, TaskStats};
-use notify::{RecursiveMode, Watcher};
 pub use status::*;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::path::PathBuf;
 pub use task_trait::TaskId;
 use task_trait::*;
-use tokio::sync::mpsc;
 
 // TODO(debugging): Add timing information, etc.
 // TODO(debugging): Support re-running multiple times for stability testing.
@@ -30,7 +27,6 @@ pub type TaskResults<T> = HashMap<T, TaskStatus<<T as Task>::Output, Error>>;
 #[enum_kind(TaskKind, derive(Hash, Ord, PartialOrd))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AnyTask {
-    WatchFile(WatchFileTask),
     LoadFile(LoadFileTask),
     LexFile(LexFileTask),
     ParseFile(ParseFileTask),
@@ -45,57 +41,6 @@ pub enum AnyTask {
 pub enum RequestTask {
     Launch { files: Vec<PathBuf> },
     EvalLine(String),
-}
-
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct WatchFileTask {
-    pub path: PathBuf,
-}
-
-#[async_trait]
-impl Task for WatchFileTask {
-    type Output = LoadFileTask;
-    const TASK_KIND: TaskKind = TaskKind::WatchFile;
-
-    fn has_file_path(&self) -> Option<&PathBuf> {
-        Some(&self.path)
-    }
-    async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        let (tx, mut rx) = mpsc::unbounded_channel();
-        let mut watcher = {
-            notify::recommended_watcher(
-                move |res: Result<notify::Event, notify::Error>| match res {
-                    Ok(event) => {
-                        trace!("event: {:?}", event);
-                        for path in event.paths {
-                            tx.send(path).expect("File watcher terminated");
-                        }
-                    }
-                    Err(e) => {
-                        trace!("watch error: {:?}", e);
-                    }
-                },
-            )
-            .expect("Watcher failed to register")
-        };
-        trace!("Waiting on file changes...");
-        watcher
-            .watch(&self.path, RecursiveMode::Recursive)
-            .expect("Should be able to watch files");
-
-        while let Some(path) = rx.recv().await {
-            // This avoids dropping the watcher.
-            result_sender
-                .send((
-                    self.clone(),
-                    Update::NextResult(LoadFileTask {
-                        path,
-                        invalidate: Meta(true),
-                    }),
-                ))
-                .expect("Load file task could not be sent");
-        }
-    }
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]

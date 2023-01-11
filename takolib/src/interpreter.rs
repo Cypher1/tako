@@ -74,10 +74,21 @@ impl<'a> Ctx<'a> {
                 [Prim::I32(l), Prim::I32(r)] => Prim::I32(l + r),
                 _ => todo!(),
             },
-            Symbol::Sub => match self.eval2(op.args)? {
-                [Prim::I32(l), Prim::I32(r)] => Prim::I32(l - r),
-                _ => todo!(),
-            },
+            Symbol::Sub => {
+                if op.args[0].is_some() {
+                    match self.eval2(op.args)? {
+                        [Prim::I32(l), Prim::I32(r)] => Prim::I32(l - r),
+                        _ => todo!(),
+                    }
+                } else {
+                    let arg =
+                        self.eval(op.args[1].expect("Sub should have at least a right operand"))?;
+                    match arg {
+                        Prim::I32(r) => Prim::I32(-r),
+                        _ => todo!(),
+                    }
+                }
+            }
             Symbol::Mul => match self.eval2(op.args)? {
                 [Prim::I32(l), Prim::I32(r)] => Prim::I32(l * r),
                 _ => todo!(),

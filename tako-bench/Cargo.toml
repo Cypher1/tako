@@ -1,0 +1,12 @@
+[package]
+name = "tako-bench"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+bench = ["criterion"]
+default = []
+
+[dependencies]
+criterion = { version = "0.3", optional = true }
+tako = { path = "../takolib" }

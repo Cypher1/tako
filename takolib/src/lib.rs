@@ -4,7 +4,6 @@
 pub mod utils;
 
 pub mod ast;
-pub mod cli_options;
 pub mod compiler_context;
 pub mod error;
 pub mod interpreter;
@@ -17,10 +16,9 @@ pub mod tasks;
 pub mod tokens;
 pub mod ui;
 
-use crate::cli_options::Options;
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 use crate::compiler_context::Compiler;
-use crate::ui::UserInterface;
-use log::error;
 
 static mut LOGS_UNINITIALISED: bool = true;
 
@@ -58,21 +56,6 @@ pub fn ensure_initialized() {
             .expect("Failed to setup log file.");
         env_logger::Builder::init(env.target(env_logger::fmt::Target::Pipe(Box::new(log_file))))
     });
-}
-
-pub async fn launch_ui<
-    Out: Send + std::fmt::Debug + std::fmt::Display,
-    T: UserInterface + Send + 'static,
->(
-    compiler: &Compiler,
-    options: Options,
-) -> T {
-    <T as UserInterface>::launch(compiler, options)
-        .await
-        .unwrap_or_else(|err| {
-            error!("Error in UI: {}", err);
-            std::process::exit(1);
-        })
 }
 
 pub async fn start() -> Compiler {

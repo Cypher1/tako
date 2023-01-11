@@ -2,12 +2,12 @@
 name = "tako"
 version = "0.2.0"
 authors = ["J Pratt <jp10010101010000@gmail.com>"]
-edition = "2018"
+edition = "2021"
 include = ["src/**/*", "LICENSE.md", "README.md"]
 
 [features]
-bench = ["criterion"]
-default = []
+wasm=[]
+native=[]
 
 [lib]
 name = "tako"
@@ -23,24 +23,17 @@ path = "tests/bins/make_test_case.rs"
 
 [dependencies]
 thiserror = "1.0"
-directories = "4.0"
 bitvec = "1"
 log = "0.4"
 env_logger = "0.9"
-criterion = { version = "0.3", optional = true }
 pretty_assertions = "1.0"
-crokey = "0.5"
-crossterm = { version = "0.24", features = [ "event-stream" ] }
 futures = "0.3"
-notify = "5.0"
-shutdown_hooks = "0.1"
-tokio = { version = "1.21", features = [ "full" ]}
+tokio = { version = "1.21", features = ["sync", "macros", "io-util", "rt", "time"] }
 async-trait = "0.1"
 # Info: https://nnethercote.github.io/2021/12/08/a-brutally-effective-hash-function-in-rust.html
 fxhash = "0.2"
 static_assertions = "1.1"
 num-traits = "0.2"
-warp = "0.3"
 enum-kinds = "0.5"
 
 [dev-dependencies]
