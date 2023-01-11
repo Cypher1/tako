@@ -16,3 +16,7 @@ perf.data*
 node_modules
 .bundle
 .jekyll-metadata
+public
+dist
+/dist/
+/target/

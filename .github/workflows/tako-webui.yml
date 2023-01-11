@@ -1,0 +1,42 @@
+name: Check and upload tako-webui
+
+on: [push]
+
+env:
+  CARGO_TERM_COLOR: always
+
+defaults:
+  run:
+    working-directory: ./tako-webui
+
+jobs:
+  check_webui:
+    name: Check webui using ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    steps:
+    - uses: actions/checkout@v1
+    - uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    - name: install wasm toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: wasm32-unknown-unknown
+        override: true
+        profile: minimal
+    - name: Install trunk
+      uses: jetli/trunk-action@v0.1.0
+      with:
+        version: 'latest'
+    - name: Build webui
+      run: trunk build
+    - name: Run webui tests
+      run: cargo fmt --all -- --check

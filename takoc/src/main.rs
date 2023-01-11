@@ -1,29 +1,29 @@
 #![deny(clippy::all)]
 
 use log::{debug, error, trace};
-use takolib::{
+use tako::{
     start,
     ui::{Http, Tui, UiMode, UserInterface},
 };
 
-type Output = takolib::primitives::Prim;
+type Output = tako::primitives::Prim;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
-    takolib::ensure_initialized();
+    tako::ensure_initialized();
 
     let args: Vec<String> = std::env::args().collect();
-    let options = takolib::cli_options::Options::new(args);
+    let options = tako::cli_options::Options::new(args);
     debug!("Options: {options:#?}");
 
     let compiler = start().await;
     let ui_task = match options.ui_mode {
         UiMode::Tui => {
-            let ui = takolib::launch_ui::<Output, Tui>(&compiler, options).await;
+            let ui = tako::launch_ui::<Output, Tui>(&compiler, options).await;
             tokio::spawn(async move { ui.run_loop().await })
         }
         UiMode::Http => {
-            let ui = takolib::launch_ui::<Output, Http>(&compiler, options).await;
+            let ui = tako::launch_ui::<Output, Http>(&compiler, options).await;
             tokio::spawn(async move { ui.run_loop().await })
         }
     };

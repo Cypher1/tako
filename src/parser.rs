@@ -1,7 +1,7 @@
 // use rand::Rng;
 use crate::ast::*;
 use crate::error::TError;
-use crate::tokens::{Symbol, Token, TokenType};
+use crate::tokens::{is_assign, Symbol, Token, TokenType};
 use log::{debug, trace};
 use std::path::Path;
 
@@ -65,21 +65,26 @@ const fn binding_power(symbol: Symbol) -> BindingPowerConfig {
         Symbol::OpenBracket => BindingPowerConfig::prefix(99, 0),
         Symbol::CloseBracket => BindingPowerConfig::infix(0, 100),
         Symbol::Eqs => BindingPowerConfig::infix(2, 1),
+        Symbol::Forall | Symbol::Pi | Symbol::Exists | Symbol::Lambda => {
+            BindingPowerConfig::prefix(99, 99)
+        }
         Symbol::Add | Symbol::Sub => BindingPowerConfig::infix(5, 6).and_prefix(99, 9),
         Symbol::Mul | Symbol::Div => BindingPowerConfig::infix(7, 8),
         Symbol::LogicalNot => BindingPowerConfig::prefix(11, 100),
         Symbol::Dot => BindingPowerConfig::infix(14, 13),
-        _ => BindingPowerConfig::infix(3, 4),
+        _ => {
+            if is_assign(symbol) {
+                BindingPowerConfig::infix(0, 0)
+            } else {
+                BindingPowerConfig::infix(3, 4)
+            }
+        }
     }
 }
 
-fn get_binding_power(token: Option<&Token>, is_prefix: bool) -> Option<BindingPower> {
-    if let Some(Token {
-        kind: TokenType::Op(symbol),
-        ..
-    }) = token
-    {
-        let power = binding_power(*symbol);
+fn get_binding_power(kind: Option<TokenType>, is_prefix: bool) -> Option<BindingPower> {
+    if let Some(TokenType::Op(symbol)) = kind {
+        let power = binding_power(symbol);
         if is_prefix {
             return power.prefix;
         } else {
@@ -109,13 +114,32 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
         token: Token::eof(0),
     };
     loop {
-        let token = tokens.next();
+        let mut token = tokens.next().cloned();
         trace!("Adding token {:?}", &token);
         let r_bp = loop {
+            let kind = if let Some(token) = token.as_mut() {
+                let src = token.get_src(contents);
+                let name = ast.string_interner.register_str(src);
+                let kind = if name == ast.string_interner.lambda {
+                    TokenType::Op(Symbol::Lambda)
+                } else if name == ast.string_interner.pi {
+                    TokenType::Op(Symbol::Pi)
+                } else if name == ast.string_interner.forall {
+                    TokenType::Op(Symbol::Forall)
+                } else if name == ast.string_interner.exists {
+                    TokenType::Op(Symbol::Exists)
+                } else {
+                    token.kind
+                };
+                token.kind = kind;
+                Some(kind)
+            } else {
+                None
+            };
             if let Some(BindingPower {
                 left: l_bp,
                 right: r_bp,
-            }) = get_binding_power(token, left.node.is_none())
+            }) = get_binding_power(kind, left.node.is_none())
             {
                 trace!(
                     "Found token {:?} with prec left {:?}, right {:?}",
@@ -124,8 +148,9 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
                     &r_bp
                 );
                 if token.is_some() && left.min_bp <= l_bp {
-                    // Symbol joins left and the next expression,
+                    // `token` is a symbol that joins left and the next expression,
                     // or needs other special handling.
+                    debug!("breaking on {:?}", &token);
                     break r_bp;
                 }
             }
@@ -143,35 +168,54 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
             let node = match res.token.kind {
                 TokenType::NumLit => {
                     trace!("Saving literal: {res:?}");
-                    let _id = ast.string_interner.register_str_by_loc(
-                        res.token.get_src(contents).to_string(),
-                        location.start,
-                    );
+                    let _id = ast
+                        .string_interner
+                        .register_str_by_loc(res.token.get_src(contents), location.start);
                     ast.add_literal(Literal::Numeric, location)
                 }
                 TokenType::Op(symbol) => {
-                    use crate::tokens::{assign_op, is_assign};
+                    use crate::tokens::assign_op;
                     if is_assign(symbol) {
                         // TODO(clarity): Lowering for assign ops.
-                        todo!(
-                            "Assignment\n{symbol:#?}\n{res:#?}\n{left:#?}\n{op:?}",
-                            op = assign_op(symbol)
-                        );
+                        debug!("assignment: {:?} {:?} {:?}", &left, &symbol, &res);
+                        if let Some(op) = assign_op(symbol) {
+                            todo!(
+                                "Assignment (with op):\n{symbol:#?}\n{res:#?}\n{left:#?}\n{op:?}"
+                            );
+                        } else {
+                            // Create a definition
+                            let name_id = left.node.expect("Requires a name");
+                            // TODO(clarity): This is horrible code...
+                            let ident_id = match &ast.get(name_id).id {
+                                NodeData::Identifier(name) => name,
+                                node => todo!("Can't assign to a {node:?}"),
+                            };
+                            let name = ast.get(*ident_id).1;
+                            let implementation = res.node.expect("Requires an implementation");
+                            ast.add_definition(
+                                Definition {
+                                    name,
+                                    implementation,
+                                },
+                                location,
+                            )
+                        }
+                    } else {
+                        trace!("Merging {res:?} and {left:?} to prep for {token:?}");
+                        let args = [left.node, res.node];
+                        ast.add_op(Op::new(symbol, args), location)
                     }
-                    trace!("Merging {res:?} and {left:?} to prep for {token:?}");
-                    let args = [left.node, res.node];
-                    ast.add_op(Op::new(symbol, args), location)
                 }
                 TokenType::Atom => {
                     let name = ast
                         .string_interner
-                        .register_str(res.token.get_src(contents).to_string());
+                        .register_str(res.token.get_src(contents));
                     ast.add_atom(Atom { name }, location)
                 }
                 TokenType::Sym => {
                     let name = ast
                         .string_interner
-                        .register_str(res.token.get_src(contents).to_string());
+                        .register_str(res.token.get_src(contents));
                     ast.add_identifier(name, location)
                 }
                 _ => todo!("Dunno what to do with this one {:?}", res.token),
@@ -192,7 +236,7 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
             left = Partial {
                 min_bp: r_bp,
                 node: None,
-                token: *token,
+                token,
             };
         }
     }
@@ -314,7 +358,33 @@ pub mod tests {
         Ok(())
     }
 
-    // TODO(testing): #[test]
+    #[test]
+    fn parse_lambda() -> Result<(), TError> {
+        let ast = setup("λx")?;
+        dbg!(&ast);
+        let Ast {
+            ops, identifiers, ..
+        } = ast;
+
+        dbg!(ops);
+        dbg!(identifiers);
+        Ok(())
+    }
+
+    #[test]
+    fn parse_lambda_keyword() -> Result<(), TError> {
+        let ast = setup("lambda x")?;
+        dbg!(&ast);
+        let Ast {
+            ops, identifiers, ..
+        } = ast;
+
+        dbg!(ops);
+        dbg!(identifiers);
+        Ok(())
+    }
+
+    #[test]
     fn parse_definition() -> Result<(), TError> {
         let ast = setup("x=1")?;
         dbg!(&ast);
@@ -328,7 +398,6 @@ pub mod tests {
         dbg!(identifiers);
         dbg!(literals);
         dbg!(definitions);
-
         Ok(())
     }
 

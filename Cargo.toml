@@ -4,19 +4,14 @@ version = "0.2.0"
 authors = ["J Pratt <jp10010101010000@gmail.com>"]
 edition = "2018"
 include = ["src/**/*", "LICENSE.md", "README.md"]
-default-run = "tako"
 
 [features]
 bench = ["criterion"]
 default = []
 
 [lib]
-name = "takolib"
-path = "src/lib.rs"
-
-[[bin]]
 name = "tako"
-path = "src/main.rs"
+path = "src/lib.rs"
 
 [[bin]]
 name = "make_test_case"
@@ -27,32 +22,32 @@ path = "tests/bins/make_test_case.rs"
 # harness = false
 
 [dependencies]
-thiserror = "1.0.20"
-directories = "4.0.1"
-bitvec = "0.22.3"
-log = "0.4.14"
-env_logger = "0.9.0"
+thiserror = "1.0"
+directories = "4.0"
+bitvec = "1"
+log = "0.4"
+env_logger = "0.9"
 criterion = { version = "0.3", optional = true }
-pretty_assertions = "1.0.0"
-crokey = "0.5.1"
-crossterm = { version = "0.24.0", features = [ "event-stream" ] }
-futures = "0.3.25"
-notify = "5.0.0"
-shutdown_hooks = "0.1.0"
-tokio = { version = "1.23.1", features = [ "full" ]}
-async-trait = "0.1.58"
+pretty_assertions = "1.0"
+crokey = "0.5"
+crossterm = { version = "0.24", features = [ "event-stream" ] }
+futures = "0.3"
+notify = "5.0"
+shutdown_hooks = "0.1"
+tokio = { version = "1.21", features = [ "full" ]}
+async-trait = "0.1"
 # Info: https://nnethercote.github.io/2021/12/08/a-brutally-effective-hash-function-in-rust.html
-fxhash = "0.2.1"
-static_assertions = "1.1.0"
-num-traits = "0.2.15"
-warp = "0.3.3"
-enum-kinds = "0.5.1"
+fxhash = "0.2"
+static_assertions = "1.1"
+num-traits = "0.2"
+warp = "0.3"
+enum-kinds = "0.5"
 
 [dev-dependencies]
-strum = "0.24.1"
-strum_macros = "0.24.3"
-pretty_assertions = "1.0.0"
-rand = "0.8.4"
+strum = "0.24"
+strum_macros = "0.24"
+pretty_assertions = "1.0"
+rand = "0.8"
 
 [profile.test]
 opt-level = 3

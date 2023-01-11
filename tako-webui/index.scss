@@ -1,0 +1,32 @@
+:host {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: left;
+  justify-content: flex-start;
+  font-size: calc(10px + 1vmin);
+  font-family: sans-serif;
+  color: #1a2b42;
+  margin: 0 auto;
+  text-align: left;
+  background-color: #ededed; /*var(--tako-webui-background-color);*/
+}
+
+main {
+  flex-grow: 1;
+  min-height: 100vh;
+}
+
+.logo {
+  animation: app-logo-spin infinite 20s linear;
+  text-align: center;
+}
+
+@keyframes app-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

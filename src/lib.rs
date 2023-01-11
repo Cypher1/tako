@@ -32,7 +32,7 @@ fn build_logger(finish: impl FnOnce(&mut env_logger::Builder)) {
         finish(
             env_logger::Builder::from_env(
                 env_logger::Env::default()
-                    .filter_or("RUST_LOG", "info")
+                    .filter_or("RUST_LOG", "debug")
                     .write_style_or("RUST_LOG_STYLE", "AUTO"),
             )
             .format_timestamp(None),
@@ -48,7 +48,16 @@ pub fn ensure_initialized() {
 }
 #[cfg(not(test))]
 pub fn ensure_initialized() {
-    build_logger(env_logger::Builder::init);
+    use std::fs::OpenOptions;
+    build_logger(|env| {
+        let log_file = OpenOptions::new()
+            .write(true)
+            .append(true)
+            .create(true)
+            .open(".tako.log")
+            .expect("Failed to setup log file.");
+        env_logger::Builder::init(env.target(env_logger::fmt::Target::Pipe(Box::new(log_file))))
+    });
 }
 
 pub async fn launch_ui<
