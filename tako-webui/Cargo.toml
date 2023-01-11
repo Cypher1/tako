@@ -12,4 +12,4 @@ categories = ["gui", "wasm", "web-programming"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 yew = { version="0.20", features=["csr"] }
-# tako = { path="../" } # TODO: Separate tako into multiple crates to make it WASM-able.
+# tako = { path="../takolib" } # TODO: Separate tako into multiple crates to make it WASM-able.

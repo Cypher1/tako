@@ -6,6 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tako = { path = "../" }
+tako = { path = "../takolib" }
 tokio = { version = "1.21", features = [ "full" ]}
 log = "0.4"
