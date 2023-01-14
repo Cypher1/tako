@@ -1,4 +1,4 @@
-use crate::cli_options::Options;
+use super::ui::OptionsTrait;
 use crate::primitives::Prim;
 use crate::tasks::manager::TaskManager;
 pub use crate::tasks::manager::{StatusReport, TaskStats};
@@ -6,17 +6,18 @@ pub use crate::tasks::status::*;
 pub use crate::tasks::task_trait::TaskId;
 use crate::tasks::task_trait::{ResultSenderFor, Task, TaskReceiverFor};
 use crate::tasks::*;
+use crate::ui::Client;
 use crate::utils::meta::Meta;
+use log::{debug, trace};
 use std::fmt::Debug;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::{broadcast, mpsc, oneshot};
 
 #[derive(Debug)]
 pub struct Compiler {
     // IDEA: Make a trait...
     request_receiver: mpsc::UnboundedReceiver<(RequestTask, mpsc::UnboundedSender<Prim>)>,
-    watch_file_manager: Arc<Mutex<TaskManager<WatchFileTask>>>,
     load_file_manager: Arc<Mutex<TaskManager<LoadFileTask>>>,
     lex_file_manager: Arc<Mutex<TaskManager<LexFileTask>>>,
     parse_file_manager: Arc<Mutex<TaskManager<ParseFileTask>>>,
@@ -30,6 +31,17 @@ pub struct Compiler {
     stats_receiver: mpsc::UnboundedReceiver<StatusReport>,
     #[allow(unused)]
     stats_request_receiver: broadcast::Receiver<()>,
+    file_watch_request_sender: mpsc::UnboundedSender<PathBuf>,
+    #[allow(unused)]
+    file_watch_request_receiver: mpsc::UnboundedReceiver<PathBuf>,
+    file_update_sender: broadcast::Sender<PathBuf>,
+    #[allow(unused)]
+    file_update_receiver: broadcast::Receiver<PathBuf>,
+    // TODO(clarity): Make pub fields private and add methods.
+    pub client_launch_request_sender:
+        mpsc::UnboundedSender<(oneshot::Sender<Client>, Box<dyn OptionsTrait>)>,
+    client_launch_request_receiver:
+        mpsc::UnboundedReceiver<(oneshot::Sender<Client>, Box<dyn OptionsTrait>)>,
 }
 
 impl Default for Compiler {
@@ -38,9 +50,12 @@ impl Default for Compiler {
         let (stats_sender, stats_receiver) = mpsc::unbounded_channel();
         let (stats_requester, stats_request_receiver) = broadcast::channel(1);
         let (status_sender, status_receiver) = broadcast::channel(1);
+        let (file_watch_request_sender, file_watch_request_receiver) = mpsc::unbounded_channel();
+        let (file_update_sender, file_update_receiver) = broadcast::channel(1000);
+        let (client_launch_request_sender, client_launch_request_receiver) =
+            mpsc::unbounded_channel();
         Self {
             request_receiver,
-            watch_file_manager: Self::manager(&stats_sender, &stats_requester),
             load_file_manager: Self::manager(&stats_sender, &stats_requester),
             lex_file_manager: Self::manager(&stats_sender, &stats_requester),
             parse_file_manager: Self::manager(&stats_sender, &stats_requester),
@@ -65,17 +80,24 @@ impl Default for Compiler {
             stats_receiver,
             stats_requester,
             request_sender,
+            file_watch_request_sender,
+            file_watch_request_receiver,
+            file_update_sender,
+            file_update_receiver,
+            client_launch_request_sender,
+            client_launch_request_receiver,
         }
     }
 }
 
 impl Compiler {
-    pub fn make_client(&self, options: Options) -> crate::ui::Client {
-        use crate::ui::Client;
+    pub fn make_client(&self, options: Box<dyn OptionsTrait>) -> crate::ui::Client {
         Client::new(
             self.stats_requester.clone(),
             self.status_sender.subscribe(),
             self.request_sender.clone(),
+            self.file_watch_request_sender.clone(),
+            self.file_update_sender.subscribe(),
             options,
         )
     }
@@ -104,26 +126,36 @@ impl Compiler {
         TaskManager::<T>::start(manager, task_receiver, result_sender);
     }
 
-    pub fn watch_file(&self, path: PathBuf, response_sender: ResultSenderFor<WatchFileTask>) {
-        let (tx, rx) = mpsc::unbounded_channel();
-        if tx.send(WatchFileTask { path }).is_err() {
-            return;
+    pub fn watch_file(&self, path: PathBuf) {
+        if let Err(e) = self.file_watch_request_sender.send(path) {
+            debug!("Error while requesting file watching: {e:?}");
         }
-        Self::with_manager(rx, &self.watch_file_manager, response_sender);
     }
 
     pub fn load_file(&self, path: PathBuf, response_sender: ResultSenderFor<LoadFileTask>) {
+        self.watch_file(path.clone());
         let (tx, rx) = mpsc::unbounded_channel();
-        if tx
-            .send(LoadFileTask {
-                path: path.clone(),
-                invalidate: Meta(false),
-            })
-            .is_err()
-        {
-            return;
+        let mut file_update_receiver = self.file_update_sender.subscribe();
+        if let Err(e) = tx.send(LoadFileTask {
+            path: path.clone(),
+            invalidate: Meta(false),
+        }) {
+            debug!("Error while posting file load task: {e:?}");
         }
-        self.watch_file(path, tx);
+        tokio::spawn(async move {
+            while let Ok(updated_path) = file_update_receiver.recv().await {
+                if path != updated_path {
+                    continue;
+                }
+                if let Err(e) = tx.send(LoadFileTask {
+                    path: path.clone(),
+                    invalidate: Meta(true),
+                }) {
+                    debug!("Error while posting file load task: {e:?}");
+                    return;
+                }
+            }
+        });
         Self::with_manager(rx, &self.load_file_manager, response_sender);
     }
 
@@ -168,8 +200,21 @@ impl Compiler {
     }
 
     pub async fn run_loop(mut self) {
-        while let Some((cmd, response_sender)) = self.request_receiver.recv().await {
-            self.start_command(cmd, response_sender);
+        trace!("Starting compiler run loop");
+        loop {
+            trace!("Waiting in compiler run loop");
+            tokio::select! {
+                Some((cmd, response_sender)) = self.request_receiver.recv() => {
+                    trace!("Got request");
+                    self.start_command(cmd, response_sender);
+                }
+                Some((tx, options)) = self.client_launch_request_receiver.recv() => {
+                    trace!("Got client launch");
+                    if let Err(e) = tx.send(self.make_client(options)) {
+                        trace!("Client request channel closed before client could be sent: {e:?}");
+                    }
+                }
+            }
         }
     }
 

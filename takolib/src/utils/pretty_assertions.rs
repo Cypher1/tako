@@ -35,7 +35,7 @@ macro_rules! assert_str_eq {
 
 pub fn assert_no_err<T: std::fmt::Debug, E: std::fmt::Debug>(res: Result<T, E>) -> Result<T, E> {
     res.map_err(|err| {
-        eprintln!("{0:?}", &err);
+        eprintln!("{err:?}");
         err
     })
 }

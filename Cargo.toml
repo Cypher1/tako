@@ -4,6 +4,7 @@ members = [
     "takolib",
     "takoc",
     "tako-webui",
+    "tako-bench",
 ]
 
 [profile.test]

@@ -1,8 +1,4 @@
-use super::client::Client;
-use super::UserInterface;
 use crate::cli_options::Options;
-use crate::compiler_context::Compiler;
-use crate::tasks::RequestTask;
 use async_trait::async_trait;
 use crokey::{key, KeyEventFormat};
 use crossterm::{
@@ -19,7 +15,12 @@ use std::{
     io::{stdout, Write},
     time::{Duration, Instant},
 };
-use tokio::time;
+use tako::tasks::RequestTask;
+use tako::ui::{Client, OptionsTrait, UserInterface};
+use tokio::{
+    sync::{mpsc, oneshot},
+    time,
+};
 
 const TICK: Duration = Duration::from_millis(1000);
 
@@ -187,9 +188,17 @@ impl Tui {
 }
 
 #[async_trait]
-impl UserInterface for Tui {
-    async fn launch(compiler: &Compiler, options: Options) -> std::io::Result<Self> {
-        let client = compiler.make_client(options);
+impl UserInterface<Options> for Tui {
+    async fn launch(
+        mut client_launch_request_sender: mpsc::UnboundedSender<(
+            oneshot::Sender<Client>,
+            Box<dyn OptionsTrait>,
+        )>,
+        options: Options,
+    ) -> std::io::Result<Self> {
+        trace!("Launching TUI");
+        let client = Tui::get_client(&mut client_launch_request_sender, Box::new(options)).await;
+        trace!("Got TUI client");
         add_shutdown_hook(shutdown);
         Ok(Tui::new(client))
     }
@@ -222,7 +231,7 @@ impl UserInterface for Tui {
                             self.handle_event(event)?
                         }
                         Err(err) => {
-                            trace!("Event stream error: {}", err);
+                            trace!("Event stream error: {err}");
                         }
                     }
                 }
