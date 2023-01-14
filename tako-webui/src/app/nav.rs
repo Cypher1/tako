@@ -27,8 +27,8 @@ pub fn navbar() -> Html {
             <img class="logo" src="./static/tako.png" alt="Tako octopus logo" />
             <strong>{"Tako"}</strong>
           </a>
-          <a class="navbar-item" href="https://github.com/Cypher1/tako/"> {"Getting started"} </a>
-          <a class="navbar-item" href="https://github.com/Cypher1/tako/"> {"Docs"} </a>
+          <a class="navbar-item" href="https://github.com/Cypher1/tako/#getting-started"> {"Getting started"} </a>
+          <a class="navbar-item" href="https://github.com/Cypher1/tako/wiki"> {"Docs"} </a>
           <RepoStatus></RepoStatus>
           <button {onclick} class={format!("navbar-burger {}", if *is_active { "is-active" } else { "" })} aria-label="menu" aria-expanded="false" data-target="navbarMenu">
             <span aria-hidden="true"></span>
