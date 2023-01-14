@@ -32,8 +32,10 @@ pub struct Compiler {
     #[allow(unused)]
     stats_request_receiver: broadcast::Receiver<()>,
     file_watch_request_sender: mpsc::UnboundedSender<PathBuf>,
+    #[allow(unused)]
     file_watch_request_receiver: mpsc::UnboundedReceiver<PathBuf>,
     file_update_sender: broadcast::Sender<PathBuf>,
+    #[allow(unused)]
     file_update_receiver: broadcast::Receiver<PathBuf>,
     // TODO(clarity): Make pub fields private and add methods.
     pub client_launch_request_sender:

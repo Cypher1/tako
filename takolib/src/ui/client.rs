@@ -18,7 +18,9 @@ pub struct Client {
     request_sender: mpsc::UnboundedSender<(RequestTask, mpsc::UnboundedSender<Prim>)>,
     pub result_receiver: mpsc::UnboundedReceiver<Prim>,
     result_sender: mpsc::UnboundedSender<Prim>,
+    #[allow(unused)]
     file_watch_requester: mpsc::UnboundedSender<PathBuf>,
+    #[allow(unused)]
     file_updater: broadcast::Receiver<PathBuf>,
 }
 
