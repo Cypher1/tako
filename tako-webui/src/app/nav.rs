@@ -5,6 +5,7 @@ use yew::{function_component, html, Callback, Html};
 pub fn repo_status() -> Html {
     html! {
         <>
+          <a class="navbar-item" href="https://github.com/Cypher1/tako/blob/main/README.md#contributors"><img src="https://img.shields.io/badge/all_contributors-1-orange.svg?style=flat-square)" alt="All contributors"/></a>
           <a class="navbar-item" href="https://github.com/Cypher1/tako/actions"><img src="https://github.com/Cypher1/tako/workflows/Rust/badge.svg" alt="Build Status"/></a>
           <a class="navbar-item" href="https://github.com/Cypher1/tako/issues"><img src="https://img.shields.io/github/issues/Cypher1/tako.svg" alt="GitHub issues"/></a>
         </>
