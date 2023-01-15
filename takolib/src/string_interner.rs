@@ -90,3 +90,34 @@ impl<'a> std::fmt::Display for InContext<'a, Identifier> {
         }
     }
 }
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+
+    fn setup() -> StringInterner {
+        crate::ensure_initialized();
+        StringInterner::new()
+    }
+
+    #[test]
+    fn get_whole_str_round_trip() {
+        let mut interner = setup();
+        let id = interner.register_str_by_loc("123", 0);
+        assert_eq!(interner.get_str(id), Some("123"));
+        assert_eq!(interner.get_str_by_loc(0), Some("123"));
+    }
+
+    #[test]
+    fn get_sub_str_by_loc_round_trip() {
+        let mut interner = setup();
+        let og = "....123....";
+        let loc = 4;
+        let len = 3;
+        let word = &og[loc..loc + len];
+        assert_eq!(word, "123");
+        let id = interner.register_str_by_loc(word, loc as u16);
+        assert_eq!(interner.get_str(id), Some("123"));
+        assert_eq!(interner.get_str_by_loc(loc as u16), Some("123"));
+    }
+}

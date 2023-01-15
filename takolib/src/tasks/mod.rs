@@ -4,7 +4,7 @@ pub mod task_trait;
 use crate::ast::Ast;
 use crate::ast::NodeId;
 use crate::error::Error;
-use crate::tokens::Token;
+use crate::parser::tokens::Token;
 use crate::utils::meta::Meta;
 use async_trait::async_trait;
 use enum_kinds::EnumKind;
@@ -93,7 +93,7 @@ impl Task for LexFileTask {
         Some(&self.path)
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        let tokens = crate::tokens::lex(&self.contents);
+        let tokens = crate::parser::tokens::lex(&self.contents);
         let tokens = tokens
             .map(|tokens| ParseFileTask {
                 path: self.path.clone(),

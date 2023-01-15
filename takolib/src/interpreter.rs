@@ -1,8 +1,9 @@
 use crate::ast::*;
 use crate::error::TError;
+use crate::parser::semantics::Literal;
+use crate::parser::tokens::Symbol;
 use crate::primitives::Prim;
 use crate::string_interner::StringInterner;
-use crate::tokens::Symbol;
 use log::*;
 use std::convert::TryInto;
 use std::path::Path;
@@ -32,11 +33,11 @@ pub fn run(path: &Path, ast: &Ast, root: Option<NodeId>) -> Result<Prim, TError>
 }
 
 impl<'a> Ctx<'a> {
-    pub fn eval2(&mut self, [l, r]: [Option<NodeId>; 2]) -> Result<[Prim; 2], TError> {
-        let l = l.expect("");
-        let r = r.expect("");
-        let l = self.eval(l)?;
-        let r = self.eval(r)?;
+    pub fn eval2(&mut self, args: &[NodeId]) -> Result<[Prim; 2], TError> {
+        let l = args.get(0).expect("requires a left argument");
+        let r = args.get(1).expect("requires a right argument");
+        let l = self.eval(*l)?;
+        let r = self.eval(*r)?;
         Ok([l, r])
     }
 
@@ -47,13 +48,12 @@ impl<'a> Ctx<'a> {
             NodeData::NodeRef(_id) => todo!(),
             NodeData::Identifier(_id) => todo!(),
             NodeData::Atom(_id) => todo!(),
+            NodeData::Binding(_id) => todo!(),
             NodeData::Call(_id) => todo!(),
             NodeData::Op(id) => self.eval_op(node, id),
             NodeData::Definition(_id) => todo!(),
             NodeData::Literal(id) => self.eval_lit(node, id),
             NodeData::Warning(_id) => todo!(),
-            NodeData::Binding(_id) => todo!(),
-            NodeData::DefinitionHead(_id) => todo!(),
         }
     }
     pub fn eval_lit(&mut self, node: &Node, id: LiteralId) -> Result<Prim, TError> {
@@ -73,86 +73,89 @@ impl<'a> Ctx<'a> {
     pub fn eval_op(&mut self, _node: &Node, id: OpId) -> Result<Prim, TError> {
         let (_node_id, op) = id.get(&self.ast.ops);
         Ok(match op.op {
-            Symbol::Add => match self.eval2(op.args)? {
+            Symbol::Add => match self.eval2(&op.args)? {
                 [Prim::I32(l), Prim::I32(r)] => Prim::I32(l + r),
                 _ => todo!(),
             },
             Symbol::Sub => {
-                if op.args[0].is_some() {
-                    match self.eval2(op.args)? {
+                if op.args.get(0).is_some() {
+                    match self.eval2(&op.args)? {
                         [Prim::I32(l), Prim::I32(r)] => Prim::I32(l - r),
                         _ => todo!(),
                     }
                 } else {
-                    let arg =
-                        self.eval(op.args[1].expect("Sub should have at least a right operand"))?;
+                    let arg = self.eval(
+                        *op.args
+                            .get(1)
+                            .expect("Sub should have at least a right operand"),
+                    )?;
                     match arg {
                         Prim::I32(r) => Prim::I32(-r),
                         _ => todo!(),
                     }
                 }
             }
-            Symbol::Mul => match self.eval2(op.args)? {
+            Symbol::Mul => match self.eval2(&op.args)? {
                 [Prim::I32(l), Prim::I32(r)] => Prim::I32(l * r),
                 _ => todo!(),
             },
-            Symbol::Div => match self.eval2(op.args)? {
+            Symbol::Div => match self.eval2(&op.args)? {
                 [Prim::I32(l), Prim::I32(r)] => Prim::I32(l / r),
                 _ => todo!(),
             },
-            Symbol::DivRounding => match self.eval2(op.args)? {
+            Symbol::DivRounding => match self.eval2(&op.args)? {
                 [Prim::I32(l), Prim::I32(r)] => Prim::I32(l / r),
                 _ => todo!(),
             },
-            Symbol::Exp => match self.eval2(op.args)? {
+            Symbol::Exp => match self.eval2(&op.args)? {
                 [Prim::I32(l), Prim::I32(r)] => Prim::I32(l.pow(r.try_into().unwrap())),
                 _ => todo!(),
             },
-            Symbol::Modulo => match self.eval2(op.args)? {
+            Symbol::Modulo => match self.eval2(&op.args)? {
                 [Prim::I32(l), Prim::I32(r)] => Prim::I32(l % r),
                 _ => todo!(),
             },
-            Symbol::And => match self.eval2(op.args)? {
+            Symbol::And => match self.eval2(&op.args)? {
                 [Prim::I32(l), Prim::I32(r)] => Prim::I32(l & r),
                 _ => todo!(),
             },
-            Symbol::BitXor => match self.eval2(op.args)? {
+            Symbol::BitXor => match self.eval2(&op.args)? {
                 [Prim::I32(l), Prim::I32(r)] => Prim::I32(l ^ r),
                 _ => todo!(),
             },
-            Symbol::Or => match self.eval2(op.args)? {
+            Symbol::Or => match self.eval2(&op.args)? {
                 [Prim::I32(l), Prim::I32(r)] => Prim::I32(l | r),
                 _ => todo!(),
             },
-            Symbol::Eqs => match self.eval2(op.args)? {
+            Symbol::Eqs => match self.eval2(&op.args)? {
                 [Prim::I32(l), Prim::I32(r)] => Prim::Bool(l == r),
                 _ => todo!(),
             },
-            Symbol::NotEqs => match self.eval2(op.args)? {
+            Symbol::NotEqs => match self.eval2(&op.args)? {
                 [Prim::I32(l), Prim::I32(r)] => Prim::Bool(l != r),
                 _ => todo!(),
             },
-            Symbol::Lt => match self.eval2(op.args)? {
+            Symbol::Lt => match self.eval2(&op.args)? {
                 [Prim::I32(l), Prim::I32(r)] => Prim::Bool(l < r),
                 _ => todo!(),
             },
-            Symbol::LtEqs => match self.eval2(op.args)? {
+            Symbol::LtEqs => match self.eval2(&op.args)? {
                 [Prim::I32(l), Prim::I32(r)] => Prim::Bool(l <= r),
                 _ => todo!(),
             },
-            Symbol::LeftShift => match self.eval2(op.args)? {
+            Symbol::LeftShift => match self.eval2(&op.args)? {
                 [Prim::I32(l), Prim::I32(r)] => Prim::I32(l << r),
                 _ => todo!(),
             },
-            Symbol::Gt => match self.eval2(op.args)? {
+            Symbol::Gt => match self.eval2(&op.args)? {
                 [Prim::I32(l), Prim::I32(r)] => Prim::Bool(l > r),
                 _ => todo!(),
             },
-            Symbol::GtEqs => match self.eval2(op.args)? {
+            Symbol::GtEqs => match self.eval2(&op.args)? {
                 [Prim::I32(l), Prim::I32(r)] => Prim::Bool(l >= r),
                 _ => todo!(),
             },
-            Symbol::RightShift => match self.eval2(op.args)? {
+            Symbol::RightShift => match self.eval2(&op.args)? {
                 [Prim::I32(l), Prim::I32(r)] => Prim::I32(l >> r),
                 _ => todo!(),
             },
@@ -169,6 +172,7 @@ impl<'a> Ctx<'a> {
             Symbol::Forall => todo!(),
             Symbol::Exists => todo!(),
             Symbol::Lambda => todo!(),
+            Symbol::Sigma => todo!(),
             Symbol::Pi => todo!(),
             Symbol::DoubleArrow => todo!(),
             Symbol::Try => todo!(),
@@ -204,7 +208,7 @@ mod tests {
     use super::*;
     use crate::error::TError;
     use crate::parser::parse;
-    use crate::tokens::lex;
+    use crate::parser::tokens::lex;
     use std::path::PathBuf;
 
     fn test_path() -> PathBuf {
