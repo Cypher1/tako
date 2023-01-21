@@ -1,6 +1,8 @@
+use tokio;
 use crate::client::interpret;
 use yew::prelude::*;
 use yew::{function_component, html, Html, Properties};
+// use tako::interpret;
 
 #[derive(PartialEq, Properties, Clone, Eq)]
 pub struct ModuleProps {
@@ -16,13 +18,9 @@ pub fn module(props: &ModuleProps) -> Html {
     let onclick = {
         let last_result = last_result.clone();
         let source = source.clone();
-        Callback::from(move |_| {
-            let last_result = last_result.clone();
-            let source = source.clone();
-            wasm_bindgen_futures::spawn_local(async move {
-                let result = interpret(&*source).await;
-                last_result.set(result)
-            });
+        Callback::from(move |x: i32| {
+            let result = interpret(&*source);
+            last_result.set(result)
         })
     };
 

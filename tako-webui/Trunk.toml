@@ -1,2 +1,2 @@
 [watch]
-watch = [ "../takolib" ]
+watch = [ "src", "../takolib" ]
