@@ -4,7 +4,7 @@
 pub mod utils;
 
 pub mod ast;
-pub mod compiler_context;
+pub mod compiler;
 pub mod error;
 pub mod interpreter;
 pub mod keywords;
@@ -18,7 +18,7 @@ pub mod ui;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-use crate::compiler_context::Compiler;
+use crate::compiler::Compiler;
 
 static mut LOGS_UNINITIALISED: bool = true;
 
