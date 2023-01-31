@@ -49,8 +49,6 @@ pub enum Symbol {
     ModuloAssign,
     GetAddress,
     HasType,
-    Arrow,
-    Implies,
     Try,
     Dot,
     Range,
@@ -67,11 +65,16 @@ pub enum Symbol {
     Gt,
     GtEqs,
     RightShift,
-    // Quantification
+    // Functions,
+    Lambda, // For compatibility with other systems (ignored).
+    Arrow,
+    // In case value level and type level must be different.
+    DoubleArrow,
+    // Quantification (type level)
     Forall,
-    Lambda,
-    Pi,
-    Exists,
+    // Sugar for forall.
+    Pi, // For compatibility with other systems.
+    Exists, // Sigma
     // Parens
     OpenCurly,
     CloseCurly,
@@ -112,7 +115,7 @@ impl std::fmt::Display for Symbol {
                 Symbol::Comma => ",",
                 Symbol::Sequence => ";",
                 Symbol::Arrow => "->",
-                Symbol::Implies => "=>",
+                Symbol::DoubleArrow => "=>",
                 Symbol::LeftShift => "<<",
                 Symbol::RightShift => ">>",
                 Symbol::LeftPipe => "<|",
@@ -453,7 +456,7 @@ pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
                     (Symbol::Dot, Symbol::Dot) => Symbol::Range,
                     (Symbol::Range, Symbol::Dot) => Symbol::Spread,
                     (Symbol::Assign, Symbol::Assign) => Symbol::Eqs,
-                    (Symbol::Assign, Symbol::Gt) => Symbol::Implies,
+                    (Symbol::Assign, Symbol::Gt) => Symbol::DoubleArrow,
                     (Symbol::Gt, Symbol::Assign) => Symbol::GtEqs,
                     (Symbol::Lt, Symbol::Assign) => Symbol::LtEqs,
                     (Symbol::LogicalNot, Symbol::Assign) => Symbol::NotEqs,

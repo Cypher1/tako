@@ -47,7 +47,6 @@ pub fn ensure_initialized() {
 #[cfg(not(test))]
 pub fn ensure_initialized() {
     use std::fs::OpenOptions;
-    /*
     build_logger(|env| {
         let log_file = OpenOptions::new()
             .write(true)
@@ -57,7 +56,6 @@ pub fn ensure_initialized() {
             .expect("Failed to setup log file.");
         env_logger::Builder::init(env.target(env_logger::fmt::Target::Pipe(Box::new(log_file))))
     });
-    */
     build_logger(|env| {
         env_logger::Builder::init(env)
     });
