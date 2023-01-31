@@ -303,9 +303,9 @@ pub const fn assign_op(s: Symbol) -> Option<Symbol> {
 }
 
 #[inline]
-pub const fn is_annotation(s: Symbol) -> bool {
+pub const fn is_prefix_annotation(s: Symbol) -> bool {
     // TODO(clarity): Move to a symbol module.
-    matches!(s, Symbol::HasType | Symbol::Lambda | Symbol::Pi | Symbol::Forall | Symbol::Exists)
+    matches!(s, Symbol::Lambda | Symbol::Pi | Symbol::Forall | Symbol::Exists)
 }
 
 #[inline]
