@@ -303,6 +303,12 @@ pub const fn assign_op(s: Symbol) -> Option<Symbol> {
 }
 
 #[inline]
+pub const fn is_annotation(s: Symbol) -> bool {
+    // TODO(clarity): Move to a symbol module.
+    matches!(s, Symbol::HasType | Symbol::Lambda | Symbol::Pi | Symbol::Forall | Symbol::Exists)
+}
+
+#[inline]
 pub const fn is_assign(s: Symbol) -> bool {
     // TODO(clarity): Move to a symbol module.
     matches!(s, Symbol::Assign) || assign_op(s).is_some()
