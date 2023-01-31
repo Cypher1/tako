@@ -4,8 +4,8 @@ pub mod map_macros;
 pub mod todo;
 pub mod cpp_ast;
 pub mod meta;
-pub mod tribool;
 pub mod runtime;
+pub mod tribool;
 #[macro_use]
 pub mod typed_index;
 

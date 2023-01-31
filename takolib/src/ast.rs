@@ -100,7 +100,7 @@ pub enum Warning {
         node_id: NodeId,
         old_ty: NodeId,
         ty: NodeId,
-    }
+    },
 }
 
 #[derive(Clone, Default, Debug, Hash, PartialEq, Eq)]
@@ -188,7 +188,14 @@ impl Ast {
             // e.g. 12: Int: Int
             // It is probably a mistake, but we can safely handle it.
             let location = self.get(node_id).location;
-            self.add_warning(Warning::DoubleAnnotation { node_id, old_ty, ty }, location);
+            self.add_warning(
+                Warning::DoubleAnnotation {
+                    node_id,
+                    old_ty,
+                    ty,
+                },
+                location,
+            );
             ty = self.add_op(Op::new(Symbol::And, [Some(old_ty), Some(ty)]), location);
         }
         let node: &mut Node = self.get_mut(node_id);

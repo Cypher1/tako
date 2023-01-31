@@ -1,18 +1,13 @@
 use async_trait::async_trait;
+use std::path::PathBuf;
 use tako;
 use tako::tasks::RequestTask;
+use tako::ui::{Client, OptionsTrait, UserInterface};
 use tako::utils::spawn;
 use tokio::sync::{mpsc, oneshot};
-use tako::ui::{
-    UserInterface,
-    OptionsTrait,
-    Client,
-};
-use std::path::PathBuf;
 
 #[derive(Debug)]
-struct YewClient {
-}
+struct YewClient {}
 
 const NONE_FILES: Vec<PathBuf> = vec![];
 
@@ -41,15 +36,13 @@ impl UserInterface<Options> for YewClient {
             Box<dyn OptionsTrait>,
         )>,
         options: Options,
-        ) -> std::io::Result<Self> {
-        Ok(YewClient {
-        })
+    ) -> std::io::Result<Self> {
+        Ok(YewClient {})
     }
     async fn run_loop(self) -> std::io::Result<()> {
         Ok(())
     }
 }
-
 
 pub async fn interpret(src: &str) -> String {
     tako::ensure_initialized();
@@ -57,7 +50,9 @@ pub async fn interpret(src: &str) -> String {
     let client_launch_request_sender = compiler.client_launch_request_sender.clone();
     spawn(async move { compiler.run_loop().await });
     let (tx, rx) = tokio::sync::oneshot::channel();
-    client_launch_request_sender.send((tx, Box::new(Options::default()))).expect("Send client request failed");
+    client_launch_request_sender
+        .send((tx, Box::new(Options::default())))
+        .expect("Send client request failed");
     let mut client = rx.await.expect("Get client failed");
     client.send_command(RequestTask::EvalLine(src.to_string()));
     "3".to_string()

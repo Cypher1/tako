@@ -1,5 +1,9 @@
 use crate::error::Error;
 
+use super::status::*;
+use super::task_trait::*;
+use super::TaskKind;
+use crate::utils::spawn;
 use log::{debug, trace};
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -7,10 +11,6 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use tokio::sync::broadcast;
 use tokio::sync::mpsc;
-use crate::utils::spawn;
-use super::status::*;
-use super::task_trait::*;
-use super::TaskKind;
 
 // TODO(debugging): Add timing information, etc.
 // TODO(debugging): Support re-running multiple times for stability testing.

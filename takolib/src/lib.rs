@@ -56,9 +56,7 @@ pub fn ensure_initialized() {
             .expect("Failed to setup log file.");
         env_logger::Builder::init(env.target(env_logger::fmt::Target::Pipe(Box::new(log_file))))
     });
-    build_logger(|env| {
-        env_logger::Builder::init(env)
-    });
+    build_logger(|env| env_logger::Builder::init(env));
 }
 
 pub async fn start() -> Compiler {
