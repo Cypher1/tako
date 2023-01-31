@@ -1,14 +1,11 @@
+use std::future::Future;
 
-trait Runtime {
-    fn spawn<T>(task: T);
+#[cfg(target_arch = "wasm32")]
+pub fn spawn<T: Send + Future<Output=()> + 'static>(task: T) where <T as Future>::Output: Send {
+    wasm_bindgen_futures::spawn_local(task);
 }
 
-
-struct TokioRuntime {
-}
-
-impl Runtime for TokioRuntime {
-    fn spawn<T>(task: T) {
-
-    }
+#[cfg(not(target_arch = "wasm32"))]
+pub fn spawn<T: Send + Future<Output=()> + 'static>(task: T) where <T as Future>::Output: Send {
+    tokio::spawn(task);
 }

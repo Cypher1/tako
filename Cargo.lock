@@ -1701,6 +1701,7 @@ dependencies = [
  "strum_macros",
  "thiserror",
  "tokio",
+ "wasm-bindgen-futures",
 ]
 
 [[package]]

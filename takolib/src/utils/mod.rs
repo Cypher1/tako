@@ -12,3 +12,5 @@ pub mod typed_index;
 #[cfg(test)]
 #[macro_use]
 pub mod pretty_assertions;
+
+pub use runtime::*;

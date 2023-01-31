@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use tako;
+use tako::utils::spawn;
 use tokio::sync::{mpsc, oneshot};
 use tako::ui::{
     UserInterface,
@@ -53,7 +54,7 @@ pub async fn interpret(src: &str) -> String {
     tako::ensure_initialized();
     let compiler = tako::start().await;
     let client_launch_request_sender = compiler.client_launch_request_sender.clone();
-    tokio::spawn(async move { compiler.run_loop().await });
+    spawn(async move { compiler.run_loop().await });
 
     
     "3".to_string()

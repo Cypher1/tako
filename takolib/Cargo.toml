@@ -6,7 +6,7 @@ edition = "2021"
 include = ["src/**/*", "LICENSE.md", "README.md"]
 
 [features]
-wasm=[]
+wasm=[ "wasm-bindgen-futures" ]
 native=[]
 
 [lib]
@@ -35,6 +35,7 @@ fxhash = "0.2"
 static_assertions = "1.1"
 num-traits = "0.2"
 enum-kinds = "0.5"
+wasm-bindgen-futures = { version = "0.4.33", optional = true }
 
 [dev-dependencies]
 strum = "0.24"
