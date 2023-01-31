@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use tako;
+use tako::tasks::RequestTask;
 use tako::utils::spawn;
 use tokio::sync::{mpsc, oneshot};
 use tako::ui::{
@@ -15,7 +16,7 @@ struct YewClient {
 
 const NONE_FILES: Vec<PathBuf> = vec![];
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 struct Options {
     files: Vec<PathBuf>,
 }
@@ -55,7 +56,9 @@ pub async fn interpret(src: &str) -> String {
     let compiler = tako::start().await;
     let client_launch_request_sender = compiler.client_launch_request_sender.clone();
     spawn(async move { compiler.run_loop().await });
-
-    
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    client_launch_request_sender.send((tx, Box::new(Options::default()))).expect("Send client request failed");
+    let mut client = rx.await.expect("Get client failed");
+    client.send_command(RequestTask::EvalLine(src.to_string()));
     "3".to_string()
 }
