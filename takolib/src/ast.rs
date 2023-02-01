@@ -82,6 +82,7 @@ pub enum NodeData {
     Atom(AtomId),
 
     // Apply & Abstract:
+    Binding(BindingId),
     Call(CallId),
     Op(OpId),
 
@@ -113,6 +114,7 @@ pub struct Ast {
     pub calls: Vec<(NodeId, Call)>,
     pub ops: Vec<(NodeId, Op)>,
     pub identifiers: Vec<(NodeId, Identifier)>,
+    pub binding: Vec<(NodeId, Binding)>,
     pub atoms: Vec<(NodeId, Atom)>,
     pub definitions: Vec<(NodeId, Definition)>,
     pub literals: Vec<(NodeId, Literal)>,
@@ -142,6 +144,13 @@ make_contains!(
     Identifier,
     IdentifierId,
     add_identifier
+);
+make_contains!(
+    bindings,
+    (NodeId, Binding),
+    Binding,
+    BindingId,
+    add_binding
 );
 make_contains!(
     definitions,
@@ -243,8 +252,23 @@ impl Op {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+pub enum BindingMode {
+    Lambda,     // i.e. value, given x, y
+    Pi,         // i.e. dependant type, forall x, y
+    Sigma,      // i.e. dependant type, exists x, y
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+pub struct Binding {
+    pub mode: BindingMode,
+    pub name: Identifier,
+    pub ty: Option<NodeId>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Definition {
     pub name: Identifier,
+    pub bindings: Option<Vec<Binding>>,
     pub implementation: NodeId,
 }
 
