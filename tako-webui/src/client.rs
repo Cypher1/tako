@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use std::path::PathBuf;
-use tako;
+
 use tako::tasks::RequestTask;
 use tako::ui::{Client, OptionsTrait, UserInterface};
 use tokio::spawn;
@@ -8,8 +8,6 @@ use tokio::sync::{mpsc, oneshot};
 
 #[derive(Debug)]
 struct YewClient {}
-
-const NONE_FILES: Vec<PathBuf> = vec![];
 
 #[derive(Default, Debug, Clone)]
 struct Options {
@@ -31,11 +29,11 @@ impl OptionsTrait for Options {
 #[async_trait]
 impl UserInterface<Options> for YewClient {
     async fn launch(
-        client_launch_request_sender: mpsc::UnboundedSender<(
+        _client_launch_request_sender: mpsc::UnboundedSender<(
             oneshot::Sender<Client>,
             Box<dyn OptionsTrait>,
         )>,
-        options: Options,
+        _options: Options,
     ) -> std::io::Result<Self> {
         Ok(YewClient {})
     }
@@ -51,7 +49,7 @@ pub async fn interpret(src: &str) -> String {
     spawn(async move { compiler.run_loop().await });
     let (tx, rx) = tokio::sync::oneshot::channel();
     client_launch_request_sender
-        .send((tx, Box::new(Options::default())))
+        .send((tx, Box::<Options>::default()))
         .expect("Send client request failed");
     let mut client = rx.await.expect("Get client failed");
     client.send_command(RequestTask::EvalLine(src.to_string()));
