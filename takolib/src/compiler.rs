@@ -12,6 +12,7 @@ use log::{debug, trace};
 use std::fmt::Debug;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use tokio::spawn;
 use tokio::sync::{broadcast, mpsc, oneshot};
 
 #[derive(Debug)]
@@ -111,7 +112,7 @@ impl Compiler {
             let manager = manager.clone();
             let stats_sender = stats_sender.clone();
             let stats_requester = stats_requester.subscribe();
-            tokio::spawn(async move {
+            spawn(async move {
                 TaskManager::report_stats(manager, stats_requester, stats_sender).await;
             });
         }
@@ -142,7 +143,7 @@ impl Compiler {
         }) {
             debug!("Error while posting file load task: {e:?}");
         }
-        tokio::spawn(async move {
+        spawn(async move {
             while let Ok(updated_path) = file_update_receiver.recv().await {
                 if path != updated_path {
                     continue;

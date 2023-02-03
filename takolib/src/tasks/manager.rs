@@ -1,16 +1,16 @@
 use crate::error::Error;
 
+use super::status::*;
+use super::task_trait::*;
+use super::TaskKind;
 use log::{debug, trace};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::Arc;
 use std::sync::Mutex;
+use tokio::spawn;
 use tokio::sync::broadcast;
 use tokio::sync::mpsc;
-
-use super::status::*;
-use super::task_trait::*;
-use super::TaskKind;
 
 // TODO(debugging): Add timing information, etc.
 // TODO(debugging): Support re-running multiple times for stability testing.
@@ -109,7 +109,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
         results_sender: ResultSenderFor<T>,
     ) {
         let this = this.clone();
-        tokio::spawn(async move {
+        spawn(async move {
             let (tx, mut rx) = mpsc::unbounded_channel();
             loop {
                 tokio::select! {
@@ -228,7 +228,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
         // Launch the job!!!
         status.state = TaskState::Running;
         let result_or_error_sender = result_or_error_sender.clone();
-        tokio::spawn(async move {
+        spawn(async move {
             // Tasks will report that they are running. Do not report them here.
             task.perform(result_or_error_sender).await;
         });

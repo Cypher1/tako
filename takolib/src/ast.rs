@@ -52,6 +52,7 @@ macro_rules! make_contains(
                     .expect("Should always be able to allocate a new Ast Node");
                 let node: TypedIndex<Node> = TypedIndex::new(&mut self.nodes, Node {
                     id: NodeData::$kind(id),
+                    ty: None,
                     location,
                 })
                 .expect("Should always be able to allocate a new Ast Node");
@@ -66,6 +67,8 @@ macro_rules! make_contains(
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Node {
     pub id: NodeData,
+    // This could be an expresion, function or not specified.
+    pub ty: Option<NodeId>,
     pub location: Location,
 }
 
@@ -73,6 +76,9 @@ pub struct Node {
 pub enum NodeData {
     // TODO(clarity): consider how to split this up.
     // Use a Array of Enums Structs to Struct of Arrays (i.e. AoES2SoA).
+    // Partials:
+    DefinitionHead(DefinitionHeadId),
+    Binding(BindingId),
 
     // Variable:
     Identifier(IdentifierId),
@@ -88,7 +94,16 @@ pub enum NodeData {
     // Sugar:
     Definition(DefinitionId),
     NodeRef(NodeId), // Represents an indirection (i.e. when two things have been found to be
-                     // truely identical, leave a NodeRef behind to avoid dangling references.
+    Warning(WarningId), // Represents a warning.
+}
+
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+pub enum Warning {
+    DoubleAnnotation {
+        node_id: NodeId,
+        old_ty: NodeId,
+        ty: NodeId,
+    },
 }
 
 #[derive(Clone, Default, Debug, Hash, PartialEq, Eq)]
@@ -96,15 +111,22 @@ pub struct Ast {
     // TODO(usability): Add a range tree for mapping from locations to nodes.
     // Abstract syntax tree... forest
     pub filepath: PathBuf,
+    pub string_interner: StringInterner,
     pub roots: Vec<NodeId>,
     pub nodes: Vec<Node>,
+
+    // Partials:
+    pub bindings: Vec<(NodeId, Binding)>,
+    pub definition_heads: Vec<(NodeId, DefinitionHead)>,
+    pub warnings: Vec<(NodeId, Warning)>,
+    pub atoms: Vec<(NodeId, Atom)>,
+
+    // Syntactic constructs:
     pub calls: Vec<(NodeId, Call)>,
     pub ops: Vec<(NodeId, Op)>,
     pub identifiers: Vec<(NodeId, Identifier)>,
-    pub atoms: Vec<(NodeId, Atom)>,
     pub definitions: Vec<(NodeId, Definition)>,
     pub literals: Vec<(NodeId, Literal)>,
-    pub string_interner: StringInterner,
 }
 
 impl Ast {
@@ -117,6 +139,9 @@ impl Ast {
 }
 
 make_contains!(nodes, Node, NodeRef, NodeId, unsafe_add_node);
+
+make_contains!(warnings, (NodeId, Warning), Warning, WarningId, add_warning);
+
 make_contains!(calls, (NodeId, Call), Call, CallId, add_call);
 make_contains!(ops, (NodeId, Op), Op, OpId, add_op);
 make_contains!(atoms, (NodeId, Atom), Atom, AtomId, add_atom);
@@ -126,6 +151,14 @@ make_contains!(
     Identifier,
     IdentifierId,
     add_identifier
+);
+make_contains!(bindings, (NodeId, Binding), Binding, BindingId, add_binding);
+make_contains!(
+    definition_heads,
+    (NodeId, DefinitionHead),
+    DefinitionHead,
+    DefinitionHeadId,
+    add_definition_head
 );
 make_contains!(
     definitions,
@@ -157,12 +190,33 @@ impl Ast {
         let value_id = self.alloc((node_id, value(node_id)));
         let node = Node {
             id: Self::to_node(value_id),
+            ty: None,
             location,
         };
         let new_node_id = TypedIndex::new(&mut self.nodes, node)
             .expect("Should never have that many AstNodes...");
         assert_eq!(node_id, new_node_id);
         new_node_id
+    }
+    pub fn add_annotation(&mut self, node_id: NodeId, mut ty: NodeId) {
+        let old_ty: Option<NodeId> = self.get(node_id).ty;
+        if let Some(old_ty) = old_ty {
+            // In the case where two annotations were added:
+            // e.g. 12: Int: Int
+            // It is probably a mistake, but we can safely handle it.
+            let location = self.get(node_id).location;
+            self.add_warning(
+                Warning::DoubleAnnotation {
+                    node_id,
+                    old_ty,
+                    ty,
+                },
+                location,
+            );
+            ty = self.add_op(Op::new(Symbol::And, [Some(old_ty), Some(ty)]), location);
+        }
+        let node: &mut Node = self.get_mut(node_id);
+        node.ty = Some(ty);
     }
     pub fn set_root(&mut self, new_root: NodeId) {
         self.roots.push(new_root);
@@ -206,8 +260,29 @@ impl Op {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+pub enum BindingMode {
+    Lambda, // i.e. value, given x, y
+    Pi,     // i.e. dependant type, forall x, y
+    Sigma,  // i.e. dependant type, exists x, y
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+pub struct Binding {
+    pub mode: BindingMode,
+    pub name: Identifier,
+    pub ty: Option<NodeId>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+pub struct DefinitionHead {
+    pub name: Identifier,
+    pub bindings: Option<Vec<Binding>>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Definition {
     pub name: Identifier,
+    pub bindings: Option<Vec<Binding>>,
     pub implementation: NodeId,
 }
 
@@ -242,6 +317,7 @@ mod tests {
         let a_prime = lits.register_str("a_prime");
         let definition = Definition {
             name: a_prime,
+            bindings: None,
             implementation: call,
         };
         let definition = ast.make_node(definition, Location::dummy_for_test());

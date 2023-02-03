@@ -1,5 +1,7 @@
 [workspace]
 
+default-members=["takoc"]
+
 members = [
     "takolib",
     "takoc",

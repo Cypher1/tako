@@ -4,7 +4,7 @@
 pub mod utils;
 
 pub mod ast;
-pub mod compiler_context;
+pub mod compiler;
 pub mod error;
 pub mod interpreter;
 pub mod keywords;
@@ -18,7 +18,7 @@ pub mod ui;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-use crate::compiler_context::Compiler;
+use crate::compiler::Compiler;
 
 static mut LOGS_UNINITIALISED: bool = true;
 
@@ -44,6 +44,15 @@ pub fn ensure_initialized() {
         let _ = env.is_test(true).try_init();
     });
 }
+
+#[cfg(target_arch = "wasm32")]
+pub fn ensure_initialized() {
+    build_logger(|env| {
+        let _ = env.try_init();
+    });
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 #[cfg(not(test))]
 pub fn ensure_initialized() {
     use std::fs::OpenOptions;
@@ -56,6 +65,7 @@ pub fn ensure_initialized() {
             .expect("Failed to setup log file.");
         env_logger::Builder::init(env.target(env_logger::fmt::Target::Pipe(Box::new(log_file))))
     });
+    build_logger(env_logger::Builder::init);
 }
 
 pub async fn start() -> Compiler {

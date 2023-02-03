@@ -49,8 +49,6 @@ pub enum Symbol {
     ModuloAssign,
     GetAddress,
     HasType,
-    Arrow,
-    Implies,
     Try,
     Dot,
     Range,
@@ -67,11 +65,16 @@ pub enum Symbol {
     Gt,
     GtEqs,
     RightShift,
-    // Quantification
+    // Functions,
+    Lambda, // For compatibility with other systems (ignored).
+    Arrow,
+    // In case value level and type level must be different.
+    DoubleArrow,
+    // Quantification (type level)
     Forall,
-    Lambda,
-    Pi,
-    Exists,
+    // Sugar for forall.
+    Pi,     // For compatibility with other systems.
+    Exists, // Sigma
     // Parens
     OpenCurly,
     CloseCurly,
@@ -112,7 +115,7 @@ impl std::fmt::Display for Symbol {
                 Symbol::Comma => ",",
                 Symbol::Sequence => ";",
                 Symbol::Arrow => "->",
-                Symbol::Implies => "=>",
+                Symbol::DoubleArrow => "=>",
                 Symbol::LeftShift => "<<",
                 Symbol::RightShift => ">>",
                 Symbol::LeftPipe => "<|",
@@ -276,7 +279,7 @@ fn classify_char(ch: char) -> CharacterType {
         '0'..='9' => NumLit,
         'A'..='Z' | 'a'..='z' | '_' => Sym, // Overlapped by colors.
         '"' | '\'' => StringLit,
-        _ => panic!("Unknown token character {}", ch),
+        _ => panic!("Unknown token character {ch}"),
     })
 }
 
@@ -297,6 +300,15 @@ pub const fn assign_op(s: Symbol) -> Option<Symbol> {
         Symbol::ModuloAssign => Symbol::Modulo,
         _ => return None,
     })
+}
+
+#[inline]
+pub const fn is_prefix_annotation(s: Symbol) -> bool {
+    // TODO(clarity): Move to a symbol module.
+    matches!(
+        s,
+        Symbol::Lambda | Symbol::Pi | Symbol::Forall | Symbol::Exists
+    )
 }
 
 #[inline]
@@ -453,7 +465,7 @@ pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
                     (Symbol::Dot, Symbol::Dot) => Symbol::Range,
                     (Symbol::Range, Symbol::Dot) => Symbol::Spread,
                     (Symbol::Assign, Symbol::Assign) => Symbol::Eqs,
-                    (Symbol::Assign, Symbol::Gt) => Symbol::Implies,
+                    (Symbol::Assign, Symbol::Gt) => Symbol::DoubleArrow,
                     (Symbol::Gt, Symbol::Assign) => Symbol::GtEqs,
                     (Symbol::Lt, Symbol::Assign) => Symbol::LtEqs,
                     (Symbol::LogicalNot, Symbol::Assign) => Symbol::NotEqs,

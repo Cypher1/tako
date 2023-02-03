@@ -82,7 +82,10 @@
 
 ## Communication
 
-- Improve on Read Me
+- Improve on (and updating) Read Me
+- Put the license on the site
+- Improve on the site (add the Read Me)
+- Write a getting started
 - Language documentation
 
 ## Pain points
@@ -90,6 +93,13 @@
 - No way to run machine or low level instructions
 - No type checking (requirements and exhaustiveness checking)
 - Compiler is far behind interpreter feature set
+
+# Benchmarks
+
+- lexing benchmarks
+- parsing benchmarks
+- type checking benchmarks
+- cache benchmarks
 
 ## Resources
 

@@ -49,9 +49,11 @@ impl Foo {
 }
 ";
 
+    let tako_code: &str = "12 + 3";
+
     html! {
         <div class="container">
-            <div class="columns">
+            <div class="columns is-multiline is-centered">
                 <div class="column">
                     <Module path="test.py" language="python" source={python_code}></Module>
                 </div>
@@ -60,6 +62,9 @@ impl Foo {
                 </div>
                 <div class="column">
                     <Module path="example.rs" language="rust" source={rust_code}></Module>
+                </div>
+                <div class="column">
+                    <Module path="example.tk" language="clike" source={tako_code}></Module>
                 </div>
             </div>
         </div>

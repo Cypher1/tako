@@ -174,7 +174,7 @@ impl Val {
     pub fn access(self: &Val, name: &str) -> Val {
         match self {
             PrimVal(Prim::BuiltIn(name)) => {
-                panic!("Built in {} does not currently support introspection", name)
+                panic!("Built in {name} does not currently support introspection")
             }
             BitStr(_)
             | PrimVal(_)
