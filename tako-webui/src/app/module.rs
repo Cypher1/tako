@@ -11,18 +11,26 @@ pub struct ModuleProps {
 
 #[function_component(Module)]
 pub fn module(props: &ModuleProps) -> Html {
-    let last_result = use_state(|| "...".to_string());
     let source = use_state(|| props.source.clone());
-    let onclick = {
-        let last_result = last_result.clone();
+    let eval_result = use_state(|| "...".to_string());
+    let change_on_click = {
         let source = source.clone();
         Callback::from(move |_| {
-            let last_result = last_result.clone();
-            let source = source.clone();
-            wasm_bindgen_futures::spawn_local(async move {
-                let result = interpret(&*source).await;
-                last_result.set(result)
-            });
+            source.set(format!("{}*{}", *source, source.len()));
+        })
+    };
+
+    let run_on_click = {
+        let source = source.clone();
+        let eval_result = eval_result.clone();
+        Callback::from(move |_| {
+            let result = tokio::runtime::Builder::new_current_thread()
+                .build()
+                .unwrap()
+                .block_on(
+                    interpret(&source)
+                );
+            eval_result.set(result);
         })
     };
 
@@ -39,10 +47,11 @@ pub fn module(props: &ModuleProps) -> Html {
                 </div>
                 <div class="card-content">
                     <div class="content">
-                        <button {onclick} aria-label="run" aria-expanded="false">{&*last_result}</button>
-                        <pre><code class={format!("line-numbers language-{}", props.language)}>
+                        <button onclick={change_on_click} aria-label="change" aria-expanded="false">{ "+1" }</button>
+                        <button onclick={run_on_click} aria-label="run" aria-expanded="false">{ &*eval_result }</button>
+                        //<pre><code class={format!("line-numbers language-{}", props.language)}>
                         {&*source}
-                        </code></pre>
+                        //</code></pre>
                     </div>
                 </div>
             </div>

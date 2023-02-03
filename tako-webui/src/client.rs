@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use tako;
 use tako::tasks::RequestTask;
 use tako::ui::{Client, OptionsTrait, UserInterface};
-use tako::utils::spawn;
+use tokio::spawn;
 use tokio::sync::{mpsc, oneshot};
 
 #[derive(Debug)]
@@ -55,5 +55,10 @@ pub async fn interpret(src: &str) -> String {
         .expect("Send client request failed");
     let mut client = rx.await.expect("Get client failed");
     client.send_command(RequestTask::EvalLine(src.to_string()));
-    "3".to_string()
+    let result = client.result_receiver.recv();
+    if let Some(result) = result.await {
+        result.to_string()
+    } else {
+        "failed?".to_string()
+    }
 }

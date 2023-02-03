@@ -3,12 +3,12 @@ use crate::error::Error;
 use super::status::*;
 use super::task_trait::*;
 use super::TaskKind;
-use crate::utils::spawn;
 use log::{debug, trace};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::Arc;
 use std::sync::Mutex;
+use tokio::spawn;
 use tokio::sync::broadcast;
 use tokio::sync::mpsc;
 

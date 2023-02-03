@@ -1701,7 +1701,6 @@ dependencies = [
  "strum_macros",
  "thiserror",
  "tokio",
- "wasm-bindgen-futures",
 ]
 
 [[package]]
@@ -1719,9 +1718,8 @@ dependencies = [
  "async-trait",
  "tako",
  "tokio",
- "wasm-bindgen-futures",
- "wasm-rs-async-executor",
  "yew",
+ "yew-hooks",
 ]
 
 [[package]]
@@ -2155,15 +2153,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1c38c045535d93ec4f0b4defec448e4291638ee608530863b1e2ba115d4fff7f"
 
 [[package]]
-name = "wasm-rs-async-executor"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fed8e8c10166d28c68859dd5d159d408fa50fdf668ae39461f2ea41148655d52"
-dependencies = [
- "futures",
-]
-
-[[package]]
 name = "web-sys"
 version = "0.3.60"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2299,6 +2288,22 @@ dependencies = [
  "wasm-bindgen-futures",
  "web-sys",
  "yew-macro",
+]
+
+[[package]]
+name = "yew-hooks"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "268e2367720311f19582235f5c021702d6be8ded13b7ee8dcacc71019d055d15"
+dependencies = [
+ "gloo",
+ "js-sys",
+ "log",
+ "serde",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "yew",
 ]
 
 [[package]]

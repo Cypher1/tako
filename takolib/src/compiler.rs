@@ -8,11 +8,11 @@ use crate::tasks::task_trait::{ResultSenderFor, Task, TaskReceiverFor};
 use crate::tasks::*;
 use crate::ui::Client;
 use crate::utils::meta::Meta;
-use crate::utils::spawn;
 use log::{debug, trace};
 use std::fmt::Debug;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use tokio::spawn;
 use tokio::sync::{broadcast, mpsc, oneshot};
 
 #[derive(Debug)]

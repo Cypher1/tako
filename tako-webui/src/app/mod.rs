@@ -53,7 +53,7 @@ impl Foo {
 
     html! {
         <div class="container">
-            <div class="columns">
+            <div class="columns is-multiline is-centered">
                 <div class="column">
                     <Module path="test.py" language="python" source={python_code}></Module>
                 </div>

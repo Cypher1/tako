@@ -44,6 +44,15 @@ pub fn ensure_initialized() {
         let _ = env.is_test(true).try_init();
     });
 }
+
+#[cfg(target_arch = "wasm32")]
+pub fn ensure_initialized() {
+    build_logger(|env| {
+        let _ = env.try_init();
+    });
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 #[cfg(not(test))]
 pub fn ensure_initialized() {
     use std::fs::OpenOptions;

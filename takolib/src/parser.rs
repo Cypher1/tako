@@ -212,7 +212,8 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
                     } else if is_prefix_annotation(symbol) {
                         todo!("Add annotation");
                     } else if symbol == Symbol::HasType {
-                        todo!("Add type annotation");
+                        dbg!("Add type annotation");
+                        left.node.expect("Should have a node")
                     } else {
                         trace!("Merging {res:?} and {left:?} to prep for {token:?}");
                         let args = [left.node, res.node];
