@@ -52,6 +52,8 @@ impl<'a> Ctx<'a> {
             NodeData::Definition(_id) => todo!(),
             NodeData::Literal(id) => self.eval_lit(node, id),
             NodeData::Warning(_id) => todo!(),
+            NodeData::Binding(_id) => todo!(),
+            NodeData::DefinitionHead(_id) => todo!(),
         }
     }
     pub fn eval_lit(&mut self, node: &Node, id: LiteralId) -> Result<Prim, TError> {

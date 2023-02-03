@@ -76,13 +76,15 @@ pub struct Node {
 pub enum NodeData {
     // TODO(clarity): consider how to split this up.
     // Use a Array of Enums Structs to Struct of Arrays (i.e. AoES2SoA).
+    // Partials:
+    DefinitionHead(DefinitionHeadId),
+    Binding(BindingId),
 
     // Variable:
     Identifier(IdentifierId),
     Atom(AtomId),
 
     // Apply & Abstract:
-    Binding(BindingId),
     Call(CallId),
     Op(OpId),
 
@@ -109,17 +111,22 @@ pub struct Ast {
     // TODO(usability): Add a range tree for mapping from locations to nodes.
     // Abstract syntax tree... forest
     pub filepath: PathBuf,
+    pub string_interner: StringInterner,
     pub roots: Vec<NodeId>,
     pub nodes: Vec<Node>,
+
+    // Partials:
+    pub bindings: Vec<(NodeId, Binding)>,
+    pub definition_heads: Vec<(NodeId, DefinitionHead)>,
+    pub warnings: Vec<(NodeId, Warning)>,
+    pub atoms: Vec<(NodeId, Atom)>,
+
+    // Syntactic constructs:
     pub calls: Vec<(NodeId, Call)>,
     pub ops: Vec<(NodeId, Op)>,
     pub identifiers: Vec<(NodeId, Identifier)>,
-    pub binding: Vec<(NodeId, Binding)>,
-    pub atoms: Vec<(NodeId, Atom)>,
     pub definitions: Vec<(NodeId, Definition)>,
     pub literals: Vec<(NodeId, Literal)>,
-    pub string_interner: StringInterner,
-    pub warnings: Vec<(NodeId, Warning)>,
 }
 
 impl Ast {
@@ -151,6 +158,13 @@ make_contains!(
     Binding,
     BindingId,
     add_binding
+);
+make_contains!(
+    definition_heads,
+    (NodeId, DefinitionHead),
+    DefinitionHead,
+    DefinitionHeadId,
+    add_definition_head
 );
 make_contains!(
     definitions,
@@ -266,6 +280,12 @@ pub struct Binding {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+pub struct DefinitionHead {
+    pub name: Identifier,
+    pub bindings: Option<Vec<Binding>>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Definition {
     pub name: Identifier,
     pub bindings: Option<Vec<Binding>>,
@@ -303,6 +323,7 @@ mod tests {
         let a_prime = lits.register_str("a_prime");
         let definition = Definition {
             name: a_prime,
+            bindings: None,
             implementation: call,
         };
         let definition = ast.make_node(definition, Location::dummy_for_test());

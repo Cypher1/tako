@@ -180,6 +180,7 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
                         // TODO(clarity): Lowering for assign ops.
                         debug!("assignment: {:?} {:?} {:?}", &left, &symbol, &res);
                         if let Some(op) = assign_op(symbol) {
+                            // Implement syntactic sugar here.
                             todo!(
                                 "Assignment (with op):\n{symbol:#?}\n{res:#?}\n{left:#?}\n{op:?}"
                             );
@@ -187,15 +188,22 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
                             // Create a definition
                             let name_id = left.node.expect("Requires a name");
                             // TODO(clarity): This is horrible code...
-                            let ident_id = match &ast.get(name_id).id {
-                                NodeData::Identifier(name) => name,
+                            let (name, bindings) = match &ast.get(name_id).id {
+                                NodeData::Identifier(ident_id) => {
+                                    let name = ast.get(*ident_id).1;
+                                    (name, None)
+                                }
+                                NodeData::DefinitionHead(def_head_id) => {
+                                    let DefinitionHead { name, bindings } = &ast.get(*def_head_id).1;
+                                    (*name, bindings.clone())
+                                }
                                 node => todo!("Can't assign to a {node:?}"),
                             };
-                            let name = ast.get(*ident_id).1;
                             let implementation = res.node.expect("Requires an implementation");
                             ast.add_definition(
                                 Definition {
                                     name,
+                                    bindings,
                                     implementation,
                                 },
                                 location,
