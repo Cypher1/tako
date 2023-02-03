@@ -152,13 +152,7 @@ make_contains!(
     IdentifierId,
     add_identifier
 );
-make_contains!(
-    bindings,
-    (NodeId, Binding),
-    Binding,
-    BindingId,
-    add_binding
-);
+make_contains!(bindings, (NodeId, Binding), Binding, BindingId, add_binding);
 make_contains!(
     definition_heads,
     (NodeId, DefinitionHead),
@@ -267,9 +261,9 @@ impl Op {
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum BindingMode {
-    Lambda,     // i.e. value, given x, y
-    Pi,         // i.e. dependant type, forall x, y
-    Sigma,      // i.e. dependant type, exists x, y
+    Lambda, // i.e. value, given x, y
+    Pi,     // i.e. dependant type, forall x, y
+    Sigma,  // i.e. dependant type, exists x, y
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]

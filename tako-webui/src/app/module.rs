@@ -27,9 +27,7 @@ pub fn module(props: &ModuleProps) -> Html {
             let result = tokio::runtime::Builder::new_current_thread()
                 .build()
                 .unwrap()
-                .block_on(
-                    interpret(&source)
-                );
+                .block_on(interpret(&source));
             eval_result.set(result);
         })
     };

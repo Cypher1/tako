@@ -194,7 +194,8 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
                                     (name, None)
                                 }
                                 NodeData::DefinitionHead(def_head_id) => {
-                                    let DefinitionHead { name, bindings } = &ast.get(*def_head_id).1;
+                                    let DefinitionHead { name, bindings } =
+                                        &ast.get(*def_head_id).1;
                                     (*name, bindings.clone())
                                 }
                                 node => todo!("Can't assign to a {node:?}"),
