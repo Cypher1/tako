@@ -28,7 +28,7 @@ log = "0.4"
 env_logger = "0.9"
 pretty_assertions = "1.0"
 futures = "0.3"
-tokio = { version = "1.21", features = ["sync", "macros"] }
+tokio = { version = "1.21", features = ["sync", "macros", "rt"] }
 async-trait = "0.1"
 # Info: https://nnethercote.github.io/2021/12/08/a-brutally-effective-hash-function-in-rust.html
 fxhash = "0.2"
