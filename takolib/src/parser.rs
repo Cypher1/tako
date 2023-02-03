@@ -175,7 +175,7 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
                 }
                 TokenType::Op(symbol) => {
                     use crate::tokens::assign_op;
-                    use crate::tokens::is_prefix_annotation;
+                    // use crate::tokens::is_prefix_annotation;
                     if is_assign(symbol) {
                         // TODO(clarity): Lowering for assign ops.
                         debug!("assignment: {:?} {:?} {:?}", &left, &symbol, &res);
@@ -210,11 +210,11 @@ fn expr<'a, T: Iterator<Item = &'a Token>>(
                                 location,
                             )
                         }
-                    } else if is_prefix_annotation(symbol) {
-                        todo!("Add annotation");
-                    } else if symbol == Symbol::HasType {
-                        dbg!("Add type annotation");
-                        left.node.expect("Should have a node")
+                    // } else if is_prefix_annotation(symbol) {
+                    // todo!("Add annotation");
+                    // } else if symbol == Symbol::HasType {
+                    // dbg!("Add type annotation");
+                    // left.node.expect("Should have a node")
                     } else {
                         trace!("Merging {res:?} and {left:?} to prep for {token:?}");
                         let args = [left.node, res.node];
