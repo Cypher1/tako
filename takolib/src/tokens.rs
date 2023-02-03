@@ -279,7 +279,7 @@ fn classify_char(ch: char) -> CharacterType {
         '0'..='9' => NumLit,
         'A'..='Z' | 'a'..='z' | '_' => Sym, // Overlapped by colors.
         '"' | '\'' => StringLit,
-        _ => panic!("Unknown token character {}", ch),
+        _ => panic!("Unknown token character {ch}"),
     })
 }
 
