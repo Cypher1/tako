@@ -1139,31 +1139,33 @@ version = "0.2.0"
 dependencies = [
  "async-trait",
  "bitvec",
- "crokey",
- "crossterm",
- "directories",
  "enum-kinds",
  "env_logger",
  "futures",
  "fxhash",
  "log",
- "notify",
  "num-traits",
  "pretty_assertions",
- "shutdown_hooks",
  "static_assertions",
  "thiserror",
  "tokio",
- "warp",
 ]
 
 [[package]]
 name = "takoc"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
+ "crokey",
+ "crossterm",
+ "directories",
+ "futures",
  "log",
+ "notify",
+ "shutdown_hooks",
  "tako",
  "tokio",
+ "warp",
 ]
 
 [[package]]
@@ -1232,9 +1234,9 @@ checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
 
 [[package]]
 name = "tokio"
-version = "1.24.1"
+version = "1.24.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d9f76183f91ecfb55e1d7d5602bd1d979e38a3a522fe900241cf195624d67ae"
+checksum = "597a12a59981d9e3c38d216785b0c37399f6e415e8d0712047620f189371b0bb"
 dependencies = [
  "autocfg",
  "bytes",
