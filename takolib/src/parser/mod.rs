@@ -61,15 +61,15 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
     }
 
     fn require(&mut self, expected_token: TokenType) -> Result<(), TError> {
-        if let Some(token) = self.peek_kind() {
-            if token == expected_token {
+        if let Some(token) = self.peek() {
+            if token.kind == expected_token {
                 let _ = self.token();
                 Ok(())
             } else {
-                todo!("Expected {expected_token:?} found {token:?}")
+                Err(TError::ExpectedToken(expected_token, Some(token), token.location(), vec![]))
             }
         } else {
-            todo!("Expected {expected_token:?} found EOF")
+            Err(TError::ExpectedToken(expected_token, None, token.location(), vec![]))
         }
     }
 
@@ -139,6 +139,9 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             // Read implicit args...
             while Some(TokenType::Op(Symbol::Gt)) != self.peek_kind() {
                 bindings.push(self.binding_or_arg(&mut has_non_bind_args)?);
+                if let Err(_) = self.require(TokenType::Op(Symbol::Comma)) {
+                    break;
+                }
             }
             self.require(TokenType::Op(Symbol::Gt))?;
         }
@@ -149,6 +152,9 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             // Read args...
             while Some(TokenType::Op(Symbol::CloseParen)) != self.peek_kind() {
                 bindings.push(self.binding_or_arg(&mut has_non_bind_args)?);
+                if let Err(_) = self.require(TokenType::Op(Symbol::Comma)) {
+                    break;
+                }
             }
             self.require(TokenType::Op(Symbol::CloseParen))?;
         }
@@ -629,6 +635,22 @@ pub mod tests {
         assert_eq!(ast.literals.len(), 1);
         assert_eq!(ast.ops.len(), 0);
         assert_eq!(ast.definitions.len(), 1);
+        Ok(())
+    }
+
+    #[test]
+    fn parsed_assignment_with_implicit_args() -> Result<(), TError> {
+        let ast = setup("id<T: Type>(y: T): T=y")?;
+        // dbg!(&ast);
+
+        assert_eq!(ast.identifiers.len(), 4);
+        assert_eq!(ast.atoms.len(), 0);
+        assert_eq!(ast.literals.len(), 0);
+        assert_eq!(ast.ops.len(), 0);
+        assert_eq!(ast.definitions.len(), 1);
+        let (_id, def) = &ast.definitions[0];
+        dbg!(def);
+        assert_eq!(def.bindings.as_ref().map(|x| x.len()), Some(2));
         Ok(())
     }
 

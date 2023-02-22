@@ -38,7 +38,6 @@ pub enum Symbol {
     OpenBracket,
     // Sequences
     Sequence,
-    Comma,
     // Assignments
     Assign,
     AddAssign,
@@ -72,12 +71,15 @@ pub enum Symbol {
     NotEqs,
     Lt,
     LtEqs,
-    LeftShift,
     Gt,
     GtEqs,
-    RightShift,
+
+    // Groups
+    Comma,
 
     // Maths
+    LeftShift,
+    RightShift,
     Add,
     Sub,
     Exp,
@@ -156,8 +158,7 @@ impl Symbol {
             Symbol::OpenParen => Symbol::OpenCurly,
             Symbol::OpenCurly => Symbol::OpenBracket,
             Symbol::OpenBracket => Symbol::Sequence,
-            Symbol::Sequence => Symbol::Comma,
-            Symbol::Comma => Symbol::Assign,
+            Symbol::Sequence => Symbol::Assign,
             Symbol::Assign => Symbol::AddAssign,
             Symbol::AddAssign => Symbol::SubAssign,
             Symbol::SubAssign => Symbol::DivAssign,
@@ -183,10 +184,11 @@ impl Symbol {
             Symbol::Eqs => Symbol::NotEqs,
             Symbol::NotEqs => Symbol::Lt,
             Symbol::Lt => Symbol::LtEqs,
-            Symbol::LtEqs => Symbol::LeftShift,
-            Symbol::LeftShift => Symbol::Gt,
+            Symbol::LtEqs => Symbol::Gt,
             Symbol::Gt => Symbol::GtEqs,
-            Symbol::GtEqs => Symbol::RightShift,
+            Symbol::GtEqs => Symbol::Comma,
+            Symbol::Comma => Symbol::LeftShift,
+            Symbol::LeftShift => Symbol::RightShift,
             Symbol::RightShift => Symbol::Add,
             Symbol::Add => Symbol::Sub,
             Symbol::Sub => Symbol::Exp,
