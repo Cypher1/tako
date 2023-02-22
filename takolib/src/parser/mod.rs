@@ -66,10 +66,10 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 let _ = self.token();
                 Ok(())
             } else {
-                Err(TError::ExpectedToken(expected_token, Some(token), token.location(), vec![]))
+                Err(TError::ExpectedToken(expected_token, Some(token.kind), Some(token.location()), vec![]))
             }
         } else {
-            Err(TError::ExpectedToken(expected_token, None, token.location(), vec![]))
+            Err(TError::ExpectedToken(expected_token, None, None, vec![]))
         }
     }
 

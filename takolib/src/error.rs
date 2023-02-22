@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use crate::location::{Location, UserFacingLocation};
+use crate::parser::tokens::TokenType;
 use crate::utils::typed_index::TypedIndex;
 use thiserror::Error;
 
@@ -10,7 +11,7 @@ pub enum TError {
         error: String,
         return_code: i32,
     },
-    ExpectedToken(TokenType, Option<TokenType>, Location, Vec<String>),
+    ExpectedToken(TokenType, Option<TokenType>, Option<Location>, Vec<String>),
     ParseError {
         message: String,
         location: Option<Location>,
@@ -77,6 +78,7 @@ impl Error {
     ) -> Self {
         let location = match &source {
             TError::CppCompilerError { .. } => None,
+            TError::ExpectedToken (_expected, _got, location, _inside ) => location.as_ref(),
             TError::ParseError { location, .. } => location.as_ref(),
             TError::InternalError { location, .. } => location.as_ref(),
         };
@@ -104,7 +106,7 @@ impl std::fmt::Debug for Error {
                 f,
                 "call to C++ compiler failed with error code: {return_code}\n{error}"
             )?,
-            ExpectedToken(expected, got, location, inside) => write!("Expected a {expected:?} found a {got:?}, at {location} inside {inside:?}")?,
+            TError::ExpectedToken(expected, got, location, inside) => write!(f, "Expected a {expected:?} found a {got:?}, at {location:?} inside {inside:?}")?,
             TError::ParseError {
                 message,
                 location: _,
