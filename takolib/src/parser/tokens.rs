@@ -1,9 +1,9 @@
-use lazy_static::lazy_static;
-use std::collections::{HashSet, HashMap};
 use crate::error::TError;
 use crate::location::{IndexIntoFile, Location, SymbolLength};
 use crate::parser::semantics::BindingMode;
+use lazy_static::lazy_static;
 use log::debug;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 
 #[cfg(test)]
