@@ -144,7 +144,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             // Read implicit args...
             while Some(TokenType::Op(Symbol::Gt)) != self.peek_kind() {
                 bindings.push(self.binding_or_arg(&mut has_non_bind_args)?);
-                if let Err(_) = self.require(TokenType::Op(Symbol::Comma)) {
+                if self.require(TokenType::Op(Symbol::Comma)).is_err() {
                     break;
                 }
             }
@@ -157,7 +157,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             // Read args...
             while Some(TokenType::Op(Symbol::CloseParen)) != self.peek_kind() {
                 bindings.push(self.binding_or_arg(&mut has_non_bind_args)?);
-                if let Err(_) = self.require(TokenType::Op(Symbol::Comma)) {
+                if self.require(TokenType::Op(Symbol::Comma)).is_err() {
                     break;
                 }
             }
