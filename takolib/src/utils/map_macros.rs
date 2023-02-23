@@ -13,6 +13,20 @@ macro_rules! map(
 );
 
 #[macro_export]
+macro_rules! hash_set(
+    {} => {::std::collections::HashSet::new()};
+    { $($value:expr),* } => {
+        {
+            let mut m = ::std::collections::HashSet::new();
+            $(
+                m.insert($value);
+            )*
+            m
+        }
+     };
+);
+
+#[macro_export]
 macro_rules! set(
     {} => {::std::collections::BTreeSet::new()};
     { $($value:expr),* } => {

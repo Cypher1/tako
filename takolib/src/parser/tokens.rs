@@ -1,3 +1,5 @@
+use lazy_static::lazy_static;
+use std::collections::{HashSet, HashMap};
 use crate::error::TError;
 use crate::location::{IndexIntoFile, Location, SymbolLength};
 use crate::parser::semantics::BindingMode;
@@ -105,6 +107,98 @@ pub enum Symbol {
     Escape,
 }
 
+// TODO: Make lazy / single init.
+lazy_static! {
+    // Right associativity is the current default.
+    static ref LEFT_ASSOCIATIVE: HashSet<Symbol> = hash_set!{
+        Symbol::Add
+    };
+    static ref TIGHTER_THAN_MAP: HashMap<Symbol, Symbol> = map!{
+        Symbol::OpenParen => Symbol::OpenCurly,
+        Symbol::OpenCurly => Symbol::OpenBracket,
+        Symbol::OpenBracket => Symbol::Sequence,
+        Symbol::Sequence => Symbol::Assign,
+        Symbol::Assign => Symbol::AddAssign,
+        Symbol::AddAssign => Symbol::SubAssign,
+        Symbol::SubAssign => Symbol::DivAssign,
+        Symbol::DivAssign => Symbol::DivRoundingAssign,
+        Symbol::DivRoundingAssign => Symbol::MulAssign,
+        Symbol::MulAssign => Symbol::AndAssign,
+        Symbol::AndAssign => Symbol::OrAssign,
+        Symbol::OrAssign => Symbol::BitXorAssign,
+        Symbol::BitXorAssign => Symbol::LogicalAndAssign,
+        Symbol::LogicalAndAssign => Symbol::LogicalOrAssign,
+        Symbol::LogicalOrAssign => Symbol::ModuloAssign,
+        Symbol::ModuloAssign => Symbol::HasType,
+        Symbol::HasType => Symbol::LeftPipe,
+        Symbol::LeftPipe => Symbol::RightPipe,
+        Symbol::RightPipe => Symbol::Sigma,
+        Symbol::Sigma => Symbol::Lambda,
+        Symbol::Lambda => Symbol::Arrow,
+        Symbol::Arrow => Symbol::DoubleArrow,
+        Symbol::DoubleArrow => Symbol::Forall,
+        Symbol::Forall => Symbol::Pi,
+        Symbol::Pi => Symbol::Exists,
+        Symbol::Exists => Symbol::Eqs,
+        Symbol::Eqs => Symbol::NotEqs,
+        Symbol::NotEqs => Symbol::Lt,
+        Symbol::Lt => Symbol::LtEqs,
+        Symbol::LtEqs => Symbol::Gt,
+        Symbol::Gt => Symbol::GtEqs,
+        Symbol::GtEqs => Symbol::Comma,
+        Symbol::Comma => Symbol::LeftShift,
+        Symbol::LeftShift => Symbol::RightShift,
+        Symbol::RightShift => Symbol::Add,
+        Symbol::Add => Symbol::Sub,
+        Symbol::Sub => Symbol::Exp,
+        Symbol::Exp => Symbol::Div,
+        Symbol::Div => Symbol::DivRounding,
+        Symbol::DivRounding => Symbol::Mul,
+        Symbol::Mul => Symbol::And,
+        Symbol::And => Symbol::Or,
+        Symbol::Or => Symbol::BitNot,
+        Symbol::BitNot => Symbol::BitXor,
+        Symbol::BitXor => Symbol::LogicalNot,
+        Symbol::LogicalNot => Symbol::LogicalAnd,
+        Symbol::LogicalAnd => Symbol::LogicalOr,
+        Symbol::LogicalOr => Symbol::Modulo,
+        Symbol::Modulo => Symbol::GetAddress,
+        Symbol::GetAddress => Symbol::Try,
+        Symbol::Try => Symbol::Dot,
+        Symbol::Dot => Symbol::Range,
+        Symbol::Range => Symbol::Spread,
+        Symbol::Spread => Symbol::Escape
+    };
+
+    static ref TIGHTER_THAN: HashSet<(Symbol, Symbol)> = {
+        let mut tighter_than = hash_set!{};
+        for (k, v) in TIGHTER_THAN_MAP.iter() {
+            tighter_than.insert((*k, *v));
+        }
+        loop {
+            let mut tighter_than_news = hash_set!{};
+            for (a, b1) in &tighter_than {
+                for (b2, c) in &tighter_than {
+                    if b1 == b2 {
+                        if a == c {
+                            panic!("Cycle in transitive closure of precendence pairs: {a:?} {b1:?} {c:?}.");
+                        }
+                        let transitive = (*a, *c);
+                        if !tighter_than.contains(&transitive) {
+                            tighter_than_news.insert(transitive);
+                        }
+                    }
+                }
+            }
+            if tighter_than_news.is_empty() {
+                break;
+            }
+            tighter_than.extend(tighter_than_news);
+        }
+        tighter_than
+    };
+}
+
 impl Symbol {
     pub fn binding(&self) -> OpBinding {
         match self {
@@ -125,17 +219,11 @@ impl Symbol {
         }
     }
 
-    // For const eval.
-    // TODO: Store in a const map
-    // TODO: Check there are no cycles.
     pub fn is_more_tight(&self, other: Symbol) -> bool {
         if *self == other {
-            true
-        } else if let Some(tighter) = other.next_more_tight() {
-            self.is_more_tight(tighter)
-        } else {
-            false
+            return LEFT_ASSOCIATIVE.contains(self);
         }
+        TIGHTER_THAN.contains(&(*self, other))
     }
 
     /*
@@ -154,67 +242,7 @@ impl Symbol {
         unary operators: just as usual
     */
     pub fn next_more_tight(&self) -> Option<Symbol> {
-        let next = match self {
-            Symbol::OpenParen => Symbol::OpenCurly,
-            Symbol::OpenCurly => Symbol::OpenBracket,
-            Symbol::OpenBracket => Symbol::Sequence,
-            Symbol::Sequence => Symbol::Assign,
-            Symbol::Assign => Symbol::AddAssign,
-            Symbol::AddAssign => Symbol::SubAssign,
-            Symbol::SubAssign => Symbol::DivAssign,
-            Symbol::DivAssign => Symbol::DivRoundingAssign,
-            Symbol::DivRoundingAssign => Symbol::MulAssign,
-            Symbol::MulAssign => Symbol::AndAssign,
-            Symbol::AndAssign => Symbol::OrAssign,
-            Symbol::OrAssign => Symbol::BitXorAssign,
-            Symbol::BitXorAssign => Symbol::LogicalAndAssign,
-            Symbol::LogicalAndAssign => Symbol::LogicalOrAssign,
-            Symbol::LogicalOrAssign => Symbol::ModuloAssign,
-            Symbol::ModuloAssign => Symbol::HasType,
-            Symbol::HasType => Symbol::LeftPipe,
-            Symbol::LeftPipe => Symbol::RightPipe,
-            Symbol::RightPipe => Symbol::Sigma,
-            Symbol::Sigma => Symbol::Lambda,
-            Symbol::Lambda => Symbol::Arrow,
-            Symbol::Arrow => Symbol::DoubleArrow,
-            Symbol::DoubleArrow => Symbol::Forall,
-            Symbol::Forall => Symbol::Pi,
-            Symbol::Pi => Symbol::Exists,
-            Symbol::Exists => Symbol::Eqs,
-            Symbol::Eqs => Symbol::NotEqs,
-            Symbol::NotEqs => Symbol::Lt,
-            Symbol::Lt => Symbol::LtEqs,
-            Symbol::LtEqs => Symbol::Gt,
-            Symbol::Gt => Symbol::GtEqs,
-            Symbol::GtEqs => Symbol::Comma,
-            Symbol::Comma => Symbol::LeftShift,
-            Symbol::LeftShift => Symbol::RightShift,
-            Symbol::RightShift => Symbol::Add,
-            Symbol::Add => Symbol::Sub,
-            Symbol::Sub => Symbol::Exp,
-            Symbol::Exp => Symbol::Div,
-            Symbol::Div => Symbol::DivRounding,
-            Symbol::DivRounding => Symbol::Mul,
-            Symbol::Mul => Symbol::And,
-            Symbol::And => Symbol::Or,
-            Symbol::Or => Symbol::BitNot,
-            Symbol::BitNot => Symbol::BitXor,
-            Symbol::BitXor => Symbol::LogicalNot,
-            Symbol::LogicalNot => Symbol::LogicalAnd,
-            Symbol::LogicalAnd => Symbol::LogicalOr,
-            Symbol::LogicalOr => Symbol::Modulo,
-            Symbol::Modulo => Symbol::GetAddress,
-            Symbol::GetAddress => Symbol::Try,
-            Symbol::Try => Symbol::Dot,
-            Symbol::Dot => Symbol::Range,
-            Symbol::Range => Symbol::Spread,
-            Symbol::Spread => Symbol::Escape,
-            // Done?
-            Symbol::Escape | Symbol::CloseBracket | Symbol::CloseCurly | Symbol::CloseParen => {
-                return None
-            }
-        };
-        Some(next)
+        TIGHTER_THAN_MAP.get(self).copied()
     }
 }
 

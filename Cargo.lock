@@ -1741,6 +1741,7 @@ dependencies = [
  "futures",
  "fxhash",
  "inkwell",
+ "lazy_static",
  "log",
  "num-traits",
  "pretty_assertions",

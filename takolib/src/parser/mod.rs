@@ -168,7 +168,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             None
         };
         if let Some(assignment) = self.peek_assignment() {
-            if !binding.is_more_tight(assignment) {
+            if binding.is_more_tight(assignment) {
                 let _ = self.token();
                 let op = assign_op(assignment);
                 let mut implementation = self.expr(assignment)?;
@@ -318,11 +318,11 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 debug!("Closing Expr: {left:?} sym: {sym:?}");
                 break;
             }
-            if binding.is_more_tight(sym) {
-                debug!("Back up Expr: {left:?} sym: {sym:?}");
+            if sym.is_more_tight(binding) {
+                debug!("Back up Expr: {left:?} sym: {sym:?} not inside {binding:?}");
                 break;
             }
-            debug!("Continuing Expr: {left:?} sym: {sym:?}");
+            debug!("Continuing Expr: {left:?} sym: {sym:?} inside {binding:?}");
             let token = self.token().expect("Internal error");
             let location = token.location();
             let right = self.expr(sym)?;
