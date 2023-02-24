@@ -148,7 +148,6 @@ impl<'ast> fmt::Display for PrintNode<'ast> {
             Op(node) => {
                 let (_node_id, node) = self.ast.get(*node);
                 let mut first = true;
-                write!(f, "(")?;
                 for arg in &node.args {
                     // TODO: Postfix and infix ops?
                     if !first || node.args.len() == 1 {
@@ -156,9 +155,19 @@ impl<'ast> fmt::Display for PrintNode<'ast> {
                     } else {
                         first = false;
                     }
+                    // TODO: Cancel out brackets.
+                    let needs_parens = {
+                        let node = self.ast.get(*arg);
+                        matches!(node.id, NodeData::Op(_))
+                    };
+                    if needs_parens {
+                        write!(f, "(")?;
+                    }
                     write!(f, "{}", self.child(*arg))?;
+                    if needs_parens {
+                        write!(f, ")")?;
+                    }
                 }
-                write!(f, ")")?;
             }
         }
         self.print_ty(f, &mut ty)?;
@@ -197,28 +206,28 @@ mod tests {
     #[test]
     fn round_trip_op_ident_and_lit() -> Result<(), TError> {
         let out = setup("x+1")?;
-        assert_eq!(out, "(x+1)");
+        assert_eq!(out, "x+1");
         Ok(())
     }
 
     #[test]
     fn round_trip_mul_add() -> Result<(), TError> {
         let out = setup("1*2+3")?;
-        assert_eq!(out, "((1*2)+3)");
+        assert_eq!(out, "(1*2)+3");
         Ok(())
     }
 
     #[test]
     fn round_trip_add_add() -> Result<(), TError> {
         let out = setup("1+2+3")?;
-        assert_eq!(out, "((1+2)+3)");
+        assert_eq!(out, "(1+2)+3");
         Ok(())
     }
 
     #[test]
     fn round_trip_add_mul() -> Result<(), TError> {
         let out = setup("1+2*3")?;
-        assert_eq!(out, "(1+(2*3))");
+        assert_eq!(out, "1+(2*3)");
         Ok(())
     }
 
