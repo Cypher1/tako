@@ -5,7 +5,7 @@ use crate::error::TError;
 use crate::location::Location;
 use crate::string_interner::Identifier;
 use crate::{ast::*, parser::semantics::Literal};
-use log::{debug, trace};
+use log::{trace, trace};
 use semantics::BindingMode;
 use std::path::Path;
 use tokens::{assign_op, binding_mode_operation, is_assign, OpBinding, Symbol, Token, TokenType};
@@ -87,23 +87,23 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                     self.token(); // Consume the mode.
                     mode
                 } else {
-                    debug!("Wrong op for binding");
+                    trace!("Wrong op for binding");
                     return Ok(None);
                 }
             } else {
                 // Named arg!
-                debug!("Named arg?");
+                trace!("Named arg?");
                 BindingMode::None
             }
         } else {
-            debug!("Unexpected eof when looking for binding");
+            trace!("Unexpected eof when looking for binding");
             return Ok(None);
         };
         let name: Identifier = if let Some(TokenType::Ident) = self.peek_kind() {
             let tok = self.token().expect("Internal error");
             self.name(tok)
         } else {
-            debug!("No name found for binding");
+            trace!("No name found for binding");
             return Ok(None);
         };
         let ty = if let Some(Symbol::HasType) = self.peek_kind_op() {
@@ -117,18 +117,18 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
 
     fn binding_or_arg(&mut self, has_non_arg_values: &mut bool) -> Result<BindingOrValue, TError> {
         if let Some(binding) = self.binding()? {
-            debug!("Binding: {binding:?}");
+            trace!("Binding: {binding:?}");
             return Ok(BindingOrValue::Binding(binding));
         }
         *has_non_arg_values = true;
         let value = self.expr(Symbol::Comma)?;
-        debug!("Arg value: {value:?}");
+        trace!("Arg value: {value:?}");
         Ok(BindingOrValue::Value(value))
     }
 
     fn call_or_definition(&mut self, name: Token, binding: Symbol) -> Result<NodeId, TError> {
         let name_id = self.name(name);
-        debug!(
+        trace!(
             "Call or definition: {name:?}: {:?}",
             self.ast.string_interner.get_str(name_id)
         );
@@ -138,7 +138,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         let mut has_args = false;
         let mut has_non_bind_args = false; // i.e. this should be a definition...
         if let Some(TokenType::Op(Symbol::Lt)) = self.peek_kind() {
-            debug!("has implicit arguments");
+            trace!("has implicit arguments");
             let _ = self.token();
             _has_implicit_args = true;
             // Read implicit args...
@@ -151,7 +151,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             self.require(TokenType::Op(Symbol::Gt))?;
         }
         if let Some(TokenType::Op(Symbol::OpenParen)) = self.peek_kind() {
-            debug!("has arguments");
+            trace!("has arguments");
             let _ = self.token();
             has_args = true;
             // Read args...
@@ -164,10 +164,10 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             self.require(TokenType::Op(Symbol::CloseParen))?;
         }
         let ty = if let Some(Symbol::HasType) = self.peek_kind_op() {
-            debug!("HasType started");
+            trace!("HasType started");
             let _ = self.token().expect("Internal error");
             let ty = self.expr(Symbol::HasType)?;
-            debug!("HasType finished");
+            trace!("HasType finished");
             Some(ty)
         } else {
             None
@@ -204,7 +204,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 }
                 let bindings = if has_args { Some(only_bindings) } else { None };
                 // TODO: USE bindings
-                debug!("Add definition");
+                trace!("Add definition");
                 if has_non_bind_args {
                     todo!("Concern");
                 }
@@ -225,7 +225,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         if has_args {
             let inner = self.identifier(name, location);
             // TODO: USE bindings
-            debug!("Add call");
+            trace!("Add call");
             let call = self.ast.add_call(
                 Call {
                     inner,
@@ -238,7 +238,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             }
             return Ok(call);
         }
-        debug!("Add ident");
+        trace!("Add ident");
         let ident = self.identifier(name, location);
         if let Some(ty) = ty {
             return Ok(self.ast.add_annotation(ident, ty));
@@ -253,7 +253,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             todo!("No token");
         };
         let location = token.location();
-        debug!("Expr: {token:?} (binding {binding:?})");
+        trace!("Expr: {token:?} (binding {binding:?})");
         let mut left = match self.get_kind(&token) {
             TokenType::Op(Symbol::OpenBracket) => {
                 let _token = self.token().expect("Expected a identifier");
@@ -278,7 +278,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             }
             TokenType::Op(symbol) => {
                 if let Some(binding) = self.binding()? {
-                    debug!("Binding? {binding:?}");
+                    trace!("Binding? {binding:?}");
                     self.ast.add_binding(binding, location)
                 } else {
                     let _ = self.token();
@@ -320,14 +320,18 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         trace!("Maybe continue: {left:?} (binding {binding:?})");
         while let Some(TokenType::Op(sym)) = self.peek_kind() {
             if sym.binding() == OpBinding::Close {
-                debug!("Closing Expr: {left:?} sym: {sym:?}");
+                trace!("Closing Expr: {left:?} sym: {sym:?}");
                 break;
             }
             if sym.is_more_tight(binding) {
-                debug!("Back up Expr: {left:?} sym: {sym:?} not inside {binding:?}");
+                trace!("Back up Expr: {left:?} binding: {binding:?} inside sym: {sym:?}");
                 break;
             }
-            debug!("Continuing Expr: {left:?} sym: {sym:?} inside {binding:?}");
+            if !binding.is_more_tight(sym) {
+                trace!("Back up Expr: {left:?} sym: {sym:?} not inside binding: {binding:?}");
+                break;
+            }
+            trace!("Continuing Expr: {left:?} sym: {sym:?} inside {binding:?}");
             let token = self.token().expect("Internal error");
             let location = token.location();
             let right = self.expr(sym)?;
@@ -340,14 +344,14 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 location,
             );
         }
-        debug!("Expr done: {}", self.ast.pretty(left));
+        trace!("Expr done: {}", self.ast.pretty(left));
         Ok(left)
     }
 
     fn name(&mut self, res: Token) -> Identifier {
         assert!(res.kind == TokenType::Ident);
         let name = res.get_src(self.contents);
-        debug!("Name: {name}");
+        trace!("Name: {name}");
         self.ast
             .string_interner
             .register_str_by_loc(name, res.location().start)
@@ -356,7 +360,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
     fn identifier(&mut self, res: Token, location: Location) -> NodeId {
         assert!(res.kind == TokenType::Ident);
         let name = res.get_src(self.contents);
-        debug!("Identifier: {name}");
+        trace!("Identifier: {name}");
         let name = self.ast.string_interner.register_str(name);
         self.ast.add_identifier(name, location)
     }
@@ -364,7 +368,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
     fn atom(&mut self, res: Token, location: Location) -> NodeId {
         assert!(res.kind == TokenType::Atom);
         let name = res.get_src(self.contents);
-        debug!("Atom: {name}");
+        trace!("Atom: {name}");
         let name = self.ast.string_interner.register_str(name);
         self.ast.add_atom(Atom { name }, location)
     }
@@ -381,7 +385,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
 }
 
 pub fn parse(filepath: &Path, contents: &str, tokens: &[Token]) -> Result<Ast, TError> {
-    debug!("Parse {}: {:?}", filepath.display(), &tokens);
+    trace!("Parse {}: {:?}", filepath.display(), &tokens);
     let mut state = ParseState {
         contents,
         ast: Ast::new(filepath.to_path_buf()),
