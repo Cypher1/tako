@@ -1,7 +1,7 @@
 #[macro_export]
 macro_rules! map(
     {} => {::std::collections::HashMap::new()};
-    { $($key:expr => $value:expr),* } => {
+    { $($key:expr => $value:expr),* $(,)? } => {
         {
             let mut m = ::std::collections::HashMap::new();
             $(
@@ -15,7 +15,7 @@ macro_rules! map(
 #[macro_export]
 macro_rules! hash_set(
     {} => {::std::collections::HashSet::new()};
-    { $($value:expr),* } => {
+    { $($value:expr),* $(,)? } => {
         {
             let mut m = ::std::collections::HashSet::new();
             $(
@@ -29,7 +29,7 @@ macro_rules! hash_set(
 #[macro_export]
 macro_rules! set(
     {} => {::std::collections::BTreeSet::new()};
-    { $($value:expr),* } => {
+    { $($value:expr),* $(,)? } => {
         {
             let mut m = ::std::collections::BTreeSet::new();
             $(
@@ -43,7 +43,7 @@ macro_rules! set(
 #[macro_export]
 macro_rules! dict(
     {} => {::std::collections::BTreeSet::new()};
-    { $($key:expr => $value:expr),* } => {
+    { $($key:expr => $value:expr),* $(,)? } => {
         {
             let mut m = ::std::collections::BTreeSet::new();
             $(
@@ -57,7 +57,7 @@ macro_rules! dict(
 #[macro_export]
 macro_rules! rec(
     {} => {$crate::primitives::Val::Struct(::std::vec::Vec::new())};
-    { $($key:expr => $value:expr),* } => {
+    { $($key:expr => $value:expr),* $(,)? } => {
         {
             let m = vec![
             $(

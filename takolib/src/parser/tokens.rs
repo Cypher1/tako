@@ -111,7 +111,10 @@ pub enum Symbol {
 lazy_static! {
     // Right associativity is the current default.
     static ref LEFT_ASSOCIATIVE: HashSet<Symbol> = hash_set!{
-        Symbol::Add
+        Symbol::Add,
+        Symbol::Sub,
+        Symbol::Div,
+        Symbol::Mul,
     };
     static ref TIGHTER_THAN_MAP: HashMap<Symbol, Symbol> = map!{
         Symbol::OpenParen => Symbol::OpenCurly,
@@ -140,11 +143,11 @@ lazy_static! {
         Symbol::Forall => Symbol::Pi,
         Symbol::Pi => Symbol::Exists,
         Symbol::Exists => Symbol::Eqs,
-        Symbol::Eqs => Symbol::NotEqs,
-        Symbol::NotEqs => Symbol::Lt,
-        Symbol::Lt => Symbol::LtEqs,
-        Symbol::LtEqs => Symbol::Gt,
-        Symbol::Gt => Symbol::GtEqs,
+        Symbol::Eqs => Symbol::Comma,
+        Symbol::NotEqs => Symbol::Comma,
+        Symbol::Lt => Symbol::Comma,
+        Symbol::LtEqs => Symbol::Comma,
+        Symbol::Gt => Symbol::Comma,
         Symbol::GtEqs => Symbol::Comma,
         Symbol::Comma => Symbol::LeftShift,
         Symbol::LeftShift => Symbol::RightShift,
