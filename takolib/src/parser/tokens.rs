@@ -109,100 +109,125 @@ pub enum Symbol {
 
 // TODO: Make lazy / single init.
 lazy_static! {
-    // Right associativity is the current default.
-    static ref LEFT_ASSOCIATIVE: HashSet<Symbol> = hash_set!{
+    // Left associativity is the current default.
+    static ref RIGHT_ASSOCIATIVE: HashSet<Symbol> = hash_set!{
+        Symbol::Exp,
+    };
+    static ref ASSOCIATIVE: HashSet<Symbol> = hash_set!{
         Symbol::Add,
-        Symbol::Sub,
-        Symbol::Div,
         Symbol::Mul,
     };
-    static ref TIGHTER_THAN_MAP: HashMap<Symbol, Symbol> = map!{
-        Symbol::OpenParen => Symbol::OpenCurly,
-        Symbol::OpenCurly => Symbol::OpenBracket,
-        Symbol::OpenBracket => Symbol::Sequence,
-        Symbol::Sequence => Symbol::Assign,
-        Symbol::Assign => Symbol::AddAssign,
-        Symbol::AddAssign => Symbol::SubAssign,
-        Symbol::SubAssign => Symbol::DivAssign,
-        Symbol::DivAssign => Symbol::DivRoundingAssign,
-        Symbol::DivRoundingAssign => Symbol::MulAssign,
-        Symbol::MulAssign => Symbol::AndAssign,
-        Symbol::AndAssign => Symbol::OrAssign,
-        Symbol::OrAssign => Symbol::BitXorAssign,
-        Symbol::BitXorAssign => Symbol::LogicalAndAssign,
-        Symbol::LogicalAndAssign => Symbol::LogicalOrAssign,
-        Symbol::LogicalOrAssign => Symbol::ModuloAssign,
-        Symbol::ModuloAssign => Symbol::HasType,
-        Symbol::HasType => Symbol::LeftPipe,
-        Symbol::LeftPipe => Symbol::RightPipe,
-        Symbol::RightPipe => Symbol::Sigma,
-        Symbol::Sigma => Symbol::Lambda,
-        Symbol::Lambda => Symbol::Arrow,
-        Symbol::Arrow => Symbol::DoubleArrow,
-        Symbol::DoubleArrow => Symbol::Forall,
-        Symbol::Forall => Symbol::Pi,
-        Symbol::Pi => Symbol::Exists,
-        Symbol::Exists => Symbol::Eqs,
-        Symbol::Eqs => Symbol::Comma,
-        Symbol::NotEqs => Symbol::Comma,
-        Symbol::Lt => Symbol::Comma,
-        Symbol::LtEqs => Symbol::Comma,
-        Symbol::Gt => Symbol::Comma,
-        Symbol::GtEqs => Symbol::Comma,
-        Symbol::Comma => Symbol::LeftShift,
-        Symbol::LeftShift => Symbol::RightShift,
-        Symbol::RightShift => Symbol::Add,
-        Symbol::Add => Symbol::Sub,
-        Symbol::Sub => Symbol::Exp,
-        Symbol::Exp => Symbol::Div,
-        Symbol::Div => Symbol::DivRounding,
-        Symbol::DivRounding => Symbol::Mul,
-        Symbol::Mul => Symbol::And,
-        Symbol::And => Symbol::Or,
-        Symbol::Or => Symbol::BitNot,
-        Symbol::BitNot => Symbol::BitXor,
-        Symbol::BitXor => Symbol::LogicalNot,
-        Symbol::LogicalNot => Symbol::LogicalAnd,
-        Symbol::LogicalAnd => Symbol::LogicalOr,
-        Symbol::LogicalOr => Symbol::Modulo,
-        Symbol::Modulo => Symbol::GetAddress,
-        Symbol::GetAddress => Symbol::Try,
-        Symbol::Try => Symbol::Dot,
-        Symbol::Dot => Symbol::Range,
-        Symbol::Range => Symbol::Spread,
-        Symbol::Spread => Symbol::Escape
+
+    /*
+    Source: https://www.foonathan.net/2017/07/operator-precedence/
+
+    Inside the categories the relative precedence of the operators is as follows:
+
+        logical operators: ! > &&,||, but not mixed && and || chains
+
+        comparison operators: no chaining at all
+
+        mathematical operators: unary +,- > *,/ > +,-, with the usual associativity
+
+        bitwise operators: unary ~ before the binary operators, but again no mixed chaining of &, | and ^ and no chaining of the shift operators
+
+        unary operators: just as usual
+    */
+    static ref LOOSER_THAN_MAP: HashMap<Symbol, Vec<Symbol>> = map!{
+        Symbol::OpenParen => vec![Symbol::OpenCurly],
+        Symbol::OpenCurly => vec![Symbol::OpenBracket],
+        Symbol::OpenBracket => vec![Symbol::Sequence],
+        Symbol::Sequence => vec![Symbol::Assign],
+        Symbol::Assign => vec![Symbol::AddAssign],
+        Symbol::AddAssign => vec![Symbol::SubAssign],
+        Symbol::SubAssign => vec![Symbol::DivAssign],
+        Symbol::DivAssign => vec![Symbol::DivRoundingAssign],
+        Symbol::DivRoundingAssign => vec![Symbol::MulAssign],
+        Symbol::MulAssign => vec![Symbol::AndAssign],
+        Symbol::AndAssign => vec![Symbol::OrAssign],
+        Symbol::OrAssign => vec![Symbol::BitXorAssign],
+        Symbol::BitXorAssign => vec![Symbol::LogicalAndAssign],
+        Symbol::LogicalAndAssign => vec![Symbol::LogicalOrAssign],
+        Symbol::LogicalOrAssign => vec![Symbol::ModuloAssign],
+        Symbol::ModuloAssign => vec![Symbol::HasType],
+        Symbol::HasType => vec![Symbol::LeftPipe],
+        Symbol::LeftPipe => vec![Symbol::RightPipe],
+        Symbol::RightPipe => vec![Symbol::Sigma],
+        Symbol::Sigma => vec![Symbol::Lambda],
+        Symbol::Lambda => vec![Symbol::Arrow],
+        Symbol::Arrow => vec![Symbol::DoubleArrow],
+        Symbol::DoubleArrow => vec![Symbol::Forall],
+        Symbol::Forall => vec![Symbol::Pi],
+        Symbol::Pi => vec![Symbol::Exists],
+        Symbol::Exists => vec![
+            Symbol::Eqs,
+            Symbol::NotEqs,
+            Symbol::Lt,
+            Symbol::LtEqs,
+            Symbol::Gt,
+            Symbol::GtEqs,
+        ],
+        Symbol::Eqs => vec![Symbol::Comma],
+        Symbol::NotEqs => vec![Symbol::Comma],
+        Symbol::Lt => vec![Symbol::Comma],
+        Symbol::LtEqs => vec![Symbol::Comma],
+        Symbol::Gt => vec![Symbol::Comma],
+        Symbol::GtEqs => vec![Symbol::Comma],
+        Symbol::Comma => vec![Symbol::LeftShift, Symbol::RightShift],
+        Symbol::LeftShift => vec![Symbol::RightShift],
+        Symbol::RightShift => vec![Symbol::Add],
+        Symbol::Add => vec![Symbol::Sub],
+        Symbol::Sub => vec![Symbol::Exp],
+        Symbol::Exp => vec![Symbol::Div],
+        Symbol::Div => vec![Symbol::DivRounding],
+        Symbol::DivRounding => vec![Symbol::Mul],
+        Symbol::Mul => vec![Symbol::And],
+        Symbol::And => vec![Symbol::Or, Symbol::BitNot],
+        Symbol::Or => vec![Symbol::And, Symbol::BitNot],
+        Symbol::BitNot => vec![Symbol::BitXor],
+        Symbol::BitXor => vec![Symbol::LogicalNot],
+        Symbol::LogicalNot => vec![Symbol::LogicalAnd],
+        Symbol::LogicalAnd => vec![Symbol::LogicalOr],
+        Symbol::LogicalOr => vec![Symbol::Modulo],
+        Symbol::Modulo => vec![Symbol::GetAddress],
+        Symbol::GetAddress => vec![Symbol::Try],
+        Symbol::Try => vec![Symbol::Dot],
+        Symbol::Dot => vec![Symbol::Range],
+        Symbol::Range => vec![Symbol::Spread],
+        Symbol::Spread => vec![Symbol::Escape],
     };
 
-    static ref TIGHTER_THAN: HashSet<(Symbol, Symbol)> = {
-        let mut tighter_than = hash_set!{};
-        for (k, v) in TIGHTER_THAN_MAP.iter() {
-            tighter_than.insert((*k, *v));
+    static ref LOOSER_THAN: HashSet<(Symbol, Symbol)> = {
+        let mut looser_than = hash_set!{};
+        for (k, vs) in LOOSER_THAN_MAP.iter() {
+            for v in vs {
+                looser_than.insert((*k, *v));
+            }
         }
         loop {
-            let mut tighter_than_news = hash_set!{};
-            for (a, b1) in &tighter_than {
-                for (b2, c) in &tighter_than {
-                    if b1 == b2 {
-                        if a == c {
-                            panic!("Cycle in transitive closure of precendence pairs: {a:?} {b1:?} {c:?}.");
-                        }
-                        let transitive = (*a, *c);
-                        if !tighter_than.contains(&transitive) {
-                            tighter_than_news.insert(transitive);
-                        }
+            let mut looser_than_news = hash_set!{};
+            for (a, b1) in &looser_than {
+                for (b2, c) in &looser_than {
+                    let transitive = (*a, *c);
+                    if b1 == b2 && !looser_than.contains(&transitive) {
+                        looser_than_news.insert(transitive);
                     }
                 }
             }
-            if tighter_than_news.is_empty() {
+            if looser_than_news.is_empty() {
                 break;
             }
-            tighter_than.extend(tighter_than_news);
+            looser_than.extend(looser_than_news);
         }
-        tighter_than
+        looser_than
     };
 }
 
 impl Symbol {
+    pub fn is_associative(&self) -> bool {
+        ASSOCIATIVE.contains(self)
+    }
+
     pub fn binding(&self) -> OpBinding {
         match self {
             Symbol::Escape
@@ -222,30 +247,11 @@ impl Symbol {
         }
     }
 
-    pub fn is_more_tight(&self, other: Symbol) -> bool {
+    pub fn is_looser(&self, other: Symbol) -> bool {
         if *self == other {
-            return LEFT_ASSOCIATIVE.contains(self);
+            return !RIGHT_ASSOCIATIVE.contains(self);
         }
-        TIGHTER_THAN.contains(&(*self, other))
-    }
-
-    /*
-    Source: https://www.foonathan.net/2017/07/operator-precedence/
-
-    Inside the categories the relative precedence of the operators is as follows:
-
-        logical operators: ! > &&,||, but not mixed && and || chains
-
-        comparison operators: no chaining at all
-
-        mathematical operators: unary +,- > *,/ > +,-, with the usual associativity
-
-        bitwise operators: unary ~ before the binary operators, but again no mixed chaining of &, | and ^ and no chaining of the shift operators
-
-        unary operators: just as usual
-    */
-    pub fn next_more_tight(&self) -> Option<Symbol> {
-        TIGHTER_THAN_MAP.get(self).copied()
+        LOOSER_THAN.contains(&(*self, other))
     }
 }
 

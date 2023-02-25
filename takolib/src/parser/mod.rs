@@ -5,7 +5,7 @@ use crate::error::TError;
 use crate::location::Location;
 use crate::string_interner::Identifier;
 use crate::{ast::*, parser::semantics::Literal};
-use log::{trace, trace};
+use log::trace;
 use semantics::BindingMode;
 use std::path::Path;
 use tokens::{assign_op, binding_mode_operation, is_assign, OpBinding, Symbol, Token, TokenType};
@@ -173,7 +173,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             None
         };
         if let Some(assignment) = self.peek_assignment() {
-            if binding.is_more_tight(assignment) {
+            if binding.is_looser(assignment) {
                 let _ = self.token();
                 let op = assign_op(assignment);
                 let mut implementation = self.expr(assignment)?;
@@ -323,12 +323,14 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 trace!("Closing Expr: {left:?} sym: {sym:?}");
                 break;
             }
-            if sym.is_more_tight(binding) {
-                trace!("Back up Expr: {left:?} binding: {binding:?} inside sym: {sym:?}");
-                break;
+            if (sym != binding || !binding.is_associative()) && sym.is_looser(binding) && binding.is_looser(sym) {
+                // If both can be inside the other
+                // and theyre not associative...
+                // then this is ambiguous and needs parens.
+                todo!("Ambiguous expression: {left:?} sym: {sym:?} inside binding: {binding:?}");
             }
-            if !binding.is_more_tight(sym) {
-                trace!("Back up Expr: {left:?} sym: {sym:?} not inside binding: {binding:?}");
+            if sym.is_looser(binding) {
+                trace!("Back up Expr: {left:?} binding: {binding:?} inside sym: {sym:?}");
                 break;
             }
             trace!("Continuing Expr: {left:?} sym: {sym:?} inside {binding:?}");
@@ -706,13 +708,13 @@ pub mod tests {
     }
 
     #[test]
-    // #[should_panic] // TODO(errors): Implement!
+    #[should_panic] // TODO(errors): Implement!
     fn parse_operator_precedence_disallowed1() {
         setup("a & b + c").expect("Disallowed syntax");
     }
 
     #[test]
-    // #[should_panic] // TODO(errors): Implement!
+    #[should_panic] // TODO(errors): Implement!
     fn parse_operator_precedence_disallowed2() {
         setup("a << b + 1").expect("Disallowed syntax");
     }
