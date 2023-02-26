@@ -149,8 +149,7 @@ lazy_static! {
         Symbol::BitXorAssign => vec![Symbol::LogicalAndAssign],
         Symbol::LogicalAndAssign => vec![Symbol::LogicalOrAssign],
         Symbol::LogicalOrAssign => vec![Symbol::ModuloAssign],
-        Symbol::ModuloAssign => vec![Symbol::HasType],
-        Symbol::HasType => vec![Symbol::LeftPipe],
+        Symbol::ModuloAssign => vec![Symbol::LeftPipe],
         Symbol::LeftPipe => vec![Symbol::RightPipe],
         Symbol::RightPipe => vec![Symbol::Sigma],
         Symbol::Sigma => vec![Symbol::Lambda],
@@ -159,7 +158,8 @@ lazy_static! {
         Symbol::DoubleArrow => vec![Symbol::Forall],
         Symbol::Forall => vec![Symbol::Pi],
         Symbol::Pi => vec![Symbol::Exists],
-        Symbol::Exists => vec![
+        Symbol::Exists => vec![Symbol::HasType],
+        Symbol::HasType => vec![
             Symbol::Eqs,
             Symbol::NotEqs,
             Symbol::Lt,

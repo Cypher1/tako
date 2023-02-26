@@ -256,30 +256,33 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         trace!("Expr: {token:?} (binding {binding:?})");
         let mut left = match self.get_kind(&token) {
             TokenType::Op(Symbol::OpenBracket) => {
-                let _token = self.token().expect("Expected a identifier");
+                let _token = self.token().expect("Expected a open paren");
+                // TODO: Support tuples.
                 // Tuple, parenthesized expr... etc.
                 let left = self.expr(Symbol::Sequence)?;
                 self.require(TokenType::Op(Symbol::CloseBracket))?;
                 left
             }
             TokenType::Op(Symbol::OpenCurly) => {
-                let _token = self.token().expect("Expected a identifier");
+                let _token = self.token().expect("Expected a open curly");
+                // TODO: Support sequence&dictionary syntax.
                 // Tuple, parenthesized expr... etc.
                 let left = self.expr(Symbol::Sequence)?;
                 self.require(TokenType::Op(Symbol::CloseCurly))?;
                 left
             }
             TokenType::Op(Symbol::OpenParen) => {
-                let _token = self.token().expect("Expected a identifier");
+                let _token = self.token().expect("Expected a open brace");
+                // TODO: Support list syntax.
                 // Tuple, parenthesized expr... etc.
                 let left = self.expr(Symbol::Sequence)?;
                 self.require(TokenType::Op(Symbol::CloseParen))?;
                 left
             }
             TokenType::Op(symbol) => {
-                if let Some(binding) = self.binding()? {
-                    trace!("Binding? {binding:?}");
-                    self.ast.add_binding(binding, location)
+                if let Some(def_binding) = self.binding()? {
+                    trace!("Binding? {def_binding:?}");
+                    self.ast.add_binding(def_binding, location)
                 } else {
                     let _ = self.token();
                     match symbol.binding() {
@@ -331,6 +334,10 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             }
             if sym.is_looser(binding) {
                 trace!("Back up Expr: {left:?} binding: {binding:?} inside sym: {sym:?}");
+                break;
+            }
+            if !binding.is_looser(sym) {
+                trace!("Back up Expr: {left:?} binding: {binding:?} not inside sym: {sym:?}");
                 break;
             }
             trace!("Continuing Expr: {left:?} sym: {sym:?} inside {binding:?}");
