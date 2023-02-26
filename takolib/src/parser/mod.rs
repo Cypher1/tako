@@ -340,7 +340,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 trace!("Back up Expr: {left:?} binding: {binding:?} not inside sym: {sym:?}");
                 break;
             }
-            trace!("Continuing Expr: {left:?} sym: {sym:?} inside {binding:?}");
+            trace!("Continuing Expr: {left:?} sym: {sym:?} inside binding: {binding:?}");
             let token = self.token().expect("Internal error");
             let location = token.location();
             let right = self.expr(sym)?;
