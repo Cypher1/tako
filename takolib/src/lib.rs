@@ -4,16 +4,17 @@
 pub mod utils;
 
 pub mod ast;
+pub mod backend;
 pub mod compiler;
 pub mod error;
 pub mod interpreter;
 pub mod keywords;
 pub mod location;
 pub mod parser;
+pub mod pretty_printer;
 pub mod primitives;
 pub mod string_interner;
 pub mod tasks;
-pub mod tokens;
 pub mod ui;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

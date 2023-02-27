@@ -1,6 +1,9 @@
 use crate::error::TError;
 use crate::location::{IndexIntoFile, Location, SymbolLength};
-use log::debug;
+use crate::parser::semantics::BindingMode;
+use lazy_static::lazy_static;
+use log::{debug, trace};
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 
 #[cfg(test)]
@@ -16,72 +19,267 @@ assert_eq_size!(Token, [u8; 4]);
 assert_eq_size!([Token; 2], [u8; 8]);
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+pub enum OpBinding {
+    PostfixOp,
+    PrefixOp,
+    InfixBinOp,
+    Open,
+    Close,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[cfg_attr(test, derive(EnumIter))]
 pub enum Symbol {
-    // Basics
+    // Closes
+    CloseBracket,
+    CloseCurly,
+    CloseParen,
+    // Opens
+    OpenParen,
+    OpenCurly,
+    OpenBracket,
+    // Sequences
+    Sequence,
+    // Assignments
     Assign,
-    Add,
     AddAssign,
-    Sub,
     SubAssign,
-    Div,
     DivAssign,
-    DivRounding,
     DivRoundingAssign,
-    Escape,
-    Mul,
     MulAssign,
-    Exp,
-    And,
     AndAssign,
-    Or,
     OrAssign,
+    BitXorAssign,
+    LogicalAndAssign,
+    LogicalOrAssign,
+    ModuloAssign,
+    // Pipes...
+    LeftPipe,
+    RightPipe,
+
+    // Functions,
+    Sigma,
+    Lambda, // For compatibility with other systems (ignored).
+    Arrow,
+    DoubleArrow, // In case value level and type level must be different.
+    // Quantification (type level)
+    Forall,
+    // Sugar for forall.
+    Pi,     // For compatibility with other systems.
+    Exists, // Sigma
+
+    // Comparisons
+    Eqs,
+    NotEqs,
+    Lt,
+    LtEqs,
+    Gt,
+    GtEqs,
+
+    // Groups
+    Comma,
+
+    // Maths
+    LeftShift,
+    RightShift,
+    Add,
+    Sub,
+    Exp,
+    Div,
+    DivRounding,
+    Mul,
+    // Logical
+    And,
+    Or,
     BitNot,
     BitXor,
-    BitXorAssign,
-    LeftPipe,
     LogicalNot,
     LogicalAnd,
-    LogicalAndAssign,
     LogicalOr,
-    LogicalOrAssign,
     Modulo,
-    ModuloAssign,
+    // Special...
     GetAddress,
     HasType,
     Try,
     Dot,
     Range,
     Spread,
-    Comma,
-    Sequence,
-    // Comparisons
-    Eqs,
-    NotEqs,
-    Lt,
-    LtEqs,
-    LeftShift,
-    RightPipe,
-    Gt,
-    GtEqs,
-    RightShift,
-    // Functions,
-    Lambda, // For compatibility with other systems (ignored).
-    Arrow,
-    // In case value level and type level must be different.
-    DoubleArrow,
-    // Quantification (type level)
-    Forall,
-    // Sugar for forall.
-    Pi,     // For compatibility with other systems.
-    Exists, // Sigma
-    // Parens
-    OpenCurly,
-    CloseCurly,
-    OpenParen,
-    CloseParen,
-    OpenBracket,
-    CloseBracket,
+    Escape,
+}
+
+// TODO: Make lazy / single init.
+lazy_static! {
+    // Left associativity is the current default.
+    static ref RIGHT_ASSOCIATIVE: HashSet<Symbol> = hash_set!{
+        Symbol::Exp,
+    };
+    static ref ASSOCIATIVE: HashSet<Symbol> = hash_set!{
+        Symbol::Add,
+        Symbol::Mul,
+        Symbol::And, // Note: LogicalAnd is not associative due to shortcircuiting
+        Symbol::Or, // Note: LogicalOr is not associative due to shortcircuiting
+        Symbol::BitXor,
+    };
+
+    /*
+    Source: https://www.foonathan.net/2017/07/operator-precedence/
+
+    Inside the categories the relative precedence of the operators is as follows:
+
+        logical operators: ! > &&,||, but not mixed && and || chains
+
+        comparison operators: no chaining at all
+
+        mathematical operators: unary +,- > *,/ > +,-, with the usual associativity
+
+        bitwise operators: unary ~ before the binary operators, but again no mixed chaining of &, | and ^ and no chaining of the shift operators
+
+        unary operators: just as usual
+    */
+    static ref LOOSER_THAN_MAP: HashMap<Symbol, Vec<Symbol>> = map!{
+        Symbol::OpenParen => vec![Symbol::OpenCurly],
+        Symbol::OpenCurly => vec![Symbol::OpenBracket],
+        Symbol::OpenBracket => vec![Symbol::Sequence],
+        Symbol::Sequence => vec![
+            Symbol::Assign,
+            Symbol::AddAssign,
+            Symbol::SubAssign,
+            Symbol::DivAssign,
+            Symbol::DivRoundingAssign,
+            Symbol::MulAssign,
+            Symbol::AndAssign,
+            Symbol::OrAssign,
+            Symbol::BitXorAssign,
+            Symbol::LogicalAndAssign,
+            Symbol::LogicalOrAssign,
+            Symbol::ModuloAssign,
+        ],
+        Symbol::Assign => vec![Symbol::LeftPipe],
+        Symbol::AddAssign => vec![Symbol::LeftPipe],
+        Symbol::SubAssign => vec![Symbol::LeftPipe],
+        Symbol::DivAssign => vec![Symbol::LeftPipe],
+        Symbol::DivRoundingAssign => vec![Symbol::LeftPipe],
+        Symbol::MulAssign => vec![Symbol::LeftPipe],
+        Symbol::AndAssign => vec![Symbol::LeftPipe],
+        Symbol::OrAssign => vec![Symbol::LeftPipe],
+        Symbol::BitXorAssign => vec![Symbol::LeftPipe],
+        Symbol::LogicalAndAssign => vec![Symbol::LeftPipe],
+        Symbol::LogicalOrAssign => vec![Symbol::LeftPipe],
+        Symbol::ModuloAssign => vec![Symbol::LeftPipe],
+        Symbol::LeftPipe => vec![Symbol::RightPipe],
+        Symbol::RightPipe => vec![Symbol::Sigma],
+        Symbol::Sigma => vec![Symbol::Lambda],
+        Symbol::Lambda => vec![Symbol::Arrow],
+        Symbol::Arrow => vec![Symbol::DoubleArrow],
+        Symbol::DoubleArrow => vec![Symbol::Forall],
+        Symbol::Forall => vec![Symbol::Pi],
+        Symbol::Pi => vec![Symbol::Exists],
+        Symbol::Exists => vec![
+            Symbol::HasType,
+            Symbol::Eqs,
+            Symbol::NotEqs,
+            Symbol::Lt,
+            Symbol::LtEqs,
+            Symbol::Gt,
+            Symbol::GtEqs,
+        ],
+        Symbol::HasType => vec![Symbol::Comma],
+        Symbol::Eqs => vec![Symbol::Comma],
+        Symbol::NotEqs => vec![Symbol::Comma],
+        Symbol::Lt => vec![Symbol::Comma],
+        Symbol::LtEqs => vec![Symbol::Comma],
+        Symbol::Gt => vec![Symbol::Comma],
+        Symbol::GtEqs => vec![Symbol::Comma],
+        Symbol::Comma => vec![Symbol::Add, Symbol::LeftShift, Symbol::RightShift, Symbol::Try],
+        Symbol::LeftShift => vec![Symbol::BitNot],
+        Symbol::RightShift => vec![Symbol::BitNot],
+        Symbol::Add => vec![Symbol::Sub],
+        Symbol::Sub => vec![Symbol::Exp],
+        Symbol::Exp => vec![Symbol::Div],
+        Symbol::Div => vec![Symbol::DivRounding],
+        Symbol::DivRounding => vec![Symbol::Mul],
+        Symbol::Mul => vec![Symbol::And, Symbol::LogicalAnd, Symbol::BitXor, Symbol::Modulo, Symbol::GetAddress],
+        Symbol::And => vec![Symbol::Or],
+        Symbol::Or => vec![Symbol::And],
+        Symbol::LogicalAnd => vec![Symbol::LogicalOr],
+        Symbol::LogicalOr => vec![Symbol::LogicalAnd],
+        Symbol::BitXor => vec![Symbol::BitNot, Symbol::LogicalNot],
+        Symbol::Try => vec![Symbol::Dot],
+        Symbol::Dot => vec![Symbol::Range],
+        Symbol::Range => vec![Symbol::Spread],
+        Symbol::Spread => vec![Symbol::Escape],
+    };
+
+    static ref LOOSER_THAN: HashSet<(Symbol, Symbol)> = {
+        let mut looser_than = hash_set!{};
+        for (k, vs) in LOOSER_THAN_MAP.iter() {
+            for v in vs {
+                looser_than.insert((*k, *v));
+            }
+        }
+        loop {
+            let mut looser_than_news = hash_set!{};
+            for (a, b1) in &looser_than {
+                if a == b1 {
+                    trace!("Precedence cycle on {a:?} {b1:?}");
+                }
+                for (b2, c) in &looser_than {
+                    let transitive = (*a, *c);
+                    if b1 == b2 && !looser_than.contains(&transitive) {
+                        if a == c {
+                            trace!("Precedence cycle on {a:?} {b1:?} {c:?}");
+                        }
+                        looser_than_news.insert(transitive);
+                    }
+                }
+            }
+            if looser_than_news.is_empty() {
+                break;
+            }
+            looser_than.extend(looser_than_news);
+        }
+        looser_than
+    };
+}
+
+impl Symbol {
+    pub fn is_associative(&self) -> bool {
+        ASSOCIATIVE.contains(self)
+    }
+
+    pub fn is_right_associative(&self) -> bool {
+        RIGHT_ASSOCIATIVE.contains(self)
+    }
+
+    pub fn is_left_associative(&self) -> bool {
+        !(self.is_associative() || self.is_right_associative())
+    }
+
+    pub fn binding(&self) -> OpBinding {
+        match self {
+            Symbol::Escape
+            | Symbol::BitNot
+            | Symbol::LogicalNot
+            | Symbol::GetAddress
+            | Symbol::Spread
+            | Symbol::Lambda
+            | Symbol::Sigma
+            | Symbol::Forall
+            | Symbol::Pi
+            | Symbol::Exists => OpBinding::PrefixOp,
+            Symbol::Try => OpBinding::PostfixOp,
+            Symbol::CloseCurly | Symbol::CloseParen | Symbol::CloseBracket => OpBinding::Close,
+            Symbol::OpenCurly | Symbol::OpenParen | Symbol::OpenBracket => OpBinding::Open,
+            _ => OpBinding::InfixBinOp,
+        }
+    }
+
+    pub fn is_looser(&self, other: Symbol) -> bool {
+        if *self == other {
+            return self.is_right_associative();
+        }
+        LOOSER_THAN.contains(&(*self, other))
+    }
 }
 
 impl std::fmt::Display for Symbol {
@@ -135,6 +333,7 @@ impl std::fmt::Display for Symbol {
                 Symbol::ModuloAssign => "%=",
                 // Quantification
                 Symbol::Lambda => "λ",
+                Symbol::Sigma => "Σ",
                 Symbol::Pi => "Π",
                 Symbol::Forall => "∀",
                 Symbol::Exists => "∃",
@@ -168,7 +367,7 @@ pub enum CharacterType {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum TokenType {
     Op(Symbol), // An operator (i.e. a known symbol used as a prefix or infix operator).
-    Sym,        // A named value.
+    Ident,      // A named value.
     Atom,       // A symbol starting with a '$', used differently to symbols which have values.
     // Literals (i.e. tokens representing values):
     NumLit,
@@ -182,8 +381,6 @@ pub enum TokenType {
     // If a symbol (normally strings) is too long, we will store it as multiple repeated tokens,
     // of the same kind preceeded by a 'Group' token.
     Group,
-    // TODO(clarity): Remove from the token types if possible.
-    Eof, // A special discardable token representing end of file.
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash)]
@@ -200,14 +397,6 @@ impl Token {
         Location {
             start: self.start,
             length: self.length,
-        }
-    }
-
-    pub fn eof(start: IndexIntoFile) -> Self {
-        Self {
-            start,
-            kind: TokenType::Eof,
-            length: 0, // zero characters == empty str.
         }
     }
 
@@ -274,10 +463,11 @@ fn classify_char(ch: char) -> CharacterType {
         '\\' => Op(Symbol::Escape), // Escape?
         'λ' => Op(Symbol::Lambda),
         'Π' => Op(Symbol::Pi),
+        'Σ' => Op(Symbol::Sigma),
         '∀' => Op(Symbol::Forall),
         '∃' => Op(Symbol::Exists),
         '0'..='9' => NumLit,
-        'A'..='Z' | 'a'..='z' | '_' => Sym, // Overlapped by colors.
+        'A'..='Z' | 'a'..='z' | '_' => Ident, // Overlapped by colors.
         '"' | '\'' => StringLit,
         _ => panic!("Unknown token character {ch}"),
     })
@@ -303,12 +493,16 @@ pub const fn assign_op(s: Symbol) -> Option<Symbol> {
 }
 
 #[inline]
-pub const fn is_prefix_annotation(s: Symbol) -> bool {
+pub const fn binding_mode_operation(s: Symbol) -> Option<BindingMode> {
     // TODO(clarity): Move to a symbol module.
-    matches!(
-        s,
-        Symbol::Lambda | Symbol::Pi | Symbol::Forall | Symbol::Exists
-    )
+    Some(match s {
+        Symbol::Lambda => BindingMode::Lambda,
+        Symbol::Pi => BindingMode::Pi,
+        Symbol::Forall => BindingMode::Pi,
+        Symbol::Exists => BindingMode::Sigma,
+        Symbol::Sigma => BindingMode::Sigma,
+        _ => return None,
+    })
 }
 
 #[inline]
@@ -474,17 +668,19 @@ pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
             }
             (ColorLitHead, HexSym | PartialToken(NumLit)) => PartialToken(ColorLit), // Color Literal.
             (PartialToken(ColorLit), HexSym | PartialToken(NumLit)) => PartialToken(ColorLit), // Color Literal.
-            (AtomHead, HexSym | PartialToken(NumLit | Sym)) => PartialToken(Atom), // Atom.
-            (PartialToken(Atom), HexSym | PartialToken(NumLit | Sym)) => PartialToken(Atom), // Atom.
-            (HexSym | PartialToken(Sym), HexSym | PartialToken(NumLit | Sym)) => PartialToken(Sym), // Symbol.
+            (AtomHead, HexSym | PartialToken(NumLit | Ident)) => PartialToken(Atom), // Atom.
+            (PartialToken(Atom), HexSym | PartialToken(NumLit | Ident)) => PartialToken(Atom), // Atom.
+            (HexSym | PartialToken(Ident), HexSym | PartialToken(NumLit | Ident)) => {
+                PartialToken(Ident)
+            } // Symbol.
             (PartialToken(NumLit), PartialToken(NumLit)) => PartialToken(NumLit), // Continuation
-            (PartialToken(NumLit), PartialToken(Sym)) => PartialToken(NumLit), // Number with suffix.
+            (PartialToken(NumLit), PartialToken(Ident)) => PartialToken(NumLit), // Number with suffix.
             _ => break, // Token finished can't continue here.
         };
         characters.next(); // Continue past the character.
     }
     if kind == CharacterType::HexSym {
-        kind = PartialToken(TokenType::Sym);
+        kind = PartialToken(TokenType::Ident);
     }
     let kind = if let PartialToken(kind) = kind {
         kind
@@ -649,7 +845,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![Token {
-                kind: Sym,
+                kind: Ident,
                 start: 0,
                 length: 6
             }]
@@ -662,7 +858,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![Token {
-                kind: Sym,
+                kind: Ident,
                 start: 0,
                 length: 4
             }]
@@ -745,7 +941,7 @@ mod tests {
             tokens,
             vec![
                 Token {
-                    kind: Sym,
+                    kind: Ident,
                     start: 0,
                     length: 1
                 },
