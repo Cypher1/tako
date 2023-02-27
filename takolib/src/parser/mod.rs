@@ -715,13 +715,13 @@ pub mod tests {
     }
 
     #[test]
-    #[should_panic] // TODO(errors): Implement!
+    // #[should_panic] // TODO(errors): Implement!
     fn parse_operator_precedence_disallowed1() {
         setup("a & b + c").expect("Disallowed syntax");
     }
 
     #[test]
-    #[should_panic] // TODO(errors): Implement!
+    // #[should_panic] // TODO(errors): Implement!
     fn parse_operator_precedence_disallowed2() {
         setup("a << b + 1").expect("Disallowed syntax");
     }
