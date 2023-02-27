@@ -232,6 +232,20 @@ mod tests {
     }
 
     #[test]
+    fn round_trip_div_div() -> Result<(), TError> {
+        let out = setup("1/2/3")?;
+        assert_eq!(out, "(1/2)/3");
+        Ok(())
+    }
+
+    #[test]
+    fn round_trip_exp_exp() -> Result<(), TError> {
+        let out = setup("1**2**3")?;
+        assert_eq!(out, "1**(2**3)");
+        Ok(())
+    }
+
+    #[test]
     fn round_trip_assignment_with_type() -> Result<(), TError> {
         let out = setup("x:Int=1")?;
         assert_eq!(out, "x: Int=1");

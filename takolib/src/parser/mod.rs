@@ -326,18 +326,14 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 trace!("Closing Expr: {left:?} sym: {sym:?}");
                 break;
             }
-            if (sym != binding || !binding.is_associative()) && sym.is_looser(binding) && binding.is_looser(sym) {
+            if sym != binding && sym.is_looser(binding) && binding.is_looser(sym) {
                 // If both can be inside the other
                 // and theyre not associative...
                 // then this is ambiguous and needs parens.
                 todo!("Ambiguous expression: {left:?} sym: {sym:?} inside binding: {binding:?}");
             }
-            if sym.is_looser(binding) {
-                trace!("Back up Expr: {left:?} binding: {binding:?} inside sym: {sym:?}");
-                break;
-            }
             if !binding.is_looser(sym) {
-                trace!("Back up Expr: {left:?} binding: {binding:?} not inside sym: {sym:?}");
+                trace!("Back up Expr: {left:?} binding: {binding:?} inside sym: {sym:?}");
                 break;
             }
             trace!("Continuing Expr: {left:?} sym: {sym:?} inside binding: {binding:?}");

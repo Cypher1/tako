@@ -2,7 +2,7 @@ use crate::error::TError;
 use crate::location::{IndexIntoFile, Location, SymbolLength};
 use crate::parser::semantics::BindingMode;
 use lazy_static::lazy_static;
-use log::debug;
+use log::{debug, trace};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 
@@ -220,9 +220,15 @@ lazy_static! {
         loop {
             let mut looser_than_news = hash_set!{};
             for (a, b1) in &looser_than {
+                if a == b1 {
+                    trace!("Precedence cycle on {a:?} {b1:?}");
+                }
                 for (b2, c) in &looser_than {
                     let transitive = (*a, *c);
                     if b1 == b2 && !looser_than.contains(&transitive) {
+                        if a == c {
+                            trace!("Precedence cycle on {a:?} {b1:?} {c:?}");
+                        }
                         looser_than_news.insert(transitive);
                     }
                 }
@@ -239,6 +245,14 @@ lazy_static! {
 impl Symbol {
     pub fn is_associative(&self) -> bool {
         ASSOCIATIVE.contains(self)
+    }
+
+    pub fn is_right_associative(&self) -> bool {
+        RIGHT_ASSOCIATIVE.contains(self)
+    }
+
+    pub fn is_left_associative(&self) -> bool {
+        !(self.is_associative() || self.is_right_associative())
     }
 
     pub fn binding(&self) -> OpBinding {
@@ -262,7 +276,7 @@ impl Symbol {
 
     pub fn is_looser(&self, other: Symbol) -> bool {
         if *self == other {
-            return !RIGHT_ASSOCIATIVE.contains(self);
+            return self.is_right_associative();
         }
         LOOSER_THAN.contains(&(*self, other))
     }
