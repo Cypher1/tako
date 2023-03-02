@@ -6,7 +6,7 @@ edition = "2021"
 include = ["src/**/*", "LICENSE.md", "README.md"]
 
 [features]
-# default=["llvm_backend"]
+default=["llvm_backend"]
 wasm=[]
 native=[]
 llvm_backend=["inkwell"]
