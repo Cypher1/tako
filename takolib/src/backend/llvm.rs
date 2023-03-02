@@ -25,14 +25,17 @@ impl<'ctx> Backend<'ctx> for Llvm<'ctx> {
     }
 
     fn new(_config: BackendConfig, context: &'ctx Self::Context) -> Self {
-        Llvm {
+        Target::initialize_all(&InitializationConfig::default());
+        let mut this = Llvm {
             reloc: RelocMode::Default,
             model: CodeModel::Default,
             opt: OptimizationLevel::Default,
             target_triple: TargetMachine::get_default_triple(),
             target_machine: None,
             context,
-        }
+        };
+        this.setup();
+        this
     }
     fn setup(&mut self) {
         let target = Target::from_triple(&self.target_triple).unwrap();
@@ -47,7 +50,6 @@ impl<'ctx> Backend<'ctx> for Llvm<'ctx> {
             )
             .unwrap();
         self.target_machine = Some(target_machine);
-        Target::initialize_all(&InitializationConfig::default());
     }
     fn add_module(&mut self, name: &str) -> Result<Self::BackendState, Box<dyn std::error::Error>> {
         let context = self.context;
@@ -169,7 +171,13 @@ impl<'ctx> BackendStateTrait<'ctx> for LlvmState<'ctx> {
 
 #[cfg(test)]
 pub mod tests {
+    use std::{process::Command, io::{stdout, stderr, Write}, path::{Path, PathBuf}};
+
     use super::*;
+
+    fn test_build_output_dir() -> PathBuf {
+        Path::new("/tmp/tako_tests/llvm_backend").to_path_buf()
+    }
 
     #[test]
     fn llvm_is_included() {
@@ -178,6 +186,8 @@ pub mod tests {
 
     #[test]
     fn can_print_hello_world() {
+        std::fs::create_dir_all(test_build_output_dir()).expect("Make test output dir");
+
         let config = BackendConfig {
 
         };
@@ -193,6 +203,23 @@ pub mod tests {
         llvm.printf("ARGC: %d, ARGV: %s\n", &[argc.into(), argv_0.into()]);
         llvm.builder.build_return(Some(&argc.into_int_value()));
 
-        dbg!(llvm);
+        // dbg!(&llvm);
+        let elf_path = test_build_output_dir().join("hello_world.elf");
+        let bin_path = test_build_output_dir().join("hello_world");
+        let target_machine = &llvm_backend.target_machine.expect("Should have run setup");
+        assert!(target_machine.write_to_file(&llvm.module, inkwell::targets::FileType::Object, &elf_path).is_ok());
+
+        let mut command = Command::new("clang");
+        let cmd = command
+            .arg(elf_path)
+            .arg("-o")
+            .arg(bin_path)
+            .arg("-lc");
+
+        let output = cmd.output().expect("failed to run clang");
+        stdout().write_all(&output.stdout).unwrap();
+        stderr().write_all(&output.stderr).unwrap();
+
+        // Run and check hello world program's output.
     }
 }
