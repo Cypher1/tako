@@ -1,8 +1,15 @@
-use std::collections::HashMap;
 use super::{Backend, BackendConfig, BackendStateTrait};
-use inkwell::{targets::{
-    CodeModel, InitializationConfig, RelocMode, Target, TargetMachine, TargetTriple,
-}, OptimizationLevel, values::{PointerValue, FunctionValue, BasicMetadataValueEnum, IntValue, VectorValue}, module::{Module, Linkage}, context::Context, builder::Builder, execution_engine::ExecutionEngine, AddressSpace, types::{PointerType, FunctionType, IntType, BasicTypeEnum, VectorType}};
+use inkwell::{
+    builder::Builder,
+    context::Context,
+    execution_engine::ExecutionEngine,
+    module::{Linkage, Module},
+    targets::{CodeModel, InitializationConfig, RelocMode, Target, TargetMachine, TargetTriple},
+    types::{BasicTypeEnum, FunctionType, IntType, PointerType, VectorType},
+    values::{BasicMetadataValueEnum, FunctionValue, IntValue, PointerValue, VectorValue},
+    AddressSpace, OptimizationLevel,
+};
+use std::collections::HashMap;
 
 #[derive(Debug)]
 struct Llvm<'ctx> {
@@ -80,13 +87,16 @@ struct LlvmState<'ctx> {
 
 impl<'ctx> LlvmState<'ctx> {
     fn get_builtin(&mut self, name: &str, ty: FunctionType<'ctx>) -> FunctionValue<'ctx> {
-        self.module.get_function(name).unwrap_or_else(|| {
-            self.module.add_function(name, ty, Some(Linkage::External))
-        })
+        self.module
+            .get_function(name)
+            .unwrap_or_else(|| self.module.add_function(name, ty, Some(Linkage::External)))
     }
 
     fn get_printf(&mut self) -> FunctionValue<'ctx> {
-        let printf_type = self.context.i32_type().fn_type(&[self.char_ptr_type().into()], true);
+        let printf_type = self
+            .context
+            .i32_type()
+            .fn_type(&[self.char_ptr_type().into()], true);
         self.get_builtin("printf", printf_type)
     }
 }
@@ -113,10 +123,18 @@ impl<'ctx> BackendStateTrait<'ctx> for LlvmState<'ctx> {
     }
 
     fn add_main(&mut self) -> (Self::FunctionValue, Self::Value, Self::Value) {
-        let main_fn_type = self.i8_type().fn_type(&[self.i64_type().into(), self.array_of_strings_type().into()], false);
+        let main_fn_type = self.i8_type().fn_type(
+            &[self.i64_type().into(), self.array_of_strings_type().into()],
+            false,
+        );
         let main = self.add_function("main", main_fn_type);
-        let argc = main.get_nth_param(0).expect("Expect to be able to use argc in 'main'").into_int_value();
-        let argv = main.get_nth_param(1).expect("Expect to be able to use argv in 'main'");
+        let argc = main
+            .get_nth_param(0)
+            .expect("Expect to be able to use argc in 'main'")
+            .into_int_value();
+        let argv = main
+            .get_nth_param(1)
+            .expect("Expect to be able to use argv in 'main'");
 
         (main, argc.into(), argv.into())
     }
@@ -165,13 +183,18 @@ impl<'ctx> BackendStateTrait<'ctx> for LlvmState<'ctx> {
         let fmt_str = self.global_string(fmt);
         let mut arg_array: Vec<BasicMetadataValueEnum<'ctx>> = vec![fmt_str.into()];
         arg_array.extend_from_slice(args);
-        self.builder.build_call(printf, &arg_array[..], "_call_printf");
+        self.builder
+            .build_call(printf, &arg_array[..], "_call_printf");
     }
 }
 
 #[cfg(test)]
 pub mod tests {
-    use std::{process::Command, io::{stdout, stderr, Write}, path::{Path, PathBuf}};
+    use std::{
+        io::{stderr, stdout, Write},
+        path::{Path, PathBuf},
+        process::Command,
+    };
 
     use super::*;
 
@@ -188,12 +211,12 @@ pub mod tests {
     fn can_print_hello_world() {
         std::fs::create_dir_all(test_build_output_dir()).expect("Make test output dir");
 
-        let config = BackendConfig {
-
-        };
+        let config = BackendConfig {};
         let ref context = Llvm::create_context();
         let mut llvm_backend = Llvm::new(config, context);
-        let mut llvm = llvm_backend.add_module("hello_world").expect("Could construct module");
+        let mut llvm = llvm_backend
+            .add_module("hello_world")
+            .expect("Could construct module");
 
         let (_main, argc, argv) = llvm.add_main();
         let char_star_type = llvm.string_type();
@@ -207,14 +230,12 @@ pub mod tests {
         let elf_path = test_build_output_dir().join("hello_world.elf");
         let bin_path = test_build_output_dir().join("hello_world");
         let target_machine = &llvm_backend.target_machine.expect("Should have run setup");
-        assert!(target_machine.write_to_file(&llvm.module, inkwell::targets::FileType::Object, &elf_path).is_ok());
+        assert!(target_machine
+            .write_to_file(&llvm.module, inkwell::targets::FileType::Object, &elf_path)
+            .is_ok());
 
         let mut command = Command::new("clang");
-        let cmd = command
-            .arg(elf_path)
-            .arg("-o")
-            .arg(bin_path)
-            .arg("-lc");
+        let cmd = command.arg(elf_path).arg("-o").arg(bin_path).arg("-lc");
 
         let output = cmd.output().expect("failed to run clang");
         stdout().write_all(&output.stdout).unwrap();
