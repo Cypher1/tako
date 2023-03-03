@@ -12,7 +12,7 @@ defaults:
 
 jobs:
   takolib:
-    name: Takolib: Test, build and lint using ${{ matrix.os }}
+    name: Takolib Test, build and lint using ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:

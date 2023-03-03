@@ -12,7 +12,7 @@ defaults:
 
 jobs:
   takoc:
-    name: Takoc: Test, build and lint using ${{ matrix.os }}
+    name: Takoc Test, build and lint using ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
