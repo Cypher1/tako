@@ -68,7 +68,6 @@ impl<'ctx> Backend<'ctx> for Llvm<'ctx> {
             module,
             builder,
             execution_engine,
-            functions: HashMap::new(),
             strings: HashMap::new(),
         };
         Ok(state)
@@ -80,8 +79,8 @@ struct LlvmState<'ctx> {
     context: &'ctx Context,
     module: Module<'ctx>,
     builder: Builder<'ctx>,
+    #[allow(dead_code)]
     execution_engine: ExecutionEngine<'ctx>,
-    functions: HashMap<String, PointerValue<'ctx>>,
     strings: HashMap<String, PointerValue<'ctx>>,
 }
 
