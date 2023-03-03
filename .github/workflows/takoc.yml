@@ -10,63 +10,13 @@ defaults:
     working-directory: ./takoc
 
 jobs:
-  test:
-    name: Test using ${{ matrix.os }}
+  takoc:
+    name: Test, build and lint using ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
 
-    steps:
-    - uses: actions/checkout@v1
-    - uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    - name: Run tests
-      run: cargo test --locked --release --verbose
-    - name: Run ignored tests
-      run: cargo test --locked --release --verbose -- --ignored
-  
-  build:
-    name: Build using ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    steps:
-    - uses: actions/checkout@v1
-    - uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    - name: Build
-      run: cargo build --locked --release --verbose
-    - name: Upload executable Linux
-      if: runner.os == 'Linux'
-      uses: actions/upload-artifact@v1
-      with:
-        name: takoc
-        path: ./target/release/takoc
-    - name: Upload executable Windows
-      if: runner.os == 'Windows'
-      uses: actions/upload-artifact@v1
-      with:
-        name: takoc.exe
-        path: ./target/release/takoc.exe
-
-  lint:
-    name: Lint using ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
     steps:
     - uses: actions/checkout@v1
     - uses: actions/cache@v3
@@ -89,6 +39,24 @@ jobs:
       with:
         version: "15.0"
         cached: ${{ steps.cache-llvm.outputs.cache-hit }}
+    - name: Run tests
+      run: cargo test --locked --release --verbose
+    - name: Run ignored tests
+      run: cargo test --locked --release --verbose -- --ignored
+    - name: Build
+      run: cargo build --locked --release --verbose
+    - name: Upload executable Linux
+      if: runner.os == 'Linux'
+      uses: actions/upload-artifact@v1
+      with:
+        name: takoc
+        path: ./target/release/takoc
+    - name: Upload executable Windows
+      if: runner.os == 'Windows'
+      uses: actions/upload-artifact@v1
+      with:
+        name: takoc.exe
+        path: ./target/release/takoc.exe
     - name: Install clippy
       run: rustup component add clippy
     - name: Clippy takolib
