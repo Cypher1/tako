@@ -4,6 +4,7 @@ on: [push]
 
 env:
   CARGO_TERM_COLOR: always
+  LLVM_SYS_150_PREFIX: ./llvm
 
 defaults:
   run:
@@ -11,7 +12,7 @@ defaults:
 
 jobs:
   takoc:
-    name: Test, build and lint using ${{ matrix.os }}
+    name: Takoc: Test, build and lint using ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
