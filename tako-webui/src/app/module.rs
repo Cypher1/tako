@@ -54,17 +54,15 @@ pub fn module(props: &ModuleProps) -> Html {
                 </div>
                 <div class="card-content">
                     <div class="content">
-                        <h3>
-                            <button onclick={&run_on_click} aria-label="run" aria-expanded="false">{"Run"}</button>
-                            <span onclick={&run_on_click} aria-label="run" aria-expanded="false">{ &*eval_result }</span>
-                        </h3>
-                    </div>
-                    <div class="content">
                         <textarea class="textarea is-primary" onchange={on_change} value={(*source).clone()}/>
                         //<pre><code class={format!("line-numbers language-{}", props.language)}>
                         // {&*source}
                         //</code></pre>
                     </div>
+                    <footer class="card-footer">
+                        <button class="card-footer-item" onclick={&run_on_click} aria-label="run" aria-expanded="false">{"Run"}</button>
+                        <span class="card-footer-item" onclick={&run_on_click} aria-label="run" aria-expanded="false"><b>{ &*eval_result }</b></span>
+                    </footer>
                 </div>
             </div>
         </>
