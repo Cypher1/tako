@@ -21,10 +21,13 @@ jobs:
     - uses: actions/cache@v3
       with:
         path: |
-          ~/.cargo/registry
-          ~/.cargo/git
+          /home/runner/.cargo/
           target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.os }}-webui-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-webui-cargo-${{ hashFiles('**/Cargo.lock') }}
+          ${{ runner.os }}-webui-cargo-
+          ${{ runner.os }}-
     - name: install wasm toolchain
       uses: actions-rs/toolchain@v1
       with:

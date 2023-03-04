@@ -1,4 +1,5 @@
 use crate::client::interpret;
+use web_sys::HtmlTextAreaElement;
 use yew::prelude::*;
 use yew::{function_component, html, Html, Properties};
 
@@ -13,10 +14,18 @@ pub struct ModuleProps {
 pub fn module(props: &ModuleProps) -> Html {
     let source = use_state(|| props.source.clone());
     let eval_result = use_state(|| "...".to_string());
-    let change_on_click = {
+
+    let on_change = {
         let source = source.clone();
-        Callback::from(move |_| {
-            source.set(format!("{}*{}", *source, source.len()));
+        Callback::from(move |e: Event| {
+            let input_el = e.target_dyn_into::<HtmlTextAreaElement>();
+            if let Some(input_el) = input_el {
+                let val = input_el.value();
+                source.set(val);
+            } else {
+                // TODO: ERR
+                source.set("TODO: ERR".to_string());
+            }
         })
     };
 
@@ -45,12 +54,18 @@ pub fn module(props: &ModuleProps) -> Html {
                 </div>
                 <div class="card-content">
                     <div class="content">
-                        <button onclick={change_on_click} aria-label="change" aria-expanded="false">{ "+1" }</button>
-                        <button onclick={run_on_click} aria-label="run" aria-expanded="false">{ &*eval_result }</button>
+                        <textarea class="textarea is-primary" onchange={on_change} value={(*source).clone()}/>
+                        // TODO: Consider using
+                        // https://lonekorean.github.io/highlight-within-textarea/
+                        // for highlighting
                         //<pre><code class={format!("line-numbers language-{}", props.language)}>
-                        {&*source}
+                        // {&*source}
                         //</code></pre>
                     </div>
+                    <footer class="card-footer">
+                        <button class="card-footer-item" onclick={&run_on_click} aria-label="run" aria-expanded="false">{"Run"}</button>
+                        <span class="card-footer-item" onclick={&run_on_click} aria-label="run" aria-expanded="false"><b>{ &*eval_result }</b></span>
+                    </footer>
                 </div>
             </div>
         </>
