@@ -40,6 +40,8 @@ jobs:
       with:
         version: "15.0"
         cached: ${{ steps.cache-llvm.outputs.cache-hit }}
+    - name: Check llvm path
+      run: "echo $LLVM_SYS_150_PREFIX; ls $LLVM_SYS_150_PREFIX"
     - name: Run tests
       run: cargo test --locked --release --verbose
     - name: Run ignored tests
