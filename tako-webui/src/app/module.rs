@@ -55,6 +55,9 @@ pub fn module(props: &ModuleProps) -> Html {
                 <div class="card-content">
                     <div class="content">
                         <textarea class="textarea is-primary" onchange={on_change} value={(*source).clone()}/>
+                        // TODO: Consider using
+                        // https://lonekorean.github.io/highlight-within-textarea/
+                        // for highlighting
                         //<pre><code class={format!("line-numbers language-{}", props.language)}>
                         // {&*source}
                         //</code></pre>
