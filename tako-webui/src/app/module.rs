@@ -1,7 +1,7 @@
 use crate::client::interpret;
+use web_sys::HtmlTextAreaElement;
 use yew::prelude::*;
 use yew::{function_component, html, Html, Properties};
-use web_sys::HtmlTextAreaElement;
 
 #[derive(PartialEq, Properties, Clone, Eq)]
 pub struct ModuleProps {
