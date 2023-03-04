@@ -60,7 +60,7 @@ pub fn module(props: &ModuleProps) -> Html {
                         </h3>
                     </div>
                     <div class="content">
-                        <textarea onchange={on_change} value={(*source).clone()}/>
+                        <textarea class="textarea is-primary" onchange={on_change} value={(*source).clone()}/>
                         //<pre><code class={format!("line-numbers language-{}", props.language)}>
                         // {&*source}
                         //</code></pre>
