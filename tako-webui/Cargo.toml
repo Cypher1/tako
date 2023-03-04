@@ -15,3 +15,4 @@ tako = { path = "../takolib", features = [ "wasm" ], default-features = false }
 tokio = { version = "1.24", features = ["sync", "macros"] }
 yew-hooks = "0.2.0"
 async-trait = "0.1"
+web-sys = "0.3.61"
