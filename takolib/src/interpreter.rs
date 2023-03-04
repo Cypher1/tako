@@ -228,4 +228,20 @@ mod tests {
         assert_eq!(res, Ok(Prim::I32(123)));
         Ok(())
     }
+
+    #[test]
+    fn exp_mul_evals_16() -> Result<(), TError> {
+        let ast = setup("2**3*2")?;
+        let res = run(&test_path(), &ast, None);
+        assert_eq!(res, Ok(Prim::I32(16)));
+        Ok(())
+    }
+
+    #[test]
+    fn exp_exp_evals_512() -> Result<(), TError> {
+        let ast = setup("2**3**2")?;
+        let res = run(&test_path(), &ast, None);
+        assert_eq!(res, Ok(Prim::I32(512)));
+        Ok(())
+    }
 }
