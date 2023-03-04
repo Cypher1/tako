@@ -23,6 +23,7 @@ use crate::compiler::Compiler;
 
 static mut LOGS_UNINITIALISED: bool = true;
 
+#[cfg(not(target_arch = "wasm32"))]
 fn build_logger(finish: impl FnOnce(&mut env_logger::Builder)) {
     if unsafe { LOGS_UNINITIALISED } {
         unsafe {
@@ -39,6 +40,7 @@ fn build_logger(finish: impl FnOnce(&mut env_logger::Builder)) {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[cfg(test)]
 pub fn ensure_initialized() {
     build_logger(|env| {
@@ -48,9 +50,12 @@ pub fn ensure_initialized() {
 
 #[cfg(target_arch = "wasm32")]
 pub fn ensure_initialized() {
-    build_logger(|env| {
-        let _ = env.try_init();
-    });
+    if unsafe { LOGS_UNINITIALISED } {
+        unsafe {
+            LOGS_UNINITIALISED = false;
+        }
+        wasm_logger::init(wasm_logger::Config::new(log::Level::Debug));
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
