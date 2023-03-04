@@ -10,54 +10,16 @@ defaults:
     working-directory: ./takolib
 
 jobs:
-  test:
-    name: Test using ${{ matrix.os }}
+  takolib:
+    name: Takolib Test, build and lint using ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest] #, windows-latest]
 
     steps:
     - uses: actions/checkout@v1
     - uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    - name: Run tests
-      run: cargo test --locked --release --verbose
-    - name: Run ignored tests
-      run: cargo test --locked --release --verbose -- --ignored
-
-  build:
-    name: Build using ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    steps:
-    - uses: actions/checkout@v1
-    - uses: actions/cache@v2
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    - name: Build
-      run: cargo build --locked --release --verbose
-
-  lint:
-    name: Lint using ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    steps:
-    - uses: actions/checkout@v1
-    - uses: actions/cache@v2
       with:
         path: |
           ~/.cargo/registry
@@ -77,6 +39,16 @@ jobs:
       with:
         version: "15.0"
         cached: ${{ steps.cache-llvm.outputs.cache-hit }}
+    - name: Setup LLVM_PATH
+      run: "export LLVM_SYS_150_PREFIX=\"$LLVM_PATH\""
+    - name: Check llvm path
+      run: "echo \"LLVM_PATH: $LLVM_PATH\"; echo \"LLVM_SYS_150_PREFIX: $LLVM_SYS_150_PREFIX\"; ls $LLVM_SYS_150_PREFIX"
+    - name: Run tests
+      run: cargo test --locked --release --verbose
+    - name: Run ignored tests
+      run: cargo test --locked --release --verbose -- --ignored
+    - name: Build
+      run: cargo build --locked --release --verbose
     - name: Install clippy
       run: rustup component add clippy
     - name: Clippy
