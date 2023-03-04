@@ -32,7 +32,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v3
     - uses: actions/cache@v3
       with:
         path: |
@@ -57,7 +57,7 @@ jobs:
     - name: Build webui
       run: trunk build
     - name: Setup Pages
-      uses: actions/configure-pages@v2
+      uses: actions/configure-pages@v3
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v1
       with:

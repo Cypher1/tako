@@ -28,19 +28,19 @@ pub fn app() -> Html {
 
 #[function_component(Interface)]
 pub fn interface() -> Html {
-    let python_code: &str = "
+    let _python_code: &str = "
 print(\"hi\")
 for x in range(1, 100):
     print(x)
 ";
 
-    let clike_code: &str = "
+    let _clike_code: &str = "
 int foo() {
     int i = 3;
     return i;
 }
 ";
-    let rust_code: &str = "
+    let _rust_code: &str = "
 impl Foo {
   fn foo(mut self) -> Self {
     let i: u32 = 3;

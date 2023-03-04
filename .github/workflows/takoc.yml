@@ -18,7 +18,7 @@ jobs:
         os: [ubuntu-latest] #, windows-latest]
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v3
     - uses: actions/cache@v3
       with:
         path: |
@@ -31,7 +31,7 @@ jobs:
           ${{ runner.os }}-
     - name: Cache LLVM and Clang
       id: cache-llvm
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       with:
         path: |
           C:/Program Files/LLVM
@@ -54,13 +54,13 @@ jobs:
       run: cargo build --locked --release --verbose
     - name: Upload executable Linux
       if: runner.os == 'Linux'
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v3
       with:
         name: takoc
         path: ./target/release/takoc
     - name: Upload executable Windows
       if: runner.os == 'Windows'
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v3
       with:
         name: takoc.exe
         path: ./target/release/takoc.exe
