@@ -113,6 +113,12 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
     fn ident(&mut self) -> Result<Token, ParseError> {
         self.token_of_type(TokenType::Ident)
     }
+    fn operator<OnSym>(&mut self, test: impl Fn(Symbol) -> OnSym) -> Result<OnSym, ParseError> {
+        let sym = self.token_if(|got| match got.kind {
+            TokenType::Op(got_sym) => test(got_sym),
+            _ => Err(ParseError::UnexpectedTokenTypeExpectedOperator { got: got.kind, location: got.location() }),
+        })
+    }
     fn operator_is(&mut self, sym: Symbol) -> Result<Token, ParseError> {
         self.token_if(|got| match got.kind {
             TokenType::Op(got_sym) if got_sym == sym => Ok(*got),
