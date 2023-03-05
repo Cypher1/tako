@@ -9,6 +9,63 @@ use log::trace;
 use semantics::BindingMode;
 use std::path::Path;
 use tokens::{assign_op, binding_mode_operation, is_assign, OpBinding, Symbol, Token, TokenType};
+use thiserror::Error;
+
+#[derive(Debug, Error, PartialEq, Eq, Ord, PartialOrd, Clone, Hash)]
+pub enum ParseError {
+    UnexpectedEof,
+    UnexpectedTokenTypeExpectedOperator {
+        got: TokenType,
+        location: Location,
+    },
+    UnexpectedTokenTypeExpectedAssignment {
+        got: TokenType,
+        location: Location,
+    },
+    UnexpectedTokenType {
+        got: TokenType,
+        location: Location,
+        expected: TokenType,
+    },
+    ParseIntError{
+        message: String
+    },
+}
+
+impl From<std::num::ParseIntError> for ParseError {
+    fn from(error: std::num::ParseIntError) -> Self {
+        ParseError::ParseIntError { message: error.to_string() }
+    }
+}
+
+impl ParseError {
+    pub fn location(&self) -> Option<&Location> {
+        match self {
+            ParseError::UnexpectedEof => None,
+            ParseError::UnexpectedTokenTypeExpectedOperator { got: _, location } => Some(location),
+            ParseError::UnexpectedTokenTypeExpectedAssignment { got: _, location } => Some(location),
+            ParseError::UnexpectedTokenType { got: _, location, expected: _ } => Some(location),
+            ParseError::ParseIntError { .. } => None,
+        }
+    }
+}
+
+impl From<ParseError> for TError {
+    fn from(err: ParseError) -> Self {
+        TError::ParseError(err)
+    }
+}
+
+impl std::fmt::Display for ParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // TODO: Manually implement readable errors.
+        //TError::ExpectedToken(expected, got, location, inside) => write!(
+                //f,
+                //"Expected a {expected:?} found a {got:?}, at {location:?} inside {inside:?}"
+            //)?,
+        <Self as std::fmt::Debug>::fmt(self, f)
+    }
+}
 
 #[derive(Debug)]
 enum BindingOrValue {
@@ -24,28 +81,52 @@ struct ParseState<'src, 'toks, T: Iterator<Item = &'toks Token>> {
 }
 
 impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
-    fn peek(&mut self) -> Result<&Token, ()> {
-        self.tokens.peek().copied().ok_or(())
-    }
-    fn peek_kind(&mut self) -> Result<TokenType, ()> {
-        self.peek().map(|tok| tok.kind)
-    }
-    fn peek_kind_op(&mut self) -> Result<Symbol, ()> {
-        match self.peek_kind() {
-            Ok(TokenType::Op(symbol)) => Ok(symbol),
-            Ok(_) => Err(()),
-            Err(e) => Err(e),
-        }
-    }
-    fn peek_assignment(&mut self) -> Result<Symbol, ()> {
-        match self.peek_kind() {
-            Ok(TokenType::Op(op)) if is_assign(op) => Ok(op),
-            Ok(_) => Err(()),
-            Err(e) => Err(e),
-        }
+    fn peek(&mut self) -> Result<&Token, ParseError> {
+        self.tokens.peek().copied().ok_or(ParseError::UnexpectedEof)
     }
     fn token(&mut self) -> Option<Token> {
         self.tokens.next().copied()
+    }
+    fn peek_kind(&mut self) -> Result<TokenType, ParseError> {
+        self.peek().map(|tok| tok.kind)
+    }
+    fn peek_assignment(&mut self) -> Result<Symbol, ParseError> {
+        match self.peek() {
+            Ok(Token { kind: TokenType::Op(op), ..}) if is_assign(*op) => Ok(*op),
+            Ok(got) => Err(ParseError::UnexpectedTokenTypeExpectedAssignment { got: got.kind, location: got.location() }),
+            Err(e) => Err(e),
+        }
+    }
+    fn token_if<OnTok>(&mut self, test: impl FnOnce(&Token) -> Result<OnTok, ParseError>) -> Result<OnTok, ParseError> {
+        let tk = self.peek()?;
+        let res = test(tk)?;
+        self.token().expect("Internal error: Token missing after check");
+        Ok(res)
+    }
+    fn token_of_type(&mut self, expected: TokenType) -> Result<Token, ParseError> {
+        self.token_if(|got| if got.kind == expected {
+            Ok(*got)
+        } else {
+            Err(ParseError::UnexpectedTokenType { got: got.kind, location: got.location(), expected })
+        })
+    }
+    fn ident(&mut self) -> Result<Token, ParseError> {
+        self.token_of_type(TokenType::Ident)
+    }
+    fn operator_is(&mut self, sym: Symbol) -> Result<Token, ParseError> {
+        self.token_if(|got| match got.kind {
+            TokenType::Op(got_sym) if got_sym == sym => Ok(*got),
+            _ => Err(ParseError::UnexpectedTokenType { got: got.kind, location: got.location(), expected: TokenType::Op(sym) })
+        })
+    }
+    fn has_type(&mut self) -> Result<Token, ParseError> {
+        self.operator_is(Symbol::HasType)
+    }
+    fn assignment_op(&mut self) -> Result<Token, ParseError> {
+        self.token_if(|got| match got.kind {
+            TokenType::Op(assign) if is_assign(assign) => Ok(*got),
+            _ => Err(ParseError::UnexpectedTokenTypeExpectedAssignment { got: got.kind, location: got.location() })
+        })
     }
 
     fn get_kind(&mut self, token: &Token) -> TokenType {
@@ -60,21 +141,8 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
     }
 
     fn require(&mut self, expected_token: TokenType) -> Result<(), TError> {
-        if let Ok(token) = self.peek() {
-            if token.kind == expected_token {
-                let _ = self.token();
-                Ok(())
-            } else {
-                Err(TError::ExpectedToken(
-                    expected_token,
-                    Some(token.kind),
-                    Some(token.location()),
-                    vec![],
-                ))
-            }
-        } else {
-            Err(TError::ExpectedToken(expected_token, None, None, vec![]))
-        }
+        let _token = self.token_of_type(expected_token)?;
+        Ok(())
     }
 
     fn binding(&mut self) -> Result<Option<Binding>, TError> {
@@ -98,15 +166,13 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             trace!("Unexpected eof when looking for binding");
             return Ok(None);
         };
-        let name: Identifier = if let Ok(TokenType::Ident) = self.peek_kind() {
-            let tok = self.token().expect("Internal error");
+        let name: Identifier = if let Ok(tok) = self.ident() {
             self.name(tok)
         } else {
             trace!("No name found for binding");
             return Ok(None);
         };
-        let ty = if let Ok(Symbol::HasType) = self.peek_kind_op() {
-            let _ = self.token().expect("Internal error");
+        let ty = if let Ok(_) = self.has_type() {
             Some(self.expr(Symbol::HasType)?)
         } else {
             None
@@ -136,9 +202,8 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         let mut _has_implicit_args = false;
         let mut has_args = false;
         let mut has_non_bind_args = false; // i.e. this should be a definition...
-        if let Ok(TokenType::Op(Symbol::Lt)) = self.peek_kind() {
+        if let Ok(_) = self.operator_is(Symbol::Lt) {
             trace!("has implicit arguments");
-            let _ = self.token();
             _has_implicit_args = true;
             // Read implicit args...
             while Ok(TokenType::Op(Symbol::Gt)) != self.peek_kind() {
@@ -149,12 +214,11 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             }
             self.require(TokenType::Op(Symbol::Gt))?;
         }
-        if let Ok(TokenType::Op(Symbol::OpenParen)) = self.peek_kind() {
+        if let Ok(_) = self.operator_is(Symbol::OpenParen) {
             trace!("has arguments");
-            let _ = self.token();
             has_args = true;
             // Read args...
-            while Ok(TokenType::Op(Symbol::CloseParen)) != self.peek_kind() {
+            while let Err(_) = self.operator_is(Symbol::CloseParen) {
                 bindings.push(self.binding_or_arg(&mut has_non_bind_args)?);
                 if self.require(TokenType::Op(Symbol::Comma)).is_err() {
                     break;
@@ -162,9 +226,8 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             }
             self.require(TokenType::Op(Symbol::CloseParen))?;
         }
-        let ty = if let Ok(Symbol::HasType) = self.peek_kind_op() {
+        let ty = if let Ok(_) = self.has_type() {
             trace!("HasType started");
-            let _ = self.token().expect("Internal error");
             let ty = self.expr(Symbol::HasType)?;
             trace!("HasType finished");
             Some(ty)
@@ -561,8 +624,8 @@ pub mod tests {
         // dbg!(&ast);
 
         assert_eq!(ast.literals.len(), 1);
-        assert_eq!(ast.calls.len(), 1);
         assert_eq!(ast.identifiers.len(), 1);
+        assert_eq!(ast.calls.len(), 1);
         Ok(())
     }
 
