@@ -24,26 +24,25 @@ struct ParseState<'src, 'toks, T: Iterator<Item = &'toks Token>> {
 }
 
 impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
-    fn peek(&mut self) -> Option<&Token> {
-        self.tokens.peek().copied()
+    fn peek(&mut self) -> Result<&Token, ()> {
+        self.tokens.peek().copied().ok_or(())
     }
-    fn peek_kind(&mut self) -> Option<TokenType> {
+    fn peek_kind(&mut self) -> Result<TokenType, ()> {
         self.peek().map(|tok| tok.kind)
     }
-    fn peek_kind_op(&mut self) -> Option<Symbol> {
-        if let Some(TokenType::Op(symbol)) = self.peek_kind() {
-            Some(symbol)
-        } else {
-            None
+    fn peek_kind_op(&mut self) -> Result<Symbol, ()> {
+        match self.peek_kind() {
+            Ok(TokenType::Op(symbol)) => Ok(symbol),
+            Ok(_) => Err(()),
+            Err(e) => Err(e),
         }
     }
-    fn peek_assignment(&mut self) -> Option<Symbol> {
-        if let Some(TokenType::Op(op)) = self.peek_kind() {
-            if is_assign(op) {
-                return Some(op);
-            }
+    fn peek_assignment(&mut self) -> Result<Symbol, ()> {
+        match self.peek_kind() {
+            Ok(TokenType::Op(op)) if is_assign(op) => Ok(op),
+            Ok(_) => Err(()),
+            Err(e) => Err(e),
         }
-        None
     }
     fn token(&mut self) -> Option<Token> {
         self.tokens.next().copied()
@@ -61,7 +60,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
     }
 
     fn require(&mut self, expected_token: TokenType) -> Result<(), TError> {
-        if let Some(token) = self.peek() {
+        if let Ok(token) = self.peek() {
             if token.kind == expected_token {
                 let _ = self.token();
                 Ok(())
@@ -79,7 +78,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
     }
 
     fn binding(&mut self) -> Result<Option<Binding>, TError> {
-        let mode = if let Some(binding) = self.peek().cloned() {
+        let mode = if let Ok(binding) = self.peek().cloned() {
             let binding_kind = self.get_kind(&binding);
             // TODO: Handle tokens...
             if let TokenType::Op(binding) = binding_kind {
@@ -99,14 +98,14 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             trace!("Unexpected eof when looking for binding");
             return Ok(None);
         };
-        let name: Identifier = if let Some(TokenType::Ident) = self.peek_kind() {
+        let name: Identifier = if let Ok(TokenType::Ident) = self.peek_kind() {
             let tok = self.token().expect("Internal error");
             self.name(tok)
         } else {
             trace!("No name found for binding");
             return Ok(None);
         };
-        let ty = if let Some(Symbol::HasType) = self.peek_kind_op() {
+        let ty = if let Ok(Symbol::HasType) = self.peek_kind_op() {
             let _ = self.token().expect("Internal error");
             Some(self.expr(Symbol::HasType)?)
         } else {
@@ -137,12 +136,12 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         let mut _has_implicit_args = false;
         let mut has_args = false;
         let mut has_non_bind_args = false; // i.e. this should be a definition...
-        if let Some(TokenType::Op(Symbol::Lt)) = self.peek_kind() {
+        if let Ok(TokenType::Op(Symbol::Lt)) = self.peek_kind() {
             trace!("has implicit arguments");
             let _ = self.token();
             _has_implicit_args = true;
             // Read implicit args...
-            while Some(TokenType::Op(Symbol::Gt)) != self.peek_kind() {
+            while Ok(TokenType::Op(Symbol::Gt)) != self.peek_kind() {
                 bindings.push(self.binding_or_arg(&mut has_non_bind_args)?);
                 if self.require(TokenType::Op(Symbol::Comma)).is_err() {
                     break;
@@ -150,12 +149,12 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             }
             self.require(TokenType::Op(Symbol::Gt))?;
         }
-        if let Some(TokenType::Op(Symbol::OpenParen)) = self.peek_kind() {
+        if let Ok(TokenType::Op(Symbol::OpenParen)) = self.peek_kind() {
             trace!("has arguments");
             let _ = self.token();
             has_args = true;
             // Read args...
-            while Some(TokenType::Op(Symbol::CloseParen)) != self.peek_kind() {
+            while Ok(TokenType::Op(Symbol::CloseParen)) != self.peek_kind() {
                 bindings.push(self.binding_or_arg(&mut has_non_bind_args)?);
                 if self.require(TokenType::Op(Symbol::Comma)).is_err() {
                     break;
@@ -163,7 +162,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             }
             self.require(TokenType::Op(Symbol::CloseParen))?;
         }
-        let ty = if let Some(Symbol::HasType) = self.peek_kind_op() {
+        let ty = if let Ok(Symbol::HasType) = self.peek_kind_op() {
             trace!("HasType started");
             let _ = self.token().expect("Internal error");
             let ty = self.expr(Symbol::HasType)?;
@@ -172,7 +171,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         } else {
             None
         };
-        if let Some(assignment) = self.peek_assignment() {
+        if let Ok(assignment) = self.peek_assignment() {
             if binding.is_looser(assignment) {
                 let _ = self.token();
                 let op = assign_op(assignment);
@@ -247,7 +246,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
     }
 
     fn expr(&mut self, binding: Symbol) -> Result<NodeId, TError> {
-        let token = if let Some(token) = self.peek() {
+        let token = if let Ok(token) = self.peek() {
             *token
         } else {
             todo!("No token");
@@ -321,7 +320,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             TokenType::Group => todo!(),
         };
         trace!("Maybe continue: {left:?} (binding {binding:?})");
-        while let Some(TokenType::Op(sym)) = self.peek_kind() {
+        while let Ok(TokenType::Op(sym)) = self.peek_kind() {
             if sym.binding() == OpBinding::Close {
                 trace!("Closing Expr: {left:?} sym: {sym:?}");
                 break;
@@ -396,7 +395,7 @@ pub fn parse(filepath: &Path, contents: &str, tokens: &[Token]) -> Result<Ast, T
         ast: Ast::new(filepath.to_path_buf()),
         tokens: tokens.iter().peekable(),
     };
-    if state.peek().is_some() {
+    if state.peek().is_ok() {
         // Support empty files!
         let root = state.expr(Symbol::OpenParen)?;
         state.ast.roots.push(root);
