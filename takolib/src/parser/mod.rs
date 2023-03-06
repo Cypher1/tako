@@ -8,8 +8,8 @@ use crate::{ast::*, parser::semantics::Literal};
 use log::trace;
 use semantics::BindingMode;
 use std::path::Path;
-use tokens::{assign_op, binding_mode_operation, is_assign, OpBinding, Symbol, Token, TokenType};
 use thiserror::Error;
+use tokens::{assign_op, binding_mode_operation, is_assign, OpBinding, Symbol, Token, TokenType};
 
 #[derive(Debug, Error, PartialEq, Eq, Ord, PartialOrd, Clone, Hash)]
 pub enum ParseError {
@@ -27,14 +27,16 @@ pub enum ParseError {
         location: Location,
         expected: TokenType,
     },
-    ParseIntError{
-        message: String
+    ParseIntError {
+        message: String,
     },
 }
 
 impl From<std::num::ParseIntError> for ParseError {
     fn from(error: std::num::ParseIntError) -> Self {
-        ParseError::ParseIntError { message: error.to_string() }
+        ParseError::ParseIntError {
+            message: error.to_string(),
+        }
     }
 }
 
@@ -43,8 +45,14 @@ impl ParseError {
         match self {
             ParseError::UnexpectedEof => None,
             ParseError::UnexpectedTokenTypeExpectedOperator { got: _, location } => Some(location),
-            ParseError::UnexpectedTokenTypeExpectedAssignment { got: _, location } => Some(location),
-            ParseError::UnexpectedTokenType { got: _, location, expected: _ } => Some(location),
+            ParseError::UnexpectedTokenTypeExpectedAssignment { got: _, location } => {
+                Some(location)
+            }
+            ParseError::UnexpectedTokenType {
+                got: _,
+                location,
+                expected: _,
+            } => Some(location),
             ParseError::ParseIntError { .. } => None,
         }
     }
@@ -60,9 +68,9 @@ impl std::fmt::Display for ParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // TODO: Manually implement readable errors.
         //TError::ExpectedToken(expected, got, location, inside) => write!(
-                //f,
-                //"Expected a {expected:?} found a {got:?}, at {location:?} inside {inside:?}"
-            //)?,
+        //f,
+        //"Expected a {expected:?} found a {got:?}, at {location:?} inside {inside:?}"
+        //)?,
         <Self as std::fmt::Debug>::fmt(self, f)
     }
 }
@@ -90,26 +98,42 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
     fn peek_kind(&mut self) -> Result<TokenType, ParseError> {
         self.peek().map(|tok| tok.kind)
     }
-    fn token_if<OnTok>(&mut self, test: impl FnOnce(&Token) -> Result<OnTok, ParseError>) -> Result<OnTok, ParseError> {
+    fn token_if<OnTok>(
+        &mut self,
+        test: impl FnOnce(&Token) -> Result<OnTok, ParseError>,
+    ) -> Result<OnTok, ParseError> {
         let tk = self.peek()?;
         let res = test(tk)?;
-        self.token().expect("Internal error: Token missing after check");
+        self.token()
+            .expect("Internal error: Token missing after check");
         Ok(res)
     }
     fn token_of_type(&mut self, expected: TokenType) -> Result<Token, ParseError> {
-        self.token_if(|got| if got.kind == expected {
-            Ok(*got)
-        } else {
-            Err(ParseError::UnexpectedTokenType { got: got.kind, location: got.location(), expected })
+        self.token_if(|got| {
+            if got.kind == expected {
+                Ok(*got)
+            } else {
+                Err(ParseError::UnexpectedTokenType {
+                    got: got.kind,
+                    location: got.location(),
+                    expected,
+                })
+            }
         })
     }
     fn ident(&mut self) -> Result<Token, ParseError> {
         self.token_of_type(TokenType::Ident)
     }
-    fn operator<OnSym>(&mut self, test: impl Fn(Symbol) -> Result<OnSym, ParseError>) -> Result<OnSym, ParseError> {
+    fn operator<OnSym>(
+        &mut self,
+        test: impl Fn(Symbol) -> Result<OnSym, ParseError>,
+    ) -> Result<OnSym, ParseError> {
         self.token_if(|got| match got.kind {
             TokenType::Op(got_sym) => test(got_sym),
-            _ => Err(ParseError::UnexpectedTokenTypeExpectedOperator { got: got.kind, location: got.location() }),
+            _ => Err(ParseError::UnexpectedTokenTypeExpectedOperator {
+                got: got.kind,
+                location: got.location(),
+            }),
         })
     }
     fn operator_is(&mut self, sym: Symbol) -> Result<Token, ParseError> {
@@ -121,7 +145,10 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
     fn assignment_op(&mut self, binding: Symbol) -> Result<Symbol, ParseError> {
         self.token_if(|got| match got.kind {
             TokenType::Op(assign) if is_assign(assign) && binding.is_looser(assign) => Ok(assign),
-            _ => Err(ParseError::UnexpectedTokenTypeExpectedAssignment { got: got.kind, location: got.location() })
+            _ => Err(ParseError::UnexpectedTokenTypeExpectedAssignment {
+                got: got.kind,
+                location: got.location(),
+            }),
         })
     }
 
@@ -243,8 +270,8 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                     location,
                 );
             }
-            let name = &self.contents[(location.start as usize)
-                ..(location.start as usize) + (location.length as usize)];
+            let name = &self.contents
+                [(location.start as usize)..(location.start as usize) + (location.length as usize)];
             let name = self
                 .ast
                 .string_interner
