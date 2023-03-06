@@ -113,10 +113,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         })
     }
     fn operator_is(&mut self, sym: Symbol) -> Result<Token, ParseError> {
-        self.token_if(|got| match got.kind {
-            TokenType::Op(got_sym) if got_sym == sym => Ok(*got),
-            _ => Err(ParseError::UnexpectedTokenType { got: got.kind, location: got.location(), expected: TokenType::Op(sym) })
-        })
+        self.token_of_type(TokenType::Op(sym))
     }
     fn has_type(&mut self) -> Result<Token, ParseError> {
         self.operator_is(Symbol::HasType)
@@ -220,10 +217,10 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             while let Err(_) = self.operator_is(Symbol::CloseParen) {
                 bindings.push(self.binding_or_arg(&mut has_non_bind_args)?);
                 if self.require(TokenType::Op(Symbol::Comma)).is_err() {
+                    self.require(TokenType::Op(Symbol::CloseParen))?;
                     break;
                 }
             }
-            self.require(TokenType::Op(Symbol::CloseParen))?;
         }
         let ty = if let Ok(_) = self.has_type() {
             trace!("HasType started");
@@ -784,6 +781,11 @@ pub mod tests {
     #[should_panic] // TODO(errors): Implement!
     fn parse_atom_atom() {
         setup("$a $b").expect("Disallowed syntax");
+    }
+
+    #[test]
+    fn parse_empty_file() {
+        setup("").expect("Should succeed on empty file");
     }
 
     /*
