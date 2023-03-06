@@ -195,7 +195,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             trace!("No name found for binding");
             return Ok(None);
         };
-        let ty = if let Ok(_) = self.has_type() {
+        let ty = if self.has_type().is_ok() {
             Some(self.expr(Symbol::HasType)?)
         } else {
             None
@@ -225,7 +225,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         let mut _has_implicit_args = false;
         let mut has_args = false;
         let mut has_non_bind_args = false; // i.e. this should be a definition...
-        if let Ok(_) = self.operator_is(Symbol::Lt) {
+        if self.operator_is(Symbol::Lt).is_ok() {
             trace!("has implicit arguments");
             _has_implicit_args = true;
             // Read implicit args...
@@ -237,11 +237,11 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             }
             self.require(TokenType::Op(Symbol::Gt))?;
         }
-        if let Ok(_) = self.operator_is(Symbol::OpenParen) {
+        if self.operator_is(Symbol::OpenParen).is_ok() {
             trace!("has arguments");
             has_args = true;
             // Read args...
-            while let Err(_) = self.operator_is(Symbol::CloseParen) {
+            while self.operator_is(Symbol::CloseParen).is_err() {
                 bindings.push(self.binding_or_arg(&mut has_non_bind_args)?);
                 if self.require(TokenType::Op(Symbol::Comma)).is_err() {
                     self.require(TokenType::Op(Symbol::CloseParen))?;
@@ -249,7 +249,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 }
             }
         }
-        let ty = if let Ok(_) = self.has_type() {
+        let ty = if self.has_type().is_ok() {
             trace!("HasType started");
             let ty = self.expr(Symbol::HasType)?;
             trace!("HasType finished");
