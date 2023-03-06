@@ -90,13 +90,6 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
     fn peek_kind(&mut self) -> Result<TokenType, ParseError> {
         self.peek().map(|tok| tok.kind)
     }
-    fn peek_assignment(&mut self) -> Result<Symbol, ParseError> {
-        match self.peek() {
-            Ok(Token { kind: TokenType::Op(op), ..}) if is_assign(*op) => Ok(*op),
-            Ok(got) => Err(ParseError::UnexpectedTokenTypeExpectedAssignment { got: got.kind, location: got.location() }),
-            Err(e) => Err(e),
-        }
-    }
     fn token_if<OnTok>(&mut self, test: impl FnOnce(&Token) -> Result<OnTok, ParseError>) -> Result<OnTok, ParseError> {
         let tk = self.peek()?;
         let res = test(tk)?;
@@ -128,9 +121,9 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
     fn has_type(&mut self) -> Result<Token, ParseError> {
         self.operator_is(Symbol::HasType)
     }
-    fn assignment_op(&mut self) -> Result<Token, ParseError> {
+    fn assignment_op(&mut self, binding: Symbol) -> Result<Symbol, ParseError> {
         self.token_if(|got| match got.kind {
-            TokenType::Op(assign) if is_assign(assign) => Ok(*got),
+            TokenType::Op(assign) if is_assign(assign) && binding.is_looser(assign) => Ok(assign),
             _ => Err(ParseError::UnexpectedTokenTypeExpectedAssignment { got: got.kind, location: got.location() })
         })
     }
@@ -240,55 +233,52 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         } else {
             None
         };
-        if let Ok(assignment) = self.peek_assignment() {
-            if binding.is_looser(assignment) {
-                let _ = self.token();
-                let op = assign_op(assignment);
-                let mut implementation = self.expr(assignment)?;
-                if let Some(op) = op {
-                    let name = self.identifier(name, location);
-                    implementation = self.ast.add_op(
-                        Op {
-                            op,
-                            args: vec![name, implementation],
-                        },
-                        location,
-                    );
-                }
-                let name = &self.contents[(location.start as usize)
-                    ..(location.start as usize) + (location.length as usize)];
-                let name = self
-                    .ast
-                    .string_interner
-                    .register_str_by_loc(name, location.start);
-                let mut only_bindings = vec![];
-                for binding in bindings {
-                    match binding {
-                        BindingOrValue::Binding(binding) => only_bindings.push(binding),
-                        BindingOrValue::Value(value) => {
-                            todo!("Don't know how to convert {value:?} to binding.")
-                        }
-                    }
-                }
-                let bindings = if has_args { Some(only_bindings) } else { None };
-                // TODO: USE bindings
-                trace!("Add definition");
-                if has_non_bind_args {
-                    todo!("Concern");
-                }
-                let def = self.ast.add_definition(
-                    Definition {
-                        name,
-                        bindings,
-                        implementation,
+        if let Ok(assignment) = self.assignment_op(binding) {
+            let op = assign_op(assignment);
+            let mut implementation = self.expr(assignment)?;
+            if let Some(op) = op {
+                let name = self.identifier(name, location);
+                implementation = self.ast.add_op(
+                    Op {
+                        op,
+                        args: vec![name, implementation],
                     },
                     location,
                 );
-                if let Some(ty) = ty {
-                    return Ok(self.ast.add_annotation(def, ty));
-                }
-                return Ok(def);
             }
+            let name = &self.contents[(location.start as usize)
+                ..(location.start as usize) + (location.length as usize)];
+            let name = self
+                .ast
+                .string_interner
+                .register_str_by_loc(name, location.start);
+            let mut only_bindings = vec![];
+            for binding in bindings {
+                match binding {
+                    BindingOrValue::Binding(binding) => only_bindings.push(binding),
+                    BindingOrValue::Value(value) => {
+                        todo!("Don't know how to convert {value:?} to binding.")
+                    }
+                }
+            }
+            let bindings = if has_args { Some(only_bindings) } else { None };
+            // TODO: USE bindings
+            trace!("Add definition");
+            if has_non_bind_args {
+                todo!("Concern");
+            }
+            let def = self.ast.add_definition(
+                Definition {
+                    name,
+                    bindings,
+                    implementation,
+                },
+                location,
+            );
+            if let Some(ty) = ty {
+                return Ok(self.ast.add_annotation(def, ty));
+            }
+            return Ok(def);
         }
         if has_args {
             let inner = self.identifier(name, location);
