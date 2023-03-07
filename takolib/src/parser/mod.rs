@@ -191,7 +191,11 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         Ok(Some(Binding { mode, name, ty }))
     }
 
-    fn binding_or_arg(&mut self, has_non_arg_values: &mut bool, default_mode: BindingMode) -> Result<BindingOrValue, TError> {
+    fn binding_or_arg(
+        &mut self,
+        has_non_arg_values: &mut bool,
+        default_mode: BindingMode,
+    ) -> Result<BindingOrValue, TError> {
         if let Some(binding) = self.binding(default_mode)? {
             trace!("Binding: {binding:?}");
             return Ok(BindingOrValue::Binding(binding));

@@ -1,7 +1,8 @@
 #![allow(unused)]
 use crate::{
     ast::{Ast, Binding, Contains, Node, NodeData, NodeId},
-    string_interner::Identifier, parser::semantics::BindingMode,
+    parser::semantics::BindingMode,
+    string_interner::Identifier,
 };
 use std::fmt;
 use std::fmt::Write;
@@ -49,7 +50,12 @@ impl<'ast> PrintNode<'ast> {
         Ok(())
     }
 
-    fn print_binding(&self, f: &mut impl Write, binding: &Binding, default_mode: BindingMode) -> fmt::Result {
+    fn print_binding(
+        &self,
+        f: &mut impl Write,
+        binding: &Binding,
+        default_mode: BindingMode,
+    ) -> fmt::Result {
         let Binding { mode, name, ty } = &binding;
         if *mode != default_mode {
             write!(f, "{mode} ");
