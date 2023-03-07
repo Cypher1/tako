@@ -40,6 +40,15 @@ pub enum ParseError {
         right: Symbol,
         location: Location,
     },
+    UnexpectedExpressionInDefinitionArguments {
+        arg: NodeId,
+        arg_str: String,
+        location: Location,
+    },
+    MissingLeftHandSideOfOperator {
+        op: Symbol,
+        location: Location,
+    },
 }
 
 impl From<std::num::ParseIntError> for ParseError {
@@ -55,18 +64,24 @@ impl ParseError {
     pub fn location(&self) -> Option<&Location> {
         match self {
             ParseError::UnexpectedEof => None,
-            ParseError::UnexpectedTokenTypeExpectedOperator { got: _, location } => Some(location),
-            ParseError::UnexpectedTokenTypeExpectedAssignment { got: _, location } => {
-                Some(location)
-            }
-            ParseError::UnexpectedTokenType {
+            ParseError::ParseIntError { location, .. } => location.as_ref(),
+            ParseError::UnexpectedTokenTypeExpectedOperator { got: _, location }
+            | ParseError::UnexpectedTokenTypeExpectedAssignment { got: _, location }
+            | ParseError::UnexpectedTokenType {
                 got: _,
                 location,
                 expected: _,
-            } => Some(location),
-            ParseError::UnexpectedTokenTypeInExpression { got: _, location } => Some(location),
-            ParseError::AmbiguousExpression { left: _, right: _, location } => Some(location),
-            ParseError::ParseIntError { location, .. } => location.as_ref(),
+            }
+            | ParseError::UnexpectedTokenTypeInExpression { got: _, location }
+            | ParseError::AmbiguousExpression {
+                left: _,
+                right: _,
+                location,
+            }
+            | ParseError::UnexpectedExpressionInDefinitionArguments { location, .. }
+            | ParseError::MissingLeftHandSideOfOperator { location, .. } => {
+                Some(location)
+            }
         }
     }
 }
@@ -98,6 +113,12 @@ impl std::fmt::Display for ParseError {
             }
             ParseError::AmbiguousExpression { left, right, .. } => {
                 write!(f, "This expression could be read two ways, use parens to clarify whether {left} or {right} should be performed first")
+            }
+            ParseError::UnexpectedExpressionInDefinitionArguments { arg_str, .. } => {
+                write!(f, "Don't know how to convert '{arg_str}' to binding.")
+            }
+            ParseError::MissingLeftHandSideOfOperator { op, .. } => {
+                write!(f, "Operator {op} needs a 'left' side. (e.g. 'a{op}b' rather than '{op}b'")
             }
         }
     }
@@ -184,14 +205,14 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         Ok(())
     }
 
-    fn binding(&mut self, default_mode: BindingMode) -> Result<Option<Binding>, TError> {
+    fn binding(&mut self) -> Result<Option<Binding>, TError> {
         let mode = if let Ok(binding) = self.peek().cloned() {
             let binding_kind = self.get_kind(&binding);
             // TODO: Handle tokens...
             if let TokenType::Op(binding) = binding_kind {
                 if let Some(mode) = binding_mode_operation(binding) {
                     self.token(); // Consume the mode.
-                    mode
+                    Some(mode)
                 } else {
                     trace!("Wrong op for binding");
                     return Ok(None);
@@ -199,7 +220,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             } else {
                 // Named arg!
                 trace!("Named arg?");
-                default_mode
+                None
             }
         } else {
             trace!("Unexpected eof when looking for binding");
@@ -224,12 +245,17 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         has_non_bind_args: &mut bool,
         default_mode: BindingMode,
     ) -> Result<BindingOrValue, TError> {
-        if let Some(binding) = self.binding(default_mode)? {
+        let value = self.expr(Symbol::Comma)?;
+        let node = &self.ast.get(value);
+        if let NodeData::Binding(binding) = node.id {
+            let (_node_id, binding) = self.ast.get_mut(binding);
+            if binding.mode.is_none() {
+                binding.mode = Some(default_mode);
+            }
             trace!("Binding: {binding:?}");
-            return Ok(BindingOrValue::Binding(binding));
+            return Ok(BindingOrValue::Binding(*binding));
         }
         *has_non_bind_args = true;
-        let value = self.expr(Symbol::Comma)?;
         trace!("Arg value: {value:?}");
         Ok(BindingOrValue::Value(value))
     }
@@ -301,7 +327,12 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 match binding {
                     BindingOrValue::Binding(binding) => only_bindings.push(binding),
                     BindingOrValue::Value(value) => {
-                        todo!("Don't know how to convert {value:?} to binding.")
+                        return Err(ParseError::UnexpectedExpressionInDefinitionArguments {
+                            arg: value,
+                            arg_str: format!("{}", self.ast.pretty(value)),
+                            location,
+                        }
+                        .into())
                     }
                 }
             }
@@ -373,14 +404,14 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             self.require(TokenType::Op(Symbol::CloseParen))?;
             left
         } else if let TokenType::Op(symbol) = self.get_kind(&token) {
-            if let Some(def_binding) = self.binding(BindingMode::Lambda)? {
+            if let Some(def_binding) = self.binding()? {
                 trace!("Binding? {def_binding:?}");
                 self.ast.add_binding(def_binding, location)
             } else {
                 let _ = self.token();
-                match symbol.binding() {
+                match symbol.binding_type() {
                     OpBinding::Open => todo!("Should have already been handled"),
-                    OpBinding::PrefixOp => {
+                    OpBinding::PrefixOp | OpBinding::PrefixOrInfixBinOp => {
                         let right = self.expr(binding)?;
                         self.ast.add_op(
                             Op {
@@ -390,7 +421,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                             location,
                         )
                     }
-                    _ => todo!("Operator {symbol} needs a 'left' side."),
+                    _ => return Err(ParseError::MissingLeftHandSideOfOperator { op: symbol, location }.into()),
                 }
             }
         } else if let Ok(token) = self.ident() {
@@ -408,7 +439,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         };
         trace!("Maybe continue: {left:?} (binding {binding:?})");
         while let Ok(TokenType::Op(sym)) = self.peek_kind() {
-            if sym.binding() == OpBinding::Close {
+            if sym.binding_type() == OpBinding::Close {
                 trace!("Closing Expr: {left:?} sym: {sym:?}");
                 break;
             }
@@ -842,6 +873,16 @@ pub mod tests {
     #[test]
     fn parse_empty_file() {
         setup("").expect("Should succeed on empty file");
+    }
+
+    #[test]
+    fn parse_values_in_fn_args() -> Result<(), TError> {
+        let ast = setup("signum(x)=if(x<0, -1, 1)")?;
+        // dbg!(ast);
+        assert_eq!(ast.calls.len(), 1);
+        assert_eq!(ast.ops.len(), 1);
+        assert_eq!(ast.definitions.len(), 1);
+        Ok(())
     }
 
     /*

@@ -57,8 +57,10 @@ impl<'ast> PrintNode<'ast> {
         default_mode: BindingMode,
     ) -> fmt::Result {
         let Binding { mode, name, ty } = &binding;
-        if *mode != default_mode {
-            write!(f, "{mode} ");
+        if let Some(mode) = mode {
+            if *mode != default_mode {
+                write!(f, "{mode} ");
+            }
         }
         write!(
             f,
@@ -86,7 +88,7 @@ impl<'ast> PrintNode<'ast> {
             let mut implicits = String::new();
             let mut explicits = String::new();
             for binding in bindings {
-                if binding.mode != BindingMode::Lambda {
+                if !binding.mode.is_none() || binding.mode != Some(BindingMode::Lambda) {
                     if !implicits.is_empty() {
                         write!(&mut implicits, ", ")?;
                     }
@@ -288,6 +290,13 @@ mod tests {
     fn round_trip_implicit_bindings() -> Result<(), TError> {
         let out = setup("x<T: Int>(y: T): T=1")?;
         assert_eq!(out, "x<T: Int>(y: T): T=1");
+        Ok(())
+    }
+
+    #[test]
+    fn round_trip_values_in_fn_args() -> Result<(), TError> {
+        let out = setup("signum(x)=if(x<0, -1, 1)")?;
+        assert_eq!(out, "signum(x)=if(x<0, -1, 1)");
         Ok(())
     }
 }

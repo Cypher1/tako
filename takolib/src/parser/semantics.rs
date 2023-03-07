@@ -1,4 +1,4 @@
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum Literal {
     Bool,    // A boolean of arbitrary size :P (true/false)
     Numeric, // An Integer or Float of arbitrary size
@@ -8,7 +8,7 @@ pub enum Literal {
     Map, // An abstract map literal, any of OrderedMap, HashMap, Dictionary, etc. (e.g. { 'a': 123, 'b': 234 })
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum BindingMode {
     Lambda, // i.e. value, given x, y
     Pi,     // i.e. dependant type, forall x, y

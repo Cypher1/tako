@@ -22,6 +22,7 @@ assert_eq_size!([Token; 2], [u8; 8]);
 pub enum OpBinding {
     PostfixOp,
     PrefixOp,
+    PrefixOrInfixBinOp,
     InfixBinOp,
     Open,
     Close,
@@ -255,7 +256,7 @@ impl Symbol {
         !(self.is_associative() || self.is_right_associative())
     }
 
-    pub fn binding(&self) -> OpBinding {
+    pub fn binding_type(&self) -> OpBinding {
         match self {
             Symbol::Escape
             | Symbol::BitNot
@@ -268,6 +269,7 @@ impl Symbol {
             | Symbol::Pi
             | Symbol::Exists => OpBinding::PrefixOp,
             Symbol::Try => OpBinding::PostfixOp,
+            Symbol::Sub => OpBinding::PrefixOrInfixBinOp,
             Symbol::CloseCurly | Symbol::CloseParen | Symbol::CloseBracket => OpBinding::Close,
             Symbol::OpenCurly | Symbol::OpenParen | Symbol::OpenBracket => OpBinding::Open,
             _ => OpBinding::InfixBinOp,
