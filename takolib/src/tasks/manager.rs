@@ -151,7 +151,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
             Update::NextResult(res) => {
                 self.stats.total_num_results += 1;
                 results_sender
-                    .send(res.clone())
+                    .send(Ok(res.clone()))
                     .expect("Should be able to send results");
                 if T::RESULT_IS_CACHABLE {
                     results_so_far.push(res);
@@ -177,6 +177,9 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
                 self.stats.num_failed += 1;
                 is_complete = true; // For completeness...?
                 error = Some(err);
+                results_sender
+                    .send(Err(err.clone()))
+                    .expect("Should be able to send results");
             }
         };
         current_results.state = match (error, is_complete) {

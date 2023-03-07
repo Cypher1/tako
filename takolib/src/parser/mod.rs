@@ -34,6 +34,11 @@ pub enum ParseError {
     ParseIntError {
         message: String,
     },
+    AmbiguousExpression {
+        left: Symbol,
+        right: Symbol,
+        location: Location,
+    },
 }
 
 impl From<std::num::ParseIntError> for ParseError {
@@ -58,6 +63,7 @@ impl ParseError {
                 expected: _,
             } => Some(location),
             ParseError::UnexpectedTokenTypeInExpression { got: _, location } => Some(location),
+            ParseError::AmbiguousExpression { left: _, right: _, location } => Some(location),
             ParseError::ParseIntError { .. } => None,
         }
     }
@@ -87,7 +93,10 @@ impl std::fmt::Display for ParseError {
             }
             ParseError::ParseIntError { message, .. } => {
                 write!(f, "{message} expected an integer literal (r.g. 123)")
-            } // todo!("Ambiguous expression: {left:?} sym: {sym:?} inside binding: {binding:?}");
+            }
+            ParseError::AmbiguousExpression { left, right, .. } => {
+                write!(f, "This expression could be read two ways, use parens to clarify whether {left} or {right} should be performed first")
+            }
         }
     }
 }
@@ -405,7 +414,12 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 // If both can be inside the other
                 // and theyre not associative...
                 // then this is ambiguous and needs parens.
-                todo!("Ambiguous expression: {left:?} sym: {sym:?} inside binding: {binding:?}");
+                return Err(ParseError::AmbiguousExpression {
+                    left: binding,
+                    right: sym,
+                    location,
+                }
+                .into());
             }
             if !binding.is_looser(sym) {
                 trace!("Back up Expr: {left:?} binding: {binding:?} inside sym: {sym:?}");
@@ -772,6 +786,16 @@ pub mod tests {
         assert_eq!(ast.literals.len(), 2);
         assert_eq!(ast.ops.len(), 1);
         assert_eq!(ast.definitions.len(), 0);
+        Ok(())
+    }
+
+    #[test]
+    fn parse_ambiguous_and_with_or() -> Result<(), TError> {
+        let err = setup("a||b&&c");
+        dbg!(&err);
+        assert!(err.is_err());
+        let err = err.unwrap_err();
+        assert_eq!(format!("{}", err), "This expression could be read two ways, use parens to clarify whether || or && should be performed first");
         Ok(())
     }
 
