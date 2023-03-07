@@ -10,7 +10,6 @@ pub enum Literal {
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum BindingMode {
-    None,   // i.e. value, apply x
     Lambda, // i.e. value, given x, y
     Pi,     // i.e. dependant type, forall x, y
     Sigma,  // i.e. dependant type, exists x, y
@@ -22,7 +21,6 @@ impl std::fmt::Display for BindingMode {
             f,
             "{}",
             match self {
-                BindingMode::None => "",
                 BindingMode::Lambda => "lambda",
                 BindingMode::Pi => "forall",
                 BindingMode::Sigma => "exists",

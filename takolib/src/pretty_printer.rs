@@ -1,9 +1,10 @@
 #![allow(unused)]
 use crate::{
     ast::{Ast, Binding, Contains, Node, NodeData, NodeId},
-    string_interner::Identifier,
+    string_interner::Identifier, parser::semantics::BindingMode,
 };
 use std::fmt;
+use std::fmt::Write;
 
 /*
 // TODO: Consider a generic form of this.
@@ -48,11 +49,14 @@ impl<'ast> PrintNode<'ast> {
         Ok(())
     }
 
-    fn print_binding(&self, f: &mut fmt::Formatter<'_>, binding: &Binding) -> fmt::Result {
+    fn print_binding(&self, f: &mut impl Write, binding: &Binding, default_mode: BindingMode) -> fmt::Result {
         let Binding { mode, name, ty } = &binding;
+        if *mode != default_mode {
+            write!(f, "{mode} ");
+        }
         write!(
             f,
-            "{mode}{}",
+            "{}",
             self.ast
                 .string_interner
                 .get_str(*name)
@@ -73,17 +77,25 @@ impl<'ast> PrintNode<'ast> {
     ) -> fmt::Result {
         self.print_identifier(f, name)?;
         if let Some(bindings) = &bindings {
-            write!(f, "(")?;
-            let mut first = true;
+            let mut implicits = String::new();
+            let mut explicits = String::new();
             for binding in bindings {
-                if first {
-                    first = false;
+                if binding.mode != BindingMode::Lambda {
+                    if !implicits.is_empty() {
+                        write!(&mut implicits, ", ")?;
+                    }
+                    self.print_binding(&mut implicits, binding, BindingMode::Pi)?;
                 } else {
-                    write!(f, ", ")?;
+                    if !explicits.is_empty() {
+                        write!(explicits, ", ")?;
+                    }
+                    self.print_binding(&mut explicits, binding, BindingMode::Lambda)?;
                 }
-                self.print_binding(f, binding)?;
             }
-            write!(f, ")")?;
+            if !implicits.is_empty() {
+                write!(f, "<{implicits}>")?;
+            }
+            write!(f, "({explicits})")?;
         }
         self.print_ty(f, ty)
     }
@@ -263,6 +275,13 @@ mod tests {
     fn round_trip_assignment_with_type_and_bindings() -> Result<(), TError> {
         let out = setup("x(y: Int): Int=1")?;
         assert_eq!(out, "x(y: Int): Int=1");
+        Ok(())
+    }
+
+    #[test]
+    fn round_trip_implicit_bindings() -> Result<(), TError> {
+        let out = setup("x<T: Int>(y: T): T=1")?;
+        assert_eq!(out, "x<T: Int>(y: T): T=1");
         Ok(())
     }
 }

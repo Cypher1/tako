@@ -124,18 +124,6 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
     fn ident(&mut self) -> Result<Token, ParseError> {
         self.token_of_type(TokenType::Ident)
     }
-    fn operator<OnSym>(
-        &mut self,
-        test: impl Fn(Symbol) -> Result<OnSym, ParseError>,
-    ) -> Result<OnSym, ParseError> {
-        self.token_if(|got| match got.kind {
-            TokenType::Op(got_sym) => test(got_sym),
-            _ => Err(ParseError::UnexpectedTokenTypeExpectedOperator {
-                got: got.kind,
-                location: got.location(),
-            }),
-        })
-    }
     fn operator_is(&mut self, sym: Symbol) -> Result<Token, ParseError> {
         self.token_of_type(TokenType::Op(sym))
     }
@@ -168,7 +156,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         Ok(())
     }
 
-    fn binding(&mut self) -> Result<Option<Binding>, TError> {
+    fn binding(&mut self, default_mode: BindingMode) -> Result<Option<Binding>, TError> {
         let mode = if let Ok(binding) = self.peek().cloned() {
             let binding_kind = self.get_kind(&binding);
             // TODO: Handle tokens...
@@ -183,7 +171,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             } else {
                 // Named arg!
                 trace!("Named arg?");
-                BindingMode::None
+                default_mode
             }
         } else {
             trace!("Unexpected eof when looking for binding");
@@ -203,8 +191,8 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         Ok(Some(Binding { mode, name, ty }))
     }
 
-    fn binding_or_arg(&mut self, has_non_arg_values: &mut bool) -> Result<BindingOrValue, TError> {
-        if let Some(binding) = self.binding()? {
+    fn binding_or_arg(&mut self, has_non_arg_values: &mut bool, default_mode: BindingMode) -> Result<BindingOrValue, TError> {
+        if let Some(binding) = self.binding(default_mode)? {
             trace!("Binding: {binding:?}");
             return Ok(BindingOrValue::Binding(binding));
         }
@@ -229,20 +217,20 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             trace!("has implicit arguments");
             _has_implicit_args = true;
             // Read implicit args...
-            while Ok(TokenType::Op(Symbol::Gt)) != self.peek_kind() {
-                bindings.push(self.binding_or_arg(&mut has_non_bind_args)?);
+            while self.operator_is(Symbol::Gt).is_err() {
+                bindings.push(self.binding_or_arg(&mut has_non_bind_args, BindingMode::Pi)?);
                 if self.require(TokenType::Op(Symbol::Comma)).is_err() {
+                    self.require(TokenType::Op(Symbol::Gt))?;
                     break;
                 }
             }
-            self.require(TokenType::Op(Symbol::Gt))?;
         }
         if self.operator_is(Symbol::OpenParen).is_ok() {
             trace!("has arguments");
             has_args = true;
             // Read args...
             while self.operator_is(Symbol::CloseParen).is_err() {
-                bindings.push(self.binding_or_arg(&mut has_non_bind_args)?);
+                bindings.push(self.binding_or_arg(&mut has_non_bind_args, BindingMode::Lambda)?);
                 if self.require(TokenType::Op(Symbol::Comma)).is_err() {
                     self.require(TokenType::Op(Symbol::CloseParen))?;
                     break;
@@ -362,7 +350,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 left
             }
             TokenType::Op(symbol) => {
-                if let Some(def_binding) = self.binding()? {
+                if let Some(def_binding) = self.binding(BindingMode::Lambda)? {
                     trace!("Binding? {def_binding:?}");
                     self.ast.add_binding(def_binding, location)
                 } else {
@@ -737,7 +725,7 @@ pub mod tests {
     #[test]
     fn parsed_assignment_with_implicit_args() -> Result<(), TError> {
         let ast = setup("id<T: Type>(y: T): T=y")?;
-        // dbg!(&ast);
+        eprintln!("{}", &ast.pretty(ast.roots[0]));
 
         assert_eq!(ast.identifiers.len(), 4);
         assert_eq!(ast.atoms.len(), 0);
