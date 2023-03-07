@@ -102,7 +102,7 @@ impl Op {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Binding {
-    pub mode: Option<BindingMode>,
+    pub mode: BindingMode,
     pub name: Identifier,
     pub ty: Option<NodeId>,
 }

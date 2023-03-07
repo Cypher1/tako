@@ -126,6 +126,7 @@ impl std::fmt::Display for ParseError {
 
 #[derive(Debug)]
 enum BindingOrValue {
+    Identifier(Identifier, Option<NodeId>),
     Binding(Binding),
     Value(NodeId),
 }
@@ -212,7 +213,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             if let TokenType::Op(binding) = binding_kind {
                 if let Some(mode) = binding_mode_operation(binding) {
                     self.token(); // Consume the mode.
-                    Some(mode)
+                    mode
                 } else {
                     trace!("Wrong op for binding");
                     return Ok(None);
@@ -220,7 +221,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             } else {
                 // Named arg!
                 trace!("Named arg?");
-                None
+                BindingMode::Lambda
             }
         } else {
             trace!("Unexpected eof when looking for binding");
@@ -243,17 +244,18 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
     fn binding_or_arg(
         &mut self,
         has_non_bind_args: &mut bool,
-        default_mode: BindingMode,
     ) -> Result<BindingOrValue, TError> {
         let value = self.expr(Symbol::Comma)?;
         let node = &self.ast.get(value);
         if let NodeData::Binding(binding) = node.id {
             let (_node_id, binding) = self.ast.get_mut(binding);
-            if binding.mode.is_none() {
-                binding.mode = Some(default_mode);
-            }
             trace!("Binding: {binding:?}");
             return Ok(BindingOrValue::Binding(*binding));
+        }
+        if let NodeData::Identifier(ident) = node.id {
+            let ty = node.ty;
+            let (_node_id, ident) = self.ast.get_mut(ident);
+            return Ok(BindingOrValue::Identifier(*ident, ty));
         }
         *has_non_bind_args = true;
         trace!("Arg value: {value:?}");
@@ -268,27 +270,14 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         );
         let location = name.location();
         let mut bindings = vec![];
-        let mut _has_implicit_args = false;
         let mut has_args = false;
         let mut has_non_bind_args = false; // i.e. this should be a definition...
-        if self.operator_is(Symbol::Lt).is_ok() {
-            trace!("has implicit arguments");
-            _has_implicit_args = true;
-            // Read implicit args...
-            while self.operator_is(Symbol::Gt).is_err() {
-                bindings.push(self.binding_or_arg(&mut has_non_bind_args, BindingMode::Pi)?);
-                if self.require(TokenType::Op(Symbol::Comma)).is_err() {
-                    self.require(TokenType::Op(Symbol::Gt))?;
-                    break;
-                }
-            }
-        }
         if self.operator_is(Symbol::OpenParen).is_ok() {
             trace!("has arguments");
             has_args = true;
             // Read args...
             while self.operator_is(Symbol::CloseParen).is_err() {
-                bindings.push(self.binding_or_arg(&mut has_non_bind_args, BindingMode::Lambda)?);
+                bindings.push(self.binding_or_arg(&mut has_non_bind_args)?);
                 if self.require(TokenType::Op(Symbol::Comma)).is_err() {
                     self.require(TokenType::Op(Symbol::CloseParen))?;
                     break;
@@ -326,6 +315,11 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             for binding in bindings {
                 match binding {
                     BindingOrValue::Binding(binding) => only_bindings.push(binding),
+                    BindingOrValue::Identifier(name, ty) => only_bindings.push(Binding {
+                        mode: BindingMode::Lambda,
+                        name,
+                        ty,
+                    }),
                     BindingOrValue::Value(value) => {
                         return Err(ParseError::UnexpectedExpressionInDefinitionArguments {
                             arg: value,
@@ -787,7 +781,7 @@ pub mod tests {
 
     #[test]
     fn parsed_assignment_with_implicit_args() -> Result<(), TError> {
-        let ast = setup("id<T: Type>(y: T): T=y")?;
+        let ast = setup("id(forall T: Type, y: T): T=y")?;
         eprintln!("{}", &ast.pretty(ast.roots[0]));
 
         assert_eq!(ast.identifiers.len(), 4);

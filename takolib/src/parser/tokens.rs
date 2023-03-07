@@ -312,7 +312,7 @@ impl std::fmt::Display for Symbol {
                 Symbol::Dot => ".",
                 Symbol::Range => "..",
                 Symbol::Spread => "...",
-                Symbol::Comma => ",",
+                Symbol::Comma => "(,)",
                 Symbol::Sequence => ";",
                 Symbol::Arrow => "->",
                 Symbol::DoubleArrow => "=>",

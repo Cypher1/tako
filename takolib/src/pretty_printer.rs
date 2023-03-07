@@ -54,13 +54,10 @@ impl<'ast> PrintNode<'ast> {
         &self,
         f: &mut impl Write,
         binding: &Binding,
-        default_mode: BindingMode,
     ) -> fmt::Result {
         let Binding { mode, name, ty } = &binding;
-        if let Some(mode) = mode {
-            if *mode != default_mode {
-                write!(f, "{mode} ");
-            }
+        if *mode != BindingMode::Lambda {
+            write!(f, "{mode} ");
         }
         write!(
             f,
@@ -88,22 +85,26 @@ impl<'ast> PrintNode<'ast> {
             let mut implicits = String::new();
             let mut explicits = String::new();
             for binding in bindings {
-                if !binding.mode.is_none() || binding.mode != Some(BindingMode::Lambda) {
+                if binding.mode != BindingMode::Lambda {
                     if !implicits.is_empty() {
                         write!(&mut implicits, ", ")?;
                     }
-                    self.print_binding(&mut implicits, binding, BindingMode::Pi)?;
+                    self.print_binding(&mut implicits, binding)?;
                 } else {
                     if !explicits.is_empty() {
                         write!(explicits, ", ")?;
                     }
-                    self.print_binding(&mut explicits, binding, BindingMode::Lambda)?;
+                    self.print_binding(&mut explicits, binding)?;
                 }
             }
+            write!(f, "(")?;
             if !implicits.is_empty() {
-                write!(f, "<{implicits}>")?;
+                write!(f, "{implicits}")?;
+                if !explicits.is_empty() {
+                    write!(f, ", ")?;
+                }
             }
-            write!(f, "({explicits})")?;
+            write!(f, "{explicits})")?;
         }
         self.print_ty(f, ty)
     }
@@ -178,7 +179,7 @@ impl<'ast> fmt::Display for PrintNode<'ast> {
                     // TODO: Cancel out brackets.
                     let needs_parens = {
                         let node = self.ast.get(*arg);
-                        matches!(node.id, NodeData::Op(_))
+                        matches!(node.id, NodeData::Op(_) | NodeData::Binding(_))
                     };
                     if needs_parens {
                         write!(f, "(")?;
@@ -288,8 +289,14 @@ mod tests {
 
     #[test]
     fn round_trip_implicit_bindings() -> Result<(), TError> {
-        let out = setup("x<T: Int>(y: T): T=1")?;
-        assert_eq!(out, "x<T: Int>(y: T): T=1");
+        let out = setup("x(forall T: Int, y: T): T=1")?;
+        assert_eq!(out, "x(forall T: Int, y: T): T=1");
+        Ok(())
+    }
+    #[test]
+    fn round_trip_implicit_bindings_id_fn() -> Result<(), TError> {
+        let out = setup("id(forall T: Type, y: T): T=y")?;
+        assert_eq!(out, "id(forall T: Type, y: T): T=y");
         Ok(())
     }
 
