@@ -33,6 +33,7 @@ pub enum ParseError {
     },
     ParseIntError {
         message: String,
+        location: Option<Location>,
     },
     AmbiguousExpression {
         left: Symbol,
@@ -45,6 +46,7 @@ impl From<std::num::ParseIntError> for ParseError {
     fn from(error: std::num::ParseIntError) -> Self {
         ParseError::ParseIntError {
             message: error.to_string(),
+            location: None,
         }
     }
 }
@@ -64,7 +66,7 @@ impl ParseError {
             } => Some(location),
             ParseError::UnexpectedTokenTypeInExpression { got: _, location } => Some(location),
             ParseError::AmbiguousExpression { left: _, right: _, location } => Some(location),
-            ParseError::ParseIntError { .. } => None,
+            ParseError::ParseIntError { location, .. } => location.as_ref(),
         }
     }
 }

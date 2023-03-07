@@ -67,6 +67,7 @@ impl From<std::num::ParseIntError> for TError {
     fn from(error: std::num::ParseIntError) -> Self {
         TError::ParseError(ParseError::ParseIntError {
             message: error.to_string(),
+            location: None,
         })
     }
 }
