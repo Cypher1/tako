@@ -380,9 +380,10 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
     }
 
     fn expr(&mut self, binding: Symbol) -> Result<NodeId, TError> {
-        let Ok(token) = self.peek().copied() else {
+        let Ok(mut token) = self.peek().copied() else {
             return Err(ParseError::UnexpectedEof.into());
         };
+        token.kind = self.get_kind(&token);
         let location = token.location();
         trace!("Expr: {token:?} (binding {binding:?})");
         let mut left = if self.operator_is(Symbol::OpenBracket).is_ok() {
@@ -403,7 +404,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             let left = self.expr(Symbol::Sequence)?;
             self.require(TokenType::Op(Symbol::CloseParen))?;
             left
-        } else if let TokenType::Op(symbol) = self.get_kind(&token) {
+        } else if let TokenType::Op(symbol) = token.kind {
             if let Some(def_binding) = self.binding()? {
                 trace!("Binding? {def_binding:?}");
                 self.ast.add_binding(def_binding, location)
