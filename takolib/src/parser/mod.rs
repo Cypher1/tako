@@ -79,9 +79,7 @@ impl ParseError {
                 location,
             }
             | ParseError::UnexpectedExpressionInDefinitionArguments { location, .. }
-            | ParseError::MissingLeftHandSideOfOperator { location, .. } => {
-                Some(location)
-            }
+            | ParseError::MissingLeftHandSideOfOperator { location, .. } => Some(location),
         }
     }
 }
@@ -118,7 +116,10 @@ impl std::fmt::Display for ParseError {
                 write!(f, "Don't know how to convert '{arg_str}' to binding.")
             }
             ParseError::MissingLeftHandSideOfOperator { op, .. } => {
-                write!(f, "Operator {op} needs a 'left' side. (e.g. 'a{op}b' rather than '{op}b'")
+                write!(
+                    f,
+                    "Operator {op} needs a 'left' side. (e.g. 'a{op}b' rather than '{op}b'"
+                )
             }
         }
     }
@@ -241,10 +242,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         Ok(Some(Binding { mode, name, ty }))
     }
 
-    fn binding_or_arg(
-        &mut self,
-        has_non_bind_args: &mut bool,
-    ) -> Result<BindingOrValue, TError> {
+    fn binding_or_arg(&mut self, has_non_bind_args: &mut bool) -> Result<BindingOrValue, TError> {
         let value = self.expr(Symbol::Comma)?;
         let node = &self.ast.get(value);
         let location = node.location;
@@ -316,11 +314,13 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             for binding in bindings {
                 match binding {
                     BindingOrValue::Binding(binding, _location) => only_bindings.push(binding),
-                    BindingOrValue::Identifier(name, ty, _location) => only_bindings.push(Binding {
-                        mode: BindingMode::Lambda,
-                        name,
-                        ty,
-                    }),
+                    BindingOrValue::Identifier(name, ty, _location) => {
+                        only_bindings.push(Binding {
+                            mode: BindingMode::Lambda,
+                            name,
+                            ty,
+                        })
+                    }
                     BindingOrValue::Value(value) => {
                         return Err(ParseError::UnexpectedExpressionInDefinitionArguments {
                             arg: value,
@@ -371,13 +371,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 };
                 args.push(binding);
             }
-            let call = self.ast.add_call(
-                Call {
-                    inner,
-                    args,
-                },
-                location,
-            );
+            let call = self.ast.add_call(Call { inner, args }, location);
             if let Some(ty) = ty {
                 return Ok(self.ast.add_annotation(call, ty));
             }
@@ -434,7 +428,13 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                             location,
                         )
                     }
-                    _ => return Err(ParseError::MissingLeftHandSideOfOperator { op: symbol, location }.into()),
+                    _ => {
+                        return Err(ParseError::MissingLeftHandSideOfOperator {
+                            op: symbol,
+                            location,
+                        }
+                        .into())
+                    }
                 }
             }
         } else if let Ok(token) = self.ident() {

@@ -50,11 +50,7 @@ impl<'ast> PrintNode<'ast> {
         Ok(())
     }
 
-    fn print_binding(
-        &self,
-        f: &mut impl Write,
-        binding: &Binding,
-    ) -> fmt::Result {
+    fn print_binding(&self, f: &mut impl Write, binding: &Binding) -> fmt::Result {
         let Binding { mode, name, ty } = &binding;
         if *mode != BindingMode::Lambda {
             write!(f, "{mode} ");
