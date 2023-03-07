@@ -27,6 +27,10 @@ pub enum ParseError {
         location: Location,
         expected: TokenType,
     },
+    UnexpectedTokenTypeInExpression {
+        got: TokenType,
+        location: Location,
+    },
     ParseIntError {
         message: String,
     },
@@ -53,6 +57,7 @@ impl ParseError {
                 location,
                 expected: _,
             } => Some(location),
+            ParseError::UnexpectedTokenTypeInExpression { got: _, location } => Some(location),
             ParseError::ParseIntError { .. } => None,
         }
     }
@@ -77,10 +82,12 @@ impl std::fmt::Display for ParseError {
             ParseError::UnexpectedTokenType { got, expected, .. } => {
                 write!(f, "Unexpected {got} expected {expected}")
             }
+            ParseError::UnexpectedTokenTypeInExpression { got, .. } => {
+                write!(f, "Unexpected {got} in expression")
+            }
             ParseError::ParseIntError { message, .. } => {
                 write!(f, "{message} expected an integer literal (r.g. 123)")
-            }
-            // todo!("Ambiguous expression: {left:?} sym: {sym:?} inside binding: {binding:?}");
+            } // todo!("Ambiguous expression: {left:?} sym: {sym:?} inside binding: {binding:?}");
         }
     }
 }
@@ -336,71 +343,57 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         };
         let location = token.location();
         trace!("Expr: {token:?} (binding {binding:?})");
-        let mut left = match self.get_kind(&token) {
-            TokenType::Op(Symbol::OpenBracket) => {
-                let _token = self.token().expect("Expected a open paren");
-                // TODO: Support tuples.
-                // Tuple, parenthesized expr... etc.
-                let left = self.expr(Symbol::Sequence)?;
-                self.require(TokenType::Op(Symbol::CloseBracket))?;
-                left
-            }
-            TokenType::Op(Symbol::OpenCurly) => {
-                let _token = self.token().expect("Expected a open curly");
-                // TODO: Support sequence&dictionary syntax.
-                // Tuple, parenthesized expr... etc.
-                let left = self.expr(Symbol::Sequence)?;
-                self.require(TokenType::Op(Symbol::CloseCurly))?;
-                left
-            }
-            TokenType::Op(Symbol::OpenParen) => {
-                let _token = self.token().expect("Expected a open brace");
-                // TODO: Support list syntax.
-                // Tuple, parenthesized expr... etc.
-                let left = self.expr(Symbol::Sequence)?;
-                self.require(TokenType::Op(Symbol::CloseParen))?;
-                left
-            }
-            TokenType::Op(symbol) => {
-                if let Some(def_binding) = self.binding(BindingMode::Lambda)? {
-                    trace!("Binding? {def_binding:?}");
-                    self.ast.add_binding(def_binding, location)
-                } else {
-                    let _ = self.token();
-                    match symbol.binding() {
-                        OpBinding::Open => todo!("Should have already been handled"),
-                        OpBinding::PrefixOp => {
-                            let right = self.expr(binding)?;
-                            self.ast.add_op(
-                                Op {
-                                    op: symbol,
-                                    args: vec![right],
-                                },
-                                location,
-                            )
-                        }
-                        _ => todo!("Operator {symbol} needs a 'left' side."),
+        let mut left = if self.operator_is(Symbol::OpenBracket).is_ok() {
+            // TODO: Support tuples.
+            // Tuple, parenthesized expr... etc.
+            let left = self.expr(Symbol::Sequence)?;
+            self.require(TokenType::Op(Symbol::CloseBracket))?;
+            left
+        } else if self.operator_is(Symbol::OpenCurly).is_ok() {
+            // TODO: Support sequence&dictionary syntax.
+            // Tuple, parenthesized expr... etc.
+            let left = self.expr(Symbol::Sequence)?;
+            self.require(TokenType::Op(Symbol::CloseCurly))?;
+            left
+        } else if self.operator_is(Symbol::OpenParen).is_ok() {
+            // TODO: Support list syntax.
+            // Tuple, parenthesized expr... etc.
+            let left = self.expr(Symbol::Sequence)?;
+            self.require(TokenType::Op(Symbol::CloseParen))?;
+            left
+        } else if let TokenType::Op(symbol) = self.get_kind(&token) {
+            if let Some(def_binding) = self.binding(BindingMode::Lambda)? {
+                trace!("Binding? {def_binding:?}");
+                self.ast.add_binding(def_binding, location)
+            } else {
+                let _ = self.token();
+                match symbol.binding() {
+                    OpBinding::Open => todo!("Should have already been handled"),
+                    OpBinding::PrefixOp => {
+                        let right = self.expr(binding)?;
+                        self.ast.add_op(
+                            Op {
+                                op: symbol,
+                                args: vec![right],
+                            },
+                            location,
+                        )
                     }
+                    _ => todo!("Operator {symbol} needs a 'left' side."),
                 }
             }
-            TokenType::Ident => {
-                let token = self.token().expect("Expected a identifier");
-                self.call_or_definition(token, binding)?
+        } else if let Ok(token) = self.ident() {
+            self.call_or_definition(token, binding)?
+        } else if let Ok(token) = self.token_of_type(TokenType::Atom) {
+            self.atom(token, location)
+        } else if let Ok(token) = self.token_of_type(TokenType::NumLit) {
+            self.number_literal(token, location)
+        } else {
+            return Err(ParseError::UnexpectedTokenTypeInExpression {
+                got: token.kind,
+                location,
             }
-            TokenType::Atom => {
-                let token = self.token().expect("Expected a atom");
-                self.atom(token, location)
-            }
-            TokenType::NumLit => {
-                let token = self.token().expect("Expected a numeric literal");
-                self.number_literal(token, location)
-            }
-            TokenType::ColorLit => todo!(),
-            TokenType::StringLit => todo!(),
-            TokenType::FmtStringLitStart => todo!(),
-            TokenType::FmtStringLitMid => todo!(),
-            TokenType::FmtStringLitEnd => todo!(),
-            TokenType::Group => todo!(),
+            .into());
         };
         trace!("Maybe continue: {left:?} (binding {binding:?})");
         while let Ok(TokenType::Op(sym)) = self.peek_kind() {
