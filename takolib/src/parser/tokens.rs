@@ -22,6 +22,7 @@ assert_eq_size!([Token; 2], [u8; 8]);
 pub enum OpBinding {
     PostfixOp,
     PrefixOp,
+    PrefixOrInfixBinOp,
     InfixBinOp,
     Open,
     Close,
@@ -167,7 +168,8 @@ lazy_static! {
         Symbol::LogicalOrAssign => vec![Symbol::LeftPipe],
         Symbol::ModuloAssign => vec![Symbol::LeftPipe],
         Symbol::LeftPipe => vec![Symbol::RightPipe],
-        Symbol::RightPipe => vec![Symbol::Sigma],
+        Symbol::RightPipe => vec![Symbol::Comma],
+        Symbol::Comma => vec![Symbol::Sigma],
         Symbol::Sigma => vec![Symbol::Lambda],
         Symbol::Lambda => vec![Symbol::Arrow],
         Symbol::Arrow => vec![Symbol::DoubleArrow],
@@ -183,14 +185,13 @@ lazy_static! {
             Symbol::Gt,
             Symbol::GtEqs,
         ],
-        Symbol::HasType => vec![Symbol::Comma],
-        Symbol::Eqs => vec![Symbol::Comma],
-        Symbol::NotEqs => vec![Symbol::Comma],
-        Symbol::Lt => vec![Symbol::Comma],
-        Symbol::LtEqs => vec![Symbol::Comma],
-        Symbol::Gt => vec![Symbol::Comma],
-        Symbol::GtEqs => vec![Symbol::Comma],
-        Symbol::Comma => vec![Symbol::Add, Symbol::LeftShift, Symbol::RightShift, Symbol::Try],
+        Symbol::HasType => vec![Symbol::Add, Symbol::LeftShift, Symbol::RightShift, Symbol::Try],
+        Symbol::Eqs => vec![Symbol::Add, Symbol::LeftShift, Symbol::RightShift, Symbol::Try],
+        Symbol::NotEqs => vec![Symbol::Add, Symbol::LeftShift, Symbol::RightShift, Symbol::Try],
+        Symbol::Lt => vec![Symbol::Add, Symbol::LeftShift, Symbol::RightShift, Symbol::Try],
+        Symbol::LtEqs => vec![Symbol::Add, Symbol::LeftShift, Symbol::RightShift, Symbol::Try],
+        Symbol::Gt => vec![Symbol::Add, Symbol::LeftShift, Symbol::RightShift, Symbol::Try],
+        Symbol::GtEqs => vec![Symbol::Add, Symbol::LeftShift, Symbol::RightShift, Symbol::Try],
         Symbol::LeftShift => vec![Symbol::BitNot],
         Symbol::RightShift => vec![Symbol::BitNot],
         Symbol::Add => vec![Symbol::Sub],
@@ -255,7 +256,7 @@ impl Symbol {
         !(self.is_associative() || self.is_right_associative())
     }
 
-    pub fn binding(&self) -> OpBinding {
+    pub fn binding_type(&self) -> OpBinding {
         match self {
             Symbol::Escape
             | Symbol::BitNot
@@ -268,6 +269,7 @@ impl Symbol {
             | Symbol::Pi
             | Symbol::Exists => OpBinding::PrefixOp,
             Symbol::Try => OpBinding::PostfixOp,
+            Symbol::Sub => OpBinding::PrefixOrInfixBinOp,
             Symbol::CloseCurly | Symbol::CloseParen | Symbol::CloseBracket => OpBinding::Close,
             Symbol::OpenCurly | Symbol::OpenParen | Symbol::OpenBracket => OpBinding::Open,
             _ => OpBinding::InfixBinOp,
@@ -383,6 +385,23 @@ pub enum TokenType {
     Group,
 }
 
+impl fmt::Display for TokenType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TokenType::Op(sym) => write!(f, "a '{sym:?}' symbol"),
+            TokenType::Ident => write!(f, "an identifier"),
+            TokenType::Atom => write!(f, "an atom"),
+            TokenType::NumLit => write!(f, "a number"),
+            TokenType::ColorLit => write!(f, "a color"),
+            TokenType::StringLit => write!(f, "a string literal"),
+            TokenType::FmtStringLitStart => write!(f, "the start of a format string literal"),
+            TokenType::FmtStringLitMid => write!(f, "the middle of a format string literal"),
+            TokenType::FmtStringLitEnd => write!(f, "the end of a format string literal"),
+            TokenType::Group => write!(f, "a long string literal"),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Token {
     pub kind: TokenType,
@@ -398,10 +417,6 @@ impl Token {
             start: self.start,
             length: self.length,
         }
-    }
-
-    pub fn to_prim(&self) -> i32 {
-        todo!("Provide a 'to_prim' that also de escapes tokens.")
     }
 
     pub fn get_src<'a>(&self, source: &'a str) -> &'a str {

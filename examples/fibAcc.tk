@@ -1,0 +1,5 @@
+fibHelper<T: Nat>(n: T, a: T, b: T): T=if(n==0, a, fibHelper(n-1, b, a+b));
+
+fib<T: Nat>(n: T): T=fibHelper(n, 0, 1)
+
+print(fib(80))

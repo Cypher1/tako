@@ -1,4 +1,4 @@
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum Literal {
     Bool,    // A boolean of arbitrary size :P (true/false)
     Numeric, // An Integer or Float of arbitrary size
@@ -8,9 +8,8 @@ pub enum Literal {
     Map, // An abstract map literal, any of OrderedMap, HashMap, Dictionary, etc. (e.g. { 'a': 123, 'b': 234 })
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum BindingMode {
-    None,   // i.e. value, apply x
     Lambda, // i.e. value, given x, y
     Pi,     // i.e. dependant type, forall x, y
     Sigma,  // i.e. dependant type, exists x, y
@@ -22,7 +21,6 @@ impl std::fmt::Display for BindingMode {
             f,
             "{}",
             match self {
-                BindingMode::None => "",
                 BindingMode::Lambda => "lambda",
                 BindingMode::Pi => "forall",
                 BindingMode::Sigma => "exists",

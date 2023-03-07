@@ -1,0 +1,3 @@
+fib<T: Nat>(n: T): T=if(n<=1, 1, fib(n-1)+fib(n-2));
+
+print(fib(80))

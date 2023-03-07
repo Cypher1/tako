@@ -100,7 +100,7 @@ impl Op {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Binding {
     pub mode: BindingMode,
     pub name: Identifier,

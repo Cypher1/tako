@@ -104,6 +104,10 @@ impl Options {
                 opts.files.push(f.into());
             }
         }
+        if opts.files.is_empty() && opts.cmd != Command::Repl {
+            print_cli_help();
+            std::process::exit(1);
+        }
         opts
     }
 }

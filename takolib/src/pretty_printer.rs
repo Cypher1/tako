@@ -1,9 +1,11 @@
 #![allow(unused)]
 use crate::{
     ast::{Ast, Binding, Contains, Node, NodeData, NodeId},
+    parser::semantics::BindingMode,
     string_interner::Identifier,
 };
 use std::fmt;
+use std::fmt::Write;
 
 /*
 // TODO: Consider a generic form of this.
@@ -48,11 +50,14 @@ impl<'ast> PrintNode<'ast> {
         Ok(())
     }
 
-    fn print_binding(&self, f: &mut fmt::Formatter<'_>, binding: &Binding) -> fmt::Result {
+    fn print_binding(&self, f: &mut impl Write, binding: &Binding) -> fmt::Result {
         let Binding { mode, name, ty } = &binding;
+        if *mode != BindingMode::Lambda {
+            write!(f, "{mode} ");
+        }
         write!(
             f,
-            "{mode}{}",
+            "{}",
             self.ast
                 .string_interner
                 .get_str(*name)
@@ -73,17 +78,29 @@ impl<'ast> PrintNode<'ast> {
     ) -> fmt::Result {
         self.print_identifier(f, name)?;
         if let Some(bindings) = &bindings {
-            write!(f, "(")?;
-            let mut first = true;
+            let mut implicits = String::new();
+            let mut explicits = String::new();
             for binding in bindings {
-                if first {
-                    first = false;
+                if binding.mode != BindingMode::Lambda {
+                    if !implicits.is_empty() {
+                        write!(&mut implicits, ", ")?;
+                    }
+                    self.print_binding(&mut implicits, binding)?;
                 } else {
+                    if !explicits.is_empty() {
+                        write!(explicits, ", ")?;
+                    }
+                    self.print_binding(&mut explicits, binding)?;
+                }
+            }
+            write!(f, "(")?;
+            if !implicits.is_empty() {
+                write!(f, "{implicits}")?;
+                if !explicits.is_empty() {
                     write!(f, ", ")?;
                 }
-                self.print_binding(f, binding)?;
             }
-            write!(f, ")")?;
+            write!(f, "{explicits})")?;
         }
         self.print_ty(f, ty)
     }
@@ -122,7 +139,17 @@ impl<'ast> fmt::Display for PrintNode<'ast> {
             }
             Call(node) => {
                 let (_node_id, node) = self.ast.get(*node);
-                write!(f, "{node:?}")?;
+                write!(f, "{}(", self.child(node.inner))?;
+                let mut first = true;
+                for arg in &node.args {
+                    if !first {
+                        write!(f, ", ");
+                    } else {
+                        first = false;
+                    }
+                    write!(f, "{}", self.child(*arg))?;
+                }
+                write!(f, ")")?;
             }
             Identifier(node) => {
                 let (_node_id, node) = self.ast.get(*node);
@@ -158,7 +185,7 @@ impl<'ast> fmt::Display for PrintNode<'ast> {
                     // TODO: Cancel out brackets.
                     let needs_parens = {
                         let node = self.ast.get(*arg);
-                        matches!(node.id, NodeData::Op(_))
+                        matches!(node.id, NodeData::Op(_) | NodeData::Binding(_))
                     };
                     if needs_parens {
                         write!(f, "(")?;
@@ -263,6 +290,26 @@ mod tests {
     fn round_trip_assignment_with_type_and_bindings() -> Result<(), TError> {
         let out = setup("x(y: Int): Int=1")?;
         assert_eq!(out, "x(y: Int): Int=1");
+        Ok(())
+    }
+
+    #[test]
+    fn round_trip_implicit_bindings() -> Result<(), TError> {
+        let out = setup("x(forall T: Int, y: T): T=1")?;
+        assert_eq!(out, "x(forall T: Int, y: T): T=1");
+        Ok(())
+    }
+    #[test]
+    fn round_trip_implicit_bindings_id_fn() -> Result<(), TError> {
+        let out = setup("id(forall T: Type, y: T): T=y")?;
+        assert_eq!(out, "id(forall T: Type, y: T): T=y");
+        Ok(())
+    }
+
+    #[test]
+    fn round_trip_values_in_fn_args() -> Result<(), TError> {
+        let out = setup("signum(x)=if(x<0, -1, 1)")?;
+        assert_eq!(out, "signum(x)=if(x<0, -1, 1)");
         Ok(())
     }
 }

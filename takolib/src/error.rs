@@ -1,21 +1,17 @@
 use std::path::PathBuf;
 
 use crate::location::{Location, UserFacingLocation};
-use crate::parser::tokens::TokenType;
+use crate::parser::ParseError;
 use crate::utils::typed_index::TypedIndex;
 use thiserror::Error;
 
 #[derive(Error, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TError {
-    CppCompilerError {
+    ClangCompilerError {
         error: String,
         return_code: i32,
     },
-    ExpectedToken(TokenType, Option<TokenType>, Option<Location>, Vec<String>),
-    ParseError {
-        message: String,
-        location: Option<Location>,
-    },
+    ParseError(ParseError),
     InternalError {
         message: String,
         location: Option<Location>,
@@ -24,7 +20,21 @@ pub enum TError {
 
 impl std::fmt::Display for TError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        <Self as std::fmt::Debug>::fmt(self, f)
+        use TError::*;
+        match self {
+            ClangCompilerError { error, return_code } => write!(
+                f,
+                "Clang failed with code {return_code} and error message: {error}"
+            ),
+            ParseError(e) => write!(f, "{}", e),
+            InternalError { message, location } => {
+                write!(f, "Internal error: {message}")?;
+                if let Some(location) = location {
+                    write!(f, "at {location:?}")?;
+                }
+                Ok(())
+            }
+        }
     }
 }
 
@@ -52,12 +62,13 @@ impl From<std::io::Error> for TError {
     }
 }
 
+// TODO: Remove
 impl From<std::num::ParseIntError> for TError {
     fn from(error: std::num::ParseIntError) -> Self {
-        TError::ParseError {
+        TError::ParseError(ParseError::ParseIntError {
             message: error.to_string(),
             location: None,
-        }
+        })
     }
 }
 
@@ -77,9 +88,8 @@ impl Error {
         module: Option<&()>,
     ) -> Self {
         let location = match &source {
-            TError::CppCompilerError { .. } => None,
-            TError::ExpectedToken(_expected, _got, location, _inside) => location.as_ref(),
-            TError::ParseError { location, .. } => location.as_ref(),
+            TError::ClangCompilerError { .. } => None,
+            TError::ParseError(err) => err.location(),
             TError::InternalError { location, .. } => location.as_ref(),
         };
         let location = match (path, contents, location, module) {
@@ -102,18 +112,11 @@ impl std::fmt::Display for Error {
 impl std::fmt::Debug for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.source {
-            TError::CppCompilerError { error, return_code } => write!(
+            TError::ClangCompilerError { error, return_code } => write!(
                 f,
                 "call to C++ compiler failed with error code: {return_code}\n{error}"
             )?,
-            TError::ExpectedToken(expected, got, location, inside) => write!(
-                f,
-                "Expected a {expected:?} found a {got:?}, at {location:?} inside {inside:?}"
-            )?,
-            TError::ParseError {
-                message,
-                location: _,
-            } => write!(f, "{message}")?,
+            TError::ParseError(err) => write!(f, "{err}")?,
             TError::InternalError {
                 message,
                 location: _,

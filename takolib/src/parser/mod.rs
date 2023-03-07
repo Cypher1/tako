@@ -8,11 +8,127 @@ use crate::{ast::*, parser::semantics::Literal};
 use log::trace;
 use semantics::BindingMode;
 use std::path::Path;
+use thiserror::Error;
 use tokens::{assign_op, binding_mode_operation, is_assign, OpBinding, Symbol, Token, TokenType};
+
+#[derive(Debug, Error, PartialEq, Eq, Ord, PartialOrd, Clone, Hash)]
+pub enum ParseError {
+    UnexpectedEof, // TODO: Add context.
+    UnexpectedTokenTypeExpectedOperator {
+        got: TokenType,
+        location: Location,
+    },
+    UnexpectedTokenTypeExpectedAssignment {
+        got: TokenType,
+        location: Location,
+    },
+    UnexpectedTokenType {
+        got: TokenType,
+        location: Location,
+        expected: TokenType,
+    },
+    UnexpectedTokenTypeInExpression {
+        got: TokenType,
+        location: Location,
+    },
+    ParseIntError {
+        message: String,
+        location: Option<Location>,
+    },
+    AmbiguousExpression {
+        left: Symbol,
+        right: Symbol,
+        location: Location,
+    },
+    UnexpectedExpressionInDefinitionArguments {
+        arg: NodeId,
+        arg_str: String,
+        location: Location,
+    },
+    MissingLeftHandSideOfOperator {
+        op: Symbol,
+        location: Location,
+    },
+}
+
+impl From<std::num::ParseIntError> for ParseError {
+    fn from(error: std::num::ParseIntError) -> Self {
+        ParseError::ParseIntError {
+            message: error.to_string(),
+            location: None,
+        }
+    }
+}
+
+impl ParseError {
+    pub fn location(&self) -> Option<&Location> {
+        match self {
+            ParseError::UnexpectedEof => None,
+            ParseError::ParseIntError { location, .. } => location.as_ref(),
+            ParseError::UnexpectedTokenTypeExpectedOperator { got: _, location }
+            | ParseError::UnexpectedTokenTypeExpectedAssignment { got: _, location }
+            | ParseError::UnexpectedTokenType {
+                got: _,
+                location,
+                expected: _,
+            }
+            | ParseError::UnexpectedTokenTypeInExpression { got: _, location }
+            | ParseError::AmbiguousExpression {
+                left: _,
+                right: _,
+                location,
+            }
+            | ParseError::UnexpectedExpressionInDefinitionArguments { location, .. }
+            | ParseError::MissingLeftHandSideOfOperator { location, .. } => Some(location),
+        }
+    }
+}
+
+impl From<ParseError> for TError {
+    fn from(err: ParseError) -> Self {
+        TError::ParseError(err)
+    }
+}
+
+impl std::fmt::Display for ParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ParseError::UnexpectedEof => write!(f, "Unexpected eof"),
+            ParseError::UnexpectedTokenTypeExpectedOperator { got, .. } => {
+                write!(f, "Unexpected {got} expected an operator")
+            }
+            ParseError::UnexpectedTokenTypeExpectedAssignment { got, .. } => {
+                write!(f, "Unexpected {got} expected an assignment")
+            }
+            ParseError::UnexpectedTokenType { got, expected, .. } => {
+                write!(f, "Unexpected {got} expected {expected}")
+            }
+            ParseError::UnexpectedTokenTypeInExpression { got, .. } => {
+                write!(f, "Unexpected {got} in expression")
+            }
+            ParseError::ParseIntError { message, .. } => {
+                write!(f, "{message} expected an integer literal (r.g. 123)")
+            }
+            ParseError::AmbiguousExpression { left, right, .. } => {
+                write!(f, "This expression could be read two ways, use parens to clarify whether {left} or {right} should be performed first")
+            }
+            ParseError::UnexpectedExpressionInDefinitionArguments { arg_str, .. } => {
+                write!(f, "Don't know how to convert '{arg_str}' to binding.")
+            }
+            ParseError::MissingLeftHandSideOfOperator { op, .. } => {
+                write!(
+                    f,
+                    "Operator {op} needs a 'left' side. (e.g. 'a{op}b' rather than '{op}b'"
+                )
+            }
+        }
+    }
+}
 
 #[derive(Debug)]
 enum BindingOrValue {
-    Binding(Binding),
+    Identifier(Identifier, Option<NodeId>, Location),
+    Binding(Binding, Location),
     Value(NodeId),
 }
 
@@ -24,29 +140,55 @@ struct ParseState<'src, 'toks, T: Iterator<Item = &'toks Token>> {
 }
 
 impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
-    fn peek(&mut self) -> Option<&Token> {
-        self.tokens.peek().copied()
-    }
-    fn peek_kind(&mut self) -> Option<TokenType> {
-        self.peek().map(|tok| tok.kind)
-    }
-    fn peek_kind_op(&mut self) -> Option<Symbol> {
-        if let Some(TokenType::Op(symbol)) = self.peek_kind() {
-            Some(symbol)
-        } else {
-            None
-        }
-    }
-    fn peek_assignment(&mut self) -> Option<Symbol> {
-        if let Some(TokenType::Op(op)) = self.peek_kind() {
-            if is_assign(op) {
-                return Some(op);
-            }
-        }
-        None
+    fn peek(&mut self) -> Result<&Token, ParseError> {
+        self.tokens.peek().copied().ok_or(ParseError::UnexpectedEof)
     }
     fn token(&mut self) -> Option<Token> {
         self.tokens.next().copied()
+    }
+    fn peek_kind(&mut self) -> Result<TokenType, ParseError> {
+        self.peek().map(|tok| tok.kind)
+    }
+    fn token_if<OnTok>(
+        &mut self,
+        test: impl FnOnce(&Token) -> Result<OnTok, ParseError>,
+    ) -> Result<OnTok, ParseError> {
+        let tk = self.peek()?;
+        let res = test(tk)?;
+        self.token()
+            .expect("Internal error: Token missing after check");
+        Ok(res)
+    }
+    fn token_of_type(&mut self, expected: TokenType) -> Result<Token, ParseError> {
+        self.token_if(|got| {
+            if got.kind == expected {
+                Ok(*got)
+            } else {
+                Err(ParseError::UnexpectedTokenType {
+                    got: got.kind,
+                    location: got.location(),
+                    expected,
+                })
+            }
+        })
+    }
+    fn ident(&mut self) -> Result<Token, ParseError> {
+        self.token_of_type(TokenType::Ident)
+    }
+    fn operator_is(&mut self, sym: Symbol) -> Result<Token, ParseError> {
+        self.token_of_type(TokenType::Op(sym))
+    }
+    fn has_type(&mut self) -> Result<Token, ParseError> {
+        self.operator_is(Symbol::HasType)
+    }
+    fn assignment_op(&mut self, binding: Symbol) -> Result<Symbol, ParseError> {
+        self.token_if(|got| match got.kind {
+            TokenType::Op(assign) if is_assign(assign) && binding.is_looser(assign) => Ok(assign),
+            _ => Err(ParseError::UnexpectedTokenTypeExpectedAssignment {
+                got: got.kind,
+                location: got.location(),
+            }),
+        })
     }
 
     fn get_kind(&mut self, token: &Token) -> TokenType {
@@ -61,25 +203,12 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
     }
 
     fn require(&mut self, expected_token: TokenType) -> Result<(), TError> {
-        if let Some(token) = self.peek() {
-            if token.kind == expected_token {
-                let _ = self.token();
-                Ok(())
-            } else {
-                Err(TError::ExpectedToken(
-                    expected_token,
-                    Some(token.kind),
-                    Some(token.location()),
-                    vec![],
-                ))
-            }
-        } else {
-            Err(TError::ExpectedToken(expected_token, None, None, vec![]))
-        }
+        let _token = self.token_of_type(expected_token)?;
+        Ok(())
     }
 
     fn binding(&mut self) -> Result<Option<Binding>, TError> {
-        let mode = if let Some(binding) = self.peek().cloned() {
+        let mode = if let Ok(binding) = self.peek().cloned() {
             let binding_kind = self.get_kind(&binding);
             // TODO: Handle tokens...
             if let TokenType::Op(binding) = binding_kind {
@@ -93,21 +222,19 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             } else {
                 // Named arg!
                 trace!("Named arg?");
-                BindingMode::None
+                BindingMode::Lambda
             }
         } else {
             trace!("Unexpected eof when looking for binding");
             return Ok(None);
         };
-        let name: Identifier = if let Some(TokenType::Ident) = self.peek_kind() {
-            let tok = self.token().expect("Internal error");
+        let name: Identifier = if let Ok(tok) = self.ident() {
             self.name(tok)
         } else {
             trace!("No name found for binding");
             return Ok(None);
         };
-        let ty = if let Some(Symbol::HasType) = self.peek_kind_op() {
-            let _ = self.token().expect("Internal error");
+        let ty = if self.has_type().is_ok() {
             Some(self.expr(Symbol::HasType)?)
         } else {
             None
@@ -115,13 +242,21 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         Ok(Some(Binding { mode, name, ty }))
     }
 
-    fn binding_or_arg(&mut self, has_non_arg_values: &mut bool) -> Result<BindingOrValue, TError> {
-        if let Some(binding) = self.binding()? {
-            trace!("Binding: {binding:?}");
-            return Ok(BindingOrValue::Binding(binding));
-        }
-        *has_non_arg_values = true;
+    fn binding_or_arg(&mut self, has_non_bind_args: &mut bool) -> Result<BindingOrValue, TError> {
         let value = self.expr(Symbol::Comma)?;
+        let node = &self.ast.get(value);
+        let location = node.location;
+        if let NodeData::Binding(binding) = node.id {
+            let (_node_id, binding) = self.ast.get_mut(binding);
+            trace!("Binding: {binding:?}");
+            return Ok(BindingOrValue::Binding(*binding, location));
+        }
+        if let NodeData::Identifier(ident) = node.id {
+            let ty = node.ty;
+            let (_node_id, ident) = self.ast.get_mut(ident);
+            return Ok(BindingOrValue::Identifier(*ident, ty, location));
+        }
+        *has_non_bind_args = true;
         trace!("Arg value: {value:?}");
         Ok(BindingOrValue::Value(value))
     }
@@ -134,105 +269,109 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         );
         let location = name.location();
         let mut bindings = vec![];
-        let mut _has_implicit_args = false;
         let mut has_args = false;
         let mut has_non_bind_args = false; // i.e. this should be a definition...
-        if let Some(TokenType::Op(Symbol::Lt)) = self.peek_kind() {
-            trace!("has implicit arguments");
-            let _ = self.token();
-            _has_implicit_args = true;
-            // Read implicit args...
-            while Some(TokenType::Op(Symbol::Gt)) != self.peek_kind() {
-                bindings.push(self.binding_or_arg(&mut has_non_bind_args)?);
-                if self.require(TokenType::Op(Symbol::Comma)).is_err() {
-                    break;
-                }
-            }
-            self.require(TokenType::Op(Symbol::Gt))?;
-        }
-        if let Some(TokenType::Op(Symbol::OpenParen)) = self.peek_kind() {
+        if self.operator_is(Symbol::OpenParen).is_ok() {
             trace!("has arguments");
-            let _ = self.token();
             has_args = true;
             // Read args...
-            while Some(TokenType::Op(Symbol::CloseParen)) != self.peek_kind() {
+            while self.operator_is(Symbol::CloseParen).is_err() {
                 bindings.push(self.binding_or_arg(&mut has_non_bind_args)?);
                 if self.require(TokenType::Op(Symbol::Comma)).is_err() {
+                    self.require(TokenType::Op(Symbol::CloseParen))?;
                     break;
                 }
             }
-            self.require(TokenType::Op(Symbol::CloseParen))?;
         }
-        let ty = if let Some(Symbol::HasType) = self.peek_kind_op() {
+        let ty = if self.has_type().is_ok() {
             trace!("HasType started");
-            let _ = self.token().expect("Internal error");
             let ty = self.expr(Symbol::HasType)?;
             trace!("HasType finished");
             Some(ty)
         } else {
             None
         };
-        if let Some(assignment) = self.peek_assignment() {
-            if binding.is_looser(assignment) {
-                let _ = self.token();
-                let op = assign_op(assignment);
-                let mut implementation = self.expr(assignment)?;
-                if let Some(op) = op {
-                    let name = self.identifier(name, location);
-                    implementation = self.ast.add_op(
-                        Op {
-                            op,
-                            args: vec![name, implementation],
-                        },
-                        location,
-                    );
-                }
-                let name = &self.contents[(location.start as usize)
-                    ..(location.start as usize) + (location.length as usize)];
-                let name = self
-                    .ast
-                    .string_interner
-                    .register_str_by_loc(name, location.start);
-                let mut only_bindings = vec![];
-                for binding in bindings {
-                    match binding {
-                        BindingOrValue::Binding(binding) => only_bindings.push(binding),
-                        BindingOrValue::Value(value) => {
-                            todo!("Don't know how to convert {value:?} to binding.")
-                        }
-                    }
-                }
-                let bindings = if has_args { Some(only_bindings) } else { None };
-                // TODO: USE bindings
-                trace!("Add definition");
-                if has_non_bind_args {
-                    todo!("Concern");
-                }
-                let def = self.ast.add_definition(
-                    Definition {
-                        name,
-                        bindings,
-                        implementation,
+        if let Ok(assignment) = self.assignment_op(binding) {
+            let op = assign_op(assignment);
+            let mut implementation = self.expr(assignment)?;
+            if let Some(op) = op {
+                let name = self.identifier(name, location);
+                implementation = self.ast.add_op(
+                    Op {
+                        op,
+                        args: vec![name, implementation],
                     },
                     location,
                 );
-                if let Some(ty) = ty {
-                    return Ok(self.ast.add_annotation(def, ty));
-                }
-                return Ok(def);
             }
+            let name = &self.contents
+                [(location.start as usize)..(location.start as usize) + (location.length as usize)];
+            let name = self
+                .ast
+                .string_interner
+                .register_str_by_loc(name, location.start);
+            let mut only_bindings = vec![];
+            for binding in bindings {
+                match binding {
+                    BindingOrValue::Binding(binding, _location) => only_bindings.push(binding),
+                    BindingOrValue::Identifier(name, ty, _location) => {
+                        only_bindings.push(Binding {
+                            mode: BindingMode::Lambda,
+                            name,
+                            ty,
+                        })
+                    }
+                    BindingOrValue::Value(value) => {
+                        return Err(ParseError::UnexpectedExpressionInDefinitionArguments {
+                            arg: value,
+                            arg_str: format!("{}", self.ast.pretty(value)),
+                            location,
+                        }
+                        .into())
+                    }
+                }
+            }
+            let bindings = if has_args { Some(only_bindings) } else { None };
+            // TODO: USE bindings
+            trace!("Add definition");
+            if has_non_bind_args {
+                todo!("Concern");
+            }
+            let def = self.ast.add_definition(
+                Definition {
+                    name,
+                    bindings,
+                    implementation,
+                },
+                location,
+            );
+            if let Some(ty) = ty {
+                return Ok(self.ast.add_annotation(def, ty));
+            }
+            return Ok(def);
         }
         if has_args {
             let inner = self.identifier(name, location);
             // TODO: USE bindings
             trace!("Add call");
-            let call = self.ast.add_call(
-                Call {
-                    inner,
-                    args: vec![],
-                },
-                location,
-            );
+            let mut args = vec![];
+            for binding in bindings {
+                let binding = match binding {
+                    BindingOrValue::Binding(binding, location) => {
+                        self.ast.add_binding(binding, location)
+                    }
+                    BindingOrValue::Identifier(ident, ty, location) => {
+                        let mut ident = self.ast.add_identifier(ident, location);
+                        if let Some(ty) = ty {
+                            ident = self.ast.add_annotation(ident, ty);
+                        }
+                        ident
+                    }
+                    BindingOrValue::Value(value) => value,
+                };
+                args.push(binding);
+            }
+            let call = self.ast.add_call(Call { inner, args }, location);
             if let Some(ty) = ty {
                 return Ok(self.ast.add_annotation(call, ty));
             }
@@ -247,82 +386,73 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
     }
 
     fn expr(&mut self, binding: Symbol) -> Result<NodeId, TError> {
-        let token = if let Some(token) = self.peek() {
-            *token
-        } else {
-            todo!("No token");
+        let Ok(mut token) = self.peek().copied() else {
+            return Err(ParseError::UnexpectedEof.into());
         };
+        token.kind = self.get_kind(&token);
         let location = token.location();
         trace!("Expr: {token:?} (binding {binding:?})");
-        let mut left = match self.get_kind(&token) {
-            TokenType::Op(Symbol::OpenBracket) => {
-                let _token = self.token().expect("Expected a open paren");
-                // TODO: Support tuples.
-                // Tuple, parenthesized expr... etc.
-                let left = self.expr(Symbol::Sequence)?;
-                self.require(TokenType::Op(Symbol::CloseBracket))?;
-                left
-            }
-            TokenType::Op(Symbol::OpenCurly) => {
-                let _token = self.token().expect("Expected a open curly");
-                // TODO: Support sequence&dictionary syntax.
-                // Tuple, parenthesized expr... etc.
-                let left = self.expr(Symbol::Sequence)?;
-                self.require(TokenType::Op(Symbol::CloseCurly))?;
-                left
-            }
-            TokenType::Op(Symbol::OpenParen) => {
-                let _token = self.token().expect("Expected a open brace");
-                // TODO: Support list syntax.
-                // Tuple, parenthesized expr... etc.
-                let left = self.expr(Symbol::Sequence)?;
-                self.require(TokenType::Op(Symbol::CloseParen))?;
-                left
-            }
-            TokenType::Op(symbol) => {
-                if let Some(def_binding) = self.binding()? {
-                    trace!("Binding? {def_binding:?}");
-                    self.ast.add_binding(def_binding, location)
-                } else {
-                    let _ = self.token();
-                    match symbol.binding() {
-                        OpBinding::Open => todo!("Should have already been handled"),
-                        OpBinding::PrefixOp => {
-                            let right = self.expr(binding)?;
-                            self.ast.add_op(
-                                Op {
-                                    op: symbol,
-                                    args: vec![right],
-                                },
-                                location,
-                            )
+        let mut left = if self.operator_is(Symbol::OpenBracket).is_ok() {
+            // TODO: Support tuples.
+            // Tuple, parenthesized expr... etc.
+            let left = self.expr(Symbol::Sequence)?;
+            self.require(TokenType::Op(Symbol::CloseBracket))?;
+            left
+        } else if self.operator_is(Symbol::OpenCurly).is_ok() {
+            // TODO: Support sequence&dictionary syntax.
+            // Tuple, parenthesized expr... etc.
+            let left = self.expr(Symbol::Sequence)?;
+            self.require(TokenType::Op(Symbol::CloseCurly))?;
+            left
+        } else if self.operator_is(Symbol::OpenParen).is_ok() {
+            // TODO: Support list syntax.
+            // Tuple, parenthesized expr... etc.
+            let left = self.expr(Symbol::Sequence)?;
+            self.require(TokenType::Op(Symbol::CloseParen))?;
+            left
+        } else if let TokenType::Op(symbol) = token.kind {
+            if let Some(def_binding) = self.binding()? {
+                trace!("Binding? {def_binding:?}");
+                self.ast.add_binding(def_binding, location)
+            } else {
+                let _ = self.token();
+                match symbol.binding_type() {
+                    OpBinding::Open => todo!("Should have already been handled"),
+                    OpBinding::PrefixOp | OpBinding::PrefixOrInfixBinOp => {
+                        let right = self.expr(binding)?;
+                        self.ast.add_op(
+                            Op {
+                                op: symbol,
+                                args: vec![right],
+                            },
+                            location,
+                        )
+                    }
+                    _ => {
+                        return Err(ParseError::MissingLeftHandSideOfOperator {
+                            op: symbol,
+                            location,
                         }
-                        _ => todo!("Operator {symbol} needs a 'left' side."),
+                        .into())
                     }
                 }
             }
-            TokenType::Ident => {
-                let token = self.token().expect("Expected a identifier");
-                self.call_or_definition(token, binding)?
+        } else if let Ok(token) = self.ident() {
+            self.call_or_definition(token, binding)?
+        } else if let Ok(token) = self.token_of_type(TokenType::Atom) {
+            self.atom(token, location)
+        } else if let Ok(token) = self.token_of_type(TokenType::NumLit) {
+            self.number_literal(token, location)
+        } else {
+            return Err(ParseError::UnexpectedTokenTypeInExpression {
+                got: token.kind,
+                location,
             }
-            TokenType::Atom => {
-                let token = self.token().expect("Expected a atom");
-                self.atom(token, location)
-            }
-            TokenType::NumLit => {
-                let token = self.token().expect("Expected a numeric literal");
-                self.number_literal(token, location)
-            }
-            TokenType::ColorLit => todo!(),
-            TokenType::StringLit => todo!(),
-            TokenType::FmtStringLitStart => todo!(),
-            TokenType::FmtStringLitMid => todo!(),
-            TokenType::FmtStringLitEnd => todo!(),
-            TokenType::Group => todo!(),
+            .into());
         };
         trace!("Maybe continue: {left:?} (binding {binding:?})");
-        while let Some(TokenType::Op(sym)) = self.peek_kind() {
-            if sym.binding() == OpBinding::Close {
+        while let Ok(TokenType::Op(sym)) = self.peek_kind() {
+            if sym.binding_type() == OpBinding::Close {
                 trace!("Closing Expr: {left:?} sym: {sym:?}");
                 break;
             }
@@ -330,7 +460,12 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 // If both can be inside the other
                 // and theyre not associative...
                 // then this is ambiguous and needs parens.
-                todo!("Ambiguous expression: {left:?} sym: {sym:?} inside binding: {binding:?}");
+                return Err(ParseError::AmbiguousExpression {
+                    left: binding,
+                    right: sym,
+                    location,
+                }
+                .into());
             }
             if !binding.is_looser(sym) {
                 trace!("Back up Expr: {left:?} binding: {binding:?} inside sym: {sym:?}");
@@ -396,7 +531,7 @@ pub fn parse(filepath: &Path, contents: &str, tokens: &[Token]) -> Result<Ast, T
         ast: Ast::new(filepath.to_path_buf()),
         tokens: tokens.iter().peekable(),
     };
-    if state.peek().is_some() {
+    if !tokens.is_empty() {
         // Support empty files!
         let root = state.expr(Symbol::OpenParen)?;
         state.ast.roots.push(root);
@@ -557,13 +692,23 @@ pub mod tests {
     }
 
     #[test]
+    fn parse_call_unfinished() -> Result<(), TError> {
+        let err = setup("x(");
+        dbg!(&err);
+        assert!(err.is_err());
+        let err = err.unwrap_err();
+        assert_eq!(format!("{}", err), "Unexpected eof");
+        Ok(())
+    }
+
+    #[test]
     fn parse_call_with_argument() -> Result<(), TError> {
         let ast = setup("x(12)")?;
         // dbg!(&ast);
 
         assert_eq!(ast.literals.len(), 1);
-        assert_eq!(ast.calls.len(), 1);
         assert_eq!(ast.identifiers.len(), 1);
+        assert_eq!(ast.calls.len(), 1);
         Ok(())
     }
 
@@ -642,9 +787,10 @@ pub mod tests {
     #[test]
     fn parsed_assignment_with_typed_argument() -> Result<(), TError> {
         let ast = setup("x(y: Int): Int=1")?;
+        eprintln!("{}", ast.pretty(ast.roots[0]));
         // dbg!(&ast);
 
-        assert_eq!(ast.identifiers.len(), 2);
+        assert_eq!(ast.identifiers.len(), 3);
         assert_eq!(ast.atoms.len(), 0);
         assert_eq!(ast.literals.len(), 1);
         assert_eq!(ast.ops.len(), 0);
@@ -654,10 +800,10 @@ pub mod tests {
 
     #[test]
     fn parsed_assignment_with_implicit_args() -> Result<(), TError> {
-        let ast = setup("id<T: Type>(y: T): T=y")?;
-        // dbg!(&ast);
+        let ast = setup("id(forall T: Type, y: T): T=y")?;
+        eprintln!("{}", &ast.pretty(ast.roots[0]));
 
-        assert_eq!(ast.identifiers.len(), 4);
+        assert_eq!(ast.identifiers.len(), 5);
         assert_eq!(ast.atoms.len(), 0);
         assert_eq!(ast.literals.len(), 0);
         assert_eq!(ast.ops.len(), 0);
@@ -687,6 +833,16 @@ pub mod tests {
         assert_eq!(ast.literals.len(), 2);
         assert_eq!(ast.ops.len(), 1);
         assert_eq!(ast.definitions.len(), 0);
+        Ok(())
+    }
+
+    #[test]
+    fn parse_ambiguous_and_with_or() -> Result<(), TError> {
+        let err = setup("a||b&&c");
+        dbg!(&err);
+        assert!(err.is_err());
+        let err = err.unwrap_err();
+        assert_eq!(format!("{}", err), "This expression could be read two ways, use parens to clarify whether || or && should be performed first");
         Ok(())
     }
 
@@ -726,6 +882,22 @@ pub mod tests {
     #[should_panic] // TODO(errors): Implement!
     fn parse_atom_atom() {
         setup("$a $b").expect("Disallowed syntax");
+    }
+
+    #[test]
+    fn parse_empty_file() {
+        setup("").expect("Should succeed on empty file");
+    }
+
+    #[test]
+    fn parse_values_in_fn_args() -> Result<(), TError> {
+        let ast = setup("signum(x)=if(x<0, -1, 1)")?;
+        // dbg!(ast);
+        assert_eq!(ast.calls.len(), 1);
+        assert_eq!(ast.calls[0].1.args.len(), 3);
+        assert_eq!(ast.ops.len(), 2); // Lt and Sub
+        assert_eq!(ast.definitions.len(), 1);
+        Ok(())
     }
 
     /*
