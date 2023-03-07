@@ -383,6 +383,23 @@ pub enum TokenType {
     Group,
 }
 
+impl fmt::Display for TokenType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TokenType::Op(sym) => write!(f, "a '{sym:?}' symbol"),
+            TokenType::Ident => write!(f, "an identifier"),
+            TokenType::Atom => write!(f, "an atom"),
+            TokenType::NumLit => write!(f, "a number"),
+            TokenType::ColorLit => write!(f, "a color"),
+            TokenType::StringLit => write!(f, "a string literal"),
+            TokenType::FmtStringLitStart => write!(f, "the start of a format string literal"),
+            TokenType::FmtStringLitMid => write!(f, "the middle of a format string literal"),
+            TokenType::FmtStringLitEnd => write!(f, "the end of a format string literal"),
+            TokenType::Group => write!(f, "a long string literal"),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Token {
     pub kind: TokenType,
@@ -398,10 +415,6 @@ impl Token {
             start: self.start,
             length: self.length,
         }
-    }
-
-    pub fn to_prim(&self) -> i32 {
-        todo!("Provide a 'to_prim' that also de escapes tokens.")
     }
 
     pub fn get_src<'a>(&self, source: &'a str) -> &'a str {

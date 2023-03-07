@@ -13,7 +13,7 @@ use tokens::{assign_op, binding_mode_operation, is_assign, OpBinding, Symbol, To
 
 #[derive(Debug, Error, PartialEq, Eq, Ord, PartialOrd, Clone, Hash)]
 pub enum ParseError {
-    UnexpectedEof,
+    UnexpectedEof, // TODO: Add context.
     UnexpectedTokenTypeExpectedOperator {
         got: TokenType,
         location: Location,
@@ -66,12 +66,22 @@ impl From<ParseError> for TError {
 
 impl std::fmt::Display for ParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // TODO: Manually implement readable errors.
-        //TError::ExpectedToken(expected, got, location, inside) => write!(
-        //f,
-        //"Expected a {expected:?} found a {got:?}, at {location:?} inside {inside:?}"
-        //)?,
-        <Self as std::fmt::Debug>::fmt(self, f)
+        match self {
+            ParseError::UnexpectedEof => write!(f, "Unexpected eof"),
+            ParseError::UnexpectedTokenTypeExpectedOperator { got, .. } => {
+                write!(f, "Unexpected {got} expected an operator")
+            }
+            ParseError::UnexpectedTokenTypeExpectedAssignment { got, .. } => {
+                write!(f, "Unexpected {got} expected an assignment")
+            }
+            ParseError::UnexpectedTokenType { got, expected, .. } => {
+                write!(f, "Unexpected {got} expected {expected}")
+            }
+            ParseError::ParseIntError { message, .. } => {
+                write!(f, "{message} expected an integer literal (r.g. 123)")
+            }
+            // todo!("Ambiguous expression: {left:?} sym: {sym:?} inside binding: {binding:?}");
+        }
     }
 }
 
@@ -193,14 +203,14 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
 
     fn binding_or_arg(
         &mut self,
-        has_non_arg_values: &mut bool,
+        has_non_bind_args: &mut bool,
         default_mode: BindingMode,
     ) -> Result<BindingOrValue, TError> {
         if let Some(binding) = self.binding(default_mode)? {
             trace!("Binding: {binding:?}");
             return Ok(BindingOrValue::Binding(binding));
         }
-        *has_non_arg_values = true;
+        *has_non_bind_args = true;
         let value = self.expr(Symbol::Comma)?;
         trace!("Arg value: {value:?}");
         Ok(BindingOrValue::Value(value))
@@ -321,10 +331,8 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
     }
 
     fn expr(&mut self, binding: Symbol) -> Result<NodeId, TError> {
-        let token = if let Ok(token) = self.peek() {
-            *token
-        } else {
-            todo!("No token");
+        let Ok(token) = self.peek().copied() else {
+            return Err(ParseError::UnexpectedEof.into());
         };
         let location = token.location();
         trace!("Expr: {token:?} (binding {binding:?})");
@@ -470,7 +478,7 @@ pub fn parse(filepath: &Path, contents: &str, tokens: &[Token]) -> Result<Ast, T
         ast: Ast::new(filepath.to_path_buf()),
         tokens: tokens.iter().peekable(),
     };
-    if state.peek().is_ok() {
+    if !tokens.is_empty() {
         // Support empty files!
         let root = state.expr(Symbol::OpenParen)?;
         state.ast.roots.push(root);
@@ -627,6 +635,16 @@ pub mod tests {
 
         assert_eq!(ast.calls.len(), 1);
         assert_eq!(ast.identifiers.len(), 1);
+        Ok(())
+    }
+
+    #[test]
+    fn parse_call_unfinished() -> Result<(), TError> {
+        let err = setup("x(");
+        dbg!(&err);
+        assert!(err.is_err());
+        let err = err.unwrap_err();
+        assert_eq!(format!("{}", err), "Unexpected eof");
         Ok(())
     }
 

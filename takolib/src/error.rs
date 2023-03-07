@@ -7,7 +7,7 @@ use thiserror::Error;
 
 #[derive(Error, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TError {
-    CppCompilerError {
+    ClangCompilerError {
         error: String,
         return_code: i32,
     },
@@ -20,7 +20,21 @@ pub enum TError {
 
 impl std::fmt::Display for TError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        <Self as std::fmt::Debug>::fmt(self, f)
+        use TError::*;
+        match self {
+            ClangCompilerError { error, return_code } => write!(
+                f,
+                "Clang failed with code {return_code} and error message: {error}"
+            ),
+            ParseError(e) => write!(f, "{}", e),
+            InternalError { message, location } => {
+                write!(f, "Internal error: {message}")?;
+                if let Some(location) = location {
+                    write!(f, "at {location:?}")?;
+                }
+                Ok(())
+            }
+        }
     }
 }
 
@@ -73,7 +87,7 @@ impl Error {
         module: Option<&()>,
     ) -> Self {
         let location = match &source {
-            TError::CppCompilerError { .. } => None,
+            TError::ClangCompilerError { .. } => None,
             TError::ParseError(err) => err.location(),
             TError::InternalError { location, .. } => location.as_ref(),
         };
@@ -97,7 +111,7 @@ impl std::fmt::Display for Error {
 impl std::fmt::Debug for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.source {
-            TError::CppCompilerError { error, return_code } => write!(
+            TError::ClangCompilerError { error, return_code } => write!(
                 f,
                 "call to C++ compiler failed with error code: {return_code}\n{error}"
             )?,
