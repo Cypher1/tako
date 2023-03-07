@@ -143,7 +143,17 @@ impl<'ast> fmt::Display for PrintNode<'ast> {
             }
             Call(node) => {
                 let (_node_id, node) = self.ast.get(*node);
-                write!(f, "{node:?}")?;
+                write!(f, "{}(", self.child(node.inner))?;
+                let mut first = true;
+                for arg in &node.args {
+                    if !first {
+                        write!(f, ", ");
+                    } else {
+                        first = false;
+                    }
+                    write!(f, "{}", self.child(*arg))?;
+                }
+                write!(f, ")")?;
             }
             Identifier(node) => {
                 let (_node_id, node) = self.ast.get(*node);

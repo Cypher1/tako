@@ -126,8 +126,8 @@ impl std::fmt::Display for ParseError {
 
 #[derive(Debug)]
 enum BindingOrValue {
-    Identifier(Identifier, Option<NodeId>),
-    Binding(Binding),
+    Identifier(Identifier, Option<NodeId>, Location),
+    Binding(Binding, Location),
     Value(NodeId),
 }
 
@@ -247,15 +247,16 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
     ) -> Result<BindingOrValue, TError> {
         let value = self.expr(Symbol::Comma)?;
         let node = &self.ast.get(value);
+        let location = node.location;
         if let NodeData::Binding(binding) = node.id {
             let (_node_id, binding) = self.ast.get_mut(binding);
             trace!("Binding: {binding:?}");
-            return Ok(BindingOrValue::Binding(*binding));
+            return Ok(BindingOrValue::Binding(*binding, location));
         }
         if let NodeData::Identifier(ident) = node.id {
             let ty = node.ty;
             let (_node_id, ident) = self.ast.get_mut(ident);
-            return Ok(BindingOrValue::Identifier(*ident, ty));
+            return Ok(BindingOrValue::Identifier(*ident, ty, location));
         }
         *has_non_bind_args = true;
         trace!("Arg value: {value:?}");
@@ -314,8 +315,8 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             let mut only_bindings = vec![];
             for binding in bindings {
                 match binding {
-                    BindingOrValue::Binding(binding) => only_bindings.push(binding),
-                    BindingOrValue::Identifier(name, ty) => only_bindings.push(Binding {
+                    BindingOrValue::Binding(binding, _location) => only_bindings.push(binding),
+                    BindingOrValue::Identifier(name, ty, _location) => only_bindings.push(Binding {
                         mode: BindingMode::Lambda,
                         name,
                         ty,
@@ -353,10 +354,27 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             let inner = self.identifier(name, location);
             // TODO: USE bindings
             trace!("Add call");
+            let mut args = vec![];
+            for binding in bindings {
+                let binding = match binding {
+                    BindingOrValue::Binding(binding, location) => {
+                        self.ast.add_binding(binding, location)
+                    }
+                    BindingOrValue::Identifier(ident, ty, location) => {
+                        let mut ident = self.ast.add_identifier(ident, location);
+                        if let Some(ty) = ty {
+                            ident = self.ast.add_annotation(ident, ty);
+                        }
+                        ident
+                    }
+                    BindingOrValue::Value(value) => value,
+                };
+                args.push(binding);
+            }
             let call = self.ast.add_call(
                 Call {
                     inner,
-                    args: vec![],
+                    args,
                 },
                 location,
             );
@@ -769,9 +787,10 @@ pub mod tests {
     #[test]
     fn parsed_assignment_with_typed_argument() -> Result<(), TError> {
         let ast = setup("x(y: Int): Int=1")?;
+        eprintln!("{}", ast.pretty(ast.roots[0]));
         // dbg!(&ast);
 
-        assert_eq!(ast.identifiers.len(), 2);
+        assert_eq!(ast.identifiers.len(), 3);
         assert_eq!(ast.atoms.len(), 0);
         assert_eq!(ast.literals.len(), 1);
         assert_eq!(ast.ops.len(), 0);
@@ -784,7 +803,7 @@ pub mod tests {
         let ast = setup("id(forall T: Type, y: T): T=y")?;
         eprintln!("{}", &ast.pretty(ast.roots[0]));
 
-        assert_eq!(ast.identifiers.len(), 4);
+        assert_eq!(ast.identifiers.len(), 5);
         assert_eq!(ast.atoms.len(), 0);
         assert_eq!(ast.literals.len(), 0);
         assert_eq!(ast.ops.len(), 0);
@@ -875,7 +894,8 @@ pub mod tests {
         let ast = setup("signum(x)=if(x<0, -1, 1)")?;
         // dbg!(ast);
         assert_eq!(ast.calls.len(), 1);
-        assert_eq!(ast.ops.len(), 1);
+        assert_eq!(ast.calls[0].1.args.len(), 3);
+        assert_eq!(ast.ops.len(), 2); // Lt and Sub
         assert_eq!(ast.definitions.len(), 1);
         Ok(())
     }
