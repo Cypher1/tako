@@ -25,7 +25,39 @@ pub fn codegen(_path: &Path, _ast: &Ast, _root: NodeId) -> Result<(), TError> {
             unsafe {
                 cg.build_return(Some(&*argc));
             }
+            cg.create_binary(Path::new("a.out"))?;
             Ok(())
         }
+    }
+}
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    fn test_file1() -> PathBuf {
+        "test.tk".into()
+    }
+
+    fn setup(s: &str) -> (Ast, NodeId) {
+        crate::ensure_initialized();
+        std::fs::create_dir_all(test_build_output_dir()).expect("Make test output dir");
+
+        let path = test_file1();
+        let tokens = lex(s)?;
+        let ast = parse(&path, s, &tokens)?;
+        assert!(!ast.roots.is_empty());
+        let root = ast.roots[0];
+        (path, ast, root)
+    }
+
+    #[test]
+    fn can_print_hello_world_using_codegen() {
+        let (path, ast, root) = setup("x=1");
+
+        codegen(path, &ast, root);
+
+        // TODO: Run and check hello world program's output.
     }
 }
