@@ -6,11 +6,12 @@ edition = "2021"
 include = ["src/**/*", "LICENSE.md", "README.md"]
 
 [features]
-#default=["llvm_backend", "native"]
-default=["native"]
+default=["llvm_backend", "native"]
+#default=["native"]
 wasm=["wasm-logger"]
 native=["env_logger"]
-llvm_backend=["inkwell"]
+llvm_backend=["inkwell", "backend"]
+backend=[] # signals that 'a' backend is active.
 
 [lib]
 name = "tako"

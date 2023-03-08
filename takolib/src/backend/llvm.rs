@@ -1,3 +1,9 @@
+use std::{
+    io::{stderr, stdout, Write},
+    path::Path,
+    process::Command,
+};
+use crate::error::TError;
 use super::{Backend, BackendConfig, BackendStateTrait};
 use inkwell::{
     builder::Builder,
@@ -6,22 +12,42 @@ use inkwell::{
     module::{Linkage, Module},
     targets::{CodeModel, InitializationConfig, RelocMode, Target, TargetMachine, TargetTriple},
     types::{BasicTypeEnum, FunctionType, IntType, PointerType, VectorType},
-    values::{BasicMetadataValueEnum, FunctionValue, IntValue, PointerValue, VectorValue},
+    values::{BasicMetadataValueEnum, FunctionValue, IntValue, PointerValue, VectorValue, BasicValue},
     AddressSpace, OptimizationLevel,
 };
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+
+lazy_static::lazy_static! {
+    static ref CONTEXT: Arc<Mutex<Context>> = Arc::new(Mutex::new(Context::create()));
+}
 
 #[derive(Debug)]
-struct Llvm<'ctx> {
+pub struct Llvm<'ctx> {
+    context: &'ctx Context,
     reloc: RelocMode,
     model: CodeModel,
     opt: OptimizationLevel,
-    target_triple: TargetTriple,
+    target_triple: Arc<TargetTriple>,
     target_machine: Option<TargetMachine>,
-    context: &'ctx Context,
 }
 
-impl<'ctx> Llvm<'ctx> {}
+impl<'ctx> Llvm<'ctx> {
+    fn get_target_machine(&self) -> TargetMachine {
+        let target = Target::from_triple(&self.target_triple).unwrap();
+        let target_machine = target
+            .create_target_machine(
+                &self.target_triple,
+                "generic",
+                "",
+                self.opt,
+                self.reloc,
+                self.model,
+            )
+            .unwrap();
+        target_machine
+    }
+}
 
 impl<'ctx> Backend<'ctx> for Llvm<'ctx> {
     type Context = Context;
@@ -34,36 +60,23 @@ impl<'ctx> Backend<'ctx> for Llvm<'ctx> {
     fn new(_config: BackendConfig, context: &'ctx Self::Context) -> Self {
         Target::initialize_all(&InitializationConfig::default());
         let mut this = Llvm {
+            context,
             reloc: RelocMode::Default,
             model: CodeModel::Default,
             opt: OptimizationLevel::Default,
-            target_triple: TargetMachine::get_default_triple(),
+            target_triple: Arc::new(TargetMachine::get_default_triple()),
             target_machine: None,
-            context,
         };
-        this.setup();
+        this.target_machine = Some(this.get_target_machine());
         this
     }
-    fn setup(&mut self) {
-        let target = Target::from_triple(&self.target_triple).unwrap();
-        let target_machine = target
-            .create_target_machine(
-                &self.target_triple,
-                "generic",
-                "",
-                self.opt,
-                self.reloc,
-                self.model,
-            )
-            .unwrap();
-        self.target_machine = Some(target_machine);
-    }
-    fn add_module(&mut self, name: &str) -> Result<Self::BackendState, Box<dyn std::error::Error>> {
-        let context = self.context;
+    fn add_module(&'ctx mut self, name: &str) -> Result<Self::BackendState, Box<dyn std::error::Error>> {
+        let context = &self.context;
         let module = context.create_module(name);
         let execution_engine = module.create_jit_execution_engine(OptimizationLevel::None)?;
         let builder = context.create_builder();
         let state = LlvmState {
+            backend: &*self,
             context,
             module,
             builder,
@@ -75,7 +88,8 @@ impl<'ctx> Backend<'ctx> for Llvm<'ctx> {
 }
 
 #[derive(Debug)]
-struct LlvmState<'ctx> {
+pub struct LlvmState<'ctx> {
+    backend: &'ctx Llvm<'ctx>,
     context: &'ctx Context,
     module: Module<'ctx>,
     builder: Builder<'ctx>,
@@ -100,12 +114,13 @@ impl<'ctx> LlvmState<'ctx> {
     }
 }
 
-impl<'ctx> BackendStateTrait<'ctx> for LlvmState<'ctx> {
+impl<'ctx> BackendStateTrait for LlvmState<'ctx> {
     type IntType = IntType<'ctx>;
     type IntValue = IntValue<'ctx>;
     type PointerType = PointerType<'ctx>;
     type PointerValue = PointerValue<'ctx>;
     type Value = BasicMetadataValueEnum<'ctx>;
+    type ReturnValue = Option<&'ctx dyn BasicValue<'ctx>>;
     type ValueType = BasicTypeEnum<'ctx>;
     type FunctionType = FunctionType<'ctx>;
     type FunctionValue = FunctionValue<'ctx>;
@@ -150,6 +165,13 @@ impl<'ctx> BackendStateTrait<'ctx> for LlvmState<'ctx> {
         // TODO: Check bounds.
         ty.const_int(value.into(), false).into()
     }
+    fn build_return(&mut self, value: Self::ReturnValue) {
+        if let Some(value) = value {
+            self.builder.build_return(Some(&*value));
+        } else {
+            self.builder.build_return(None);
+        }
+    }
 
     fn i8_type(&mut self) -> Self::IntType {
         self.context.i8_type()
@@ -185,17 +207,30 @@ impl<'ctx> BackendStateTrait<'ctx> for LlvmState<'ctx> {
         self.builder
             .build_call(printf, &arg_array[..], "_call_printf");
     }
+
+    fn create_binary(&self, bin_path: &Path) -> Result<(), TError> {
+        let elf_path = bin_path.join(".elf");
+        let target_machine = self.backend.get_target_machine();
+        assert!(target_machine
+            .write_to_file(&self.module, inkwell::targets::FileType::Object, &elf_path)
+            .is_ok());
+
+        let mut command = Command::new("clang");
+        let cmd = command.arg(elf_path).arg("-o").arg(bin_path).arg("-lc");
+
+        let output = cmd.output().expect("failed to run clang");
+        stdout().write_all(&output.stdout).unwrap();
+        stderr().write_all(&output.stderr).unwrap();
+
+        // Run and check hello world program's output.
+        Ok(())
+    }
 }
 
 #[cfg(test)]
 pub mod tests {
-    use std::{
-        io::{stderr, stdout, Write},
-        path::{Path, PathBuf},
-        process::Command,
-    };
-
     use super::*;
+    use std::path::PathBuf;
 
     fn test_build_output_dir() -> PathBuf {
         Path::new("/tmp/tako_tests/llvm_backend").to_path_buf()
@@ -209,10 +244,11 @@ pub mod tests {
     #[test]
     fn can_print_hello_world() {
         std::fs::create_dir_all(test_build_output_dir()).expect("Make test output dir");
+        let ref context = Context::create();
 
         let config = BackendConfig {};
-        let ref context = Llvm::create_context();
         let mut llvm_backend = Llvm::new(config, context);
+        let target_machine = llvm_backend.get_target_machine();
         let mut llvm = llvm_backend
             .add_module("hello_world")
             .expect("Could construct module");
@@ -228,7 +264,6 @@ pub mod tests {
         // dbg!(&llvm);
         let elf_path = test_build_output_dir().join("hello_world.elf");
         let bin_path = test_build_output_dir().join("hello_world");
-        let target_machine = &llvm_backend.target_machine.expect("Should have run setup");
         assert!(target_machine
             .write_to_file(&llvm.module, inkwell::targets::FileType::Object, &elf_path)
             .is_ok());

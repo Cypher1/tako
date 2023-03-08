@@ -30,6 +30,7 @@ pub enum AnyTask {
     LoadFile(LoadFileTask),
     LexFile(LexFileTask),
     ParseFile(ParseFileTask),
+    CodegenFile(CodegenFileTask),
     EvalFile(EvalFileTask),
 }
 
@@ -165,6 +166,38 @@ impl Task for EvalFileTask {
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
         let result = crate::interpreter::run(&self.path, &self.ast, self.root)
+            .map_err(|err| self.decorate_error(err));
+        result_sender
+            .send((
+                self,
+                match result {
+                    Ok(result) => Update::FinalResult(result),
+                    Err(err) => Update::Failed(err),
+                },
+            ))
+            .expect("Should be able to send task result to manager");
+    }
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct CodegenFileTask {
+    pub path: PathBuf,
+    pub ast: Ast,
+    pub root: NodeId,
+}
+
+#[cfg(feature = "backend")]
+#[async_trait]
+impl Task for CodegenFileTask {
+    type Output = (); // For now, we'll store nothing and write straight to a file.
+    const TASK_KIND: TaskKind = TaskKind::CodegenFile;
+    const RESULT_IS_CACHABLE: bool = false;
+
+    fn has_file_path(&self) -> Option<&PathBuf> {
+        Some(&self.path)
+    }
+    async fn perform(self, result_sender: UpdateSenderFor<Self>) {
+        let result = crate::codegen::codegen(&self.path, &self.ast, self.root)
             .map_err(|err| self.decorate_error(err));
         result_sender
             .send((

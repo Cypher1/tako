@@ -5,6 +5,8 @@ pub mod utils;
 
 pub mod ast;
 pub mod backend;
+#[cfg(feature = "backend")]
+pub mod codegen;
 pub mod compiler;
 pub mod error;
 pub mod interpreter;
