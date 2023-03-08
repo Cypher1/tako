@@ -50,6 +50,8 @@ jobs:
         target: wasm32-unknown-unknown
         override: true
         profile: minimal
+    - name: Install wasm bindgen cli
+      run: cargo install --locked wasm-bindgen-cli
     - name: Install trunk
       uses: jetli/trunk-action@v0.1.0
       with:
