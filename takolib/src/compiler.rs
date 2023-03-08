@@ -224,7 +224,12 @@ impl Compiler {
             RequestTask::EvalLine(line) => {
                 self.eval("interpreter.tk".into(), Some(line), response_sender);
             }
-            RequestTask::Launch { files } => {
+            RequestTask::Build { files } => {
+                for file in files {
+                    self.eval(file, None, response_sender.clone());
+                }
+            }
+            RequestTask::RunInterpreter { files } => {
                 for file in files {
                     self.eval(file, None, response_sender.clone());
                 }

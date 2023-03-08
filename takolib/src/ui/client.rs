@@ -50,9 +50,15 @@ impl Client {
     }
 
     pub fn start(&mut self) {
-        self.send_command(RequestTask::Launch {
-            files: self.options.files().clone(),
-        });
+        if self.options.interpreter() {
+            self.send_command(RequestTask::RunInterpreter {
+                files: self.options.files().clone(),
+            });
+        } else {
+            self.send_command(RequestTask::Build {
+                files: self.options.files().clone(),
+            });
+        }
     }
 
     pub fn interactive(&self) -> bool {
