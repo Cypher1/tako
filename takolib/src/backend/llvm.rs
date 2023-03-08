@@ -209,11 +209,12 @@ impl<'ctx> BackendStateTrait for LlvmState<'ctx> {
     }
 
     fn create_binary(&self, bin_path: &Path) -> Result<(), TError> {
-        let elf_path = bin_path.join(".elf");
+        let mut elf_path = bin_path.to_path_buf();
+        elf_path.set_extension(".elf");
         let target_machine = self.backend.get_target_machine();
         assert!(target_machine
             .write_to_file(&self.module, inkwell::targets::FileType::Object, &elf_path)
-            .is_ok());
+            .is_ok(), "Failed to write to file {}", elf_path.display());
 
         let mut command = Command::new("clang");
         let cmd = command.arg(elf_path).arg("-o").arg(bin_path).arg("-lc");

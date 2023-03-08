@@ -3,7 +3,7 @@ use std::path::Path;
 use crate::ast::{Ast, NodeId};
 use crate::backend::{Backend, BackendStateTrait, create_context, backend, BackendConfig};
 
-pub fn codegen(_path: &Path, _ast: &Ast, _root: NodeId) -> Result<(), TError> {
+pub fn codegen(path: &Path, _ast: &Ast, _root: NodeId) -> Result<(), TError> {
     let config = BackendConfig {};
     let context = create_context();
     {
@@ -25,7 +25,7 @@ pub fn codegen(_path: &Path, _ast: &Ast, _root: NodeId) -> Result<(), TError> {
             unsafe {
                 cg.build_return(Some(&*argc));
             }
-            cg.create_binary(Path::new("a.out"))?;
+            cg.create_binary(path)?;
             Ok(())
         }
     }
@@ -33,14 +33,19 @@ pub fn codegen(_path: &Path, _ast: &Ast, _root: NodeId) -> Result<(), TError> {
 
 #[cfg(test)]
 pub mod tests {
+    use crate::parser::{tokens::lex, parse};
+
     use super::*;
     use std::path::PathBuf;
 
+    fn test_build_output_dir() -> PathBuf {
+        Path::new("/tmp/tako_tests/llvm_backend").to_path_buf()
+    }
     fn test_file1() -> PathBuf {
-        "test.tk".into()
+        test_build_output_dir().join("test.tk")
     }
 
-    fn setup(s: &str) -> (Ast, NodeId) {
+    fn setup(s: &str) -> Result<(PathBuf, Ast, NodeId), TError> {
         crate::ensure_initialized();
         std::fs::create_dir_all(test_build_output_dir()).expect("Make test output dir");
 
@@ -49,15 +54,16 @@ pub mod tests {
         let ast = parse(&path, s, &tokens)?;
         assert!(!ast.roots.is_empty());
         let root = ast.roots[0];
-        (path, ast, root)
+        Ok((path, ast, root))
     }
 
     #[test]
-    fn can_print_hello_world_using_codegen() {
-        let (path, ast, root) = setup("x=1");
+    fn can_print_hello_world_using_codegen() -> Result<(), TError> {
+        let (path, ast, root) = setup("x=1")?;
 
-        codegen(path, &ast, root);
+        codegen(&path, &ast, root)?;
 
         // TODO: Run and check hello world program's output.
+        Ok(())
     }
 }
