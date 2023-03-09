@@ -50,15 +50,12 @@ impl Client {
     }
 
     pub fn start(&mut self) {
-        if self.options.interpreter() {
-            self.send_command(RequestTask::RunInterpreter {
-                files: self.options.files().clone(),
-            });
+        let files = self.options.files().clone();
+        self.send_command(if self.options.interpreter() {
+            RequestTask::RunInterpreter { files }
         } else {
-            self.send_command(RequestTask::Build {
-                files: self.options.files().clone(),
-            });
-        }
+            RequestTask::Build { files }
+        });
     }
 
     pub fn interactive(&self) -> bool {

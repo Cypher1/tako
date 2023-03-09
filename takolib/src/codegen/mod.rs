@@ -1,9 +1,10 @@
-use crate::error::TError;
-use std::path::Path;
 use crate::ast::{Ast, NodeId};
-use crate::backend::{Backend, BackendStateTrait, create_context, backend, BackendConfig};
+use crate::backend::{backend, create_context, Backend, BackendConfig, BackendStateTrait};
+use crate::error::TError;
+use crate::primitives::Prim;
+use std::path::Path;
 
-pub fn codegen(path: &Path, _ast: &Ast, _root: NodeId) -> Result<(), TError> {
+pub fn codegen(path: &Path, _ast: &Ast, _root: NodeId) -> Result<Prim, TError> {
     let config = BackendConfig {};
     let context = create_context();
     {
@@ -26,14 +27,14 @@ pub fn codegen(path: &Path, _ast: &Ast, _root: NodeId) -> Result<(), TError> {
                 cg.build_return(Some(&*argc));
             }
             cg.create_binary(path)?;
-            Ok(())
+            Ok(Prim::Str(path.display().to_string()))
         }
     }
 }
 
 #[cfg(test)]
 pub mod tests {
-    use crate::parser::{tokens::lex, parse};
+    use crate::parser::{parse, tokens::lex};
 
     use super::*;
     use std::path::PathBuf;

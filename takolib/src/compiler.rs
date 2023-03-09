@@ -23,6 +23,7 @@ pub struct Compiler {
     lex_file_manager: Arc<Mutex<TaskManager<LexFileTask>>>,
     parse_file_manager: Arc<Mutex<TaskManager<ParseFileTask>>>,
     eval_file_manager: Arc<Mutex<TaskManager<EvalFileTask>>>,
+    codegen_manager: Arc<Mutex<TaskManager<CodegenTask>>>,
     // Broadcast the accumulation to all clients.
     pub stats_requester: broadcast::Sender<()>,
     pub status_sender: broadcast::Sender<StatusReport>,
@@ -61,6 +62,7 @@ impl Default for Compiler {
             lex_file_manager: Self::manager(&stats_sender, &stats_requester),
             parse_file_manager: Self::manager(&stats_sender, &stats_requester),
             eval_file_manager: Self::manager(&stats_sender, &stats_requester),
+            codegen_manager: Self::manager(&stats_sender, &stats_requester),
             // TODO(features): More passes:
             // - type_check_inside_module: TaskManager<>,
             // Produces type checked (and optimizable) modules **AND**
@@ -200,6 +202,40 @@ impl Compiler {
         Self::with_manager(rx, &self.eval_file_manager, response_sender);
     }
 
+    pub fn codegen(
+        &self,
+        path: PathBuf,
+        out_path: PathBuf,
+        contents: Option<String>,
+        response_sender: ResultSenderFor<CodegenTask>,
+    ) {
+        let (tx1, mut rx1) = mpsc::unbounded_channel();
+        // TODO: Static checking should be here.
+        self.parse(path, contents, tx1);
+        let (tx2, rx2) = mpsc::unbounded_channel();
+        spawn(async move {
+            // TODO: Use a proper map from in paths to out paths.
+            while let Some(EvalFileTask { path: _, ast, root }) = rx1.recv().await {
+                let mut roots = vec![];
+                if let Some(root) = root {
+                    // TODO: Support from CLI
+                    roots.push(root); // Build only the selected root.
+                } else {
+                    roots.extend(ast.roots.iter().cloned()); // Build all
+                }
+                for root in roots {
+                    tx2.send(CodegenTask {
+                        path: out_path.clone(),
+                        ast: ast.clone(),
+                        root,
+                    })
+                    .expect("Should be able to send codegen task");
+                }
+            }
+        });
+        Self::with_manager(rx2, &self.codegen_manager, response_sender);
+    }
+
     pub async fn run_loop(mut self) {
         trace!("Starting compiler run loop");
         loop {
@@ -226,7 +262,9 @@ impl Compiler {
             }
             RequestTask::Build { files } => {
                 for file in files {
-                    self.eval(file, None, response_sender.clone());
+                    let mut file_with_extension = file.to_path_buf();
+                    file_with_extension.set_extension("out");
+                    self.codegen(file, file_with_extension, None, response_sender.clone());
                 }
             }
             RequestTask::RunInterpreter { files } => {

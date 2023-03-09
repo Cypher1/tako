@@ -1,10 +1,5 @@
-use std::{
-    io::{stderr, stdout, Write},
-    path::Path,
-    process::Command,
-};
-use crate::error::TError;
 use super::{Backend, BackendConfig, BackendStateTrait};
+use crate::error::TError;
 use inkwell::{
     builder::Builder,
     context::Context,
@@ -12,11 +7,18 @@ use inkwell::{
     module::{Linkage, Module},
     targets::{CodeModel, InitializationConfig, RelocMode, Target, TargetMachine, TargetTriple},
     types::{BasicTypeEnum, FunctionType, IntType, PointerType, VectorType},
-    values::{BasicMetadataValueEnum, FunctionValue, IntValue, PointerValue, VectorValue, BasicValue},
+    values::{
+        BasicMetadataValueEnum, BasicValue, FunctionValue, IntValue, PointerValue, VectorValue,
+    },
     AddressSpace, OptimizationLevel,
 };
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use std::{
+    io::{stderr, stdout, Write},
+    path::Path,
+    process::Command,
+};
 
 lazy_static::lazy_static! {
     static ref CONTEXT: Arc<Mutex<Context>> = Arc::new(Mutex::new(Context::create()));
@@ -70,7 +72,10 @@ impl<'ctx> Backend<'ctx> for Llvm<'ctx> {
         this.target_machine = Some(this.get_target_machine());
         this
     }
-    fn add_module(&'ctx mut self, name: &str) -> Result<Self::BackendState, Box<dyn std::error::Error>> {
+    fn add_module(
+        &'ctx mut self,
+        name: &str,
+    ) -> Result<Self::BackendState, Box<dyn std::error::Error>> {
         let context = &self.context;
         let module = context.create_module(name);
         let execution_engine = module.create_jit_execution_engine(OptimizationLevel::None)?;
@@ -212,9 +217,13 @@ impl<'ctx> BackendStateTrait for LlvmState<'ctx> {
         let mut elf_path = bin_path.to_path_buf();
         elf_path.set_extension("elf");
         let target_machine = self.backend.get_target_machine();
-        assert!(target_machine
-            .write_to_file(&self.module, inkwell::targets::FileType::Object, &elf_path)
-            .is_ok(), "Failed to write to file {}", elf_path.display());
+        assert!(
+            target_machine
+                .write_to_file(&self.module, inkwell::targets::FileType::Object, &elf_path)
+                .is_ok(),
+            "Failed to write to file {}",
+            elf_path.display()
+        );
 
         let mut command = Command::new("clang");
         let cmd = command.arg(elf_path).arg("-o").arg(bin_path).arg("-lc");

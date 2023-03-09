@@ -5,7 +5,10 @@ use std::path::Path;
 mod llvm;
 
 #[cfg(feature = "llvm_backend")]
-pub fn backend<'ctx>(cfg: BackendConfig, context: &'ctx <llvm::Llvm<'ctx> as Backend<'ctx>>::Context) -> llvm::Llvm<'ctx> {
+pub fn backend<'ctx>(
+    cfg: BackendConfig,
+    context: &'ctx <llvm::Llvm<'ctx> as Backend<'ctx>>::Context,
+) -> llvm::Llvm<'ctx> {
     llvm::Llvm::new(cfg, context)
 }
 
@@ -60,5 +63,8 @@ pub trait Backend<'ctx> {
 
     fn create_context() -> Self::Context;
     fn new(_config: BackendConfig, context: &'ctx Self::Context) -> Self;
-    fn add_module(&'ctx mut self, name: &str) -> Result<Self::BackendState, Box<dyn std::error::Error>>;
+    fn add_module(
+        &'ctx mut self,
+        name: &str,
+    ) -> Result<Self::BackendState, Box<dyn std::error::Error>>;
 }

@@ -5,6 +5,7 @@ use crate::ast::Ast;
 use crate::ast::NodeId;
 use crate::error::Error;
 use crate::parser::tokens::Token;
+use crate::primitives::Prim;
 use crate::utils::meta::Meta;
 use async_trait::async_trait;
 use enum_kinds::EnumKind;
@@ -30,7 +31,7 @@ pub enum AnyTask {
     LoadFile(LoadFileTask),
     LexFile(LexFileTask),
     ParseFile(ParseFileTask),
-    CodegenFile(CodegenFileTask),
+    Codegen(CodegenTask),
     EvalFile(EvalFileTask),
 }
 
@@ -40,7 +41,8 @@ pub enum AnyTask {
 /// There's normally only one of these, but it seems elegant to have these fit into the `Task` model.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RequestTask {
-    Launch { files: Vec<PathBuf> },
+    Build { files: Vec<PathBuf> },
+    RunInterpreter { files: Vec<PathBuf> },
     EvalLine(String),
 }
 
@@ -157,7 +159,7 @@ pub struct EvalFileTask {
 
 #[async_trait]
 impl Task for EvalFileTask {
-    type Output = crate::primitives::Prim; // For now, we'll just store an updated AST itself.
+    type Output = Prim; // For now, we'll just store an updated AST itself.
     const TASK_KIND: TaskKind = TaskKind::EvalFile;
     const RESULT_IS_CACHABLE: bool = false;
 
@@ -180,7 +182,7 @@ impl Task for EvalFileTask {
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct CodegenFileTask {
+pub struct CodegenTask {
     pub path: PathBuf,
     pub ast: Ast,
     pub root: NodeId,
@@ -188,9 +190,9 @@ pub struct CodegenFileTask {
 
 #[cfg(feature = "backend")]
 #[async_trait]
-impl Task for CodegenFileTask {
-    type Output = (); // For now, we'll store nothing and write straight to a file.
-    const TASK_KIND: TaskKind = TaskKind::CodegenFile;
+impl Task for CodegenTask {
+    type Output = Prim; // For now, we'll send back the path as a string.
+    const TASK_KIND: TaskKind = TaskKind::Codegen;
     const RESULT_IS_CACHABLE: bool = false;
 
     fn has_file_path(&self) -> Option<&PathBuf> {
