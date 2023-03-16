@@ -37,7 +37,8 @@ pub struct Llvm<'ctx> {
 impl<'ctx> Llvm<'ctx> {
     fn get_target_machine(&self) -> TargetMachine {
         let target = Target::from_triple(&self.target_triple).unwrap();
-        let target_machine = target
+
+        target
             .create_target_machine(
                 &self.target_triple,
                 "generic",
@@ -46,8 +47,7 @@ impl<'ctx> Llvm<'ctx> {
                 self.reloc,
                 self.model,
             )
-            .unwrap();
-        target_machine
+            .unwrap()
     }
 }
 
@@ -172,7 +172,7 @@ impl<'ctx> BackendStateTrait for LlvmState<'ctx> {
     }
     fn build_return(&mut self, value: Self::ReturnValue) {
         if let Some(value) = value {
-            self.builder.build_return(Some(&*value));
+            self.builder.build_return(Some(value));
         } else {
             self.builder.build_return(None);
         }
@@ -254,7 +254,7 @@ pub mod tests {
     #[test]
     fn can_print_hello_world() {
         std::fs::create_dir_all(test_build_output_dir()).expect("Make test output dir");
-        let ref context = Context::create();
+        let context = &Context::create();
 
         let config = BackendConfig {};
         let mut llvm_backend = Llvm::new(config, context);
@@ -268,7 +268,7 @@ pub mod tests {
         //let i32_type = llvm.i32_type();
         // let zero = llvm.const_int(i32_type, 0);
         let argv_0 = llvm.access_into_array(char_star_type.into(), argv.into_pointer_value());
-        llvm.printf("ARGC: %d, ARGV: %s\n", &[argc.into(), argv_0.into()]);
+        llvm.printf("ARGC: %d, ARGV: %s\n", &[argc, argv_0]);
         llvm.builder.build_return(Some(&argc.into_int_value()));
 
         // dbg!(&llvm);

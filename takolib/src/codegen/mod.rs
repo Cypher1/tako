@@ -20,7 +20,7 @@ pub fn codegen(path: &Path, _ast: &Ast, _root: NodeId) -> Result<Prim, TError> {
             //let i32_type = cg.i32_type();
             // let zero = cg.const_int(i32_type, 0);
             let argv_0 = cg.access_into_array(char_star_type.into(), argv.into_pointer_value());
-            cg.printf("ARGC: %d, ARGV: %s\n", &[argc.into(), argv_0.into()]);
+            cg.printf("ARGC: %d, ARGV: %s\n", &[argc, argv_0]);
             let argc = argc.into_int_value();
             let argc = std::ptr::addr_of!(argc);
             unsafe {

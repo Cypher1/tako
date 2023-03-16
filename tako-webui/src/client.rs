@@ -24,6 +24,9 @@ impl OptionsTrait for Options {
     fn oneshot(&self) -> bool {
         false
     }
+    fn interpreter(&self) -> bool {
+        true
+    }
 }
 
 #[async_trait]
