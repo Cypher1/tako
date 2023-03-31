@@ -3,7 +3,7 @@ pub mod status;
 pub mod task_trait;
 use crate::ast::Ast;
 use crate::ast::NodeId;
-use crate::error::Error;
+use crate::error::{TError, Error};
 use crate::parser::tokens::Token;
 use crate::primitives::Prim;
 use crate::utils::meta::Meta;
@@ -188,7 +188,6 @@ pub struct CodegenTask {
     pub root: NodeId,
 }
 
-#[cfg(feature = "backend")]
 #[async_trait]
 impl Task for CodegenTask {
     type Output = Prim; // For now, we'll send back the path as a string.
@@ -198,6 +197,14 @@ impl Task for CodegenTask {
     fn has_file_path(&self) -> Option<&PathBuf> {
         Some(&self.path)
     }
+    #[cfg(not(feature = "backend"))]
+    async fn perform(self, result_sender: UpdateSenderFor<Self>) {
+        let err = Update::Failed(self.decorate_error(TError::InternalError {location: None, message: "No backend".to_string()}));
+        result_sender
+            .send((self, err))
+            .expect("Should be able to send task result to manager");
+    }
+    #[cfg(feature = "backend")]
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
         let result = crate::codegen::codegen(&self.path, &self.ast, self.root)
             .map_err(|err| self.decorate_error(err));
