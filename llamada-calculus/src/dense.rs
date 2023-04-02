@@ -33,10 +33,12 @@ impl<T, Meta> DenseRepr<T, Meta> {
         self.terms.push((term, meta));
         self.get_last_id()
     }
+
     pub fn set_root(&mut self, index: usize) {
         assert!(index < self.terms.len());
         self.root = index;
     }
+
     fn fmt_index<'a>(
         ctx: WithContext<'a, Self, usize>,
         f: &mut std::fmt::Formatter,
@@ -55,6 +57,7 @@ impl<T, Meta> DenseRepr<T, Meta> {
         }
         Ok(())
     }
+
     pub fn as_context<'a, U>(&'a self, val: &'a U) -> WithContext<'a, Self, U> {
         WithContext::new(self, val, vec![])
     }
@@ -183,16 +186,44 @@ mod tests {
 
     #[test]
     fn not_expr() {
-        let mut expr = LambdaCalc::new(Term::Var(2), Empty {});
+        let mut expr = LambdaCalc::new(Term::Var(0), Empty {});
         let true_case = expr.get_last_id();
         let false_case = expr.push(Term::Var(1), Empty {});
-        let cond_case = expr.push(Term::Var(0), Empty {});
+        let cond_case = expr.push(Term::Var(2), Empty {});
         let app1 = expr.push(Term::App(cond_case, false_case), Empty {});
         let app2 = expr.push(Term::App(app1, true_case), Empty {});
         let abs1 = expr.push(Term::Abs(app2), Empty {});
         let abs2 = expr.push(Term::Abs(abs1), Empty {});
         let abs3 = expr.push(Term::Abs(abs2), Empty {});
         expr.set_root(abs3);
-        assert_eq!(format!("{}", expr), "(\\a. (\\b. (\\c. c b a)))");
+        assert_eq!(format!("{}", expr), "(\\a. (\\b. (\\c. a b c)))");
+    }
+
+    #[test]
+    fn not_true_false_expr() {
+        let mut expr = LambdaCalc::new(Term::Var(0), Empty {});
+        let inner = {
+            let true_case = expr.get_last_id();
+            let false_case = expr.push(Term::Var(1), Empty {});
+            let cond_case = expr.push(Term::Var(2), Empty {});
+            let app1 = expr.push(Term::App(cond_case, false_case), Empty {});
+            let app2 = expr.push(Term::App(app1, true_case), Empty {});
+            let abs1 = expr.push(Term::Abs(app2), Empty {});
+            let abs2 = expr.push(Term::Abs(abs1), Empty {});
+            expr.push(Term::Abs(abs2), Empty {})
+        };
+        let _true_v = {
+            let true_case = expr.push(Term::Var(1), Empty {});
+            let abs1 = expr.push(Term::Abs(true_case), Empty {});
+            expr.push(Term::Abs(abs1), Empty {})
+        };
+        let false_v = {
+            let false_case = expr.push(Term::Var(0), Empty {});
+            let abs1 = expr.push(Term::Abs(false_case), Empty {});
+            expr.push(Term::Abs(abs1), Empty {})
+        };
+        let app1 = expr.push(Term::App(inner, false_v), Empty {});
+        expr.set_root(app1);
+        assert_eq!(format!("{}", expr), "(\\a. (\\b. (\\c. a b c))) (\\a. (\\b. b))");
     }
 }
