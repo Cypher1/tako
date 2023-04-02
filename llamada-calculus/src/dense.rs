@@ -152,6 +152,8 @@ mod tests {
         expr.set_root(abs);
         expr.print_meta = false;
         assert_eq!(format!("{}", expr), "(\\a. a)");
+        let mut expr = expr.reduce();
+        assert_eq!(format!("{}", expr), "(\\a. a)");
         assert_eq!(
             format!("{:?}", expr),
             "DenseRepr { terms: [(Var(0), Empty), (Abs(0), Empty)], root: 1, print_meta: false }"
@@ -161,6 +163,8 @@ mod tests {
             format!("{:?}", expr),
             "DenseRepr { terms: [(Var(0), Empty), (Abs(0), Empty)], root: 1, print_meta: true }"
         );
+        assert_eq!(format!("{}", expr), "(\\a. a: Empty): Empty");
+        let expr = expr.reduce();
         assert_eq!(format!("{}", expr), "(\\a. a: Empty): Empty");
     }
 
@@ -172,6 +176,8 @@ mod tests {
         let abs2 = expr.push(Term::Abs(abs1), Empty {});
         expr.set_root(abs2);
         assert_eq!(format!("{}", expr), "(\\a. (\\b. a))");
+        let expr = expr.reduce();
+        assert_eq!(format!("{}", expr), "(\\a. (\\b. a))");
     }
 
     #[test]
@@ -181,6 +187,8 @@ mod tests {
         let abs1 = expr.push(Term::Abs(prev), Empty {});
         let abs2 = expr.push(Term::Abs(abs1), Empty {});
         expr.set_root(abs2);
+        assert_eq!(format!("{}", expr), "(\\a. (\\b. b))");
+        let expr = expr.reduce();
         assert_eq!(format!("{}", expr), "(\\a. (\\b. b))");
     }
 
@@ -196,6 +204,8 @@ mod tests {
         let abs2 = expr.push(Term::Abs(abs1), Empty {});
         let abs3 = expr.push(Term::Abs(abs2), Empty {});
         expr.set_root(abs3);
+        assert_eq!(format!("{}", expr), "(\\a. (\\b. (\\c. a b c)))");
+        let expr = expr.reduce();
         assert_eq!(format!("{}", expr), "(\\a. (\\b. (\\c. a b c)))");
     }
 
@@ -225,5 +235,7 @@ mod tests {
         let app1 = expr.push(Term::App(inner, false_v), Empty {});
         expr.set_root(app1);
         assert_eq!(format!("{}", expr), "(\\a. (\\b. (\\c. a b c))) (\\a. (\\b. b))");
+        let expr = expr.reduce();
+        assert_eq!(format!("{}", expr), "(\\a. (\\b. b))");
     }
 }
