@@ -20,6 +20,11 @@ pub trait Expr {
     fn get(&self, id: Self::Index) -> &Self::Term;
     fn get_mut(&mut self, id: Self::Index) -> &mut Self::Term;
 
+    fn subst(&mut self, id: Self::Index, _val: Self::Term) -> Self::Index {
+        // TODO: What...
+        id
+    }
+
     fn reduce(self) -> Self
     where
         Self: Sized,
