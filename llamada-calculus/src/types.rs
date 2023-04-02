@@ -1,6 +1,5 @@
 #[derive(Debug, Clone, Eq, Hash, Ord, PartialOrd, PartialEq)]
-pub struct Empty {
-}
+pub struct Empty {}
 
 impl std::fmt::Display for Empty {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -9,8 +8,7 @@ impl std::fmt::Display for Empty {
 }
 
 #[derive(Debug, Clone, Eq, Hash, Ord, PartialOrd, PartialEq)]
-pub enum Never {
-}
+pub enum Never {}
 
 impl std::fmt::Display for Never {
     fn fmt(&self, _f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -19,5 +17,3 @@ impl std::fmt::Display for Never {
         }
     }
 }
-
-

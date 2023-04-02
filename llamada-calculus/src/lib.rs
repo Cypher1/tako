@@ -1,5 +1,5 @@
-pub mod types;
 pub mod dense;
+pub mod types;
 pub mod with_context;
 pub use dense::{DenseRepr, LambdaCalc};
 
@@ -20,11 +20,13 @@ pub trait Expr {
     fn get(&self, id: Self::Index) -> &Self::Term;
     fn get_mut(&mut self, id: Self::Index) -> &mut Self::Term;
 
-    fn reduce(self) -> Self where Self: Sized {
+    fn reduce(self) -> Self
+    where
+        Self: Sized,
+    {
         // TODO: Beta and Eta reduction.
         self
     }
 
     fn apply_to_value(&mut self, value: Self::Value, _arg: Self::Term) -> Self::Term;
 }
-

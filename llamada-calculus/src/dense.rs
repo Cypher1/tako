@@ -1,6 +1,6 @@
 use crate::types::{Empty, Never};
-use crate::{Expr, Term};
 use crate::with_context::WithContext;
+use crate::{Expr, Term};
 
 #[derive(Debug, Clone, Eq, Hash, Ord, PartialOrd, PartialEq)]
 pub struct DenseRepr<T, Meta> {
@@ -26,7 +26,7 @@ impl<T, Meta> DenseRepr<T, Meta> {
         self.print_meta = print_meta;
     }
     pub fn get_last_id(&self) -> usize {
-        self.terms.len()-1
+        self.terms.len() - 1
     }
 
     pub fn push(&mut self, term: Term<T, usize>, meta: Meta) -> usize {
@@ -37,15 +37,19 @@ impl<T, Meta> DenseRepr<T, Meta> {
         assert!(index < self.terms.len());
         self.root = index;
     }
-    fn fmt_index<'a>(ctx: WithContext<'a, Self, usize>, f: &mut std::fmt::Formatter) -> std::fmt::Result
-        where
-            WithContext<'a, Self, Term<T, usize>>: std::fmt::Display,
-            Meta: std::fmt::Display {
+    fn fmt_index<'a>(
+        ctx: WithContext<'a, Self, usize>,
+        f: &mut std::fmt::Formatter,
+    ) -> std::fmt::Result
+    where
+        WithContext<'a, Self, Term<T, usize>>: std::fmt::Display,
+        Meta: std::fmt::Display,
+    {
         let id = *ctx.val;
         let Some((term, meta)) = ctx.ctx.terms.get(id) else {
             return write!(f, "<Unknown index {id}")
         };
-        write!(f, "{term}", term=ctx.child(term, vec![]))?;
+        write!(f, "{term}", term = ctx.child(term, vec![]))?;
         if ctx.ctx.print_meta {
             write!(f, ": {meta}")?;
         }
@@ -56,14 +60,16 @@ impl<T, Meta> DenseRepr<T, Meta> {
     }
 }
 
-impl<'a, T: std::fmt::Debug, Meta: std::fmt::Display> std::fmt::Display for WithContext<'a, DenseRepr<T, Meta>, Term<T, usize>>
+impl<'a, T: std::fmt::Debug, Meta: std::fmt::Display> std::fmt::Display
+    for WithContext<'a, DenseRepr<T, Meta>, Term<T, usize>>
 where
-    WithContext<'a, DenseRepr<T, Meta>, T>: std::fmt::Display {
+    WithContext<'a, DenseRepr<T, Meta>, T>: std::fmt::Display,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self.val {
             Term::Val(val) => write!(f, "{:?}", val),
             Term::Var(var_id) => {
-                let ind = self.names.len().checked_sub(1+*var_id);
+                let ind = self.names.len().checked_sub(1 + *var_id);
                 if let Some(ind) = ind {
                     if let Some(name) = self.names.get(ind) {
                         return write!(f, "{name}");
@@ -77,9 +83,16 @@ where
                 DenseRepr::fmt_index(self.child(y, vec![]), f)
             }
             Term::Abs(ind) => {
-                let chr = ((self.names.len()%26) + ('a' as usize)) as u8 as char;
-                let name_ind = self.names.len()/26;
-                let name = format!("{chr}{}", if name_ind > 0 { format!("{}", name_ind-1) } else {"".to_string()});
+                let chr = ((self.names.len() % 26) + ('a' as usize)) as u8 as char;
+                let name_ind = self.names.len() / 26;
+                let name = format!(
+                    "{chr}{}",
+                    if name_ind > 0 {
+                        format!("{}", name_ind - 1)
+                    } else {
+                        "".to_string()
+                    }
+                );
                 write!(f, "(\\{name}. ")?;
                 DenseRepr::fmt_index(self.child(ind, vec![name]), f)?;
                 write!(f, ")")
@@ -96,7 +109,7 @@ impl<T: std::fmt::Display, Ctx> std::fmt::Display for WithContext<'_, Ctx, T> {
 
 impl<T, Meta: std::fmt::Display> std::fmt::Display for DenseRepr<T, Meta>
 where
-    for <'a> WithContext<'a, Self, Term<T, usize>>: std::fmt::Display,
+    for<'a> WithContext<'a, Self, Term<T, usize>>: std::fmt::Display,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         DenseRepr::fmt_index(self.as_context(&self.root), f)
@@ -104,10 +117,10 @@ where
 }
 
 impl<Meta> Expr for DenseRepr<Never, Meta> {
-    type Index=usize;
-    type Value=Never;
-    type Meta=Meta;
-    type Term=Term<Self::Value, Self::Index>;
+    type Index = usize;
+    type Value = Never;
+    type Meta = Meta;
+    type Term = Term<Self::Value, Self::Index>;
 
     fn get(&self, id: Self::Index) -> &Self::Term {
         // TODO: Checked version?
@@ -118,9 +131,7 @@ impl<Meta> Expr for DenseRepr<Never, Meta> {
         &mut self.terms[id].0
     }
     fn apply_to_value(&mut self, value: Self::Value, _arg: Self::Term) -> Self::Term {
-        match value {
-
-        }
+        match value {}
     }
 }
 
@@ -138,9 +149,15 @@ mod tests {
         expr.set_root(abs);
         expr.print_meta = false;
         assert_eq!(format!("{}", expr), "(\\a. a)");
-        assert_eq!(format!("{:?}", expr), "DenseRepr { terms: [(Var(0), Empty), (Abs(0), Empty)], root: 1, print_meta: false }");
+        assert_eq!(
+            format!("{:?}", expr),
+            "DenseRepr { terms: [(Var(0), Empty), (Abs(0), Empty)], root: 1, print_meta: false }"
+        );
         expr.print_meta = true;
-        assert_eq!(format!("{:?}", expr), "DenseRepr { terms: [(Var(0), Empty), (Abs(0), Empty)], root: 1, print_meta: true }");
+        assert_eq!(
+            format!("{:?}", expr),
+            "DenseRepr { terms: [(Var(0), Empty), (Abs(0), Empty)], root: 1, print_meta: true }"
+        );
         assert_eq!(format!("{}", expr), "(\\a. a: Empty): Empty");
     }
 
