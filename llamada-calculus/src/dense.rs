@@ -136,13 +136,11 @@ impl<Meta> Expr for DenseRepr<Never, Meta> {
     fn apply_to_value(&mut self, value: Self::Value, _arg: Self::Term) -> Self::Term {
         match value {}
     }
-
-    fn reduce(self) -> Self {
-        let mut stack = vec![self.root];
-        while let Some(_curr) = stack.pop() {
-            
-        }
-        self
+    fn root(&self) -> &Self::Term {
+        self.get(self.root)
+    }
+    fn root_mut(&mut self) -> &mut Self::Term {
+        self.get_mut(self.root)
     }
 }
 

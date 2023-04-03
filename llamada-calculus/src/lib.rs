@@ -20,6 +20,9 @@ pub trait Expr {
     fn get(&self, id: Self::Index) -> &Self::Term;
     fn get_mut(&mut self, id: Self::Index) -> &mut Self::Term;
 
+    fn root(&self) -> &Self::Term;
+    fn root_mut(&mut self) -> &mut Self::Term;
+
     fn subst(&mut self, id: Self::Index, _val: Self::Term) -> Self::Index {
         // TODO: What...
         id
@@ -30,6 +33,10 @@ pub trait Expr {
         Self: Sized,
     {
         // TODO: Beta and Eta reduction.
+        let mut stack = vec![self.root()];
+        while let Some(_curr) = stack.pop() {
+            
+        }
         self
     }
 
