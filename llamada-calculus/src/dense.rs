@@ -123,24 +123,24 @@ impl<Meta> Expr for DenseRepr<Never, Meta> {
     type Index = usize;
     type Value = Never;
     type Meta = Meta;
-    type Term = Term<Self::Value, Self::Index>;
+    // type Term = Term<Self::Value, Self::Index>;
 
-    fn get(&self, id: Self::Index) -> &Self::Term {
+    fn get(&self, id: &Self::Index) -> &Term<Self::Value, Self::Index> {
         // TODO: Checked version?
-        &self.terms[id].0
+        &self.terms[*id].0
     }
-    fn get_mut(&mut self, id: Self::Index) -> &mut Self::Term {
+    fn get_mut(&mut self, id: &mut Self::Index) -> &mut Term<Self::Value, Self::Index> {
         // TODO: Checked version?
-        &mut self.terms[id].0
+        &mut self.terms[*id].0
     }
-    fn apply_to_value(&mut self, value: Self::Value, _arg: Self::Term) -> Self::Term {
+    fn apply_to_value(&mut self, value: Self::Value, _arg: Term<Self::Value, Self::Index>) -> Term<Self::Value, Self::Index> {
         match value {}
     }
-    fn root(&self) -> &Self::Term {
-        self.get(self.root)
+    fn root(&self) -> &Self::Index {
+        &self.root
     }
-    fn root_mut(&mut self) -> &mut Self::Term {
-        self.get_mut(self.root)
+    fn root_mut(&mut self) -> &mut Self::Index {
+        &mut self.root
     }
 }
 

@@ -14,31 +14,58 @@ pub enum Term<T, Id> {
 pub trait Expr {
     type Index;
     type Value; // =!;
-    type Term; // =Term<Self::Value, Self::Index>;
+    // type Term; // =Term<Self::Value, Self::Index>;
     type Meta; // =();
 
-    fn get(&self, id: Self::Index) -> &Self::Term;
-    fn get_mut(&mut self, id: Self::Index) -> &mut Self::Term;
+    fn get(&self, id: &Self::Index) -> &Term<Self::Value, Self::Index>;
+    fn get_mut(&mut self, id: &mut Self::Index) -> &mut Term<Self::Value, Self::Index>;
 
-    fn root(&self) -> &Self::Term;
-    fn root_mut(&mut self) -> &mut Self::Term;
+    fn root(&self) -> &Self::Index;
+    fn root_mut(&mut self) -> &mut Self::Index;
 
-    fn subst(&mut self, id: Self::Index, _val: Self::Term) -> Self::Index {
+    fn subst(&mut self, id: Self::Index, _val: Term<Self::Value, Self::Index>) -> Self::Index {
         // TODO: What...
         id
     }
 
-    fn reduce(self) -> Self
+    fn reduce_at(&mut self, id: &mut Self::Index, bindings: &Vec<Term<Self::Value, Self::Index>>)
     where
         Self: Sized,
+        Self::Value: Clone,
+        Self::Index: Clone,
+        Term<Self::Value, Self::Index>: std::fmt::Debug + Clone,
+    {
+        let mut curr = self.get(id).clone();
+        eprintln!("{:?}", curr);
+        match &mut curr {
+            Term::Val(_) => {},
+            Term::Var(_) => {},
+            Term::Abs(inner) => {
+                self.reduce_at(inner, bindings);
+            }
+            Term::App(inner, arg) => {
+                self.reduce_at(inner, &bindings);
+                self.reduce_at(arg, &bindings);
+            }
+        }
+        // Reassign?
+        let new_curr = self.get_mut(id);
+        *new_curr = curr;
+    }
+    fn reduce(mut self) -> Self
+    where
+        Self: Sized,
+        Self::Value: Clone,
+        Self::Index: Clone,
+        Term<Self::Value, Self::Index>: std::fmt::Debug + Clone,
     {
         // TODO: Beta and Eta reduction.
-        let mut stack = vec![self.root()];
-        while let Some(_curr) = stack.pop() {
-            
-        }
+        let mut root = self.root().clone();
+        self.reduce_at(&mut root, &vec![]);
+        // assign new root:
+        *self.root_mut() = root;
         self
     }
 
-    fn apply_to_value(&mut self, value: Self::Value, _arg: Self::Term) -> Self::Term;
+    fn apply_to_value(&mut self, value: Self::Value, _arg: Term<Self::Value, Self::Index>) -> Term<Self::Value, Self::Index>;
 }
