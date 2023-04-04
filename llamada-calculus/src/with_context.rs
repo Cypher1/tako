@@ -16,6 +16,6 @@ impl<'a, Ctx, T> WithContext<'a, Ctx, T> {
     pub fn child<U>(&self, val: &'a U, new_names: Vec<String>) -> WithContext<'a, Ctx, U> {
         let mut names = self.names.clone();
         names.extend(new_names);
-        WithContext::new(self.ctx, val, names)
+        WithContext::new(&self.ctx, val, names)
     }
 }

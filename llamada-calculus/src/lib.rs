@@ -12,14 +12,16 @@ pub enum Term<T, Id> {
     Val(T),
 }
 
-pub trait Expr: Sized {
+pub trait Expr {
     type Index: Clone + Eq + PartialEq;
-    type Value: Clone + std::fmt::Display; // =!;
+    type Value: Clone + std::fmt::Display + std::fmt::Debug; // =!;
     // type Term; // =Term<Self::Value, Self::Index>;
-    type Meta; // =();
+    type Meta: std::fmt::Display;
 
     fn get(&self, id: &Self::Index) -> &Term<Self::Value, Self::Index>;
     fn get_mut(&mut self, id: &mut Self::Index) -> &mut Term<Self::Value, Self::Index>;
+    fn get_meta(&self, id: &Self::Index) -> &Self::Meta;
+    fn get_meta_mut(&mut self, id: &mut Self::Index) -> &mut Self::Meta;
 
     fn root(&self) -> &Self::Index;
     fn root_mut(&mut self) -> &mut Self::Index;
@@ -94,7 +96,7 @@ pub trait Expr: Sized {
 
     fn reduce_at<'a>(&'a mut self, id: &Self::Index) -> Self::Index
     where
-        WithContext<'a, Self, Self::Index>: std::fmt::Display,
+        // for <'b> &'b WithContext<'a, Self, Self::Index>: std::fmt::Display,
         Term<Self::Value, Self::Index>: std::fmt::Debug + Clone,
     {
         let mut curr = self.get(id).clone();
@@ -109,7 +111,7 @@ pub trait Expr: Sized {
                 *arg = self.reduce_at(arg);
                 *inner = self.reduce_at(inner);
                 if let Term::Abs(inner) = self.get(inner).clone() {
-                    eprintln!("applying {} to {}", self.as_context(&inner), self.as_context(&arg));
+                    // eprintln!("applying {} to {}", self.as_context(&inner), self.as_context(&arg));
                     // Beta reduction.
                     let inner = self.shift(&inner, 0, -1);
                     return self.subst(&inner, arg, 0);
@@ -121,7 +123,7 @@ pub trait Expr: Sized {
         }
         id.clone()
     }
-    fn reduce(mut self) -> Self
+    fn reduce(&mut self)
     where
         Term<Self::Value, Self::Index>: std::fmt::Debug + Clone,
     {
@@ -130,23 +132,33 @@ pub trait Expr: Sized {
         self.reduce_at(&mut root);
         // assign new root:
         *self.root_mut() = root;
-        self
     }
 
     fn apply_to_value(&mut self, value: Self::Value, _arg: Term<Self::Value, Self::Index>) -> Term<Self::Value, Self::Index>;
 
-    fn as_context<'a, U>(&'a self, val: &'a U) -> WithContext<'a, Self, U> {
-        WithContext::new(self, val, vec!["<>".to_string()])
+    fn as_context<'a, U>(&'a self, val: &'a U) -> WithContext<'a, Self, U> where Self: Sized {
+        WithContext::new(&self, val, vec!["<>".to_string()])
     }
+
+    fn fmt_index<'a>(
+        ctx: WithContext<'a, Self, Self::Index>,
+        f: &mut std::fmt::Formatter,
+    ) -> std::fmt::Result where Self: Sized {
+        let id = ctx.val;
+        let term = ctx.ctx.get(id);
+        write!(f, "{term}", term = ctx.child(term, vec![]))?;
+        if ctx.ctx.print_meta() {
+            let meta = ctx.ctx.get_meta(id);
+            write!(f, ": {meta}")?;
+        }
+        Ok(())
+    }
+
+    fn print_meta(&self) -> bool;
 }
 
 impl<'a, Ctx: Expr> std::fmt::Display
-    for WithContext<'a, Ctx, Term<Ctx::Value, Ctx::Index>>
-where
-    Ctx::Value: std::fmt::Debug,
-    Ctx::Meta: std::fmt::Display,
-    WithContext<'a, Ctx, Ctx::Value>: std::fmt::Display,
-{
+    for WithContext<'a, Ctx, Term<Ctx::Value, Ctx::Index>> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self.val {
             Term::Val(val) => write!(f, "{:?}", val),
@@ -181,11 +193,5 @@ where
                 write!(f, ")")
             }
         }
-    }
-}
-
-impl<T: std::fmt::Display, Ctx> std::fmt::Display for WithContext<'_, Ctx, T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.val)
     }
 }

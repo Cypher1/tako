@@ -22,9 +22,6 @@ impl<T, Meta> DenseRepr<T, Meta> {
         this.push(term, meta);
         this
     }
-    pub fn print_meta(&mut self, print_meta: bool) {
-        self.print_meta = print_meta;
-    }
     pub fn get_last_id(&self) -> usize {
         self.terms.len() - 1
     }
@@ -38,25 +35,6 @@ impl<T, Meta> DenseRepr<T, Meta> {
         assert!(index < self.terms.len());
         self.root = index;
     }
-
-    fn fmt_index<'a>(
-        ctx: WithContext<'a, Self, usize>,
-        f: &mut std::fmt::Formatter,
-    ) -> std::fmt::Result
-    where
-        WithContext<'a, Self, Term<T, usize>>: std::fmt::Display,
-        Meta: std::fmt::Display,
-    {
-        let id = *ctx.val;
-        let Some((term, meta)) = ctx.ctx.terms.get(id) else {
-            return write!(f, "<Unknown index {id}")
-        };
-        write!(f, "{term}", term = ctx.child(term, vec![]))?;
-        if ctx.ctx.print_meta {
-            write!(f, ": {meta}")?;
-        }
-        Ok(())
-    }
 }
 
 impl<T: Clone + std::fmt::Debug + std::fmt::Display, Meta: Default + std::fmt::Display> std::fmt::Display for DenseRepr<T, Meta>
@@ -69,7 +47,7 @@ where
     }
 }
 
-impl<T: Clone + std::fmt::Debug + std::fmt::Display, Meta: Default> Expr for DenseRepr<T, Meta> {
+impl<T: Clone + std::fmt::Debug + std::fmt::Display, Meta: Default + std::fmt::Display> Expr for DenseRepr<T, Meta> {
     type Index = usize;
     type Value = T;
     type Meta = Meta;
@@ -83,8 +61,16 @@ impl<T: Clone + std::fmt::Debug + std::fmt::Display, Meta: Default> Expr for Den
         // TODO: Checked version?
         &mut self.terms[*id].0
     }
-    fn apply_to_value(&mut self, value: Self::Value, _arg: Term<Self::Value, Self::Index>) -> Term<Self::Value, Self::Index> {
-        match value {}
+    fn get_meta(&self, id: &Self::Index) -> &Self::Meta {
+        // TODO: Checked version?
+        &self.terms[*id].1
+    }
+    fn get_meta_mut(&mut self, id: &mut Self::Index) -> &mut Self::Meta {
+        // TODO: Checked version?
+        &mut self.terms[*id].1
+    }
+    fn apply_to_value(&mut self, _value: Self::Value, _arg: Term<Self::Value, Self::Index>) -> Term<Self::Value, Self::Index> {
+        todo!(); // match value {}
     }
     fn root(&self) -> &Self::Index {
         &self.root
@@ -99,12 +85,16 @@ impl<T: Clone + std::fmt::Debug + std::fmt::Display, Meta: Default> Expr for Den
     fn new_meta(&mut self) -> Self::Meta {
         Self::Meta::default()
     }
+    fn print_meta(&self) -> bool {
+        self.print_meta
+    }
 }
 pub type LambdaCalc = DenseRepr<Never, Empty>;
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::Expr;
 
     #[test]
     fn id_expr() {
@@ -114,20 +104,20 @@ mod tests {
         expr.set_root(abs);
         expr.print_meta = false;
         assert_eq!(format!("{}", expr), "(\\a. a)");
-        let mut expr = expr.reduce();
+        expr.reduce();
         assert_eq!(format!("{}", expr), "(\\a. a)");
         assert_eq!(
-            format!("{:?}", expr),
+            format!("{:?}", &expr),
             "DenseRepr { terms: [(Var(1), Empty), (Abs(0), Empty)], root: 1, print_meta: false }"
         );
         expr.print_meta = true;
         assert_eq!(
-            format!("{:?}", expr),
+            format!("{:?}", &expr),
             "DenseRepr { terms: [(Var(1), Empty), (Abs(0), Empty)], root: 1, print_meta: true }"
         );
-        assert_eq!(format!("{}", expr), "(\\a. a: Empty): Empty");
-        let expr = expr.reduce();
-        assert_eq!(format!("{}", expr), "(\\a. a: Empty): Empty");
+        assert_eq!(format!("{}", &expr), "(\\a. a: Empty): Empty");
+        expr.reduce();
+        assert_eq!(format!("{}", &expr), "(\\a. a: Empty): Empty");
     }
 
     #[test]
@@ -137,9 +127,9 @@ mod tests {
         let abs1 = expr.push(Term::Abs(prev), Empty {});
         let abs2 = expr.push(Term::Abs(abs1), Empty {});
         expr.set_root(abs2);
-        assert_eq!(format!("{}", expr), "(\\a. (\\b. a))");
-        let expr = expr.reduce();
-        assert_eq!(format!("{}", expr), "(\\a. (\\b. a))");
+        assert_eq!(format!("{}", &expr), "(\\a. (\\b. a))");
+        expr.reduce();
+        assert_eq!(format!("{}", &expr), "(\\a. (\\b. a))");
     }
 
     #[test]
@@ -149,9 +139,9 @@ mod tests {
         let abs1 = expr.push(Term::Abs(prev), Empty {});
         let abs2 = expr.push(Term::Abs(abs1), Empty {});
         expr.set_root(abs2);
-        assert_eq!(format!("{}", expr), "(\\a. (\\b. b))");
-        let expr = expr.reduce();
-        assert_eq!(format!("{}", expr), "(\\a. (\\b. b))");
+        assert_eq!(format!("{}", &expr), "(\\a. (\\b. b))");
+        expr.reduce();
+        assert_eq!(format!("{}", &expr), "(\\a. (\\b. b))");
     }
 
     #[test]
@@ -166,9 +156,9 @@ mod tests {
         let abs2 = expr.push(Term::Abs(abs1), Empty {});
         let abs3 = expr.push(Term::Abs(abs2), Empty {});
         expr.set_root(abs3);
-        assert_eq!(format!("{}", expr), "(\\a. (\\b. (\\c. a b c)))");
-        let expr = expr.reduce();
-        assert_eq!(format!("{}", expr), "(\\a. (\\b. (\\c. a b c)))");
+        assert_eq!(format!("{}", &expr), "(\\a. (\\b. (\\c. a b c)))");
+        expr.reduce();
+        assert_eq!(format!("{}", &expr), "(\\a. (\\b. (\\c. a b c)))");
     }
 
     #[test]
@@ -197,7 +187,7 @@ mod tests {
         let app1 = expr.push(Term::App(inner, false_v), Empty {});
         expr.set_root(app1);
         assert_eq!(format!("{}", expr), "(\\a. (\\b. (\\c. a b c))) (\\a. (\\b. b))");
-        let expr = expr.reduce();
+        expr.reduce();
         assert_eq!(format!("{}", expr), "(\\a. (\\b. b))");
     }
 }
