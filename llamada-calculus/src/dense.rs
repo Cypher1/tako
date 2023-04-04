@@ -72,7 +72,7 @@ where
         match self.val {
             Term::Val(val) => write!(f, "{:?}", val),
             Term::Var(var_id) => {
-                let ind = self.names.len().checked_sub(1 + *var_id);
+                let ind = self.names.len().checked_sub(*var_id);
                 if let Some(ind) = ind {
                     if let Some(name) = self.names.get(ind) {
                         return write!(f, "{name}");
@@ -86,8 +86,9 @@ where
                 DenseRepr::fmt_index(self.child(y, vec![]), f)
             }
             Term::Abs(ind) => {
-                let chr = ((self.names.len() % 26) + ('a' as usize)) as u8 as char;
-                let name_ind = self.names.len() / 26;
+                let len = self.names.len()-1;
+                let chr = ((len % 26) + ('a' as usize)) as u8 as char;
+                let name_ind = len / 26;
                 let name = format!(
                     "{chr}{}",
                     if name_ind > 0 {
@@ -183,7 +184,7 @@ mod tests {
 
     #[test]
     fn true_expr() {
-        let mut expr = LambdaCalc::new(Term::Var(1), Empty {});
+        let mut expr = LambdaCalc::new(Term::Var(2), Empty {});
         let prev = expr.get_last_id();
         let abs1 = expr.push(Term::Abs(prev), Empty {});
         let abs2 = expr.push(Term::Abs(abs1), Empty {});
@@ -209,8 +210,8 @@ mod tests {
     fn not_expr() {
         let mut expr = LambdaCalc::new(Term::Var(1), Empty {});
         let true_case = expr.get_last_id();
-        let false_case = expr.push(Term::Var(1), Empty {});
-        let cond_case = expr.push(Term::Var(2), Empty {});
+        let false_case = expr.push(Term::Var(2), Empty {});
+        let cond_case = expr.push(Term::Var(3), Empty {});
         let app1 = expr.push(Term::App(cond_case, false_case), Empty {});
         let app2 = expr.push(Term::App(app1, true_case), Empty {});
         let abs1 = expr.push(Term::Abs(app2), Empty {});
