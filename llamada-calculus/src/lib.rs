@@ -13,9 +13,8 @@ pub enum Term<T, Id> {
 }
 
 pub trait Expr {
-    type Index: Clone + Eq + PartialEq;
-    type Value: Clone + std::fmt::Display + std::fmt::Debug; // =!;
-    // type Term; // =Term<Self::Value, Self::Index>;
+    type Index: Clone + Eq + PartialEq + std::fmt::Debug;
+    type Value: Clone + std::fmt::Display + std::fmt::Debug;
     type Meta: std::fmt::Display;
 
     fn get(&self, id: &Self::Index) -> &Term<Self::Value, Self::Index>;
@@ -94,7 +93,7 @@ pub trait Expr {
         self.add(term, meta)
     }
 
-    fn reduce_at<'a>(&'a mut self, id: &Self::Index) -> Self::Index
+    fn reduce_at<'a>(&'a mut self, id: &mut Self::Index)
     where
         // for <'b> &'b WithContext<'a, Self, Self::Index>: std::fmt::Display,
         Term<Self::Value, Self::Index>: std::fmt::Debug + Clone,
@@ -105,23 +104,30 @@ pub trait Expr {
             Term::Val(_) => {},
             Term::Var(_) => {},
             Term::Abs(inner) => {
-                *inner = self.reduce_at(inner);
+                self.reduce_at(inner);
             }
             Term::App(inner, arg) => {
-                *arg = self.reduce_at(arg);
-                *inner = self.reduce_at(inner);
-                if let Term::Abs(inner) = self.get(inner).clone() {
+                self.reduce_at(arg);
+                self.reduce_at(inner);
+                let inner = self.get(inner).clone();
+                eprintln!("App({:?}) -> {:?}", arg, &inner);
+                if let Term::Abs(inner) = inner {
                     // eprintln!("applying {} to {}", self.as_context(&inner), self.as_context(&arg));
                     // Beta reduction.
-                    let inner = self.shift(&inner, 0, -1);
-                    return self.subst(&inner, arg, 0);
+                    let new_inner = self.shift(&inner, 0, -1);
+                    eprintln!("Updated inner {:?} -> {:?}", &inner, new_inner);
+                    let new_inner = self.subst(&new_inner, arg, 0);
+                    eprintln!("Subst inner {:?} -> {:?}", &inner, new_inner);
+                    *id = new_inner;
                 }
                 //if let Term::Val(val) = self.get(inner) {
                 // TOdO
                 //}
             }
         }
-        id.clone()
+        // Assign back!
+        eprintln!("{:?}", curr);
+        *self.get_mut(id) = curr;
     }
     fn reduce(&mut self)
     where
