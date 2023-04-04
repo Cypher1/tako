@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, Eq, Hash, Ord, PartialOrd, PartialEq)]
+#[derive(Default, Debug, Clone, Eq, Hash, Ord, PartialOrd, PartialEq)]
 pub struct Empty {}
 
 impl std::fmt::Display for Empty {

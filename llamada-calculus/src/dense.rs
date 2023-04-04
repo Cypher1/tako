@@ -59,7 +59,7 @@ impl<T, Meta> DenseRepr<T, Meta> {
     }
 
     pub fn as_context<'a, U>(&'a self, val: &'a U) -> WithContext<'a, Self, U> {
-        WithContext::new(self, val, vec![])
+        WithContext::new(self, val, vec!["<>".to_string()])
     }
 }
 
@@ -119,7 +119,7 @@ where
     }
 }
 
-impl<Meta> Expr for DenseRepr<Never, Meta> {
+impl<Meta: Default> Expr for DenseRepr<Never, Meta> {
     type Index = usize;
     type Value = Never;
     type Meta = Meta;
@@ -142,6 +142,13 @@ impl<Meta> Expr for DenseRepr<Never, Meta> {
     fn root_mut(&mut self) -> &mut Self::Index {
         &mut self.root
     }
+    fn add(&mut self, term: Term<Self::Value, Self::Index>, meta: Meta) -> Self::Index {
+        self.push(term, meta)
+    }
+
+    fn new_meta(&mut self) -> Self::Meta {
+        Self::Meta::default()
+    }
 }
 
 pub type LambdaCalc = DenseRepr<Never, Empty>;
@@ -152,7 +159,7 @@ mod tests {
 
     #[test]
     fn id_expr() {
-        let mut expr = LambdaCalc::new(Term::Var(0), Empty {});
+        let mut expr = LambdaCalc::new(Term::Var(1), Empty {});
         let prev = expr.get_last_id();
         let abs = expr.push(Term::Abs(prev), Empty {});
         expr.set_root(abs);
@@ -162,12 +169,12 @@ mod tests {
         assert_eq!(format!("{}", expr), "(\\a. a)");
         assert_eq!(
             format!("{:?}", expr),
-            "DenseRepr { terms: [(Var(0), Empty), (Abs(0), Empty)], root: 1, print_meta: false }"
+            "DenseRepr { terms: [(Var(1), Empty), (Abs(0), Empty)], root: 1, print_meta: false }"
         );
         expr.print_meta = true;
         assert_eq!(
             format!("{:?}", expr),
-            "DenseRepr { terms: [(Var(0), Empty), (Abs(0), Empty)], root: 1, print_meta: true }"
+            "DenseRepr { terms: [(Var(1), Empty), (Abs(0), Empty)], root: 1, print_meta: true }"
         );
         assert_eq!(format!("{}", expr), "(\\a. a: Empty): Empty");
         let expr = expr.reduce();
@@ -188,7 +195,7 @@ mod tests {
 
     #[test]
     fn false_expr() {
-        let mut expr = LambdaCalc::new(Term::Var(0), Empty {});
+        let mut expr = LambdaCalc::new(Term::Var(1), Empty {});
         let prev = expr.get_last_id();
         let abs1 = expr.push(Term::Abs(prev), Empty {});
         let abs2 = expr.push(Term::Abs(abs1), Empty {});
@@ -200,7 +207,7 @@ mod tests {
 
     #[test]
     fn not_expr() {
-        let mut expr = LambdaCalc::new(Term::Var(0), Empty {});
+        let mut expr = LambdaCalc::new(Term::Var(1), Empty {});
         let true_case = expr.get_last_id();
         let false_case = expr.push(Term::Var(1), Empty {});
         let cond_case = expr.push(Term::Var(2), Empty {});
@@ -217,11 +224,11 @@ mod tests {
 
     #[test]
     fn not_true_false_expr() {
-        let mut expr = LambdaCalc::new(Term::Var(0), Empty {});
+        let mut expr = LambdaCalc::new(Term::Var(1), Empty {});
         let inner = {
             let true_case = expr.get_last_id();
-            let false_case = expr.push(Term::Var(1), Empty {});
-            let cond_case = expr.push(Term::Var(2), Empty {});
+            let false_case = expr.push(Term::Var(2), Empty {});
+            let cond_case = expr.push(Term::Var(3), Empty {});
             let app1 = expr.push(Term::App(cond_case, false_case), Empty {});
             let app2 = expr.push(Term::App(app1, true_case), Empty {});
             let abs1 = expr.push(Term::Abs(app2), Empty {});
@@ -229,12 +236,12 @@ mod tests {
             expr.push(Term::Abs(abs2), Empty {})
         };
         let _true_v = {
-            let true_case = expr.push(Term::Var(1), Empty {});
+            let true_case = expr.push(Term::Var(2), Empty {});
             let abs1 = expr.push(Term::Abs(true_case), Empty {});
             expr.push(Term::Abs(abs1), Empty {})
         };
         let false_v = {
-            let false_case = expr.push(Term::Var(0), Empty {});
+            let false_case = expr.push(Term::Var(1), Empty {});
             let abs1 = expr.push(Term::Abs(false_case), Empty {});
             expr.push(Term::Abs(abs1), Empty {})
         };
