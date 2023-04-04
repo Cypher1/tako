@@ -2,6 +2,7 @@ pub mod dense;
 pub mod types;
 pub mod with_context;
 pub use dense::{DenseRepr, LambdaCalc};
+pub use with_context::WithContext;
 
 #[derive(Debug, Clone, Eq, Hash, Ord, PartialOrd, PartialEq)]
 pub enum Term<T, Id> {
@@ -11,9 +12,9 @@ pub enum Term<T, Id> {
     Val(T),
 }
 
-pub trait Expr {
+pub trait Expr: Sized {
     type Index: Clone + Eq + PartialEq;
-    type Value: Clone; // =!;
+    type Value: Clone + std::fmt::Display; // =!;
     // type Term; // =Term<Self::Value, Self::Index>;
     type Meta; // =();
 
@@ -91,11 +92,9 @@ pub trait Expr {
         self.add(term, meta)
     }
 
-    fn reduce_at(&mut self, id: &Self::Index) -> Self::Index
+    fn reduce_at<'a>(&'a mut self, id: &Self::Index) -> Self::Index
     where
-        Self: Sized,
-        Self::Value: Clone,
-        Self::Index: Clone,
+        WithContext<'a, Self, Self::Index>: std::fmt::Display,
         Term<Self::Value, Self::Index>: std::fmt::Debug + Clone,
     {
         let mut curr = self.get(id).clone();
@@ -110,6 +109,7 @@ pub trait Expr {
                 *arg = self.reduce_at(arg);
                 *inner = self.reduce_at(inner);
                 if let Term::Abs(inner) = self.get(inner).clone() {
+                    eprintln!("applying {} to {}", self.as_context(&inner), self.as_context(&arg));
                     // Beta reduction.
                     let inner = self.shift(&inner, 0, -1);
                     return self.subst(&inner, arg, 0);
@@ -123,9 +123,6 @@ pub trait Expr {
     }
     fn reduce(mut self) -> Self
     where
-        Self: Sized,
-        Self::Value: Clone,
-        Self::Index: Clone,
         Term<Self::Value, Self::Index>: std::fmt::Debug + Clone,
     {
         // TODO: Beta and Eta reduction.
@@ -137,4 +134,58 @@ pub trait Expr {
     }
 
     fn apply_to_value(&mut self, value: Self::Value, _arg: Term<Self::Value, Self::Index>) -> Term<Self::Value, Self::Index>;
+
+    fn as_context<'a, U>(&'a self, val: &'a U) -> WithContext<'a, Self, U> {
+        WithContext::new(self, val, vec!["<>".to_string()])
+    }
+}
+
+impl<'a, Ctx: Expr> std::fmt::Display
+    for WithContext<'a, Ctx, Term<Ctx::Value, Ctx::Index>>
+where
+    Ctx::Value: std::fmt::Debug,
+    Ctx::Meta: std::fmt::Display,
+    WithContext<'a, Ctx, Ctx::Value>: std::fmt::Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self.val {
+            Term::Val(val) => write!(f, "{:?}", val),
+            Term::Var(var_id) => {
+                let ind = self.names.len().checked_sub(*var_id);
+                if let Some(ind) = ind {
+                    if let Some(name) = self.names.get(ind) {
+                        return write!(f, "{name}");
+                    }
+                }
+                write!(f, "unbound_variable#{var_id:?}")
+            }
+            Term::App(x, y) => {
+                Ctx::fmt_index(self.child(x, vec![]), f)?;
+                write!(f, " ")?;
+                Ctx::fmt_index(self.child(y, vec![]), f)
+            }
+            Term::Abs(ind) => {
+                let len = self.names.len()-1;
+                let chr = ((len % 26) + ('a' as usize)) as u8 as char;
+                let name_ind = len / 26;
+                let name = format!(
+                    "{chr}{}",
+                    if name_ind > 0 {
+                        format!("{}", name_ind - 1)
+                    } else {
+                        "".to_string()
+                    }
+                );
+                write!(f, "(\\{name}. ")?;
+                Ctx::fmt_index(self.child(ind, vec![name]), f)?;
+                write!(f, ")")
+            }
+        }
+    }
+}
+
+impl<T: std::fmt::Display, Ctx> std::fmt::Display for WithContext<'_, Ctx, T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.val)
+    }
 }

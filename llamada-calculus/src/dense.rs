@@ -57,72 +57,21 @@ impl<T, Meta> DenseRepr<T, Meta> {
         }
         Ok(())
     }
-
-    pub fn as_context<'a, U>(&'a self, val: &'a U) -> WithContext<'a, Self, U> {
-        WithContext::new(self, val, vec!["<>".to_string()])
-    }
 }
 
-impl<'a, T: std::fmt::Debug, Meta: std::fmt::Display> std::fmt::Display
-    for WithContext<'a, DenseRepr<T, Meta>, Term<T, usize>>
-where
-    WithContext<'a, DenseRepr<T, Meta>, T>: std::fmt::Display,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self.val {
-            Term::Val(val) => write!(f, "{:?}", val),
-            Term::Var(var_id) => {
-                let ind = self.names.len().checked_sub(*var_id);
-                if let Some(ind) = ind {
-                    if let Some(name) = self.names.get(ind) {
-                        return write!(f, "{name}");
-                    }
-                }
-                write!(f, "unbound_variable#{var_id:?}")
-            }
-            Term::App(x, y) => {
-                DenseRepr::fmt_index(self.child(x, vec![]), f)?;
-                write!(f, " ")?;
-                DenseRepr::fmt_index(self.child(y, vec![]), f)
-            }
-            Term::Abs(ind) => {
-                let len = self.names.len()-1;
-                let chr = ((len % 26) + ('a' as usize)) as u8 as char;
-                let name_ind = len / 26;
-                let name = format!(
-                    "{chr}{}",
-                    if name_ind > 0 {
-                        format!("{}", name_ind - 1)
-                    } else {
-                        "".to_string()
-                    }
-                );
-                write!(f, "(\\{name}. ")?;
-                DenseRepr::fmt_index(self.child(ind, vec![name]), f)?;
-                write!(f, ")")
-            }
-        }
-    }
-}
-
-impl<T: std::fmt::Display, Ctx> std::fmt::Display for WithContext<'_, Ctx, T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.val)
-    }
-}
-
-impl<T, Meta: std::fmt::Display> std::fmt::Display for DenseRepr<T, Meta>
+impl<T: Clone + std::fmt::Debug + std::fmt::Display, Meta: Default + std::fmt::Display> std::fmt::Display for DenseRepr<T, Meta>
 where
     for<'a> WithContext<'a, Self, Term<T, usize>>: std::fmt::Display,
+    Self: Sized,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        DenseRepr::fmt_index(self.as_context(&self.root), f)
+        DenseRepr::fmt_index(Expr::as_context(&self, &self.root), f)
     }
 }
 
-impl<Meta: Default> Expr for DenseRepr<Never, Meta> {
+impl<T: Clone + std::fmt::Debug + std::fmt::Display, Meta: Default> Expr for DenseRepr<T, Meta> {
     type Index = usize;
-    type Value = Never;
+    type Value = T;
     type Meta = Meta;
     // type Term = Term<Self::Value, Self::Index>;
 
@@ -151,7 +100,6 @@ impl<Meta: Default> Expr for DenseRepr<Never, Meta> {
         Self::Meta::default()
     }
 }
-
 pub type LambdaCalc = DenseRepr<Never, Empty>;
 
 #[cfg(test)]
