@@ -71,7 +71,7 @@ pub trait Expr: Sized {
             Term::Val(_) => {
                 return (id.clone(), false);
             }
-            Term::Var(d) if d == depth => {
+            Term::Var(d) if d+1 == depth => {
                 // Create a shifted version!
                 return self.shift(val, 0, depth as i64);
             }
@@ -122,7 +122,9 @@ pub trait Expr: Sized {
                     eprintln!("applying {} to {}", self.as_context(&arg), self.as_context(&inner));
                     // Beta reduction.
                     eprint!("Updated inner {:?}", &inner);
-                    let (inner, _changed) = self.subst(&inner, &arg, 0);
+                    // let (inner, _changed) = self.shift(&inner, 0, -1);
+                    // eprint!("-> {:?}", &inner);
+                    let (inner, _changed) = self.subst(&inner, &arg, 1);
                     eprintln!(" -> {:?}", &inner);
                     return (inner, true);
                 }
