@@ -3,6 +3,7 @@
 pub mod tests;
 
 pub mod dense;
+pub mod sparse;
 pub mod types;
 pub mod with_context;
 pub use dense::{DenseRepr, LambdaCalc};
@@ -23,10 +24,10 @@ pub trait Expr {
 
     fn new(term: Term<Self::Value, Self::Index>, meta: Self::Meta) -> Self;
 
-    fn get(&self, id: &Self::Index) -> &Term<Self::Value, Self::Index>;
-    fn get_mut(&mut self, id: &mut Self::Index) -> &mut Term<Self::Value, Self::Index>;
-    fn get_meta(&self, id: &Self::Index) -> &Self::Meta;
-    fn get_meta_mut(&mut self, id: &mut Self::Index) -> &mut Self::Meta;
+    fn get<'a>(&'a self, id: &'a Self::Index) -> &'a Term<Self::Value, Self::Index>;
+    fn get_mut<'a>(&'a mut self, id: &'a mut Self::Index) -> &'a mut Term<Self::Value, Self::Index>;
+    fn get_meta<'a>(&'a self, id: &'a Self::Index) -> &'a Self::Meta;
+    fn get_meta_mut<'a>(&'a mut self, id: &'a mut Self::Index) -> &'a mut Self::Meta;
 
     fn root(&self) -> &Self::Index;
     fn root_mut(&mut self) -> &mut Self::Index;
