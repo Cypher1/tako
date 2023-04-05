@@ -153,7 +153,7 @@ pub trait Expr: Sized {
         WithContext::new(self, val, vec!["<>".to_string()])
     }
 
-    fn fmt_index<'a>(
+    fn fmt_index_term<'a>(
         ctx: &WithContext<'a, Self, Self::Index>,
         f: &mut std::fmt::Formatter,
     ) -> std::fmt::Result where Self: Sized {
@@ -193,6 +193,16 @@ pub trait Expr: Sized {
                 write!(f, ")")?;
             }
         }
+        Ok(())
+    }
+
+    fn fmt_index<'a>(
+        ctx: &WithContext<'a, Self, Self::Index>,
+        f: &mut std::fmt::Formatter,
+    ) -> std::fmt::Result where Self: Sized {
+        Self::fmt_index_term(ctx, f)?;
+        let this = ctx.ctx;
+        let id = ctx.val;
         if this.print_meta() {
             let meta = this.get_meta(id);
             write!(f, ": {meta}")?;
@@ -201,13 +211,11 @@ pub trait Expr: Sized {
     }
 
     fn print_meta(&self) -> bool;
-}
 
-// impl<'a, Ctx: Expr> std::fmt::Display for Ctx {
-    // fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        // Ctx::fmt_index(self.as_context(self.root()), f)
-    // }
-// }
+    fn fmt_root(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        Self::fmt_index(&self.as_context(self.root()), f)
+    }
+}
 
 impl<'a, Ctx: Expr> std::fmt::Display
     for WithContext<'a, Ctx, Ctx::Index> {

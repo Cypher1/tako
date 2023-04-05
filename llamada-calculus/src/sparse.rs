@@ -1,5 +1,4 @@
 use crate::types::{Empty, Never};
-use crate::with_context::WithContext;
 use crate::{Expr, Term};
 
 #[derive(Debug, Clone, Eq, Hash, Ord, PartialOrd, PartialEq)]
@@ -40,13 +39,10 @@ impl<T, Meta> SparseRepr<T, Meta> {
     }
 }
 
-impl<T: Eq + Clone + std::fmt::Debug + std::fmt::Display, Meta: Clone + Eq + Default + std::fmt::Display + std::fmt::Debug> std::fmt::Display for SparseRepr<T, Meta>
-where
-    for<'a> WithContext<'a, Self, Term<T, Ptr<T, Meta>>>: std::fmt::Display,
-    Self: Sized,
-{
+
+impl<'a, T, Meta> std::fmt::Display for SparseRepr<T, Meta> where SparseRepr<T, Meta>: Expr {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        SparseRepr::fmt_index(&Expr::as_context(self, &self.root()), f)
+        self.fmt_root(f)
     }
 }
 

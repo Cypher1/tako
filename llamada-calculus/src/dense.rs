@@ -80,6 +80,12 @@ impl<T: Clone + std::fmt::Debug + std::fmt::Display, Meta: Default + std::fmt::D
 }
 pub type LambdaCalc = DenseRepr<Never, Empty>;
 
+impl<'a, T, Meta> std::fmt::Display for DenseRepr<T, Meta> where DenseRepr<T, Meta>: Expr {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.fmt_root(f)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
