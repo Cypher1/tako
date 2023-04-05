@@ -1,3 +1,7 @@
+#[cfg(test)]
+#[macro_use]
+pub mod tests;
+
 pub mod dense;
 pub mod types;
 pub mod with_context;
@@ -16,6 +20,8 @@ pub trait Expr {
     type Index: Clone + Eq + PartialEq + std::fmt::Debug;
     type Value: Clone + std::fmt::Display + std::fmt::Debug;
     type Meta: std::fmt::Display;
+
+    fn new(term: Term<Self::Value, Self::Index>, meta: Self::Meta) -> Self;
 
     fn get(&self, id: &Self::Index) -> &Term<Self::Value, Self::Index>;
     fn get_mut(&mut self, id: &mut Self::Index) -> &mut Term<Self::Value, Self::Index>;

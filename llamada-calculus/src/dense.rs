@@ -13,15 +13,6 @@ pub struct DenseRepr<T, Meta> {
 
 impl<T, Meta> DenseRepr<T, Meta> {
     // TODO: type Term=Term<T, usize>;
-    pub fn new(term: Term<T, usize>, meta: Meta) -> Self {
-        let mut this = Self {
-            terms: vec![],
-            root: 0,
-            print_meta: false,
-        };
-        this.push(term, meta);
-        this
-    }
     pub fn get_last_id(&self) -> usize {
         self.terms.len() - 1
     }
@@ -53,6 +44,15 @@ impl<T: Clone + std::fmt::Debug + std::fmt::Display, Meta: Default + std::fmt::D
     type Meta = Meta;
     // type Term = Term<Self::Value, Self::Index>;
 
+    fn new(term: Term<T, usize>, meta: Meta) -> Self {
+        let mut this = Self {
+            terms: vec![],
+            root: 0,
+            print_meta: false,
+        };
+        this.push(term, meta);
+        this
+    }
     fn get(&self, id: &Self::Index) -> &Term<Self::Value, Self::Index> {
         // TODO: Checked version?
         &self.terms[*id].0
@@ -94,6 +94,9 @@ pub type LambdaCalc = DenseRepr<Never, Empty>;
 #[cfg(test)]
 mod tests {
     use super::*;
+    tests!(LambdaCalc);
+
+    /*
     use super::Expr;
 
     #[test]
@@ -190,4 +193,5 @@ mod tests {
         expr.reduce();
         assert_eq!(format!("{}", expr), "(\\a. (\\b. b))");
     }
+    */
 }
