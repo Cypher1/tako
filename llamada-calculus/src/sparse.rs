@@ -46,7 +46,7 @@ where
     Self: Sized,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        SparseRepr::fmt_index(Expr::as_context(&self, &self.root()), f)
+        SparseRepr::fmt_index(&Expr::as_context(self, &self.root()), f)
     }
 }
 

@@ -1,5 +1,4 @@
 use crate::types::{Empty, Never};
-use crate::with_context::WithContext;
 use crate::{Expr, Term};
 
 #[derive(Debug, Clone, Eq, Hash, Ord, PartialOrd, PartialEq)]
@@ -25,16 +24,6 @@ impl<T, Meta> DenseRepr<T, Meta> {
     pub fn set_root(&mut self, index: usize) {
         assert!(index < self.terms.len());
         self.root = index;
-    }
-}
-
-impl<T: Clone + std::fmt::Debug + std::fmt::Display, Meta: Default + std::fmt::Display> std::fmt::Display for DenseRepr<T, Meta>
-where
-    for<'a> WithContext<'a, Self, Term<T, usize>>: std::fmt::Display,
-    Self: Sized,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        DenseRepr::fmt_index(Expr::as_context(&self, &self.root), f)
     }
 }
 

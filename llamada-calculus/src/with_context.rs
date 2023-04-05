@@ -1,10 +1,10 @@
-pub struct WithContext<'a, Ctx, T> {
+pub struct WithContext<'a, Ctx: ?Sized, T> {
     pub ctx: &'a Ctx,
     pub val: &'a T,
     pub names: Vec<String>,
 }
 
-impl<'a, Ctx, T> WithContext<'a, Ctx, T> {
+impl<'a, Ctx: ?Sized, T> WithContext<'a, Ctx, T> {
     pub fn new(ctx: &'a Ctx, val: &'a T, names: Vec<String>) -> Self {
         WithContext {
             ctx,
