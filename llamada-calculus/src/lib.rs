@@ -105,7 +105,7 @@ pub trait Expr {
         Term<Self::Value, Self::Index>: std::fmt::Debug + Clone,
     {
         let mut curr = self.get(id).clone();
-        eprintln!("{:?}", curr);
+        eprintln!("{id:?} {:?}", curr);
         match &mut curr {
             Term::Val(_) => {},
             Term::Var(_) => {},
@@ -132,7 +132,7 @@ pub trait Expr {
             }
         }
         // Assign back!
-        eprintln!("{:?}", curr);
+        eprintln!("{id:?} {:?}", curr);
         *self.get_mut(id) = curr;
     }
     fn reduce(&mut self)

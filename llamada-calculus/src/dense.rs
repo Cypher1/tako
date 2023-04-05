@@ -191,6 +191,11 @@ mod tests {
         expr.set_root(app1);
         assert_eq!(format!("{}", expr), "(\\a. (\\b. (\\c. a b c))) (\\a. (\\b. b))");
         expr.reduce();
+        assert_eq!(
+            format!("{:?}", &expr),
+            "DenseRepr { terms: [...], root: 1, print_meta: true }"
+        );
+        assert_eq!(format!("{}", &expr), "(\\a. a: Empty): Empty");
         assert_eq!(format!("{}", expr), "(\\a. (\\b. b))");
     }
     */
