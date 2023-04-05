@@ -48,6 +48,21 @@ macro_rules! tests {
             assert_eq!(format!("{}", &expr), "(\\a. (\\b. b))");
         }
 
+
+        #[test]
+        fn id_a_expr() {
+            let mut expr = <$ty>::new(Term::Var(1), Empty {});
+            let prev = expr.get_last_id();
+            let abs1 = expr.push(Term::Abs(prev), Empty {});
+            let a = expr.push(Term::Var(1), Empty {});
+            let app1 = expr.push(Term::App(abs1, a), Empty {});
+            let abs2 = expr.push(Term::Abs(app1), Empty {});
+            expr.set_root(abs2);
+            assert_eq!(format!("{}", &expr), "(\\a. (\\b. b) a)");
+            expr.reduce();
+            assert_eq!(format!("{}", &expr), "(\\a. a)");
+        }
+
         #[test]
         fn not_expr() {
             let mut expr = <$ty>::new(Term::Var(1), Empty {});

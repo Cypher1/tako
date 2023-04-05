@@ -35,114 +35,115 @@ pub trait Expr: Sized {
 
     fn add(&mut self, term: Term<Self::Value, Self::Index>, meta: Self::Meta) -> Self::Index;
 
-    fn shift(&mut self, id: &Self::Index, depth: usize, delta: i64) -> Self::Index {
+    fn shift(&mut self, id: &Self::Index, depth: usize, delta: i64) -> (Self::Index, bool) {
         let term = match self.get(&id).clone() {
             Term::Val(_) => {
-                return id.clone();
+                return (id.clone(), false);
             }
             Term::Var(d) if d < depth => {
+                return (id.clone(), false);
+            }
+            Term::Var(d) => {
                 Term::Var((d as i64 +delta)as usize)
             }
-            Term::Var(_) => {
-                return id.clone();
-            }
             Term::Abs(inner) => {
-                let new_inner = self.shift(&inner, depth+1, delta);
-                if new_inner != inner {
-                    Term::Abs(new_inner)
-                } else {
-                    return id.clone();
+                let (inner, new_inner) = self.shift(&inner, depth+1, delta);
+                if !new_inner {
+                    return (id.clone(), false);
                 }
+                Term::Abs(inner)
             }
             Term::App(inner, arg) => {
-                let new_inner = self.shift(&inner, depth, delta);
-                let new_arg = self.shift(&arg, depth, delta);
-                if new_inner != inner || new_arg != arg {
-                    Term::App(new_inner, new_arg)
-                } else {
-                    return id.clone();
+                let (inner, new_inner) = self.shift(&inner, depth, delta);
+                let (arg, new_arg) = self.shift(&arg, depth, delta);
+                if !new_inner && !new_arg {
+                    return (id.clone(), false);
                 }
+                Term::App(inner, arg)
             }
         };
         let meta = self.new_meta();
-        self.add(term, meta)
+        (self.add(term, meta), true)
     }
-    fn subst(&mut self, id: &Self::Index, val: &Self::Index, depth: usize) -> Self::Index {
+    fn subst(&mut self, id: &Self::Index, val: &Self::Index, depth: usize) -> (Self::Index, bool) {
         // TODO: What...
         let term = match self.get(&id).clone() {
             Term::Val(_) => {
-                return id.clone();
+                return (id.clone(), false);
             }
             Term::Var(d) if d == depth => {
                 // Create a shifted version!
                 return self.shift(val, 0, depth as i64);
             }
             Term::Var(_) => {
-                return id.clone();
+                return (id.clone(), false);
             }
             Term::Abs(inner) => {
-                let new_inner = self.subst(&inner, val, depth+1);
-                if new_inner == inner {
-                    return id.clone();
+                let (inner, new_inner) = self.subst(&inner, val, depth+1);
+                if !new_inner {
+                    return (id.clone(), false);
                 }
-                Term::Abs(new_inner)
+                Term::Abs(inner)
             }
             Term::App(inner, arg) => {
-                let new_inner = self.subst(&inner, val, depth);
-                let new_arg = self.subst(&arg, val, depth);
-                if new_inner == inner && new_arg == arg {
-                    return id.clone();
+                let (inner, new_inner) = self.subst(&inner, val, depth);
+                let (arg, new_arg) = self.subst(&arg, val, depth);
+                if !new_inner && !new_arg {
+                    return (id.clone(), false);
                 }
-                Term::App(new_inner, new_arg)
+                Term::App(inner, arg)
             }
         };
         let meta = self.new_meta();
-        self.add(term, meta)
+        (self.add(term, meta), true)
     }
 
-    fn reduce_at<'a>(&'a mut self, id: &mut Self::Index)
+    fn reduce_at<'a>(&'a mut self, id: Self::Index) -> (Self::Index, bool)
     where
         // for <'b> &'b WithContext<'a, Self, Self::Index>: std::fmt::Display,
         Term<Self::Value, Self::Index>: std::fmt::Debug + Clone
     {
-        let mut curr = self.get(id).clone();
+        let curr = self.get(&id).clone();
         eprintln!("{id:?} {:?}", curr);
-        match &mut curr {
+        match curr {
             Term::Val(_) => {},
             Term::Var(_) => {},
             Term::Abs(inner) => {
-                self.reduce_at(inner);
+                let (inner, new_inner) = self.reduce_at(inner);
+                if new_inner {
+                    let meta = self.new_meta();
+                    return (self.add(Term::Abs(inner), meta), true);
+                }
             }
-            Term::App(ref mut inner, ref mut arg) => {
-                self.reduce_at(arg);
-                self.reduce_at(inner);
-                let inner = self.get(&inner);
-                eprintln!("App({:?}) -> {:?}", arg, &inner);
-                if let Term::Abs(mut inner) = inner.clone() {
-                    eprintln!("applying {} to {}", self.as_context(&inner), self.as_context(arg));
+            Term::App(inner, arg) => {
+                let (arg, new_arg) = self.reduce_at(arg);
+                let (inner, new_inner) = self.reduce_at(inner);
+                if let Term::Abs(inner) = self.get(&inner).clone() {
+                    eprintln!("applying {} to {}", self.as_context(&arg), self.as_context(&inner));
                     // Beta reduction.
-                    let new_inner = self.shift(&mut inner, 0, -1);
-                    eprintln!("Updated inner {:?} -> {:?}", &inner, new_inner);
-                    let new_inner = self.subst(&new_inner, &arg, 0);
-                    eprintln!("Subst inner {:?} -> {:?}", &inner, new_inner);
-                    *id = new_inner;
+                    eprint!("Updated inner {:?}", &inner);
+                    let (inner, _changed) = self.subst(&inner, &arg, 0);
+                    eprintln!(" -> {:?}", &inner);
+                    return (inner, true);
                 }
                 //if let Term::Val(val) = self.get(inner) {
                 // TOdO
                 //}
+                if new_inner || new_arg {
+                    let meta = self.new_meta();
+                    return (self.add(Term::App(inner, arg), meta), true);
+                }
             }
         }
-        // Assign back!
-        eprintln!("{id:?} {:?}", curr);
-        *self.get_mut(id) = curr;
+        (id, false)
     }
     fn reduce(&mut self)
     where
         Term<Self::Value, Self::Index>: std::fmt::Debug + Clone,
     {
         // TODO: Beta and Eta reduction.
-        let mut root = self.root().clone();
-        self.reduce_at(&mut root);
+        let root = self.root().clone();
+        let (root, _changed) = self.reduce_at(root);
         // assign new root:
         *self.root_mut() = root;
     }
