@@ -58,7 +58,7 @@ macro_rules! tests {
             let app1 = expr.push(Term::App(abs1, a), Empty {});
             let abs2 = expr.push(Term::Abs(app1), Empty {});
             expr.set_root(abs2);
-            assert_eq!(format!("{}", &expr), "(\\a. (\\b. b) a)");
+            assert_eq!(format!("{}", &expr), "(\\a. ((\\b. b) a))");
             expr.reduce();
             assert_eq!(format!("{}", &expr), "(\\a. a)");
         }
@@ -75,9 +75,9 @@ macro_rules! tests {
             let abs2 = expr.push(Term::Abs(abs1), Empty {});
             let abs3 = expr.push(Term::Abs(abs2), Empty {});
             expr.set_root(abs3);
-            assert_eq!(format!("{}", &expr), "(\\a. (\\b. (\\c. a b c)))");
+            assert_eq!(format!("{}", &expr), "(\\a. (\\b. (\\c. ((a b) c))))");
             expr.reduce();
-            assert_eq!(format!("{}", &expr), "(\\a. (\\b. (\\c. a b c)))");
+            assert_eq!(format!("{}", &expr), "(\\a. (\\b. (\\c. ((a b) c))))");
         }
 
         #[test]
@@ -105,7 +105,7 @@ macro_rules! tests {
             };
             let app1 = expr.push(Term::App(inner, false_v), Empty {});
             expr.set_root(app1);
-            assert_eq!(format!("{}", expr), "(\\a. (\\b. (\\c. a b c))) (\\a. (\\b. b))");
+            assert_eq!(format!("{}", expr), "((\\a. (\\b. (\\c. ((a b) c)))) (\\a. (\\b. b)))");
             expr.reduce();
             assert_eq!(format!("{}", expr), "(\\a. (\\b. b))");
         }

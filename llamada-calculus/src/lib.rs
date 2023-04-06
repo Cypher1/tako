@@ -40,14 +40,15 @@ pub trait Expr: Sized {
             Term::Val(_) => {
                 return (id.clone(), false);
             }
-            Term::Var(d) if d < depth => {
-                return (id.clone(), false);
-            }
             Term::Var(d) => {
-                Term::Var((d as i64 +delta)as usize)
+                eprintln!("\n shift {d}, {depth}");
+                if d > depth { // Rebound inside the nodes.
+                    return (id.clone(), false);
+                }
+                Term::Var((d as i64 +delta)as usize) // References something outside.
             }
             Term::Abs(inner) => {
-                let (inner, new_inner) = self.shift(&inner, depth+1, delta);
+                let (inner, new_inner) = self.shift(&inner, depth, delta);
                 if !new_inner {
                     return (id.clone(), false);
                 }
@@ -66,16 +67,17 @@ pub trait Expr: Sized {
         (self.add(term, meta), true)
     }
     fn subst(&mut self, id: &Self::Index, val: &Self::Index, depth: usize) -> (Self::Index, bool) {
-        // TODO: What...
         let term = match self.get(&id).clone() {
             Term::Val(_) => {
                 return (id.clone(), false);
             }
-            Term::Var(d) if d+1 == depth => {
-                // Create a shifted version!
-                return self.shift(val, 0, depth as i64);
-            }
-            Term::Var(_) => {
+            Term::Var(d) => {
+                eprintln!("\n subst {d}, {depth}");
+                if d == depth {
+                    // Create a shifted version!
+                    let (id, _changed) = self.shift(val, 0, depth as i64);
+                    return (id, true);
+                }
                 return (id.clone(), false);
             }
             Term::Abs(inner) => {
@@ -98,34 +100,38 @@ pub trait Expr: Sized {
         (self.add(term, meta), true)
     }
 
-    fn reduce_at<'a>(&'a mut self, id: Self::Index) -> (Self::Index, bool)
-    where
-        // for <'b> &'b WithContext<'a, Self, Self::Index>: std::fmt::Display,
-        Term<Self::Value, Self::Index>: std::fmt::Debug + Clone
+    fn reduce_at<'a>(&'a mut self, id: Self::Index, depth: usize) -> (Self::Index, bool) {
+        let (mut id, had_changed) = self.reduce_at_impl(id, depth);
+        let mut changed = true;
+        while had_changed && changed {
+            (id, changed) = self.reduce_at_impl(id, depth);
+        }
+        return (id, had_changed);
+    }
+
+    fn reduce_at_impl<'a>(&'a mut self, id: Self::Index, depth: usize) -> (Self::Index, bool)
     {
+        eprintln!("{}reducing {}", "  ".repeat(depth), self.as_context(&id));
         let curr = self.get(&id).clone();
-        eprintln!("{id:?} {:?}", curr);
         match curr {
             Term::Val(_) => {},
             Term::Var(_) => {},
             Term::Abs(inner) => {
-                let (inner, new_inner) = self.reduce_at(inner);
+                let (inner, new_inner) = self.reduce_at(inner, depth+1);
                 if new_inner {
                     let meta = self.new_meta();
                     return (self.add(Term::Abs(inner), meta), true);
                 }
             }
             Term::App(inner, arg) => {
-                let (arg, new_arg) = self.reduce_at(arg);
-                let (inner, new_inner) = self.reduce_at(inner);
+                let (arg, new_arg) = self.reduce_at(arg, depth+1);
+                let (inner, new_inner) = self.reduce_at(inner, depth+1);
                 if let Term::Abs(inner) = self.get(&inner).clone() {
-                    eprintln!("applying {} to {}", self.as_context(&arg), self.as_context(&inner));
+                    eprint!("{}applying {} to {}", "  ".repeat(depth), self.as_context(&arg), self.as_context(&inner));
                     // Beta reduction.
-                    eprint!("Updated inner {:?}", &inner);
                     // let (inner, _changed) = self.shift(&inner, 0, -1);
-                    // eprint!("-> {:?}", &inner);
                     let (inner, _changed) = self.subst(&inner, &arg, 1);
-                    eprintln!(" -> {:?}", &inner);
+                    eprintln!(" -> {}", self.as_context(&inner));
                     return (inner, true);
                 }
                 //if let Term::Val(val) = self.get(inner) {
@@ -145,7 +151,7 @@ pub trait Expr: Sized {
     {
         // TODO: Beta and Eta reduction.
         let root = self.root().clone();
-        let (root, _changed) = self.reduce_at(root);
+        let (root, _changed) = self.reduce_at(root, 0);
         // assign new root:
         *self.root_mut() = root;
     }
@@ -153,7 +159,7 @@ pub trait Expr: Sized {
     fn apply_to_value(&mut self, value: Self::Value, _arg: Term<Self::Value, Self::Index>) -> Term<Self::Value, Self::Index>;
 
     fn as_context<'a, U>(&'a self, val: &'a U) -> WithContext<'a, Self, U> {
-        WithContext::new(self, val, vec!["<>".to_string()])
+        WithContext::new(self, val, vec!["?".to_string()])
     }
 
     fn fmt_index_term<'a>(
@@ -172,12 +178,14 @@ pub trait Expr: Sized {
                         return write!(f, "{name}");
                     }
                 }
-                write!(f, "unbound_variable#{var_id:?}")?;
+                write!(f, "#{var_id:?}")?;
             }
             Term::App(x, y) => {
+                write!(f, "(")?;
                 Self::fmt_index(&ctx.child(x, vec![]), f)?;
                 write!(f, " ")?;
                 Self::fmt_index(&ctx.child(y, vec![]), f)?;
+                write!(f, ")")?;
             }
             Term::Abs(ind) => {
                 let len = ctx.names.len()-1;
