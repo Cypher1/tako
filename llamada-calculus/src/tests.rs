@@ -48,7 +48,6 @@ macro_rules! tests {
             assert_eq!(format!("{}", &expr), "(\\a. (\\b. b))");
         }
 
-
         #[test]
         fn id_a_expr() {
             let mut expr = <$ty>::new(Term::Var(1), Empty {});
@@ -108,6 +107,65 @@ macro_rules! tests {
             assert_eq!(format!("{}", expr), "((\\a. (\\b. (\\c. ((a b) c)))) (\\a. (\\b. b)))");
             expr.reduce();
             assert_eq!(format!("{}", expr), "(\\a. (\\b. b))");
+        }
+
+        #[test]
+        fn zero_expr() {
+            let mut church_test = <$ty>::new(Term::Var(1), Empty {});
+            let church = church_test.to_church(0);
+            church_test.set_root(church);
+            assert_eq!(format!("{}", &church_test), "(\\a. (\\b. b))");
+
+            let mut expr = <$ty>::new(Term::Var(1), Empty {});
+            let prev = expr.get_last_id();
+            let abs1 = expr.push(Term::Abs(prev), Empty {});
+            let abs2 = expr.push(Term::Abs(abs1), Empty {});
+            expr.set_root(abs2);
+            assert_eq!(format!("{}", &expr), "(\\a. (\\b. b))");
+            expr.reduce();
+            assert_eq!(format!("{}", &expr), "(\\a. (\\b. b))");
+            assert_eq!(expr.from_church(expr.root()), Some(0));
+        }
+
+        #[test]
+        fn one_expr() {
+            let mut church_test = <$ty>::new(Term::Var(1), Empty {});
+            let church = church_test.to_church(1);
+            church_test.set_root(church);
+            assert_eq!(format!("{}", &church_test), "(\\a. (\\b. (a b)))");
+
+            let mut expr = <$ty>::new(Term::Var(1), Empty {});
+            let prev = expr.get_last_id();
+            let a = expr.push(Term::Var(2), Empty {});
+            let app1 = expr.push(Term::App(a, prev), Empty {});
+            let abs1 = expr.push(Term::Abs(app1), Empty {});
+            let abs2 = expr.push(Term::Abs(abs1), Empty {});
+            expr.set_root(abs2);
+            assert_eq!(format!("{}", &expr), "(\\a. (\\b. (a b)))");
+            expr.reduce();
+            assert_eq!(format!("{}", &expr), "(\\a. (\\b. (a b)))");
+            assert_eq!(expr.from_church(expr.root()), Some(1));
+        }
+
+        #[test]
+        fn two_expr() {
+            let mut church_test = <$ty>::new(Term::Var(1), Empty {});
+            let church = church_test.to_church(2);
+            church_test.set_root(church);
+            assert_eq!(format!("{}", &church_test), "(\\a. (\\b. (a (a b))))");
+
+            let mut expr = <$ty>::new(Term::Var(1), Empty {});
+            let prev = expr.get_last_id();
+            let a = expr.push(Term::Var(2), Empty {});
+            let app1 = expr.push(Term::App(a.clone(), prev), Empty {});
+            let app2 = expr.push(Term::App(a, app1), Empty {});
+            let abs1 = expr.push(Term::Abs(app2), Empty {});
+            let abs2 = expr.push(Term::Abs(abs1), Empty {});
+            expr.set_root(abs2);
+            assert_eq!(format!("{}", &expr), "(\\a. (\\b. (a (a b))))");
+            expr.reduce();
+            assert_eq!(format!("{}", &expr), "(\\a. (\\b. (a (a b))))");
+            assert_eq!(expr.from_church(expr.root()), Some(2));
         }
     }
 }

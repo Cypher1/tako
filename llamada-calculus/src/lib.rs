@@ -162,6 +162,58 @@ pub trait Expr: Sized {
         WithContext::new(self, val, vec!["?".to_string()])
     }
 
+    fn to_church<'a>(&mut self, i: u32) -> Self::Index {
+        let meta = self.new_meta();
+        let startv = self.add(Term::Var(1), meta);
+        let mut curr = startv;
+        if i > 0 {
+            let meta = self.new_meta();
+            let f = self.add(Term::Var(2), meta);
+            for _ in 0..i {
+                let meta = self.new_meta();
+                curr = self.add(Term::App(f.clone(), curr), meta);
+            }
+        }
+        let meta = self.new_meta();
+        curr = self.add(Term::Abs(curr), meta);
+        let meta = self.new_meta();
+        curr = self.add(Term::Abs(curr), meta);
+        curr
+    }
+
+    fn from_church<'a>(
+        &self,
+        id: &Self::Index,
+    ) -> Option<u32> {
+        // (\f. (\x. (f ... (f x)...) ))
+        let inner = match self.get(id) {
+            Term::Abs(inner) => inner,
+            _ => return None,
+        };
+        let mut inner = match self.get(inner) {
+            Term::Abs(inner) => inner,
+            _ => return None,
+        };
+        let mut i = 0;
+        loop {
+            match self.get(inner) {
+                Term::App(a, b) => {
+                    match self.get(a) {
+                        Term::Var(2) => {
+                            i+=1;
+                            inner = b;
+                        }
+                        _ => return None,
+                    }
+                }
+                Term::Var(x) if *x == 1 => {
+                    return Some(i);
+                }
+                _ => return None,
+            }
+        }
+    }
+
     fn fmt_index_term<'a>(
         ctx: &WithContext<'a, Self, Self::Index>,
         f: &mut std::fmt::Formatter,
