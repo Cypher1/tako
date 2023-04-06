@@ -37,7 +37,7 @@ pub trait Expr: Sized {
     fn add(&mut self, term: Term<Self::Value, Self::Index>, meta: Self::Meta) -> Self::Index;
 
     fn shift(&mut self, id: &Self::Index, depth: usize, delta: i64) -> (Self::Index, bool) {
-        let term = match self.get(&id).clone() {
+        let term = match self.get(id).clone() {
             Term::Val(_) => {
                 return (id.clone(), false);
             }
@@ -69,7 +69,7 @@ pub trait Expr: Sized {
         (self.add(term, meta), true)
     }
     fn subst(&mut self, id: &Self::Index, val: &Self::Index, depth: usize) -> (Self::Index, bool) {
-        let term = match self.get(&id).clone() {
+        let term = match self.get(id).clone() {
             Term::Val(_) => {
                 return (id.clone(), false);
             }
@@ -108,7 +108,7 @@ pub trait Expr: Sized {
         while had_changed && changed {
             (id, changed) = self.reduce_at_impl(id, depth);
         }
-        return (id, had_changed);
+        (id, had_changed)
     }
 
     fn reduce_at_impl<'a>(&'a mut self, id: Self::Index, depth: usize) -> (Self::Index, bool) {
