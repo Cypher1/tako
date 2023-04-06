@@ -41,7 +41,7 @@ pub trait Expr: Sized {
                 return (id.clone(), false);
             }
             Term::Var(d) => {
-                eprintln!("\n shift {d}, {depth}");
+                // eprintln!("\n shift {d}, {depth}");
                 if d > depth { // Rebound inside the nodes.
                     return (id.clone(), false);
                 }
@@ -72,7 +72,7 @@ pub trait Expr: Sized {
                 return (id.clone(), false);
             }
             Term::Var(d) => {
-                eprintln!("\n subst {d}, {depth}");
+                // eprintln!("\n subst {d}, {depth}");
                 if d == depth {
                     // Create a shifted version!
                     let (id, _changed) = self.shift(val, 0, depth as i64);
@@ -111,7 +111,7 @@ pub trait Expr: Sized {
 
     fn reduce_at_impl<'a>(&'a mut self, id: Self::Index, depth: usize) -> (Self::Index, bool)
     {
-        eprintln!("{}reducing {}", "  ".repeat(depth), self.as_context(&id));
+        // eprintln!("{}reducing {}", "  ".repeat(depth), self.as_context(&id));
         let curr = self.get(&id).clone();
         match curr {
             Term::Val(_) => {},
@@ -127,11 +127,11 @@ pub trait Expr: Sized {
                 let (arg, new_arg) = self.reduce_at(arg, depth+1);
                 let (inner, new_inner) = self.reduce_at(inner, depth+1);
                 if let Term::Abs(inner) = self.get(&inner).clone() {
-                    eprint!("{}applying {} to {}", "  ".repeat(depth), self.as_context(&arg), self.as_context(&inner));
+                    // eprint!("{}applying {} to {}", "  ".repeat(depth), self.as_context(&arg), self.as_context(&inner));
                     // Beta reduction.
                     // let (inner, _changed) = self.shift(&inner, 0, -1);
                     let (inner, _changed) = self.subst(&inner, &arg, 1);
-                    eprintln!(" -> {}", self.as_context(&inner));
+                    // eprintln!(" -> {}", self.as_context(&inner));
                     return (inner, true);
                 }
                 //if let Term::Val(val) = self.get(inner) {

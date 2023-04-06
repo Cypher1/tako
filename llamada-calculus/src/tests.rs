@@ -167,5 +167,42 @@ macro_rules! tests {
             assert_eq!(format!("{}", &expr), "(\\a. (\\b. (a (a b))))");
             assert_eq!(expr.from_church(expr.root()), Some(2));
         }
+
+        #[test]
+        fn plus_expr() {
+            let mut expr = <$ty>::new(Term::Var(1), Empty {});
+            let x = expr.get_last_id();
+
+            let f = expr.push(Term::Var(2), Empty {});
+            let m = expr.push(Term::Var(3), Empty {});
+            let n = expr.push(Term::Var(4), Empty {});
+            let nf = expr.push(Term::App(n.clone(), f.clone()), Empty {});
+            let mf = expr.push(Term::App(m.clone(), f.clone()), Empty {});
+            let mfx = expr.push(Term::App(mf, x.clone()), Empty {});
+            let nfmfx = expr.push(Term::App(nf.clone(), mfx.clone()), Empty {});
+            let abs1_nfmfx = expr.push(Term::Abs(nfmfx), Empty {});
+            let abs2_nfmfx = expr.push(Term::Abs(abs1_nfmfx), Empty {});
+            let abs3_nfmfx = expr.push(Term::Abs(abs2_nfmfx), Empty {});
+            let plus = expr.push(Term::Abs(abs3_nfmfx), Empty {});
+            expr.set_root(plus.clone());
+
+            assert_eq!(format!("{}", &expr), "(\\a. (\\b. (\\c. (\\d. ((a c) ((b c) d))))))");
+
+            for n in 0..10 {
+                for m in 0..10 {
+                    let church_n = expr.to_church(n);
+                    let church_m = expr.to_church(m);
+
+                    let plus_m = expr.push(Term::App(plus.clone(), church_m), Empty{});
+                    let plus_n_m = expr.push(Term::App(plus_m, church_n), Empty{});
+                    expr.set_root(plus_n_m);
+                    expr.reduce();
+                    let result = expr.from_church(expr.root());
+                    eprintln!("{n:?} + {m:?} = {result:?}");
+                    assert_eq!(result, Some(n+m));
+                }
+            }
+            assert_eq!(0, 1);
+        }
     }
 }
