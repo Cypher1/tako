@@ -3,7 +3,7 @@ pub mod status;
 pub mod task_trait;
 use crate::ast::Ast;
 use crate::ast::NodeId;
-use crate::error::{TError, Error};
+use crate::error::{Error, TError};
 use crate::parser::tokens::Token;
 use crate::primitives::Prim;
 use crate::utils::meta::Meta;
@@ -199,7 +199,10 @@ impl Task for CodegenTask {
     }
     #[cfg(not(feature = "backend"))]
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        let err = Update::Failed(self.decorate_error(TError::InternalError {location: None, message: "No backend".to_string()}));
+        let err = Update::Failed(self.decorate_error(TError::InternalError {
+            location: None,
+            message: "No backend".to_string(),
+        }));
         result_sender
             .send((self, err))
             .expect("Should be able to send task result to manager");
