@@ -102,7 +102,7 @@ pub trait Expr: Sized {
         (self.add(term, meta), true)
     }
 
-    fn reduce_at<'a>(&'a mut self, id: Self::Index, depth: usize) -> (Self::Index, bool) {
+    fn reduce_at(&mut self, id: Self::Index, depth: usize) -> (Self::Index, bool) {
         let (mut id, had_changed) = self.reduce_at_impl(id, depth);
         let mut changed = true;
         while had_changed && changed {
@@ -111,7 +111,7 @@ pub trait Expr: Sized {
         (id, had_changed)
     }
 
-    fn reduce_at_impl<'a>(&'a mut self, id: Self::Index, depth: usize) -> (Self::Index, bool) {
+    fn reduce_at_impl(&mut self, id: Self::Index, depth: usize) -> (Self::Index, bool) {
         // eprintln!("{}reducing {}", "  ".repeat(depth), self.as_context(&id));
         let curr = self.get(&id).clone();
         match curr {
@@ -167,7 +167,7 @@ pub trait Expr: Sized {
         WithContext::new(self, val, vec!["?".to_string()])
     }
 
-    fn to_church<'a>(&mut self, i: u32) -> Self::Index {
+    fn to_church(&mut self, i: u32) -> Self::Index {
         let meta = self.new_meta();
         let startv = self.add(Term::Var(1), meta);
         let mut curr = startv;
@@ -186,7 +186,7 @@ pub trait Expr: Sized {
         curr
     }
 
-    fn from_church<'a>(&self, id: &Self::Index) -> Option<u32> {
+    fn as_church(&self, id: &Self::Index) -> Option<u32> {
         // (\f. (\x. (f ... (f x)...) ))
         let inner = match self.get(id) {
             Term::Abs(inner) => inner,

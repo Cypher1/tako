@@ -39,7 +39,7 @@ impl<T, Meta> SparseRepr<T, Meta> {
     }
 }
 
-impl<'a, T, Meta> std::fmt::Display for SparseRepr<T, Meta>
+impl<T, Meta> std::fmt::Display for SparseRepr<T, Meta>
 where
     SparseRepr<T, Meta>: Expr,
 {

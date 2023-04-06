@@ -86,7 +86,7 @@ impl<T: Clone + std::fmt::Debug + std::fmt::Display, Meta: Default + std::fmt::D
 }
 pub type LambdaCalc = DenseRepr<Never, Empty>;
 
-impl<'a, T, Meta> std::fmt::Display for DenseRepr<T, Meta>
+impl<T, Meta> std::fmt::Display for DenseRepr<T, Meta>
 where
     DenseRepr<T, Meta>: Expr,
 {

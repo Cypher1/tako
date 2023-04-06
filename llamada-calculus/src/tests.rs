@@ -127,7 +127,7 @@ macro_rules! tests {
             assert_eq!(format!("{}", &expr), "(\\a. (\\b. b))");
             expr.reduce();
             assert_eq!(format!("{}", &expr), "(\\a. (\\b. b))");
-            assert_eq!(expr.from_church(expr.root()), Some(0));
+            assert_eq!(expr.as_church(expr.root()), Some(0));
         }
 
         #[test]
@@ -147,7 +147,7 @@ macro_rules! tests {
             assert_eq!(format!("{}", &expr), "(\\a. (\\b. (a b)))");
             expr.reduce();
             assert_eq!(format!("{}", &expr), "(\\a. (\\b. (a b)))");
-            assert_eq!(expr.from_church(expr.root()), Some(1));
+            assert_eq!(expr.as_church(expr.root()), Some(1));
         }
 
         #[test]
@@ -168,7 +168,7 @@ macro_rules! tests {
             assert_eq!(format!("{}", &expr), "(\\a. (\\b. (a (a b))))");
             expr.reduce();
             assert_eq!(format!("{}", &expr), "(\\a. (\\b. (a (a b))))");
-            assert_eq!(expr.from_church(expr.root()), Some(2));
+            assert_eq!(expr.as_church(expr.root()), Some(2));
         }
 
         #[test]
@@ -203,7 +203,7 @@ macro_rules! tests {
                     let plus_n_m = expr.push(Term::App(plus_m, church_n), Empty {});
                     expr.set_root(plus_n_m);
                     expr.reduce();
-                    let result = expr.from_church(expr.root());
+                    let result = expr.as_church(expr.root());
                     eprintln!("{n:?} + {m:?} = {result:?}");
                     assert_eq!(result, Some(n + m));
                 }
@@ -241,7 +241,7 @@ macro_rules! tests {
                     let mul_n_m = expr.push(Term::App(mul_m, church_n), Empty {});
                     expr.set_root(mul_n_m);
                     expr.reduce();
-                    let result = expr.from_church(expr.root());
+                    let result = expr.as_church(expr.root());
                     eprintln!("{n:?} * {m:?} = {result:?}");
                     assert_eq!(result, Some(n * m));
                 }
