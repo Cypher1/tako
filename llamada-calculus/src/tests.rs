@@ -11,13 +11,13 @@ macro_rules! tests {
             expr.reduce();
             assert_eq!(format!("{}", expr), "(\\a. a)");
             //assert_eq!(
-                //format!("{:?}", &expr),
-                //"DenseRepr { terms: [(Var(1), Empty), (Abs(0), Empty)], root: 1, print_meta: false }"
+            //format!("{:?}", &expr),
+            //"DenseRepr { terms: [(Var(1), Empty), (Abs(0), Empty)], root: 1, print_meta: false }"
             //);
             expr.print_meta = true;
             //assert_eq!(
-                //format!("{:?}", &expr),
-                //"DenseRepr { terms: [(Var(1), Empty), (Abs(0), Empty)], root: 1, print_meta: true }"
+            //format!("{:?}", &expr),
+            //"DenseRepr { terms: [(Var(1), Empty), (Abs(0), Empty)], root: 1, print_meta: true }"
             //);
             assert_eq!(format!("{}", &expr), "(\\a. a: Empty): Empty");
             expr.reduce();
@@ -104,7 +104,10 @@ macro_rules! tests {
             };
             let app1 = expr.push(Term::App(inner, false_v), Empty {});
             expr.set_root(app1);
-            assert_eq!(format!("{}", expr), "((\\a. (\\b. (\\c. ((a b) c)))) (\\a. (\\b. b)))");
+            assert_eq!(
+                format!("{}", expr),
+                "((\\a. (\\b. (\\c. ((a b) c)))) (\\a. (\\b. b)))"
+            );
             expr.reduce();
             assert_eq!(format!("{}", expr), "(\\a. (\\b. b))");
         }
@@ -186,20 +189,23 @@ macro_rules! tests {
             let plus = expr.push(Term::Abs(abs3_nfmfx), Empty {});
             expr.set_root(plus.clone());
 
-            assert_eq!(format!("{}", &expr), "(\\a. (\\b. (\\c. (\\d. ((a c) ((b c) d))))))");
+            assert_eq!(
+                format!("{}", &expr),
+                "(\\a. (\\b. (\\c. (\\d. ((a c) ((b c) d))))))"
+            );
 
             for n in 0..10 {
                 for m in 0..10 {
                     let church_n = expr.to_church(n);
                     let church_m = expr.to_church(m);
 
-                    let plus_m = expr.push(Term::App(plus.clone(), church_m), Empty{});
-                    let plus_n_m = expr.push(Term::App(plus_m, church_n), Empty{});
+                    let plus_m = expr.push(Term::App(plus.clone(), church_m), Empty {});
+                    let plus_n_m = expr.push(Term::App(plus_m, church_n), Empty {});
                     expr.set_root(plus_n_m);
                     expr.reduce();
                     let result = expr.from_church(expr.root());
                     eprintln!("{n:?} + {m:?} = {result:?}");
-                    assert_eq!(result, Some(n+m));
+                    assert_eq!(result, Some(n + m));
                 }
             }
         }
@@ -221,22 +227,25 @@ macro_rules! tests {
             let mul = expr.push(Term::Abs(abs3_nmfx), Empty {});
             expr.set_root(mul.clone());
 
-            assert_eq!(format!("{}", &expr), "(\\a. (\\b. (\\c. (\\d. ((a (b c)) d)))))");
+            assert_eq!(
+                format!("{}", &expr),
+                "(\\a. (\\b. (\\c. (\\d. ((a (b c)) d)))))"
+            );
 
             for n in 0..10 {
                 for m in 0..10 {
                     let church_n = expr.to_church(n);
                     let church_m = expr.to_church(m);
 
-                    let mul_m = expr.push(Term::App(mul.clone(), church_m), Empty{});
-                    let mul_n_m = expr.push(Term::App(mul_m, church_n), Empty{});
+                    let mul_m = expr.push(Term::App(mul.clone(), church_m), Empty {});
+                    let mul_n_m = expr.push(Term::App(mul_m, church_n), Empty {});
                     expr.set_root(mul_n_m);
                     expr.reduce();
                     let result = expr.from_church(expr.root());
                     eprintln!("{n:?} * {m:?} = {result:?}");
-                    assert_eq!(result, Some(n*m));
+                    assert_eq!(result, Some(n * m));
                 }
             }
         }
-    }
+    };
 }

@@ -27,7 +27,9 @@ impl<T, Meta> DenseRepr<T, Meta> {
     }
 }
 
-impl<T: Clone + std::fmt::Debug + std::fmt::Display, Meta: Default + std::fmt::Display> Expr for DenseRepr<T, Meta> {
+impl<T: Clone + std::fmt::Debug + std::fmt::Display, Meta: Default + std::fmt::Display> Expr
+    for DenseRepr<T, Meta>
+{
     type Index = usize;
     type Value = T;
     type Meta = Meta;
@@ -58,7 +60,11 @@ impl<T: Clone + std::fmt::Debug + std::fmt::Display, Meta: Default + std::fmt::D
         // TODO: Checked version?
         &mut self.terms[*id].1
     }
-    fn apply_to_value(&mut self, _value: Self::Value, _arg: Term<Self::Value, Self::Index>) -> Term<Self::Value, Self::Index> {
+    fn apply_to_value(
+        &mut self,
+        _value: Self::Value,
+        _arg: Term<Self::Value, Self::Index>,
+    ) -> Term<Self::Value, Self::Index> {
         todo!(); // match value {}
     }
     fn root(&self) -> &Self::Index {
@@ -80,7 +86,10 @@ impl<T: Clone + std::fmt::Debug + std::fmt::Display, Meta: Default + std::fmt::D
 }
 pub type LambdaCalc = DenseRepr<Never, Empty>;
 
-impl<'a, T, Meta> std::fmt::Display for DenseRepr<T, Meta> where DenseRepr<T, Meta>: Expr {
+impl<'a, T, Meta> std::fmt::Display for DenseRepr<T, Meta>
+where
+    DenseRepr<T, Meta>: Expr,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         self.fmt_root(f)
     }

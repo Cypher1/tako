@@ -25,7 +25,8 @@ pub trait Expr: Sized {
     fn new(term: Term<Self::Value, Self::Index>, meta: Self::Meta) -> Self;
 
     fn get<'a>(&'a self, id: &'a Self::Index) -> &'a Term<Self::Value, Self::Index>;
-    fn get_mut<'a>(&'a mut self, id: &'a mut Self::Index) -> &'a mut Term<Self::Value, Self::Index>;
+    fn get_mut<'a>(&'a mut self, id: &'a mut Self::Index)
+        -> &'a mut Term<Self::Value, Self::Index>;
     fn get_meta<'a>(&'a self, id: &'a Self::Index) -> &'a Self::Meta;
     fn get_meta_mut<'a>(&'a mut self, id: &'a mut Self::Index) -> &'a mut Self::Meta;
 
@@ -42,10 +43,11 @@ pub trait Expr: Sized {
             }
             Term::Var(d) => {
                 // eprintln!("\n shift {d}, {depth}");
-                if d > depth { // Rebound inside the nodes.
+                if d > depth {
+                    // Rebound inside the nodes.
                     return (id.clone(), false);
                 }
-                Term::Var((d as i64 +delta)as usize) // References something outside.
+                Term::Var((d as i64 + delta) as usize) // References something outside.
             }
             Term::Abs(inner) => {
                 let (inner, new_inner) = self.shift(&inner, depth, delta);
@@ -81,7 +83,7 @@ pub trait Expr: Sized {
                 return (id.clone(), false);
             }
             Term::Abs(inner) => {
-                let (inner, new_inner) = self.subst(&inner, val, depth+1);
+                let (inner, new_inner) = self.subst(&inner, val, depth + 1);
                 if !new_inner {
                     return (id.clone(), false);
                 }
@@ -109,23 +111,22 @@ pub trait Expr: Sized {
         return (id, had_changed);
     }
 
-    fn reduce_at_impl<'a>(&'a mut self, id: Self::Index, depth: usize) -> (Self::Index, bool)
-    {
+    fn reduce_at_impl<'a>(&'a mut self, id: Self::Index, depth: usize) -> (Self::Index, bool) {
         // eprintln!("{}reducing {}", "  ".repeat(depth), self.as_context(&id));
         let curr = self.get(&id).clone();
         match curr {
-            Term::Val(_) => {},
-            Term::Var(_) => {},
+            Term::Val(_) => {}
+            Term::Var(_) => {}
             Term::Abs(inner) => {
-                let (inner, new_inner) = self.reduce_at(inner, depth+1);
+                let (inner, new_inner) = self.reduce_at(inner, depth + 1);
                 if new_inner {
                     let meta = self.new_meta();
                     return (self.add(Term::Abs(inner), meta), true);
                 }
             }
             Term::App(inner, arg) => {
-                let (arg, new_arg) = self.reduce_at(arg, depth+1);
-                let (inner, new_inner) = self.reduce_at(inner, depth+1);
+                let (arg, new_arg) = self.reduce_at(arg, depth + 1);
+                let (inner, new_inner) = self.reduce_at(inner, depth + 1);
                 if let Term::Abs(inner) = self.get(&inner).clone() {
                     // eprint!("{}applying {} to {}", "  ".repeat(depth), self.as_context(&arg), self.as_context(&inner));
                     // Beta reduction.
@@ -156,7 +157,11 @@ pub trait Expr: Sized {
         *self.root_mut() = root;
     }
 
-    fn apply_to_value(&mut self, value: Self::Value, _arg: Term<Self::Value, Self::Index>) -> Term<Self::Value, Self::Index>;
+    fn apply_to_value(
+        &mut self,
+        value: Self::Value,
+        _arg: Term<Self::Value, Self::Index>,
+    ) -> Term<Self::Value, Self::Index>;
 
     fn as_context<'a, U>(&'a self, val: &'a U) -> WithContext<'a, Self, U> {
         WithContext::new(self, val, vec!["?".to_string()])
@@ -181,10 +186,7 @@ pub trait Expr: Sized {
         curr
     }
 
-    fn from_church<'a>(
-        &self,
-        id: &Self::Index,
-    ) -> Option<u32> {
+    fn from_church<'a>(&self, id: &Self::Index) -> Option<u32> {
         // (\f. (\x. (f ... (f x)...) ))
         let inner = match self.get(id) {
             Term::Abs(inner) => inner,
@@ -197,15 +199,13 @@ pub trait Expr: Sized {
         let mut i = 0;
         loop {
             match self.get(inner) {
-                Term::App(a, b) => {
-                    match self.get(a) {
-                        Term::Var(2) => {
-                            i+=1;
-                            inner = b;
-                        }
-                        _ => return None,
+                Term::App(a, b) => match self.get(a) {
+                    Term::Var(2) => {
+                        i += 1;
+                        inner = b;
                     }
-                }
+                    _ => return None,
+                },
                 Term::Var(x) if *x == 1 => {
                     return Some(i);
                 }
@@ -217,7 +217,10 @@ pub trait Expr: Sized {
     fn fmt_index_term<'a>(
         ctx: &WithContext<'a, Self, Self::Index>,
         f: &mut std::fmt::Formatter,
-    ) -> std::fmt::Result where Self: Sized {
+    ) -> std::fmt::Result
+    where
+        Self: Sized,
+    {
         let this = ctx.ctx;
         let id = ctx.val;
         let term: &Term<Self::Value, Self::Index> = this.get(id);
@@ -240,7 +243,7 @@ pub trait Expr: Sized {
                 write!(f, ")")?;
             }
             Term::Abs(ind) => {
-                let len = ctx.names.len()-1;
+                let len = ctx.names.len() - 1;
                 let chr = ((len % 26) + ('a' as usize)) as u8 as char;
                 let name_ind = len / 26;
                 let name = format!(
@@ -262,7 +265,10 @@ pub trait Expr: Sized {
     fn fmt_index<'a>(
         ctx: &WithContext<'a, Self, Self::Index>,
         f: &mut std::fmt::Formatter,
-    ) -> std::fmt::Result where Self: Sized {
+    ) -> std::fmt::Result
+    where
+        Self: Sized,
+    {
         Self::fmt_index_term(ctx, f)?;
         let this = ctx.ctx;
         let id = ctx.val;
@@ -280,8 +286,7 @@ pub trait Expr: Sized {
     }
 }
 
-impl<'a, Ctx: Expr> std::fmt::Display
-    for WithContext<'a, Ctx, Ctx::Index> {
+impl<'a, Ctx: Expr> std::fmt::Display for WithContext<'a, Ctx, Ctx::Index> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         Ctx::fmt_index(self, f)
     }

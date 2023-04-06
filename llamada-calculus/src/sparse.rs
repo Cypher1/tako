@@ -7,7 +7,7 @@ pub struct Ptr<T, Meta> {
     meta: Meta,
 }
 
-impl <T, Meta> Ptr<T, Meta> {
+impl<T, Meta> Ptr<T, Meta> {
     pub fn new(term: Term<T, Ptr<T, Meta>>, meta: Meta) -> Self {
         Ptr {
             val: Box::new(term),
@@ -39,14 +39,20 @@ impl<T, Meta> SparseRepr<T, Meta> {
     }
 }
 
-
-impl<'a, T, Meta> std::fmt::Display for SparseRepr<T, Meta> where SparseRepr<T, Meta>: Expr {
+impl<'a, T, Meta> std::fmt::Display for SparseRepr<T, Meta>
+where
+    SparseRepr<T, Meta>: Expr,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         self.fmt_root(f)
     }
 }
 
-impl<T: Eq + Clone + std::fmt::Debug + std::fmt::Display, Meta: Clone + Eq + Default + std::fmt::Display + std::fmt::Debug> Expr for SparseRepr<T, Meta> {
+impl<
+        T: Eq + Clone + std::fmt::Debug + std::fmt::Display,
+        Meta: Clone + Eq + Default + std::fmt::Display + std::fmt::Debug,
+    > Expr for SparseRepr<T, Meta>
+{
     type Index = Ptr<T, Meta>;
     type Value = T;
     type Meta = Meta;
@@ -54,9 +60,7 @@ impl<T: Eq + Clone + std::fmt::Debug + std::fmt::Display, Meta: Clone + Eq + Def
 
     fn new(term: Term<T, Ptr<T, Meta>>, meta: Meta) -> Self {
         Self {
-            terms: vec![
-                Ptr::new(term, meta),
-            ],
+            terms: vec![Ptr::new(term, meta)],
             root: 0,
             print_meta: false,
         }
@@ -65,7 +69,10 @@ impl<T: Eq + Clone + std::fmt::Debug + std::fmt::Display, Meta: Clone + Eq + Def
         // TODO: Checked version?
         &id.val
     }
-    fn get_mut<'a>(&'a mut self, id: &'a mut Self::Index) -> &'a mut Term<Self::Value, Self::Index> {
+    fn get_mut<'a>(
+        &'a mut self,
+        id: &'a mut Self::Index,
+    ) -> &'a mut Term<Self::Value, Self::Index> {
         // TODO: Checked version?
         &mut id.val
     }
@@ -77,7 +84,11 @@ impl<T: Eq + Clone + std::fmt::Debug + std::fmt::Display, Meta: Clone + Eq + Def
         // TODO: Checked version?
         &mut id.meta
     }
-    fn apply_to_value(&mut self, _value: Self::Value, _arg: Term<Self::Value, Self::Index>) -> Term<Self::Value, Self::Index> {
+    fn apply_to_value(
+        &mut self,
+        _value: Self::Value,
+        _arg: Term<Self::Value, Self::Index>,
+    ) -> Term<Self::Value, Self::Index> {
         todo!(); // match value {}
     }
     fn root(&self) -> &Self::Index {
