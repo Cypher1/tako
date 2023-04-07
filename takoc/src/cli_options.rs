@@ -33,6 +33,10 @@ impl OptionsTrait for Options {
     fn files(&self) -> &Vec<PathBuf> {
         &self.files
     }
+
+    fn interpreter(&self) -> bool {
+        self.cmd != Command::Build
+    }
 }
 
 impl Default for Options {

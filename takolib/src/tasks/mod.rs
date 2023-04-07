@@ -5,6 +5,7 @@ use crate::ast::Ast;
 use crate::ast::NodeId;
 use crate::error::Error;
 use crate::parser::tokens::Token;
+use crate::primitives::Prim;
 use crate::utils::meta::Meta;
 use async_trait::async_trait;
 use enum_kinds::EnumKind;
@@ -30,6 +31,7 @@ pub enum AnyTask {
     LoadFile(LoadFileTask),
     LexFile(LexFileTask),
     ParseFile(ParseFileTask),
+    Codegen(CodegenTask),
     EvalFile(EvalFileTask),
 }
 
@@ -39,7 +41,8 @@ pub enum AnyTask {
 /// There's normally only one of these, but it seems elegant to have these fit into the `Task` model.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RequestTask {
-    Launch { files: Vec<PathBuf> },
+    Build { files: Vec<PathBuf> },
+    RunInterpreter { files: Vec<PathBuf> },
     EvalLine(String),
 }
 
@@ -156,7 +159,7 @@ pub struct EvalFileTask {
 
 #[async_trait]
 impl Task for EvalFileTask {
-    type Output = crate::primitives::Prim; // For now, we'll just store an updated AST itself.
+    type Output = Prim; // For now, we'll just store an updated AST itself.
     const TASK_KIND: TaskKind = TaskKind::EvalFile;
     const RESULT_IS_CACHABLE: bool = false;
 
@@ -165,6 +168,49 @@ impl Task for EvalFileTask {
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
         let result = crate::interpreter::run(&self.path, &self.ast, self.root)
+            .map_err(|err| self.decorate_error(err));
+        result_sender
+            .send((
+                self,
+                match result {
+                    Ok(result) => Update::FinalResult(result),
+                    Err(err) => Update::Failed(err),
+                },
+            ))
+            .expect("Should be able to send task result to manager");
+    }
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct CodegenTask {
+    pub path: PathBuf,
+    pub ast: Ast,
+    pub root: NodeId,
+}
+
+#[async_trait]
+impl Task for CodegenTask {
+    type Output = Prim; // For now, we'll send back the path as a string.
+    const TASK_KIND: TaskKind = TaskKind::Codegen;
+    const RESULT_IS_CACHABLE: bool = false;
+
+    fn has_file_path(&self) -> Option<&PathBuf> {
+        Some(&self.path)
+    }
+    #[cfg(not(feature = "backend"))]
+    async fn perform(self, result_sender: UpdateSenderFor<Self>) {
+        use crate::error::TError;
+        let err = Update::Failed(self.decorate_error(TError::InternalError {
+            location: None,
+            message: "No backend".to_string(),
+        }));
+        result_sender
+            .send((self, err))
+            .expect("Should be able to send task result to manager");
+    }
+    #[cfg(feature = "backend")]
+    async fn perform(self, result_sender: UpdateSenderFor<Self>) {
+        let result = crate::codegen::codegen(&self.path, &self.ast, self.root)
             .map_err(|err| self.decorate_error(err));
         result_sender
             .send((

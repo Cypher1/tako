@@ -1,12 +1,13 @@
 [workspace]
 
-default-members=["takoc", "takolib"]
+default-members=["takoc", "takolib", "llamada-calculus"]
 
 members = [
     "takolib",
     "takoc",
     "tako-webui",
     "tako-bench",
+    "llamada-calculus",
 ]
 
 [profile.test]

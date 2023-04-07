@@ -3,6 +3,7 @@
 **/gen
 *.exe
 *.out
+*.elf
 *.out.*
 *.rlib
 .cargo

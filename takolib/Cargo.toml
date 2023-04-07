@@ -10,7 +10,9 @@ include = ["src/**/*", "LICENSE.md", "README.md"]
 default=["native"]
 wasm=["wasm-logger"]
 native=["env_logger"]
-llvm_backend=["inkwell"]
+llvm_backend=["inkwell", "backend"]
+mlir_backend=["melior", "backend"]
+backend=[] # signals that 'a' backend is active.
 
 [lib]
 name = "tako"
@@ -41,6 +43,7 @@ lazy_static = "1.4.0"
 env_logger = { version = "0.9", optional = true }
 inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "master", features = ["llvm15-0"], optional = true }
 wasm-logger = { version = "0.2.0", optional = true }
+melior = { version = "0.3.1", optional = true }
 
 [dev-dependencies]
 strum = "0.24"

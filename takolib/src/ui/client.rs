@@ -50,8 +50,11 @@ impl Client {
     }
 
     pub fn start(&mut self) {
-        self.send_command(RequestTask::Launch {
-            files: self.options.files().clone(),
+        let files = self.options.files().clone();
+        self.send_command(if self.options.interpreter() {
+            RequestTask::RunInterpreter { files }
+        } else {
+            RequestTask::Build { files }
         });
     }
 

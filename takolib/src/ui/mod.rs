@@ -14,6 +14,7 @@ pub enum UserAction {
 
 #[async_trait]
 pub trait OptionsTrait: std::fmt::Debug + Send {
+    fn interpreter(&self) -> bool;
     fn files(&self) -> &Vec<PathBuf>;
     fn interactive(&self) -> bool;
     fn oneshot(&self) -> bool;
