@@ -4,6 +4,9 @@ use crate::{EvalInfo, Expr, Term};
 
 #[derive(Copy, Eq, Hash, Debug, Clone, PartialEq, PartialOrd, Ord)]
 pub enum NumOp {
+    Not,
+    And,
+    Or,
     Add,
     Mul,
     Sub,
@@ -11,9 +14,11 @@ pub enum NumOp {
     Mod,
 }
 
+type Prim = u32;
+
 #[derive(Copy, Eq, Hash, Debug, Clone, PartialEq, PartialOrd, Ord)]
 pub enum NumExt {
-    Value(u32),
+    Value(Prim),
     Op(NumOp),
 }
 
@@ -33,12 +38,12 @@ struct CompactNumerals<Meta> {
 
 #[derive(Debug, Eq, PartialEq)]
 enum CompactErr {
-    WrongArgs(NumOp, Vec<u32>),
+    WrongArgs(NumOp, Vec<Prim>),
     UnevaluatedArg(Term<NumExt, usize>),
 }
 
 impl<Meta: Default + std::fmt::Display> CompactNumerals<Meta> {
-    fn get_arg(&self, value: Term<NumExt, usize>, args: &mut Vec<u32>) -> Result<(), CompactErr> {
+    fn get_arg(&self, value: Term<NumExt, usize>, args: &mut Vec<Prim>) -> Result<(), CompactErr> {
         match value {
             Term::Ext(NumExt::Value(val)) => {
                 args.push(val);
@@ -51,7 +56,7 @@ impl<Meta: Default + std::fmt::Display> CompactNumerals<Meta> {
     fn get_op_and_args(
         &self,
         value: Term<NumExt, usize>,
-        args: &mut Vec<u32>,
+        args: &mut Vec<Prim>,
     ) -> Result<NumOp, CompactErr> {
         let mut curr = value;
         loop {
@@ -71,11 +76,14 @@ impl<Meta: Default + std::fmt::Display> CompactNumerals<Meta> {
         let mut args = vec![];
         let op = self.get_op_and_args(value, &mut args)?;
         let res = match (op, &args[..]) {
+            (NumOp::Not, [a]) => !a,
             (NumOp::Mod, [a, b]) => a % b,
             (NumOp::Div, [a, b]) => a - b,
             (NumOp::Sub, [a, b]) => a - b,
             (NumOp::Add, [a, b]) => a + b,
             (NumOp::Mul, [a, b]) => a * b,
+            (NumOp::And, [a, b]) => a & b,
+            (NumOp::Or, [a, b]) => a | b,
             _ => return Err(CompactErr::WrongArgs(op, args)),
         };
         Ok(Term::Ext(NumExt::Value(res)))
@@ -127,7 +135,8 @@ impl<Meta: Default + std::fmt::Display> Expr for CompactNumerals<Meta> {
         Some(match ext {
             NumExt::Value(_) => EvalInfo::new(0),
             NumExt::Op(op) => match op {
-                NumOp::Add | NumOp::Sub | NumOp::Div | NumOp::Mod | NumOp::Mul => EvalInfo::new(2),
+                NumOp::And | NumOp::Or | NumOp::Add | NumOp::Sub | NumOp::Div | NumOp::Mod | NumOp::Mul => EvalInfo::new(2),
+                NumOp::Not => EvalInfo::new(1),
             },
         })
     }
