@@ -3,8 +3,8 @@
 pub mod tests;
 
 pub mod dense;
-pub mod sparse;
 pub mod ref_counted;
+pub mod sparse;
 pub mod types;
 pub mod with_context;
 pub use dense::{DenseRepr, LambdaCalc};

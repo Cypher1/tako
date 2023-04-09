@@ -10,10 +10,7 @@ pub struct Ptr<T, Meta> {
 
 impl<T, Meta> Ptr<T, Meta> {
     pub fn new(term: Term<T, Rc<Ptr<T, Meta>>>, meta: Meta) -> Self {
-        Ptr {
-            val: term,
-            meta,
-        }
+        Ptr { val: term, meta }
     }
 }
 
