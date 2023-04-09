@@ -134,16 +134,8 @@ impl<Meta: Default + std::fmt::Display> Expr for CompactNumerals<Meta> {
     fn ext_info(&self, ext: Self::Extension) -> Option<EvalInfo> {
         Some(match ext {
             NumExt::Value(_) => EvalInfo::new(0),
-            NumExt::Op(op) => match op {
-                NumOp::And
-                | NumOp::Or
-                | NumOp::Add
-                | NumOp::Sub
-                | NumOp::Div
-                | NumOp::Mod
-                | NumOp::Mul => EvalInfo::new(2),
-                NumOp::Not => EvalInfo::new(1),
-            },
+            NumExt::Op(NumOp::Not) => EvalInfo::new(1),
+            _ => EvalInfo::new(2),
         })
     }
 }
