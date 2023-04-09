@@ -1,47 +1,48 @@
 use crate::types::{Empty, Never};
 use crate::{Expr, Term};
+use std::rc::Rc;
 
 #[derive(Debug, Clone, Eq, Hash, Ord, PartialOrd, PartialEq)]
 pub struct Ptr<T, Meta> {
-    val: Box<Term<T, Ptr<T, Meta>>>,
+    val: Term<T, Rc<Ptr<T, Meta>>>,
     meta: Meta,
 }
 
 impl<T, Meta> Ptr<T, Meta> {
-    pub fn new(term: Term<T, Ptr<T, Meta>>, meta: Meta) -> Self {
+    pub fn new(term: Term<T, Rc<Ptr<T, Meta>>>, meta: Meta) -> Self {
         Ptr {
-            val: Box::new(term),
+            val: term,
             meta,
         }
     }
 }
 
 #[derive(Debug, Clone, Eq, Hash, Ord, PartialOrd, PartialEq)]
-pub struct SparseRepr<T, Meta> {
-    terms: Vec<Ptr<T, Meta>>,
+pub struct RcRepr<T, Meta> {
+    terms: Vec<Rc<Ptr<T, Meta>>>,
     root: usize,
     print_meta: bool,
 }
 
-impl<T, Meta> SparseRepr<T, Meta> {
+impl<T, Meta> RcRepr<T, Meta> {
     // TODO: type Term=Term<T, usize>;
-    pub fn get_last_id(&mut self) -> Ptr<T, Meta> {
+    pub fn get_last_id(&mut self) -> Rc<Ptr<T, Meta>> {
         self.terms.pop().unwrap()
     }
 
-    pub fn push(&mut self, term: Term<T, Ptr<T, Meta>>, meta: Meta) -> Ptr<T, Meta> {
-        Ptr::new(term, meta)
+    pub fn push(&mut self, term: Term<T, Rc<Ptr<T, Meta>>>, meta: Meta) -> Rc<Ptr<T, Meta>> {
+        Rc::new(Ptr::new(term, meta))
     }
 
-    pub fn set_root(&mut self, index: Ptr<T, Meta>) {
+    pub fn set_root(&mut self, index: Rc<Ptr<T, Meta>>) {
         self.terms.push(index);
         self.root = self.terms.len() - 1
     }
 }
 
-impl<T, Meta> std::fmt::Display for SparseRepr<T, Meta>
+impl<T, Meta> std::fmt::Display for RcRepr<T, Meta>
 where
-    SparseRepr<T, Meta>: Expr,
+    RcRepr<T, Meta>: Expr,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         self.fmt_root(f)
@@ -51,16 +52,16 @@ where
 impl<
         T: Eq + Clone + std::fmt::Debug + std::fmt::Display,
         Meta: Clone + Eq + Default + std::fmt::Display + std::fmt::Debug,
-    > Expr for SparseRepr<T, Meta>
+    > Expr for RcRepr<T, Meta>
 {
-    type Index = Ptr<T, Meta>;
+    type Index = Rc<Ptr<T, Meta>>;
     type Value = T;
     type Meta = Meta;
     // type Term = Term<Self::Value, Self::Index>;
 
-    fn new(term: Term<T, Ptr<T, Meta>>, meta: Meta) -> Self {
+    fn new(term: Term<T, Rc<Ptr<T, Meta>>>, meta: Meta) -> Self {
         Self {
-            terms: vec![Ptr::new(term, meta)],
+            terms: vec![Rc::new(Ptr::new(term, meta))],
             root: 0,
             print_meta: false,
         }
@@ -87,7 +88,7 @@ impl<
         &mut self.terms[self.root]
     }
     fn add(&mut self, term: Term<Self::Value, Self::Index>, meta: Meta) -> Self::Index {
-        Ptr::new(term, meta)
+        Rc::new(Ptr::new(term, meta))
     }
 
     fn new_meta(&mut self) -> Self::Meta {
@@ -97,7 +98,7 @@ impl<
         self.print_meta
     }
 }
-pub type LambdaCalc = SparseRepr<Never, Empty>;
+pub type LambdaCalc = RcRepr<Never, Empty>;
 
 #[cfg(test)]
 mod tests {

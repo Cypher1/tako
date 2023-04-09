@@ -4,6 +4,7 @@ pub mod tests;
 
 pub mod dense;
 pub mod sparse;
+pub mod ref_counted;
 pub mod types;
 pub mod with_context;
 pub use dense::{DenseRepr, LambdaCalc};
@@ -25,11 +26,7 @@ pub trait Expr: Sized {
     fn new(term: Term<Self::Value, Self::Index>, meta: Self::Meta) -> Self;
 
     fn get<'a>(&'a self, id: &'a Self::Index) -> &'a Term<Self::Value, Self::Index>;
-    fn get_mut<'a>(&'a mut self, id: &'a mut Self::Index)
-        -> &'a mut Term<Self::Value, Self::Index>;
     fn get_meta<'a>(&'a self, id: &'a Self::Index) -> &'a Self::Meta;
-    fn get_meta_mut<'a>(&'a mut self, id: &'a mut Self::Index) -> &'a mut Self::Meta;
-
     fn root(&self) -> &Self::Index;
     fn root_mut(&mut self) -> &mut Self::Index;
     fn new_meta(&mut self) -> Self::Meta;

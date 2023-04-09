@@ -48,17 +48,9 @@ impl<T: Clone + std::fmt::Debug + std::fmt::Display, Meta: Default + std::fmt::D
         // TODO: Checked version?
         &self.terms[*id].0
     }
-    fn get_mut(&mut self, id: &mut Self::Index) -> &mut Term<Self::Value, Self::Index> {
-        // TODO: Checked version?
-        &mut self.terms[*id].0
-    }
     fn get_meta(&self, id: &Self::Index) -> &Self::Meta {
         // TODO: Checked version?
         &self.terms[*id].1
-    }
-    fn get_meta_mut(&mut self, id: &mut Self::Index) -> &mut Self::Meta {
-        // TODO: Checked version?
-        &mut self.terms[*id].1
     }
     fn apply_to_value(
         &mut self,
