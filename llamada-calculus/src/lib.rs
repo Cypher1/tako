@@ -29,9 +29,8 @@ pub trait Expr: Sized {
     fn get_meta<'a>(&'a self, id: &'a Self::Index) -> &'a Self::Meta;
     fn root(&self) -> &Self::Index;
     fn root_mut(&mut self) -> &mut Self::Index;
-    fn new_meta(&mut self) -> Self::Meta;
 
-    fn add(&mut self, term: Term<Self::Value, Self::Index>, meta: Self::Meta) -> Self::Index;
+    fn add(&mut self, term: Term<Self::Value, Self::Index>) -> Self::Index;
 
     fn shift(&mut self, id: &Self::Index, depth: usize, delta: i64) -> (Self::Index, bool) {
         let term = match self.get(id).clone() {
@@ -62,8 +61,7 @@ pub trait Expr: Sized {
                 Term::App(inner, arg)
             }
         };
-        let meta = self.new_meta();
-        (self.add(term, meta), true)
+        (self.add(term), true)
     }
     fn subst(&mut self, id: &Self::Index, val: &Self::Index, depth: usize) -> (Self::Index, bool) {
         let term = match self.get(id).clone() {
@@ -95,8 +93,7 @@ pub trait Expr: Sized {
                 Term::App(inner, arg)
             }
         };
-        let meta = self.new_meta();
-        (self.add(term, meta), true)
+        (self.add(term), true)
     }
 
     fn reduce_at(&mut self, id: Self::Index, depth: usize) -> (Self::Index, bool) {
@@ -117,8 +114,7 @@ pub trait Expr: Sized {
             Term::Abs(inner) => {
                 let (inner, new_inner) = self.reduce_at(inner, depth + 1);
                 if new_inner {
-                    let meta = self.new_meta();
-                    return (self.add(Term::Abs(inner), meta), true);
+                    return (self.add(Term::Abs(inner)), true);
                 }
             }
             Term::App(inner, arg) => {
@@ -136,8 +132,7 @@ pub trait Expr: Sized {
                 // TOdO
                 //}
                 if new_inner || new_arg {
-                    let meta = self.new_meta();
-                    return (self.add(Term::App(inner, arg), meta), true);
+                    return (self.add(Term::App(inner, arg)), true);
                 }
             }
         }
@@ -165,21 +160,16 @@ pub trait Expr: Sized {
     }
 
     fn to_church(&mut self, i: u32) -> Self::Index {
-        let meta = self.new_meta();
-        let startv = self.add(Term::Var(1), meta);
+        let startv = self.add(Term::Var(1));
         let mut curr = startv;
         if i > 0 {
-            let meta = self.new_meta();
-            let f = self.add(Term::Var(2), meta);
+            let f = self.add(Term::Var(2));
             for _ in 0..i {
-                let meta = self.new_meta();
-                curr = self.add(Term::App(f.clone(), curr), meta);
+                curr = self.add(Term::App(f.clone(), curr));
             }
         }
-        let meta = self.new_meta();
-        curr = self.add(Term::Abs(curr), meta);
-        let meta = self.new_meta();
-        curr = self.add(Term::Abs(curr), meta);
+        curr = self.add(Term::Abs(curr));
+        curr = self.add(Term::Abs(curr));
         curr
     }
 
