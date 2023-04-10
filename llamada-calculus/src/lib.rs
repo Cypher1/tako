@@ -15,7 +15,7 @@ pub enum Term<T, Id> {
     Var(usize),
     App(Id, Id),
     Abs(Id),
-    Val(T),
+    Ext(T),
 }
 
 pub trait Expr: Sized {
@@ -34,7 +34,7 @@ pub trait Expr: Sized {
 
     fn shift(&mut self, id: &Self::Index, depth: usize, delta: i64) -> (Self::Index, bool) {
         let term = match self.get(id).clone() {
-            Term::Val(_) => {
+            Term::Ext(_) => {
                 return (id.clone(), false);
             }
             Term::Var(d) => {
@@ -65,7 +65,7 @@ pub trait Expr: Sized {
     }
     fn subst(&mut self, id: &Self::Index, val: &Self::Index, depth: usize) -> (Self::Index, bool) {
         let term = match self.get(id).clone() {
-            Term::Val(_) => {
+            Term::Ext(_) => {
                 return (id.clone(), false);
             }
             Term::Var(d) => {
@@ -109,7 +109,7 @@ pub trait Expr: Sized {
         // eprintln!("{}reducing {}", "  ".repeat(depth), self.as_context(&id));
         let curr = self.get(&id).clone();
         match curr {
-            Term::Val(_) => {}
+            Term::Ext(_) => {}
             Term::Var(_) => {}
             Term::Abs(inner) => {
                 let (inner, new_inner) = self.reduce_at(inner, depth + 1);
@@ -128,7 +128,7 @@ pub trait Expr: Sized {
                     // eprintln!(" -> {}", self.as_context(&inner));
                     return (inner, true);
                 }
-                //if let Term::Val(val) = self.get(inner) {
+                //if let Term::Ext(val) = self.get(inner) {
                 // TOdO
                 //}
                 if new_inner || new_arg {
@@ -212,7 +212,7 @@ pub trait Expr: Sized {
         let id = ctx.val;
         let term: &Term<Self::Value, Self::Index> = this.get(id);
         match term {
-            Term::Val(val) => write!(f, "{:?}", val)?,
+            Term::Ext(val) => write!(f, "{:?}", val)?,
             Term::Var(var_id) => {
                 let ind = ctx.names.len().checked_sub(*var_id);
                 if let Some(ind) = ind {
