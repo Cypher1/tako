@@ -201,8 +201,8 @@ pub trait Expr: Sized {
         }
     }
 
-    fn fmt_index_term<'a>(
-        ctx: &WithContext<'a, Self, Self::Index>,
+    fn fmt_index_term(
+        ctx: &WithContext<'_, Self, Self::Index>,
         f: &mut std::fmt::Formatter,
     ) -> std::fmt::Result
     where
@@ -249,8 +249,8 @@ pub trait Expr: Sized {
         Ok(())
     }
 
-    fn fmt_index<'a>(
-        ctx: &WithContext<'a, Self, Self::Index>,
+    fn fmt_index(
+        ctx: &WithContext<'_, Self, Self::Index>,
         f: &mut std::fmt::Formatter,
     ) -> std::fmt::Result
     where
