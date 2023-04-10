@@ -20,17 +20,17 @@ pub enum Term<T, Id> {
 
 pub trait Expr: Sized {
     type Index: Clone + Eq + PartialEq + std::fmt::Debug;
-    type Value: Clone + std::fmt::Display + std::fmt::Debug;
+    type Extension: Clone + std::fmt::Display + std::fmt::Debug;
     type Meta: std::fmt::Display;
 
-    fn new(term: Term<Self::Value, Self::Index>, meta: Self::Meta) -> Self;
+    fn new(term: Term<Self::Extension, Self::Index>, meta: Self::Meta) -> Self;
 
-    fn get<'a>(&'a self, id: &'a Self::Index) -> &'a Term<Self::Value, Self::Index>;
+    fn get<'a>(&'a self, id: &'a Self::Index) -> &'a Term<Self::Extension, Self::Index>;
     fn get_meta<'a>(&'a self, id: &'a Self::Index) -> &'a Self::Meta;
     fn root(&self) -> &Self::Index;
     fn root_mut(&mut self) -> &mut Self::Index;
 
-    fn add(&mut self, term: Term<Self::Value, Self::Index>) -> Self::Index;
+    fn add(&mut self, term: Term<Self::Extension, Self::Index>) -> Self::Index;
 
     fn shift(&mut self, id: &Self::Index, depth: usize, delta: i64) -> (Self::Index, bool) {
         let term = match self.get(id).clone() {
@@ -140,7 +140,7 @@ pub trait Expr: Sized {
     }
     fn reduce(&mut self)
     where
-        Term<Self::Value, Self::Index>: std::fmt::Debug + Clone,
+        Term<Self::Extension, Self::Index>: std::fmt::Debug + Clone,
     {
         // TODO: Beta and Eta reduction.
         let root = self.root().clone();
@@ -151,9 +151,9 @@ pub trait Expr: Sized {
 
     fn apply_to_value(
         &mut self,
-        value: Self::Value,
-        _arg: Term<Self::Value, Self::Index>,
-    ) -> Term<Self::Value, Self::Index>;
+        value: Self::Extension,
+        _arg: Term<Self::Extension, Self::Index>,
+    ) -> Term<Self::Extension, Self::Index>;
 
     fn as_context<'a, U>(&'a self, val: &'a U) -> WithContext<'a, Self, U> {
         WithContext::new(self, val, vec!["?".to_string()])
@@ -210,7 +210,7 @@ pub trait Expr: Sized {
     {
         let this = ctx.ctx;
         let id = ctx.val;
-        let term: &Term<Self::Value, Self::Index> = this.get(id);
+        let term: &Term<Self::Extension, Self::Index> = this.get(id);
         match term {
             Term::Ext(val) => write!(f, "{:?}", val)?,
             Term::Var(var_id) => {

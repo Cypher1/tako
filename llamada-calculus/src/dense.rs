@@ -31,9 +31,9 @@ impl<T: Clone + std::fmt::Debug + std::fmt::Display, Meta: Default + std::fmt::D
     for DenseRepr<T, Meta>
 {
     type Index = usize;
-    type Value = T;
+    type Extension = T;
     type Meta = Meta;
-    // type Term = Term<Self::Value, Self::Index>;
+    // type Term = Term<Self::Extension, Self::Index>;
 
     fn new(term: Term<T, usize>, meta: Meta) -> Self {
         let mut this = Self {
@@ -44,7 +44,7 @@ impl<T: Clone + std::fmt::Debug + std::fmt::Display, Meta: Default + std::fmt::D
         this.push(term, meta);
         this
     }
-    fn get(&self, id: &Self::Index) -> &Term<Self::Value, Self::Index> {
+    fn get(&self, id: &Self::Index) -> &Term<Self::Extension, Self::Index> {
         // TODO: Checked version?
         &self.terms[*id].0
     }
@@ -54,9 +54,9 @@ impl<T: Clone + std::fmt::Debug + std::fmt::Display, Meta: Default + std::fmt::D
     }
     fn apply_to_value(
         &mut self,
-        _value: Self::Value,
-        _arg: Term<Self::Value, Self::Index>,
-    ) -> Term<Self::Value, Self::Index> {
+        _value: Self::Extension,
+        _arg: Term<Self::Extension, Self::Index>,
+    ) -> Term<Self::Extension, Self::Index> {
         todo!(); // match value {}
     }
     fn root(&self) -> &Self::Index {
@@ -65,7 +65,7 @@ impl<T: Clone + std::fmt::Debug + std::fmt::Display, Meta: Default + std::fmt::D
     fn root_mut(&mut self) -> &mut Self::Index {
         &mut self.root
     }
-    fn add(&mut self, term: Term<Self::Value, Self::Index>) -> Self::Index {
+    fn add(&mut self, term: Term<Self::Extension, Self::Index>) -> Self::Index {
         let meta = Self::Meta::default();
         self.push(term, meta)
     }

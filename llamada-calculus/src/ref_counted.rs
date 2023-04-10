@@ -52,9 +52,9 @@ impl<
     > Expr for RcRepr<T, Meta>
 {
     type Index = Rc<Ptr<T, Meta>>;
-    type Value = T;
+    type Extension = T;
     type Meta = Meta;
-    // type Term = Term<Self::Value, Self::Index>;
+    // type Term = Term<Self::Extension, Self::Index>;
 
     fn new(term: Term<T, Rc<Ptr<T, Meta>>>, meta: Meta) -> Self {
         Self {
@@ -63,7 +63,7 @@ impl<
             print_meta: false,
         }
     }
-    fn get<'a>(&'a self, id: &'a Self::Index) -> &'a Term<Self::Value, Self::Index> {
+    fn get<'a>(&'a self, id: &'a Self::Index) -> &'a Term<Self::Extension, Self::Index> {
         // TODO: Checked version?
         &id.val
     }
@@ -73,9 +73,9 @@ impl<
     }
     fn apply_to_value(
         &mut self,
-        _value: Self::Value,
-        _arg: Term<Self::Value, Self::Index>,
-    ) -> Term<Self::Value, Self::Index> {
+        _value: Self::Extension,
+        _arg: Term<Self::Extension, Self::Index>,
+    ) -> Term<Self::Extension, Self::Index> {
         todo!(); // match value {}
     }
     fn root(&self) -> &Self::Index {
@@ -84,7 +84,7 @@ impl<
     fn root_mut(&mut self) -> &mut Self::Index {
         &mut self.terms[self.root]
     }
-    fn add(&mut self, term: Term<Self::Value, Self::Index>) -> Self::Index {
+    fn add(&mut self, term: Term<Self::Extension, Self::Index>) -> Self::Index {
         let meta = Self::Meta::default();
         Rc::new(Ptr::new(term, meta))
     }
