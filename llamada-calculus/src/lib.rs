@@ -2,6 +2,7 @@
 #[macro_use]
 pub mod tests;
 
+pub mod compact_numerals;
 pub mod dense;
 pub mod ref_counted;
 pub mod sparse;
@@ -25,6 +26,7 @@ pub trait Expr: Sized {
 
     fn new(term: Term<Self::Extension, Self::Index>, meta: Self::Meta) -> Self;
 
+    fn get_last_id(&self) -> Self::Index;
     fn get<'a>(&'a self, id: &'a Self::Index) -> &'a Term<Self::Extension, Self::Index>;
     fn get_meta<'a>(&'a self, id: &'a Self::Index) -> &'a Self::Meta;
     fn root(&self) -> &Self::Index;
@@ -267,6 +269,7 @@ pub trait Expr: Sized {
     }
 
     fn print_meta(&self) -> bool;
+    fn set_print_meta(&mut self, print_meta: bool);
 
     fn fmt_root(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         Self::fmt_index(&self.as_context(self.root()), f)

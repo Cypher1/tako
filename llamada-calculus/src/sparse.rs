@@ -65,6 +65,9 @@ impl<
             print_meta: false,
         }
     }
+    fn get_last_id(&self) -> Self::Index {
+        self.terms.last().unwrap().clone()
+    }
     fn get<'a>(&'a self, id: &'a Self::Index) -> &'a Term<Self::Extension, Self::Index> {
         // TODO: Checked version?
         &id.val
@@ -92,6 +95,9 @@ impl<
     }
     fn print_meta(&self) -> bool {
         self.print_meta
+    }
+    fn set_print_meta(&mut self, print_meta: bool) {
+        self.print_meta = print_meta;
     }
 }
 pub type LambdaCalc = SparseRepr<Never, Empty>;

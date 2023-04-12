@@ -12,10 +12,9 @@ pub struct DenseRepr<T, Meta> {
 
 impl<T, Meta> DenseRepr<T, Meta> {
     // TODO: type Term=Term<T, usize>;
-    pub fn get_last_id(&self) -> usize {
+    fn get_last_id(&self) -> usize {
         self.terms.len() - 1
     }
-
     pub fn push(&mut self, term: Term<T, usize>, meta: Meta) -> usize {
         self.terms.push((term, meta));
         self.get_last_id()
@@ -44,6 +43,9 @@ impl<T: Clone + std::fmt::Debug + std::fmt::Display, Meta: Default + std::fmt::D
         this.push(term, meta);
         this
     }
+    fn get_last_id(&self) -> Self::Index {
+        self.terms.len() - 1
+    }
     fn get(&self, id: &Self::Index) -> &Term<Self::Extension, Self::Index> {
         // TODO: Checked version?
         &self.terms[*id].0
@@ -71,6 +73,9 @@ impl<T: Clone + std::fmt::Debug + std::fmt::Display, Meta: Default + std::fmt::D
     }
     fn print_meta(&self) -> bool {
         self.print_meta
+    }
+    fn set_print_meta(&mut self, print_meta: bool) {
+        self.print_meta = print_meta;
     }
 }
 pub type LambdaCalc = DenseRepr<Never, Empty>;
