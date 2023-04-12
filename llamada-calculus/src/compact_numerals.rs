@@ -1,14 +1,12 @@
+use crate::dense::DenseRepr;
 use crate::types::Empty;
 use crate::{Expr, Term};
-use crate::dense::DenseRepr;
 
 struct CompactNumerals<Meta> {
     repr: DenseRepr<u32, Meta>,
 }
 
-impl<Meta: Default + std::fmt::Display> Expr
-    for CompactNumerals<Meta>
-{
+impl<Meta: Default + std::fmt::Display> Expr for CompactNumerals<Meta> {
     type Index = usize;
     type Extension = u32;
     type Meta = Meta;
@@ -16,7 +14,7 @@ impl<Meta: Default + std::fmt::Display> Expr
 
     fn new(term: Term<Self::Extension, usize>, meta: Meta) -> Self {
         Self {
-            repr: DenseRepr::new(term, meta)
+            repr: DenseRepr::new(term, meta),
         }
     }
     fn get<'a>(&'a self, id: &'a Self::Index) -> &Term<Self::Extension, Self::Index> {
@@ -67,4 +65,3 @@ mod tests {
     use super::*;
     tests!(CompactNumerals<Empty>);
 }
-
