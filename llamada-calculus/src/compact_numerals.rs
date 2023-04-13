@@ -158,7 +158,7 @@ mod tests {
         let mab = expr.add(Term::App(ma, b));
         let abs1_mab = expr.add(Term::Abs(mab));
         let mul = expr.add(Term::Abs(abs1_mab));
-        *expr.root_mut() = mul.clone();
+        *expr.root_mut() = mul;
 
         assert_eq!(format!("{}", &expr), "(\\a. (\\b. ((Op(Mul) a) b)))");
 
@@ -167,7 +167,7 @@ mod tests {
                 let church_n = expr.add(Term::Ext(NumExt::Value(n)));
                 let church_m = expr.add(Term::Ext(NumExt::Value(m)));
 
-                let mul_m = expr.add(Term::App(mul.clone(), church_m));
+                let mul_m = expr.add(Term::App(mul, church_m));
                 let mul_n_m = expr.add(Term::App(mul_m, church_n));
                 *expr.root_mut() = mul_n_m;
                 expr.reduce();
@@ -189,7 +189,7 @@ mod tests {
         let mab = expr.add(Term::App(ma, b));
         let abs1_mab = expr.add(Term::Abs(mab));
         let add = expr.add(Term::Abs(abs1_mab));
-        *expr.root_mut() = add.clone();
+        *expr.root_mut() = add;
 
         assert_eq!(format!("{}", &expr), "(\\a. (\\b. ((Op(Add) a) b)))");
 
@@ -198,7 +198,7 @@ mod tests {
                 let church_n = expr.add(Term::Ext(NumExt::Value(n)));
                 let church_m = expr.add(Term::Ext(NumExt::Value(m)));
 
-                let add_m = expr.add(Term::App(add.clone(), church_m));
+                let add_m = expr.add(Term::App(add, church_m));
                 let add_n_m = expr.add(Term::App(add_m, church_n));
                 *expr.root_mut() = add_n_m;
                 expr.reduce();
