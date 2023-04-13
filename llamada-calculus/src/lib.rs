@@ -19,6 +19,39 @@ pub enum Term<T, Id> {
     Ext(T),
 }
 
+#[derive(Debug, Clone, Eq, Hash, Ord, PartialOrd, PartialEq)]
+pub struct ExprResult<T> {
+    id: T,
+    changed: bool,
+    is_ext_apps: bool,
+}
+
+impl<T> ExprResult<T> {
+    pub fn unchanged(id: T) -> Self {
+        Self::new(id, false, false)
+    }
+    pub fn changed(self) -> Self {
+        Self {
+            changed: true,
+            ..self
+        }
+    }
+    pub fn new(id: T, changed: bool, is_ext_apps: bool) -> Self {
+        Self {
+            id,
+            changed,
+            is_ext_apps,
+        }
+    }
+    pub fn map<R>(self, f: impl FnOnce(T) -> R) -> ExprResult<R> {
+        ExprResult {
+            id: f(self.id),
+            changed: self.changed,
+            is_ext_apps: self.is_ext_apps,
+        }
+    }
+}
+
 pub trait Expr: Sized {
     type Index: Clone + Eq + PartialEq + std::fmt::Debug;
     type Extension: Clone + std::fmt::Display + std::fmt::Debug;
@@ -34,89 +67,90 @@ pub trait Expr: Sized {
 
     fn add(&mut self, term: Term<Self::Extension, Self::Index>) -> Self::Index;
 
-    fn shift(&mut self, id: &Self::Index, depth: usize, delta: i64) -> (Self::Index, bool) {
+    fn shift(&mut self, id: &Self::Index, depth: usize, delta: i64) -> ExprResult<Self::Index> {
         let term = match self.get(id).clone() {
             Term::Ext(_) => {
-                return (id.clone(), false);
+                return ExprResult::unchanged(id.clone());
             }
             Term::Var(d) => {
                 // eprintln!("\n shift {d}, {depth}");
                 if d > depth {
                     // Rebound inside the nodes.
-                    return (id.clone(), false);
+                    return ExprResult::unchanged(id.clone());
                 }
-                Term::Var((d as i64 + delta) as usize) // References something outside.
+                ExprResult::new(Term::Var((d as i64 + delta) as usize), true, false) // References something outside.
             }
             Term::Abs(inner) => {
-                let (inner, new_inner) = self.shift(&inner, depth, delta);
-                if !new_inner {
-                    return (id.clone(), false);
+                let inner = self.shift(&inner, depth, delta);
+                if !inner.changed {
+                    return ExprResult::unchanged(id.clone());
                 }
-                Term::Abs(inner)
+                ExprResult::new(Term::Abs(inner.id), true, false)
             }
             Term::App(inner, arg) => {
-                let (inner, new_inner) = self.shift(&inner, depth, delta);
-                let (arg, new_arg) = self.shift(&arg, depth, delta);
-                if !new_inner && !new_arg {
-                    return (id.clone(), false);
+                let inner = self.shift(&inner, depth, delta);
+                let arg = self.shift(&arg, depth, delta);
+                if !inner.changed && !arg.changed {
+                    return ExprResult::unchanged(id.clone());
                 }
-                Term::App(inner, arg)
+                ExprResult::new(Term::App(inner.id, arg.id), true, inner.is_ext_apps && arg.is_ext_apps)
             }
         };
-        (self.add(term), true)
+        term.map(|term| self.add(term))
     }
-    fn subst(&mut self, id: &Self::Index, val: &Self::Index, depth: usize) -> (Self::Index, bool) {
+    fn subst(&mut self, id: &Self::Index, val: &Self::Index, depth: usize) -> ExprResult<Self::Index> {
         let term = match self.get(id).clone() {
             Term::Ext(_) => {
-                return (id.clone(), false);
+                return ExprResult::unchanged(id.clone());
             }
             Term::Var(d) => {
                 // eprintln!("\n subst {d}, {depth}");
                 if d == depth {
                     // Create a shifted version!
-                    let (id, _changed) = self.shift(val, 0, depth as i64);
-                    return (id, true);
+                    let id = self.shift(val, 0, depth as i64);
+                    return id.changed();
                 }
-                return (id.clone(), false);
+                return ExprResult::unchanged(id.clone());
             }
             Term::Abs(inner) => {
-                let (inner, new_inner) = self.subst(&inner, val, depth + 1);
-                if !new_inner {
-                    return (id.clone(), false);
+                let inner = self.subst(&inner, val, depth + 1);
+                if !inner.changed {
+                    return ExprResult::unchanged(id.clone());
                 }
-                Term::Abs(inner)
+                ExprResult::new(Term::Abs(inner.id), true, false)
             }
             Term::App(inner, arg) => {
-                let (inner, new_inner) = self.subst(&inner, val, depth);
-                let (arg, new_arg) = self.subst(&arg, val, depth);
-                if !new_inner && !new_arg {
-                    return (id.clone(), false);
+                let inner = self.subst(&inner, val, depth);
+                let arg = self.subst(&arg, val, depth);
+                if !inner.changed && !arg.changed {
+                    return ExprResult::unchanged(id.clone());
                 }
-                Term::App(inner, arg)
+                ExprResult::new(Term::App(inner.id, arg.id), true, inner.is_ext_apps && arg.is_ext_apps)
             }
         };
-        (self.add(term), true)
+        term.map(|term| self.add(term))
     }
 
-    fn reduce_at(&mut self, id: Self::Index, depth: usize) -> (Self::Index, bool) {
-        let (mut id, had_changed) = self.reduce_at_impl(id, depth);
-        let mut changed = true;
-        while had_changed && changed {
-            (id, changed) = self.reduce_at_impl(id, depth);
+    fn reduce_at(&mut self, id: Self::Index, depth: usize) -> ExprResult<Self::Index> {
+        let mut id = self.reduce_at_impl(id, depth);
+        let had_changed = id.changed;
+        while had_changed && id.changed {
+            id = self.reduce_at_impl(id.id, depth);
         }
-        (id, had_changed)
+        id.changed = had_changed;
+        id
     }
 
-    fn reduce_at_impl(&mut self, id: Self::Index, depth: usize) -> (Self::Index, bool) {
+    fn reduce_at_impl(&mut self, id: Self::Index, depth: usize) -> ExprResult<Self::Index> {
         // eprintln!("{}reducing {}", "  ".repeat(depth), self.as_context(&id));
         let curr = self.get(&id).clone();
         match curr {
             Term::Ext(_) => {}
             Term::Var(_) => {}
             Term::Abs(inner) => {
-                let (inner, new_inner) = self.reduce_at(inner, depth + 1);
-                if new_inner {
-                    return (self.add(Term::Abs(inner)), true);
+                let inner = self.reduce_at(inner, depth + 1);
+                if inner.changed {
+                    return inner.map(|inner| self.add(Term::Abs(inner)));
                 }
             }
             Term::App(inner, arg) => {
@@ -138,7 +172,7 @@ pub trait Expr: Sized {
                 }
             }
         }
-        (id, false)
+        ExprResult::unchanged(id)
     }
     fn reduce(&mut self)
     where
