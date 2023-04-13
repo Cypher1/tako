@@ -1,7 +1,6 @@
-
 use crate::dense::DenseRepr;
 use crate::types::Empty;
-use crate::{Expr, Term, EvalInfo};
+use crate::{EvalInfo, Expr, Term};
 
 #[derive(Copy, Eq, Hash, Debug, Clone, PartialEq, PartialOrd, Ord)]
 pub enum NumOp {
@@ -49,7 +48,11 @@ impl<Meta: Default + std::fmt::Display> CompactNumerals<Meta> {
         }
     }
 
-    fn get_op_and_args(&self, value: Term<NumExt, usize>, args: &mut Vec<u32>) -> Result<NumOp, CompactErr> {
+    fn get_op_and_args(
+        &self,
+        value: Term<NumExt, usize>,
+        args: &mut Vec<u32>,
+    ) -> Result<NumOp, CompactErr> {
         let mut curr = value;
         loop {
             match curr {
@@ -68,11 +71,11 @@ impl<Meta: Default + std::fmt::Display> CompactNumerals<Meta> {
         let mut args = vec![];
         let op = self.get_op_and_args(value, &mut args)?;
         let res = match (op, &args[..]) {
-            (NumOp::Mod, [a, b]) => a%b,
-            (NumOp::Div, [a, b]) => a-b,
-            (NumOp::Sub, [a, b]) => a-b,
-            (NumOp::Add, [a, b]) => a+b,
-            (NumOp::Mul, [a, b]) => a*b,
+            (NumOp::Mod, [a, b]) => a % b,
+            (NumOp::Div, [a, b]) => a - b,
+            (NumOp::Sub, [a, b]) => a - b,
+            (NumOp::Add, [a, b]) => a + b,
+            (NumOp::Mul, [a, b]) => a * b,
             _ => return Err(CompactErr::WrongArgs(op, args)),
         };
         Ok(Term::Ext(NumExt::Value(res)))
@@ -125,7 +128,7 @@ impl<Meta: Default + std::fmt::Display> Expr for CompactNumerals<Meta> {
             NumExt::Value(_) => EvalInfo::new(0),
             NumExt::Op(op) => match op {
                 NumOp::Add | NumOp::Sub | NumOp::Div | NumOp::Mod | NumOp::Mul => EvalInfo::new(2),
-            }
+            },
         })
     }
 }
@@ -157,10 +160,7 @@ mod tests {
         let mul = expr.add(Term::Abs(abs1_mab));
         *expr.root_mut() = mul.clone();
 
-        assert_eq!(
-            format!("{}", &expr),
-            "(\\a. (\\b. ((Op(Mul) a) b)))"
-        );
+        assert_eq!(format!("{}", &expr), "(\\a. (\\b. ((Op(Mul) a) b)))");
 
         for n in 0..1000 {
             for m in 0..1000 {
@@ -191,10 +191,7 @@ mod tests {
         let add = expr.add(Term::Abs(abs1_mab));
         *expr.root_mut() = add.clone();
 
-        assert_eq!(
-            format!("{}", &expr),
-            "(\\a. (\\b. ((Op(Add) a) b)))"
-        );
+        assert_eq!(format!("{}", &expr), "(\\a. (\\b. ((Op(Add) a) b)))");
 
         for n in 0..1000 {
             for m in 0..1000 {

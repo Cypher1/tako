@@ -38,15 +38,17 @@ impl EvalInfo {
     fn apply(left: Option<EvalInfo>, right: Option<EvalInfo>) -> Option<EvalInfo> {
         match (left, right) {
             (Some(left), Some(right)) => {
-                if !right.complete() { // Not ready to apply yet...
+                if !right.complete() {
+                    // Not ready to apply yet...
                     return None;
                 }
-                if left.complete() { // Not able to apply...
+                if left.complete() {
+                    // Not able to apply...
                     return None;
                 }
                 Some(EvalInfo {
                     arity: left.arity,
-                    arg_count: left.arg_count+1,
+                    arg_count: left.arg_count + 1,
                 })
             }
             _ => None,
@@ -79,10 +81,7 @@ impl<T> ExprResult<T> {
         }
     }
     pub fn with_ext_info(self, ext_info: Option<EvalInfo>) -> Self {
-        Self {
-            ext_info,
-            ..self
-        }
+        Self { ext_info, ..self }
     }
     pub fn new(id: T, changed: bool, ext_info: Option<EvalInfo>) -> Self {
         Self {
@@ -98,12 +97,17 @@ impl<T> ExprResult<T> {
             ext_info: self.ext_info,
         }
     }
-    pub fn if_changed<R>(self,
+    pub fn if_changed<R>(
+        self,
         then: impl FnOnce(T) -> R,
         els: impl FnOnce(T) -> R,
     ) -> ExprResult<R> {
         ExprResult {
-            id: if self.changed { then(self.id) } else { els(self.id) },
+            id: if self.changed {
+                then(self.id)
+            } else {
+                els(self.id)
+            },
             changed: self.changed,
             ext_info: self.ext_info,
         }
@@ -127,24 +131,20 @@ pub trait Expr: Sized {
 
     fn shift(&mut self, id: &Self::Index, depth: usize, delta: i64) -> ExprResult<Self::Index> {
         match self.get(id).clone() {
-            Term::Ext(_) => {
-                ExprResult::unchanged(id.clone())
-            }
+            Term::Ext(_) => ExprResult::unchanged(id.clone()),
             Term::Var(d) => {
                 // eprintln!("\n shift {d}, {depth}");
                 if d > depth {
                     // Rebound inside the nodes.
                     ExprResult::unchanged(id.clone())
                 } else {
-                    ExprResult::new(self.add(Term::Var((d as i64 + delta) as usize)), true, None) // References something outside.
+                    ExprResult::new(self.add(Term::Var((d as i64 + delta) as usize)), true, None)
+                    // References something outside.
                 }
             }
             Term::Abs(inner) => {
                 let inner = self.shift(&inner, depth, delta);
-                inner.if_changed(
-                    |inner| self.add(Term::Abs(inner)),
-                    |_| id.clone()
-                )
+                inner.if_changed(|inner| self.add(Term::Abs(inner)), |_| id.clone())
             }
             Term::App(inner, arg) => {
                 let inner = self.shift(&inner, depth, delta);
@@ -156,11 +156,14 @@ pub trait Expr: Sized {
             }
         }
     }
-    fn subst(&mut self, id: &Self::Index, val: &Self::Index, depth: usize) -> ExprResult<Self::Index> {
+    fn subst(
+        &mut self,
+        id: &Self::Index,
+        val: &Self::Index,
+        depth: usize,
+    ) -> ExprResult<Self::Index> {
         match self.get(id).clone() {
-            Term::Ext(_) => {
-                ExprResult::unchanged(id.clone())
-            }
+            Term::Ext(_) => ExprResult::unchanged(id.clone()),
             Term::Var(d) => {
                 // eprintln!("\n subst {d}, {depth}");
                 if d == depth {
@@ -173,10 +176,7 @@ pub trait Expr: Sized {
             }
             Term::Abs(inner) => {
                 let inner = self.subst(&inner, val, depth + 1);
-                inner.if_changed(
-                    |inner| self.add(Term::Abs(inner)),
-                    |_| id.clone()
-                )
+                inner.if_changed(|inner| self.add(Term::Abs(inner)), |_| id.clone())
             }
             Term::App(inner, arg) => {
                 let inner = self.subst(&inner, val, depth);
@@ -208,12 +208,9 @@ pub trait Expr: Sized {
         match curr {
             Term::Ext(ext) => ExprResult::unchanged(id).with_ext_info(self.ext_info(ext)),
             Term::Var(_) => ExprResult::unchanged(id),
-            Term::Abs(inner) => {
-                self.reduce_at(inner, depth + 1).if_changed(
-                    |inner| self.add(Term::Abs(inner)),
-                    |_| id,
-                )
-            }
+            Term::Abs(inner) => self
+                .reduce_at(inner, depth + 1)
+                .if_changed(|inner| self.add(Term::Abs(inner)), |_| id),
             Term::App(inner, arg) => {
                 let arg = self.reduce_at(arg, depth + 1);
                 let inner = self.reduce_at(inner, depth + 1);
@@ -226,10 +223,8 @@ pub trait Expr: Sized {
                 // TOdO
                 //}
                 let inner = inner.apply(arg);
-                let inner = inner.if_changed(
-                    |(inner, arg)| { self.add(Term::App(inner, arg)) },
-                    |_| { id }
-                );
+                let inner =
+                    inner.if_changed(|(inner, arg)| self.add(Term::App(inner, arg)), |_| id);
                 if let Some(ext_info) = &inner.ext_info {
                     if ext_info.complete() {
                         let inner = self.get(&inner.id).clone();
