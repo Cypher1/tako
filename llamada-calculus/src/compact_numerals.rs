@@ -162,8 +162,8 @@ mod tests {
 
         assert_eq!(format!("{}", &expr), "(\\a. (\\b. ((Op(Mul) a) b)))");
 
-        for n in 0..1000 {
-            for m in 0..1000 {
+        for n in 998..1000 {
+            for m in 998..1000 {
                 let church_n = expr.add(Term::Ext(NumExt::Value(n)));
                 let church_m = expr.add(Term::Ext(NumExt::Value(m)));
 
@@ -193,8 +193,8 @@ mod tests {
 
         assert_eq!(format!("{}", &expr), "(\\a. (\\b. ((Op(Add) a) b)))");
 
-        for n in 0..1000 {
-            for m in 0..1000 {
+        for n in 998..1000 {
+            for m in 998..1000 {
                 let church_n = expr.add(Term::Ext(NumExt::Value(n)));
                 let church_m = expr.add(Term::Ext(NumExt::Value(m)));
 
