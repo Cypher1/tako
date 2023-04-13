@@ -12,10 +12,9 @@ pub struct DenseRepr<T, Meta> {
 
 impl<T, Meta> DenseRepr<T, Meta> {
     // TODO: type Term=Term<T, usize>;
-    pub fn get_last_id(&self) -> usize {
+    fn get_last_id(&self) -> usize {
         self.terms.len() - 1
     }
-
     pub fn push(&mut self, term: Term<T, usize>, meta: Meta) -> usize {
         self.terms.push((term, meta));
         self.get_last_id()
@@ -31,9 +30,9 @@ impl<T: Clone + std::fmt::Debug + std::fmt::Display, Meta: Default + std::fmt::D
     for DenseRepr<T, Meta>
 {
     type Index = usize;
-    type Value = T;
+    type Extension = T;
     type Meta = Meta;
-    // type Term = Term<Self::Value, Self::Index>;
+    // type Term = Term<Self::Extension, Self::Index>;
 
     fn new(term: Term<T, usize>, meta: Meta) -> Self {
         let mut this = Self {
@@ -44,27 +43,21 @@ impl<T: Clone + std::fmt::Debug + std::fmt::Display, Meta: Default + std::fmt::D
         this.push(term, meta);
         this
     }
-    fn get(&self, id: &Self::Index) -> &Term<Self::Value, Self::Index> {
+    fn get_last_id(&self) -> Self::Index {
+        self.terms.len() - 1
+    }
+    fn get(&self, id: &Self::Index) -> &Term<Self::Extension, Self::Index> {
         // TODO: Checked version?
         &self.terms[*id].0
-    }
-    fn get_mut(&mut self, id: &mut Self::Index) -> &mut Term<Self::Value, Self::Index> {
-        // TODO: Checked version?
-        &mut self.terms[*id].0
     }
     fn get_meta(&self, id: &Self::Index) -> &Self::Meta {
         // TODO: Checked version?
         &self.terms[*id].1
     }
-    fn get_meta_mut(&mut self, id: &mut Self::Index) -> &mut Self::Meta {
-        // TODO: Checked version?
-        &mut self.terms[*id].1
-    }
-    fn apply_to_value(
+    fn reduce_ext_apps(
         &mut self,
-        _value: Self::Value,
-        _arg: Term<Self::Value, Self::Index>,
-    ) -> Term<Self::Value, Self::Index> {
+        _value: Term<Self::Extension, Self::Index>,
+    ) -> Term<Self::Extension, Self::Index> {
         todo!(); // match value {}
     }
     fn root(&self) -> &Self::Index {
@@ -73,15 +66,15 @@ impl<T: Clone + std::fmt::Debug + std::fmt::Display, Meta: Default + std::fmt::D
     fn root_mut(&mut self) -> &mut Self::Index {
         &mut self.root
     }
-    fn add(&mut self, term: Term<Self::Value, Self::Index>, meta: Meta) -> Self::Index {
+    fn add(&mut self, term: Term<Self::Extension, Self::Index>) -> Self::Index {
+        let meta = Self::Meta::default();
         self.push(term, meta)
-    }
-
-    fn new_meta(&mut self) -> Self::Meta {
-        Self::Meta::default()
     }
     fn print_meta(&self) -> bool {
         self.print_meta
+    }
+    fn set_print_meta(&mut self, print_meta: bool) {
+        self.print_meta = print_meta;
     }
 }
 pub type LambdaCalc = DenseRepr<Never, Empty>;
