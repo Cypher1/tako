@@ -1,6 +1,7 @@
+
 use crate::dense::DenseRepr;
 use crate::types::Empty;
-use crate::{Expr, Term};
+use crate::{Expr, Term, EvalInfo};
 
 #[derive(Copy, Eq, Hash, Debug, Clone, PartialEq, PartialOrd, Ord)]
 pub enum NumOp {
@@ -31,6 +32,53 @@ struct CompactNumerals<Meta> {
     repr: DenseRepr<NumExt, Meta>,
 }
 
+#[derive(Debug, Eq, PartialEq)]
+enum CompactErr {
+    WrongArgs(NumOp, Vec<u32>),
+    UnevaluatedArg(Term<NumExt, usize>),
+}
+
+impl<Meta: Default + std::fmt::Display> CompactNumerals<Meta> {
+    fn get_arg(&self, value: Term<NumExt, usize>, args: &mut Vec<u32>) -> Result<(), CompactErr> {
+        match value {
+            Term::Ext(NumExt::Value(val)) => {
+                args.push(val);
+                Ok(())
+            }
+            _ => Err(CompactErr::UnevaluatedArg(value)),
+        }
+    }
+
+    fn get_op_and_args(&self, value: Term<NumExt, usize>, args: &mut Vec<u32>) -> Result<NumOp, CompactErr> {
+        let mut curr = value;
+        loop {
+            match curr {
+                Term::Ext(NumExt::Op(op)) => return Ok(op),
+                Term::App(inner, arg) => {
+                    curr = self.repr.get(&inner).clone();
+                    let arg = self.repr.get(&arg).clone();
+                    self.get_arg(arg, args)?;
+                }
+                _ => return Err(CompactErr::UnevaluatedArg(curr)),
+            }
+        }
+    }
+
+    fn eval(&self, value: Term<NumExt, usize>) -> Result<Term<NumExt, usize>, CompactErr> {
+        let mut args = vec![];
+        let op = self.get_op_and_args(value, &mut args)?;
+        let res = match (op, &args[..]) {
+            (NumOp::Mod, [a, b]) => a%b,
+            (NumOp::Div, [a, b]) => a-b,
+            (NumOp::Sub, [a, b]) => a-b,
+            (NumOp::Add, [a, b]) => a+b,
+            (NumOp::Mul, [a, b]) => a*b,
+            _ => return Err(CompactErr::WrongArgs(op, args)),
+        };
+        Ok(Term::Ext(NumExt::Value(res)))
+    }
+}
+
 impl<Meta: Default + std::fmt::Display> Expr for CompactNumerals<Meta> {
     type Index = usize;
     type Extension = NumExt;
@@ -51,12 +99,11 @@ impl<Meta: Default + std::fmt::Display> Expr for CompactNumerals<Meta> {
     fn get_last_id(&self) -> Self::Index {
         self.repr.get_last_id()
     }
-    fn apply_to_value(
+    fn reduce_ext_apps(
         &mut self,
-        _value: Self::Extension,
-        _arg: Term<Self::Extension, Self::Index>,
+        value: Term<Self::Extension, Self::Index>,
     ) -> Term<Self::Extension, Self::Index> {
-        todo!(); // match value {}
+        self.eval(value).expect("Oh no...")
     }
     fn root(&self) -> &Self::Index {
         self.repr.root()
@@ -72,6 +119,14 @@ impl<Meta: Default + std::fmt::Display> Expr for CompactNumerals<Meta> {
     }
     fn set_print_meta(&mut self, print_meta: bool) {
         self.repr.set_print_meta(print_meta);
+    }
+    fn ext_info(&self, ext: Self::Extension) -> Option<EvalInfo> {
+        Some(match ext {
+            NumExt::Value(_) => EvalInfo::new(0),
+            NumExt::Op(op) => match op {
+                NumOp::Add | NumOp::Sub | NumOp::Div | NumOp::Mod | NumOp::Mul => EvalInfo::new(2),
+            }
+        })
     }
 }
 pub type LambdaCalc = DenseRepr<NumExt, Empty>;
@@ -107,8 +162,8 @@ mod tests {
             "(\\a. (\\b. ((Op(Mul) a) b)))"
         );
 
-        for n in 990..1000 {
-            for m in 990..1000 {
+        for n in 0..1000 {
+            for m in 0..1000 {
                 let church_n = expr.add(Term::Ext(NumExt::Value(n)));
                 let church_m = expr.add(Term::Ext(NumExt::Value(m)));
 
@@ -120,6 +175,40 @@ mod tests {
                 let result = expr.get(expr.root());
                 eprintln!("{n:?} * {m:?} = {result:?}");
                 assert_eq!(result, &Term::Ext(NumExt::Value(n * m)));
+            }
+        }
+    }
+
+    #[test]
+    fn add_expr_huge() {
+        let mut expr = CompactNumerals::<Empty>::new(Term::Ext(NumExt::Op(NumOp::Add)), Empty {});
+        let add = expr.get_last_id();
+        let a = expr.add(Term::Var(2));
+        let b = expr.add(Term::Var(1));
+        let ma = expr.add(Term::App(add, a));
+        let mab = expr.add(Term::App(ma, b));
+        let abs1_mab = expr.add(Term::Abs(mab));
+        let add = expr.add(Term::Abs(abs1_mab));
+        *expr.root_mut() = add.clone();
+
+        assert_eq!(
+            format!("{}", &expr),
+            "(\\a. (\\b. ((Op(Add) a) b)))"
+        );
+
+        for n in 0..1000 {
+            for m in 0..1000 {
+                let church_n = expr.add(Term::Ext(NumExt::Value(n)));
+                let church_m = expr.add(Term::Ext(NumExt::Value(m)));
+
+                let add_m = expr.add(Term::App(add.clone(), church_m));
+                let add_n_m = expr.add(Term::App(add_m, church_n));
+                *expr.root_mut() = add_n_m;
+                expr.reduce();
+                eprintln!("result: {}", expr.as_context(expr.root()));
+                let result = expr.get(expr.root());
+                eprintln!("{n:?} * {m:?} = {result:?}");
+                assert_eq!(result, &Term::Ext(NumExt::Value(n + m)));
             }
         }
     }

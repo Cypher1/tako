@@ -76,10 +76,9 @@ impl<
         // TODO: Checked version?
         &id.meta
     }
-    fn apply_to_value(
+    fn reduce_ext_apps(
         &mut self,
-        _value: Self::Extension,
-        _arg: Term<Self::Extension, Self::Index>,
+        _value: Term<Self::Extension, Self::Index>,
     ) -> Term<Self::Extension, Self::Index> {
         todo!(); // match value {}
     }

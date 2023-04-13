@@ -20,15 +20,57 @@ pub enum Term<T, Id> {
 }
 
 #[derive(Debug, Clone, Eq, Hash, Ord, PartialOrd, PartialEq)]
+pub struct EvalInfo {
+    arity: usize,
+    arg_count: usize,
+}
+
+impl EvalInfo {
+    fn new(arity: usize) -> Self {
+        Self {
+            arity,
+            arg_count: 0,
+        }
+    }
+    fn complete(&self) -> bool {
+        self.arg_count == self.arity
+    }
+    fn apply(left: Option<EvalInfo>, right: Option<EvalInfo>) -> Option<EvalInfo> {
+        match (left, right) {
+            (Some(left), Some(right)) => {
+                if !right.complete() { // Not ready to apply yet...
+                    return None;
+                }
+                if left.complete() { // Not able to apply...
+                    return None;
+                }
+                Some(EvalInfo {
+                    arity: left.arity,
+                    arg_count: left.arg_count+1,
+                })
+            }
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Eq, Hash, Ord, PartialOrd, PartialEq)]
 pub struct ExprResult<T> {
     id: T,
     changed: bool,
-    is_ext_apps: bool,
+    ext_info: Option<EvalInfo>,
 }
 
 impl<T> ExprResult<T> {
+    pub fn apply<U>(self, other: ExprResult<U>) -> ExprResult<(T, U)> {
+        ExprResult {
+            id: (self.id, other.id),
+            changed: self.changed || other.changed,
+            ext_info: EvalInfo::apply(self.ext_info, other.ext_info),
+        }
+    }
     pub fn unchanged(id: T) -> Self {
-        Self::new(id, false, false)
+        Self::new(id, false, None)
     }
     pub fn changed(self) -> Self {
         Self {
@@ -36,18 +78,34 @@ impl<T> ExprResult<T> {
             ..self
         }
     }
-    pub fn new(id: T, changed: bool, is_ext_apps: bool) -> Self {
+    pub fn with_ext_info(self, ext_info: Option<EvalInfo>) -> Self {
+        Self {
+            ext_info,
+            ..self
+        }
+    }
+    pub fn new(id: T, changed: bool, ext_info: Option<EvalInfo>) -> Self {
         Self {
             id,
             changed,
-            is_ext_apps,
+            ext_info,
         }
     }
     pub fn map<R>(self, f: impl FnOnce(T) -> R) -> ExprResult<R> {
         ExprResult {
             id: f(self.id),
             changed: self.changed,
-            is_ext_apps: self.is_ext_apps,
+            ext_info: self.ext_info,
+        }
+    }
+    pub fn if_changed<R>(self,
+        then: impl FnOnce(T) -> R,
+        els: impl FnOnce(T) -> R,
+    ) -> ExprResult<R> {
+        ExprResult {
+            id: if self.changed { then(self.id) } else { els(self.id) },
+            changed: self.changed,
+            ext_info: self.ext_info,
         }
     }
 }
@@ -68,67 +126,67 @@ pub trait Expr: Sized {
     fn add(&mut self, term: Term<Self::Extension, Self::Index>) -> Self::Index;
 
     fn shift(&mut self, id: &Self::Index, depth: usize, delta: i64) -> ExprResult<Self::Index> {
-        let term = match self.get(id).clone() {
+        match self.get(id).clone() {
             Term::Ext(_) => {
-                return ExprResult::unchanged(id.clone());
+                ExprResult::unchanged(id.clone())
             }
             Term::Var(d) => {
                 // eprintln!("\n shift {d}, {depth}");
                 if d > depth {
                     // Rebound inside the nodes.
-                    return ExprResult::unchanged(id.clone());
+                    ExprResult::unchanged(id.clone())
+                } else {
+                    ExprResult::new(self.add(Term::Var((d as i64 + delta) as usize)), true, None) // References something outside.
                 }
-                ExprResult::new(Term::Var((d as i64 + delta) as usize), true, false) // References something outside.
             }
             Term::Abs(inner) => {
                 let inner = self.shift(&inner, depth, delta);
-                if !inner.changed {
-                    return ExprResult::unchanged(id.clone());
-                }
-                ExprResult::new(Term::Abs(inner.id), true, false)
+                inner.if_changed(
+                    |inner| self.add(Term::Abs(inner)),
+                    |_| id.clone()
+                )
             }
             Term::App(inner, arg) => {
                 let inner = self.shift(&inner, depth, delta);
                 let arg = self.shift(&arg, depth, delta);
-                if !inner.changed && !arg.changed {
-                    return ExprResult::unchanged(id.clone());
-                }
-                ExprResult::new(Term::App(inner.id, arg.id), true, inner.is_ext_apps && arg.is_ext_apps)
+                inner.apply(arg).if_changed(
+                    |(inner, arg)| self.add(Term::App(inner, arg)),
+                    |_| id.clone(),
+                )
             }
-        };
-        term.map(|term| self.add(term))
+        }
     }
     fn subst(&mut self, id: &Self::Index, val: &Self::Index, depth: usize) -> ExprResult<Self::Index> {
-        let term = match self.get(id).clone() {
+        match self.get(id).clone() {
             Term::Ext(_) => {
-                return ExprResult::unchanged(id.clone());
+                ExprResult::unchanged(id.clone())
             }
             Term::Var(d) => {
                 // eprintln!("\n subst {d}, {depth}");
                 if d == depth {
                     // Create a shifted version!
                     let id = self.shift(val, 0, depth as i64);
-                    return id.changed();
+                    id.changed()
+                } else {
+                    ExprResult::unchanged(id.clone())
                 }
-                return ExprResult::unchanged(id.clone());
             }
             Term::Abs(inner) => {
                 let inner = self.subst(&inner, val, depth + 1);
-                if !inner.changed {
-                    return ExprResult::unchanged(id.clone());
-                }
-                ExprResult::new(Term::Abs(inner.id), true, false)
+                inner.if_changed(
+                    |inner| self.add(Term::Abs(inner)),
+                    |_| id.clone()
+                )
             }
             Term::App(inner, arg) => {
                 let inner = self.subst(&inner, val, depth);
                 let arg = self.subst(&arg, val, depth);
-                if !inner.changed && !arg.changed {
-                    return ExprResult::unchanged(id.clone());
-                }
-                ExprResult::new(Term::App(inner.id, arg.id), true, inner.is_ext_apps && arg.is_ext_apps)
+                inner.apply(arg).if_changed(
+                    |(inner, arg)| self.add(Term::App(inner, arg)),
+                    |_| id.clone(),
+                )
             }
-        };
-        term.map(|term| self.add(term))
+        }
     }
 
     fn reduce_at(&mut self, id: Self::Index, depth: usize) -> ExprResult<Self::Index> {
@@ -141,38 +199,47 @@ pub trait Expr: Sized {
         id
     }
 
+    fn ext_info(&self, _ext: Self::Extension) -> Option<EvalInfo> {
+        None
+    }
     fn reduce_at_impl(&mut self, id: Self::Index, depth: usize) -> ExprResult<Self::Index> {
         // eprintln!("{}reducing {}", "  ".repeat(depth), self.as_context(&id));
         let curr = self.get(&id).clone();
         match curr {
-            Term::Ext(_) => {}
-            Term::Var(_) => {}
+            Term::Ext(ext) => ExprResult::unchanged(id).with_ext_info(self.ext_info(ext)),
+            Term::Var(_) => ExprResult::unchanged(id),
             Term::Abs(inner) => {
-                let inner = self.reduce_at(inner, depth + 1);
-                if inner.changed {
-                    return inner.map(|inner| self.add(Term::Abs(inner)));
-                }
+                self.reduce_at(inner, depth + 1).if_changed(
+                    |inner| self.add(Term::Abs(inner)),
+                    |_| id,
+                )
             }
             Term::App(inner, arg) => {
-                let (arg, new_arg) = self.reduce_at(arg, depth + 1);
-                let (inner, new_inner) = self.reduce_at(inner, depth + 1);
-                if let Term::Abs(inner) = self.get(&inner).clone() {
-                    // eprint!("{}applying {} to {}", "  ".repeat(depth), self.as_context(&arg), self.as_context(&inner));
+                let arg = self.reduce_at(arg, depth + 1);
+                let inner = self.reduce_at(inner, depth + 1);
+                if let Term::Abs(inner) = self.get(&inner.id).clone() {
                     // Beta reduction.
-                    // let (inner, _changed) = self.shift(&inner, 0, -1);
-                    let (inner, _changed) = self.subst(&inner, &arg, 1);
-                    // eprintln!(" -> {}", self.as_context(&inner));
-                    return (inner, true);
+                    let inner = self.subst(&inner, &arg.id, 1);
+                    return inner.changed();
                 }
                 //if let Term::Ext(val) = self.get(inner) {
                 // TOdO
                 //}
-                if new_inner || new_arg {
-                    return (self.add(Term::App(inner, arg)), true);
+                let inner = inner.apply(arg);
+                let inner = inner.if_changed(
+                    |(inner, arg)| { self.add(Term::App(inner, arg)) },
+                    |_| { id }
+                );
+                if let Some(ext_info) = &inner.ext_info {
+                    if ext_info.complete() {
+                        let inner = self.get(&inner.id).clone();
+                        let res = self.reduce_ext_apps(inner);
+                        return ExprResult::unchanged(self.add(res)).changed();
+                    }
                 }
+                inner
             }
         }
-        ExprResult::unchanged(id)
     }
     fn reduce(&mut self)
     where
@@ -180,15 +247,14 @@ pub trait Expr: Sized {
     {
         // TODO: Beta and Eta reduction.
         let root = self.root().clone();
-        let (root, _changed) = self.reduce_at(root, 0);
+        let root = self.reduce_at(root, 0);
         // assign new root:
-        *self.root_mut() = root;
+        *self.root_mut() = root.id;
     }
 
-    fn apply_to_value(
+    fn reduce_ext_apps(
         &mut self,
-        value: Self::Extension,
-        _arg: Term<Self::Extension, Self::Index>,
+        _value: Term<Self::Extension, Self::Index>,
     ) -> Term<Self::Extension, Self::Index>;
 
     fn as_context<'a, U>(&'a self, val: &'a U) -> WithContext<'a, Self, U> {

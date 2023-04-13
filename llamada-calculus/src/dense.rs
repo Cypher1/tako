@@ -54,10 +54,9 @@ impl<T: Clone + std::fmt::Debug + std::fmt::Display, Meta: Default + std::fmt::D
         // TODO: Checked version?
         &self.terms[*id].1
     }
-    fn apply_to_value(
+    fn reduce_ext_apps(
         &mut self,
-        _value: Self::Extension,
-        _arg: Term<Self::Extension, Self::Index>,
+        _value: Term<Self::Extension, Self::Index>,
     ) -> Term<Self::Extension, Self::Index> {
         todo!(); // match value {}
     }
