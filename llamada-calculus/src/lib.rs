@@ -8,9 +8,11 @@ mod expr_result;
 pub mod ref_counted;
 pub mod sparse;
 pub mod types;
+pub mod visitor;
 pub mod with_context;
 pub use dense::{DenseRepr, LambdaCalc};
 pub use expr_result::{EvalInfo, ExprResult};
+pub use visitor::Visitor;
 pub use with_context::WithContext;
 
 #[derive(Debug, Clone, Eq, Hash, Ord, PartialOrd, PartialEq)]
@@ -275,6 +277,12 @@ pub trait Expr: Sized {
 
     fn fmt_root(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         Self::fmt_index(&self.as_context(self.root()), f)
+    }
+
+    fn traverse<T, E, V: Visitor<T, E, Self>>(&self, visitor: &mut V) -> Result<T, E> {
+        let root = self.root();
+        let root = &self.get(root);
+        visitor.on_term(&self, &root)
     }
 }
 
