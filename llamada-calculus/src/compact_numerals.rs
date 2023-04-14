@@ -115,6 +115,7 @@ impl<Meta: Default + std::fmt::Display> Expr for CompactNumerals<Meta> {
             NumExt::Op(NumOp::Not) => EvalInfo::new(1),
             // TODO: Make numbers act as church numbers (i.e. arity: 2) on lambda terms.
             NumExt::Value(_) => EvalInfo::new(0),
+            NumExt::Op(NumOp::Not) => EvalInfo::new(1),
             _ => EvalInfo::new(2),
         })
     }
