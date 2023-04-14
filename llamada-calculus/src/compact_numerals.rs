@@ -135,7 +135,13 @@ impl<Meta: Default + std::fmt::Display> Expr for CompactNumerals<Meta> {
         Some(match ext {
             NumExt::Value(_) => EvalInfo::new(0),
             NumExt::Op(op) => match op {
-                NumOp::And | NumOp::Or | NumOp::Add | NumOp::Sub | NumOp::Div | NumOp::Mod | NumOp::Mul => EvalInfo::new(2),
+                NumOp::And
+                | NumOp::Or
+                | NumOp::Add
+                | NumOp::Sub
+                | NumOp::Div
+                | NumOp::Mod
+                | NumOp::Mul => EvalInfo::new(2),
                 NumOp::Not => EvalInfo::new(1),
             },
         })
@@ -169,7 +175,7 @@ mod tests {
         let mul = expr.add(Term::Abs(abs1_mab));
         *expr.root_mut() = mul;
 
-        assert_eq!(format!("{}", &expr), "(\\a. (\\b. ((Op(Mul) a) b)))");
+        assert_eq!(format!("{}", &expr), "(\\a. (\\b. ((Mul a) b)))");
 
         for n in 998..1000 {
             for m in 998..1000 {
@@ -200,7 +206,7 @@ mod tests {
         let add = expr.add(Term::Abs(abs1_mab));
         *expr.root_mut() = add;
 
-        assert_eq!(format!("{}", &expr), "(\\a. (\\b. ((Op(Add) a) b)))");
+        assert_eq!(format!("{}", &expr), "(\\a. (\\b. ((Add a) b)))");
 
         for n in 998..1000 {
             for m in 998..1000 {
@@ -213,8 +219,94 @@ mod tests {
                 expr.reduce();
                 eprintln!("result: {}", expr.as_context(expr.root()));
                 let result = expr.get(expr.root());
-                eprintln!("{n:?} * {m:?} = {result:?}");
+                eprintln!("{n:?} + {m:?} = {result:?}");
                 assert_eq!(result, &Term::Ext(NumExt::Value(n + m)));
+            }
+        }
+    }
+
+    #[test]
+    fn not_expr_huge() {
+        let mut expr = CompactNumerals::<Empty>::new(Term::Ext(NumExt::Op(NumOp::Not)), Empty {});
+        let not = expr.get_last_id();
+        let a = expr.add(Term::Var(1));
+        let ma = expr.add(Term::App(not, a));
+        let not = expr.add(Term::Abs(ma));
+        *expr.root_mut() = not;
+
+        assert_eq!(format!("{}", &expr), "(\\a. (Not a))");
+
+        for n in 998..1000 {
+            let church_n = expr.add(Term::Ext(NumExt::Value(n)));
+
+            let not_n = expr.add(Term::App(not, church_n));
+            *expr.root_mut() = not_n;
+            expr.reduce();
+            eprintln!("result: {}", expr.as_context(expr.root()));
+            let result = expr.get(expr.root());
+            eprintln!("!{n:?} = {result:?}");
+            assert_eq!(result, &Term::Ext(NumExt::Value(!n)));
+        }
+    }
+
+    #[test]
+    fn or_expr_huge() {
+        let mut expr = CompactNumerals::<Empty>::new(Term::Ext(NumExt::Op(NumOp::Or)), Empty {});
+        let or = expr.get_last_id();
+        let a = expr.add(Term::Var(2));
+        let b = expr.add(Term::Var(1));
+        let ma = expr.add(Term::App(or, a));
+        let mab = expr.add(Term::App(ma, b));
+        let abs1_mab = expr.add(Term::Abs(mab));
+        let or = expr.add(Term::Abs(abs1_mab));
+        *expr.root_mut() = or;
+
+        assert_eq!(format!("{}", &expr), "(\\a. (\\b. ((Or a) b)))");
+
+        for n in 998..1000 {
+            for m in 998..1000 {
+                let church_n = expr.add(Term::Ext(NumExt::Value(n)));
+                let church_m = expr.add(Term::Ext(NumExt::Value(m)));
+
+                let or_m = expr.add(Term::App(or, church_m));
+                let or_n_m = expr.add(Term::App(or_m, church_n));
+                *expr.root_mut() = or_n_m;
+                expr.reduce();
+                eprintln!("result: {}", expr.as_context(expr.root()));
+                let result = expr.get(expr.root());
+                eprintln!("{n:?} | {m:?} = {result:?}");
+                assert_eq!(result, &Term::Ext(NumExt::Value(n | m)));
+            }
+        }
+    }
+
+    #[test]
+    fn and_expr_huge() {
+        let mut expr = CompactNumerals::<Empty>::new(Term::Ext(NumExt::Op(NumOp::And)), Empty {});
+        let and = expr.get_last_id();
+        let a = expr.add(Term::Var(2));
+        let b = expr.add(Term::Var(1));
+        let ma = expr.add(Term::App(and, a));
+        let mab = expr.add(Term::App(ma, b));
+        let abs1_mab = expr.add(Term::Abs(mab));
+        let and = expr.add(Term::Abs(abs1_mab));
+        *expr.root_mut() = and;
+
+        assert_eq!(format!("{}", &expr), "(\\a. (\\b. ((And a) b)))");
+
+        for n in 998..1000 {
+            for m in 998..1000 {
+                let church_n = expr.add(Term::Ext(NumExt::Value(n)));
+                let church_m = expr.add(Term::Ext(NumExt::Value(m)));
+
+                let and_m = expr.add(Term::App(and, church_m));
+                let and_n_m = expr.add(Term::App(and_m, church_n));
+                *expr.root_mut() = and_n_m;
+                expr.reduce();
+                eprintln!("result: {}", expr.as_context(expr.root()));
+                let result = expr.get(expr.root());
+                eprintln!("{n:?} & {m:?} = {result:?}");
+                assert_eq!(result, &Term::Ext(NumExt::Value(n & m)));
             }
         }
     }
