@@ -9,6 +9,8 @@ pub mod ref_counted;
 pub mod sparse;
 pub mod types;
 pub mod visitor;
+#[macro_use]
+pub mod macros;
 pub mod with_context;
 pub use dense::{DenseRepr, LambdaCalc};
 pub use expr_result::{EvalInfo, ExprResult};

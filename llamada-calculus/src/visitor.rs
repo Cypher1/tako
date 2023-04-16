@@ -1,5 +1,6 @@
 use crate::{Expr, Term};
 use crate::types::Never;
+use crate::expr;
 
 pub trait Visitor<T, E, Over: Expr> {
     fn start_value(&mut self) -> T;
@@ -104,33 +105,39 @@ impl Visitor<usize, Never, LambdaCalc> for FromCompactToChurch {
             NumExt::Value(n) => self.output.to_church(*n),
             NumExt::Op(op) => match op {
                 NumOp::Mul => {
-                    let x = self.output.add(Term::Var(1));
-                    let f = self.output.add(Term::Var(2));
-                    let n = self.output.add(Term::Var(3));
-                    let m = self.output.add(Term::Var(4));
-                    let nf = self.output.add(Term::App(n, f));
-                    let mnf = self.output.add(Term::App(m, nf));
-                    let mnfx = self.output.add(Term::App(mnf, x));
-                    let mnfx_1 = self.output.add(Term::Abs(mnfx));
-                    let mnfx_2 = self.output.add(Term::Abs(mnfx_1));
-                    let mnfx_3 = self.output.add(Term::Abs(mnfx_2));
-                    let plus = self.output.add(Term::Abs(mnfx_3));
-                    plus
+                    expr!(
+                        self.output,
+                        plus,
+                        x = Var(1),
+                        f = Var(2),
+                        n = Var(3),
+                        m = Var(4),
+                        nf = App(n, f),
+                        mnf = App(m, nf),
+                        mnfx = App(mnf, x),
+                        mnfx_1 = Abs(mnfx),
+                        mnfx_2 = Abs(mnfx_1),
+                        mnfx_3 = Abs(mnfx_2),
+                        plus = Abs(mnfx_3),
+                    )
                 }
                 NumOp::Add => {
-                    let x = self.output.add(Term::Var(1));
-                    let f = self.output.add(Term::Var(2));
-                    let n = self.output.add(Term::Var(3));
-                    let m = self.output.add(Term::Var(4));
-                    let nf = self.output.add(Term::App(n, f));
-                    let mf = self.output.add(Term::App(m, f));
-                    let nfx = self.output.add(Term::App(nf, x));
-                    let mfnfx = self.output.add(Term::App(mf, nfx));
-                    let mfnfx_1 = self.output.add(Term::Abs(mfnfx));
-                    let mfnfx_2 = self.output.add(Term::Abs(mfnfx_1));
-                    let mfnfx_3 = self.output.add(Term::Abs(mfnfx_2));
-                    let plus = self.output.add(Term::Abs(mfnfx_3));
-                    plus
+                    expr!(
+                        self.output,
+                        mul,
+                        x = Var(1),
+                        f = Var(2),
+                        n = Var(3),
+                        m = Var(4),
+                        nf = App(n, f),
+                        mf = App(m, f),
+                        nfx = App(nf, x),
+                        mfnfx = App(mf, nfx),
+                        mfnfx_1 = Abs(mfnfx),
+                        mfnfx_2 = Abs(mfnfx_1),
+                        mfnfx_3 = Abs(mfnfx_2),
+                        mul = Abs(mfnfx_3),
+                    )
                 }
                 _ => todo!(),
             }
@@ -156,6 +163,7 @@ impl Visitor<usize, Never, LambdaCalc> for FromCompactToChurch {
 
 #[cfg(test)]
 mod test {
+    use crate::new_expr;
     use crate::types::Empty;
     use crate::compact_numerals::{NumExt, NumOp};
 
@@ -221,13 +229,15 @@ mod test {
             output: LambdaCalc::new(Term::Var(1), Empty {}),
         };
 
-        let mut expr = LambdaCalc::new(Term::Ext(NumExt::Value(3)), Empty {});
-        let a = expr.get_last_id();
-        let b = expr.add(Term::Ext(NumExt::Value(4)));
-        let plus = expr.add(Term::Ext(NumExt::Op(NumOp::Mul)));
-        let p_a = expr.add(Term::App(plus, a));
-        let p_a_b = expr.add(Term::App(p_a, b));
-        expr.set_root(p_a_b);
+        let expr = new_expr!(
+            LambdaCalc,
+            p_a_b,
+            a = Ext(NumExt::Value(3)),
+            b = Ext(NumExt::Value(4)),
+            plus = Ext(NumExt::Op(NumOp::Mul)),
+            p_a = App(plus, a),
+            p_a_b = App(p_a, b),
+        );
 
         eprintln!("{}", expr);
         let root = expr.traverse(&mut cn).expect("Error");
