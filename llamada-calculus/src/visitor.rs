@@ -121,7 +121,7 @@ impl<Over: Expr> Visitor<usize, Never, Over> for CountNodes {
     }
 }
 
-pub struct TransformMeta<A, B, F: FnMut(A) -> B, Res: Expr> {
+pub struct TransformMeta<A, B, F: FnMut(&A) -> B, Res: Expr> {
     f: F,
     output: Res,
     _a: std::marker::PhantomData<A>,
@@ -133,7 +133,7 @@ impl<
         Over: Expr,
         F: FnMut(&Over::Meta) -> B,
         Res: Expr<Extension = Over::Extension, Meta = B>,
-    > Visitor<Res::Index, Never, Over> for TransformMeta<&Over::Meta, B, F, Res>
+    > Visitor<Res::Index, Never, Over> for TransformMeta<Over::Meta, B, F, Res>
 {
     fn start_value(&mut self) -> Res::Index {
         self.output.get_last_id()
@@ -267,8 +267,10 @@ impl Visitor<usize, Never, LambdaCalc> for FromCompactToChurch {
 
 #[cfg(test)]
 mod test {
+    use std::marker::PhantomData;
+
     use crate::compact_numerals::{NumExt, NumOp};
-    use crate::new_expr;
+    use crate::{new_expr, DenseRepr};
     use crate::types::Empty;
 
     use super::*;
@@ -352,6 +354,61 @@ mod test {
         assert_eq!(
             format!("{}", church_expr),
             "(\\a. (\\b. (a (a (a (a (a (a (a (a (a (a (a (a b))))))))))))))"
+        );
+    }
+
+    #[test]
+    fn arity_checker() {
+        let expr = new_expr!(
+            LambdaCalc,
+            p_a_b,
+            a = Ext(NumExt::Value(3)),
+            b = Ext(NumExt::Value(4)),
+            plus = Ext(NumExt::Op(NumOp::Mul)),
+            p_a = App(plus, a),
+            p_a_b = App(p_a, b),
+        );
+
+        eprintln!("{}", expr);
+
+        let mut node_count: usize = 0;
+        let mut cn = TransformMeta {
+            _a: PhantomData,
+            _b: PhantomData,
+            f: move | _meta: &Empty | {
+                node_count+=1;
+                node_count
+            },
+            output: DenseRepr::new(Term::Var(1), 0),
+        };
+
+        let root = expr.traverse(&mut cn).expect("Error");
+        cn.output.set_root(root);
+        cn.output.set_print_meta(true);
+        let expr = cn.output;
+
+        eprintln!("{}", expr);
+
+        use std::collections::HashMap;
+        let mut arity_graph = HashMap::<usize, usize>::new();
+        let mut cn = TransformMeta {
+            _a: PhantomData,
+            _b: PhantomData,
+            f: move | meta: &usize | {
+                arity_graph.insert(*meta, 0);
+                *meta
+            },
+            output: DenseRepr::new(Term::<NumExt, usize>::Var(1), 0),
+        };
+        let root = expr.traverse(&mut cn).expect("Error");
+        cn.output.set_root(root);
+
+        let mut with_arity = cn.output;
+        with_arity.set_print_meta(true);
+
+        assert_eq!(
+            format!("{}", with_arity),
+            "((Mul: 2 3: 0): 1 4: 0): 0"
         );
     }
 }
