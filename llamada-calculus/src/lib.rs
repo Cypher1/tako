@@ -28,7 +28,7 @@ pub enum Term<T, Id> {
 pub trait Expr: Sized {
     type Index: Clone + Eq + PartialEq + std::fmt::Debug;
     type Extension: Clone + std::fmt::Display + std::fmt::Debug;
-    type Meta: std::fmt::Display;
+    type Meta: Default + std::fmt::Display;
 
     fn new(term: Term<Self::Extension, Self::Index>, meta: Self::Meta) -> Self;
 
@@ -38,7 +38,15 @@ pub trait Expr: Sized {
     fn root(&self) -> &Self::Index;
     fn root_mut(&mut self) -> &mut Self::Index;
 
-    fn add(&mut self, term: Term<Self::Extension, Self::Index>) -> Self::Index;
+    fn add_with_meta(
+        &mut self,
+        term: Term<Self::Extension, Self::Index>,
+        meta: Self::Meta,
+    ) -> Self::Index;
+
+    fn add(&mut self, term: Term<Self::Extension, Self::Index>) -> Self::Index {
+        self.add_with_meta(term, Self::Meta::default())
+    }
 
     fn shift(&mut self, id: &Self::Index, depth: usize, delta: i64) -> ExprResult<Self::Index> {
         match self.get(id).clone() {
@@ -283,8 +291,9 @@ pub trait Expr: Sized {
 
     fn traverse<T, E, V: Visitor<T, E, Self>>(&self, visitor: &mut V) -> Result<T, E> {
         let root = self.root();
+        let meta = &self.get_meta(root);
         let root = &self.get(root);
-        visitor.on_term(self, root)
+        visitor.on_term(self, root, meta)
     }
 }
 

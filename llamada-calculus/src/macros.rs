@@ -40,8 +40,8 @@ macro_rules! derive_expr_from(
         fn root_mut(&mut self) -> &mut Self::Index {
             self.$inner.root_mut()
         }
-        fn add(&mut self, term: Term<Self::Extension, Self::Index>) -> Self::Index {
-            self.$inner.add(term)
+        fn add_with_meta(&mut self, term: Term<Self::Extension, Self::Index>, meta: Self::Meta) -> Self::Index {
+            self.$inner.add_with_meta(term, meta)
         }
         fn print_meta(&self) -> bool {
             self.$inner.print_meta()

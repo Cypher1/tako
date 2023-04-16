@@ -66,8 +66,11 @@ impl<T: Clone + std::fmt::Debug + std::fmt::Display, Meta: Default + std::fmt::D
     fn root_mut(&mut self) -> &mut Self::Index {
         &mut self.root
     }
-    fn add(&mut self, term: Term<Self::Extension, Self::Index>) -> Self::Index {
-        let meta = Self::Meta::default();
+    fn add_with_meta(
+        &mut self,
+        term: Term<Self::Extension, Self::Index>,
+        meta: Self::Meta,
+    ) -> Self::Index {
         self.push(term, meta)
     }
     fn print_meta(&self) -> bool {
