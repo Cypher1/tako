@@ -45,7 +45,7 @@ pub trait Visitor<T, E, Over: Expr> {
     }
 }
 
-struct CountDepth {}
+pub struct CountDepth {}
 
 impl<Over: Expr> Visitor<usize, Never, Over> for CountDepth {
     fn start_value(&mut self) -> usize {
@@ -84,7 +84,7 @@ impl<Over: Expr> Visitor<usize, Never, Over> for CountDepth {
     }
 }
 
-struct CountNodes {}
+pub struct CountNodes {}
 
 impl<Over: Expr> Visitor<usize, Never, Over> for CountNodes {
     fn start_value(&mut self) -> usize {
@@ -121,7 +121,7 @@ impl<Over: Expr> Visitor<usize, Never, Over> for CountNodes {
     }
 }
 
-struct TransformMeta<A, B, F: FnMut(A) -> B, Res: Expr> {
+pub struct TransformMeta<A, B, F: FnMut(A) -> B, Res: Expr> {
     f: F,
     output: Res,
     _a: std::marker::PhantomData<A>,
@@ -176,7 +176,7 @@ impl<
     }
 }
 
-struct FromCompactToChurch {
+pub struct FromCompactToChurch {
     output: LambdaCalc,
 }
 use crate::compact_numerals::{LambdaCalc, NumExt, NumOp};
