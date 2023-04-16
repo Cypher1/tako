@@ -1,6 +1,6 @@
 use crate::dense::DenseRepr;
 use crate::types::Empty;
-use crate::{EvalInfo, Expr, Term};
+use crate::{EvalInfo, Expr, Term, derive_expr_from};
 
 #[derive(Copy, Eq, Hash, Debug, Clone, PartialEq, PartialOrd, Ord)]
 pub enum NumOp {
@@ -101,43 +101,24 @@ impl<Meta: Default + std::fmt::Display> Expr for CompactNumerals<Meta> {
             repr: DenseRepr::new(term, meta),
         }
     }
-    fn get<'a>(&'a self, id: &'a Self::Index) -> &Term<Self::Extension, Self::Index> {
-        self.repr.get(id)
-    }
-    fn get_meta<'a>(&'a self, id: &'a Self::Index) -> &Self::Meta {
-        self.repr.get_meta(id)
-    }
-    fn get_last_id(&self) -> Self::Index {
-        self.repr.get_last_id()
-    }
+
     fn reduce_ext_apps(
         &mut self,
         value: Term<Self::Extension, Self::Index>,
     ) -> Term<Self::Extension, Self::Index> {
         self.eval(value).expect("Oh no...")
     }
-    fn root(&self) -> &Self::Index {
-        self.repr.root()
-    }
-    fn root_mut(&mut self) -> &mut Self::Index {
-        self.repr.root_mut()
-    }
-    fn add(&mut self, term: Term<Self::Extension, Self::Index>) -> Self::Index {
-        self.repr.add(term)
-    }
-    fn print_meta(&self) -> bool {
-        self.repr.print_meta()
-    }
-    fn set_print_meta(&mut self, print_meta: bool) {
-        self.repr.set_print_meta(print_meta);
-    }
+
     fn ext_info(&self, ext: Self::Extension) -> Option<EvalInfo> {
         Some(match ext {
-            NumExt::Value(_) => EvalInfo::new(0),
             NumExt::Op(NumOp::Not) => EvalInfo::new(1),
+            // TODO: Make numbers act as church numbers (i.e. arity: 2) on lambda terms.
+            NumExt::Value(_) => EvalInfo::new(0),
             _ => EvalInfo::new(2),
         })
     }
+
+    derive_expr_from!(repr);
 }
 pub type LambdaCalc = DenseRepr<NumExt, Empty>;
 

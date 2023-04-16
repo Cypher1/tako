@@ -21,3 +21,33 @@ macro_rules! new_expr(
         }
     }
 );
+
+#[macro_export]
+macro_rules! derive_expr_from(
+    { $inner: ident } => {
+        fn get<'a>(&'a self, id: &'a Self::Index) -> &Term<Self::Extension, Self::Index> {
+            self.$inner.get(id)
+        }
+        fn get_meta<'a>(&'a self, id: &'a Self::Index) -> &Self::Meta {
+            self.$inner.get_meta(id)
+        }
+        fn get_last_id(&self) -> Self::Index {
+            self.$inner.get_last_id()
+        }
+        fn root(&self) -> &Self::Index {
+            self.$inner.root()
+        }
+        fn root_mut(&mut self) -> &mut Self::Index {
+            self.$inner.root_mut()
+        }
+        fn add(&mut self, term: Term<Self::Extension, Self::Index>) -> Self::Index {
+            self.$inner.add(term)
+        }
+        fn print_meta(&self) -> bool {
+            self.$inner.print_meta()
+        }
+        fn set_print_meta(&mut self, print_meta: bool) {
+            self.$inner.set_print_meta(print_meta);
+        }
+    }
+);
