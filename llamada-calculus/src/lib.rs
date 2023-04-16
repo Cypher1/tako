@@ -284,7 +284,7 @@ pub trait Expr: Sized {
     fn traverse<T, E, V: Visitor<T, E, Self>>(&self, visitor: &mut V) -> Result<T, E> {
         let root = self.root();
         let root = &self.get(root);
-        visitor.on_term(&self, &root)
+        visitor.on_term(self, root)
     }
 }
 
