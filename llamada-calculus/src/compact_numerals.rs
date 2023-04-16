@@ -1,6 +1,6 @@
 use crate::dense::DenseRepr;
 use crate::types::Empty;
-use crate::{EvalInfo, Expr, Term, derive_expr_from};
+use crate::{derive_expr_from, EvalInfo, Expr, Term};
 
 #[derive(Copy, Eq, Hash, Debug, Clone, PartialEq, PartialOrd, Ord)]
 pub enum NumOp {
