@@ -103,6 +103,20 @@ impl Visitor<usize, Never, LambdaCalc> for FromCompactToChurch {
         let res = match ext {
             NumExt::Value(n) => self.output.to_church(*n),
             NumExt::Op(op) => match op {
+                NumOp::Mul => {
+                    let x = self.output.add(Term::Var(1));
+                    let f = self.output.add(Term::Var(2));
+                    let n = self.output.add(Term::Var(3));
+                    let m = self.output.add(Term::Var(4));
+                    let nf = self.output.add(Term::App(n, f));
+                    let mnf = self.output.add(Term::App(m, nf));
+                    let mnfx = self.output.add(Term::App(mnf, x));
+                    let mnfx_1 = self.output.add(Term::Abs(mnfx));
+                    let mnfx_2 = self.output.add(Term::Abs(mnfx_1));
+                    let mnfx_3 = self.output.add(Term::Abs(mnfx_2));
+                    let plus = self.output.add(Term::Abs(mnfx_3));
+                    plus
+                }
                 NumOp::Add => {
                     let x = self.output.add(Term::Var(1));
                     let f = self.output.add(Term::Var(2));
@@ -176,7 +190,7 @@ mod test {
     }
 
     #[test]
-    fn from_compact_to_church() {
+    fn from_compact_to_church_add() {
         let mut cn = FromCompactToChurch {
             output: LambdaCalc::new(Term::Var(1), Empty {}),
         };
@@ -198,6 +212,32 @@ mod test {
         assert_eq!(
             format!("{}", church_expr),
             "(\\a. (\\b. (a (a (a (a (a (a (a (a (a b)))))))))))"
+        );
+    }
+
+    #[test]
+    fn from_compact_to_church_mul() {
+        let mut cn = FromCompactToChurch {
+            output: LambdaCalc::new(Term::Var(1), Empty {}),
+        };
+
+        let mut expr = LambdaCalc::new(Term::Ext(NumExt::Value(3)), Empty {});
+        let a = expr.get_last_id();
+        let b = expr.add(Term::Ext(NumExt::Value(4)));
+        let plus = expr.add(Term::Ext(NumExt::Op(NumOp::Mul)));
+        let p_a = expr.add(Term::App(plus, a));
+        let p_a_b = expr.add(Term::App(p_a, b));
+        expr.set_root(p_a_b);
+
+        eprintln!("{}", expr);
+        let root = expr.traverse(&mut cn).expect("Error");
+        cn.output.set_root(root);
+        let mut church_expr = cn.output;
+        church_expr.reduce();
+
+        assert_eq!(
+            format!("{}", church_expr),
+            "(\\a. (\\b. (a (a (a (a (a (a (a (a (a (a (a (a b))))))))))))))"
         );
     }
 }
