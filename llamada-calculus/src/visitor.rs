@@ -1,6 +1,6 @@
-use crate::{Expr, Term};
-use crate::types::Never;
 use crate::expr;
+use crate::types::Never;
+use crate::{Expr, Term};
 
 pub trait Visitor<T, E, Over: Expr> {
     fn start_value(&mut self) -> T;
@@ -15,7 +15,9 @@ pub trait Visitor<T, E, Over: Expr> {
         self.on_term(ctx, inner)?;
         Ok(self.start_value())
     }
-    fn on_app(&mut self, ctx: &Over,
+    fn on_app(
+        &mut self,
+        ctx: &Over,
         inner: &Term<Over::Extension, Over::Index>,
         arg: &Term<Over::Extension, Over::Index>,
     ) -> Result<T, E> {
@@ -53,16 +55,22 @@ impl<Over: Expr> Visitor<usize, Never, Over> for CountDepth {
     fn on_var(&mut self, _ctx: &Over, _var: usize) -> Result<usize, Never> {
         Ok(1)
     }
-    fn on_abs(&mut self, ctx: &Over, inner: &Term<Over::Extension, Over::Index>) -> Result<usize, Never> {
-        Ok(1+self.on_term(ctx, inner)?)
+    fn on_abs(
+        &mut self,
+        ctx: &Over,
+        inner: &Term<Over::Extension, Over::Index>,
+    ) -> Result<usize, Never> {
+        Ok(1 + self.on_term(ctx, inner)?)
     }
-    fn on_app(&mut self, ctx: &Over,
+    fn on_app(
+        &mut self,
+        ctx: &Over,
         inner: &Term<Over::Extension, Over::Index>,
         arg: &Term<Over::Extension, Over::Index>,
     ) -> Result<usize, Never> {
         let a = self.on_term(ctx, inner)?;
         let b = self.on_term(ctx, arg)?;
-        Ok(1+std::cmp::max(a, b))
+        Ok(1 + std::cmp::max(a, b))
     }
 }
 
@@ -79,14 +87,20 @@ impl<Over: Expr> Visitor<usize, Never, Over> for CountNodes {
     fn on_var(&mut self, _ctx: &Over, _var: usize) -> Result<usize, Never> {
         Ok(1)
     }
-    fn on_abs(&mut self, ctx: &Over, inner: &Term<Over::Extension, Over::Index>) -> Result<usize, Never> {
-        Ok(1+self.on_term(ctx, inner)?)
+    fn on_abs(
+        &mut self,
+        ctx: &Over,
+        inner: &Term<Over::Extension, Over::Index>,
+    ) -> Result<usize, Never> {
+        Ok(1 + self.on_term(ctx, inner)?)
     }
-    fn on_app(&mut self, ctx: &Over,
+    fn on_app(
+        &mut self,
+        ctx: &Over,
         inner: &Term<Over::Extension, Over::Index>,
         arg: &Term<Over::Extension, Over::Index>,
     ) -> Result<usize, Never> {
-        Ok(1+self.on_term(ctx, inner)?+self.on_term(ctx, arg)?)
+        Ok(1 + self.on_term(ctx, inner)? + self.on_term(ctx, arg)?)
     }
 }
 
@@ -140,7 +154,7 @@ impl Visitor<usize, Never, LambdaCalc> for FromCompactToChurch {
                     )
                 }
                 _ => todo!(),
-            }
+            },
         };
         Ok(res)
     }
@@ -151,7 +165,9 @@ impl Visitor<usize, Never, LambdaCalc> for FromCompactToChurch {
         let inner = self.on_term(ctx, inner)?;
         Ok(self.output.add(Term::Abs(inner)))
     }
-    fn on_app(&mut self, ctx: &LambdaCalc,
+    fn on_app(
+        &mut self,
+        ctx: &LambdaCalc,
         inner: &Term<NumExt, usize>,
         arg: &Term<NumExt, usize>,
     ) -> Result<usize, Never> {
@@ -163,9 +179,9 @@ impl Visitor<usize, Never, LambdaCalc> for FromCompactToChurch {
 
 #[cfg(test)]
 mod test {
+    use crate::compact_numerals::{NumExt, NumOp};
     use crate::new_expr;
     use crate::types::Empty;
-    use crate::compact_numerals::{NumExt, NumOp};
 
     use super::*;
 
@@ -179,7 +195,7 @@ mod test {
             expr.set_root(num);
 
             eprintln!("{}", expr);
-            assert_eq!(expr.traverse(&mut cn), Ok(i*2+3));
+            assert_eq!(expr.traverse(&mut cn), Ok(i * 2 + 3));
         }
     }
 
@@ -193,7 +209,7 @@ mod test {
             expr.set_root(num);
 
             eprintln!("{}", expr);
-            assert_eq!(expr.traverse(&mut cn), Ok(i+3));
+            assert_eq!(expr.traverse(&mut cn), Ok(i + 3));
         }
     }
 
