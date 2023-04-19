@@ -118,14 +118,14 @@ pub trait Expr: Sized {
         id
     }
 
-    fn ext_info(&self, _ext: Self::Extension) -> Option<EvalInfo> {
+    fn ext_info(&self, _ext: &Self::Extension) -> Option<EvalInfo> {
         None
     }
     fn reduce_at_impl(&mut self, id: Self::Index, depth: usize) -> ExprResult<Self::Index> {
         // eprintln!("{}reducing {}", "  ".repeat(depth), self.as_context(&id));
         let curr = self.get(&id).clone();
         match curr {
-            Term::Ext(ext) => ExprResult::unchanged(id).with_ext_info(self.ext_info(ext)),
+            Term::Ext(ext) => ExprResult::unchanged(id).with_ext_info(self.ext_info(&ext)),
             Term::Var(_) => ExprResult::unchanged(id),
             Term::Abs(inner) => self
                 .reduce_at(inner, depth + 1)

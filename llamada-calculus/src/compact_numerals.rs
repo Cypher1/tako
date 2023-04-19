@@ -32,7 +32,8 @@ impl std::fmt::Display for NumExt {
     }
 }
 
-struct CompactNumerals<Meta> {
+#[derive(Debug, Clone)]
+pub struct CompactNumerals<Meta> {
     repr: DenseRepr<NumExt, Meta>,
 }
 
@@ -109,7 +110,7 @@ impl<Meta: Default + std::fmt::Display> Expr for CompactNumerals<Meta> {
         self.eval(value).expect("Oh no...")
     }
 
-    fn ext_info(&self, ext: Self::Extension) -> Option<EvalInfo> {
+    fn ext_info(&self, ext: &Self::Extension) -> Option<EvalInfo> {
         Some(match ext {
             NumExt::Op(NumOp::Not) => EvalInfo::new(1),
             // TODO: Make numbers act as church numbers (i.e. arity: 2) on lambda terms.
@@ -120,7 +121,7 @@ impl<Meta: Default + std::fmt::Display> Expr for CompactNumerals<Meta> {
 
     derive_expr_from!(repr);
 }
-pub type LambdaCalc = DenseRepr<NumExt, Empty>;
+pub type LambdaCalc = CompactNumerals<Empty>;
 
 impl<Meta> std::fmt::Display for CompactNumerals<Meta>
 where

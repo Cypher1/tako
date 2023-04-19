@@ -121,19 +121,17 @@ impl<Over: Expr> Visitor<usize, Never, Over> for CountNodes {
     }
 }
 
-pub struct TransformMeta<A, B, F: FnMut(&A) -> B, Res: Expr> {
+pub struct TransformMeta<Ctx: Expr, Res: Expr, F: FnMut(&Ctx::Meta, Vec<&Res::Index>, Option<&Ctx::Extension>) -> Res::Meta> {
     f: F,
     output: Res,
-    _a: std::marker::PhantomData<A>,
-    _b: std::marker::PhantomData<B>,
+    _ctx: std::marker::PhantomData<Ctx>,
 }
 
 impl<
-        B,
         Over: Expr,
-        F: FnMut(&Over::Meta) -> B,
-        Res: Expr<Extension = Over::Extension, Meta = B>,
-    > Visitor<Res::Index, Never, Over> for TransformMeta<Over::Meta, B, F, Res>
+        Res: Expr<Extension = Over::Extension>,
+        F: FnMut(&Over::Meta, Vec<&Res::Index>, Option<&Over::Extension>) -> Res::Meta,
+    > Visitor<Res::Index, Never, Over> for TransformMeta<Over, Res, F>
 {
     fn start_value(&mut self) -> Res::Index {
         self.output.get_last_id()
@@ -147,10 +145,10 @@ impl<
     ) -> Result<Res::Index, Never> {
         Ok(self
             .output
-            .add_with_meta(Term::Ext(ext.clone()), (self.f)(meta)))
+            .add_with_meta(Term::Ext(ext.clone()), (self.f)(meta, vec![], Some(ext))))
     }
     fn on_var(&mut self, _ctx: &Over, var: usize, meta: &Over::Meta) -> Result<Res::Index, Never> {
-        Ok(self.output.add_with_meta(Term::Var(var), (self.f)(meta)))
+        Ok(self.output.add_with_meta(Term::Var(var), (self.f)(meta, vec![], None)))
     }
     fn on_abs(
         &mut self,
@@ -159,7 +157,8 @@ impl<
         meta: &Over::Meta,
     ) -> Result<Res::Index, Never> {
         let inner = self.on_id(ctx, inner)?;
-        Ok(self.output.add_with_meta(Term::Abs(inner), (self.f)(meta)))
+        let meta = (self.f)(meta, vec![&inner], None);
+        Ok(self.output.add_with_meta(Term::Abs(inner), meta))
     }
     fn on_app(
         &mut self,
@@ -170,9 +169,10 @@ impl<
     ) -> Result<Res::Index, Never> {
         let inner = self.on_id(ctx, inner)?;
         let arg = self.on_id(ctx, arg)?;
+        let meta = (self.f)(meta, vec![&inner, &arg], None);
         Ok(self
             .output
-            .add_with_meta(Term::App(inner, arg), (self.f)(meta)))
+            .add_with_meta(Term::App(inner, arg), meta))
     }
 }
 
@@ -282,7 +282,7 @@ mod test {
         for i in 0..100 {
             let mut expr = LambdaCalc::new(Term::Var(1), Empty {});
             let num = expr.to_church(i as u32);
-            expr.set_root(num);
+            *expr.root_mut() = num;
 
             eprintln!("{}", expr);
             assert_eq!(expr.traverse(&mut cn), Ok(i * 2 + 3));
@@ -296,7 +296,7 @@ mod test {
         for i in 0..100 {
             let mut expr = LambdaCalc::new(Term::Var(1), Empty {});
             let num = expr.to_church(i as u32);
-            expr.set_root(num);
+            *expr.root_mut() = num;
 
             eprintln!("{}", expr);
             assert_eq!(expr.traverse(&mut cn), Ok(i + 3));
@@ -315,11 +315,11 @@ mod test {
         let plus = expr.add(Term::Ext(NumExt::Op(NumOp::Add)));
         let p_a = expr.add(Term::App(plus, a));
         let p_a_b = expr.add(Term::App(p_a, b));
-        expr.set_root(p_a_b);
+        *expr.root_mut() = p_a_b;
 
         eprintln!("{}", expr);
         let root = expr.traverse(&mut cn).expect("Error");
-        cn.output.set_root(root);
+        *cn.output.root_mut() = root;
         let mut church_expr = cn.output;
         church_expr.reduce();
 
@@ -347,7 +347,7 @@ mod test {
 
         eprintln!("{}", expr);
         let root = expr.traverse(&mut cn).expect("Error");
-        cn.output.set_root(root);
+        *cn.output.root_mut() = root;
         let mut church_expr = cn.output;
         church_expr.reduce();
 
@@ -368,14 +368,14 @@ mod test {
             p_a = App(plus, a),
             p_a_b = App(p_a, b),
         );
+        let old_expr = expr.clone(); // TODO: NAH
 
         eprintln!("{}", expr);
 
         let mut node_count: usize = 0;
         let mut cn = TransformMeta {
-            _a: PhantomData,
-            _b: PhantomData,
-            f: move | _meta: &Empty | {
+            _ctx: PhantomData,
+            f: move | _meta: &Empty, _args: Vec<&usize>, _ext: Option<&NumExt> | {
                 node_count+=1;
                 node_count
             },
@@ -392,11 +392,26 @@ mod test {
         use std::collections::HashMap;
         let mut arity_graph = HashMap::<usize, usize>::new();
         let mut cn = TransformMeta {
-            _a: PhantomData,
-            _b: PhantomData,
-            f: move | meta: &usize | {
-                arity_graph.insert(*meta, 0);
-                *meta
+            _ctx: PhantomData,
+            f: move | meta: &usize, args: Vec<&usize>, ext: Option<&NumExt> | {
+                let arity = if let Some(ext) = ext {
+                    old_expr.ext_info(ext).expect("Huh?").arity
+                } else {
+                    match args[..] {
+                        [inner, _arg] => { // App
+                            let inner_arity = arity_graph.get(inner).expect("Huh???");
+                            inner_arity-1
+                        }
+                        [inner] => { // Abs
+                            let inner_arity = arity_graph.get(inner).expect("Huh???");
+                            inner_arity+1
+                        }
+                        [] => todo!(), // Var
+                        _ => todo!(),
+                    }
+                };
+                arity_graph.insert(*meta, arity);
+                arity
             },
             output: DenseRepr::new(Term::<NumExt, usize>::Var(1), 0),
         };

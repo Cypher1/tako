@@ -16,7 +16,7 @@ macro_rules! new_expr(
             let mut e = <$ty>::new($first_ex, Empty {});
             let $first = e.get_last_id();
             let f = expr!(e, $final, $( $name = $ex, )*);
-            e.set_root(f);
+            *e.root_mut() = f;
             e
         }
     }

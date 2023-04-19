@@ -1,6 +1,6 @@
 #[derive(Debug, Clone, Eq, Hash, Ord, PartialOrd, PartialEq)]
 pub struct EvalInfo {
-    arity: usize,
+    pub arity: usize,
     arg_count: usize,
 }
 
