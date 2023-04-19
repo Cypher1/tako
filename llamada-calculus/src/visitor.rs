@@ -121,7 +121,11 @@ impl<Over: Expr> Visitor<usize, Never, Over> for CountNodes {
     }
 }
 
-pub struct TransformMeta<Ctx: Expr, Res: Expr, F: FnMut(&Ctx::Meta, Vec<&Res::Index>, Option<&Ctx::Extension>) -> Res::Meta> {
+pub struct TransformMeta<
+    Ctx: Expr,
+    Res: Expr,
+    F: FnMut(&Ctx::Meta, Vec<&Res::Index>, Option<&Ctx::Extension>) -> Res::Meta,
+> {
     f: F,
     output: Res,
     _ctx: std::marker::PhantomData<Ctx>,
@@ -148,7 +152,9 @@ impl<
             .add_with_meta(Term::Ext(ext.clone()), (self.f)(meta, vec![], Some(ext))))
     }
     fn on_var(&mut self, _ctx: &Over, var: usize, meta: &Over::Meta) -> Result<Res::Index, Never> {
-        Ok(self.output.add_with_meta(Term::Var(var), (self.f)(meta, vec![], None)))
+        Ok(self
+            .output
+            .add_with_meta(Term::Var(var), (self.f)(meta, vec![], None)))
     }
     fn on_abs(
         &mut self,
@@ -170,9 +176,7 @@ impl<
         let inner = self.on_id(ctx, inner)?;
         let arg = self.on_id(ctx, arg)?;
         let meta = (self.f)(meta, vec![&inner, &arg], None);
-        Ok(self
-            .output
-            .add_with_meta(Term::App(inner, arg), meta))
+        Ok(self.output.add_with_meta(Term::App(inner, arg), meta))
     }
 }
 
@@ -270,8 +274,8 @@ mod test {
     use std::marker::PhantomData;
 
     use crate::compact_numerals::{NumExt, NumOp};
-    use crate::{new_expr, DenseRepr};
     use crate::types::Empty;
+    use crate::{new_expr, DenseRepr};
 
     use super::*;
 
@@ -375,8 +379,8 @@ mod test {
         let mut node_count: usize = 0;
         let mut cn = TransformMeta {
             _ctx: PhantomData,
-            f: move | _meta: &Empty, _args: Vec<&usize>, _ext: Option<&NumExt> | {
-                node_count+=1;
+            f: move |_meta: &Empty, _args: Vec<&usize>, _ext: Option<&NumExt>| {
+                node_count += 1;
                 node_count
             },
             output: DenseRepr::new(Term::Var(1), 0),
@@ -393,18 +397,20 @@ mod test {
         let mut arity_graph = HashMap::<usize, usize>::new();
         let mut cn = TransformMeta {
             _ctx: PhantomData,
-            f: move | meta: &usize, args: Vec<&usize>, ext: Option<&NumExt> | {
+            f: move |meta: &usize, args: Vec<&usize>, ext: Option<&NumExt>| {
                 let arity = if let Some(ext) = ext {
                     old_expr.ext_info(ext).expect("Huh?").arity
                 } else {
                     match args[..] {
-                        [inner, _arg] => { // App
+                        [inner, _arg] => {
+                            // App
                             let inner_arity = arity_graph.get(inner).expect("Huh???");
-                            inner_arity-1
+                            inner_arity - 1
                         }
-                        [inner] => { // Abs
+                        [inner] => {
+                            // Abs
                             let inner_arity = arity_graph.get(inner).expect("Huh???");
-                            inner_arity+1
+                            inner_arity + 1
                         }
                         [] => todo!(), // Var
                         _ => todo!(),
@@ -421,9 +427,6 @@ mod test {
         let mut with_arity = cn.output;
         with_arity.set_print_meta(true);
 
-        assert_eq!(
-            format!("{}", with_arity),
-            "((Mul: 2 3: 0): 1 4: 0): 0"
-        );
+        assert_eq!(format!("{}", with_arity), "((Mul: 2 3: 0): 1 4: 0): 0");
     }
 }
