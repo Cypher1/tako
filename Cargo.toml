@@ -1,6 +1,6 @@
 [workspace]
 
-default-members=["takoc", "takolib", "llamada-calculus"]
+default-members=["butter-graph", "takoc", "takolib", "llamada-calculus"]
 
 members = [
     "takolib",
@@ -8,6 +8,7 @@ members = [
     "tako-webui",
     "tako-bench",
     "llamada-calculus",
+    "butter-graph",
 ]
 
 [profile.test]
