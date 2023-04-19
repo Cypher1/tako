@@ -27,23 +27,18 @@ impl std::fmt::Display for Table {
             write!(f, "{} {col} {}|", " ".repeat(r), " ".repeat(gap-r))?;
         }
         write!(f, "\n|")?;
-        for (i, _col) in self.columns.iter().enumerate() {
-            let w = widths[i];
-            write!(f, "{}|", "-".repeat(w));
-        }
+        for w in &widths { write!(f, "{}|", "-".repeat(*w)); }
         for row in &self.rows {
             write!(f, "\n|")?;
             for (i, item) in row.iter().enumerate() {
-                let gap = widths[i]-format!("{item}").chars().count();
+                let content = format!("{item}");
+                let gap = widths[i]-content.chars().count();
                 let r = gap/2;
-                write!(f, "{}{item}{}|", " ".repeat(r), " ".repeat(gap-r))?;
+                write!(f, "{}{content}{}|", " ".repeat(r), " ".repeat(gap-r))?;
             }
         }
         write!(f, "\n|")?;
-        for (i, _col) in self.columns.iter().enumerate() {
-            let w = widths[i];
-            write!(f, "{}|", "-".repeat(w));
-        }
+        for w in &widths { write!(f, "{}|", "-".repeat(*w)); }
         Ok(())
     }
 }
