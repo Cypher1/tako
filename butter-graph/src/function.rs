@@ -1,7 +1,7 @@
 use crate::error::GraphErr;
-use crate::node::NodeId;
 use crate::graph::Graph;
-use crate::value::{Value, Table};
+use crate::node::NodeId;
+use crate::value::{Table, Value};
 use std::collections::{BTreeMap, HashSet};
 use std::fmt::Write;
 
@@ -39,11 +39,11 @@ pub enum Op {
     Eq,
     If,
     Substr,
-    MakeMap, // Takes n pairs...???
+    MakeMap,   // Takes n pairs...???
     MakeTable, // Takes vector of values and makes table...
-    Keys,    // Takes map and gets keys as vector
-    Values,  // Takes map and gets values as vector
-    Items,   // Takes map and gets keys and values as vector
+    Keys,      // Takes map and gets keys as vector
+    Values,    // Takes map and gets values as vector
+    Items,     // Takes map and gets keys and values as vector
     Over,
     SortedBy,
 }
@@ -153,7 +153,7 @@ impl Op {
                 Ok(Value::Bool(eq))
             }
             Op::MakeMap => {
-                let mut map: BTreeMap::<Value, Value> = BTreeMap::new();
+                let mut map: BTreeMap<Value, Value> = BTreeMap::new();
                 // TODO: Check args?
                 if args.len() % 2 != 0 {
                     todo!("Wrong number of arguments!?")
@@ -203,13 +203,12 @@ impl Op {
                             }
                             rows.push(row);
                         }
-                        _ => { todo!(); }
+                        _ => {
+                            todo!();
+                        }
                     }
                 }
-                let table = Table {
-                    rows,
-                    columns,
-                };
+                let table = Table { rows, columns };
                 Ok(Value::Table(table))
             }
             Op::Accessor => {
@@ -224,18 +223,16 @@ impl Op {
                                 Value::None
                             }
                         }
-                        Value::Vec(vec) => {
-                            match key {
-                                Value::I64(i) => {
-                                    if let Some(value) = vec.get(*i as usize) {
-                                        value.clone()
-                                    } else {
-                                        Value::None
-                                    }
+                        Value::Vec(vec) => match key {
+                            Value::I64(i) => {
+                                if let Some(value) = vec.get(*i as usize) {
+                                    value.clone()
+                                } else {
+                                    Value::None
                                 }
-                                _ => todo!(),
                             }
-                        }
+                            _ => todo!(),
+                        },
                         _ => {
                             eprintln!("WHAT");
                             todo!()

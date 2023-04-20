@@ -1,7 +1,7 @@
 mod error;
 mod function;
-mod node;
 mod graph;
+mod node;
 mod value;
 #[macro_use]
 mod map_macros;

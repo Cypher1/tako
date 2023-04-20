@@ -1,7 +1,7 @@
 #![allow(unused)]
-use crate::node::{NodeId, Node};
 use crate::error::GraphErr;
 use crate::function::{Function, FunctionBuilder};
+use crate::node::{Node, NodeId};
 use crate::value::Value;
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
@@ -24,8 +24,7 @@ impl Graphic for Arc<Mutex<Graph>> {
 }
 
 #[derive(Default, Debug)]
-pub struct Watch {
-}
+pub struct Watch {}
 
 #[derive(Debug)]
 pub struct Graph {
@@ -91,9 +90,9 @@ impl Graph {
     }
 
     pub fn all_nodes(&self) -> HashSet<NodeId> {
-        let mut ids = self.with_parent(|parent| {
-            Ok(parent.all_nodes())
-        }).unwrap_or_default();
+        let mut ids = self
+            .with_parent(|parent| Ok(parent.all_nodes()))
+            .unwrap_or_default();
         ids.extend(self.nodes.keys());
         ids
     }
@@ -133,7 +132,8 @@ impl Graph {
                 parent.remove(*id)?;
             }
             Ok(())
-        }).map_err(|_e| GraphErr::NoParentForCommit)
+        })
+        .map_err(|_e| GraphErr::NoParentForCommit)
     }
 
     fn with_node<T>(
@@ -144,9 +144,8 @@ impl Graph {
         if let Some(node) = self.nodes.get(&id) {
             (f)(node)
         } else {
-            self.with_parent(|parent| {
-                parent.with_node(id, f)
-            }).map_err(|_e| GraphErr::NodeMissing(id))
+            self.with_parent(|parent| parent.with_node(id, f))
+                .map_err(|_e| GraphErr::NodeMissing(id))
         }
     }
 
@@ -158,9 +157,8 @@ impl Graph {
         if let Some(node) = self.nodes.get_mut(&id) {
             (f)(node)
         } else {
-            self.with_parent(|parent| {
-                parent.with_node_mut(id, f)
-            }).map_err(|_e| GraphErr::NodeMissing(id))
+            self.with_parent(|parent| parent.with_node_mut(id, f))
+                .map_err(|_e| GraphErr::NodeMissing(id))
         }
     }
 
@@ -180,7 +178,7 @@ impl Graph {
 
     pub fn set(&mut self, id: NodeId, content: Function) -> Result<(), GraphErr> {
         self.dependencies.insert(id, content.dependencies()); // Update the dependency graph
-        // TODO: Avoid duplication?
+                                                              // TODO: Avoid duplication?
         self.with_new_node(id, Node::function(content.clone()), |node| {
             node.content = content;
             Ok(())

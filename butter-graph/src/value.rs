@@ -1,7 +1,6 @@
 #![allow(unused)]
-use crate::function::{Op, Function};
+use crate::function::{Function, Op};
 use std::collections::BTreeMap;
-
 
 #[derive(Clone, Debug, Hash, Ord, Eq, PartialOrd, PartialEq)]
 pub struct Table {
@@ -15,30 +14,34 @@ impl std::fmt::Display for Table {
         let mut widths = vec![];
         write!(f, "\n|")?;
         for (i, col) in self.columns.iter().enumerate() {
-            let start_w = 2+col.chars().count();
+            let start_w = 2 + col.chars().count();
             let mut w = start_w;
             for row in &self.rows {
                 let item = &row[i];
-                w = std::cmp::max(w, 2+format!("{}", item).chars().count());
+                w = std::cmp::max(w, 2 + format!("{}", item).chars().count());
             }
             widths.push(w);
-            let gap = w-start_w;
-            let r = gap/2;
-            write!(f, "{} {col} {}|", " ".repeat(r), " ".repeat(gap-r))?;
+            let gap = w - start_w;
+            let r = gap / 2;
+            write!(f, "{} {col} {}|", " ".repeat(r), " ".repeat(gap - r))?;
         }
         write!(f, "\n|")?;
-        for w in &widths { write!(f, "{}|", "-".repeat(*w)); }
+        for w in &widths {
+            write!(f, "{}|", "-".repeat(*w));
+        }
         for row in &self.rows {
             write!(f, "\n|")?;
             for (i, item) in row.iter().enumerate() {
                 let content = format!("{item}");
-                let gap = widths[i]-content.chars().count();
-                let r = gap/2;
-                write!(f, "{}{content}{}|", " ".repeat(r), " ".repeat(gap-r))?;
+                let gap = widths[i] - content.chars().count();
+                let r = gap / 2;
+                write!(f, "{}{content}{}|", " ".repeat(r), " ".repeat(gap - r))?;
             }
         }
         write!(f, "\n|")?;
-        for w in &widths { write!(f, "{}|", "-".repeat(*w)); }
+        for w in &widths {
+            write!(f, "{}|", "-".repeat(*w));
+        }
         Ok(())
     }
 }
@@ -49,7 +52,7 @@ pub enum Value {
     Bool(bool),
     I64(i64),
     // F64(f64),
-    String(String), // Todo: Cow
+    String(String),   // Todo: Cow
     Some(Box<Value>), // Needed??? Todo: Cow
     // Bytes, Bigint, Dates, URLs etc.
     // Containers...?
