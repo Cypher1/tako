@@ -290,7 +290,7 @@ impl Op {
             }
             Op::SortedBy => {
                 let Value::Function(fun) = &args[0] else { todo!() };
-                let Value::Vec(vec) = &args[1] else { todo!() };
+                let Value::Vec(vec) = &args[1] else { todo!("args[1] = {}", &args[1]) };
                 let mut new_vec = vec![];
                 for val in vec {
                     new_vec.push((fun.compute(graph, &[val.clone()])?, val.clone()));

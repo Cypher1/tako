@@ -91,10 +91,17 @@ fn org_chart() -> Result<(), GraphErr> {
         ]);
     });
 
+    let by_employee_ids_table = g.add_fn(|b| {
+        b.add_call(Op::MakeTable, vec![
+            Value::Vec(vec!["employee_id".into(), "name".into()]).into(),
+            by_employee_ids.into()
+        ]);
+    });
+
     g.watch(employees);
     g.watch(employee_names);
     g.watch(employee_ids);
-    g.watch(by_employee_ids);
+    g.watch(by_employee_ids_table);
     g.watch(reports_to);
     g.watch(key_by_employee_ids);
     print_g(&g)?;
