@@ -8,9 +8,13 @@ mod expr_result;
 pub mod ref_counted;
 pub mod sparse;
 pub mod types;
+pub mod visitor;
+#[macro_use]
+pub mod macros;
 pub mod with_context;
 pub use dense::{DenseRepr, LambdaCalc};
 pub use expr_result::{EvalInfo, ExprResult};
+pub use visitor::Visitor;
 pub use with_context::WithContext;
 
 #[derive(Debug, Clone, Eq, Hash, Ord, PartialOrd, PartialEq)]
@@ -24,7 +28,7 @@ pub enum Term<T, Id> {
 pub trait Expr: Sized {
     type Index: Clone + Eq + PartialEq + std::fmt::Debug;
     type Extension: Clone + std::fmt::Display + std::fmt::Debug;
-    type Meta: std::fmt::Display;
+    type Meta: Default + std::fmt::Display;
 
     fn new(term: Term<Self::Extension, Self::Index>, meta: Self::Meta) -> Self;
 
@@ -34,7 +38,15 @@ pub trait Expr: Sized {
     fn root(&self) -> &Self::Index;
     fn root_mut(&mut self) -> &mut Self::Index;
 
-    fn add(&mut self, term: Term<Self::Extension, Self::Index>) -> Self::Index;
+    fn add_with_meta(
+        &mut self,
+        term: Term<Self::Extension, Self::Index>,
+        meta: Self::Meta,
+    ) -> Self::Index;
+
+    fn add(&mut self, term: Term<Self::Extension, Self::Index>) -> Self::Index {
+        self.add_with_meta(term, Self::Meta::default())
+    }
 
     fn shift(&mut self, id: &Self::Index, depth: usize, delta: i64) -> ExprResult<Self::Index> {
         match self.get(id).clone() {
@@ -106,14 +118,14 @@ pub trait Expr: Sized {
         id
     }
 
-    fn ext_info(&self, _ext: Self::Extension) -> Option<EvalInfo> {
+    fn ext_info(&self, _ext: &Self::Extension) -> Option<EvalInfo> {
         None
     }
     fn reduce_at_impl(&mut self, id: Self::Index, depth: usize) -> ExprResult<Self::Index> {
         // eprintln!("{}reducing {}", "  ".repeat(depth), self.as_context(&id));
         let curr = self.get(&id).clone();
         match curr {
-            Term::Ext(ext) => ExprResult::unchanged(id).with_ext_info(self.ext_info(ext)),
+            Term::Ext(ext) => ExprResult::unchanged(id).with_ext_info(self.ext_info(&ext)),
             Term::Var(_) => ExprResult::unchanged(id),
             Term::Abs(inner) => self
                 .reduce_at(inner, depth + 1)
@@ -275,6 +287,13 @@ pub trait Expr: Sized {
 
     fn fmt_root(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         Self::fmt_index(&self.as_context(self.root()), f)
+    }
+
+    fn traverse<T, E, V: Visitor<T, E, Self>>(&self, visitor: &mut V) -> Result<T, E> {
+        let root = self.root();
+        let meta = &self.get_meta(root);
+        let root = &self.get(root);
+        visitor.on_term(self, root, meta)
     }
 }
 

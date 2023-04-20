@@ -88,8 +88,11 @@ impl<
     fn root_mut(&mut self) -> &mut Self::Index {
         &mut self.terms[self.root]
     }
-    fn add(&mut self, term: Term<Self::Extension, Self::Index>) -> Self::Index {
-        let meta = Self::Meta::default();
+    fn add_with_meta(
+        &mut self,
+        term: Term<Self::Extension, Self::Index>,
+        meta: Self::Meta,
+    ) -> Self::Index {
         Ptr::new(term, meta)
     }
     fn print_meta(&self) -> bool {
