@@ -26,7 +26,7 @@ impl Graphic for Arc<Mutex<Graph>> {
 #[derive(Default, Debug)]
 pub struct Watch {}
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Graph {
     // Shared state / relations:
     parent: Option<Arc<Mutex<Graph>>>, // For temporary edits or parallel versions?
@@ -61,7 +61,7 @@ impl std::fmt::Display for Graph {
                     Err(err) => write!(f, "{err:?}")?,
                 }
             }
-            write!(f, "\n");
+            writeln!(f);
         }
         Ok(())
     }
@@ -69,16 +69,7 @@ impl std::fmt::Display for Graph {
 
 impl Graph {
     pub fn new() -> Self {
-        Self {
-            parent: None,
-            nodes: HashMap::new(),
-            node_ids: Arc::new(Mutex::new(0)),
-            dirty_set: Vec::new(),
-            watch_set: HashMap::new(),
-            value_cache: HashMap::new(),
-            dependencies: HashMap::new(),
-            deleted_set: Vec::new(),
-        }
+        Self::default()
     }
     pub fn new_shared() -> Arc<Mutex<Self>> {
         Arc::new(Mutex::new(Graph::new()))

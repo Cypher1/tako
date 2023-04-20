@@ -1,5 +1,4 @@
-use crate::function::{Function, FunctionBuilder};
-use crate::value::Value;
+use crate::function::Function;
 
 #[derive(Copy, Clone, Hash, Ord, Eq, PartialOrd, PartialEq)]
 pub struct NodeId {
@@ -35,15 +34,7 @@ impl Node {
         Self { content }
     }
 
-    pub fn value(value: Value) -> Self {
-        Self::new(value.into())
-    }
-
     pub fn function(f: Function) -> Self {
         Self::new(f)
-    }
-
-    pub fn computed(f: impl FnOnce(&mut FunctionBuilder)) -> Self {
-        Self::new(Function::build(f))
     }
 }

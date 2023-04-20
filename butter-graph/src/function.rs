@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::error::GraphErr;
 use crate::graph::Graph;
 use crate::node::NodeId;
@@ -243,27 +245,13 @@ impl Op {
             }
             Op::Keys => {
                 // TODO: check num arguments.
-                let mut keys = vec![];
-                let map = match &args[0] {
-                    Value::Map(map) => map,
-                    _ => todo!(),
-                };
-                for (k, _) in map {
-                    keys.push(k.clone());
-                }
-                Ok(Value::Vec(keys))
+                let Value::Map(map) = &args[0] else { todo!() };
+                Ok(Value::Vec(map.keys().cloned().collect()))
             }
             Op::Values => {
                 // TODO: check num arguments.
-                let mut values = vec![];
-                let map = match &args[0] {
-                    Value::Map(map) => map,
-                    _ => todo!(),
-                };
-                for (_, v) in map {
-                    values.push(v.clone());
-                }
-                Ok(Value::Vec(values))
+                let Value::Map(map) = &args[0] else { todo!() };
+                Ok(Value::Vec(map.values().cloned().collect()))
             }
             Op::If => {
                 // TODO: check num arguments.
@@ -322,21 +310,21 @@ pub enum FunctionOp {
     Apply(Index), // Apply prev to previous prev.
 }
 
-impl Into<FunctionOp> for NodeId {
-    fn into(self: Self) -> FunctionOp {
-        Reference(self)
+impl From<NodeId> for FunctionOp {
+    fn from(value: NodeId) -> Self {
+        Reference(value)
     }
 }
 
-impl Into<FunctionOp> for &str {
-    fn into(self: Self) -> FunctionOp {
-        Value(self.into())
+impl From<&str> for FunctionOp {
+    fn from(value: &str) -> Self {
+        Value(value.into())
     }
 }
 
-impl Into<FunctionOp> for Value {
-    fn into(self: Self) -> FunctionOp {
-        Value(self)
+impl From<Value> for FunctionOp {
+    fn from(value: Value) -> Self {
+        Value(value)
     }
 }
 
@@ -354,11 +342,11 @@ impl std::fmt::Display for Function {
     }
 }
 
-impl Into<Function> for Value {
-    fn into(self) -> Function {
+impl From<Value> for Function {
+    fn from(value: Value) -> Self {
         // Costly representation?
-        Function {
-            lambdas: vec![Value(self)],
+        Self {
+            lambdas: vec![Value(value)],
         }
     }
 }

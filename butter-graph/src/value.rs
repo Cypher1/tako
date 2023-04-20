@@ -108,21 +108,21 @@ impl std::fmt::Display for Value {
     }
 }
 
-impl Into<Value> for i64 {
-    fn into(self) -> Value {
-        Value::I64(self)
+impl From<i64> for Value {
+    fn from(value: i64) -> Self {
+        Self::I64(value)
     }
 }
 
-impl Into<Value> for String {
-    fn into(self) -> Value {
-        Value::String(self)
+impl From<String> for Value {
+    fn from(value: String) -> Self {
+        Self::String(value)
     }
 }
 
-impl Into<Value> for &str {
-    fn into(self) -> Value {
-        Value::String(self.to_string())
+impl From<&str> for Value {
+    fn from(value: &str) -> Self {
+        Self::String(value.to_string())
     }
 }
 
