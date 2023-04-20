@@ -106,6 +106,5 @@ fn org_chart() -> Result<(), GraphErr> {
     g.watch(key_by_employee_ids);
     print_g(&g)?;
 
-    assert!(false);
     Ok(())
 }
