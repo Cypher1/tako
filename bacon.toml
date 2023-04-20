@@ -23,6 +23,11 @@ command = ["cargo", "clippy", "--all-targets", "--color", "always"]
 need_stdout = false
 watch = ["tests", "benches", "examples"]
 
+[jobs.nextest]
+command = ["cargo", "nextest", "run", "--color", "always"]
+need_stdout = true
+watch = ["tests"]
+
 [jobs.test]
 command = ["cargo", "test", "--color", "always"]
 need_stdout = true
@@ -60,4 +65,5 @@ i = "job:initial"
 c = "job:clippy"
 d = "job:doc-open"
 t = "job:test"
+n = "job:nextest"
 r = "job:run"
