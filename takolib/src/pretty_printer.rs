@@ -1,6 +1,6 @@
 #![allow(unused)]
 use crate::{
-    ast::{Ast, Binding, Contains, Node, NodeData, NodeId},
+    ast::{Ast, Contains, Definition, Node, NodeData, NodeId},
     parser::semantics::BindingMode,
     string_interner::Identifier,
 };
@@ -16,22 +16,31 @@ struct InContext<'a, T> {
 */
 
 #[derive(Debug)]
+struct PrintNodes<'ast> {
+    nodes: Vec<PrintNode<'ast>>,
+}
+
+#[derive(Debug)]
 struct PrintNode<'ast> {
     ast: &'ast Ast,
     node: NodeId,
 }
 
-pub fn pretty(ast: &Ast, node: NodeId) -> impl fmt::Display + fmt::Debug + '_ {
+pub fn pretty(ast: &Ast) -> impl fmt::Display + fmt::Debug + '_ {
+    PrintNode::from_context(ast)
+}
+
+pub fn pretty_node(ast: &Ast, node: NodeId) -> impl fmt::Display + fmt::Debug + '_ {
     PrintNode::in_context(ast, node)
 }
 
 impl<'ast> PrintNode<'ast> {
-    pub fn from_context(ast: &'ast Ast) -> Vec<Self> {
+    pub fn from_context(ast: &'ast Ast) -> PrintNodes<'ast> {
         let mut nodes = vec![];
         for node in &ast.roots {
             nodes.push(Self::in_context(ast, *node))
         }
-        nodes
+        PrintNodes { nodes }
     }
     pub fn in_context(ast: &'ast Ast, node: NodeId) -> Self {
         Self { ast, node }
@@ -50,48 +59,36 @@ impl<'ast> PrintNode<'ast> {
         Ok(())
     }
 
-    fn print_binding(&self, f: &mut impl Write, binding: &Binding) -> fmt::Result {
-        let Binding { mode, name, ty } = &binding;
-        if *mode != BindingMode::Lambda {
-            write!(f, "{mode} ");
-        }
-        write!(
-            f,
-            "{}",
-            self.ast
-                .string_interner
-                .get_str(*name)
-                .expect("Unknown name!?")
-        )?;
-        if let Some(ty) = ty {
-            write!(f, ": {}", self.child(*ty))?;
-        };
-        Ok(())
-    }
-
     fn print_definition_head(
         &self,
         f: &mut fmt::Formatter<'_>,
+        mode: BindingMode,
         name: Identifier,
-        bindings: &Option<Vec<Binding>>,
+        bindings: &Option<Vec<NodeId>>,
         ty: &mut Option<NodeId>,
     ) -> fmt::Result {
+        if mode != BindingMode::Lambda {
+            write!(f, "{mode} ");
+        }
         self.print_identifier(f, name)?;
         if let Some(bindings) = &bindings {
             let mut implicits = String::new();
             let mut explicits = String::new();
             for binding in bindings {
-                if binding.mode != BindingMode::Lambda {
-                    if !implicits.is_empty() {
-                        write!(&mut implicits, ", ")?;
+                let into = if let NodeData::Definition(def) = self.ast.get(*binding).id {
+                    let (_nodeid, def) = self.ast.get(def);
+                    if def.mode != BindingMode::Lambda {
+                        &mut implicits
+                    } else {
+                        &mut explicits
                     }
-                    self.print_binding(&mut implicits, binding)?;
                 } else {
-                    if !explicits.is_empty() {
-                        write!(explicits, ", ")?;
-                    }
-                    self.print_binding(&mut explicits, binding)?;
+                    &mut explicits
+                };
+                if !into.is_empty() {
+                    write!(into, ", ")?;
                 }
+                write!(into, "{}", self.child(*binding))?;
             }
             write!(f, "(")?;
             if !implicits.is_empty() {
@@ -115,6 +112,20 @@ impl<'ast> PrintNode<'ast> {
     }
 }
 
+impl<'ast> fmt::Display for PrintNodes<'ast> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut first = true;
+        for node in &self.nodes {
+            if !first {
+                writeln!(f);
+            }
+            write!(f, "{node}");
+            first = false;
+        }
+        write!(f, "")
+    }
+}
+
 impl<'ast> fmt::Display for PrintNode<'ast> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let Node {
@@ -123,23 +134,26 @@ impl<'ast> fmt::Display for PrintNode<'ast> {
             location,
         } = self.ast.get(self.node);
         let mut ty = *ty;
-        use NodeData::*;
         match node {
-            Warning(node) => {
+            NodeData::Warning(node) => {
                 let (_node_id, node) = self.ast.get(*node);
                 write!(f, "Warning {node:?}")?;
             }
-            Binding(node) => {
-                let (_node_id, node) = self.ast.get(*node);
-                write!(f, "Binding {node:?}")?;
-            }
-            Atom(node) => {
+            NodeData::Atom(node) => {
                 let (_node_id, node) = self.ast.get(*node);
                 self.print_identifier(f, node.name)?;
             }
-            Call(node) => {
+            NodeData::Call(node) => {
                 let (_node_id, node) = self.ast.get(*node);
-                write!(f, "{}(", self.child(node.inner))?;
+                let is_ident = matches!(self.ast.get(node.inner).id, NodeData::Identifier(_));
+                if !is_ident {
+                    write!(f, "(")?;
+                }
+                write!(f, "{}", self.child(node.inner))?;
+                if !is_ident {
+                    write!(f, ")")?;
+                }
+                write!(f, "(")?;
                 let mut first = true;
                 for arg in &node.args {
                     if !first {
@@ -151,11 +165,11 @@ impl<'ast> fmt::Display for PrintNode<'ast> {
                 }
                 write!(f, ")")?;
             }
-            Identifier(node) => {
+            NodeData::Identifier(node) => {
                 let (_node_id, node) = self.ast.get(*node);
                 self.print_identifier(f, *node)?;
             }
-            Literal(node) => {
+            NodeData::Literal(node) => {
                 let (_node_id, node) = self.ast.get(*node);
                 let s = self.ast.string_interner.get_str_by_loc(location.start);
                 if let Some(s) = s {
@@ -164,15 +178,23 @@ impl<'ast> fmt::Display for PrintNode<'ast> {
                     write!(f, "Missing {node:?} Literal at {location:?}")?;
                 }
             }
-            NodeRef(node) => {
+            NodeData::NodeRef(node) => {
                 write!(f, "{}", self.child(*node))?;
             }
-            Definition(node) => {
+            NodeData::Definition(node) => {
                 let (_node_id, node) = self.ast.get(*node);
-                self.print_definition_head(f, node.name, &node.bindings, &mut ty)?;
-                return write!(f, "={}", self.child(node.implementation));
+                let Definition {
+                    mode,
+                    name,
+                    bindings,
+                    implementation,
+                } = node;
+                self.print_definition_head(f, *mode, *name, bindings, &mut ty)?;
+                if let Some(implementation) = implementation {
+                    write!(f, "={}", self.child(*implementation));
+                }
             }
-            Op(node) => {
+            NodeData::Op(node) => {
                 let (_node_id, node) = self.ast.get(*node);
                 let mut first = true;
                 for arg in &node.args {
@@ -185,7 +207,7 @@ impl<'ast> fmt::Display for PrintNode<'ast> {
                     // TODO: Cancel out brackets.
                     let needs_parens = {
                         let node = self.ast.get(*arg);
-                        matches!(node.id, NodeData::Op(_) | NodeData::Binding(_))
+                        matches!(node.id, NodeData::Op(_) | NodeData::Definition(_))
                     };
                     if needs_parens {
                         write!(f, "(")?;
@@ -218,9 +240,13 @@ mod tests {
         crate::ensure_initialized();
         let tokens = lex(s)?;
         let ast = parse(&test_file1(), s, &tokens)?;
-        let nodes = PrintNode::from_context(&ast);
-        assert_eq!(nodes.len(), 1, "Expect one root, found {}", nodes.len());
-        Ok(format!("{}", nodes[0]))
+        assert_eq!(
+            ast.roots.len(),
+            1,
+            "Expect one root, found {}",
+            ast.roots.len()
+        );
+        Ok(format!("{}", ast.pretty()))
     }
 
     #[test]
@@ -310,6 +336,20 @@ mod tests {
     fn round_trip_values_in_fn_args() -> Result<(), TError> {
         let out = setup("signum(x)=if(x<0, -1, 1)")?;
         assert_eq!(out, "signum(x)=if(x<0, -1, 1)");
+        Ok(())
+    }
+
+    #[test]
+    fn round_trip_lambda_with_args() -> Result<(), TError> {
+        let out = setup("(x->x)(x=2*3)")?;
+        assert_eq!(out, "(x->x)(x=2*3)");
+        Ok(())
+    }
+
+    #[test]
+    fn round_trip_lambda_value_with_args() -> Result<(), TError> {
+        let out = setup("x->x(x=2*3)")?;
+        assert_eq!(out, "x->x(x=2*3)");
         Ok(())
     }
 }

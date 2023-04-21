@@ -1,8 +1,13 @@
 [package]
 name = "tako"
 version = "0.2.0"
-authors = ["J Pratt <jp10010101010000@gmail.com>"]
+repository = "https://github.com/cypher1/tako"
+description = "The core implementation of tako"
+authors = ["Jay Pratt <jay@skfl.tech>"]
 edition = "2021"
+readme = "README.md"
+license = "MIT"
+keywords = ["compiler", "programming", "language"]
 include = ["src/**/*", "LICENSE.md", "README.md"]
 
 [features]

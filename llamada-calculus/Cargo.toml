@@ -1,7 +1,14 @@
 [package]
 name = "llamada-calculus"
 version = "0.1.0"
+repository = "https://github.com/cypher1/tako"
+description = "The core implementation of tako"
+authors = ["Jay Pratt <jay@skfl.tech>"]
 edition = "2021"
+readme = "README.md"
+license = "MIT"
+keywords = ["compiler", "programming", "language"]
+include = ["src/**/*", "LICENSE.md", "README.md"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

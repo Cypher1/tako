@@ -22,6 +22,7 @@ pub struct Compiler {
     load_file_manager: Arc<Mutex<TaskManager<LoadFileTask>>>,
     lex_file_manager: Arc<Mutex<TaskManager<LexFileTask>>>,
     parse_file_manager: Arc<Mutex<TaskManager<ParseFileTask>>>,
+    desugar_file_manager: Arc<Mutex<TaskManager<DesugarFileTask>>>,
     eval_file_manager: Arc<Mutex<TaskManager<EvalFileTask>>>,
     codegen_manager: Arc<Mutex<TaskManager<CodegenTask>>>,
     // Broadcast the accumulation to all clients.
@@ -61,6 +62,7 @@ impl Default for Compiler {
             load_file_manager: Self::manager(&stats_sender, &stats_requester),
             lex_file_manager: Self::manager(&stats_sender, &stats_requester),
             parse_file_manager: Self::manager(&stats_sender, &stats_requester),
+            desugar_file_manager: Self::manager(&stats_sender, &stats_requester),
             eval_file_manager: Self::manager(&stats_sender, &stats_requester),
             codegen_manager: Self::manager(&stats_sender, &stats_requester),
             // TODO(features): More passes:
@@ -71,7 +73,6 @@ impl Default for Compiler {
             // - type_check_merge_module_sets: TaskManager<>,
             // Produces type checked (and optimizable) modules **AND**
             // Partially type checked (but) mergable-modules
-            // - lowering: TaskManager<>,
             // - optimization: TaskManager<>,
             // - code_generation: TaskManager<>,
             // - binary_generation: TaskManager<>,
@@ -191,6 +192,17 @@ impl Compiler {
         Self::with_manager(rx, &self.parse_file_manager, response_sender);
     }
 
+    pub fn desugar(
+        &self,
+        path: PathBuf,
+        contents: Option<String>,
+        response_sender: ResultSenderFor<DesugarFileTask>,
+    ) {
+        let (tx, rx) = mpsc::unbounded_channel();
+        self.parse(path, contents, tx);
+        Self::with_manager(rx, &self.desugar_file_manager, response_sender);
+    }
+
     pub fn eval(
         &self,
         path: PathBuf,
@@ -198,7 +210,7 @@ impl Compiler {
         response_sender: ResultSenderFor<EvalFileTask>,
     ) {
         let (tx, rx) = mpsc::unbounded_channel();
-        self.parse(path, contents, tx);
+        self.desugar(path, contents, tx);
         Self::with_manager(rx, &self.eval_file_manager, response_sender);
     }
 
@@ -211,7 +223,7 @@ impl Compiler {
     ) {
         let (tx1, mut rx1) = mpsc::unbounded_channel();
         // TODO: Static checking should be here.
-        self.parse(path, contents, tx1);
+        self.desugar(path, contents, tx1);
         let (tx2, rx2) = mpsc::unbounded_channel();
         spawn(async move {
             // TODO: Use a proper map from in paths to out paths.

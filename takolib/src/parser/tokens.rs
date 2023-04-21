@@ -112,6 +112,7 @@ pub enum Symbol {
 lazy_static! {
     // Left associativity is the current default.
     static ref RIGHT_ASSOCIATIVE: HashSet<Symbol> = hash_set!{
+        Symbol::OpenParen,
         Symbol::Exp,
     };
     static ref ASSOCIATIVE: HashSet<Symbol> = hash_set!{
@@ -141,7 +142,8 @@ lazy_static! {
         Symbol::OpenParen => vec![Symbol::OpenCurly],
         Symbol::OpenCurly => vec![Symbol::OpenBracket],
         Symbol::OpenBracket => vec![Symbol::Sequence],
-        Symbol::Sequence => vec![
+        Symbol::Sequence => vec![Symbol::Comma],
+        Symbol::Comma => vec![
             Symbol::Assign,
             Symbol::AddAssign,
             Symbol::SubAssign,
@@ -168,8 +170,7 @@ lazy_static! {
         Symbol::LogicalOrAssign => vec![Symbol::LeftPipe],
         Symbol::ModuloAssign => vec![Symbol::LeftPipe],
         Symbol::LeftPipe => vec![Symbol::RightPipe],
-        Symbol::RightPipe => vec![Symbol::Comma],
-        Symbol::Comma => vec![Symbol::Sigma],
+        Symbol::RightPipe => vec![Symbol::Sigma],
         Symbol::Sigma => vec![Symbol::Lambda],
         Symbol::Lambda => vec![Symbol::Arrow],
         Symbol::Arrow => vec![Symbol::DoubleArrow],

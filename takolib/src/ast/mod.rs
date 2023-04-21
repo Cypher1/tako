@@ -2,7 +2,7 @@ use crate::location::Location;
 
 use crate::parser::semantics::Literal;
 use crate::parser::tokens::Symbol;
-use crate::pretty_printer::pretty;
+use crate::pretty_printer::{pretty, pretty_node};
 use crate::string_interner::{Identifier, StringInterner};
 use crate::utils::typed_index::TypedIndex;
 use std::path::PathBuf;
@@ -22,7 +22,6 @@ pub struct Ast {
     pub nodes: Vec<Node>,
 
     // Partials:
-    pub bindings: Vec<(NodeId, Binding)>,
     pub warnings: Vec<(NodeId, Warning)>,
 
     // Syntactic constructs:
@@ -44,8 +43,11 @@ impl Ast {
         }
     }
 
-    pub fn pretty(&self, node: NodeId) -> impl std::fmt::Display + std::fmt::Debug + '_ {
-        pretty(self, node)
+    pub fn pretty(&self) -> impl std::fmt::Display + std::fmt::Debug + '_ {
+        pretty(self)
+    }
+    pub fn pretty_node(&self, node: NodeId) -> impl std::fmt::Display + std::fmt::Debug + '_ {
+        pretty_node(self, node)
     }
 }
 
@@ -107,7 +109,7 @@ impl Ast {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::string_interner::StringInterner;
+    use crate::{parser::semantics::BindingMode, string_interner::StringInterner};
 
     #[test]
     fn can_add_nodes_to_ast() {
@@ -124,9 +126,10 @@ mod tests {
         let call = ast.make_node(call, Location::dummy_for_test());
         let a_prime = lits.register_str("a_prime");
         let definition = Definition {
+            mode: BindingMode::Lambda,
             name: a_prime,
             bindings: None,
-            implementation: call,
+            implementation: Some(call),
         };
         let definition = ast.make_node(definition, Location::dummy_for_test());
         ast.set_root(definition);

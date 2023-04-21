@@ -3,14 +3,29 @@ use crate::error::TError;
 use crate::parser::semantics::Literal;
 use crate::parser::tokens::Symbol;
 use crate::primitives::Prim;
-use crate::string_interner::StringInterner;
+use crate::string_interner::{StrId, StringInterner};
 use log::*;
+use std::collections::HashMap;
 use std::convert::TryInto;
 use std::path::Path;
+
+type Name = StrId;
+
+#[derive(Default, Clone, Debug)]
+struct State {
+    names: HashMap<Name, Prim>,
+}
+
+impl State {
+    fn get_binding(&self, name: &Name) -> Option<&Prim> {
+        self.names.get(name)
+    }
+}
 
 struct Ctx<'a> {
     ast: &'a Ast,
     literals: &'a StringInterner,
+    state: State,
 }
 
 pub fn run(path: &Path, ast: &Ast, root: Option<NodeId>) -> Result<Prim, TError> {
@@ -28,6 +43,7 @@ pub fn run(path: &Path, ast: &Ast, root: Option<NodeId>) -> Result<Prim, TError>
     let mut ctx = Ctx {
         ast,
         literals: &ast.string_interner,
+        state: State::default(),
     };
     ctx.eval(start)
 }
@@ -46,12 +62,36 @@ impl<'a> Ctx<'a> {
         let node = node.get(&self.ast.nodes);
         match node.id {
             NodeData::NodeRef(_id) => todo!(),
-            NodeData::Identifier(_id) => todo!(),
+            NodeData::Identifier(ident) => {
+                let (_id, name) = self.ast.get(ident);
+                let Some(value) = self.state.get_binding(name) else {
+                    panic!("Not found: {name:?}")
+                };
+                Ok(value.clone())
+            }
             NodeData::Atom(_id) => todo!(),
-            NodeData::Binding(_id) => todo!(),
             NodeData::Call(_id) => todo!(),
             NodeData::Op(id) => self.eval_op(node, id),
-            NodeData::Definition(_id) => todo!(),
+            NodeData::Definition(def) => {
+                let (
+                    _id,
+                    Definition {
+                        mode: _,
+                        name,
+                        bindings,
+                        implementation,
+                    },
+                ) = self.ast.get(def);
+                match bindings {
+                    None => {
+                        let value =
+                            self.eval(implementation.expect("Should have implementation"))?;
+                        self.state.names.insert(*name, value);
+                        Ok(Prim::Unit)
+                    }
+                    _ => todo!("Handle a binding with: {name:?}, {bindings:?}, {implementation:?}"),
+                }
+            }
             NodeData::Literal(id) => self.eval_lit(node, id),
             NodeData::Warning(_id) => todo!(),
         }
@@ -180,7 +220,16 @@ impl<'a> Ctx<'a> {
             Symbol::Range => todo!(),
             Symbol::Spread => todo!(),
             Symbol::Comma => todo!(),
-            Symbol::Sequence => todo!(),
+            Symbol::Sequence => {
+                let Some(l) = op.args.get(0) else {
+                    panic!("; expects a left and a right. Neither found");
+                };
+                let Some(r) = op.args.get(1) else {
+                    panic!("; expects a left and a right. Right not found");
+                };
+                let _l = self.eval(*l)?; // TODO: Keep `l` in the context.
+                self.eval(*r)?
+            }
             Symbol::OpenCurly => todo!(),
             Symbol::CloseCurly => todo!(),
             Symbol::OpenParen => todo!(),
@@ -242,6 +291,30 @@ mod tests {
         let ast = setup("2**3**2")?;
         let res = run(&test_path(), &ast, None);
         assert_eq!(res, Ok(Prim::I32(512)));
+        Ok(())
+    }
+
+    #[test]
+    fn exp_var_and_use() -> Result<(), TError> {
+        let ast = setup("x=2;x")?;
+        let res = run(&test_path(), &ast, None);
+        assert_eq!(res, Ok(Prim::I32(2)));
+        Ok(())
+    }
+
+    #[test]
+    fn exp_var_from_expr_and_use() -> Result<(), TError> {
+        let ast = setup("x=3+2;x")?;
+        let res = run(&test_path(), &ast, None);
+        assert_eq!(res, Ok(Prim::I32(5)));
+        Ok(())
+    }
+
+    #[test]
+    fn exp_nested_vars() -> Result<(), TError> {
+        let ast = setup("x=(y=3;2*y);x")?;
+        let res = run(&test_path(), &ast, None);
+        assert_eq!(res, Ok(Prim::I32(6)));
         Ok(())
     }
 }
