@@ -2,9 +2,9 @@ macro_rules! tests {
     ($ty: ty) => {
         #[test]
         fn id_expr() {
-            let mut expr = <$ty>::new(Term::Var(1), Empty {});
+            let mut expr = <$ty>::new(Term::Var(1), Empty);
             let prev = expr.get_last_id();
-            let abs = expr.add(Term::Abs(prev));
+            let abs = expr.add(Term::abs(prev));
             *expr.root_mut() = (abs);
             expr.set_print_meta(false);
             assert_eq!(format!("{}", expr), "(\\a. a)");
@@ -26,10 +26,10 @@ macro_rules! tests {
 
         #[test]
         fn true_expr() {
-            let mut expr = <$ty>::new(Term::Var(2), Empty {});
+            let mut expr = <$ty>::new(Term::Var(2), Empty);
             let prev = expr.get_last_id();
-            let abs1 = expr.add(Term::Abs(prev));
-            let abs2 = expr.add(Term::Abs(abs1));
+            let abs1 = expr.add(Term::abs(prev));
+            let abs2 = expr.add(Term::abs(abs1));
             *expr.root_mut() = (abs2);
             assert_eq!(format!("{}", &expr), "(\\a. (\\b. a))");
             expr.reduce();
@@ -38,10 +38,10 @@ macro_rules! tests {
 
         #[test]
         fn false_expr() {
-            let mut expr = <$ty>::new(Term::Var(1), Empty {});
+            let mut expr = <$ty>::new(Term::Var(1), Empty);
             let prev = expr.get_last_id();
-            let abs1 = expr.add(Term::Abs(prev));
-            let abs2 = expr.add(Term::Abs(abs1));
+            let abs1 = expr.add(Term::abs(prev));
+            let abs2 = expr.add(Term::abs(abs1));
             *expr.root_mut() = (abs2);
             assert_eq!(format!("{}", &expr), "(\\a. (\\b. b))");
             expr.reduce();
@@ -50,12 +50,12 @@ macro_rules! tests {
 
         #[test]
         fn id_a_expr() {
-            let mut expr = <$ty>::new(Term::Var(1), Empty {});
+            let mut expr = <$ty>::new(Term::Var(1), Empty);
             let prev = expr.get_last_id();
-            let abs1 = expr.add(Term::Abs(prev));
+            let abs1 = expr.add(Term::abs(prev));
             let a = expr.add(Term::Var(1));
             let app1 = expr.add(Term::App(abs1, a));
-            let abs2 = expr.add(Term::Abs(app1));
+            let abs2 = expr.add(Term::abs(app1));
             *expr.root_mut() = (abs2);
             assert_eq!(format!("{}", &expr), "(\\a. ((\\b. b) a))");
             expr.reduce();
@@ -64,15 +64,15 @@ macro_rules! tests {
 
         #[test]
         fn not_expr() {
-            let mut expr = <$ty>::new(Term::Var(1), Empty {});
+            let mut expr = <$ty>::new(Term::Var(1), Empty);
             let true_case = expr.get_last_id();
             let false_case = expr.add(Term::Var(2));
             let cond_case = expr.add(Term::Var(3));
             let app1 = expr.add(Term::App(cond_case, false_case));
             let app2 = expr.add(Term::App(app1, true_case));
-            let abs1 = expr.add(Term::Abs(app2));
-            let abs2 = expr.add(Term::Abs(abs1));
-            let abs3 = expr.add(Term::Abs(abs2));
+            let abs1 = expr.add(Term::abs(app2));
+            let abs2 = expr.add(Term::abs(abs1));
+            let abs3 = expr.add(Term::abs(abs2));
             *expr.root_mut() = (abs3);
             assert_eq!(format!("{}", &expr), "(\\a. (\\b. (\\c. ((a b) c))))");
             expr.reduce();
@@ -81,26 +81,26 @@ macro_rules! tests {
 
         #[test]
         fn not_true_false_expr() {
-            let mut expr = <$ty>::new(Term::Var(1), Empty {});
+            let mut expr = <$ty>::new(Term::Var(1), Empty);
             let inner = {
                 let true_case = expr.get_last_id();
                 let false_case = expr.add(Term::Var(2));
                 let cond_case = expr.add(Term::Var(3));
                 let app1 = expr.add(Term::App(cond_case, false_case));
                 let app2 = expr.add(Term::App(app1, true_case));
-                let abs1 = expr.add(Term::Abs(app2));
-                let abs2 = expr.add(Term::Abs(abs1));
-                expr.add(Term::Abs(abs2))
+                let abs1 = expr.add(Term::abs(app2));
+                let abs2 = expr.add(Term::abs(abs1));
+                expr.add(Term::abs(abs2))
             };
             let _true_v = {
                 let true_case = expr.add(Term::Var(2));
-                let abs1 = expr.add(Term::Abs(true_case));
-                expr.add(Term::Abs(abs1))
+                let abs1 = expr.add(Term::abs(true_case));
+                expr.add(Term::abs(abs1))
             };
             let false_v = {
                 let false_case = expr.add(Term::Var(1));
-                let abs1 = expr.add(Term::Abs(false_case));
-                expr.add(Term::Abs(abs1))
+                let abs1 = expr.add(Term::abs(false_case));
+                expr.add(Term::abs(abs1))
             };
             let app1 = expr.add(Term::App(inner, false_v));
             *expr.root_mut() = (app1);
@@ -114,15 +114,15 @@ macro_rules! tests {
 
         #[test]
         fn zero_expr() {
-            let mut church_test = <$ty>::new(Term::Var(1), Empty {});
+            let mut church_test = <$ty>::new(Term::Var(1), Empty);
             let church = church_test.to_church(0);
             *church_test.root_mut() = (church);
             assert_eq!(format!("{}", &church_test), "(\\a. (\\b. b))");
 
-            let mut expr = <$ty>::new(Term::Var(1), Empty {});
+            let mut expr = <$ty>::new(Term::Var(1), Empty);
             let prev = expr.get_last_id();
-            let abs1 = expr.add(Term::Abs(prev));
-            let abs2 = expr.add(Term::Abs(abs1));
+            let abs1 = expr.add(Term::abs(prev));
+            let abs2 = expr.add(Term::abs(abs1));
             *expr.root_mut() = (abs2);
             assert_eq!(format!("{}", &expr), "(\\a. (\\b. b))");
             expr.reduce();
@@ -132,17 +132,17 @@ macro_rules! tests {
 
         #[test]
         fn one_expr() {
-            let mut church_test = <$ty>::new(Term::Var(1), Empty {});
+            let mut church_test = <$ty>::new(Term::Var(1), Empty);
             let church = church_test.to_church(1);
             *church_test.root_mut() = (church);
             assert_eq!(format!("{}", &church_test), "(\\a. (\\b. (a b)))");
 
-            let mut expr = <$ty>::new(Term::Var(1), Empty {});
+            let mut expr = <$ty>::new(Term::Var(1), Empty);
             let prev = expr.get_last_id();
             let a = expr.add(Term::Var(2));
             let app1 = expr.add(Term::App(a, prev));
-            let abs1 = expr.add(Term::Abs(app1));
-            let abs2 = expr.add(Term::Abs(abs1));
+            let abs1 = expr.add(Term::abs(app1));
+            let abs2 = expr.add(Term::abs(abs1));
             *expr.root_mut() = (abs2);
             assert_eq!(format!("{}", &expr), "(\\a. (\\b. (a b)))");
             expr.reduce();
@@ -152,18 +152,18 @@ macro_rules! tests {
 
         #[test]
         fn two_expr() {
-            let mut church_test = <$ty>::new(Term::Var(1), Empty {});
+            let mut church_test = <$ty>::new(Term::Var(1), Empty);
             let church = church_test.to_church(2);
             *church_test.root_mut() = (church);
             assert_eq!(format!("{}", &church_test), "(\\a. (\\b. (a (a b))))");
 
-            let mut expr = <$ty>::new(Term::Var(1), Empty {});
+            let mut expr = <$ty>::new(Term::Var(1), Empty);
             let prev = expr.get_last_id();
             let a = expr.add(Term::Var(2));
             let app1 = expr.add(Term::App(a.clone(), prev));
             let app2 = expr.add(Term::App(a, app1));
-            let abs1 = expr.add(Term::Abs(app2));
-            let abs2 = expr.add(Term::Abs(abs1));
+            let abs1 = expr.add(Term::abs(app2));
+            let abs2 = expr.add(Term::abs(abs1));
             *expr.root_mut() = (abs2);
             assert_eq!(format!("{}", &expr), "(\\a. (\\b. (a (a b))))");
             expr.reduce();
@@ -173,7 +173,7 @@ macro_rules! tests {
 
         #[test]
         fn plus_expr() {
-            let mut expr = <$ty>::new(Term::Var(1), Empty {});
+            let mut expr = <$ty>::new(Term::Var(1), Empty);
             let x = expr.get_last_id();
 
             let f = expr.add(Term::Var(2));
@@ -183,10 +183,10 @@ macro_rules! tests {
             let mf = expr.add(Term::App(m.clone(), f.clone()));
             let mfx = expr.add(Term::App(mf, x.clone()));
             let nfmfx = expr.add(Term::App(nf.clone(), mfx.clone()));
-            let abs1_nfmfx = expr.add(Term::Abs(nfmfx));
-            let abs2_nfmfx = expr.add(Term::Abs(abs1_nfmfx));
-            let abs3_nfmfx = expr.add(Term::Abs(abs2_nfmfx));
-            let plus = expr.add(Term::Abs(abs3_nfmfx));
+            let abs1_nfmfx = expr.add(Term::abs(nfmfx));
+            let abs2_nfmfx = expr.add(Term::abs(abs1_nfmfx));
+            let abs3_nfmfx = expr.add(Term::abs(abs2_nfmfx));
+            let plus = expr.add(Term::abs(abs3_nfmfx));
             *expr.root_mut() = (plus.clone());
 
             assert_eq!(
@@ -212,7 +212,7 @@ macro_rules! tests {
 
         #[test]
         fn mul_expr() {
-            let mut expr = <$ty>::new(Term::Var(1), Empty {});
+            let mut expr = <$ty>::new(Term::Var(1), Empty);
             let x = expr.get_last_id();
 
             let f = expr.add(Term::Var(2));
@@ -221,10 +221,10 @@ macro_rules! tests {
             let mf = expr.add(Term::App(m.clone(), f.clone()));
             let nmf = expr.add(Term::App(n.clone(), mf));
             let nmfx = expr.add(Term::App(nmf, x.clone()));
-            let abs1_nmfx = expr.add(Term::Abs(nmfx));
-            let abs2_nmfx = expr.add(Term::Abs(abs1_nmfx));
-            let abs3_nmfx = expr.add(Term::Abs(abs2_nmfx));
-            let mul = expr.add(Term::Abs(abs3_nmfx));
+            let abs1_nmfx = expr.add(Term::abs(nmfx));
+            let abs2_nmfx = expr.add(Term::abs(abs1_nmfx));
+            let abs3_nmfx = expr.add(Term::abs(abs2_nmfx));
+            let mul = expr.add(Term::abs(abs3_nmfx));
             *expr.root_mut() = (mul.clone());
 
             assert_eq!(

@@ -1,5 +1,5 @@
-use crate::types::{Empty, Never};
-use crate::{Expr, Term};
+use crate::base_types::{Empty, Never};
+use crate::{Evaluable, Expr, Term};
 
 #[derive(Debug, Clone, Eq, Hash, Ord, PartialOrd, PartialEq)]
 pub struct Ptr<T, Meta> {
@@ -42,6 +42,7 @@ impl<T, Meta> SparseRepr<T, Meta> {
 impl<T, Meta> std::fmt::Display for SparseRepr<T, Meta>
 where
     SparseRepr<T, Meta>: Expr,
+    <SparseRepr<T, Meta> as Expr>::Value: std::fmt::Display,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         self.fmt_root(f)
@@ -49,14 +50,14 @@ where
 }
 
 impl<
-        T: Eq + Clone + std::fmt::Debug + std::fmt::Display,
+        T: Evaluable + Clone + std::fmt::Debug + Eq,
         Meta: Clone + Eq + Default + std::fmt::Display + std::fmt::Debug,
     > Expr for SparseRepr<T, Meta>
 {
     type Index = Ptr<T, Meta>;
-    type Extension = T;
+    type Value = T;
     type Meta = Meta;
-    // type Term = Term<Self::Extension, Self::Index>;
+    // type Term = Term<Self::Value, Self::Index>;
 
     fn new(term: Term<T, Ptr<T, Meta>>, meta: Meta) -> Self {
         Self {
@@ -68,19 +69,13 @@ impl<
     fn get_last_id(&self) -> Self::Index {
         self.terms.last().unwrap().clone()
     }
-    fn get<'a>(&'a self, id: &'a Self::Index) -> &'a Term<Self::Extension, Self::Index> {
+    fn get<'a>(&'a self, id: &'a Self::Index) -> &'a Term<Self::Value, Self::Index> {
         // TODO: Checked version?
         &id.val
     }
     fn get_meta<'a>(&'a self, id: &'a Self::Index) -> &'a Self::Meta {
         // TODO: Checked version?
         &id.meta
-    }
-    fn reduce_ext_apps(
-        &mut self,
-        _value: Term<Self::Extension, Self::Index>,
-    ) -> Term<Self::Extension, Self::Index> {
-        todo!(); // match value {}
     }
     fn root(&self) -> &Self::Index {
         &self.terms[self.root]
@@ -90,7 +85,7 @@ impl<
     }
     fn add_with_meta(
         &mut self,
-        term: Term<Self::Extension, Self::Index>,
+        term: Term<Self::Value, Self::Index>,
         meta: Self::Meta,
     ) -> Self::Index {
         Ptr::new(term, meta)

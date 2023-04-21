@@ -16,13 +16,14 @@ pub type Frame = HashMap<String, Val>;
 
 #[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Hash)]
 pub enum Prim {
+    Unit,
     Bool(bool),
     I32(i32),
     Str(String),
     BuiltIn(String),
     Tag(BitVec), // An identifying bit string (prefix, only, may be followed by other data).
 }
-use Prim::{Bool, BuiltIn, Str, Tag, I32};
+use Prim::{Bool, BuiltIn, Str, Tag, Unit, I32};
 
 impl std::fmt::Display for Prim {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -33,6 +34,7 @@ impl std::fmt::Display for Prim {
 impl std::fmt::Debug for Prim {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Unit => write!(f, "()")?,
             Bool(b) => write!(f, "{b:?}")?,
             I32(i) => write!(f, "{i:?}")?,
             Str(s) => write!(f, "'{s}'")?,

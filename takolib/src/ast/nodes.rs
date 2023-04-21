@@ -31,7 +31,6 @@ pub enum NodeData {
     // Apply & Abstract:
     Call(CallId),
     Op(OpId),
-    Binding(BindingId),
 
     // Value:
     Literal(LiteralId),
@@ -100,19 +99,12 @@ impl Op {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
-pub struct Binding {
-    pub mode: BindingMode,
-    pub name: Identifier,
-    pub ty: Option<NodeId>,
-}
-make_contains!(bindings, (NodeId, Binding), Binding, BindingId, add_binding);
-
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Definition {
+    pub mode: BindingMode,
     pub name: Identifier,
-    pub bindings: Option<Vec<Binding>>,
-    pub implementation: NodeId,
+    pub bindings: Option<Vec<NodeId>>,
+    pub implementation: Option<NodeId>,
 }
 make_contains!(
     definitions,

@@ -1,7 +1,15 @@
 [package]
 name = "takoc"
 version = "0.1.0"
+repository = "https://github.com/cypher1/tako"
+description = "The main CLI for tako"
+authors = ["Jay Pratt <jay@skfl.tech>"]
 edition = "2021"
+readme = "README.md"
+license = "MIT"
+keywords = ["compiler", "programming", "language"]
+categories = ["gui", "wasm", "web-programming"]
+include = ["src/**/*", "LICENSE.md", "README.md"]
 
 [dependencies]
 async-trait = "0.1"

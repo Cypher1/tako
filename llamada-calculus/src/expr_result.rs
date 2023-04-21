@@ -1,3 +1,10 @@
+use crate::base_types::Never;
+
+pub trait ValueInfo: Sized {
+    fn complete(&self) -> bool;
+    fn apply(inner: Option<Self>, arg: Option<Self>) -> Option<Self>;
+}
+
 #[derive(Debug, Clone, Eq, Hash, Ord, PartialOrd, PartialEq)]
 pub struct EvalInfo {
     pub arity: usize,
@@ -11,10 +18,13 @@ impl EvalInfo {
             arg_count: 0,
         }
     }
-    pub fn complete(&self) -> bool {
+}
+
+impl ValueInfo for EvalInfo {
+    fn complete(&self) -> bool {
         self.arg_count == self.arity
     }
-    pub fn apply(left: Option<EvalInfo>, right: Option<EvalInfo>) -> Option<EvalInfo> {
+    fn apply(left: Option<Self>, right: Option<Self>) -> Option<Self> {
         match (left, right) {
             (Some(left), Some(right)) => {
                 if !right.complete() {
@@ -25,7 +35,7 @@ impl EvalInfo {
                     // Not able to apply...
                     return None;
                 }
-                Some(EvalInfo {
+                Some(Self {
                     arity: left.arity,
                     arg_count: left.arg_count + 1,
                 })
@@ -35,19 +45,28 @@ impl EvalInfo {
     }
 }
 
-#[derive(Debug, Clone, Eq, Hash, Ord, PartialOrd, PartialEq)]
-pub struct ExprResult<T> {
-    pub id: T,
-    pub changed: bool,
-    pub ext_info: Option<EvalInfo>,
+impl ValueInfo for Never {
+    fn complete(&self) -> bool {
+        false
+    }
+    fn apply(_left: Option<Self>, _right: Option<Self>) -> Option<Self> {
+        None
+    }
 }
 
-impl<T> ExprResult<T> {
-    pub fn apply<U>(self, other: ExprResult<U>) -> ExprResult<(T, U)> {
+#[derive(Debug, Clone, Eq, Hash, Ord, PartialOrd, PartialEq)]
+pub struct ExprResult<T, I> {
+    pub id: T,
+    pub changed: bool,
+    pub ext_info: Option<I>,
+}
+
+impl<T, I: ValueInfo + Sized> ExprResult<T, I> {
+    pub fn apply<U>(self, other: ExprResult<U, I>) -> ExprResult<(T, U), I> {
         ExprResult {
             id: (self.id, other.id),
             changed: self.changed || other.changed,
-            ext_info: EvalInfo::apply(self.ext_info, other.ext_info),
+            ext_info: I::apply(self.ext_info, other.ext_info),
         }
     }
     pub fn unchanged(id: T) -> Self {
@@ -59,17 +78,17 @@ impl<T> ExprResult<T> {
             ..self
         }
     }
-    pub fn with_ext_info(self, ext_info: Option<EvalInfo>) -> Self {
+    pub fn with_ext_info(self, ext_info: Option<I>) -> Self {
         Self { ext_info, ..self }
     }
-    pub fn new(id: T, changed: bool, ext_info: Option<EvalInfo>) -> Self {
+    pub fn new(id: T, changed: bool, ext_info: Option<I>) -> Self {
         Self {
             id,
             changed,
             ext_info,
         }
     }
-    pub fn map<R>(self, f: impl FnOnce(T) -> R) -> ExprResult<R> {
+    pub fn map<R>(self, f: impl FnOnce(T) -> R) -> ExprResult<R, I> {
         ExprResult {
             id: f(self.id),
             changed: self.changed,
@@ -80,7 +99,7 @@ impl<T> ExprResult<T> {
         self,
         then: impl FnOnce(T) -> R,
         els: impl FnOnce(T) -> R,
-    ) -> ExprResult<R> {
+    ) -> ExprResult<R, I> {
         ExprResult {
             id: if self.changed {
                 then(self.id)

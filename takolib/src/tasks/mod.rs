@@ -31,6 +31,7 @@ pub enum AnyTask {
     LoadFile(LoadFileTask),
     LexFile(LexFileTask),
     ParseFile(ParseFileTask),
+    DesugarFile(DesugarFileTask),
     Codegen(CodegenTask),
     EvalFile(EvalFileTask),
 }
@@ -125,7 +126,7 @@ pub struct ParseFileTask {
 
 #[async_trait]
 impl Task for ParseFileTask {
-    type Output = EvalFileTask; // For now, we'll just store the AST itself.
+    type Output = DesugarFileTask; // For now, we'll just store the AST itself.
     const TASK_KIND: TaskKind = TaskKind::ParseFile;
 
     fn has_file_path(&self) -> Option<&PathBuf> {
@@ -138,10 +139,46 @@ impl Task for ParseFileTask {
             .send((
                 self.clone(),
                 match ast {
-                    Ok(result) => Update::FinalResult(EvalFileTask {
+                    Ok(result) => Update::FinalResult(DesugarFileTask {
                         path: self.path,
                         ast: result,
                         root: None, // Dont assume which root to run (yet?)
+                    }),
+                    Err(err) => Update::Failed(err),
+                },
+            ))
+            .expect("Should be able to send task result to manager");
+    }
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct DesugarFileTask {
+    pub path: PathBuf,
+    pub ast: Ast,
+    pub root: Option<NodeId>,
+}
+
+#[async_trait]
+impl Task for DesugarFileTask {
+    // Ensure that we can parse and run pre-desugared files.
+    type Output = EvalFileTask;
+
+    const TASK_KIND: TaskKind = TaskKind::DesugarFile;
+
+    fn has_file_path(&self) -> Option<&PathBuf> {
+        Some(&self.path)
+    }
+    async fn perform(self, result_sender: UpdateSenderFor<Self>) {
+        let ast = crate::desugarer::desugar(&self.path, &self.ast, self.root)
+            .map_err(|err| self.decorate_error(err));
+        result_sender
+            .send((
+                self.clone(),
+                match ast {
+                    Ok(result) => Update::FinalResult(EvalFileTask {
+                        path: self.path,
+                        ast: result,
+                        root: None,
                     }),
                     Err(err) => Update::Failed(err),
                 },

@@ -49,6 +49,10 @@ pub enum ParseError {
         op: Symbol,
         location: Location,
     },
+    UnparsedTokens {
+        token: TokenType,
+        location: Location,
+    },
 }
 
 impl From<std::num::ParseIntError> for ParseError {
@@ -80,6 +84,7 @@ impl ParseError {
             }
             | ParseError::UnexpectedExpressionInDefinitionArguments { location, .. }
             | ParseError::MissingLeftHandSideOfOperator { location, .. } => Some(location),
+            ParseError::UnparsedTokens { location, .. } => Some(location),
         }
     }
 }
@@ -121,6 +126,9 @@ impl std::fmt::Display for ParseError {
                     "Operator {op} needs a 'left' side. (e.g. 'a{op}b' rather than '{op}b'"
                 )
             }
+            ParseError::UnparsedTokens { token, .. } => {
+                write!(f, "Failed to parse the whole file. Found {token}")
+            }
         }
     }
 }
@@ -128,7 +136,7 @@ impl std::fmt::Display for ParseError {
 #[derive(Debug)]
 enum BindingOrValue {
     Identifier(Identifier, Option<NodeId>, Location),
-    Binding(Binding, Location),
+    Binding(NodeId),
     Value(NodeId),
 }
 
@@ -207,58 +215,97 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         Ok(())
     }
 
-    fn binding(&mut self) -> Result<Option<Binding>, TError> {
-        let mode = if let Ok(binding) = self.peek().cloned() {
-            let binding_kind = self.get_kind(&binding);
-            // TODO: Handle tokens...
-            if let TokenType::Op(binding) = binding_kind {
-                if let Some(mode) = binding_mode_operation(binding) {
-                    self.token(); // Consume the mode.
-                    mode
-                } else {
-                    trace!("Wrong op for binding");
-                    return Ok(None);
-                }
-            } else {
-                // Named arg!
-                trace!("Named arg?");
-                BindingMode::Lambda
-            }
-        } else {
+    fn binding(&mut self) -> Result<Option<NodeId>, TError> {
+        let Ok(binding) = self.peek().cloned() else {
             trace!("Unexpected eof when looking for binding");
             return Ok(None);
         };
-        let name: Identifier = if let Ok(tok) = self.ident() {
-            self.name(tok)
+        let binding_kind = self.get_kind(&binding);
+        let binding = if let TokenType::Op(binding) = binding_kind {
+            binding
         } else {
+            Symbol::OpenParen
+        };
+        let mode = if let TokenType::Op(binding) = binding_kind {
+            let Some(mode) = binding_mode_operation(binding) else {
+                trace!("Wrong op for binding");
+                return Ok(None);
+            };
+            self.token(); // Consume the mode.
+            mode
+        } else {
+            // Named arg!
+            trace!("Named arg?");
+            BindingMode::Lambda
+        };
+        let Ok(tok) = self.ident() else {
             trace!("No name found for binding");
             return Ok(None);
         };
+        let name = self.name(tok);
+        let location = tok.location();
+        let bindings = None; // TODO: Handling bindings...
         let ty = if self.has_type().is_ok() {
             Some(self.expr(Symbol::HasType)?)
         } else {
             None
         };
-        Ok(Some(Binding { mode, name, ty }))
+        let implementation = if self.assignment_op(binding).is_ok() {
+            Some(self.expr(Symbol::Comma)?)
+        } else {
+            None
+        };
+        let def = self.ast.add_definition(
+            Definition {
+                mode,
+                name,
+                bindings,
+                implementation,
+            },
+            location,
+        );
+        if let Some(ty) = ty {
+            self.ast.add_annotation(def, ty);
+        }
+        Ok(Some(def))
     }
 
     fn binding_or_arg(&mut self, has_non_bind_args: &mut bool) -> Result<BindingOrValue, TError> {
         let value = self.expr(Symbol::Comma)?;
         let node = &self.ast.get(value);
         let location = node.location;
-        if let NodeData::Binding(binding) = node.id {
-            let (_node_id, binding) = self.ast.get_mut(binding);
-            trace!("Binding: {binding:?}");
-            return Ok(BindingOrValue::Binding(*binding, location));
+        if let NodeData::Definition(binding) = node.id {
+            trace!("Definition: {binding:?}");
+            return Ok(BindingOrValue::Binding(value));
         }
         if let NodeData::Identifier(ident) = node.id {
             let ty = node.ty;
             let (_node_id, ident) = self.ast.get_mut(ident);
+            // TODO: Try for an assignment binding...
             return Ok(BindingOrValue::Identifier(*ident, ty, location));
         }
         *has_non_bind_args = true;
         trace!("Arg value: {value:?}");
         Ok(BindingOrValue::Value(value))
+    }
+
+    fn handle_bindings(&mut self, bindings: Vec<BindingOrValue>) -> Result<Vec<NodeId>, TError> {
+        let mut args = vec![];
+        for binding in bindings {
+            let binding = match binding {
+                BindingOrValue::Binding(binding) => binding,
+                BindingOrValue::Identifier(ident, ty, location) => {
+                    let ident = self.ast.add_identifier(ident, location);
+                    if let Some(ty) = ty {
+                        self.ast.add_annotation(ident, ty);
+                    }
+                    ident
+                }
+                BindingOrValue::Value(value) => value,
+            };
+            args.push(binding);
+        }
+        Ok(args)
     }
 
     fn call_or_definition(&mut self, name: Token, binding: Symbol) -> Result<NodeId, TError> {
@@ -313,18 +360,26 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             let mut only_bindings = vec![];
             for binding in bindings {
                 match binding {
-                    BindingOrValue::Binding(binding, _location) => only_bindings.push(binding),
+                    BindingOrValue::Binding(binding) => only_bindings.push(binding),
                     BindingOrValue::Identifier(name, ty, _location) => {
-                        only_bindings.push(Binding {
-                            mode: BindingMode::Lambda,
-                            name,
-                            ty,
-                        })
+                        let def = self.ast.add_definition(
+                            Definition {
+                                mode: BindingMode::Lambda,
+                                name,
+                                bindings: None,
+                                implementation: None,
+                            },
+                            location,
+                        );
+                        if let Some(ty) = ty {
+                            self.ast.add_annotation(def, ty);
+                        }
+                        only_bindings.push(def);
                     }
                     BindingOrValue::Value(value) => {
                         return Err(ParseError::UnexpectedExpressionInDefinitionArguments {
                             arg: value,
-                            arg_str: format!("{}", self.ast.pretty(value)),
+                            arg_str: format!("{}", self.ast.pretty_node(value)),
                             location,
                         }
                         .into())
@@ -340,8 +395,9 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             let def = self.ast.add_definition(
                 Definition {
                     name,
+                    mode: BindingMode::Lambda,
                     bindings,
-                    implementation,
+                    implementation: Some(implementation),
                 },
                 location,
             );
@@ -354,23 +410,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             let inner = self.identifier(name, location);
             // TODO: USE bindings
             trace!("Add call");
-            let mut args = vec![];
-            for binding in bindings {
-                let binding = match binding {
-                    BindingOrValue::Binding(binding, location) => {
-                        self.ast.add_binding(binding, location)
-                    }
-                    BindingOrValue::Identifier(ident, ty, location) => {
-                        let mut ident = self.ast.add_identifier(ident, location);
-                        if let Some(ty) = ty {
-                            ident = self.ast.add_annotation(ident, ty);
-                        }
-                        ident
-                    }
-                    BindingOrValue::Value(value) => value,
-                };
-                args.push(binding);
-            }
+            let args = self.handle_bindings(bindings)?;
             let call = self.ast.add_call(Call { inner, args }, location);
             if let Some(ty) = ty {
                 return Ok(self.ast.add_annotation(call, ty));
@@ -395,25 +435,25 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         let mut left = if self.operator_is(Symbol::OpenBracket).is_ok() {
             // TODO: Support tuples.
             // Tuple, parenthesized expr... etc.
-            let left = self.expr(Symbol::Sequence)?;
+            let left = self.expr(Symbol::OpenParen)?;
             self.require(TokenType::Op(Symbol::CloseBracket))?;
             left
         } else if self.operator_is(Symbol::OpenCurly).is_ok() {
             // TODO: Support sequence&dictionary syntax.
             // Tuple, parenthesized expr... etc.
-            let left = self.expr(Symbol::Sequence)?;
+            let left = self.expr(Symbol::OpenParen)?;
             self.require(TokenType::Op(Symbol::CloseCurly))?;
             left
         } else if self.operator_is(Symbol::OpenParen).is_ok() {
             // TODO: Support list syntax.
             // Tuple, parenthesized expr... etc.
-            let left = self.expr(Symbol::Sequence)?;
+            let left = self.expr(Symbol::OpenParen)?;
             self.require(TokenType::Op(Symbol::CloseParen))?;
             left
         } else if let TokenType::Op(symbol) = token.kind {
             if let Some(def_binding) = self.binding()? {
                 trace!("Binding? {def_binding:?}");
-                self.ast.add_binding(def_binding, location)
+                def_binding
             } else {
                 let _ = self.token();
                 match symbol.binding_type() {
@@ -458,7 +498,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             }
             if sym != binding && sym.is_looser(binding) && binding.is_looser(sym) {
                 // If both can be inside the other
-                // and theyre not associative...
+                // and they're not associative...
                 // then this is ambiguous and needs parens.
                 return Err(ParseError::AmbiguousExpression {
                     left: binding,
@@ -472,19 +512,34 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 break;
             }
             trace!("Continuing Expr: {left:?} sym: {sym:?} inside binding: {binding:?}");
-            let token = self.token().expect("Internal error");
-            let location = token.location();
-            let right = self.expr(sym)?;
-            // TODO: Check that this is the right kind of operator.
-            left = self.ast.add_op(
-                Op {
-                    op: sym,
-                    args: vec![left, right],
-                },
-                location,
-            );
+            if sym == Symbol::OpenParen {
+                let token = self.token().expect("Internal error");
+                let location = token.location();
+                // Require an 'apply' to balance it's parens.
+                let mut args = vec![];
+                let mut _has_non_bind_args = false;
+                while self.operator_is(Symbol::CloseParen).is_err() {
+                    let arg = self.binding_or_arg(&mut _has_non_bind_args)?;
+                    args.push(arg);
+                }
+                let args = self.handle_bindings(args)?;
+                left = self.ast.add_call(Call { inner: left, args }, location);
+            } else {
+                // TODO: Check that this is the right kind of operator.
+                let token = self.token().expect("Internal error");
+                let right = self.expr(sym)?;
+                let location = token.location();
+                left = self.ast.add_op(
+                    Op {
+                        op: sym,
+                        args: vec![left, right],
+                    },
+                    location,
+                );
+            }
         }
-        trace!("Expr done: {}", self.ast.pretty(left));
+        trace!("Expr done: {}", self.ast.pretty_node(left));
+        trace!("(next token: {:?})", self.peek());
         Ok(left)
     }
 
@@ -539,7 +594,12 @@ pub fn parse(filepath: &Path, contents: &str, tokens: &[Token]) -> Result<Ast, T
     // TODO(testing): REMOVE THIS (it's just to test the threading model)
     // let mut rng = rand::thread_rng();
     // std::thread::sleep(std::time::Duration::from_secs(rng.gen_range(0..10)));
-    assert!(state.tokens.next().is_none(), "Left over tokens");
+    if let Some(token) = state.tokens.next() {
+        Err(ParseError::UnparsedTokens {
+            token: token.kind,
+            location: token.location(),
+        })?;
+    }
     Ok(state.ast)
 }
 
@@ -719,7 +779,7 @@ pub mod tests {
 
         assert_eq!(ast.ops.len(), 1);
         assert_eq!(ast.identifiers.len(), 1);
-        assert_eq!(ast.bindings.len(), 1);
+        assert_eq!(ast.definitions.len(), 1);
         Ok(())
     }
 
@@ -730,7 +790,7 @@ pub mod tests {
 
         assert_eq!(ast.ops.len(), 1);
         assert_eq!(ast.identifiers.len(), 1);
-        assert_eq!(ast.bindings.len(), 1);
+        assert_eq!(ast.definitions.len(), 1);
         Ok(())
     }
 
@@ -787,28 +847,34 @@ pub mod tests {
     #[test]
     fn parsed_assignment_with_typed_argument() -> Result<(), TError> {
         let ast = setup("x(y: Int): Int=1")?;
-        eprintln!("{}", ast.pretty(ast.roots[0]));
+        eprintln!("{}", ast.pretty());
         // dbg!(&ast);
 
         assert_eq!(ast.identifiers.len(), 3);
         assert_eq!(ast.atoms.len(), 0);
         assert_eq!(ast.literals.len(), 1);
         assert_eq!(ast.ops.len(), 0);
-        assert_eq!(ast.definitions.len(), 1);
+        assert_eq!(ast.definitions.len(), 2);
         Ok(())
     }
 
     #[test]
     fn parsed_assignment_with_implicit_args() -> Result<(), TError> {
         let ast = setup("id(forall T: Type, y: T): T=y")?;
-        eprintln!("{}", &ast.pretty(ast.roots[0]));
+        eprintln!("{}", &ast.pretty());
 
         assert_eq!(ast.identifiers.len(), 5);
         assert_eq!(ast.atoms.len(), 0);
         assert_eq!(ast.literals.len(), 0);
         assert_eq!(ast.ops.len(), 0);
-        assert_eq!(ast.definitions.len(), 1);
+        assert_eq!(ast.definitions.len(), 3);
         let (_id, def) = &ast.definitions[0];
+        dbg!(def);
+        assert_eq!(def.bindings.as_ref().map(|x| x.len()), None);
+        let (_id, def) = &ast.definitions[1];
+        dbg!(def);
+        assert_eq!(def.bindings.as_ref().map(|x| x.len()), None);
+        let (_id, def) = &ast.definitions[2];
         dbg!(def);
         assert_eq!(def.bindings.as_ref().map(|x| x.len()), Some(2));
         Ok(())
@@ -843,6 +909,30 @@ pub mod tests {
         assert!(err.is_err());
         let err = err.unwrap_err();
         assert_eq!(format!("{}", err), "This expression could be read two ways, use parens to clarify whether || or && should be performed first");
+        Ok(())
+    }
+
+    #[test]
+    fn parse_bare_lambda() -> Result<(), TError> {
+        let _ast = setup("x->x")?;
+        Ok(())
+    }
+
+    #[test]
+    fn parse_var_and_use_as_lambdas() -> Result<(), TError> {
+        let _ast = setup("(x->x)(x=2)")?;
+        Ok(())
+    }
+
+    #[test]
+    fn parse_var_from_expr_and_use_as_lambdas() -> Result<(), TError> {
+        let _ast = setup("(x->x)(x=3+2)")?;
+        Ok(())
+    }
+
+    #[test]
+    fn parse_nested_vars_as_lambdas() -> Result<(), TError> {
+        let _ast = setup("(x->x)(x=((y->(2*y))(y=3)))")?;
         Ok(())
     }
 
@@ -896,7 +986,7 @@ pub mod tests {
         assert_eq!(ast.calls.len(), 1);
         assert_eq!(ast.calls[0].1.args.len(), 3);
         assert_eq!(ast.ops.len(), 2); // Lt and Sub
-        assert_eq!(ast.definitions.len(), 1);
+        assert_eq!(ast.definitions.len(), 2);
         Ok(())
     }
 

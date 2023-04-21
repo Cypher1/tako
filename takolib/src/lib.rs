@@ -8,6 +8,7 @@ pub mod backend;
 #[cfg(feature = "backend")]
 pub mod codegen;
 pub mod compiler;
+pub mod desugarer;
 pub mod error;
 pub mod interpreter;
 pub mod keywords;

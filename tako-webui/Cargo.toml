@@ -1,10 +1,11 @@
 [package]
 name = "tako-webui"
 version = "0.1.0"
-edition = "2021"
-description = "A web based UI for tako"
-readme = "README.md"
 repository = "https://github.com/cypher1/tako"
+description = "A web based UI for tako"
+authors = ["Jay Pratt <jay@skfl.tech>"]
+edition = "2021"
+readme = "README.md"
 license = "MIT"
 keywords = ["yew", "trunk"]
 categories = ["gui", "wasm", "web-programming"]

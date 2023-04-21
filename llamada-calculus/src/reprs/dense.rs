@@ -1,5 +1,5 @@
-use crate::types::{Empty, Never};
-use crate::{Expr, Term};
+use crate::base_types::{Empty, Never};
+use crate::{Evaluable, Expr, Term};
 
 #[derive(Debug, Clone, Eq, Hash, Ord, PartialOrd, PartialEq)]
 pub struct DenseRepr<T, Meta> {
@@ -26,13 +26,13 @@ impl<T, Meta> DenseRepr<T, Meta> {
     }
 }
 
-impl<T: Clone + std::fmt::Debug + std::fmt::Display, Meta: Default + std::fmt::Display> Expr
+impl<T: Evaluable + Clone + std::fmt::Display, Meta: Clone + Default + std::fmt::Display> Expr
     for DenseRepr<T, Meta>
 {
     type Index = usize;
-    type Extension = T;
+    type Value = T;
     type Meta = Meta;
-    // type Term = Term<Self::Extension, Self::Index>;
+    // type Term = Term<Self::Value, Self::Index>;
 
     fn new(term: Term<T, usize>, meta: Meta) -> Self {
         let mut this = Self {
@@ -46,19 +46,13 @@ impl<T: Clone + std::fmt::Debug + std::fmt::Display, Meta: Default + std::fmt::D
     fn get_last_id(&self) -> Self::Index {
         self.terms.len() - 1
     }
-    fn get(&self, id: &Self::Index) -> &Term<Self::Extension, Self::Index> {
+    fn get(&self, id: &Self::Index) -> &Term<Self::Value, Self::Index> {
         // TODO: Checked version?
         &self.terms[*id].0
     }
     fn get_meta(&self, id: &Self::Index) -> &Self::Meta {
         // TODO: Checked version?
         &self.terms[*id].1
-    }
-    fn reduce_ext_apps(
-        &mut self,
-        _value: Term<Self::Extension, Self::Index>,
-    ) -> Term<Self::Extension, Self::Index> {
-        todo!(); // match value {}
     }
     fn root(&self) -> &Self::Index {
         &self.root
@@ -68,7 +62,7 @@ impl<T: Clone + std::fmt::Debug + std::fmt::Display, Meta: Default + std::fmt::D
     }
     fn add_with_meta(
         &mut self,
-        term: Term<Self::Extension, Self::Index>,
+        term: Term<Self::Value, Self::Index>,
         meta: Self::Meta,
     ) -> Self::Index {
         self.push(term, meta)
@@ -85,6 +79,7 @@ pub type LambdaCalc = DenseRepr<Never, Empty>;
 impl<T, Meta> std::fmt::Display for DenseRepr<T, Meta>
 where
     DenseRepr<T, Meta>: Expr,
+    <DenseRepr<T, Meta> as Expr>::Value: std::fmt::Display,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         self.fmt_root(f)
