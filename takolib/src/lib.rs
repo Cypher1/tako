@@ -23,6 +23,7 @@ pub mod ui;
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 use crate::compiler::Compiler;
+use adapton::engine::*;
 
 static mut LOGS_UNINITIALISED: bool = true;
 
@@ -78,5 +79,6 @@ pub fn ensure_initialized() {
 }
 
 pub async fn start() -> Compiler {
+    manage::init_dcg();
     Compiler::default()
 }
