@@ -3,6 +3,12 @@
 version = 3
 
 [[package]]
+name = "adapton"
+version = "0.3.31"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "981c88fc09f4958a2e401bf9022b981781037d88ce8644407da0d9b34f0c9a48"
+
+[[package]]
 name = "aho-corasick"
 version = "0.7.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1827,6 +1833,7 @@ dependencies = [
 name = "tako"
 version = "0.2.0"
 dependencies = [
+ "adapton",
  "async-trait",
  "bitvec",
  "enum-kinds",
