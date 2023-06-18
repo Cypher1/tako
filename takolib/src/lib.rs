@@ -23,8 +23,6 @@ pub mod ui;
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 use crate::compiler::Compiler;
-use adapton::engine::*;
-
 static mut LOGS_UNINITIALISED: bool = true;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -36,7 +34,7 @@ fn build_logger(finish: impl FnOnce(&mut env_logger::Builder)) {
         finish(
             env_logger::Builder::from_env(
                 env_logger::Env::default()
-                    .filter_or("RUST_LOG", "debug")
+                    .filter_or("RUST_LOG", "warn")
                     .write_style_or("RUST_LOG_STYLE", "AUTO"),
             )
             .format_timestamp(None),
@@ -79,6 +77,5 @@ pub fn ensure_initialized() {
 }
 
 pub async fn start() -> Compiler {
-    manage::init_dcg();
     Compiler::default()
 }

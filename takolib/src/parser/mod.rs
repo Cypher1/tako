@@ -621,23 +621,21 @@ fn normalize_keywords_as_ops(ast: &Ast, name: Identifier) -> TokenType {
 
 #[cfg(test)]
 pub mod tests {
-    use adapton::macros::*;
-    use adapton::engine::*;
-    use adapton::*;
-    use std::sync::{Arc, Mutex};
     use std::path::PathBuf;
+    use std::sync::{Arc, Mutex};
     use super::semantics::*;
     use super::*;
     use tokens::lex;
 
-    fn test_file1() -> PathBuf {
+    fn test_file1() -> String {
         "test.tk".into()
     }
 
     fn setup(s: &str) -> Result<Ast, TError> {
         crate::ensure_initialized();
         let tokens = lex(s)?;
-        parse(&test_file1(), s, &tokens)
+        let path: PathBuf = test_file1().into();
+        super::parse(&path, s, &tokens)
     }
 
     #[test]
@@ -907,6 +905,26 @@ pub mod tests {
     }
 
     #[test]
+    fn parse_3tuple() -> Result<(), TError> {
+        let ast = setup("1,2,3")?;
+        assert_eq!(ast.identifiers.len(), 0);
+        assert_eq!(ast.literals.len(), 3);
+        assert_eq!(ast.ops.len(), 2);
+        assert_eq!(ast.definitions.len(), 0);
+        Ok(())
+    }
+
+    #[test]
+    fn parse_3sequence() -> Result<(), TError> {
+        let ast = setup("1;2;3")?;
+        assert_eq!(ast.identifiers.len(), 0);
+        assert_eq!(ast.literals.len(), 3);
+        assert_eq!(ast.ops.len(), 2);
+        assert_eq!(ast.definitions.len(), 0);
+        Ok(())
+    }
+
+    #[test]
     fn parse_ambiguous_and_with_or() -> Result<(), TError> {
         let err = setup("a||b&&c");
         dbg!(&err);
@@ -1021,57 +1039,92 @@ pub mod tests {
             - "x()= !\"hello world\";\n7"
     */
 
-    fn ast(counter: &Arc<Mutex<usize>>, input: &Art<String>) -> Result<Ast, TError> {
-        let counter = counter.clone();
-        let input = input.clone();
-        let_memo!{
-            d = (f)= {
-                cell!([ast] {
-                    *counter.lock().unwrap() += 1;
-                    setup(&get!(input))
-                })
-            };
-            e = (g)= get!(d);
-        e }
+    use salsa;
+
+    trait RawDBImpl {
+        fn counter(&self) -> Arc<Mutex<usize>>;
+    }
+
+    #[salsa::query_group(CompilerStorage)]
+    trait Compiler: salsa::Database + RawDBImpl {
+        #[salsa::input]
+        fn input(&self, name: String) -> String;
+
+        fn contents(&self, name: String) -> String;
+        fn parse(&self, path: String) -> Result<Ast, TError>;
+    }
+
+    #[salsa::database(CompilerStorage)]
+    #[derive(Default)]
+    struct Database {
+        storage: salsa::Storage<Self>,
+        counter: Arc<Mutex<usize>>,
+    }
+
+    impl RawDBImpl for Database {
+        fn counter(&self) -> Arc<Mutex<usize>> {
+            self.counter.clone()
+        }
+    }
+
+    impl salsa::Database for Database {}
+
+    fn contents<DB: Compiler + ?Sized>(db: &DB, path: String) -> String {
+        db.input(path)
+    }
+
+    fn parse<DB: Compiler + ?Sized>(db: &DB, path: String) -> Result<Ast, TError> {
+        let input = db.contents(path.clone());
+        let counter = db.counter();
+        let mut counter = counter.lock().unwrap();
+        *counter += 1;
+        trace!("Counter: {counter:?} Path: {path:?} Input: {input:?}");
+        setup(&input)
     }
 
     #[test]
-    fn test_adapton_parser_pair() -> Result<(), TError> {
-        let calls = Arc::new(Mutex::new(0));
-        let input = thunk!([input] "1,2".to_string());
+    fn test_salsa_parser_pair() -> Result<(), TError> {
+        let mut db = Database::default();
+        ContentsQuery.in_db_mut(&mut db).set_lru_capacity(32);
+        ParseQuery.in_db_mut(&mut db).set_lru_capacity(32);
+        let path = test_file1();
+        let a = "3;2;1";
+        let b = "1,2";
         {
-            let ast = ast(&calls, &input)?;
-            assert_eq!(ast.identifiers.len(), 0);
-            assert_eq!(ast.literals.len(), 2);
-            assert_eq!(ast.ops.len(), 1);
-            assert_eq!(ast.definitions.len(), 0);
-            assert_eq!(*calls.lock().unwrap(), 1);
-        }
-        {
-            let ast = ast(&calls, &input)?;
-            assert_eq!(ast.identifiers.len(), 0);
-            assert_eq!(ast.literals.len(), 2);
-            assert_eq!(ast.ops.len(), 1);
-            assert_eq!(ast.definitions.len(), 0);
-            assert_eq!(*calls.lock().unwrap(), 2);
-        }
-        {
-            set(&input, "1,2,3".to_string());
-            let ast = ast(&calls, &input)?;
+            db.set_input(path.clone(), a.to_string());
+            let ast = db.parse(path.clone())?;
             assert_eq!(ast.identifiers.len(), 0);
             assert_eq!(ast.literals.len(), 3);
             assert_eq!(ast.ops.len(), 2);
             assert_eq!(ast.definitions.len(), 0);
-            assert_eq!(*calls.lock().unwrap(), 2);
+            assert_eq!(*db.counter.lock().unwrap(), 1);
         }
         {
-            set(&input, "1,2".to_string());
-            let ast = ast(&calls, &input)?;
+            db.set_input(path.clone(), a.to_string());
+            let ast = db.parse(path.clone())?;
+            assert_eq!(ast.identifiers.len(), 0);
+            assert_eq!(ast.literals.len(), 3);
+            assert_eq!(ast.ops.len(), 2);
+            assert_eq!(ast.definitions.len(), 0);
+            assert_eq!(*db.counter.lock().unwrap(), 1);
+        }
+        {
+            db.set_input(path.clone(), b.to_string());
+            let ast = db.parse(path.clone())?;
             assert_eq!(ast.identifiers.len(), 0);
             assert_eq!(ast.literals.len(), 2);
             assert_eq!(ast.ops.len(), 1);
             assert_eq!(ast.definitions.len(), 0);
-            assert_eq!(*calls.lock().unwrap(), 2);
+            assert_eq!(*db.counter.lock().unwrap(), 2);
+        }
+        {
+            db.set_input(path.clone(), a.to_string());
+            let ast = db.parse(path)?;
+            assert_eq!(ast.identifiers.len(), 0);
+            assert_eq!(ast.literals.len(), 3);
+            assert_eq!(ast.ops.len(), 2);
+            assert_eq!(ast.definitions.len(), 0);
+            assert_eq!(*db.counter().lock().unwrap(), 3);
         }
         Ok(())
     }
