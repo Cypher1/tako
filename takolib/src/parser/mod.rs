@@ -625,8 +625,13 @@ fn normalize_keywords_as_ops(ast: &Ast, name: Identifier) -> TokenType {
 #[cfg(test)]
 pub mod tests {
     use super::semantics::Literal;
-    use super::*;
+    use adapton::macros::*;
+    use adapton::engine::*;
+    use adapton::*;
+    use std::sync::{Arc, Mutex};
     use std::path::PathBuf;
+    use super::semantics::*;
+    use super::*;
     use tokens::lex;
 
     fn test_file1() -> PathBuf {
@@ -1019,4 +1024,59 @@ pub mod tests {
             - "mul(x, y)= x*y"
             - "x()= !\"hello world\";\n7"
     */
+
+    fn ast(counter: &Arc<Mutex<usize>>, input: &Art<String>) -> Result<Ast, TError> {
+        let counter = counter.clone();
+        let input = input.clone();
+        let_memo!{
+            d = (f)= {
+                cell!([ast] {
+                    *counter.lock().unwrap() += 1;
+                    setup(&get!(input))
+                })
+            };
+            e = (g)= get!(d);
+        e }
+    }
+
+    #[test]
+    fn test_adapton_parser_pair() -> Result<(), TError> {
+        let calls = Arc::new(Mutex::new(0));
+        let input = thunk!([input] "1,2".to_string());
+        {
+            let ast = ast(&calls, &input)?;
+            assert_eq!(ast.identifiers.len(), 0);
+            assert_eq!(ast.literals.len(), 2);
+            assert_eq!(ast.ops.len(), 1);
+            assert_eq!(ast.definitions.len(), 0);
+            assert_eq!(*calls.lock().unwrap(), 1);
+        }
+        {
+            let ast = ast(&calls, &input)?;
+            assert_eq!(ast.identifiers.len(), 0);
+            assert_eq!(ast.literals.len(), 2);
+            assert_eq!(ast.ops.len(), 1);
+            assert_eq!(ast.definitions.len(), 0);
+            assert_eq!(*calls.lock().unwrap(), 2);
+        }
+        {
+            set(&input, "1,2,3".to_string());
+            let ast = ast(&calls, &input)?;
+            assert_eq!(ast.identifiers.len(), 0);
+            assert_eq!(ast.literals.len(), 3);
+            assert_eq!(ast.ops.len(), 2);
+            assert_eq!(ast.definitions.len(), 0);
+            assert_eq!(*calls.lock().unwrap(), 2);
+        }
+        {
+            set(&input, "1,2".to_string());
+            let ast = ast(&calls, &input)?;
+            assert_eq!(ast.identifiers.len(), 0);
+            assert_eq!(ast.literals.len(), 2);
+            assert_eq!(ast.ops.len(), 1);
+            assert_eq!(ast.definitions.len(), 0);
+            assert_eq!(*calls.lock().unwrap(), 2);
+        }
+        Ok(())
+    }
 }
