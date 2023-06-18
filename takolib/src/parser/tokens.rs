@@ -114,6 +114,7 @@ lazy_static! {
     static ref RIGHT_ASSOCIATIVE: HashSet<Symbol> = hash_set!{
         Symbol::OpenParen,
         Symbol::Exp,
+        Symbol::Sequence,
     };
     static ref ASSOCIATIVE: HashSet<Symbol> = hash_set!{
         Symbol::Add,

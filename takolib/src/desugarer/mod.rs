@@ -3,6 +3,7 @@ use crate::ast::{Ast, Contains};
 use crate::ast::{Call, NodeId, Op};
 use crate::error::TError;
 use crate::parser::tokens::Symbol;
+use log::trace;
 use std::path::Path;
 
 pub fn desugar(_path: &Path, old_ast: &Ast, _root: Option<NodeId>) -> Result<Ast, TError> {
@@ -27,6 +28,7 @@ pub fn desugar(_path: &Path, old_ast: &Ast, _root: Option<NodeId>) -> Result<Ast
                 left_node.name
             }
             _ => {
+                eprintln!("Unexpected arguments to ';' operator: {op:?}");
                 todo!("Unexpected arguments to ';' operator: {op:?}");
             }
         };
@@ -42,8 +44,12 @@ pub fn desugar(_path: &Path, old_ast: &Ast, _root: Option<NodeId>) -> Result<Ast
             args: vec![*left],
         };
         let apply = ast.add_call(apply, location);
+        trace!(
+            "Rewriting {} to {}",
+            ast.pretty_node(node_id),
+            ast.pretty_node(apply)
+        );
         ast.add_equivalent(node_id, apply);
-        // eprintln!("{}", ast.pretty_node(apply));
     }
     Ok(ast)
 }
@@ -60,21 +66,18 @@ mod tests {
         "test.tk".into()
     }
 
-    fn setup(s: &str, e: &str) -> Result<(Ast, Ast), TError> {
+    fn setup(s: &str) -> Result<Ast, TError> {
         crate::ensure_initialized();
-        let tokens_s = lex(s)?;
-        let ast = parse(&test_path(), s, &tokens_s)?;
-        let tokens_e = lex(e)?;
-        let exp = parse(&test_path(), e, &tokens_e)?;
-        Ok((ast, exp))
+        let tokens = lex(s)?;
+        let ast = parse(&test_path(), s, &tokens)?;
+        Ok(ast)
     }
 
-    fn desugars_to(s: &str, e: &str) -> Result<(), TError> {
-        let (ast, exp) = setup(s, e)?;
+    fn desugars_to(s: &str, exp: &str) -> Result<(), TError> {
+        let ast = setup(s)?;
         let res = desugar(&test_path(), &ast, None)?;
         let res_pretty = format!("{}", pretty(&res));
-        let exp_pretty = format!("{}", pretty(&exp));
-        assert_eq!(res_pretty, exp_pretty);
+        assert_eq!(res_pretty, exp);
         Ok(())
     }
 
@@ -109,6 +112,11 @@ mod tests {
 
     #[test]
     fn exp_nested_vars() -> Result<(), TError> {
-        desugars_to("x=(y=3;2*y);x", "(x->x)(x=((y->(2*y))(y=3)))")
+        desugars_to("x=(y=3;2*y);x", "(x->x)(x=(y->(2*y))(y=3))")
+    }
+
+    #[test]
+    fn exp_multiple_statements() -> Result<(), TError> {
+        desugars_to("x=3;y=x+4;2*y", "(x->((y->(2*y))(y=x+4)))(x=3)")
     }
 }

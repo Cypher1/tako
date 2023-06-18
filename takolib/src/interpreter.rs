@@ -58,6 +58,7 @@ impl<'a> Ctx<'a> {
     }
 
     pub fn eval(&mut self, node: NodeId) -> Result<Prim, TError> {
+        trace!("Eval: {}", self.ast.pretty_node(node));
         // TODO(core): implement evaluation of the AST
         let node = node.get(&self.ast.nodes);
         match node.id {
@@ -65,12 +66,21 @@ impl<'a> Ctx<'a> {
             NodeData::Identifier(ident) => {
                 let (_id, name) = self.ast.get(ident);
                 let Some(value) = self.state.get_binding(name) else {
-                    panic!("Not found: {name:?}")
+                    let Some(name) = self.ast.string_interner.get_str(*name) else {
+                        panic!("Not found (unknown name): {name:?}");
+                    };
+                    panic!("Not found: {name}");
                 };
                 Ok(value.clone())
             }
             NodeData::Atom(_id) => todo!(),
-            NodeData::Call(_id) => todo!(),
+            NodeData::Call(call) => {
+                let (_id, Call { inner, args }) = self.ast.get(call);
+                for arg in args {
+                    self.eval(*arg)?;
+                }
+                self.eval(*inner)
+            }
             NodeData::Op(id) => self.eval_op(node, id),
             NodeData::Definition(def) => {
                 let (
@@ -208,7 +218,15 @@ impl<'a> Ctx<'a> {
             Symbol::RightPipe => todo!(),
             Symbol::Escape => todo!(),
             Symbol::HasType => todo!(),
-            Symbol::Arrow => todo!(),
+            Symbol::Arrow => {
+                let Some(_l) = op.args.get(0) else {
+                    panic!("-> expects a left and a right. Left not found");
+                };
+                let Some(r) = op.args.get(1) else {
+                    panic!("-> expects a left and a right. Right not found");
+                };
+                self.eval(*r)?
+            }
             Symbol::Forall => todo!(),
             Symbol::Exists => todo!(),
             Symbol::Lambda => todo!(),
@@ -316,5 +334,22 @@ mod tests {
         let res = run(&test_path(), &ast, None);
         assert_eq!(res, Ok(Prim::I32(6)));
         Ok(())
+    }
+
+    #[test]
+    fn exp_multiple_statements() -> Result<(), TError> {
+        let ast = setup("x=3;y=x+4;2*y")?;
+        let res = run(&test_path(), &ast, None);
+        assert_eq!(res, Ok(Prim::I32(14)));
+        Ok(())
+    }
+
+    #[test]
+    fn exp_multiple_statements_as_lambdas() -> Result<(), TError> {
+        let ast = setup("(x->(y->(2*y))(y=x+4))(x=3)")?;
+        let res = run(&test_path(), &ast, None);
+        assert_eq!(res, Ok(Prim::I32(14)));
+        Ok(())
+        // TODO: Remove!
     }
 }
