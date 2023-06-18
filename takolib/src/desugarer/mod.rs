@@ -95,18 +95,18 @@ mod tests {
         desugars_to("2**3**2", "2**(3**2)")
     }
 
-    // TODO: #[test]
-    // fn exp_var_and_use() -> Result<(), TError> {
-    // desugars_to("x=2;x", "(x->x)(x=2)")
-    // }
+    #[test]
+    fn exp_var_and_use() -> Result<(), TError> {
+        desugars_to("x=2;x", "(x->x)(x=2)")
+    }
 
-    // TODO: #[test]
-    // fn exp_var_from_expr_and_use() -> Result<(), TError> {
-    // desugars_to("x=3+2;x", "(x->x)(x=3+2)")
-    // }
+    #[test]
+    fn exp_var_from_expr_and_use() -> Result<(), TError> {
+        desugars_to("x=3+2;x", "(x->x)(x=3+2)")
+    }
 
-    // TODO: #[test]
-    // fn exp_nested_vars() -> Result<(), TError> {
-    // desugars_to("x=(y=3;2*y);x", "(x->x)(x=((y->(2*y))(y=3)))")
-    // }
+    #[test]
+    fn exp_nested_vars() -> Result<(), TError> {
+        desugars_to("x=(y=3;2*y);x", "(x->x)(x=((y->(2*y))(y=3)))")
+    }
 }
