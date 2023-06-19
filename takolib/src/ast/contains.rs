@@ -41,8 +41,8 @@ macro_rules! make_contains(
                     .expect("Should always be able to allocate a new Ast Node");
                 let node: TypedIndex<Node> = TypedIndex::new(&mut self.nodes, Node {
                     id: NodeData::$kind(id),
-                    equivalents: Vec::default(),
-                    ty: Option::default(),
+                    equivalents: None,
+                    ty: None,
                     location,
                 })
                 .expect("Should always be able to allocate a new Ast Node");
