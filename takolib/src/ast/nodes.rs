@@ -14,6 +14,7 @@ pub struct Node {
     pub id: NodeData,
     // This could be an expression, function or not specified.
     pub ty: Option<NodeId>,
+    pub equivalents: Option<NodeId>,
     pub location: Location,
 }
 make_contains!(nodes, Node, NodeRef, NodeId, unsafe_add_node);

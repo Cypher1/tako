@@ -72,6 +72,7 @@ impl Ast {
         let value_id = self.alloc((node_id, value(node_id)));
         let node = Node {
             id: Self::to_node(value_id),
+            equivalents: None,
             ty: None,
             location,
         };
@@ -79,6 +80,13 @@ impl Ast {
             .expect("Should never have that many AstNodes...");
         assert_eq!(node_id, new_node_id);
         new_node_id
+    }
+    pub fn add_equivalent(&mut self, mut node_id: NodeId, eq: NodeId) -> NodeId {
+        while node_id != eq {
+            let eqs = &mut self.get_mut(node_id).equivalents;
+            node_id = *eqs.get_or_insert(eq);
+        }
+        eq
     }
     pub fn add_annotation(&mut self, node_id: NodeId, mut ty: NodeId) -> NodeId {
         let old_ty: Option<NodeId> = self.get(node_id).ty;
