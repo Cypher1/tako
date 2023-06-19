@@ -18,22 +18,23 @@ pub fn desugar(_path: &Path, old_ast: &Ast, _root: Option<NodeId>) -> Result<Ast
         let [left, right] = &op.args[0..2] else {
             todo!("Unexpected arguments to ';' operator: {op:?}");
         };
+        // debug!("desugar Definition: {} ; {}", ast.pretty_node(*left), ast.pretty_node(*right));
         let left_node = ast.get(*left);
         let location = left_node.location;
-        dbg!(node_id, &left_node, &right);
-        match left_node.id {
+        let name = match left_node.id {
             Definition(id) => {
-                let left_node = ast.get(id);
-                dbg!(left_node);
+                let (_node, left_node) = ast.get(id);
+                left_node.name
             }
             _ => {
                 todo!("Unexpected arguments to ';' operator: {op:?}");
             }
-        }
+        };
         // let var:  = ast.get(left);
+        let name = ast.add_identifier(name, location);
         let inner = Op {
             op: Symbol::Arrow,
-            args: vec![*left, *right],
+            args: vec![name, *right],
         };
         let inner = ast.add_op(inner, location);
         let apply = Call {
@@ -41,7 +42,8 @@ pub fn desugar(_path: &Path, old_ast: &Ast, _root: Option<NodeId>) -> Result<Ast
             args: vec![*left],
         };
         let apply = ast.add_call(apply, location);
-        eprintln!("{}", ast.pretty_node(apply));
+        ast.add_equivalent(node_id, apply);
+        // eprintln!("{}", ast.pretty_node(apply));
     }
     Ok(ast)
 }

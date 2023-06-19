@@ -130,9 +130,13 @@ impl<'ast> fmt::Display for PrintNode<'ast> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let Node {
             id: node,
+            equivalents,
             ty,
             location,
         } = self.ast.get(self.node);
+        if let Some(eq) = equivalents.last() {
+            return write!(f, "{}", self.child(*eq)); // Watch out for cycles...
+        }
         let mut ty = *ty;
         match node {
             NodeData::Warning(node) => {
