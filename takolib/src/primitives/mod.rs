@@ -1,7 +1,7 @@
 #[macro_use]
 pub mod typed_index;
-pub mod tribool;
 pub mod meta;
+pub mod tribool;
 
 use crate::error::TError;
 use crate::primitives::tribool::{all_true, any_true, Tribool};

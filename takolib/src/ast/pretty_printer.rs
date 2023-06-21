@@ -1,5 +1,5 @@
 #![allow(unused)]
-use crate::ast::{Ast, Contains, Definition, Node, NodeData, NodeId, string_interner::Identifier};
+use crate::ast::{string_interner::Identifier, Ast, Contains, Definition, Node, NodeData, NodeId};
 use crate::parser::semantics::BindingMode;
 use std::fmt;
 use std::fmt::Write;

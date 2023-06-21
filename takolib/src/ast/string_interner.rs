@@ -1,5 +1,5 @@
-use crate::parser::keywords::KEYWORDS;
 use super::location::IndexIntoFile;
+use crate::parser::keywords::KEYWORDS;
 use crate::primitives::typed_index::TypedIndex;
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};

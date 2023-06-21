@@ -3,17 +3,17 @@ mod contains;
 pub use contains::*;
 mod nodes;
 pub use nodes::*;
-pub mod string_interner;
 pub mod location;
 mod pretty_printer;
+pub mod string_interner;
 
 use crate::parser::semantics::Literal;
 use crate::parser::tokens::Symbol;
 use crate::primitives::typed_index::TypedIndex;
-use pretty_printer::{pretty, pretty_node};
 use location::Location;
-use string_interner::{Identifier, StringInterner};
+use pretty_printer::{pretty, pretty_node};
 use std::path::PathBuf;
+use string_interner::{Identifier, StringInterner};
 
 #[derive(Clone, Default, Debug, Hash, PartialEq, Eq)]
 pub struct Ast {
@@ -119,8 +119,8 @@ impl Ast {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use string_interner::StringInterner;
     use crate::parser::semantics::BindingMode;
+    use string_interner::StringInterner;
 
     #[test]
     fn can_add_nodes_to_ast() {

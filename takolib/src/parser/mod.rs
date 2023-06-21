@@ -1,14 +1,14 @@
-pub mod semantics;
 pub mod keywords;
+pub mod semantics;
 pub mod tokens;
 // use rand::Rng;
-use crate::error::TError;
 use crate::ast::location::Location;
 use crate::ast::string_interner::Identifier;
 use crate::ast::*;
-use semantics::Literal;
+use crate::error::TError;
 use log::trace;
 use semantics::BindingMode;
+use semantics::Literal;
 use std::path::Path;
 use thiserror::Error;
 use tokens::{assign_op, binding_mode_operation, is_assign, OpBinding, Symbol, Token, TokenType};

@@ -1,5 +1,5 @@
-use crate::error::TError;
 use crate::ast::location::{IndexIntoFile, Location, SymbolLength};
+use crate::error::TError;
 use crate::parser::semantics::BindingMode;
 use lazy_static::lazy_static;
 use log::{debug, trace};

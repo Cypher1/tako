@@ -1,9 +1,9 @@
 use super::location::Location;
+use crate::ast::string_interner::Identifier;
 use crate::parser::{
     semantics::{BindingMode, Literal},
     tokens::Symbol,
 };
-use crate::ast::string_interner::Identifier;
 use crate::primitives::typed_index::TypedIndex;
 
 use super::contains::*;
