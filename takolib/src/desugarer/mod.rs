@@ -59,7 +59,6 @@ mod tests {
     use super::*;
     use crate::parser::parse;
     use crate::parser::tokens::lex;
-    use crate::pretty_printer::pretty;
     use std::path::PathBuf;
 
     fn test_path() -> PathBuf {
@@ -76,7 +75,7 @@ mod tests {
     fn desugars_to(s: &str, exp: &str) -> Result<(), TError> {
         let ast = setup(s)?;
         let res = desugar(&test_path(), &ast, None)?;
-        let res_pretty = format!("{}", pretty(&res));
+        let res_pretty = format!("{}", res.pretty());
         assert_eq!(res_pretty, exp);
         Ok(())
     }

@@ -1,7 +1,7 @@
 #![deny(clippy::all)]
 
 #[macro_use]
-pub mod utils;
+pub mod better_std;
 
 pub mod ast;
 pub mod backend;
@@ -11,12 +11,8 @@ pub mod compiler;
 pub mod desugarer;
 pub mod error;
 pub mod interpreter;
-pub mod keywords;
-pub mod location;
 pub mod parser;
-pub mod pretty_printer;
 pub mod primitives;
-pub mod string_interner;
 pub mod tasks;
 pub mod ui;
 

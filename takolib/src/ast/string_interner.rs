@@ -1,6 +1,6 @@
-use crate::keywords::KEYWORDS;
-use crate::location::IndexIntoFile;
-use crate::utils::typed_index::TypedIndex;
+use super::location::IndexIntoFile;
+use crate::parser::keywords::KEYWORDS;
+use crate::primitives::typed_index::TypedIndex;
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
 
