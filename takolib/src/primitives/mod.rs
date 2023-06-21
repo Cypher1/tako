@@ -1,5 +1,10 @@
+#[macro_use]
+pub mod typed_index;
+pub mod tribool;
+pub mod meta;
+
 use crate::error::TError;
-use crate::utils::tribool::{all_true, any_true, Tribool};
+use crate::primitives::tribool::{all_true, any_true, Tribool};
 use bitvec::prelude::*;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt;

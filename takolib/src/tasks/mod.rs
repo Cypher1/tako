@@ -6,7 +6,7 @@ use crate::ast::NodeId;
 use crate::error::Error;
 use crate::parser::tokens::Token;
 use crate::primitives::Prim;
-use crate::utils::meta::Meta;
+use crate::primitives::meta::Meta;
 use async_trait::async_trait;
 use enum_kinds::EnumKind;
 pub use manager::{StatusReport, TaskStats};

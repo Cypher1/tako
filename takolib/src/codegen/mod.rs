@@ -1,3 +1,5 @@
+pub mod cpp_ast;
+
 use crate::ast::{Ast, NodeId};
 use crate::backend::{backend, create_context, Backend, BackendConfig, BackendStateTrait};
 use crate::error::TError;

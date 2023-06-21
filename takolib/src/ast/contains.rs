@@ -1,4 +1,4 @@
-use crate::utils::typed_index::TypedIndex;
+use crate::primitives::typed_index::TypedIndex;
 
 use super::nodes::NodeData;
 // TODO(clarity): Use macro for defining and registering each of these.
@@ -33,6 +33,7 @@ macro_rules! make_contains(
             }
         }
 
+        // TODO: Make generic over types.
         impl Ast {
             pub fn $alloc_fn_name<T>(&mut self, item: T, location: Location) -> NodeId where (NodeId, T): Into<$type> {
                 let node = TypedIndex::next(&self.nodes)

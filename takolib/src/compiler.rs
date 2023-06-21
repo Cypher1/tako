@@ -7,7 +7,7 @@ pub use crate::tasks::task_trait::TaskId;
 use crate::tasks::task_trait::{ResultSenderFor, Task, TaskReceiverFor};
 use crate::tasks::*;
 use crate::ui::Client;
-use crate::utils::meta::Meta;
+use crate::primitives::meta::Meta;
 use log::{debug, trace};
 use std::fmt::Debug;
 use std::path::PathBuf;

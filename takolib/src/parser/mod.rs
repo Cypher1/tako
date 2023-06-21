@@ -1,10 +1,12 @@
 pub mod semantics;
+pub mod keywords;
 pub mod tokens;
 // use rand::Rng;
 use crate::error::TError;
-use crate::location::Location;
-use crate::string_interner::Identifier;
-use crate::{ast::*, parser::semantics::Literal};
+use crate::ast::location::Location;
+use crate::ast::string_interner::Identifier;
+use crate::ast::*;
+use semantics::Literal;
 use log::trace;
 use semantics::BindingMode;
 use std::path::Path;

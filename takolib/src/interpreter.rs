@@ -3,7 +3,7 @@ use crate::error::TError;
 use crate::parser::semantics::Literal;
 use crate::parser::tokens::Symbol;
 use crate::primitives::Prim;
-use crate::string_interner::{StrId, StringInterner};
+use crate::ast::string_interner::{StrId, StringInterner};
 use log::*;
 use std::collections::HashMap;
 use std::convert::TryInto;

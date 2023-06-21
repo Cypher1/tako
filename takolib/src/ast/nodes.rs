@@ -1,10 +1,10 @@
-use crate::location::Location;
+use super::location::Location;
 use crate::parser::{
     semantics::{BindingMode, Literal},
     tokens::Symbol,
 };
-use crate::string_interner::Identifier;
-use crate::utils::typed_index::TypedIndex;
+use crate::ast::string_interner::Identifier;
+use crate::primitives::typed_index::TypedIndex;
 
 use super::contains::*;
 use super::Ast;
