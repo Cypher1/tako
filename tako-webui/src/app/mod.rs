@@ -49,7 +49,10 @@ impl Foo {
 }
 ";
 
-    let tako_code: &str = "12 + 3";
+    let tako_code1: &str = "12 + 3";
+    let tako_code2: &str = "x=3;
+x+=4;
+2*x";
 
     html! {
         <div class="container">
@@ -66,7 +69,8 @@ impl Foo {
                 </div>
             */
                 <div class="column">
-                    <Module path="example.tk" language="tako" source={tako_code}></Module>
+                    <Module path="expr.tk" language="tako" source={tako_code1}></Module>
+                    <Module path="statement_exprs.tk" language="tako" source={tako_code2}></Module>
                 </div>
             </div>
         </div>
