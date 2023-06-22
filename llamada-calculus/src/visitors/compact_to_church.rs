@@ -174,14 +174,14 @@ mod test {
         let p_a_b = expr.add(Term::App(p_a, b));
         *expr.root_mut() = p_a_b;
 
-        eprintln!("{}", expr);
+        eprintln!("{expr}");
         let root = expr.traverse(&mut cn).expect("Error");
         *cn.output.root_mut() = root;
         let mut church_expr = cn.output;
         church_expr.reduce();
 
         assert_eq!(
-            format!("{}", church_expr),
+            format!("{church_expr}"),
             "(\\a. (\\b. (a (a (a (a (a (a (a (a (a b)))))))))))"
         );
     }
@@ -202,14 +202,14 @@ mod test {
             p_a_b = App(p_a, b),
         );
 
-        eprintln!("{}", expr);
+        eprintln!("{expr}");
         let root = expr.traverse(&mut cn).expect("Error");
         *cn.output.root_mut() = root;
         let mut church_expr = cn.output;
         church_expr.reduce();
 
         assert_eq!(
-            format!("{}", church_expr),
+            format!("{church_expr}"),
             "(\\a. (\\b. (a (a (a (a (a (a (a (a (a (a (a (a b))))))))))))))"
         );
     }
@@ -225,10 +225,10 @@ mod test {
             p_a = App(plus, a),
             p_a_b = App(p_a, b),
         );
-        eprintln!("{}", expr);
+        eprintln!("{expr}");
 
         let expr: DenseRepr<NumExt, usize> = number_nodes(&expr);
-        eprintln!("{}", expr);
+        eprintln!("{expr}");
 
         use std::collections::HashMap;
         let mut arity_graph = HashMap::<usize, usize>::new();
@@ -263,6 +263,6 @@ mod test {
         let mut with_arity = cn.output;
         with_arity.set_print_meta(true);
 
-        assert_eq!(format!("{}", with_arity), "((Mul: 2 3: 0): 1 4: 0): 0");
+        assert_eq!(format!("{with_arity}"), "((Mul: 2 3: 0): 1 4: 0): 0");
     }
 }

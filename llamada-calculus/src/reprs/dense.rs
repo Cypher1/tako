@@ -78,10 +78,10 @@ pub type LambdaCalc = DenseRepr<Never, Empty>;
 
 impl<T, Meta> std::fmt::Display for DenseRepr<T, Meta>
 where
-    DenseRepr<T, Meta>: Expr,
-    <DenseRepr<T, Meta> as Expr>::Value: std::fmt::Display,
+    Self: Expr,
+    <Self as Expr>::Value: std::fmt::Display,
 {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.fmt_root(f)
     }
 }

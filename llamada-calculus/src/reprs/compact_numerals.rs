@@ -28,10 +28,10 @@ pub enum Prim {
 }
 
 impl std::fmt::Display for Prim {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Prim::U32(val) => write!(f, "{val}")?,
-            Prim::Type(ty) => write!(f, "{ty:?}")?,
+            Self::U32(val) => write!(f, "{val}")?,
+            Self::Type(ty) => write!(f, "{ty:?}")?,
         }
         Ok(())
     }
@@ -46,9 +46,9 @@ pub enum NumExt {
 impl Evaluable for NumExt {
     fn info(&self) -> Option<EvalInfo> {
         Some(match self {
-            NumExt::Op(NumOp::Not) => EvalInfo::new(1),
+            Self::Op(NumOp::Not) => EvalInfo::new(1),
             // TODO: Make numbers act as church numbers (i.e. arity: 2) on lambda terms.
-            NumExt::Value(_) => EvalInfo::new(0),
+            Self::Value(_) => EvalInfo::new(0),
             _ => EvalInfo::new(2),
         })
     }
@@ -67,10 +67,10 @@ impl From<NumOp> for NumExt {
 }
 
 impl std::fmt::Display for NumExt {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            NumExt::Value(val) => write!(f, "{val}")?,
-            NumExt::Op(op) => write!(f, "{op:?}")?,
+            Self::Value(val) => write!(f, "{val}")?,
+            Self::Op(op) => write!(f, "{op:?}")?,
         }
         Ok(())
     }
@@ -105,13 +105,13 @@ impl ValueInfo for NumTyInfo {
 }
 
 impl std::fmt::Display for NumTyInfo {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            NumTyInfo::U32 => write!(f, "U32")?,
-            NumTyInfo::Unknown => write!(f, "?")?,
-            NumTyInfo::Var(n) => write!(f, "var_{n}")?,
-            NumTyInfo::Abs(arg, result) => write!(f, "({arg} -> {result})")?,
-            NumTyInfo::App(inner, arg) => write!(f, "({inner}{arg})")?,
+            Self::U32 => write!(f, "U32")?,
+            Self::Unknown => write!(f, "?")?,
+            Self::Var(n) => write!(f, "var_{n}")?,
+            Self::Abs(arg, result) => write!(f, "({arg} -> {result})")?,
+            Self::App(inner, arg) => write!(f, "({inner}{arg})")?,
         }
         Ok(())
     }
@@ -211,7 +211,7 @@ where
     DenseRepr<NumExt, Meta>: Expr,
     <DenseRepr<NumExt, Meta> as Expr>::Value: std::fmt::Display,
 {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.repr.fmt_root(f)
     }
 }

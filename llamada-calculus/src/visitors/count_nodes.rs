@@ -56,7 +56,7 @@ mod test {
             let num = expr.to_church(i as u32);
             *expr.root_mut() = num;
 
-            eprintln!("{}", expr);
+            eprintln!("{expr}");
             assert_eq!(expr.traverse(&mut cn), Ok(i * 2 + 3));
         }
     }

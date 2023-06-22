@@ -44,9 +44,9 @@ impl Tui {
             client,
             key_fmt: KeyEventFormat::default(),
             should_exit: false,
-            input: "".to_string(),
-            input_after_cursor: "".to_string(),
-            characters: "".to_string(),
+            input: String::new(),
+            input_after_cursor: String::new(),
+            characters: String::new(),
         }
     }
 
@@ -76,7 +76,7 @@ impl Tui {
         }
 
         let count_lines = |s: &str| s.chars().filter(|c| *c == '\n').count();
-        let mut content = "".to_string();
+        let mut content = String::new();
         for hist_entry in &self.client.history {
             content += hist_entry;
             content += "\n";
@@ -108,11 +108,13 @@ impl Tui {
     }
 
     fn handle_event(&mut self, event: Event) -> std::io::Result<()> {
-        let mut characters = "".to_string();
+        let mut characters = String::new();
         match event {
             Event::Key(key_event) => {
                 match key_event {
-                    key!(ctrl - c) | key!(ctrl - q) => self.should_exit = true,
+                    ::crokey::__private::crossterm::event::KeyEvent {
+modifiers: ::crokey::__private::MODS_CTRL,
+code: ::crokey::__private::crossterm::event::KeyCode::Char('c' | 'q') } => self.should_exit = true,
                     key!(Backspace) => {
                         self.input.pop(); // Discard
                     }
@@ -125,14 +127,14 @@ impl Tui {
                         if self.input.is_empty() && self.input_after_cursor.is_empty() {
                             self.should_exit = true;
                         }
-                        self.input = "".to_string(); // Discard
-                        self.input_after_cursor = "".to_string(); // Discard
+                        self.input = String::new(); // Discard
+                        self.input_after_cursor = String::new(); // Discard
                     }
                     key!(ctrl - u) => {
-                        self.input = "".to_string(); // Discard
+                        self.input = String::new(); // Discard
                     }
                     key!(ctrl - k) => {
-                        self.input_after_cursor = "".to_string(); // Discard
+                        self.input_after_cursor = String::new(); // Discard
                     }
                     key!(ctrl - w) => {
                         let last_space = self.input.rfind(' ').unwrap_or(0);
@@ -156,7 +158,7 @@ impl Tui {
                     }
                     key!(Enter) => {
                         // Submit the expression
-                        let mut line = "".to_string();
+                        let mut line = String::new();
                         std::mem::swap(&mut self.input, &mut line);
                         line += &self.input_after_cursor;
                         if !line.is_empty() {
@@ -164,7 +166,7 @@ impl Tui {
                             self.client
                                 .send_command(RequestTask::EvalLine(line.to_string()));
                         }
-                        self.input_after_cursor = "".to_string();
+                        self.input_after_cursor = String::new();
                     }
                     KeyEvent {
                         code: KeyCode::Char(letter),
@@ -197,10 +199,10 @@ impl UserInterface<Options> for Tui {
         options: Options,
     ) -> std::io::Result<Self> {
         trace!("Launching TUI");
-        let client = Tui::get_client(&mut client_launch_request_sender, Box::new(options)).await;
+        let client = Self::get_client(&mut client_launch_request_sender, Box::new(options)).await;
         trace!("Got TUI client");
         add_shutdown_hook(shutdown);
-        Ok(Tui::new(client))
+        Ok(Self::new(client))
     }
 
     async fn run_loop(mut self) -> std::io::Result<()> {
@@ -228,7 +230,7 @@ impl UserInterface<Options> for Tui {
                     match maybe_event {
                         Ok(event) => {
                             // trace!("Event: {event:?}");
-                            self.handle_event(event)?
+                            self.handle_event(event)?;
                         }
                         Err(err) => {
                             trace!("Event stream error: {err}");

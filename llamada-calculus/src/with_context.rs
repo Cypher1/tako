@@ -9,7 +9,7 @@ impl<'a, Ctx: ?Sized, T> WithContext<'a, Ctx, T> {
         WithContext {
             ctx,
             val,
-            names: names.to_vec(),
+            names,
         }
     }
 

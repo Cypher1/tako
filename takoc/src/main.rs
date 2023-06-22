@@ -10,7 +10,7 @@ use tako::{
     ui::{Client, OptionsTrait, UserInterface},
 };
 use tokio::sync::{mpsc, oneshot};
-use ui::{Http, Tui, UiMode};
+use ui::{Http, Tui, Mode};
 
 type Output = tako::primitives::Prim;
 
@@ -93,11 +93,11 @@ async fn main() -> std::io::Result<()> {
     tokio::spawn(async move { compiler.run_loop().await });
 
     let ui_task = match options.ui_mode {
-        UiMode::Tui => {
+        Mode::Tui => {
             let ui = launch_ui::<Output, Tui>(client_launch_request_sender, options).await;
             tokio::spawn(async move { ui.run_loop().await })
         }
-        UiMode::Http => {
+        Mode::Http => {
             let ui = launch_ui::<Output, Http>(client_launch_request_sender, options).await;
             tokio::spawn(async move { ui.run_loop().await })
         }

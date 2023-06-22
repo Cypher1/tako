@@ -21,9 +21,9 @@ impl std::fmt::Display for BindingMode {
             f,
             "{}",
             match self {
-                BindingMode::Lambda => "lambda",
-                BindingMode::Pi => "forall",
-                BindingMode::Sigma => "exists",
+                Self::Lambda => "lambda",
+                Self::Pi => "forall",
+                Self::Sigma => "exists",
             }
         )
     }

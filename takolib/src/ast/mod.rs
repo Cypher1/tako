@@ -38,17 +38,17 @@ pub struct Ast {
 }
 
 impl Ast {
-    pub fn new(filepath: PathBuf) -> Self {
+    #[must_use] pub fn new(filepath: PathBuf) -> Self {
         Self {
             filepath,
             ..Self::default()
         }
     }
 
-    pub fn pretty(&self) -> impl std::fmt::Display + std::fmt::Debug + '_ {
+    #[must_use] pub fn pretty(&self) -> impl std::fmt::Display + std::fmt::Debug + '_ {
         pretty(self)
     }
-    pub fn pretty_node(&self, node: NodeId) -> impl std::fmt::Display + std::fmt::Debug + '_ {
+    #[must_use] pub fn pretty_node(&self, node: NodeId) -> impl std::fmt::Display + std::fmt::Debug + '_ {
         pretty_node(self, node)
     }
 }

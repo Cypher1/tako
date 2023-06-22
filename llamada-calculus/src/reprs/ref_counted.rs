@@ -9,8 +9,8 @@ pub struct Ptr<T, Meta> {
 }
 
 impl<T, Meta> Ptr<T, Meta> {
-    pub fn new(term: Term<T, Rc<Ptr<T, Meta>>>, meta: Meta) -> Self {
-        Ptr { val: term, meta }
+    pub fn new(term: Term<T, Rc<Self>>, meta: Meta) -> Self {
+        Self { val: term, meta }
     }
 }
 
@@ -39,10 +39,10 @@ impl<T, Meta> RcRepr<T, Meta> {
 
 impl<T, Meta> std::fmt::Display for RcRepr<T, Meta>
 where
-    RcRepr<T, Meta>: Expr,
-    <RcRepr<T, Meta> as Expr>::Value: std::fmt::Display,
+    Self: Expr,
+    <Self as Expr>::Value: std::fmt::Display,
 {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.fmt_root(f)
     }
 }

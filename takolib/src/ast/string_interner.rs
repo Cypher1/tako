@@ -9,7 +9,7 @@ type StringHash = u64;
 pub type StrId = TypedIndex<String, StringHash>;
 pub type Identifier = StrId;
 
-use static_assertions::*;
+use static_assertions::assert_eq_size;
 assert_eq_size!(Identifier, [u8; 8]);
 assert_eq_size!([Identifier; 2], [u8; 16]);
 
@@ -48,7 +48,7 @@ impl Default for StringInterner {
 }
 
 impl StringInterner {
-    pub fn new() -> Self {
+    #[must_use] pub fn new() -> Self {
         Self::default()
     }
 
@@ -66,10 +66,10 @@ impl StringInterner {
         self.strings.entry(id).or_insert_with(|| name.to_string());
         id
     }
-    pub fn get_str(&self, s: StrId) -> Option<&str> {
+    #[must_use] pub fn get_str(&self, s: StrId) -> Option<&str> {
         self.strings.get(&s).map(|ref_string| &**ref_string)
     }
-    pub fn get_str_by_loc(&self, s: IndexIntoFile) -> Option<&str> {
+    #[must_use] pub fn get_str_by_loc(&self, s: IndexIntoFile) -> Option<&str> {
         let s = self.loc2string.get(&s)?;
         self.get_str(*s)
     }

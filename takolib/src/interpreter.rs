@@ -1,10 +1,10 @@
 use crate::ast::string_interner::{StrId, StringInterner};
-use crate::ast::*;
+use crate::ast::{Ast, Call, Contains, Definition, LiteralId, Node, NodeData, NodeId, OpId};
 use crate::error::TError;
 use crate::parser::semantics::Literal;
 use crate::parser::tokens::Symbol;
 use crate::primitives::Prim;
-use log::*;
+use log::{error, trace};
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::path::Path;

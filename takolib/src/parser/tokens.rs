@@ -9,7 +9,7 @@ use std::fmt;
 #[cfg(test)]
 use strum_macros::EnumIter;
 
-use static_assertions::*;
+use static_assertions::assert_eq_size;
 assert_eq_size!(Symbol, [u8; 1]);
 assert_eq_size!([Symbol; 2], [u8; 2]);
 assert_eq_size!(TokenType, [u8; 1]);
@@ -246,39 +246,39 @@ lazy_static! {
 }
 
 impl Symbol {
-    pub fn is_associative(&self) -> bool {
+    #[must_use] pub fn is_associative(&self) -> bool {
         ASSOCIATIVE.contains(self)
     }
 
-    pub fn is_right_associative(&self) -> bool {
+    #[must_use] pub fn is_right_associative(&self) -> bool {
         RIGHT_ASSOCIATIVE.contains(self)
     }
 
-    pub fn is_left_associative(&self) -> bool {
+    #[must_use] pub fn is_left_associative(&self) -> bool {
         !(self.is_associative() || self.is_right_associative())
     }
 
-    pub fn binding_type(&self) -> OpBinding {
+    #[must_use] pub fn binding_type(&self) -> OpBinding {
         match self {
-            Symbol::Escape
-            | Symbol::BitNot
-            | Symbol::LogicalNot
-            | Symbol::GetAddress
-            | Symbol::Spread
-            | Symbol::Lambda
-            | Symbol::Sigma
-            | Symbol::Forall
-            | Symbol::Pi
-            | Symbol::Exists => OpBinding::PrefixOp,
-            Symbol::Try => OpBinding::PostfixOp,
-            Symbol::Sub => OpBinding::PrefixOrInfixBinOp,
-            Symbol::CloseCurly | Symbol::CloseParen | Symbol::CloseBracket => OpBinding::Close,
-            Symbol::OpenCurly | Symbol::OpenParen | Symbol::OpenBracket => OpBinding::Open,
+            Self::Escape
+            | Self::BitNot
+            | Self::LogicalNot
+            | Self::GetAddress
+            | Self::Spread
+            | Self::Lambda
+            | Self::Sigma
+            | Self::Forall
+            | Self::Pi
+            | Self::Exists => OpBinding::PrefixOp,
+            Self::Try => OpBinding::PostfixOp,
+            Self::Sub => OpBinding::PrefixOrInfixBinOp,
+            Self::CloseCurly | Self::CloseParen | Self::CloseBracket => OpBinding::Close,
+            Self::OpenCurly | Self::OpenParen | Self::OpenBracket => OpBinding::Open,
             _ => OpBinding::InfixBinOp,
         }
     }
 
-    pub fn is_looser(&self, other: Symbol) -> bool {
+    #[must_use] pub fn is_looser(&self, other: Self) -> bool {
         if *self == other {
             return self.is_right_associative();
         }
@@ -293,67 +293,67 @@ impl std::fmt::Display for Symbol {
             "{}",
             match self {
                 // Basics
-                Symbol::Add => "+",
-                Symbol::Sub => "-",
-                Symbol::Div => "/",
-                Symbol::DivRounding => "//",
-                Symbol::Escape => "\\",
-                Symbol::Mul => "*",
-                Symbol::Exp => "**",
-                Symbol::LogicalNot => "!",
-                Symbol::BitNot => "~",
-                Symbol::And => "&",
-                Symbol::BitXor => "^",
-                Symbol::Or => "|",
-                Symbol::LogicalAnd => "&&",
-                Symbol::LogicalOr => "||",
-                Symbol::Modulo => "%",
-                Symbol::GetAddress => "@",
-                Symbol::HasType => ":",
-                Symbol::Try => "?",
-                Symbol::Dot => ".",
-                Symbol::Range => "..",
-                Symbol::Spread => "...",
-                Symbol::Comma => ",",
-                Symbol::Sequence => ";",
-                Symbol::Arrow => "->",
-                Symbol::DoubleArrow => "=>",
-                Symbol::LeftShift => "<<",
-                Symbol::RightShift => ">>",
-                Symbol::LeftPipe => "<|",
-                Symbol::RightPipe => "|>",
+                Self::Add => "+",
+                Self::Sub => "-",
+                Self::Div => "/",
+                Self::DivRounding => "//",
+                Self::Escape => "\\",
+                Self::Mul => "*",
+                Self::Exp => "**",
+                Self::LogicalNot => "!",
+                Self::BitNot => "~",
+                Self::And => "&",
+                Self::BitXor => "^",
+                Self::Or => "|",
+                Self::LogicalAnd => "&&",
+                Self::LogicalOr => "||",
+                Self::Modulo => "%",
+                Self::GetAddress => "@",
+                Self::HasType => ":",
+                Self::Try => "?",
+                Self::Dot => ".",
+                Self::Range => "..",
+                Self::Spread => "...",
+                Self::Comma => ",",
+                Self::Sequence => ";",
+                Self::Arrow => "->",
+                Self::DoubleArrow => "=>",
+                Self::LeftShift => "<<",
+                Self::RightShift => ">>",
+                Self::LeftPipe => "<|",
+                Self::RightPipe => "|>",
                 // Assignment versions
-                Symbol::Assign => "=",
-                Symbol::AddAssign => "+=",
-                Symbol::SubAssign => "-=",
-                Symbol::DivAssign => "/=",
-                Symbol::MulAssign => "*=",
-                Symbol::DivRoundingAssign => "//=",
-                Symbol::AndAssign => "&=",
-                Symbol::OrAssign => "|=",
-                Symbol::BitXorAssign => "^=",
-                Symbol::LogicalAndAssign => "&&=",
-                Symbol::LogicalOrAssign => "||=",
-                Symbol::ModuloAssign => "%=",
+                Self::Assign => "=",
+                Self::AddAssign => "+=",
+                Self::SubAssign => "-=",
+                Self::DivAssign => "/=",
+                Self::MulAssign => "*=",
+                Self::DivRoundingAssign => "//=",
+                Self::AndAssign => "&=",
+                Self::OrAssign => "|=",
+                Self::BitXorAssign => "^=",
+                Self::LogicalAndAssign => "&&=",
+                Self::LogicalOrAssign => "||=",
+                Self::ModuloAssign => "%=",
                 // Quantification
-                Symbol::Lambda => "λ",
-                Symbol::Sigma => "Σ",
-                Symbol::Pi => "Π",
-                Symbol::Forall => "∀",
-                Symbol::Exists => "∃",
+                Self::Lambda => "λ",
+                Self::Sigma => "Σ",
+                Self::Pi => "Π",
+                Self::Forall => "∀",
+                Self::Exists => "∃",
                 // Comparisons
-                Symbol::Eqs => "==",
-                Symbol::NotEqs => "!=",
-                Symbol::Lt => "<",
-                Symbol::Gt => ">",
-                Symbol::LtEqs => "<=",
-                Symbol::GtEqs => ">=",
-                Symbol::OpenParen => "(",
-                Symbol::CloseParen => ")",
-                Symbol::OpenCurly => "{",
-                Symbol::CloseCurly => "}",
-                Symbol::OpenBracket => "[",
-                Symbol::CloseBracket => "]",
+                Self::Eqs => "==",
+                Self::NotEqs => "!=",
+                Self::Lt => "<",
+                Self::Gt => ">",
+                Self::LtEqs => "<=",
+                Self::GtEqs => ">=",
+                Self::OpenParen => "(",
+                Self::CloseParen => ")",
+                Self::OpenCurly => "{",
+                Self::CloseCurly => "}",
+                Self::OpenBracket => "[",
+                Self::CloseBracket => "]",
             }
         )
     }
@@ -390,16 +390,16 @@ pub enum TokenType {
 impl fmt::Display for TokenType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            TokenType::Op(sym) => write!(f, "a '{sym:?}' symbol"),
-            TokenType::Ident => write!(f, "an identifier"),
-            TokenType::Atom => write!(f, "an atom"),
-            TokenType::NumLit => write!(f, "a number"),
-            TokenType::ColorLit => write!(f, "a color"),
-            TokenType::StringLit => write!(f, "a string literal"),
-            TokenType::FmtStringLitStart => write!(f, "the start of a format string literal"),
-            TokenType::FmtStringLitMid => write!(f, "the middle of a format string literal"),
-            TokenType::FmtStringLitEnd => write!(f, "the end of a format string literal"),
-            TokenType::Group => write!(f, "a long string literal"),
+            Self::Op(sym) => write!(f, "a '{sym:?}' symbol"),
+            Self::Ident => write!(f, "an identifier"),
+            Self::Atom => write!(f, "an atom"),
+            Self::NumLit => write!(f, "a number"),
+            Self::ColorLit => write!(f, "a color"),
+            Self::StringLit => write!(f, "a string literal"),
+            Self::FmtStringLitStart => write!(f, "the start of a format string literal"),
+            Self::FmtStringLitMid => write!(f, "the middle of a format string literal"),
+            Self::FmtStringLitEnd => write!(f, "the end of a format string literal"),
+            Self::Group => write!(f, "a long string literal"),
         }
     }
 }
@@ -414,14 +414,14 @@ pub struct Token {
 }
 
 impl Token {
-    pub fn location(self) -> Location {
+    #[must_use] pub fn location(self) -> Location {
         Location {
             start: self.start,
             length: self.length,
         }
     }
 
-    pub fn get_src<'a>(&self, source: &'a str) -> &'a str {
+    #[must_use] pub fn get_src<'a>(&self, source: &'a str) -> &'a str {
         // Assuming the token is from the source file...
         &source[self.start as usize..self.start as usize + self.length as usize]
     }
@@ -435,7 +435,7 @@ impl fmt::Debug for Token {
             "{:?}@{}..{}",
             self.kind,
             self.start,
-            self.start + (self.length as IndexIntoFile)
+            self.start + u16::from(self.length)
         )
     }
 }
@@ -445,8 +445,8 @@ const _MULTI_COMMENT: &str = "/*";
 
 #[inline]
 fn classify_char(ch: char) -> CharacterType {
-    use CharacterType::*;
-    use TokenType::*;
+    use CharacterType::{AtomHead, ColorLitHead, HexSym, PartialToken, Whitespace};
+    use TokenType::{Ident, NumLit, Op, StringLit};
     PartialToken(match ch {
         '\n' | '\r' | '\t' | ' ' => return Whitespace,
         '$' => return AtomHead,
@@ -491,7 +491,7 @@ fn classify_char(ch: char) -> CharacterType {
 }
 
 #[inline]
-pub const fn assign_op(s: Symbol) -> Option<Symbol> {
+#[must_use] pub const fn assign_op(s: Symbol) -> Option<Symbol> {
     // TODO(clarity): Move to a symbol module.
     Some(match s {
         Symbol::AddAssign => Symbol::Add,
@@ -510,7 +510,7 @@ pub const fn assign_op(s: Symbol) -> Option<Symbol> {
 }
 
 #[inline]
-pub const fn binding_mode_operation(s: Symbol) -> Option<BindingMode> {
+#[must_use] pub const fn binding_mode_operation(s: Symbol) -> Option<BindingMode> {
     // TODO(clarity): Move to a symbol module.
     Some(match s {
         Symbol::Lambda => BindingMode::Lambda,
@@ -523,7 +523,7 @@ pub const fn binding_mode_operation(s: Symbol) -> Option<BindingMode> {
 }
 
 #[inline]
-pub const fn is_assign(s: Symbol) -> bool {
+#[must_use] pub const fn is_assign(s: Symbol) -> bool {
     // TODO(clarity): Move to a symbol module.
     matches!(s, Symbol::Assign) || assign_op(s).is_some()
 }
@@ -558,7 +558,7 @@ impl<'a> Characters<'a> {
         self.start
     }
     fn curr_char_bytes(&self) -> usize {
-        self.curr.map(|c| c.len_utf8()).unwrap_or(0)
+        self.curr.map_or(0, char::len_utf8)
     }
     fn length(&self) -> usize {
         (self.index + self.curr_char_bytes())
@@ -593,7 +593,7 @@ pub fn lex(contents: &str) -> Result<Vec<Token>, TError> {
 }
 
 // Consumes a single token.
-pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
+pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> bool {
     while let Some(chr) = characters.peek() {
         // skip whitespace.
         if !is_whitespace(chr) {
@@ -638,8 +638,8 @@ pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
         }
     }
     */
-    use CharacterType::*;
-    use TokenType::*;
+    use CharacterType::{AtomHead, ColorLitHead, HexSym, PartialToken};
+    use TokenType::{Atom, ColorLit, Ident, NumLit, Op, StringLit};
     let chr = if let Some(chr) = characters.next() {
         chr
     } else {
@@ -759,7 +759,7 @@ pub fn lex_head(characters: &mut Characters, tokens: &mut Vec<Token>) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::{CharacterType::*, TokenType::*};
+    use super::{CharacterType::{PartialToken, Whitespace}, TokenType::{Atom, ColorLit, Ident, NumLit, Op, StringLit}};
     use strum::IntoEnumIterator; // TODO(cleanup): Make these test only
 
     fn setup_many(contents: &str, n: usize) -> Vec<Token> {

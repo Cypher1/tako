@@ -3,7 +3,7 @@ use std::hash::Hasher;
 use std::path::PathBuf;
 use tokio::sync::mpsc;
 
-use super::status::*;
+use super::status::Update;
 use super::TaskKind;
 use crate::error::{Error, TError};
 

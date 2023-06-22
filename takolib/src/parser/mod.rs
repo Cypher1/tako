@@ -4,7 +4,7 @@ pub mod tokens;
 // use rand::Rng;
 use crate::ast::location::Location;
 use crate::ast::string_interner::Identifier;
-use crate::ast::*;
+use crate::ast::{Ast, Atom, Call, Contains, Definition, NodeData, NodeId, Op};
 use crate::error::TError;
 use log::trace;
 use semantics::BindingMode;
@@ -59,7 +59,7 @@ pub enum ParseError {
 
 impl From<std::num::ParseIntError> for ParseError {
     fn from(error: std::num::ParseIntError) -> Self {
-        ParseError::ParseIntError {
+        Self::ParseIntError {
             message: error.to_string(),
             location: None,
         }
@@ -67,68 +67,68 @@ impl From<std::num::ParseIntError> for ParseError {
 }
 
 impl ParseError {
-    pub fn location(&self) -> Option<&Location> {
+    #[must_use] pub fn location(&self) -> Option<&Location> {
         match self {
-            ParseError::UnexpectedEof => None,
-            ParseError::ParseIntError { location, .. } => location.as_ref(),
-            ParseError::UnexpectedTokenTypeExpectedOperator { got: _, location }
-            | ParseError::UnexpectedTokenTypeExpectedAssignment { got: _, location }
-            | ParseError::UnexpectedTokenType {
+            Self::UnexpectedEof => None,
+            Self::ParseIntError { location, .. } => location.as_ref(),
+            Self::UnexpectedTokenTypeExpectedOperator { got: _, location }
+            | Self::UnexpectedTokenTypeExpectedAssignment { got: _, location }
+            | Self::UnexpectedTokenType {
                 got: _,
                 location,
                 expected: _,
             }
-            | ParseError::UnexpectedTokenTypeInExpression { got: _, location }
-            | ParseError::AmbiguousExpression {
+            | Self::UnexpectedTokenTypeInExpression { got: _, location }
+            | Self::AmbiguousExpression {
                 left: _,
                 right: _,
                 location,
             }
-            | ParseError::UnexpectedExpressionInDefinitionArguments { location, .. }
-            | ParseError::MissingLeftHandSideOfOperator { location, .. } => Some(location),
-            ParseError::UnparsedTokens { location, .. } => Some(location),
+            | Self::UnexpectedExpressionInDefinitionArguments { location, .. }
+            | Self::MissingLeftHandSideOfOperator { location, .. } => Some(location),
+            Self::UnparsedTokens { location, .. } => Some(location),
         }
     }
 }
 
 impl From<ParseError> for TError {
     fn from(err: ParseError) -> Self {
-        TError::ParseError(err)
+        Self::ParseError(err)
     }
 }
 
 impl std::fmt::Display for ParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ParseError::UnexpectedEof => write!(f, "Unexpected eof"),
-            ParseError::UnexpectedTokenTypeExpectedOperator { got, .. } => {
+            Self::UnexpectedEof => write!(f, "Unexpected eof"),
+            Self::UnexpectedTokenTypeExpectedOperator { got, .. } => {
                 write!(f, "Unexpected {got} expected an operator")
             }
-            ParseError::UnexpectedTokenTypeExpectedAssignment { got, .. } => {
+            Self::UnexpectedTokenTypeExpectedAssignment { got, .. } => {
                 write!(f, "Unexpected {got} expected an assignment")
             }
-            ParseError::UnexpectedTokenType { got, expected, .. } => {
+            Self::UnexpectedTokenType { got, expected, .. } => {
                 write!(f, "Unexpected {got} expected {expected}")
             }
-            ParseError::UnexpectedTokenTypeInExpression { got, .. } => {
+            Self::UnexpectedTokenTypeInExpression { got, .. } => {
                 write!(f, "Unexpected {got} in expression")
             }
-            ParseError::ParseIntError { message, .. } => {
+            Self::ParseIntError { message, .. } => {
                 write!(f, "{message} expected an integer literal (r.g. 123)")
             }
-            ParseError::AmbiguousExpression { left, right, .. } => {
+            Self::AmbiguousExpression { left, right, .. } => {
                 write!(f, "This expression could be read two ways, use parens to clarify whether {left} or {right} should be performed first")
             }
-            ParseError::UnexpectedExpressionInDefinitionArguments { arg_str, .. } => {
+            Self::UnexpectedExpressionInDefinitionArguments { arg_str, .. } => {
                 write!(f, "Don't know how to convert '{arg_str}' to binding.")
             }
-            ParseError::MissingLeftHandSideOfOperator { op, .. } => {
+            Self::MissingLeftHandSideOfOperator { op, .. } => {
                 write!(
                     f,
                     "Operator {op} needs a 'left' side. (e.g. 'a{op}b' rather than '{op}b'"
                 )
             }
-            ParseError::UnparsedTokens { token, .. } => {
+            Self::UnparsedTokens { token, .. } => {
                 write!(f, "Failed to parse the whole file. Found {token}")
             }
         }
@@ -623,7 +623,7 @@ fn normalize_keywords_as_ops(ast: &Ast, name: Identifier) -> TokenType {
 
 #[cfg(test)]
 pub mod tests {
-    use super::semantics::*;
+    use super::semantics::Literal;
     use super::*;
     use std::path::PathBuf;
     use tokens::lex;
@@ -759,7 +759,7 @@ pub mod tests {
         dbg!(&err);
         assert!(err.is_err());
         let err = err.unwrap_err();
-        assert_eq!(format!("{}", err), "Unexpected eof");
+        assert_eq!(format!("{err}"), "Unexpected eof");
         Ok(())
     }
 
@@ -872,13 +872,13 @@ pub mod tests {
         assert_eq!(ast.definitions.len(), 3);
         let (_id, def) = &ast.definitions[0];
         dbg!(def);
-        assert_eq!(def.bindings.as_ref().map(|x| x.len()), None);
+        assert_eq!(def.bindings.as_ref().map(std::vec::Vec::len), None);
         let (_id, def) = &ast.definitions[1];
         dbg!(def);
-        assert_eq!(def.bindings.as_ref().map(|x| x.len()), None);
+        assert_eq!(def.bindings.as_ref().map(std::vec::Vec::len), None);
         let (_id, def) = &ast.definitions[2];
         dbg!(def);
-        assert_eq!(def.bindings.as_ref().map(|x| x.len()), Some(2));
+        assert_eq!(def.bindings.as_ref().map(std::vec::Vec::len), Some(2));
         Ok(())
     }
 
@@ -910,7 +910,7 @@ pub mod tests {
         dbg!(&err);
         assert!(err.is_err());
         let err = err.unwrap_err();
-        assert_eq!(format!("{}", err), "This expression could be read two ways, use parens to clarify whether || or && should be performed first");
+        assert_eq!(format!("{err}"), "This expression could be read two ways, use parens to clarify whether || or && should be performed first");
         Ok(())
     }
 

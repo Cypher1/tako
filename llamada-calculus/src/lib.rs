@@ -244,7 +244,7 @@ pub trait Expr: Sized {
 
     fn fmt_index_term(
         ctx: &WithContext<'_, Self, Self::Index>,
-        f: &mut std::fmt::Formatter,
+        f: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result
     where
         Self: Sized,
@@ -254,7 +254,7 @@ pub trait Expr: Sized {
         let id = ctx.val;
         let term: &Term<Self::Value, Self::Index> = this.get(id);
         match term {
-            Term::Ext(val) => write!(f, "{}", val)?,
+            Term::Ext(val) => write!(f, "{val}")?,
             Term::Var(var_id) => {
                 let ind = ctx.names.len().checked_sub(*var_id);
                 if let Some(ind) = ind {
@@ -280,7 +280,7 @@ pub trait Expr: Sized {
                     if name_ind > 0 {
                         format!("{}", name_ind - 1)
                     } else {
-                        "".to_string()
+                        String::new()
                     }
                 );
                 write!(f, "(\\{name}")?;
@@ -298,7 +298,7 @@ pub trait Expr: Sized {
 
     fn fmt_index(
         ctx: &WithContext<'_, Self, Self::Index>,
-        f: &mut std::fmt::Formatter,
+        f: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result
     where
         Self: Sized,
@@ -317,7 +317,7 @@ pub trait Expr: Sized {
     fn print_meta(&self) -> bool;
     fn set_print_meta(&mut self, print_meta: bool);
 
-    fn fmt_root(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result
+    fn fmt_root(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
     where
         Self::Value: std::fmt::Display,
     {
@@ -336,7 +336,7 @@ impl<'a, Ctx: Expr> std::fmt::Display for WithContext<'a, Ctx, Ctx::Index>
 where
     Ctx::Value: std::fmt::Display,
 {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         Ctx::fmt_index(self, f)
     }
 }

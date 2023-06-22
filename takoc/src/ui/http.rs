@@ -102,7 +102,7 @@ impl UserInterface<Options> for Http {
                         CompilerRequest::RequestTask(request, client_id, tx) => {
                             debug!("{:?}: {:?}", client_id, request);
                             if let std::collections::hash_map::Entry::Vacant(e) = self.clients.entry(client_id) {
-                                let client = Http::get_client(&mut self.client_launch_request_sender, Box::new(self.options.clone())).await;
+                                let client = Self::get_client(&mut self.client_launch_request_sender, Box::new(self.options.clone())).await;
                                 e.insert(client);
                             }
                             let client = self.clients.get_mut(&client_id).expect("Just created this client");
