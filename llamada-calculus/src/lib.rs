@@ -301,7 +301,6 @@ pub trait Expr: Sized {
         f: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result
     where
-        Self: Sized,
         Self::Value: std::fmt::Display,
     {
         Self::fmt_index_term(ctx, f)?;
