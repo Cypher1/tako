@@ -449,12 +449,12 @@ pub fn sum(values: Vec<Val>) -> Result<Val, TError> {
 }
 
 #[must_use]
-pub fn never_type() -> Val {
+pub const fn never_type() -> Val {
     Union(set![])
 }
 
 #[must_use]
-pub fn unit_type() -> Val {
+pub const fn unit_type() -> Val {
     Product(set![])
 }
 
@@ -479,7 +479,7 @@ pub fn byte_type() -> Val {
 }
 
 #[must_use]
-pub fn byte_size() -> Offset {
+pub const fn byte_size() -> Offset {
     8
 }
 

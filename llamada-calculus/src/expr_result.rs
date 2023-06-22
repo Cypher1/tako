@@ -12,7 +12,7 @@ pub struct EvalInfo {
 }
 
 impl EvalInfo {
-    pub fn new(arity: usize) -> Self {
+    pub const fn new(arity: usize) -> Self {
         Self {
             arity,
             arg_count: 0,
