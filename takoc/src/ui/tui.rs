@@ -113,8 +113,9 @@ impl Tui {
             Event::Key(key_event) => {
                 match key_event {
                     ::crokey::__private::crossterm::event::KeyEvent {
-modifiers: ::crokey::__private::MODS_CTRL,
-code: ::crokey::__private::crossterm::event::KeyCode::Char('c' | 'q') } => self.should_exit = true,
+                        modifiers: ::crokey::__private::MODS_CTRL,
+                        code: ::crokey::__private::crossterm::event::KeyCode::Char('c' | 'q'),
+                    } => self.should_exit = true,
                     key!(Backspace) => {
                         self.input.pop(); // Discard
                     }

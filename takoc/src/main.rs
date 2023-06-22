@@ -10,7 +10,7 @@ use tako::{
     ui::{Client, OptionsTrait, UserInterface},
 };
 use tokio::sync::{mpsc, oneshot};
-use ui::{Http, Tui, Mode};
+use ui::{Http, Mode, Tui};
 
 type Output = tako::primitives::Prim;
 

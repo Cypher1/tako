@@ -65,7 +65,8 @@ pub struct StatusReport {
 }
 
 impl StatusReport {
-    #[must_use] pub fn new(kind: TaskKind) -> Self {
+    #[must_use]
+    pub fn new(kind: TaskKind) -> Self {
         Self {
             kind,
             stats: TaskStats::default(),
@@ -99,7 +100,8 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
         &name[index..last_lt]
     }
 
-    #[must_use] pub fn new() -> Self {
+    #[must_use]
+    pub fn new() -> Self {
         Self::default()
     }
 

@@ -76,13 +76,15 @@ make_contains!(calls, (NodeId, Call), Call, CallId, add_call);
 
 impl Call {
     #[cfg(test)]
-    #[must_use] pub fn from_slice(inner: NodeId, args: &[NodeId]) -> Self {
+    #[must_use]
+    pub fn from_slice(inner: NodeId, args: &[NodeId]) -> Self {
         Self {
             inner,
             args: args.to_vec(),
         }
     }
-    #[must_use] pub fn new(inner: NodeId, args: Vec<NodeId>) -> Self {
+    #[must_use]
+    pub fn new(inner: NodeId, args: Vec<NodeId>) -> Self {
         Self { inner, args }
     }
 }
@@ -95,7 +97,8 @@ pub struct Op {
 make_contains!(ops, (NodeId, Op), Op, OpId, add_op);
 
 impl Op {
-    #[must_use] pub fn new(op: Symbol, args: Vec<NodeId>) -> Self {
+    #[must_use]
+    pub fn new(op: Symbol, args: Vec<NodeId>) -> Self {
         Self { op, args }
     }
 }

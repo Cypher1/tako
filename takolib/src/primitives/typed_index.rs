@@ -8,7 +8,8 @@ pub struct TypedIndex<T, Idx = u32, Container: Index<usize> = Vec<T>> {
 }
 
 impl<T, Idx: num_traits::bounds::Bounded, Container: Index<usize>> TypedIndex<T, Idx, Container> {
-    #[must_use] pub fn max() -> Self {
+    #[must_use]
+    pub fn max() -> Self {
         Self::from_raw(<Idx as num_traits::bounds::Bounded>::max_value())
     }
 }

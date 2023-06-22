@@ -81,7 +81,8 @@ pub type ErrorId = TypedIndex<Error>;
 
 impl Error {
     // TODO(clarity): Use a builder for this.
-    #[must_use] pub fn new(
+    #[must_use]
+    pub fn new(
         source: TError,
         path: Option<&PathBuf>,
         contents: Option<&str>,

@@ -20,7 +20,8 @@ pub struct Location {
 
 impl Location {
     #[cfg(test)]
-    #[must_use] pub fn dummy_for_test() -> Self {
+    #[must_use]
+    pub fn dummy_for_test() -> Self {
         Self {
             start: 0,
             length: 0,
@@ -60,11 +61,13 @@ impl UserFacingLocation {
         }
     }
 
-    #[must_use] pub fn from_path(path: &Path) -> Self {
+    #[must_use]
+    pub fn from_path(path: &Path) -> Self {
         Self::new(path, 0, 0)
     }
 
-    #[must_use] pub fn from(path: &Path, contents: &str, location: &Location) -> Self {
+    #[must_use]
+    pub fn from(path: &Path, contents: &str, location: &Location) -> Self {
         // TODO(usability): Consider walking the module tree to get a fully qualified module name.
         let mut loc = Self::new(path, 1, 1);
         let mut contents = contents.chars().peekable();

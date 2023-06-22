@@ -6,7 +6,10 @@ pub use crate::tasks::manager::{StatusReport, TaskStats};
 pub use crate::tasks::status::*;
 pub use crate::tasks::task_trait::TaskId;
 use crate::tasks::task_trait::{ResultSenderFor, Task, TaskReceiverFor};
-use crate::tasks::{CodegenTask, DesugarFileTask, EvalFileTask, LexFileTask, LoadFileTask, ParseFileTask, RequestTask};
+use crate::tasks::{
+    CodegenTask, DesugarFileTask, EvalFileTask, LexFileTask, LoadFileTask, ParseFileTask,
+    RequestTask,
+};
 use crate::ui::Client;
 use log::{debug, trace};
 use std::fmt::Debug;
@@ -95,7 +98,8 @@ impl Default for Compiler {
 }
 
 impl Compiler {
-    #[must_use] pub fn make_client(&self, options: Box<dyn OptionsTrait>) -> crate::ui::Client {
+    #[must_use]
+    pub fn make_client(&self, options: Box<dyn OptionsTrait>) -> crate::ui::Client {
         Client::new(
             self.stats_requester.clone(),
             self.status_sender.subscribe(),

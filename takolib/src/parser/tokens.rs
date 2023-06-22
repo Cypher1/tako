@@ -246,19 +246,23 @@ lazy_static! {
 }
 
 impl Symbol {
-    #[must_use] pub fn is_associative(&self) -> bool {
+    #[must_use]
+    pub fn is_associative(&self) -> bool {
         ASSOCIATIVE.contains(self)
     }
 
-    #[must_use] pub fn is_right_associative(&self) -> bool {
+    #[must_use]
+    pub fn is_right_associative(&self) -> bool {
         RIGHT_ASSOCIATIVE.contains(self)
     }
 
-    #[must_use] pub fn is_left_associative(&self) -> bool {
+    #[must_use]
+    pub fn is_left_associative(&self) -> bool {
         !(self.is_associative() || self.is_right_associative())
     }
 
-    #[must_use] pub fn binding_type(&self) -> OpBinding {
+    #[must_use]
+    pub fn binding_type(&self) -> OpBinding {
         match self {
             Self::Escape
             | Self::BitNot
@@ -278,7 +282,8 @@ impl Symbol {
         }
     }
 
-    #[must_use] pub fn is_looser(&self, other: Self) -> bool {
+    #[must_use]
+    pub fn is_looser(&self, other: Self) -> bool {
         if *self == other {
             return self.is_right_associative();
         }
@@ -414,14 +419,16 @@ pub struct Token {
 }
 
 impl Token {
-    #[must_use] pub fn location(self) -> Location {
+    #[must_use]
+    pub fn location(self) -> Location {
         Location {
             start: self.start,
             length: self.length,
         }
     }
 
-    #[must_use] pub fn get_src<'a>(&self, source: &'a str) -> &'a str {
+    #[must_use]
+    pub fn get_src<'a>(&self, source: &'a str) -> &'a str {
         // Assuming the token is from the source file...
         &source[self.start as usize..self.start as usize + self.length as usize]
     }
@@ -491,7 +498,8 @@ fn classify_char(ch: char) -> CharacterType {
 }
 
 #[inline]
-#[must_use] pub const fn assign_op(s: Symbol) -> Option<Symbol> {
+#[must_use]
+pub const fn assign_op(s: Symbol) -> Option<Symbol> {
     // TODO(clarity): Move to a symbol module.
     Some(match s {
         Symbol::AddAssign => Symbol::Add,
@@ -510,7 +518,8 @@ fn classify_char(ch: char) -> CharacterType {
 }
 
 #[inline]
-#[must_use] pub const fn binding_mode_operation(s: Symbol) -> Option<BindingMode> {
+#[must_use]
+pub const fn binding_mode_operation(s: Symbol) -> Option<BindingMode> {
     // TODO(clarity): Move to a symbol module.
     Some(match s {
         Symbol::Lambda => BindingMode::Lambda,
@@ -523,7 +532,8 @@ fn classify_char(ch: char) -> CharacterType {
 }
 
 #[inline]
-#[must_use] pub const fn is_assign(s: Symbol) -> bool {
+#[must_use]
+pub const fn is_assign(s: Symbol) -> bool {
     // TODO(clarity): Move to a symbol module.
     matches!(s, Symbol::Assign) || assign_op(s).is_some()
 }
@@ -759,7 +769,10 @@ pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> boo
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::{CharacterType::{PartialToken, Whitespace}, TokenType::{Atom, ColorLit, Ident, NumLit, Op, StringLit}};
+    use super::{
+        CharacterType::{PartialToken, Whitespace},
+        TokenType::{Atom, ColorLit, Ident, NumLit, Op, StringLit},
+    };
     use strum::IntoEnumIterator; // TODO(cleanup): Make these test only
 
     fn setup_many(contents: &str, n: usize) -> Vec<Token> {

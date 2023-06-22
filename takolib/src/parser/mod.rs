@@ -67,7 +67,8 @@ impl From<std::num::ParseIntError> for ParseError {
 }
 
 impl ParseError {
-    #[must_use] pub fn location(&self) -> Option<&Location> {
+    #[must_use]
+    pub fn location(&self) -> Option<&Location> {
         match self {
             Self::UnexpectedEof => None,
             Self::ParseIntError { location, .. } => location.as_ref(),
