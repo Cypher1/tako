@@ -38,6 +38,7 @@ pub struct Ast {
 }
 
 impl Ast {
+    #[must_use]
     pub fn new(filepath: PathBuf) -> Self {
         Self {
             filepath,
@@ -45,9 +46,11 @@ impl Ast {
         }
     }
 
+    #[must_use]
     pub fn pretty(&self) -> impl std::fmt::Display + std::fmt::Debug + '_ {
         pretty(self)
     }
+    #[must_use]
     pub fn pretty_node(&self, node: NodeId) -> impl std::fmt::Display + std::fmt::Debug + '_ {
         pretty_node(self, node)
     }

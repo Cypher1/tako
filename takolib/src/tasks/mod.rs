@@ -15,7 +15,7 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::path::PathBuf;
 pub use task_trait::TaskId;
-use task_trait::*;
+use task_trait::{Task, UpdateSenderFor};
 
 // TODO(debugging): Add timing information, etc.
 // TODO(debugging): Support re-running multiple times for stability testing.
@@ -36,7 +36,7 @@ pub enum AnyTask {
     EvalFile(EvalFileTask),
 }
 
-/// RequestTask represents the task of responding to a set of command line arguments, a request to
+/// `RequestTask` represents the task of responding to a set of command line arguments, a request to
 /// a compiler daemon (or possibly a response to a file watcher notifying of a change).
 ///
 /// There's normally only one of these, but it seems elegant to have these fit into the `Task` model.

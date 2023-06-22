@@ -5,7 +5,7 @@ pub use http::Http;
 pub use tui::Tui;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum UiMode {
+pub enum Mode {
     Tui,
     Http,
 }

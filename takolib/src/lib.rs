@@ -67,7 +67,7 @@ pub fn ensure_initialized() {
             .create(true)
             .open(".tako.log")
             .expect("Failed to setup log file.");
-        env_logger::Builder::init(env.target(env_logger::fmt::Target::Pipe(Box::new(log_file))))
+        env_logger::Builder::init(env.target(env_logger::fmt::Target::Pipe(Box::new(log_file))));
     });
     build_logger(env_logger::Builder::init);
 }

@@ -95,11 +95,11 @@ use Val::{
 
 impl Val {
     #[must_use]
-    pub fn ptr(self: Val) -> Val {
+    pub fn ptr(self) -> Self {
         Pointer(8 * byte_size(), Box::new(self))
     }
     #[must_use]
-    pub fn padded(self: Val, size: Offset) -> Val {
+    pub fn padded(self, size: Offset) -> Self {
         if size == 0 {
             return self;
         }
@@ -110,15 +110,15 @@ impl Val {
     }
 
     #[must_use]
-    pub fn is_sat(self: &Val) -> Tribool {
+    pub fn is_sat(&self) -> Tribool {
         use Tribool::True;
         match self {
             PrimVal(_) => True,
             Pointer(_size, ty) => ty.is_sat(),
             // Lambda(_) => Unknown,
             Struct(tys) => all_true(tys.iter().map(|(_name, ty)| ty.is_sat())),
-            Product(tys) => all_true(tys.iter().map(Val::is_sat)),
-            Union(tys) => any_true(tys.iter().map(Val::is_sat)),
+            Product(tys) => all_true(tys.iter().map(Self::is_sat)),
+            Union(tys) => any_true(tys.iter().map(Self::is_sat)),
             Padded(_, ty) => ty.is_sat(),
             Function {
                 intros: _,
@@ -136,7 +136,7 @@ impl Val {
     }
 
     #[must_use]
-    pub fn into_struct(self: Val) -> Vec<(String, Val)> {
+    pub fn into_struct(self) -> Vec<(String, Self)> {
         self.as_struct()
             .iter()
             .map(|(name, val)| ((*name).to_string(), (*val).clone()))
@@ -144,7 +144,7 @@ impl Val {
     }
 
     #[must_use]
-    pub fn as_struct(self: &Val) -> Vec<(&str, &Val)> {
+    pub fn as_struct(&self) -> Vec<(&str, &Self)> {
         match self {
             Struct(vals) => vals
                 .iter()
@@ -155,7 +155,7 @@ impl Val {
     }
 
     #[must_use]
-    pub fn merge(self: Val, other: Val) -> Val {
+    pub fn merge(self, other: Self) -> Self {
         match (self, other) {
             (Struct(vals), Struct(o_vals)) => Struct(merge_vals(&vals, &o_vals)),
             (Struct(vals), other) => Struct(merge_vals(&vals, &other.into_struct())),
@@ -164,7 +164,7 @@ impl Val {
         }
     }
 
-    pub fn unify(self: &Val, other: &Val, env: &mut [Frame]) -> Result<Val, TError> {
+    pub fn unify(&self, other: &Self, env: &mut [Frame]) -> Result<Self, TError> {
         match (self, other) {
             (Variable(name), ty) => {
                 // TODO(correctness) check if already assigned (and if so unify again)
@@ -178,7 +178,7 @@ impl Val {
     }
 
     #[must_use]
-    pub fn access(self: &Val, name: &str) -> Val {
+    pub fn access(&self, name: &str) -> Self {
         match self {
             PrimVal(Prim::BuiltIn(name)) => {
                 panic!("Built in {name} does not currently support introspection")
@@ -222,7 +222,7 @@ impl fmt::Display for Val {
 }
 
 impl std::fmt::Debug for Val {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let types = vec![
             (string_type(), "String"),
             (number_type(), "Number"),

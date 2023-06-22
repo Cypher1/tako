@@ -2,7 +2,7 @@
 pub struct Empty;
 
 impl std::fmt::Display for Empty {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Empty")
     }
 }
@@ -11,7 +11,7 @@ impl std::fmt::Display for Empty {
 pub enum Never {} // TODO: Look into Infallible
 
 impl std::fmt::Display for Never {
-    fn fmt(&self, _f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         unreachable!("Never can never be constructed")
     }
 }

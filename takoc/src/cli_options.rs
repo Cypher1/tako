@@ -1,4 +1,4 @@
-use crate::ui::UiMode;
+use crate::ui::Mode as UiMode;
 use log::warn;
 use std::path::PathBuf;
 use tako::ui::OptionsTrait;
@@ -40,9 +40,9 @@ impl OptionsTrait for Options {
 }
 
 impl Default for Options {
-    fn default() -> Options {
-        Options {
-            executable_location: "".to_string(),
+    fn default() -> Self {
+        Self {
+            executable_location: String::new(),
             files: vec![],
             cmd: Command::Build,
             interpreter_args: vec![],
@@ -54,18 +54,18 @@ impl Default for Options {
 
 impl Options {
     #[must_use]
-    pub fn with_file(self: Options, filename: &str) -> Options {
+    pub fn with_file(self, filename: &str) -> Self {
         let mut files = self.files;
         files.push(filename.into());
-        Options { files, ..self }
+        Self { files, ..self }
     }
 
-    pub fn new<I, T>(args: I) -> Options
+    pub fn new<I, T>(args: I) -> Self
     where
         I: IntoIterator<Item = T>,
         T: Into<String>,
     {
-        let mut opts = Options::default();
+        let mut opts = Self::default();
         let mut got_dashdash = false;
         for f in args.into_iter().map(Into::into) {
             if opts.executable_location.is_empty() {

@@ -30,6 +30,7 @@ impl<T, E: std::error::Error> Default for TaskStatus<T, E> {
 }
 
 impl<T, E: std::error::Error> TaskStatus<T, E> {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }

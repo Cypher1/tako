@@ -26,6 +26,7 @@ impl<ID: std::hash::Hash + Eq, Relation> Default for Nodes<ID, Relation> {
     }
 }
 impl<ID: Copy + std::hash::Hash + Eq + Ord + PartialOrd, Relation: Relative> Nodes<ID, Relation> {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }

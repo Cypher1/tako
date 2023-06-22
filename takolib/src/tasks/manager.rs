@@ -1,7 +1,7 @@
 use crate::error::Error;
 
-use super::status::*;
-use super::task_trait::*;
+use super::status::{TaskState, TaskStatus, Update};
+use super::task_trait::{ResultSenderFor, Task, TaskId, TaskReceiverFor};
 use super::TaskKind;
 use log::{debug, trace};
 use std::collections::HashMap;
@@ -31,7 +31,7 @@ pub struct TaskStats {
 
 impl std::fmt::Display for TaskStats {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let TaskStats {
+        let Self {
             num_requests,
             total_num_results: _,
             num_already_running,
@@ -65,6 +65,7 @@ pub struct StatusReport {
 }
 
 impl StatusReport {
+    #[must_use]
     pub fn new(kind: TaskKind) -> Self {
         Self {
             kind,
@@ -95,10 +96,11 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
     fn name() -> &'static str {
         let name = std::any::type_name::<T>();
         let last_lt = name.rfind('<').unwrap_or(name.len());
-        let index = name.rfind(':').map(|i| i + 1).unwrap_or(1);
+        let index = name.rfind(':').map_or(1, |i| i + 1);
         &name[index..last_lt]
     }
 
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }

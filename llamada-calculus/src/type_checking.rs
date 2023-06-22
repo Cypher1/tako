@@ -51,7 +51,7 @@ impl<
         Over: Expr<Meta = usize, Value = Value>,
     > Visitor<Error, Over> for Hindley<TypeRepr, Ty>
 where
-    Hindley<TypeRepr, Ty>: TypeChecker<Over, Type = Ty, Value = Value>,
+    Self: TypeChecker<Over, Type = Ty, Value = Value>,
 {
     type Type = <Self as TypeChecker<Over>>::Type;
     fn start_value(&mut self) -> Self::Type {
@@ -109,7 +109,7 @@ where
 type MonoType = PrimType;
 
 impl std::fmt::Display for MonoType {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self:?}")
     }
 }
@@ -128,7 +128,7 @@ impl Evaluable for PolyType {
 }
 
 impl std::fmt::Display for PolyType {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self { mono, arity } = self;
         for i in 0..*arity {
             write!(f, "x{i} => ")?;
@@ -336,14 +336,14 @@ mod test {
             p_a = App(plus, a),
             p_a_b = App(p_a, b),
         );
-        eprintln!("{}", expr);
+        eprintln!("{expr}");
 
         let mut hm = Hindley::<NumTyInfo>::default();
         let with_ty = hm.check(&expr).expect("Whoops");
-        eprintln!("{}", with_ty);
+        eprintln!("{with_ty}");
 
         assert_eq!(
-            format!("{}", with_ty),
+            format!("{with_ty}"),
             "((Mul: (U32 -> (U32 -> U32)) 3: U32): ((U32 -> (U32 -> U32))U32) 4: U32): (((U32 -> (U32 -> U32))U32)U32)"
         );
     }
@@ -359,11 +359,11 @@ mod test {
             p_a = App(plus, a),
             p_a_b = App(p_a, b),
         );
-        eprintln!("{}", expr);
+        eprintln!("{expr}");
 
         let mut hm = Hindley::<PolyType, PolyTypeId>::default();
         let with_raw_ty = hm.check(&expr).expect("Whoops");
-        eprintln!("{}", with_raw_ty);
+        eprintln!("{with_raw_ty}");
         // hm.terms.set_print_meta(true);
 
         let mut with_ty: DenseRepr<NumExt, String> = map_nodes(
@@ -371,10 +371,10 @@ mod test {
             with_raw_ty,
         );
         with_ty.set_print_meta(true);
-        eprintln!("{}", with_ty);
+        eprintln!("{with_ty}");
 
         assert_eq!(
-            format!("{}", with_ty),
+            format!("{with_ty}"),
             "((Mul: (\\a: U32. (\\b: U32. U32)) 3: U32): (\\a: U32. U32) 4: U32): U32"
         );
         // TODO: Show constraints.

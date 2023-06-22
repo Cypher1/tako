@@ -8,6 +8,7 @@ pub struct TypedIndex<T, Idx = u32, Container: Index<usize> = Vec<T>> {
 }
 
 impl<T, Idx: num_traits::bounds::Bounded, Container: Index<usize>> TypedIndex<T, Idx, Container> {
+    #[must_use]
     pub fn max() -> Self {
         Self::from_raw(<Idx as num_traits::bounds::Bounded>::max_value())
     }
@@ -68,7 +69,7 @@ impl<T, Idx: Copy> Copy for TypedIndex<T, Idx> {}
 impl<T, Idx: num_traits::bounds::Bounded + std::fmt::Debug + PartialEq> std::fmt::Debug
     for TypedIndex<T, Idx>
 {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}_", std::any::type_name::<T>())?;
         if self == &Self::max() {
             write!(f, "MAX")

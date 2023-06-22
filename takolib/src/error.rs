@@ -20,13 +20,13 @@ pub enum TError {
 
 impl std::fmt::Display for TError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use TError::*;
+        use TError::{ClangCompilerError, InternalError, ParseError};
         match self {
             ClangCompilerError { error, return_code } => write!(
                 f,
                 "Clang failed with code {return_code} and error message: {error}"
             ),
-            ParseError(e) => write!(f, "{}", e),
+            ParseError(e) => write!(f, "{e}"),
             InternalError { message, location } => {
                 write!(f, "Internal error: {message}")?;
                 if let Some(location) = location {
@@ -40,7 +40,7 @@ impl std::fmt::Display for TError {
 
 impl From<std::fmt::Error> for TError {
     fn from(error: std::fmt::Error) -> Self {
-        TError::InternalError {
+        Self::InternalError {
             message: error.to_string(),
             location: None,
         }
@@ -50,12 +50,12 @@ impl From<std::fmt::Error> for TError {
 impl From<std::io::Error> for TError {
     fn from(error: std::io::Error) -> Self {
         if error.kind() == std::io::ErrorKind::NotFound {
-            return TError::InternalError {
+            return Self::InternalError {
                 message: "File not found".to_string(),
                 location: None,
             };
         }
-        TError::InternalError {
+        Self::InternalError {
             message: error.to_string(),
             location: None,
         }
@@ -65,7 +65,7 @@ impl From<std::io::Error> for TError {
 // TODO: Remove
 impl From<std::num::ParseIntError> for TError {
     fn from(error: std::num::ParseIntError) -> Self {
-        TError::ParseError(ParseError::ParseIntError {
+        Self::ParseError(ParseError::ParseIntError {
             message: error.to_string(),
             location: None,
         })
@@ -81,6 +81,7 @@ pub type ErrorId = TypedIndex<Error>;
 
 impl Error {
     // TODO(clarity): Use a builder for this.
+    #[must_use]
     pub fn new(
         source: TError,
         path: Option<&PathBuf>,

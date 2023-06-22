@@ -25,6 +25,7 @@ pub struct Client {
 }
 
 impl Client {
+    #[must_use]
     pub fn new(
         stats_requester: broadcast::Sender<()>,
         task_manager_status_receiver: broadcast::Receiver<StatusReport>,
@@ -58,11 +59,13 @@ impl Client {
         });
     }
 
+    #[must_use]
     pub fn interactive(&self) -> bool {
         // TODO(usability): Build should have an interactive mode?
         self.options.interactive()
     }
 
+    #[must_use]
     pub fn oneshot(&self) -> bool {
         // TODO(usability): Build should have an interactive mode?
         self.options.oneshot()

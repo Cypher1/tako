@@ -6,7 +6,10 @@ pub use crate::tasks::manager::{StatusReport, TaskStats};
 pub use crate::tasks::status::*;
 pub use crate::tasks::task_trait::TaskId;
 use crate::tasks::task_trait::{ResultSenderFor, Task, TaskReceiverFor};
-use crate::tasks::*;
+use crate::tasks::{
+    CodegenTask, DesugarFileTask, EvalFileTask, LexFileTask, LoadFileTask, ParseFileTask,
+    RequestTask,
+};
 use crate::ui::Client;
 use log::{debug, trace};
 use std::fmt::Debug;
@@ -95,6 +98,7 @@ impl Default for Compiler {
 }
 
 impl Compiler {
+    #[must_use]
     pub fn make_client(&self, options: Box<dyn OptionsTrait>) -> crate::ui::Client {
         Client::new(
             self.stats_requester.clone(),
@@ -233,7 +237,7 @@ impl Compiler {
                     // TODO: Support from CLI
                     roots.push(root); // Build only the selected root.
                 } else {
-                    roots.extend(ast.roots.iter().cloned()); // Build all
+                    roots.extend(ast.roots.iter().copied()); // Build all
                 }
                 for root in roots {
                     tx2.send(CodegenTask {
@@ -274,7 +278,7 @@ impl Compiler {
             }
             RequestTask::Build { files } => {
                 for file in files {
-                    let mut file_with_extension = file.to_path_buf();
+                    let mut file_with_extension = file.clone();
                     file_with_extension.set_extension("out");
                     self.codegen(file, file_with_extension, None, response_sender.clone());
                 }

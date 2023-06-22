@@ -249,10 +249,10 @@ mod test {
             p_a = App(plus, a),
             p_a_b = App(p_a, b),
         );
-        eprintln!("{}", expr);
+        eprintln!("{expr}");
 
         let expr: DenseRepr<NumExt, usize> = number_nodes(&expr);
-        eprintln!("{}", expr);
+        eprintln!("{expr}");
 
         use std::collections::HashMap;
         let mut arity_graph = HashMap::<usize, usize>::new();
@@ -287,6 +287,6 @@ mod test {
         let mut with_arity = cn.output;
         with_arity.set_print_meta(true);
 
-        assert_eq!(format!("{}", with_arity), "((Mul: 2 3: 0): 1 4: 0): 0");
+        assert_eq!(format!("{with_arity}"), "((Mul: 2 3: 0): 1 4: 0): 0");
     }
 }
