@@ -4,7 +4,6 @@
 pub mod better_std;
 
 pub mod ast;
-pub mod backend;
 #[cfg(feature = "backend")]
 pub mod codegen;
 pub mod compiler;

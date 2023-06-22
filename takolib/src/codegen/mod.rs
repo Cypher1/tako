@@ -1,9 +1,10 @@
+pub mod backend;
 pub mod cpp_ast;
 
 use crate::ast::{Ast, NodeId};
-use crate::backend::{backend, create_context, Backend, BackendConfig, BackendStateTrait};
 use crate::error::TError;
 use crate::primitives::Prim;
+use backend::{backend, create_context, Backend, BackendConfig, BackendStateTrait};
 use std::path::Path;
 
 pub fn codegen(path: &Path, _ast: &Ast, _root: NodeId) -> Result<Prim, TError> {
