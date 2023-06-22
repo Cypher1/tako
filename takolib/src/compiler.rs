@@ -29,14 +29,14 @@ pub struct Compiler {
     eval_file_manager: Arc<Mutex<TaskManager<EvalFileTask>>>,
     codegen_manager: Arc<Mutex<TaskManager<CodegenTask>>>,
     // Broadcast the accumulation to all clients.
-    pub stats_requester: broadcast::Sender<()>,
+    pub task_stats_requester: broadcast::Sender<()>,
     pub status_sender: broadcast::Sender<StatusReport>,
     pub status_receiver: broadcast::Receiver<StatusReport>,
     request_sender: mpsc::UnboundedSender<(RequestTask, mpsc::UnboundedSender<Prim>)>,
     #[allow(unused)]
-    stats_receiver: mpsc::UnboundedReceiver<StatusReport>,
+    task_stats_receiver: mpsc::UnboundedReceiver<StatusReport>,
     #[allow(unused)]
-    stats_request_receiver: broadcast::Receiver<()>,
+    task_stats_request_receiver: broadcast::Receiver<()>,
     file_watch_request_sender: mpsc::UnboundedSender<PathBuf>,
     #[allow(unused)]
     file_watch_request_receiver: mpsc::UnboundedReceiver<PathBuf>,
@@ -53,8 +53,8 @@ pub struct Compiler {
 impl Default for Compiler {
     fn default() -> Self {
         let (request_sender, request_receiver) = mpsc::unbounded_channel();
-        let (stats_sender, stats_receiver) = mpsc::unbounded_channel();
-        let (stats_requester, stats_request_receiver) = broadcast::channel(1);
+        let (task_stats_sender, task_stats_receiver) = mpsc::unbounded_channel();
+        let (task_stats_requester, task_stats_request_receiver) = broadcast::channel(1);
         let (status_sender, status_receiver) = broadcast::channel(1);
         let (file_watch_request_sender, file_watch_request_receiver) = mpsc::unbounded_channel();
         let (file_update_sender, file_update_receiver) = broadcast::channel(1000);
@@ -62,12 +62,12 @@ impl Default for Compiler {
             mpsc::unbounded_channel();
         Self {
             request_receiver,
-            load_file_manager: Self::manager(&stats_sender, &stats_requester),
-            lex_file_manager: Self::manager(&stats_sender, &stats_requester),
-            parse_file_manager: Self::manager(&stats_sender, &stats_requester),
-            desugar_file_manager: Self::manager(&stats_sender, &stats_requester),
-            eval_file_manager: Self::manager(&stats_sender, &stats_requester),
-            codegen_manager: Self::manager(&stats_sender, &stats_requester),
+            load_file_manager: Self::manager(&task_stats_sender, &task_stats_requester),
+            lex_file_manager: Self::manager(&task_stats_sender, &task_stats_requester),
+            parse_file_manager: Self::manager(&task_stats_sender, &task_stats_requester),
+            desugar_file_manager: Self::manager(&task_stats_sender, &task_stats_requester),
+            eval_file_manager: Self::manager(&task_stats_sender, &task_stats_requester),
+            codegen_manager: Self::manager(&task_stats_sender, &task_stats_requester),
             // TODO(features): More passes:
             // - type_check_inside_module: TaskManager<>,
             // Produces type checked (and optimizable) modules **AND**
@@ -83,9 +83,9 @@ impl Default for Compiler {
             // - run_in_interpreter: TaskManager<>,
             status_sender,
             status_receiver,
-            stats_request_receiver,
-            stats_receiver,
-            stats_requester,
+            task_stats_request_receiver,
+            task_stats_receiver,
+            task_stats_requester,
             request_sender,
             file_watch_request_sender,
             file_watch_request_receiver,
@@ -101,7 +101,7 @@ impl Compiler {
     #[must_use]
     pub fn make_client(&self, options: Box<dyn OptionsTrait>) -> crate::ui::Client {
         Client::new(
-            self.stats_requester.clone(),
+            self.task_stats_requester.clone(),
             self.status_sender.subscribe(),
             self.request_sender.clone(),
             self.file_watch_request_sender.clone(),
@@ -111,16 +111,16 @@ impl Compiler {
     }
 
     fn manager<T: Task + 'static>(
-        stats_sender: &mpsc::UnboundedSender<StatusReport>,
-        stats_requester: &broadcast::Sender<()>,
+        task_stats_sender: &mpsc::UnboundedSender<StatusReport>,
+        task_stats_requester: &broadcast::Sender<()>,
     ) -> Arc<Mutex<TaskManager<T>>> {
         let manager = Arc::new(Mutex::new(TaskManager::<T>::new()));
         {
             let manager = manager.clone();
-            let stats_sender = stats_sender.clone();
-            let stats_requester = stats_requester.subscribe();
+            let task_stats_sender = task_stats_sender.clone();
+            let task_stats_requester = task_stats_requester.subscribe();
             spawn(async move {
-                TaskManager::report_stats(manager, stats_requester, stats_sender).await;
+                TaskManager::report_stats(manager, task_stats_requester, task_stats_sender).await;
             });
         }
         manager
