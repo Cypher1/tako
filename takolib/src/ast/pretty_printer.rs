@@ -35,7 +35,7 @@ pub fn pretty_node(ast: &Ast, node: NodeId) -> impl fmt::Display + fmt::Debug + 
 impl<'ast> PrintNode<'ast> {
     pub fn from_context(ast: &'ast Ast) -> PrintNodes<'ast> {
         let mut nodes = vec![];
-        for node in &ast.roots {
+        for node in ast.roots.iter() {
             nodes.push(Self::in_context(ast, *node))
         }
         PrintNodes { nodes }

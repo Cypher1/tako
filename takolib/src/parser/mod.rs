@@ -596,7 +596,7 @@ pub fn parse(filepath: &Path, contents: &str, tokens: &[Token]) -> Result<Ast, T
     if !tokens.is_empty() {
         // Support empty files!
         let root = state.expr(Symbol::OpenParen)?;
-        state.ast.roots.push(root);
+        state.ast.set_root(root);
     }
     // TODO(testing): REMOVE THIS (it's just to test the threading model)
     // let mut rng = rand::thread_rng();
@@ -656,7 +656,7 @@ pub mod tests {
             vec![(
                 NodeId::from_raw(0),
                 Literal::Numeric, // ("123".to_string()),
-            )],
+            )].into(),
             "Should have parsed a number"
         );
 
@@ -679,7 +679,7 @@ pub mod tests {
                     NodeId::from_raw(1),
                     Literal::Numeric, // ("2".to_string()),
                 )
-            ],
+            ].into(),
             "Should have parsed a number"
         );
         assert_eq!(ast.ops.len(), 1);

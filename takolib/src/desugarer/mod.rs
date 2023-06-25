@@ -9,7 +9,7 @@ use std::path::Path;
 pub fn desugar(_path: &Path, old_ast: &Ast, _root: Option<NodeId>) -> Result<Ast, TError> {
     let mut ast = old_ast.clone();
     let mut new_seqs = vec![];
-    for (node_id, op) in &ast.ops {
+    for (node_id, op) in ast.ops.iter() {
         if op.op == Symbol::Sequence {
             new_seqs.push((*node_id, op.clone()));
         }
