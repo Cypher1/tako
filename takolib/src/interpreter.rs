@@ -76,7 +76,7 @@ impl<'a> Ctx<'a> {
             NodeData::Atom(_id) => todo!(),
             NodeData::Call(call) => {
                 let (_id, Call { inner, args }) = self.ast.get(call);
-                for arg in args {
+                for arg in args.iter() {
                     self.eval(*arg)?;
                 }
                 self.eval(*inner)

@@ -12,27 +12,31 @@ use crate::parser::tokens::Symbol;
 use crate::primitives::typed_index::TypedIndex;
 use location::Location;
 use pretty_printer::{pretty, pretty_node};
+use smallvec::smallvec;
 use std::path::PathBuf;
+use std::sync::Arc;
 use string_interner::{Identifier, StringInterner};
+
+type Container<T> = Arc<Vec<T>>;
 
 #[derive(Clone, Default, Debug, Hash, PartialEq, Eq)]
 pub struct Ast {
     // TODO(usability): Add a range tree for mapping from locations to nodes.
     // Abstract syntax tree... forest
     pub filepath: PathBuf,
-    pub roots: Vec<NodeId>,
-    pub nodes: Vec<Node>,
+    pub roots: Container<NodeId>,
+    pub nodes: Container<Node>,
 
     // Partials:
-    pub warnings: Vec<(NodeId, Warning)>,
+    pub warnings: Container<(NodeId, Warning)>,
 
     // Syntactic constructs:
-    pub calls: Vec<(NodeId, Call)>, // Convert to this from definition head.
-    pub identifiers: Vec<(NodeId, Identifier)>, // Convert to this from definition head.
-    pub ops: Vec<(NodeId, Op)>,
-    pub definitions: Vec<(NodeId, Definition)>,
-    pub literals: Vec<(NodeId, Literal)>,
-    pub atoms: Vec<(NodeId, Atom)>,
+    pub calls: Container<(NodeId, Call)>, // Convert to this from definition head.
+    pub identifiers: Container<(NodeId, Identifier)>, // Convert to this from definition head.
+    pub ops: Container<(NodeId, Op)>,
+    pub definitions: Container<(NodeId, Definition)>,
+    pub literals: Container<(NodeId, Literal)>,
+    pub atoms: Container<(NodeId, Atom)>,
 
     pub string_interner: StringInterner,
 }
@@ -81,7 +85,7 @@ impl Ast {
             ty: None,
             location,
         };
-        let new_node_id = TypedIndex::new(&mut self.nodes, node)
+        let new_node_id = TypedIndex::new(Arc::make_mut(&mut self.nodes), node)
             .expect("Should never have that many AstNodes...");
         assert_eq!(node_id, new_node_id);
         new_node_id
@@ -108,14 +112,14 @@ impl Ast {
                 },
                 location,
             );
-            ty = self.add_op(Op::new(Symbol::And, vec![old_ty, ty]), location);
+            ty = self.add_op(Op::new(Symbol::And, smallvec![old_ty, ty]), location);
         }
         let node: &mut Node = self.get_mut(node_id);
         node.ty = Some(ty);
         node_id
     }
     pub fn set_root(&mut self, new_root: NodeId) {
-        self.roots.push(new_root);
+        Arc::make_mut(&mut self.roots).push(new_root);
     }
 }
 
@@ -135,7 +139,7 @@ mod tests {
         let b = ast.make_node(b, Location::dummy_for_test());
         let call = Op {
             op: Symbol::Add,
-            args: vec![a, b],
+            args: smallvec![a, b],
         };
         let call = ast.make_node(call, Location::dummy_for_test());
         let a_prime = lits.register_str("a_prime");
@@ -155,6 +159,6 @@ mod tests {
         assert_eq!(ast.ops.len(), 1);
         assert_eq!(ast.calls.len(), 0);
         assert_eq!(ast.definitions.len(), 1);
-        assert_eq!(ast.roots, vec![definition]);
+        assert_eq!(ast.roots, vec![definition].into());
     }
 }

@@ -1,6 +1,7 @@
 #![allow(unused)]
 use crate::ast::{string_interner::Identifier, Ast, Contains, Definition, Node, NodeData, NodeId};
 use crate::parser::semantics::BindingMode;
+use smallvec::SmallVec;
 use std::fmt;
 use std::fmt::Write;
 
@@ -34,7 +35,7 @@ pub fn pretty_node(ast: &Ast, node: NodeId) -> impl fmt::Display + fmt::Debug + 
 impl<'ast> PrintNode<'ast> {
     pub fn from_context(ast: &'ast Ast) -> PrintNodes<'ast> {
         let mut nodes = vec![];
-        for node in &ast.roots {
+        for node in ast.roots.iter() {
             nodes.push(Self::in_context(ast, *node))
         }
         PrintNodes { nodes }
@@ -56,22 +57,22 @@ impl<'ast> PrintNode<'ast> {
         Ok(())
     }
 
-    fn print_definition_head(
+    fn print_definition_head<'a, T: std::iter::IntoIterator<Item = &'a NodeId>>(
         &self,
         f: &mut fmt::Formatter<'_>,
         mode: BindingMode,
         name: Identifier,
-        bindings: &Option<Vec<NodeId>>,
+        bindings: Option<T>,
         ty: &mut Option<NodeId>,
     ) -> fmt::Result {
         if mode != BindingMode::Lambda {
             write!(f, "{mode} ");
         }
         self.print_identifier(f, name)?;
-        if let Some(bindings) = &bindings {
+        if let Some(bindings) = bindings {
             let mut implicits = String::new();
             let mut explicits = String::new();
-            for binding in bindings {
+            for binding in bindings.into_iter() {
                 let into = if let NodeData::Definition(def) = self.ast.get(*binding).id {
                     let (_nodeid, def) = self.ast.get(def);
                     if def.mode != BindingMode::Lambda {
@@ -156,7 +157,7 @@ impl<'ast> fmt::Display for PrintNode<'ast> {
                 }
                 write!(f, "(")?;
                 let mut first = true;
-                for arg in &node.args {
+                for arg in &*node.args {
                     if !first {
                         write!(f, ", ");
                     } else {
@@ -190,7 +191,13 @@ impl<'ast> fmt::Display for PrintNode<'ast> {
                     bindings,
                     implementation,
                 } = node;
-                self.print_definition_head(f, *mode, *name, bindings, &mut ty)?;
+                self.print_definition_head(
+                    f,
+                    *mode,
+                    *name,
+                    bindings.as_ref().map(|bs| bs.iter()),
+                    &mut ty,
+                )?;
                 if let Some(implementation) = implementation {
                     write!(f, "={}", self.child(*implementation));
                 }
@@ -198,7 +205,7 @@ impl<'ast> fmt::Display for PrintNode<'ast> {
             NodeData::Op(node) => {
                 let (_node_id, node) = self.ast.get(*node);
                 let mut first = true;
-                for arg in &node.args {
+                for arg in node.args.iter() {
                     // TODO: Postfix and infix ops?
                     if !first || node.args.len() == 1 {
                         write!(f, "{}", node.op)?;

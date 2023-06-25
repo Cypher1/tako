@@ -4,12 +4,13 @@ use crate::ast::{Call, NodeId, Op};
 use crate::error::TError;
 use crate::parser::tokens::Symbol;
 use log::trace;
+use smallvec::smallvec;
 use std::path::Path;
 
 pub fn desugar(_path: &Path, old_ast: &Ast, _root: Option<NodeId>) -> Result<Ast, TError> {
     let mut ast = old_ast.clone();
     let mut new_seqs = vec![];
-    for (node_id, op) in &ast.ops {
+    for (node_id, op) in ast.ops.iter() {
         if op.op == Symbol::Sequence {
             new_seqs.push((*node_id, op.clone()));
         }
@@ -36,12 +37,12 @@ pub fn desugar(_path: &Path, old_ast: &Ast, _root: Option<NodeId>) -> Result<Ast
         let name = ast.add_identifier(name, location);
         let inner = Op {
             op: Symbol::Arrow,
-            args: vec![name, *right],
+            args: smallvec![name, *right],
         };
         let inner = ast.add_op(inner, location);
         let apply = Call {
             inner,
-            args: vec![*left],
+            args: smallvec![*left],
         };
         let apply = ast.add_call(apply, location);
         trace!(
