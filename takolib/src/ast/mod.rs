@@ -12,10 +12,10 @@ use crate::parser::tokens::Symbol;
 use crate::primitives::typed_index::TypedIndex;
 use location::Location;
 use pretty_printer::{pretty, pretty_node};
+use smallvec::smallvec;
 use std::path::PathBuf;
 use std::sync::Arc;
 use string_interner::{Identifier, StringInterner};
-use smallvec::smallvec;
 
 type Container<T> = Arc<Vec<T>>;
 

@@ -1,9 +1,9 @@
 #![allow(unused)]
 use crate::ast::{string_interner::Identifier, Ast, Contains, Definition, Node, NodeData, NodeId};
 use crate::parser::semantics::BindingMode;
+use smallvec::SmallVec;
 use std::fmt;
 use std::fmt::Write;
-use smallvec::SmallVec;
 
 /*
 // TODO: Consider a generic form of this.
@@ -57,7 +57,7 @@ impl<'ast> PrintNode<'ast> {
         Ok(())
     }
 
-    fn print_definition_head<'a, T: std::iter::IntoIterator<Item=&'a NodeId>>(
+    fn print_definition_head<'a, T: std::iter::IntoIterator<Item = &'a NodeId>>(
         &self,
         f: &mut fmt::Formatter<'_>,
         mode: BindingMode,
@@ -191,7 +191,13 @@ impl<'ast> fmt::Display for PrintNode<'ast> {
                     bindings,
                     implementation,
                 } = node;
-                self.print_definition_head(f, *mode, *name, bindings.as_ref().map(|bs| bs.iter()), &mut ty)?;
+                self.print_definition_head(
+                    f,
+                    *mode,
+                    *name,
+                    bindings.as_ref().map(|bs| bs.iter()),
+                    &mut ty,
+                )?;
                 if let Some(implementation) = implementation {
                     write!(f, "={}", self.child(*implementation));
                 }

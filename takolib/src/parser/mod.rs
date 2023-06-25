@@ -9,10 +9,10 @@ use crate::error::TError;
 use log::trace;
 use semantics::BindingMode;
 use semantics::Literal;
+use smallvec::smallvec;
 use std::path::Path;
 use thiserror::Error;
 use tokens::{assign_op, binding_mode_operation, is_assign, OpBinding, Symbol, Token, TokenType};
-use smallvec::smallvec;
 
 #[derive(Debug, Error, PartialEq, Eq, Ord, PartialOrd, Clone, Hash)]
 pub enum ParseError {

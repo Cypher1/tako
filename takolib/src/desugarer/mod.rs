@@ -4,8 +4,8 @@ use crate::ast::{Call, NodeId, Op};
 use crate::error::TError;
 use crate::parser::tokens::Symbol;
 use log::trace;
-use std::path::Path;
 use smallvec::smallvec;
+use std::path::Path;
 
 pub fn desugar(_path: &Path, old_ast: &Ast, _root: Option<NodeId>) -> Result<Ast, TError> {
     let mut ast = old_ast.clone();
