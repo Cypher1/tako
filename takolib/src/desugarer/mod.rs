@@ -5,6 +5,7 @@ use crate::error::TError;
 use crate::parser::tokens::Symbol;
 use log::trace;
 use std::path::Path;
+use smallvec::smallvec;
 
 pub fn desugar(_path: &Path, old_ast: &Ast, _root: Option<NodeId>) -> Result<Ast, TError> {
     let mut ast = old_ast.clone();
@@ -36,12 +37,12 @@ pub fn desugar(_path: &Path, old_ast: &Ast, _root: Option<NodeId>) -> Result<Ast
         let name = ast.add_identifier(name, location);
         let inner = Op {
             op: Symbol::Arrow,
-            args: arc_slice![name, *right],
+            args: smallvec![name, *right],
         };
         let inner = ast.add_op(inner, location);
         let apply = Call {
             inner,
-            args: arc_slice![*left],
+            args: smallvec![*left],
         };
         let apply = ast.add_call(apply, location);
         trace!(

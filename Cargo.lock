@@ -2078,6 +2078,7 @@ dependencies = [
  "num-traits",
  "pretty_assertions",
  "rand",
+ "smallvec",
  "static_assertions",
  "strum",
  "strum_macros",

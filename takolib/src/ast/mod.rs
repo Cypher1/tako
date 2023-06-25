@@ -15,6 +15,7 @@ use pretty_printer::{pretty, pretty_node};
 use std::path::PathBuf;
 use std::sync::Arc;
 use string_interner::{Identifier, StringInterner};
+use smallvec::smallvec;
 
 type Container<T> = Arc<Vec<T>>;
 
@@ -111,7 +112,7 @@ impl Ast {
                 },
                 location,
             );
-            ty = self.add_op(Op::new(Symbol::And, arc_slice![old_ty, ty]), location);
+            ty = self.add_op(Op::new(Symbol::And, smallvec![old_ty, ty]), location);
         }
         let node: &mut Node = self.get_mut(node_id);
         node.ty = Some(ty);
@@ -138,7 +139,7 @@ mod tests {
         let b = ast.make_node(b, Location::dummy_for_test());
         let call = Op {
             op: Symbol::Add,
-            args: arc_slice![a, b],
+            args: smallvec![a, b],
         };
         let call = ast.make_node(call, Location::dummy_for_test());
         let a_prime = lits.register_str("a_prime");

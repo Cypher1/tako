@@ -12,6 +12,7 @@ use semantics::Literal;
 use std::path::Path;
 use thiserror::Error;
 use tokens::{assign_op, binding_mode_operation, is_assign, OpBinding, Symbol, Token, TokenType};
+use smallvec::smallvec;
 
 #[derive(Debug, Error, PartialEq, Eq, Ord, PartialOrd, Clone, Hash)]
 pub enum ParseError {
@@ -349,7 +350,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 implementation = self.ast.add_op(
                     Op {
                         op,
-                        args: arc_slice![name, implementation],
+                        args: smallvec![name, implementation],
                     },
                     location,
                 );
@@ -470,7 +471,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                         self.ast.add_op(
                             Op {
                                 op: symbol,
-                                args: arc_slice![right],
+                                args: smallvec![right],
                             },
                             location,
                         )
@@ -539,7 +540,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 left = self.ast.add_op(
                     Op {
                         op: sym,
-                        args: arc_slice![left, right],
+                        args: smallvec![left, right],
                     },
                     location,
                 );

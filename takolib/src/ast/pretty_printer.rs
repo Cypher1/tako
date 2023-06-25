@@ -3,7 +3,7 @@ use crate::ast::{string_interner::Identifier, Ast, Contains, Definition, Node, N
 use crate::parser::semantics::BindingMode;
 use std::fmt;
 use std::fmt::Write;
-use std::sync::Arc;
+use smallvec::SmallVec;
 
 /*
 // TODO: Consider a generic form of this.
@@ -57,12 +57,12 @@ impl<'ast> PrintNode<'ast> {
         Ok(())
     }
 
-    fn print_definition_head(
+    fn print_definition_head<'a, T: std::iter::IntoIterator<Item=&'a NodeId>>(
         &self,
         f: &mut fmt::Formatter<'_>,
         mode: BindingMode,
         name: Identifier,
-        bindings: &Option<Arc<[NodeId]>>,
+        bindings: Option<T>,
         ty: &mut Option<NodeId>,
     ) -> fmt::Result {
         if mode != BindingMode::Lambda {
@@ -72,7 +72,7 @@ impl<'ast> PrintNode<'ast> {
         if let Some(bindings) = bindings {
             let mut implicits = String::new();
             let mut explicits = String::new();
-            for binding in bindings.iter() {
+            for binding in bindings.into_iter() {
                 let into = if let NodeData::Definition(def) = self.ast.get(*binding).id {
                     let (_nodeid, def) = self.ast.get(def);
                     if def.mode != BindingMode::Lambda {
@@ -191,7 +191,7 @@ impl<'ast> fmt::Display for PrintNode<'ast> {
                     bindings,
                     implementation,
                 } = node;
-                self.print_definition_head(f, *mode, *name, bindings, &mut ty)?;
+                self.print_definition_head(f, *mode, *name, bindings.as_ref().map(|bs| bs.iter()), &mut ty)?;
                 if let Some(implementation) = implementation {
                     write!(f, "={}", self.child(*implementation));
                 }

@@ -7,7 +7,7 @@ use crate::parser::{
     tokens::Symbol,
 };
 use crate::primitives::typed_index::TypedIndex;
-use std::sync::Arc;
+use smallvec::SmallVec;
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Node {
@@ -70,7 +70,7 @@ make_contains!(atoms, (NodeId, Atom), Atom, AtomId, add_atom);
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Call {
     pub inner: NodeId,
-    pub args: Arc<[NodeId]>,
+    pub args: SmallVec<[NodeId; 2]>,
 }
 make_contains!(calls, (NodeId, Call), Call, CallId, add_call);
 
@@ -84,7 +84,7 @@ impl Call {
         }
     }
     #[must_use]
-    pub fn new(inner: NodeId, args: Arc<[NodeId]>) -> Self {
+    pub fn new(inner: NodeId, args: SmallVec<[NodeId; 2]>) -> Self {
         Self { inner, args }
     }
 }
@@ -92,13 +92,13 @@ impl Call {
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Op {
     pub op: Symbol,
-    pub args: Arc<[NodeId]>,
+    pub args: SmallVec<[NodeId; 2]>,
 }
 make_contains!(ops, (NodeId, Op), Op, OpId, add_op);
 
 impl Op {
     #[must_use]
-    pub fn new(op: Symbol, args: Arc<[NodeId]>) -> Self {
+    pub fn new(op: Symbol, args: SmallVec<[NodeId; 2]>) -> Self {
         Self { op, args }
     }
 }
@@ -107,7 +107,7 @@ impl Op {
 pub struct Definition {
     pub mode: BindingMode,
     pub name: Identifier,
-    pub bindings: Option<Arc<[NodeId]>>,
+    pub bindings: Option<SmallVec<[NodeId; 2]>>,
     pub implementation: Option<NodeId>,
 }
 make_contains!(
