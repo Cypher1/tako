@@ -107,3 +107,25 @@
 - https://rust-hosted-langs.github.io/book/introduction.html
 - https://os.phil-opp.com/kernel-heap/#alignment
 - http://www.paulgraham.com/rootsoflisp.html
+
+## Vision
+
+- Main programs have a build function alongside main for config
+  - This means no 2nd language for config, or reduction in expressivity when doing config
+  - Build is run in the interpreter to generate build effects and config, including any operator overloads needed
+  - Build config is type checked and auto completed etc.
+  - Version info as static arg to makePackage?
+  - tako ci
+    - Runs install deps, builds & type check and tests
+  - "features" are just flags passed to build
+  - Statically declarable arg parsing
+    - No more `int main(int argc, char* argv[])`
+    - `main(expression: string, show_working: Arg(bool, "--show-working", default=false), *unknown: Arg[]): ErrorCode {`
+    - Pass unknowns to tako.cli(unknown) to get "--help", "-h", "--verbose", "-v", "--autocomplete"
+  - Cli generator is a default argument to makeBinary & the interpreter state
+    - It uses tako's reflection capabilities to do 'run time' code gen, but its statically available because it doesn't produce side effects.
+  - Git hash available in build artifacts
+  - Multiple entry points possible in a single file
+    - makeBinary(main, "main") is default but
+    - makeBinary(test, "unit") is just as valid
+  - 
