@@ -4,6 +4,7 @@ use crate::primitives::typed_index::TypedIndex;
 use num_traits::Bounded;
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
+use std::sync::Arc;
 
 type StringHash = u64;
 // Ensures that str ids are unique per string but also stable across different files etc.
@@ -18,8 +19,8 @@ assert_eq_size!([Identifier; 2], [u8; 16]);
 pub struct StringInterner {
     // This ensures we can look up the string from the hash.
     // BUT: We can also merge the hashes without losing any information.
-    pub loc2string: BTreeMap<IndexIntoFile, StrId>,
-    pub strings: BTreeMap<StrId, String>,
+    pub loc2string: Arc<BTreeMap<IndexIntoFile, StrId>>,
+    pub strings: Arc<BTreeMap<StrId, String>>,
     pub lambda: StrId,
     pub pi: StrId,
     pub forall: StrId,
@@ -29,8 +30,8 @@ pub struct StringInterner {
 impl Default for StringInterner {
     fn default() -> Self {
         let mut n = Self {
-            loc2string: BTreeMap::new(),
-            strings: BTreeMap::new(),
+            loc2string: Arc::new(BTreeMap::new()),
+            strings: Arc::new(BTreeMap::new()),
             // These are, temporarily, invalid.
             lambda: TypedIndex::max_value(),
             pi: TypedIndex::max_value(),
@@ -57,7 +58,7 @@ impl StringInterner {
     #[must_use]
     pub fn register_str_by_loc(&mut self, name: &str, ind: IndexIntoFile) -> StrId {
         let id = self.register_str(name);
-        self.loc2string.insert(ind, id);
+        Arc::make_mut(&mut self.loc2string).insert(ind, id);
         id
     }
     pub fn register_str(&mut self, name: &str) -> StrId {
@@ -65,7 +66,9 @@ impl StringInterner {
         name.hash(&mut hasher);
         let str_hash = hasher.finish();
         let id = TypedIndex::from_raw(str_hash);
-        self.strings.entry(id).or_insert_with(|| name.to_string());
+        if !self.strings.contains_key(&id) {
+            Arc::make_mut(&mut self.strings).insert(id, name.to_string());
+        }
         id
     }
     #[must_use]
