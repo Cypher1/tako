@@ -656,7 +656,8 @@ pub mod tests {
             vec![(
                 NodeId::from_raw(0),
                 Literal::Numeric, // ("123".to_string()),
-            )].into(),
+            )]
+            .into(),
             "Should have parsed a number"
         );
 
@@ -679,7 +680,8 @@ pub mod tests {
                     NodeId::from_raw(1),
                     Literal::Numeric, // ("2".to_string()),
                 )
-            ].into(),
+            ]
+            .into(),
             "Should have parsed a number"
         );
         assert_eq!(ast.ops.len(), 1);
