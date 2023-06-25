@@ -7,6 +7,7 @@ pub mod location;
 mod pretty_printer;
 pub mod string_interner;
 
+use std::sync::Arc;
 use crate::parser::semantics::Literal;
 use crate::parser::tokens::Symbol;
 use crate::primitives::typed_index::TypedIndex;
@@ -15,7 +16,7 @@ use pretty_printer::{pretty, pretty_node};
 use std::path::PathBuf;
 use string_interner::{Identifier, StringInterner};
 
-type Container<T> = Vec<T>;
+type Container<T> = Arc<Vec<T>>;
 
 #[derive(Clone, Default, Debug, Hash, PartialEq, Eq)]
 pub struct Ast {
