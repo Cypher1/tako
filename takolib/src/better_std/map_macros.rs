@@ -67,3 +67,15 @@ macro_rules! rec(
         }
      };
 );
+
+#[macro_export]
+macro_rules! arc_slice(
+    { $($value:expr),* $(,)? } => {
+        {
+            std::sync::Arc::new([
+            $(
+                $value,
+            )*])
+        }
+     };
+);

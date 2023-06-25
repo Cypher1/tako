@@ -80,7 +80,7 @@ impl Call {
     pub fn from_slice(inner: NodeId, args: &[NodeId]) -> Self {
         Self {
             inner,
-            args: args.to_vec(),
+            args: args.into(),
         }
     }
     #[must_use]

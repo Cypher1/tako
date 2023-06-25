@@ -349,7 +349,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 implementation = self.ast.add_op(
                     Op {
                         op,
-                        args: vec![name, implementation],
+                        args: arc_slice![name, implementation],
                     },
                     location,
                 );
@@ -389,7 +389,11 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                     }
                 }
             }
-            let bindings = if has_args { Some(only_bindings) } else { None };
+            let bindings = if has_args {
+                Some(only_bindings.into())
+            } else {
+                None
+            };
             // TODO: USE bindings
             trace!("Add definition");
             if has_non_bind_args {
@@ -413,7 +417,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             let inner = self.identifier(name, location);
             // TODO: USE bindings
             trace!("Add call");
-            let args = self.handle_bindings(bindings)?;
+            let args = self.handle_bindings(bindings)?.into();
             let call = self.ast.add_call(Call { inner, args }, location);
             if let Some(ty) = ty {
                 return Ok(self.ast.add_annotation(call, ty));
@@ -466,7 +470,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                         self.ast.add_op(
                             Op {
                                 op: symbol,
-                                args: vec![right],
+                                args: arc_slice![right],
                             },
                             location,
                         )
@@ -525,7 +529,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                     let arg = self.binding_or_arg(&mut _has_non_bind_args)?;
                     args.push(arg);
                 }
-                let args = self.handle_bindings(args)?;
+                let args = self.handle_bindings(args)?.into();
                 left = self.ast.add_call(Call { inner: left, args }, location);
             } else {
                 // TODO: Check that this is the right kind of operator.
@@ -535,7 +539,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 left = self.ast.add_op(
                     Op {
                         op: sym,
-                        args: vec![left, right],
+                        args: arc_slice![left, right],
                     },
                     location,
                 );
@@ -873,13 +877,13 @@ pub mod tests {
         assert_eq!(ast.definitions.len(), 3);
         let (_id, def) = &ast.definitions[0];
         dbg!(def);
-        assert_eq!(def.bindings.as_ref().map(std::vec::Vec::len), None);
+        assert_eq!(def.bindings.as_ref().map(|it| it.len()), None);
         let (_id, def) = &ast.definitions[1];
         dbg!(def);
-        assert_eq!(def.bindings.as_ref().map(std::vec::Vec::len), None);
+        assert_eq!(def.bindings.as_ref().map(|it| it.len()), None);
         let (_id, def) = &ast.definitions[2];
         dbg!(def);
-        assert_eq!(def.bindings.as_ref().map(std::vec::Vec::len), Some(2));
+        assert_eq!(def.bindings.as_ref().map(|it| it.len()), Some(2));
         Ok(())
     }
 

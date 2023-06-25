@@ -36,12 +36,12 @@ pub fn desugar(_path: &Path, old_ast: &Ast, _root: Option<NodeId>) -> Result<Ast
         let name = ast.add_identifier(name, location);
         let inner = Op {
             op: Symbol::Arrow,
-            args: vec![name, *right],
+            args: arc_slice![name, *right],
         };
         let inner = ast.add_op(inner, location);
         let apply = Call {
             inner,
-            args: vec![*left],
+            args: arc_slice![*left],
         };
         let apply = ast.add_call(apply, location);
         trace!(
