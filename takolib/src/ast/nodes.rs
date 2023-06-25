@@ -1,13 +1,13 @@
+use super::contains::Contains;
 use super::location::Location;
+use super::Ast;
 use crate::ast::string_interner::Identifier;
 use crate::parser::{
     semantics::{BindingMode, Literal},
     tokens::Symbol,
 };
 use crate::primitives::typed_index::TypedIndex;
-
-use super::contains::Contains;
-use super::Ast;
+use std::sync::Arc;
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Node {
@@ -70,7 +70,7 @@ make_contains!(atoms, (NodeId, Atom), Atom, AtomId, add_atom);
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Call {
     pub inner: NodeId,
-    pub args: Vec<NodeId>, // TODO(perf): Short vec
+    pub args: Arc<[NodeId]>,
 }
 make_contains!(calls, (NodeId, Call), Call, CallId, add_call);
 
@@ -84,7 +84,7 @@ impl Call {
         }
     }
     #[must_use]
-    pub fn new(inner: NodeId, args: Vec<NodeId>) -> Self {
+    pub fn new(inner: NodeId, args: Arc<[NodeId]>) -> Self {
         Self { inner, args }
     }
 }
@@ -92,13 +92,13 @@ impl Call {
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Op {
     pub op: Symbol,
-    pub args: Vec<NodeId>, // TODO(optimisation): Short vec?
+    pub args: Arc<[NodeId]>,
 }
 make_contains!(ops, (NodeId, Op), Op, OpId, add_op);
 
 impl Op {
     #[must_use]
-    pub fn new(op: Symbol, args: Vec<NodeId>) -> Self {
+    pub fn new(op: Symbol, args: Arc<[NodeId]>) -> Self {
         Self { op, args }
     }
 }
@@ -107,7 +107,7 @@ impl Op {
 pub struct Definition {
     pub mode: BindingMode,
     pub name: Identifier,
-    pub bindings: Option<Vec<NodeId>>,
+    pub bindings: Option<Arc<[NodeId]>>,
     pub implementation: Option<NodeId>,
 }
 make_contains!(
