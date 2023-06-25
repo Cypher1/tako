@@ -1,16 +1,27 @@
+use num_traits::bounds::Bounded;
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
 
+use static_assertions::assert_eq_size;
+assert_eq_size!(TypedIndex<Vec<u8>, u8>, [u8; 1]);
+assert_eq_size!(Option<TypedIndex<Vec<u8>, u8>>, [u8; 2]); // TODO(perf): Option optimisation
+assert_eq_size!(TypedIndex<Vec<u32>, u32>, [u32; 1]);
+assert_eq_size!(Option<TypedIndex<Vec<u32>, u32>>, [u32; 2]); // TODO(perf): Option optimisation
+
+#[repr(transparent)]
 pub struct TypedIndex<T, Idx = u32, Container: Index<usize> = Vec<T>> {
     index: Idx,
     ty: PhantomData<T>,
     container: PhantomData<Container>,
 }
 
-impl<T, Idx: num_traits::bounds::Bounded, Container: Index<usize>> TypedIndex<T, Idx, Container> {
-    #[must_use]
-    pub fn max() -> Self {
-        Self::from_raw(<Idx as num_traits::bounds::Bounded>::max_value())
+impl<T, Idx: Bounded, Container: Index<usize>> Bounded for TypedIndex<T, Idx, Container> {
+    fn min_value() -> Self {
+        Self::from_raw(<Idx as Bounded>::min_value())
+    }
+
+    fn max_value() -> Self {
+        Self::from_raw(<Idx as Bounded>::max_value())
     }
 }
 
@@ -66,12 +77,10 @@ impl<T, Idx: Clone> Clone for TypedIndex<T, Idx> {
 }
 impl<T, Idx: Copy> Copy for TypedIndex<T, Idx> {}
 
-impl<T, Idx: num_traits::bounds::Bounded + std::fmt::Debug + PartialEq> std::fmt::Debug
-    for TypedIndex<T, Idx>
-{
+impl<T, Idx: Bounded + std::fmt::Debug + PartialEq> std::fmt::Debug for TypedIndex<T, Idx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}_", std::any::type_name::<T>())?;
-        if self == &Self::max() {
+        if self == &Self::max_value() {
             write!(f, "MAX")
         } else {
             write!(f, "{:?}", self.index)

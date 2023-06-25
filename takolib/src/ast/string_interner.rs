@@ -1,6 +1,7 @@
 use super::location::IndexIntoFile;
 use crate::parser::keywords::KEYWORDS;
 use crate::primitives::typed_index::TypedIndex;
+use num_traits::Bounded;
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
 
@@ -31,10 +32,10 @@ impl Default for StringInterner {
             loc2string: BTreeMap::new(),
             strings: BTreeMap::new(),
             // These are, temporarily, invalid.
-            lambda: TypedIndex::max(),
-            pi: TypedIndex::max(),
-            forall: TypedIndex::max(),
-            exists: TypedIndex::max(),
+            lambda: TypedIndex::max_value(),
+            pi: TypedIndex::max_value(),
+            forall: TypedIndex::max_value(),
+            exists: TypedIndex::max_value(),
         };
         n.lambda = n.register_str("lambda");
         n.pi = n.register_str("pi");
