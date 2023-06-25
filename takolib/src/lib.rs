@@ -8,6 +8,7 @@ pub mod ast;
 pub mod codegen;
 pub mod compiler;
 pub mod desugarer;
+pub mod lowerer;
 pub mod error;
 pub mod interpreter;
 pub mod parser;

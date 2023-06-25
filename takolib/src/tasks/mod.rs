@@ -4,7 +4,9 @@ pub mod task_trait;
 use crate::ast::Ast;
 use crate::ast::NodeId;
 use crate::error::Error;
+use crate::error::TError;
 use crate::parser::tokens::Token;
+use crate::lowerer::lower;
 use crate::primitives::meta::Meta;
 use crate::primitives::Prim;
 use async_trait::async_trait;
@@ -32,6 +34,7 @@ pub enum AnyTask {
     LexFile(LexFileTask),
     ParseFile(ParseFileTask),
     DesugarFile(DesugarFileTask),
+    LowerFile(LowerFileTask),
     Codegen(CodegenTask),
     EvalFile(EvalFileTask),
 }
@@ -181,6 +184,46 @@ impl Task for DesugarFileTask {
                         root: None,
                     }),
                     Err(err) => Update::Failed(err),
+                },
+            ))
+            .expect("Should be able to send task result to manager");
+    }
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct LowerFileTask {
+    pub path: PathBuf,
+    pub ast: Ast,
+    pub root: Option<NodeId>,
+}
+
+#[async_trait]
+impl Task for LowerFileTask {
+    // Ensure that we can parse and run pre-desugared files.
+    type Output = CodegenTask;
+
+    const TASK_KIND: TaskKind = TaskKind::LowerFile;
+
+    fn has_file_path(&self) -> Option<&PathBuf> {
+        Some(&self.path)
+    }
+    async fn perform(self, result_sender: UpdateSenderFor<Self>) {
+        let ast = lower(&self.path, &self.ast, self.root)
+            .map_err(|err| self.decorate_error(err));
+        result_sender
+            .send((
+                self.clone(),
+                match (ast, self.root) {
+                    (Ok(result), Some(root)) => Update::FinalResult(CodegenTask {
+                        path: self.path,
+                        ast: result,
+                        root,
+                    }),
+                    (_, None) => Update::Failed(self.decorate_error(TError::InternalError {
+                        message: "No root for this file... waiting for root...".to_string(),
+                        location: None,
+                    })),
+                    (Err(err), _) => Update::Failed(err),
                 },
             ))
             .expect("Should be able to send task result to manager");
