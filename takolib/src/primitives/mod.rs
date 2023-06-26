@@ -5,6 +5,7 @@ pub mod tribool;
 
 use crate::error::TError;
 use crate::primitives::tribool::{all_true, any_true, Tribool};
+use better_std::*;
 use bitvec::prelude::*;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt;
@@ -54,6 +55,20 @@ impl std::fmt::Debug for Prim {
         Ok(())
     }
 }
+
+#[macro_export]
+macro_rules! rec(
+    {} => {$crate::primitives::Val::Struct(::std::vec::Vec::new())};
+    { $($key:expr => $value:expr),* $(,)? } => {
+        {
+            let m = vec![
+            $(
+                ($key.to_string(), $value),
+            )*];
+            $crate::primitives::Val::Struct(m)
+        }
+     };
+);
 
 // use std::sync::Arc;
 type InnerVal = Box<Val>;
@@ -357,7 +372,7 @@ pub fn card(ty: &Val) -> Result<Offset, TError> {
         }
         Pointer(_ptr_size, t) => card(t),
         Padded(_size, t) => card(t),
-        x => todo!("cardinality of {:#?} is unknown", x),
+        x => better_std::todo!("cardinality of {:#?} is unknown", x),
     }
 }
 
@@ -379,8 +394,8 @@ pub fn size(ty: &Val) -> Result<Offset, TError> {
         }
         Pointer(ptr_size, _t) => Ok(*ptr_size),
         Padded(bits, t) => Ok(bits + size(t)?),
-        Variable(name) => todo!("unknown size of variable {}", &name),
-        x => todo!("unknown size of abstract type {:#?}", &x),
+        Variable(name) => better_std::todo!("unknown size of variable {}", &name),
+        x => better_std::todo!("unknown size of abstract type {:#?}", &x),
     }
 }
 
@@ -516,6 +531,7 @@ pub fn variable(name: &str) -> Val {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use better_std::assert_eq;
 
     type Res = Result<(), TError>;
 

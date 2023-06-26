@@ -1,6 +1,7 @@
 use crate::ast::location::{IndexIntoFile, Location, SymbolLength};
 use crate::error::TError;
 use crate::parser::semantics::BindingMode;
+use better_std::{assert_eq, todo, *};
 use lazy_static::lazy_static;
 use log::{debug, trace};
 use std::collections::{HashMap, HashSet};
@@ -773,6 +774,7 @@ mod tests {
         CharacterType::{PartialToken, Whitespace},
         TokenType::{Atom, ColorLit, Ident, NumLit, Op, StringLit},
     };
+    use better_std::assert_eq;
     use strum::IntoEnumIterator; // TODO(cleanup): Make these test only
 
     fn setup_many(contents: &str, n: usize) -> Vec<Token> {

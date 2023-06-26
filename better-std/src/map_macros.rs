@@ -5,7 +5,7 @@ macro_rules! map(
         {
             let mut m = ::std::collections::HashMap::new();
             $(
-                m.insert($key, $value);
+                m.insert($key.into(), $value.into());
             )*
             m
         }
@@ -19,7 +19,7 @@ macro_rules! hash_set(
         {
             let mut m = ::std::collections::HashSet::new();
             $(
-                m.insert($value);
+                m.insert($value.into());
             )*
             m
         }
@@ -33,7 +33,7 @@ macro_rules! set(
         {
             let mut m = ::std::collections::BTreeSet::new();
             $(
-                m.insert($value);
+                m.insert($value.into());
             )*
             m
         }
@@ -55,15 +55,13 @@ macro_rules! dict(
 );
 
 #[macro_export]
-macro_rules! rec(
-    {} => {$crate::primitives::Val::Struct(::std::vec::Vec::new())};
-    { $($key:expr => $value:expr),* $(,)? } => {
+macro_rules! arc_slice(
+    { $($value:expr),* $(,)? } => {
         {
-            let m = vec![
+            std::sync::Arc::new([
             $(
-                ($key.to_string(), $value),
-            )*];
-            $crate::primitives::Val::Struct(m)
+                $value,
+            )*])
         }
      };
 );

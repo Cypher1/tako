@@ -1,8 +1,5 @@
 #![deny(clippy::all)]
 
-#[macro_use]
-pub mod better_std;
-
 pub mod ast;
 #[cfg(feature = "backend")]
 pub mod codegen;

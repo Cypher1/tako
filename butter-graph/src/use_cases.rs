@@ -2,6 +2,7 @@ use crate::error::GraphErr;
 use crate::function::{Function, FunctionOp, Op};
 use crate::graph::{Graph, Graphic};
 use crate::value::*;
+use better_std::dict;
 
 fn print_g<G: Graphic>(g: &G) -> Result<(), GraphErr> {
     g.with_graph(|g| {
