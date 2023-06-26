@@ -2,6 +2,7 @@ pub mod manager;
 pub mod status;
 pub mod task_trait;
 use crate::ast::Ast;
+use llamada_calculus::Llamada;
 use crate::ast::NodeId;
 use crate::error::Error;
 use crate::error::TError;
@@ -208,15 +209,16 @@ impl Task for LowerFileTask {
         Some(&self.path)
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        let ast = lower(&self.path, &self.ast, self.root)
+        let result = lower(&self.path, &self.ast, self.root)
             .map_err(|err| self.decorate_error(err));
         result_sender
             .send((
                 self.clone(),
-                match (ast, self.root) {
+                match (result, self.root) {
                     (Ok(result), Some(root)) => Update::FinalResult(CodegenTask {
                         path: self.path,
-                        ast: result,
+                        ast: self.ast.clone(),
+                        lowered: result,
                         root,
                     }),
                     (_, None) => Update::Failed(self.decorate_error(TError::InternalError {
@@ -265,6 +267,7 @@ impl Task for EvalFileTask {
 pub struct CodegenTask {
     pub path: PathBuf,
     pub ast: Ast,
+    pub lowered: Llamada,
     pub root: NodeId,
 }
 

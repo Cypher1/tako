@@ -15,6 +15,7 @@ use crate::expr_result::EvalInfo;
 use base_types::{Empty, Never};
 pub use expr_result::ExprResult;
 pub use reprs::dense::{DenseRepr, LambdaCalc};
+pub use reprs::llamada::Llamada;
 pub use visitors::Visitor;
 pub use with_context::WithContext;
 

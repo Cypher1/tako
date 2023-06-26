@@ -257,10 +257,11 @@ impl Compiler {
         let (tx2, rx2) = mpsc::unbounded_channel();
         spawn(async move {
             // TODO: Use a proper map from in paths to out paths.
-            while let Some(CodegenTask { path: _, ast, root }) = rx1.recv().await {
+            while let Some(CodegenTask { path: _, ast, root, lowered }) = rx1.recv().await {
                 tx2.send(CodegenTask {
                     path: out_path.clone(),
                     ast: ast.clone(),
+                    lowered: lowered.clone(),
                     root,
                 })
                 .expect("Should be able to send codegen task");
