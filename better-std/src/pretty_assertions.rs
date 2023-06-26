@@ -24,6 +24,7 @@ impl std::fmt::Debug for MultiPretty<String> {
     }
 }
 
+#[macro_export]
 macro_rules! assert_str_eq {
     ($left:expr, $right:expr) => {
         pretty_assertions::assert_eq!(

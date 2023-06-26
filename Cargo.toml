@@ -3,6 +3,7 @@
 default-members=["butter-graph", "takoc", "takolib", "llamada-calculus"]
 
 members = [
+    "better-std",
     "takolib",
     "takoc",
     "tako-webui",
