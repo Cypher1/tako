@@ -6,8 +6,8 @@ pub use map_macros::*;
 pub mod todo;
 pub use todo::*;
 
-#[cfg(test)]
 #[macro_use]
-pub mod pretty_assertions;
-#[cfg(test)]
+pub mod more_pretty_assertions;
+pub use more_pretty_assertions::*;
+
 pub use pretty_assertions::*;

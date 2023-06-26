@@ -3,9 +3,9 @@ pub mod typed_index;
 pub mod meta;
 pub mod tribool;
 
-use better_std::*;
 use crate::error::TError;
 use crate::primitives::tribool::{all_true, any_true, Tribool};
+use better_std::*;
 use bitvec::prelude::*;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt;
@@ -531,6 +531,7 @@ pub fn variable(name: &str) -> Val {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use better_std::assert_eq;
 
     type Res = Result<(), TError>;
 

@@ -1,9 +1,9 @@
 use crate::ast::location::{IndexIntoFile, Location, SymbolLength};
 use crate::error::TError;
 use crate::parser::semantics::BindingMode;
+use better_std::{assert_eq, todo, *};
 use lazy_static::lazy_static;
 use log::{debug, trace};
-use better_std::*;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 
@@ -713,7 +713,7 @@ pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> boo
     let kind = if let PartialToken(kind) = kind {
         kind
     } else {
-        better_std::todo!("Invalid / unfinished token: {kind:?} {characters:?}");
+        todo!("Invalid / unfinished token: {kind:?} {characters:?}");
     };
     if kind == StringLit {
         let quote = characters
@@ -735,7 +735,7 @@ pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> boo
         let mut number_of_tokens =
             (length + SymbolLength::MAX as usize - 1) / (SymbolLength::MAX as usize);
         if number_of_tokens >= (SymbolLength::MAX as usize) {
-            better_std::todo!("Token was too long ({length:?}), implement a recursive group thing...");
+            todo!("Token was too long ({length:?}), implement a recursive group thing...");
         }
         tokens.push(Token {
             start: characters.start() as IndexIntoFile,
@@ -769,12 +769,12 @@ pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> boo
 
 #[cfg(test)]
 mod tests {
-    use better_std::*;
     use super::*;
     use super::{
         CharacterType::{PartialToken, Whitespace},
         TokenType::{Atom, ColorLit, Ident, NumLit, Op, StringLit},
     };
+    use better_std::assert_eq;
     use strum::IntoEnumIterator; // TODO(cleanup): Make these test only
 
     fn setup_many(contents: &str, n: usize) -> Vec<Token> {
