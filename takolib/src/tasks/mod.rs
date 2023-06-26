@@ -2,16 +2,16 @@ pub mod manager;
 pub mod status;
 pub mod task_trait;
 use crate::ast::Ast;
-use llamada_calculus::Llamada;
 use crate::ast::NodeId;
 use crate::error::Error;
 use crate::error::TError;
-use crate::parser::tokens::Token;
 use crate::lowerer::lower;
+use crate::parser::tokens::Token;
 use crate::primitives::meta::Meta;
 use crate::primitives::Prim;
 use async_trait::async_trait;
 use enum_kinds::EnumKind;
+use llamada_calculus::Llamada;
 pub use manager::{StatusReport, TaskStats};
 pub use status::*;
 use std::collections::HashMap;
@@ -209,8 +209,8 @@ impl Task for LowerFileTask {
         Some(&self.path)
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        let result = lower(&self.path, &self.ast, self.root)
-            .map_err(|err| self.decorate_error(err));
+        let result =
+            lower(&self.path, &self.ast, self.root).map_err(|err| self.decorate_error(err));
         result_sender
             .send((
                 self.clone(),
