@@ -33,7 +33,7 @@ impl<T, Meta> RcRepr<T, Meta> {
 
     pub fn set_root(&mut self, index: Rc<Ptr<T, Meta>>) {
         self.terms.push(index);
-        self.root = self.terms.len() - 1
+        self.root = self.terms.len() - 1;
     }
 }
 

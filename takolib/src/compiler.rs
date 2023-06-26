@@ -7,8 +7,8 @@ pub use crate::tasks::status::*;
 pub use crate::tasks::task_trait::TaskId;
 use crate::tasks::task_trait::{ResultSenderFor, Task, TaskReceiverFor};
 use crate::tasks::{
-    CodegenTask, DesugarFileTask, EvalFileTask, LexFileTask, LoadFileTask, ParseFileTask,
-    RequestTask,
+    CodegenTask, DesugarFileTask, EvalFileTask, LexFileTask, LoadFileTask, LowerFileTask,
+    ParseFileTask, RequestTask,
 };
 use crate::ui::Client;
 use log::{debug, trace};
@@ -26,6 +26,7 @@ pub struct Compiler {
     lex_file_manager: Arc<Mutex<TaskManager<LexFileTask>>>,
     parse_file_manager: Arc<Mutex<TaskManager<ParseFileTask>>>,
     desugar_file_manager: Arc<Mutex<TaskManager<DesugarFileTask>>>,
+    lower_file_manager: Arc<Mutex<TaskManager<LowerFileTask>>>,
     eval_file_manager: Arc<Mutex<TaskManager<EvalFileTask>>>,
     codegen_manager: Arc<Mutex<TaskManager<CodegenTask>>>,
     // Broadcast the accumulation to all clients.
@@ -66,6 +67,7 @@ impl Default for Compiler {
             lex_file_manager: Self::manager(&task_stats_sender, &task_stats_requester),
             parse_file_manager: Self::manager(&task_stats_sender, &task_stats_requester),
             desugar_file_manager: Self::manager(&task_stats_sender, &task_stats_requester),
+            lower_file_manager: Self::manager(&task_stats_sender, &task_stats_requester),
             eval_file_manager: Self::manager(&task_stats_sender, &task_stats_requester),
             codegen_manager: Self::manager(&task_stats_sender, &task_stats_requester),
             // TODO(features): More passes:
@@ -207,6 +209,30 @@ impl Compiler {
         Self::with_manager(rx, &self.desugar_file_manager, response_sender);
     }
 
+    pub fn lower(
+        &self,
+        path: PathBuf,
+        contents: Option<String>,
+        response_sender: ResultSenderFor<LowerFileTask>,
+    ) {
+        let (tx1, mut rx1) = mpsc::unbounded_channel();
+        // TODO: Static checking should be here.
+        self.desugar(path.clone(), contents, tx1);
+        let (tx2, rx2) = mpsc::unbounded_channel();
+        spawn(async move {
+            // TODO: Use a proper map from in paths to out paths.
+            while let Some(EvalFileTask { path: _, ast, root }) = rx1.recv().await {
+                tx2.send(LowerFileTask {
+                    path: path.clone(),
+                    ast: ast.clone(),
+                    root,
+                })
+                .expect("Should be able to send codegen task");
+            }
+        });
+        Self::with_manager(rx2, &self.lower_file_manager, response_sender);
+    }
+
     pub fn eval(
         &self,
         path: PathBuf,
@@ -227,26 +253,24 @@ impl Compiler {
     ) {
         let (tx1, mut rx1) = mpsc::unbounded_channel();
         // TODO: Static checking should be here.
-        self.desugar(path, contents, tx1);
+        self.lower(path, contents, tx1);
         let (tx2, rx2) = mpsc::unbounded_channel();
         spawn(async move {
             // TODO: Use a proper map from in paths to out paths.
-            while let Some(EvalFileTask { path: _, ast, root }) = rx1.recv().await {
-                let mut roots = vec![];
-                if let Some(root) = root {
-                    // TODO: Support from CLI
-                    roots.push(root); // Build only the selected root.
-                } else {
-                    roots.extend(ast.roots.iter().copied()); // Build all
-                }
-                for root in roots {
-                    tx2.send(CodegenTask {
-                        path: out_path.clone(),
-                        ast: ast.clone(),
-                        root,
-                    })
-                    .expect("Should be able to send codegen task");
-                }
+            while let Some(CodegenTask {
+                path: _,
+                ast,
+                root,
+                lowered,
+            }) = rx1.recv().await
+            {
+                tx2.send(CodegenTask {
+                    path: out_path.clone(),
+                    ast: ast.clone(),
+                    lowered: lowered.clone(),
+                    root,
+                })
+                .expect("Should be able to send codegen task");
             }
         });
         Self::with_manager(rx2, &self.codegen_manager, response_sender);
