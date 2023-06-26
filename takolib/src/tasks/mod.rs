@@ -217,7 +217,7 @@ impl Task for LowerFileTask {
                 match (result, self.root) {
                     (Ok(result), Some(root)) => Update::FinalResult(CodegenTask {
                         path: self.path,
-                        ast: self.ast.clone(),
+                        ast: self.ast,
                         lowered: result,
                         root,
                     }),
