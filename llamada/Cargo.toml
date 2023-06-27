@@ -1,8 +1,8 @@
 [package]
-name = "llamada-calculus"
+name = "llamada"
 version = "0.1.0"
 repository = "https://github.com/cypher1/tako"
-description = "The core implementation of tako"
+description = "An extensible lambda calculus implementation"
 authors = ["Jay Pratt <jay@skfl.tech>"]
 edition = "2021"
 readme = "README.md"

@@ -1,4 +1,4 @@
-name: Check and upload takoc
+name: Check and upload tako
 
 on: [push]
 
@@ -7,11 +7,11 @@ env:
 
 defaults:
   run:
-    working-directory: ./takoc
+    working-directory: ./tako
 
 jobs:
-  takoc:
-    name: Takoc Test, build and lint using ${{ matrix.os }}
+  tako:
+    name: Tako Test, build and lint using ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -24,10 +24,10 @@ jobs:
         path: |
           /home/runner/.cargo/
           target
-        key: ${{ runner.os }}-takoc-cargo-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.os }}-tako-cargo-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
-          ${{ runner.os }}-takoc-cargo-${{ hashFiles('**/Cargo.lock') }}
-          ${{ runner.os }}-takoc-cargo-
+          ${{ runner.os }}-tako-cargo-${{ hashFiles('**/Cargo.lock') }}
+          ${{ runner.os }}-tako-cargo-
           ${{ runner.os }}-
     - name: Cache LLVM and Clang
       id: cache-llvm
@@ -56,19 +56,19 @@ jobs:
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v3
       with:
-        name: takoc
-        path: ./target/release/takoc
+        name: tako
+        path: ./target/release/tako
     - name: Upload executable Windows
       if: runner.os == 'Windows'
       uses: actions/upload-artifact@v3
       with:
-        name: takoc.exe
-        path: ./target/release/takoc.exe
+        name: tako.exe
+        path: ./target/release/tako.exe
     - name: Install clippy
       run: rustup component add clippy
     - name: Clippy takolib
       run: cargo clippy --all-features -- -D warnings
-    - name: Clippy takoc
+    - name: Clippy tako
       run: cargo clippy --all-features -- -D warnings
     - name: Install fmt
       run: rustup component add rustfmt

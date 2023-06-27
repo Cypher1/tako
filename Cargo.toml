@@ -1,16 +1,14 @@
 [workspace]
-
-default-members=["butter-graph", "takoc", "takolib", "llamada-calculus"]
+resolver = "2"
+default-members=["tako", "takolib", "llamada"]
 
 members = [
     "better-std",
     "takolib",
-    "takoc",
-    "tako-webui",
-    "tako-bench",
-    "llamada-calculus",
-    "butter-graph",
-    "xtask",
+    "tako",
+    "takoweb",
+    "takobench",
+    "llamada",
 ]
 
 [profile.test]

@@ -1,8 +1,8 @@
 use async_trait::async_trait;
 use std::path::PathBuf;
 
-use tako::tasks::RequestTask;
-use tako::ui::{Client, OptionsTrait, UserInterface};
+use takolib::tasks::RequestTask;
+use takolib::ui::{Client, OptionsTrait, UserInterface};
 use tokio::spawn;
 use tokio::sync::{mpsc, oneshot};
 
@@ -46,8 +46,8 @@ impl UserInterface<Options> for YewClient {
 }
 
 pub async fn interpret(src: &str) -> String {
-    tako::ensure_initialized();
-    let compiler = tako::start().await;
+    takolib::ensure_initialized();
+    let compiler = takolib::start().await;
     let client_launch_request_sender = compiler.client_launch_request_sender.clone();
     spawn(async move { compiler.run_loop().await });
     let (tx, rx) = tokio::sync::oneshot::channel();
