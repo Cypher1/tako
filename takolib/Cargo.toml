@@ -1,5 +1,5 @@
 [package]
-name = "tako"
+name = "takolib"
 version = "0.2.0"
 repository = "https://github.com/cypher1/tako"
 description = "The core implementation of tako"
@@ -20,7 +20,7 @@ mlir_backend=["melior", "backend"]
 backend=[] # signals that 'a' backend is active.
 
 [lib]
-name = "tako"
+name = "takolib"
 path = "src/lib.rs"
 
 # [[bin]]
@@ -50,7 +50,7 @@ inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "master", feat
 wasm-logger = { version = "0.2.0", optional = true }
 melior = { version = "0.3.1", optional = true }
 smallvec = { version = "1.10.0", features = [ "const_new", "const_generics", "union" ] }
-llamada-calculus = { path = "../llamada-calculus", features = [ ] }
+llamada = { path = "../llamada", features = [ ] }
 better-std = { path = "../better-std", features = [ ] }
 
 [dev-dependencies]

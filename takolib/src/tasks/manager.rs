@@ -142,7 +142,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
             Self::name()
         );
         let task_id = task.get_hash();
-        let mut current_results = self
+        let current_results = self
             .result_store
             .entry(task_id)
             .or_insert_with(TaskStatus::new);

@@ -1,17 +1,18 @@
 [workspace]
-
-default-members=["butter-graph", "takoc", "takolib", "llamada-calculus"]
-
+resolver = "2"
+default-members=["tako", "takolib", "llamada"]
 members = [
     "better-std",
     "takolib",
-    "takoc",
-    "tako-webui",
-    "tako-bench",
-    "llamada-calculus",
-    "butter-graph",
-    "xtask",
+    "tako",
+    "takoweb",
+    "takobench",
+    "llamada",
 ]
+
+[workspace.package]
+homepage = "https://takolang.dev"
+repository = "https://github.com/cypher1/tako"
 
 [profile.test]
 opt-level = 3

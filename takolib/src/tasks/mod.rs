@@ -11,7 +11,7 @@ use crate::primitives::meta::Meta;
 use crate::primitives::Prim;
 use async_trait::async_trait;
 use enum_kinds::EnumKind;
-use llamada_calculus::Llamada;
+use llamada::Llamada;
 pub use manager::{StatusReport, TaskStats};
 pub use status::*;
 use std::collections::HashMap;

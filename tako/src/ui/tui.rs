@@ -15,8 +15,8 @@ use std::{
     io::{stdout, Write},
     time::{Duration, Instant},
 };
-use tako::tasks::RequestTask;
-use tako::ui::{Client, OptionsTrait, UserInterface};
+use takolib::tasks::RequestTask;
+use takolib::ui::{Client, OptionsTrait, UserInterface};
 use tokio::{
     sync::{mpsc, oneshot},
     time,

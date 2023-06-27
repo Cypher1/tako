@@ -7,7 +7,7 @@ env:
 
 defaults:
   run:
-    working-directory: ./takolib
+    working-directory: takolib
 
 jobs:
   takolib:

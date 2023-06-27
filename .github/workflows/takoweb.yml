@@ -1,4 +1,4 @@
-name: Check tako-webui
+name: Check takoweb
 
 on: [push]
 
@@ -7,11 +7,11 @@ env:
 
 defaults:
   run:
-    working-directory: ./tako-webui
+    working-directory: takoweb
 
 jobs:
-  check_webui:
-    name: Check webui using ${{ matrix.os }}
+  check_takoweb:
+    name: Check takoweb using ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -23,10 +23,10 @@ jobs:
         path: |
           /home/runner/.cargo/
           target
-        key: ${{ runner.os }}-webui-cargo-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.os }}-takoweb-cargo-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
-          ${{ runner.os }}-webui-cargo-${{ hashFiles('**/Cargo.lock') }}
-          ${{ runner.os }}-webui-cargo-
+          ${{ runner.os }}-takoweb-cargo-${{ hashFiles('**/Cargo.lock') }}
+          ${{ runner.os }}-takoweb-cargo-
           ${{ runner.os }}-
     - name: install wasm toolchain
       uses: actions-rs/toolchain@v1
@@ -39,7 +39,7 @@ jobs:
       uses: jetli/trunk-action@v0.1.0
       with:
         version: 'latest'
-    - name: Build webui
+    - name: Build takoweb
       run: trunk build
-    - name: Run webui tests
+    - name: Run takoweb tests
       run: cargo fmt --all -- --check

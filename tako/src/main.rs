@@ -5,14 +5,14 @@ mod ui;
 
 use cli_options::{Options, VERSION};
 use log::{debug, error, trace};
-use tako::{
+use takolib::{
     start,
     ui::{Client, OptionsTrait, UserInterface},
 };
 use tokio::sync::{mpsc, oneshot};
 use ui::{Http, Mode, Tui};
 
-type Output = tako::primitives::Prim;
+type Output = takolib::primitives::Prim;
 
 pub async fn launch_ui<
     Out: Send + std::fmt::Debug + std::fmt::Display,
@@ -81,7 +81,7 @@ impl Task for WatchFileTask {
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
-    tako::ensure_initialized();
+    takolib::ensure_initialized();
     trace!("\n>>>>>>>>>>>>>>>>>>>>\nStarting takoc {VERSION}\n>>>>>>>>>>>>>>>>>>>>\n");
 
     let args: Vec<String> = std::env::args().collect();

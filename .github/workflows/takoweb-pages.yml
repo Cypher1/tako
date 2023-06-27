@@ -22,11 +22,11 @@ concurrency:
 
 defaults:
   run:
-    working-directory: ./tako-webui
+    working-directory: takoweb
 
 jobs:
   deploy:
-    name: Deploy webui
+    name: Deploy web
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -38,10 +38,10 @@ jobs:
         path: |
           /home/runner/.cargo/
           target
-        key: ${{ runner.os }}-webui-cargo-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.os }}-takoweb-cargo-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
-          ${{ runner.os }}-webui-cargo-${{ hashFiles('**/Cargo.lock') }}
-          ${{ runner.os }}-webui-cargo-
+          ${{ runner.os }}-takoweb-cargo-${{ hashFiles('**/Cargo.lock') }}
+          ${{ runner.os }}-takoweb-cargo-
           ${{ runner.os }}-
     - name: install wasm toolchain
       uses: actions-rs/toolchain@v1
@@ -56,7 +56,7 @@ jobs:
       uses: jetli/trunk-action@v0.1.0
       with:
         version: 'latest'
-    - name: Build webui
+    - name: Build web
       run: trunk build
     - name: Setup Pages
       uses: actions/configure-pages@v3
@@ -64,7 +64,7 @@ jobs:
       uses: actions/upload-pages-artifact@v1
       with:
         # Upload entire repository
-        path: 'tako-webui/dist'
+        path: 'takoweb/dist'
     - name: Deploy to GitHub Pages
       id: deployment
       uses: actions/deploy-pages@v1

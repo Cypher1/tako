@@ -1,7 +1,7 @@
 use crate::ui::Mode as UiMode;
 use log::warn;
 use std::path::PathBuf;
-use tako::ui::OptionsTrait;
+use takolib::ui::OptionsTrait;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Command {
@@ -108,10 +108,6 @@ impl Options {
                 opts.files.push(f.into());
             }
         }
-        if opts.files.is_empty() && opts.cmd != Command::Repl {
-            print_cli_help();
-            std::process::exit(1);
-        }
         opts
     }
 }
@@ -127,7 +123,7 @@ pub fn print_cli_help() {
 
 pub const TITLE: &str = "tako v";
 
-pub const VERSION: &str = tako::VERSION;
+pub const VERSION: &str = takolib::VERSION;
 
 pub const USAGE: &str = "An experimental programming language for ergonomic software verification.
 

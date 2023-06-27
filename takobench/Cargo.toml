@@ -1,5 +1,5 @@
 [package]
-name = "tako-bench"
+name = "takobench"
 version = "0.1.0"
 edition = "2021"
 
@@ -9,4 +9,4 @@ default = []
 
 [dependencies]
 criterion = { version = "0.3", optional = true }
-tako = { path = "../takolib" }
+takolib = { path = "../takolib" }

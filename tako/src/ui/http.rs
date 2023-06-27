@@ -5,12 +5,13 @@ use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::time::{Duration, Instant};
-use tako::primitives::Prim;
-use tako::tasks::RequestTask;
-use tako::ui::OptionsTrait;
-use tako::ui::{Client, UserInterface};
+use takolib::primitives::Prim;
+use takolib::tasks::RequestTask;
+use takolib::ui::OptionsTrait;
+use takolib::ui::{Client, UserInterface};
 use tokio::sync::{mpsc, oneshot};
 use tokio::time;
+use warp::hyper::Response;
 use warp::Filter;
 
 const TICK: Duration = Duration::from_millis(100);
@@ -31,31 +32,59 @@ enum CompilerRequest {
 }
 
 async fn run_server(request_sender: mpsc::UnboundedSender<CompilerRequest>) {
-    let index = warp::path::end().map(|| "Hello everyone! (try /request/name)".to_string());
     let version = warp::path!("version").map(|| format!("{TITLE}{VERSION}"));
 
-    // GET /request/warp => 200 OK with body "Hello, warp!"
-    let request = warp::path!("request" / String / i32 / i32).then(
-        move |client_id: String, a: i32, b: i32| {
+    // GET / => 200 OK with body "Hello, warp!"
+    let request = warp::path::end()
+        .and(warp::query::<HashMap<String, String>>())
+        .then(move |map: HashMap<String, String>| {
+            eprintln!("request: {map:?}");
+            let line = map
+                .get("line")
+                .cloned()
+                .unwrap_or_else(|| "\"Try ./?line=\"1+2\"\"".to_string());
+            let client_id = to_client_id("TODO");
             let request_sender = request_sender.clone();
             async move {
                 let (tx, mut rx) = mpsc::unbounded_channel();
                 request_sender
                     .send(CompilerRequest::RequestTask(
-                        RequestTask::EvalLine(format!("{a}+{b}")),
-                        to_client_id(&client_id),
+                        RequestTask::EvalLine(line.to_string()),
+                        client_id,
                         tx,
                     ))
-                    .expect("");
+                    .expect("Error...");
                 let result = rx.recv().await;
-                format!("Hello, {client_id}!\n{result:?}")
-            }
-        },
-    );
 
-    warp::serve(index.or(request).or(version))
-        .run(([127, 0, 0, 1], 3030))
-        .await;
+                Response::builder().body(format!(
+                    "<!DOCTYPE html>
+                    <html>
+                        <head>
+                            <title>Tako Web</title>
+                        </head>
+                        <body>
+                            <h1>Tako Web</h1>
+                            <p>{line}</p>
+                            <p>{result:?}</p>
+                            <form action=\"/\">
+                                <input type=\"text\" name=\"line\" value=\"{line}\">
+                                <input type=\"submit\" value=\"Submit\">
+                            </form>
+                        </body>
+                    </html>",
+                    line = html_escape::encode_text(&line)
+                ))
+            }
+        });
+
+    let port = 3030;
+    let ip = [127, 0, 0, 1];
+
+    eprintln!(
+        "Launched at http://{ip}:{port}",
+        ip = ip.map(|n| n.to_string()).join(".")
+    );
+    warp::serve(request.or(version)).run((ip, port)).await;
 }
 
 fn to_client_id(t: &str) -> u64 {

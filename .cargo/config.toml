@@ -1,5 +1,4 @@
 
 [alias]
-task = "run --package xtask --"
-takoc = "run --package takoc --"
+tako = "run --package tako --"
 

@@ -1,4 +1,4 @@
-use tako::VERSION;
+use takolib::VERSION;
 use yew::{function_component, html, Html};
 
 #[function_component(Footer)]
