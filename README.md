@@ -24,28 +24,32 @@ Installation instructions can be found at <https://rustup.rs/>
 Building is a single step,
 
 ```bash
-cargo build --release -Z unstable-options --out-dir .
+cargo build --release
 ```
 
-Actually, only `cargo build` is needed, but this gives us an optimised build and copies the result into the current directory.
+You can also install tako, though I don't recommend this.
+```
+cargo install --path=./tako
+```
+
 
 This allows us to run the compiler.
 
 ```bash
-./tako examples/hello_name.tk
+tako examples/hello_name.tk
 ./build/examples_hello_name 'world'
 ```
 
 And interactive interpreter:
 
 ```bash
-./tako -i
+tako -i
 ```
 
 And use the interpreter to run a tako file:
 
 ```bash
-./tako -r examples/hello_name.tk -- 'world'
+tako -r examples/hello_name.tk -- 'world'
 ```
 
 ## Running the tests
