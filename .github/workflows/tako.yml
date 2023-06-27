@@ -7,7 +7,7 @@ env:
 
 defaults:
   run:
-    working-directory: ./tako
+    working-directory: tako
 
 jobs:
   tako:

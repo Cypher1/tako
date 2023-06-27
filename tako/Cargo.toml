@@ -1,0 +1,25 @@
+[package]
+name = "tako"
+version = "0.1.0"
+repository = "https://github.com/cypher1/tako"
+description = "The main CLI for tako"
+authors = ["Jay Pratt <jay@skfl.tech>"]
+edition = "2021"
+readme = "README.md"
+license = "MIT"
+keywords = ["compiler", "programming", "language"]
+categories = ["gui", "wasm", "web-programming"]
+include = ["src/**/*", "LICENSE.md", "README.md"]
+
+[dependencies]
+async-trait = "0.1"
+takolib = { path = "../takolib", features = [ "native" ] }
+tokio = { version = "1.24", features = [ "full" ] }
+log = "0.4"
+warp = "0.3"
+crokey = "0.5"
+crossterm = { version = "0.24", features = [ "event-stream" ] }
+directories = "4.0"
+notify = "5.0"
+shutdown_hooks = "0.1"
+futures = "0.3"

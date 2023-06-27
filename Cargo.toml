@@ -1,7 +1,6 @@
 [workspace]
 resolver = "2"
 default-members=["tako", "takolib", "llamada"]
-
 members = [
     "better-std",
     "takolib",
@@ -10,6 +9,10 @@ members = [
     "takobench",
     "llamada",
 ]
+
+[workspace.package]
+homepage = "https://takolang.dev"
+repository = "https://github.com/cypher1/tako"
 
 [profile.test]
 opt-level = 3

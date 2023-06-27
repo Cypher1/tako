@@ -7,7 +7,7 @@ env:
 
 defaults:
   run:
-    working-directory: ./takoweb
+    working-directory: takoweb
 
 jobs:
   check_takoweb:
