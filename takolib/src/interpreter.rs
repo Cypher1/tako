@@ -4,7 +4,7 @@ use crate::error::TError;
 use crate::parser::semantics::Literal;
 use crate::parser::tokens::Symbol;
 use crate::primitives::Prim;
-use log::{error, trace};
+use log::trace;
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::path::Path;
@@ -32,12 +32,16 @@ pub fn run(path: &Path, ast: &Ast, root: Option<NodeId>) -> Result<Prim, TError>
     let start = root.unwrap_or_else(|| {
         if ast.roots.len() == 1 {
             ast.roots[0]
-        } else {
-            error!(
-                "Ambiguous run command: Which root should be run for {path}",
+        } else if ast.roots.len() == 0 {
+            todo!(
+                "Error: No roots found for {path}",
                 path = path.display()
             );
-            todo!()
+        } else {
+            todo!(
+                "Ambiguous run command: Multiple roots found for {path}",
+                path = path.display()
+            );
         }
     });
     let mut ctx = Ctx {
