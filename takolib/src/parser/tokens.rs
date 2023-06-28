@@ -700,7 +700,9 @@ pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> boo
                     (_, _) => break,
                 }))
             }
-            (PartialToken(Op(Symbol::Hash)), HexSym | PartialToken(NumLit)) => PartialToken(ColorLit), // Color Literal.
+            (PartialToken(Op(Symbol::Hash)), HexSym | PartialToken(NumLit)) => {
+                PartialToken(ColorLit)
+            } // Color Literal.
             (PartialToken(ColorLit), HexSym | PartialToken(NumLit)) => PartialToken(ColorLit), // Color Literal.
             (AtomHead, HexSym | PartialToken(NumLit | Ident)) => PartialToken(Atom), // Atom.
             (PartialToken(Atom), HexSym | PartialToken(NumLit | Ident)) => PartialToken(Atom), // Atom.

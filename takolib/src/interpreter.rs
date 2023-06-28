@@ -33,10 +33,7 @@ pub fn run(path: &Path, ast: &Ast, root: Option<NodeId>) -> Result<Prim, TError>
         if ast.roots.len() == 1 {
             ast.roots[0]
         } else if ast.roots.len() == 0 {
-            todo!(
-                "Error: No roots found for {path}",
-                path = path.display()
-            );
+            todo!("Error: No roots found for {path}", path = path.display());
         } else {
             todo!(
                 "Ambiguous run command: Multiple roots found for {path}",
