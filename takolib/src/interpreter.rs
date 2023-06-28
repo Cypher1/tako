@@ -260,7 +260,6 @@ impl<'a> Ctx<'a> {
             | Symbol::AddAssign
             | Symbol::SubAssign
             | Symbol::DivAssign
-            | Symbol::DivRoundingAssign
             | Symbol::MulAssign
             | Symbol::AndAssign
             | Symbol::BitXorAssign

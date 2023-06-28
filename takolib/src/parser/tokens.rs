@@ -53,7 +53,6 @@ pub enum Symbol {
     AddAssign,
     SubAssign,
     DivAssign,
-    DivRoundingAssign,
     MulAssign,
     AndAssign,
     OrAssign,
@@ -155,7 +154,6 @@ lazy_static! {
             Symbol::AddAssign,
             Symbol::SubAssign,
             Symbol::DivAssign,
-            Symbol::DivRoundingAssign,
             Symbol::MulAssign,
             Symbol::AndAssign,
             Symbol::OrAssign,
@@ -168,7 +166,6 @@ lazy_static! {
         Symbol::AddAssign => vec![Symbol::LeftPipe],
         Symbol::SubAssign => vec![Symbol::LeftPipe],
         Symbol::DivAssign => vec![Symbol::LeftPipe],
-        Symbol::DivRoundingAssign => vec![Symbol::LeftPipe],
         Symbol::MulAssign => vec![Symbol::LeftPipe],
         Symbol::AndAssign => vec![Symbol::LeftPipe],
         Symbol::OrAssign => vec![Symbol::LeftPipe],
@@ -342,7 +339,6 @@ impl std::fmt::Display for Symbol {
                 Self::SubAssign => "-=",
                 Self::DivAssign => "/=",
                 Self::MulAssign => "*=",
-                Self::DivRoundingAssign => "//=",
                 Self::AndAssign => "&=",
                 Self::OrAssign => "|=",
                 Self::BitXorAssign => "^=",
@@ -844,12 +840,6 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
-    fn lex_head_color_invalid() {
-        setup("#");
-    }
-
-    #[test]
     fn lex_head_color_hex() {
         let tokens = setup("#f9F");
         assert_eq!(
@@ -1130,12 +1120,61 @@ mod tests {
     }
 
     #[test]
+    fn can_tokenize_comments() {
+        // TODO: Multiline comments
+        let symbol = Symbol::Comment;
+        let contents = format!("{}123", &symbol);
+        let tokens = setup_many(&contents, 2);
+        assert_eq!(tokens, vec![], "Should ignore comments and shebangs");
+    }
+
+    #[test]
+    fn can_tokenize_shebang() {
+        let symbol = Symbol::Shebang;
+        let contents = format!("{}123", &symbol);
+        let tokens = setup_many(&contents, 2);
+        assert_eq!(tokens, vec![], "Should ignore comments and shebangs");
+    }
+
+    #[test]
+    fn can_tokenize_color_lits() {
+        let symbol = Symbol::Hash;
+        let symbol_str = format!("{}", &symbol);
+        let contents = format!("{}123", &symbol);
+        let tokens = setup_many(&contents, 2);
+        let length = symbol_str.len();
+
+        assert_eq!(
+            tokens,
+            vec![Token {
+                kind: ColorLit,
+                start: 0,
+                length: (length + 3) as SymbolLength,
+            },],
+            "Should read #<num> as color"
+        );
+        assert_str_eq!(tokens[0].get_src(&contents), "#123");
+    }
+
+    #[test]
     fn can_tokenize_operators() {
         for symbol in Symbol::iter() {
+            if matches!(
+                symbol,
+                Symbol::Shebang
+                    | Symbol::Comment
+                    | Symbol::Hash
+                    | Symbol::MultiCommentOpen
+                    | Symbol::MultiCommentClose
+            ) {
+                // Special case
+                continue;
+            }
             let symbol_str = format!("{}", &symbol);
             let contents = format!("{}123", &symbol);
             let tokens = setup_many(&contents, 2);
             let length = symbol_str.len();
+
             assert_eq!(
                 tokens,
                 vec![
