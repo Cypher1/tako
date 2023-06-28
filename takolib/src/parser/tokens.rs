@@ -32,6 +32,12 @@ pub enum OpBinding {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[cfg_attr(test, derive(EnumIter))]
 pub enum Symbol {
+    // Ignore symbols
+    Shebang,
+    Comment,
+    Hash,
+    MultiCommentOpen,
+    MultiCommentClose,
     // Closes
     CloseBracket,
     CloseCurly,
@@ -40,7 +46,7 @@ pub enum Symbol {
     OpenParen,
     OpenCurly,
     OpenBracket,
-    // Sequences
+    // Sequences/
     Sequence,
     // Assignments
     Assign,
@@ -88,7 +94,6 @@ pub enum Symbol {
     Sub,
     Exp,
     Div,
-    DivRounding,
     Mul,
     // Logical
     And,
@@ -199,8 +204,7 @@ lazy_static! {
         Symbol::RightShift => vec![Symbol::BitNot],
         Symbol::Add => vec![Symbol::Sub],
         Symbol::Sub => vec![Symbol::Div],
-        Symbol::Div => vec![Symbol::DivRounding],
-        Symbol::DivRounding => vec![Symbol::Mul],
+        Symbol::Div => vec![Symbol::Mul],
         Symbol::Mul => vec![Symbol::Exp],
         Symbol::Exp => vec![Symbol::And, Symbol::LogicalAnd, Symbol::BitXor, Symbol::Modulo, Symbol::GetAddress],
         Symbol::And => vec![Symbol::Or],
@@ -298,11 +302,15 @@ impl std::fmt::Display for Symbol {
             f,
             "{}",
             match self {
+                Self::Hash => "#",
+                Self::Shebang => "#!",
+                Self::Comment => "//",
+                Self::MultiCommentOpen => "/*",
+                Self::MultiCommentClose => "*/",
                 // Basics
                 Self::Add => "+",
                 Self::Sub => "-",
                 Self::Div => "/",
-                Self::DivRounding => "//",
                 Self::Escape => "\\",
                 Self::Mul => "*",
                 Self::Exp => "**",
@@ -368,7 +376,6 @@ impl std::fmt::Display for Symbol {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum CharacterType {
     AtomHead,                // '$' on it's own (invalid).
-    ColorLitHead,            // '#' on it's own (invalid).
     Whitespace,              // A special discardable token representing whitespace.
     HexSym, // A subset of symbol characters that can be used in Hex strings (e.g. Colors).
     PartialToken(TokenType), // Already a valid token!
@@ -453,13 +460,13 @@ const _MULTI_COMMENT: &str = "/*";
 
 #[inline]
 fn classify_char(ch: char) -> CharacterType {
-    use CharacterType::{AtomHead, ColorLitHead, HexSym, PartialToken, Whitespace};
+    use CharacterType::{AtomHead, HexSym, PartialToken, Whitespace};
     use TokenType::{Ident, NumLit, Op, StringLit};
     PartialToken(match ch {
         '\n' | '\r' | '\t' | ' ' => return Whitespace,
         '$' => return AtomHead,
-        '#' => return ColorLitHead,
         'A'..='F' | 'a'..='f' => return HexSym,
+        '#' => Op(Symbol::Hash),
         '~' => Op(Symbol::BitNot),
         '!' => Op(Symbol::LogicalNot),
         '@' => Op(Symbol::GetAddress),
@@ -506,7 +513,6 @@ pub const fn assign_op(s: Symbol) -> Option<Symbol> {
         Symbol::AddAssign => Symbol::Add,
         Symbol::SubAssign => Symbol::Sub,
         Symbol::DivAssign => Symbol::Div,
-        Symbol::DivRoundingAssign => Symbol::DivRounding,
         Symbol::MulAssign => Symbol::Mul,
         Symbol::AndAssign => Symbol::And,
         Symbol::OrAssign => Symbol::Or,
@@ -649,7 +655,7 @@ pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> boo
         }
     }
     */
-    use CharacterType::{AtomHead, ColorLitHead, HexSym, PartialToken};
+    use CharacterType::{AtomHead, HexSym, PartialToken};
     use TokenType::{Atom, ColorLit, Ident, NumLit, Op, StringLit};
     let chr = if let Some(chr) = characters.next() {
         chr
@@ -668,11 +674,11 @@ pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> boo
                     (Symbol::Sub, Symbol::Assign) => Symbol::SubAssign,
                     (Symbol::Sub, Symbol::Gt) => Symbol::Arrow,
                     (Symbol::Div, Symbol::Assign) => Symbol::DivAssign,
-                    (Symbol::Div, Symbol::Div) => Symbol::DivRounding,
-                    (Symbol::DivRounding, Symbol::Assign) => Symbol::DivRoundingAssign,
+                    (Symbol::Div, Symbol::Div) => Symbol::Comment,
                     (Symbol::Mul, Symbol::Assign) => Symbol::MulAssign,
                     (Symbol::Mul, Symbol::Mul) => Symbol::Exp,
                     (Symbol::Modulo, Symbol::Assign) => Symbol::ModuloAssign,
+                    (Symbol::Hash, Symbol::LogicalNot) => Symbol::Shebang,
                     (Symbol::LogicalOr, Symbol::Assign) => Symbol::LogicalOrAssign,
                     (Symbol::LogicalAnd, Symbol::Assign) => Symbol::LogicalAndAssign,
                     (Symbol::And, Symbol::Assign) => Symbol::AndAssign,
@@ -694,7 +700,7 @@ pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> boo
                     (_, _) => break,
                 }))
             }
-            (ColorLitHead, HexSym | PartialToken(NumLit)) => PartialToken(ColorLit), // Color Literal.
+            (PartialToken(Op(Symbol::Hash)), HexSym | PartialToken(NumLit)) => PartialToken(ColorLit), // Color Literal.
             (PartialToken(ColorLit), HexSym | PartialToken(NumLit)) => PartialToken(ColorLit), // Color Literal.
             (AtomHead, HexSym | PartialToken(NumLit | Ident)) => PartialToken(Atom), // Atom.
             (PartialToken(Atom), HexSym | PartialToken(NumLit | Ident)) => PartialToken(Atom), // Atom.
@@ -708,7 +714,7 @@ pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> boo
         characters.next(); // Continue past the character.
     }
     if kind == CharacterType::HexSym {
-        kind = PartialToken(TokenType::Ident);
+        kind = PartialToken(TokenType::Ident); // TODO: Re-understand this.
     }
     let kind = if let PartialToken(kind) = kind {
         kind
@@ -728,6 +734,15 @@ pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> boo
                 characters.next(); // Skip escaped quotes.
             }
         }
+    }
+    if kind == Op(Symbol::Shebang) || kind == Op(Symbol::Comment) {
+        while let Some(chr) = characters.next() {
+            // TODO(perf): use .find
+            if chr == '\n' {
+                break;
+            }
+        }
+        return lex_head(characters, tokens);
     }
     let length = characters.length();
     if length > SymbolLength::MAX as usize {

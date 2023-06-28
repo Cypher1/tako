@@ -157,10 +157,6 @@ impl<'a> Ctx<'a> {
                 [Prim::I32(l), Prim::I32(r)] => Prim::I32(l / r),
                 _ => todo!(),
             },
-            Symbol::DivRounding => match self.eval2(&op.args)? {
-                [Prim::I32(l), Prim::I32(r)] => Prim::I32(l / r),
-                _ => todo!(),
-            },
             Symbol::Exp => match self.eval2(&op.args)? {
                 [Prim::I32(l), Prim::I32(r)] => Prim::I32(l.pow(r.try_into().unwrap())),
                 _ => todo!(),
@@ -258,6 +254,11 @@ impl<'a> Ctx<'a> {
             Symbol::CloseParen => todo!(),
             Symbol::OpenBracket => todo!(),
             Symbol::CloseBracket => todo!(),
+            Symbol::Hash => todo!(),
+            Symbol::Shebang => todo!(),
+            Symbol::Comment => todo!(),
+            Symbol::MultiCommentOpen => todo!(),
+            Symbol::MultiCommentClose => todo!(),
             Symbol::Assign
             | Symbol::AddAssign
             | Symbol::SubAssign
