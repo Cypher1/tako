@@ -4,7 +4,7 @@ use crate::error::TError;
 use crate::parser::semantics::Literal;
 use crate::parser::tokens::Symbol;
 use crate::primitives::Prim;
-use log::{error, trace};
+use log::trace;
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::path::Path;
@@ -32,12 +32,13 @@ pub fn run(path: &Path, ast: &Ast, root: Option<NodeId>) -> Result<Prim, TError>
     let start = root.unwrap_or_else(|| {
         if ast.roots.len() == 1 {
             ast.roots[0]
+        } else if ast.roots.len() == 0 {
+            todo!("Error: No roots found for {path}", path = path.display());
         } else {
-            error!(
-                "Ambiguous run command: Which root should be run for {path}",
+            todo!(
+                "Ambiguous run command: Multiple roots found for {path}",
                 path = path.display()
             );
-            todo!()
         }
     });
     let mut ctx = Ctx {
@@ -153,10 +154,6 @@ impl<'a> Ctx<'a> {
                 [Prim::I32(l), Prim::I32(r)] => Prim::I32(l / r),
                 _ => todo!(),
             },
-            Symbol::DivRounding => match self.eval2(&op.args)? {
-                [Prim::I32(l), Prim::I32(r)] => Prim::I32(l / r),
-                _ => todo!(),
-            },
             Symbol::Exp => match self.eval2(&op.args)? {
                 [Prim::I32(l), Prim::I32(r)] => Prim::I32(l.pow(r.try_into().unwrap())),
                 _ => todo!(),
@@ -254,11 +251,15 @@ impl<'a> Ctx<'a> {
             Symbol::CloseParen => todo!(),
             Symbol::OpenBracket => todo!(),
             Symbol::CloseBracket => todo!(),
+            Symbol::Hash => todo!(),
+            Symbol::Shebang => todo!(),
+            Symbol::Comment => todo!(),
+            Symbol::MultiCommentOpen => todo!(),
+            Symbol::MultiCommentClose => todo!(),
             Symbol::Assign
             | Symbol::AddAssign
             | Symbol::SubAssign
             | Symbol::DivAssign
-            | Symbol::DivRoundingAssign
             | Symbol::MulAssign
             | Symbol::AndAssign
             | Symbol::BitXorAssign
