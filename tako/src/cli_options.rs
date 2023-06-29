@@ -44,7 +44,7 @@ impl Default for Options {
         Self {
             executable_location: String::new(),
             files: vec![],
-            cmd: Command::Build,
+            cmd: Command::Interpret,
             interpreter_args: vec![],
             ui_mode: UiMode::Tui,
             optimization_level: 3,
@@ -81,6 +81,7 @@ impl Options {
                 match f.as_str() {
                     "-i" | "--interactive" => opts.cmd = Command::Repl,
                     "-r" | "--run" => opts.cmd = Command::Interpret,
+                    "-b" | "--build" => opts.cmd = Command::Build,
                     "--tui" => opts.ui_mode = UiMode::Tui,
                     "--http" => opts.ui_mode = UiMode::Http,
                     "-O0" => opts.optimization_level = 0,
@@ -128,13 +129,14 @@ pub const VERSION: &str = takolib::VERSION;
 pub const USAGE: &str = "An experimental programming language for ergonomic software verification.
 
 Usage:
-  tako [-i|-r] <files>...
+  tako [ -i | -r | -b ] <files>...
   tako (-h | --help)
   tako --version
 
 Options:
   -i --interactive    Run as a repl (interactive mode).
   -r --run            Run files in interpreter.
+  -b --build          Build files.
   -h --help           Show this screen.
   --version           Show compiler version.
 

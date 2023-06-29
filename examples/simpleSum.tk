@@ -1,2 +1,2 @@
-#!/usr/bin/tako -r
+#!/usr/bin/env tako
 1+2+3
