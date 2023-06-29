@@ -1,4 +1,4 @@
-name: Check takoweb
+name: takoweb
 
 on: [push]
 
@@ -11,7 +11,7 @@ defaults:
 
 jobs:
   check_takoweb:
-    name: Check takoweb using ${{ matrix.os }}
+    name: takoweb CI ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:

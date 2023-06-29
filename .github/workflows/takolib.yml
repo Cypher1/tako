@@ -1,4 +1,4 @@
-name: Check and upload takolib
+name: takolib
 
 on: [push]
 
@@ -11,7 +11,7 @@ defaults:
 
 jobs:
   takolib:
-    name: Takolib Test, build and lint using ${{ matrix.os }}
+    name: Takolib CI ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
