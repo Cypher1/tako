@@ -92,7 +92,7 @@ impl Call {
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Op {
     pub op: Symbol,
-    pub args: SmallVec<[NodeId; 2]>,
+    pub args: SmallVec<[NodeId; 2]>, // TODO: Track L/R?
 }
 make_contains!(ops, (NodeId, Op), Op, OpId, add_op);
 

@@ -129,7 +129,7 @@ impl<'a> Ctx<'a> {
                 _ => todo!(),
             },
             Symbol::Sub => {
-                if op.args.get(0).is_some() {
+                if op.args.get(1).is_some() {
                     match self.eval2(&op.args)? {
                         [Prim::I32(l), Prim::I32(r)] => Prim::I32(l - r),
                         _ => todo!(),
@@ -137,8 +137,8 @@ impl<'a> Ctx<'a> {
                 } else {
                     let arg = self.eval(
                         *op.args
-                            .get(1)
-                            .expect("Sub should have at least a right operand"),
+                            .get(0)
+                            .expect("Sub should have at least one operand"),
                     )?;
                     match arg {
                         Prim::I32(r) => Prim::I32(-r),
@@ -294,6 +294,14 @@ mod tests {
         let ast = setup("123")?;
         let res = run(&test_path(), &ast, None);
         assert_eq!(res, Ok(Prim::I32(123)));
+        Ok(())
+    }
+
+    #[test]
+    fn literal_negatives_multiply_out() -> Result<(), TError> {
+        let ast = setup("-3*-2")?;
+        let res = run(&test_path(), &ast, None);
+        assert_eq!(res, Ok(Prim::I32(6)));
         Ok(())
     }
 
