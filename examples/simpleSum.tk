@@ -1,2 +1,7 @@
 #!/usr/bin/env tako
-1+2+3
+1/*one*/+2/*two*/+3/*three*/
+
+/* Comment
+/* Double comment */
+/* Second double comment */
+*/

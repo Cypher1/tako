@@ -713,30 +713,29 @@ pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> boo
         todo!("Recover from this?");
     }
     else if kind == Op(Symbol::MultiCommentOpen) {
-    // Track depth of mutli line comments
-    let mut depth = 1;
-    let mut last: Option<char> = None;
-    loop {
-        characters.next();
-            (Some('/'), Some('*')) => {
-                depth += 1;
-            }
-            (Some('*'), Some('/')) => {
-                depth -= 1;
-                if multi_comment && depth == 0 {
-                    characters.next();
-                    return lex_head(contents, characters);
+        // Track depth of mutli line comments
+        let mut depth = 1;
+        let mut last: char = ' ';
+        while let Some(mut char) = characters.peek() {
+            match (last, char) {
+                ('/', '*') => {
+                    depth += 1;
                 }
-            }
-            (_, Some(chr)) => {
-                if comment && (chr == '\n' || chr == '\r') {
-                    characters.next();
-                    return lex_head(contents, characters);
+                ('*', '/') => {
+                    depth -= 1;
+                    // Drop the '/' as it could be read as a "/*" when its part of "*/*/"
+                    char = ' ';
+                    if depth == 0 {
+                        break;
+                    }
                 }
-                last = Some(chr);
+                _ => {}
             }
-            (_, None) => return lex_head(characters),
+            last = char;
+            characters.next();
         }
+        characters.next();
+        return lex_head(characters, tokens);
     }
     let length = characters.length();
     if length > SymbolLength::MAX as usize {
@@ -1132,10 +1131,31 @@ mod tests {
     #[test]
     fn can_tokenize_multicomment() {
         let op = Symbol::MultiCommentOpen;
-        let cl = Symbol::MultiCommentOpen;
+        let cl = Symbol::MultiCommentClose;
         let contents = format!("{}678{}123", &op, &cl);
         let tokens = setup(&contents);
         let comment_str = format!("{}678{}", &op, &cl);
+        let length = comment_str.len();
+        assert_eq!(
+            tokens,
+            vec![
+                Token {
+                    kind: NumLit,
+                    start: length as IndexIntoFile,
+                    length: 3,
+                },
+            ]
+        );
+        assert_str_eq!(tokens[0].get_src(&contents), "123");
+    }
+
+    #[test]
+    fn can_tokenize_nested_multicomment() {
+        let op = Symbol::MultiCommentOpen;
+        let cl = Symbol::MultiCommentClose;
+        let contents = format!("{op}{op}678{cl}{cl}123");
+        let tokens = setup(&contents);
+        let comment_str = format!("{op}{op}678{cl}{cl}");
         let length = comment_str.len();
         assert_eq!(
             tokens,
