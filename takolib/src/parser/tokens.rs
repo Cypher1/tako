@@ -671,6 +671,8 @@ pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> boo
                     (Symbol::Sub, Symbol::Gt) => Symbol::Arrow,
                     (Symbol::Div, Symbol::Assign) => Symbol::DivAssign,
                     (Symbol::Div, Symbol::Div) => Symbol::Comment,
+                    (Symbol::Div, Symbol::Mul) => Symbol::MultiCommentOpen,
+                    (Symbol::Mul, Symbol::Div) => Symbol::MultiCommentClose,
                     (Symbol::Mul, Symbol::Assign) => Symbol::MulAssign,
                     (Symbol::Mul, Symbol::Mul) => Symbol::Exp,
                     (Symbol::Modulo, Symbol::Assign) => Symbol::ModuloAssign,
