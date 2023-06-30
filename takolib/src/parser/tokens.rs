@@ -616,41 +616,6 @@ pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> boo
         characters.next();
     }
     // TODO(usability): Work out a better way of printing pretty spaces.
-    /*
-    // TODO(usability): Handle comments.
-    // Token is finished, covers from `start` to `characters`.
-    let comment = contents[start..end].starts_with(COMMENT);
-    let multi_comment = contents[start..end].starts_with(MULTI_COMMENT);
-    if !comment && !multi_comment {
-    }
-    // Track depth of mutli line comments
-    let mut depth = 1;
-    let mut last: Option<char> = None;
-    loop {
-        characters.next();
-        // Add the character.
-        match (last, characters.peek().map(|(_, chr)| *chr)) { // TODO(perf): use .find
-            (Some('/'), Some('*')) => {
-                depth += 1;
-            }
-            (Some('*'), Some('/')) => {
-                depth -= 1;
-                if multi_comment && depth == 0 {
-                    characters.next();
-                    return lex_head(contents, characters);
-                }
-            }
-            (_, Some(chr)) => {
-                if comment && (chr == '\n' || chr == '\r') {
-                    characters.next();
-                    return lex_head(contents, characters);
-                }
-                last = Some(chr);
-            }
-            (_, None) => return lex_head(characters),
-        }
-    }
-    */
     use CharacterType::{AtomHead, HexSym, PartialToken};
     use TokenType::{Atom, ColorLit, Ident, NumLit, Op, StringLit};
     let chr = if let Some(chr) = characters.next() {
@@ -735,7 +700,7 @@ pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> boo
             }
         }
     }
-    if kind == Op(Symbol::Shebang) || kind == Op(Symbol::Comment) {
+    else if kind == Op(Symbol::Shebang) || kind == Op(Symbol::Comment) {
         while let Some(chr) = characters.next() {
             // TODO(perf): use .find
             if chr == '\n' {
@@ -743,6 +708,35 @@ pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> boo
             }
         }
         return lex_head(characters, tokens);
+    }
+    else if kind == Op(Symbol::MultiCommentClose) {
+        todo!("Recover from this?");
+    }
+    else if kind == Op(Symbol::MultiCommentOpen) {
+    // Track depth of mutli line comments
+    let mut depth = 1;
+    let mut last: Option<char> = None;
+    loop {
+        characters.next();
+            (Some('/'), Some('*')) => {
+                depth += 1;
+            }
+            (Some('*'), Some('/')) => {
+                depth -= 1;
+                if multi_comment && depth == 0 {
+                    characters.next();
+                    return lex_head(contents, characters);
+                }
+            }
+            (_, Some(chr)) => {
+                if comment && (chr == '\n' || chr == '\r') {
+                    characters.next();
+                    return lex_head(contents, characters);
+                }
+                last = Some(chr);
+            }
+            (_, None) => return lex_head(characters),
+        }
     }
     let length = characters.length();
     if length > SymbolLength::MAX as usize {
@@ -792,16 +786,8 @@ mod tests {
     use better_std::assert_eq;
     use strum::IntoEnumIterator; // TODO(cleanup): Make these test only
 
-    fn setup_many(contents: &str, n: usize) -> Vec<Token> {
-        let mut chars = Characters::new(contents);
-        let mut tokens = Vec::new();
-        for _i in 0..n {
-            lex_head(&mut chars, &mut tokens);
-        }
-        tokens
-    }
     fn setup(contents: &str) -> Vec<Token> {
-        setup_many(contents, 1)
+        lex(contents).expect("Failed parse")
     }
 
     #[test]
@@ -915,6 +901,11 @@ mod tests {
                 kind: Op(Symbol::Sub),
                 start: 0,
                 length: 1
+            },
+            Token {
+                kind: Ident,
+                start: 1,
+                length: 4
             }]
         );
     }
@@ -977,7 +968,7 @@ mod tests {
     #[test]
     fn lex_head_call() {
         let contents = "x()";
-        let tokens = setup_many(contents, 3);
+        let tokens = setup(contents);
         assert_eq!(
             tokens,
             vec![
@@ -1006,7 +997,7 @@ mod tests {
     #[test]
     fn lex_head_strings_with_operators() {
         let contents = "!\"hello world\"\n7";
-        let tokens = setup_many(contents, 3);
+        let tokens = setup(contents);
         assert_eq!(
             tokens,
             vec![
@@ -1036,7 +1027,7 @@ mod tests {
     #[test]
     fn lex_parentheses() {
         let contents = "(\"hello world\"\n)";
-        let tokens = setup_many(contents, 3);
+        let tokens = setup(contents);
         let expected = vec![Op(Symbol::OpenParen), StringLit, Op(Symbol::CloseParen)];
         assert_eq!(
             tokens
@@ -1058,7 +1049,7 @@ mod tests {
     #[test]
     fn lex_curlies() {
         let contents = "{\"hello world\"\n}";
-        let tokens = setup_many(contents, 3);
+        let tokens = setup(contents);
         let expected = vec![Op(Symbol::OpenCurly), StringLit, Op(Symbol::CloseCurly)];
         assert_eq!(
             tokens
@@ -1080,7 +1071,7 @@ mod tests {
     #[test]
     fn lex_brackets() {
         let contents = "[\"hello world\"\n]";
-        let tokens = setup_many(contents, 3);
+        let tokens = setup(contents);
         let expected = vec![Op(Symbol::OpenBracket), StringLit, Op(Symbol::CloseBracket)];
         assert_eq!(
             tokens
@@ -1102,7 +1093,7 @@ mod tests {
     #[test]
     fn lex_strings_with_operators() {
         let contents = "!\"hello world\"\n7";
-        let tokens = setup_many(contents, 3);
+        let tokens = setup(contents);
         let expected = vec![Op(Symbol::LogicalNot), StringLit, NumLit];
         assert_eq!(
             tokens
@@ -1126,7 +1117,7 @@ mod tests {
         // TODO: Multiline comments
         let symbol = Symbol::Comment;
         let contents = format!("{}123", &symbol);
-        let tokens = setup_many(&contents, 2);
+        let tokens = setup(&contents);
         assert_eq!(tokens, vec![], "Should ignore comments and shebangs");
     }
 
@@ -1134,8 +1125,29 @@ mod tests {
     fn can_tokenize_shebang() {
         let symbol = Symbol::Shebang;
         let contents = format!("{}123", &symbol);
-        let tokens = setup_many(&contents, 2);
+        let tokens = setup(&contents);
         assert_eq!(tokens, vec![], "Should ignore comments and shebangs");
+    }
+
+    #[test]
+    fn can_tokenize_multicomment() {
+        let op = Symbol::MultiCommentOpen;
+        let cl = Symbol::MultiCommentOpen;
+        let contents = format!("{}678{}123", &op, &cl);
+        let tokens = setup(&contents);
+        let comment_str = format!("{}678{}", &op, &cl);
+        let length = comment_str.len();
+        assert_eq!(
+            tokens,
+            vec![
+                Token {
+                    kind: NumLit,
+                    start: length as IndexIntoFile,
+                    length: 3,
+                },
+            ]
+        );
+        assert_str_eq!(tokens[0].get_src(&contents), "123");
     }
 
     #[test]
@@ -1143,7 +1155,7 @@ mod tests {
         let symbol = Symbol::Hash;
         let symbol_str = format!("{}", &symbol);
         let contents = format!("{}123", &symbol);
-        let tokens = setup_many(&contents, 2);
+        let tokens = setup(&contents);
         let length = symbol_str.len();
 
         assert_eq!(
@@ -1174,7 +1186,7 @@ mod tests {
             }
             let symbol_str = format!("{}", &symbol);
             let contents = format!("{}123", &symbol);
-            let tokens = setup_many(&contents, 2);
+            let tokens = setup(&contents);
             let length = symbol_str.len();
 
             assert_eq!(
