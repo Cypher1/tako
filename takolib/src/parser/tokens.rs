@@ -699,8 +699,7 @@ pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> boo
                 characters.next(); // Skip escaped quotes.
             }
         }
-    }
-    else if kind == Op(Symbol::Shebang) || kind == Op(Symbol::Comment) {
+    } else if kind == Op(Symbol::Shebang) || kind == Op(Symbol::Comment) {
         while let Some(chr) = characters.next() {
             // TODO(perf): use .find
             if chr == '\n' {
@@ -708,11 +707,9 @@ pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> boo
             }
         }
         return lex_head(characters, tokens);
-    }
-    else if kind == Op(Symbol::MultiCommentClose) {
+    } else if kind == Op(Symbol::MultiCommentClose) {
         todo!("Recover from this?");
-    }
-    else if kind == Op(Symbol::MultiCommentOpen) {
+    } else if kind == Op(Symbol::MultiCommentOpen) {
         // Track depth of mutli line comments
         let mut depth = 1;
         let mut last: char = ' ';
@@ -896,16 +893,18 @@ mod tests {
         let tokens = setup("-a123");
         assert_eq!(
             tokens,
-            vec![Token {
-                kind: Op(Symbol::Sub),
-                start: 0,
-                length: 1
-            },
-            Token {
-                kind: Ident,
-                start: 1,
-                length: 4
-            }]
+            vec![
+                Token {
+                    kind: Op(Symbol::Sub),
+                    start: 0,
+                    length: 1
+                },
+                Token {
+                    kind: Ident,
+                    start: 1,
+                    length: 4
+                }
+            ]
         );
     }
 
@@ -1138,13 +1137,11 @@ mod tests {
         let length = comment_str.len();
         assert_eq!(
             tokens,
-            vec![
-                Token {
-                    kind: NumLit,
-                    start: length as IndexIntoFile,
-                    length: 3,
-                },
-            ]
+            vec![Token {
+                kind: NumLit,
+                start: length as IndexIntoFile,
+                length: 3,
+            },]
         );
         assert_str_eq!(tokens[0].get_src(&contents), "123");
     }
@@ -1159,13 +1156,11 @@ mod tests {
         let length = comment_str.len();
         assert_eq!(
             tokens,
-            vec![
-                Token {
-                    kind: NumLit,
-                    start: length as IndexIntoFile,
-                    length: 3,
-                },
-            ]
+            vec![Token {
+                kind: NumLit,
+                start: length as IndexIntoFile,
+                length: 3,
+            },]
         );
         assert_str_eq!(tokens[0].get_src(&contents), "123");
     }
