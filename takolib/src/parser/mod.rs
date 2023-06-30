@@ -690,6 +690,17 @@ pub mod tests {
     }
 
     #[test]
+    fn parse_negatives() -> Result<(), TError> {
+        let ast = setup("-1*-2")?;
+        // dbg!(&ast);
+
+        assert_eq!(ast.calls.len(), 0);
+        assert_eq!(ast.literals.len(), 2);
+        assert_eq!(ast.ops.len(), 3);
+        Ok(())
+    }
+
+    #[test]
     fn parse_add_add_literals() -> Result<(), TError> {
         let ast = setup("1+2+3")?;
         // dbg!(&ast);
