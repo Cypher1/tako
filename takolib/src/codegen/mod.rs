@@ -7,7 +7,7 @@ use crate::primitives::Prim;
 use backend::{backend, create_context, Backend, BackendConfig, BackendStateTrait};
 use std::path::Path;
 
-pub fn codegen(path: &Path, _ast: &Ast, _root: NodeId) -> Result<Prim, TError> {
+pub fn codegen(path: &Path, _ast: &Ast, _root: Option<NodeId>) -> Result<Prim, TError> {
     let config = BackendConfig {};
     let context = create_context();
     {

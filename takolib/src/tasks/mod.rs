@@ -4,7 +4,6 @@ pub mod task_trait;
 use crate::ast::Ast;
 use crate::ast::NodeId;
 use crate::error::Error;
-use crate::error::TError;
 use crate::lowerer::lower;
 use crate::parser::tokens::Token;
 use crate::primitives::meta::Meta;
@@ -12,6 +11,7 @@ use crate::primitives::Prim;
 use async_trait::async_trait;
 use enum_kinds::EnumKind;
 use llamada::Llamada;
+use log::trace;
 pub use manager::{StatusReport, TaskStats};
 pub use status::*;
 use std::collections::HashMap;
@@ -68,6 +68,7 @@ impl Task for LoadFileTask {
         Some(&self.path)
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
+        trace!("LoadFileTask: {path}", path = self.path.display());
         // TODO(perf): Use tokio's async read_to_string.
         let contents = std::fs::read_to_string(&self.path);
         let contents = contents.map_err(|err| self.decorate_error(err));
@@ -101,6 +102,7 @@ impl Task for LexFileTask {
         Some(&self.path)
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
+        trace!("LexFileTask: {path}", path = self.path.display());
         let tokens = crate::parser::tokens::lex(&self.contents);
         let tokens = tokens
             .map(|tokens| ParseFileTask {
@@ -137,6 +139,7 @@ impl Task for ParseFileTask {
         Some(&self.path)
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
+        trace!("ParseFileTask: {path}", path = self.path.display());
         let ast = crate::parser::parse(&self.path, &self.contents, &self.tokens)
             .map_err(|err| self.decorate_error(err));
         result_sender
@@ -173,6 +176,7 @@ impl Task for DesugarFileTask {
         Some(&self.path)
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
+        trace!("DesugarFileTask: {path}", path = self.path.display());
         let ast = crate::desugarer::desugar(&self.path, &self.ast, self.root)
             .map_err(|err| self.decorate_error(err));
         result_sender
@@ -209,23 +213,20 @@ impl Task for LowerFileTask {
         Some(&self.path)
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
+        trace!("LowerFileTask: {path}", path = self.path.display());
         let result =
             lower(&self.path, &self.ast, self.root).map_err(|err| self.decorate_error(err));
         result_sender
             .send((
                 self.clone(),
-                match (result, self.root) {
-                    (Ok(result), Some(root)) => Update::FinalResult(CodegenTask {
+                match result {
+                    Ok(result) => Update::FinalResult(CodegenTask {
                         path: self.path,
                         ast: self.ast,
                         lowered: result,
-                        root,
+                        root: self.root,
                     }),
-                    (_, None) => Update::Failed(self.decorate_error(TError::InternalError {
-                        message: "No root for this file... waiting for root...".to_string(),
-                        location: None,
-                    })),
-                    (Err(err), _) => Update::Failed(err),
+                    Err(err) => Update::Failed(err),
                 },
             ))
             .expect("Should be able to send task result to manager");
@@ -249,6 +250,7 @@ impl Task for EvalFileTask {
         Some(&self.path)
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
+        trace!("EvalFileTask: {path}", path = self.path.display());
         let result = crate::interpreter::run(&self.path, &self.ast, self.root)
             .map_err(|err| self.decorate_error(err));
         result_sender
@@ -268,7 +270,7 @@ pub struct CodegenTask {
     pub path: PathBuf,
     pub ast: Ast,
     pub lowered: Llamada,
-    pub root: NodeId,
+    pub root: Option<NodeId>,
 }
 
 #[async_trait]
@@ -282,6 +284,10 @@ impl Task for CodegenTask {
     }
     #[cfg(not(feature = "backend"))]
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
+        trace!(
+            "CodegenTask (nobackend): {path}",
+            path = self.path.display()
+        );
         use crate::error::TError;
         let err = Update::Failed(self.decorate_error(TError::InternalError {
             location: None,
@@ -293,6 +299,7 @@ impl Task for CodegenTask {
     }
     #[cfg(feature = "backend")]
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
+        trace!("CodegenTask (backend): {path}", path = self.path.display());
         let result = crate::codegen::codegen(&self.path, &self.ast, self.root)
             .map_err(|err| self.decorate_error(err));
         result_sender

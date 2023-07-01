@@ -11,6 +11,9 @@ keywords = ["compiler", "programming", "language"]
 categories = ["gui", "wasm", "web-programming"]
 include = ["src/**/*", "LICENSE.md", "README.md"]
 
+[features]
+llvm_backend = [ "takolib/llvm_backend" ]
+
 [dependencies]
 async-trait = "0.1"
 takolib = { path = "../takolib", features = [ "native" ] }

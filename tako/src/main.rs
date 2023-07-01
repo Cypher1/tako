@@ -82,7 +82,7 @@ impl Task for WatchFileTask {
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     takolib::ensure_initialized();
-    trace!("\n>>>>>>>>>>>>>>>>>>>>\nStarting takoc {VERSION}\n>>>>>>>>>>>>>>>>>>>>\n");
+    trace!("\n>>>>>>>>>>>>>>>>>>>>\nStarting tako {VERSION}\n>>>>>>>>>>>>>>>>>>>>\n");
 
     let args: Vec<String> = std::env::args().collect();
     let options = crate::cli_options::Options::new(args);

@@ -50,7 +50,7 @@ pub fn ensure_initialized() {
         unsafe {
             LOGS_UNINITIALISED = false;
         }
-        wasm_logger::init(wasm_logger::Config::new(log::Level::Debug));
+        wasm_logger::init(wasm_logger::Config::new(log::Level::Trace));
     }
 }
 
