@@ -131,6 +131,7 @@ impl<'ast> fmt::Display for PrintNode<'ast> {
             equivalents,
             ty,
             location,
+            lowered_to: _,
         } = self.ast.get(self.node);
         if let Some(eq) = equivalents {
             return write!(f, "{}", self.child(*eq)); // Watch out for cycles...

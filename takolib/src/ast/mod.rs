@@ -84,6 +84,7 @@ impl Ast {
             equivalents: None,
             ty: None,
             location,
+            lowered_to: None,
         };
         let new_node_id = TypedIndex::new(Arc::make_mut(&mut self.nodes), node)
             .expect("Should never have that many AstNodes...");

@@ -6,14 +6,14 @@ use llamada::ext;
 use llamada::{Expr, Llamada};
 use std::path::Path;
 
-pub fn lower(_path: &Path, ast: &Ast, _root: Option<NodeId>) -> Result<Llamada, TError> {
+pub fn lower(_path: &Path, _ast: &Ast, _root: Option<NodeId>) -> Result<Llamada, TError> {
     // TODO: ???
-    let mut ast = ast.clone();
+    // let mut ast = ast.clone();
+    // For every abs var and cons
+    // Map them in and track them with `.lowered_to`
     let /*mut*/ expr = Llamada::new(ext(24), Empty);
     Ok(expr)
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -33,7 +33,6 @@ mod tests {
         Ok(ast)
     }
 
-        
     #[test]
     fn lower_gives_constant_from_id_ap_constant() -> Result<(), TError> {
         let ast = setup("(x=>x)(x=2)")?;
@@ -49,4 +48,3 @@ mod tests {
         Ok(())
     }
 }
-

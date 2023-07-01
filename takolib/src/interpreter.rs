@@ -224,7 +224,8 @@ impl<'a> Ctx<'a> {
             Symbol::RightPipe => todo!(),
             Symbol::Escape => todo!(),
             Symbol::HasType => todo!(),
-            Symbol::Arrow | Symbol::DoubleArrow => { // TODO(clarity): Type arrow vs value arrow?
+            Symbol::Arrow | Symbol::DoubleArrow => {
+                // TODO(clarity): Type arrow vs value arrow?
                 let Some(_l) = op.args.get(0) else {
                     panic!("-> expects a left and a right. Left not found");
                 };
