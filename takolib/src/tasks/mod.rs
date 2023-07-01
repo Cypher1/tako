@@ -11,6 +11,7 @@ use crate::primitives::Prim;
 use async_trait::async_trait;
 use enum_kinds::EnumKind;
 use llamada::Llamada;
+use log::trace;
 pub use manager::{StatusReport, TaskStats};
 pub use status::*;
 use std::collections::HashMap;
@@ -18,7 +19,6 @@ use std::fmt::Debug;
 use std::path::PathBuf;
 pub use task_trait::TaskId;
 use task_trait::{Task, UpdateSenderFor};
-use log::trace;
 
 // TODO(debugging): Add timing information, etc.
 // TODO(debugging): Support re-running multiple times for stability testing.
@@ -68,7 +68,7 @@ impl Task for LoadFileTask {
         Some(&self.path)
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        trace!("LoadFileTask: {path}", path=self.path.display());
+        trace!("LoadFileTask: {path}", path = self.path.display());
         // TODO(perf): Use tokio's async read_to_string.
         let contents = std::fs::read_to_string(&self.path);
         let contents = contents.map_err(|err| self.decorate_error(err));
@@ -102,7 +102,7 @@ impl Task for LexFileTask {
         Some(&self.path)
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        trace!("LexFileTask: {path}", path=self.path.display());
+        trace!("LexFileTask: {path}", path = self.path.display());
         let tokens = crate::parser::tokens::lex(&self.contents);
         let tokens = tokens
             .map(|tokens| ParseFileTask {
@@ -139,7 +139,7 @@ impl Task for ParseFileTask {
         Some(&self.path)
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        trace!("ParseFileTask: {path}", path=self.path.display());
+        trace!("ParseFileTask: {path}", path = self.path.display());
         let ast = crate::parser::parse(&self.path, &self.contents, &self.tokens)
             .map_err(|err| self.decorate_error(err));
         result_sender
@@ -176,7 +176,7 @@ impl Task for DesugarFileTask {
         Some(&self.path)
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        trace!("DesugarFileTask: {path}", path=self.path.display());
+        trace!("DesugarFileTask: {path}", path = self.path.display());
         let ast = crate::desugarer::desugar(&self.path, &self.ast, self.root)
             .map_err(|err| self.decorate_error(err));
         result_sender
@@ -213,7 +213,7 @@ impl Task for LowerFileTask {
         Some(&self.path)
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        trace!("LowerFileTask: {path}", path=self.path.display());
+        trace!("LowerFileTask: {path}", path = self.path.display());
         let result =
             lower(&self.path, &self.ast, self.root).map_err(|err| self.decorate_error(err));
         result_sender
@@ -250,7 +250,7 @@ impl Task for EvalFileTask {
         Some(&self.path)
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        trace!("EvalFileTask: {path}", path=self.path.display());
+        trace!("EvalFileTask: {path}", path = self.path.display());
         let result = crate::interpreter::run(&self.path, &self.ast, self.root)
             .map_err(|err| self.decorate_error(err));
         result_sender
@@ -284,7 +284,10 @@ impl Task for CodegenTask {
     }
     #[cfg(not(feature = "backend"))]
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        trace!("CodegenTask (nobackend): {path}", path=self.path.display());
+        trace!(
+            "CodegenTask (nobackend): {path}",
+            path = self.path.display()
+        );
         use crate::error::TError;
         let err = Update::Failed(self.decorate_error(TError::InternalError {
             location: None,
@@ -296,7 +299,7 @@ impl Task for CodegenTask {
     }
     #[cfg(feature = "backend")]
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        trace!("CodegenTask (backend): {path}", path=self.path.display());
+        trace!("CodegenTask (backend): {path}", path = self.path.display());
         let result = crate::codegen::codegen(&self.path, &self.ast, self.root)
             .map_err(|err| self.decorate_error(err));
         result_sender
