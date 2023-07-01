@@ -4,7 +4,6 @@ pub mod task_trait;
 use crate::ast::Ast;
 use crate::ast::NodeId;
 use crate::error::Error;
-use crate::error::TError;
 use crate::lowerer::lower;
 use crate::parser::tokens::Token;
 use crate::primitives::meta::Meta;
@@ -220,18 +219,14 @@ impl Task for LowerFileTask {
         result_sender
             .send((
                 self.clone(),
-                match (result, self.root) {
-                    (Ok(result), Some(root)) => Update::FinalResult(CodegenTask {
+                match result {
+                    Ok(result) => Update::FinalResult(CodegenTask {
                         path: self.path,
                         ast: self.ast,
                         lowered: result,
-                        root,
+                        root: self.root,
                     }),
-                    (_, None) => Update::Failed(self.decorate_error(TError::InternalError {
-                        message: "No root for this file... waiting for root...".to_string(),
-                        location: None,
-                    })),
-                    (Err(err), _) => Update::Failed(err),
+                    Err(err) => Update::Failed(err),
                 },
             ))
             .expect("Should be able to send task result to manager");
@@ -275,7 +270,7 @@ pub struct CodegenTask {
     pub path: PathBuf,
     pub ast: Ast,
     pub lowered: Llamada,
-    pub root: NodeId,
+    pub root: Option<NodeId>,
 }
 
 #[async_trait]
