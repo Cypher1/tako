@@ -226,7 +226,7 @@ impl<'ctx> BackendStateTrait for LlvmState<'ctx> {
         );
 
         let mut command = Command::new("clang");
-        let cmd = command.arg(elf_path).arg("-o").arg(bin_path).arg("-lc");
+        let cmd = command.arg("-no-pie").arg(elf_path).arg("-o").arg(bin_path).arg("-lc").arg("-v");
 
         let output = cmd.output().expect("failed to run clang");
         stdout().write_all(&output.stdout).unwrap();
