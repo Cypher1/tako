@@ -29,18 +29,23 @@ struct Ctx<'a> {
 }
 
 pub fn run(path: &Path, ast: &Ast, root: Option<NodeId>) -> Result<Prim, TError> {
-    let start = root.unwrap_or_else(|| {
+    let start = if let Some(root) = root {
+        root
+    } else {
         if ast.roots.len() == 1 {
             ast.roots[0]
         } else if ast.roots.len() == 0 {
-            todo!("Error: No roots found for {path}", path = path.display());
+            return Err(TError::InternalError{
+                message: format!("Ambiguous run command: No root found for {path}", path = path.display()),
+                location: None
+            });
         } else {
-            todo!(
-                "Ambiguous run command: Multiple roots found for {path}",
-                path = path.display()
-            );
+            return Err(TError::InternalError{
+                message: format!("Ambiguous run command: Multiple roots found for {path}", path = path.display()),
+                location: None
+            });
         }
-    });
+    };
     let mut ctx = Ctx {
         ast,
         literals: &ast.string_interner,
