@@ -110,6 +110,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
         mut task_receiver: TaskReceiverFor<T>,
         results_sender: ResultSenderFor<T>,
     ) {
+        trace!("Starting task manager: {name}", name=Self::name());
         let this = this.clone();
         spawn(async move {
             let (tx, mut rx) = mpsc::unbounded_channel();
