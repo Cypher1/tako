@@ -284,12 +284,12 @@ pub trait Expr: Sized {
                         String::new()
                     }
                 );
-                write!(f, "(\\{name}")?;
+                write!(f, "({name}")?;
                 if let Some(arg_meta) = arg_meta {
                     write!(f, ": ")?;
                     Self::fmt_index(&ctx.child(arg_meta, vec![]), f)?;
                 }
-                write!(f, ". ")?;
+                write!(f, " => ")?;
                 Self::fmt_index(&ctx.child(ind, vec![name]), f)?;
                 write!(f, ")")?;
             }

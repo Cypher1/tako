@@ -7,9 +7,9 @@ macro_rules! tests {
             let abs = expr.add(Term::abs(prev));
             *expr.root_mut() = (abs);
             expr.set_print_meta(false);
-            assert_eq!(format!("{}", expr), "(\\a. a)");
+            assert_eq!(format!("{}", expr), "(a => a)");
             expr.reduce();
-            assert_eq!(format!("{}", expr), "(\\a. a)");
+            assert_eq!(format!("{}", expr), "(a => a)");
             //assert_eq!(
             //format!("{:?}", &expr),
             //"DenseRepr { terms: [(Var(1), Empty), (Abs(0), Empty)], root: 1, print_meta: false }"
@@ -19,9 +19,9 @@ macro_rules! tests {
             //format!("{:?}", &expr),
             //"DenseRepr { terms: [(Var(1), Empty), (Abs(0), Empty)], root: 1, print_meta: true }"
             //);
-            assert_eq!(format!("{}", &expr), "(\\a. a: Empty): Empty");
+            assert_eq!(format!("{}", &expr), "(a => a: Empty): Empty");
             expr.reduce();
-            assert_eq!(format!("{}", &expr), "(\\a. a: Empty): Empty");
+            assert_eq!(format!("{}", &expr), "(a => a: Empty): Empty");
         }
 
         #[test]
@@ -31,9 +31,9 @@ macro_rules! tests {
             let abs1 = expr.add(Term::abs(prev));
             let abs2 = expr.add(Term::abs(abs1));
             *expr.root_mut() = (abs2);
-            assert_eq!(format!("{}", &expr), "(\\a. (\\b. a))");
+            assert_eq!(format!("{}", &expr), "(a => (b => a))");
             expr.reduce();
-            assert_eq!(format!("{}", &expr), "(\\a. (\\b. a))");
+            assert_eq!(format!("{}", &expr), "(a => (b => a))");
         }
 
         #[test]
@@ -43,9 +43,9 @@ macro_rules! tests {
             let abs1 = expr.add(Term::abs(prev));
             let abs2 = expr.add(Term::abs(abs1));
             *expr.root_mut() = (abs2);
-            assert_eq!(format!("{}", &expr), "(\\a. (\\b. b))");
+            assert_eq!(format!("{}", &expr), "(a => (b => b))");
             expr.reduce();
-            assert_eq!(format!("{}", &expr), "(\\a. (\\b. b))");
+            assert_eq!(format!("{}", &expr), "(a => (b => b))");
         }
 
         #[test]
@@ -57,9 +57,9 @@ macro_rules! tests {
             let app1 = expr.add(Term::App(abs1, a));
             let abs2 = expr.add(Term::abs(app1));
             *expr.root_mut() = (abs2);
-            assert_eq!(format!("{}", &expr), "(\\a. ((\\b. b) a))");
+            assert_eq!(format!("{}", &expr), "(a => ((b => b) a))");
             expr.reduce();
-            assert_eq!(format!("{}", &expr), "(\\a. a)");
+            assert_eq!(format!("{}", &expr), "(a => a)");
         }
 
         #[test]
@@ -74,9 +74,9 @@ macro_rules! tests {
             let abs2 = expr.add(Term::abs(abs1));
             let abs3 = expr.add(Term::abs(abs2));
             *expr.root_mut() = (abs3);
-            assert_eq!(format!("{}", &expr), "(\\a. (\\b. (\\c. ((a b) c))))");
+            assert_eq!(format!("{}", &expr), "(a => (b => (c => ((a b) c))))");
             expr.reduce();
-            assert_eq!(format!("{}", &expr), "(\\a. (\\b. (\\c. ((a b) c))))");
+            assert_eq!(format!("{}", &expr), "(a => (b => (c => ((a b) c))))");
         }
 
         #[test]
@@ -106,10 +106,10 @@ macro_rules! tests {
             *expr.root_mut() = (app1);
             assert_eq!(
                 format!("{}", expr),
-                "((\\a. (\\b. (\\c. ((a b) c)))) (\\a. (\\b. b)))"
+                "((a => (b => (c => ((a b) c)))) (a => (b => b)))"
             );
             expr.reduce();
-            assert_eq!(format!("{}", expr), "(\\a. (\\b. b))");
+            assert_eq!(format!("{}", expr), "(a => (b => b))");
         }
 
         #[test]
@@ -117,16 +117,16 @@ macro_rules! tests {
             let mut church_test = <$ty>::new(Term::Var(1), Empty);
             let church = church_test.to_church(0);
             *church_test.root_mut() = (church);
-            assert_eq!(format!("{}", &church_test), "(\\a. (\\b. b))");
+            assert_eq!(format!("{}", &church_test), "(a => (b => b))");
 
             let mut expr = <$ty>::new(Term::Var(1), Empty);
             let prev = expr.get_last_id();
             let abs1 = expr.add(Term::abs(prev));
             let abs2 = expr.add(Term::abs(abs1));
             *expr.root_mut() = (abs2);
-            assert_eq!(format!("{}", &expr), "(\\a. (\\b. b))");
+            assert_eq!(format!("{}", &expr), "(a => (b => b))");
             expr.reduce();
-            assert_eq!(format!("{}", &expr), "(\\a. (\\b. b))");
+            assert_eq!(format!("{}", &expr), "(a => (b => b))");
             assert_eq!(expr.as_church(expr.root()), Some(0));
         }
 
@@ -135,7 +135,7 @@ macro_rules! tests {
             let mut church_test = <$ty>::new(Term::Var(1), Empty);
             let church = church_test.to_church(1);
             *church_test.root_mut() = (church);
-            assert_eq!(format!("{}", &church_test), "(\\a. (\\b. (a b)))");
+            assert_eq!(format!("{}", &church_test), "(a => (b => (a b)))");
 
             let mut expr = <$ty>::new(Term::Var(1), Empty);
             let prev = expr.get_last_id();
@@ -144,9 +144,9 @@ macro_rules! tests {
             let abs1 = expr.add(Term::abs(app1));
             let abs2 = expr.add(Term::abs(abs1));
             *expr.root_mut() = (abs2);
-            assert_eq!(format!("{}", &expr), "(\\a. (\\b. (a b)))");
+            assert_eq!(format!("{}", &expr), "(a => (b => (a b)))");
             expr.reduce();
-            assert_eq!(format!("{}", &expr), "(\\a. (\\b. (a b)))");
+            assert_eq!(format!("{}", &expr), "(a => (b => (a b)))");
             assert_eq!(expr.as_church(expr.root()), Some(1));
         }
 
@@ -155,7 +155,7 @@ macro_rules! tests {
             let mut church_test = <$ty>::new(Term::Var(1), Empty);
             let church = church_test.to_church(2);
             *church_test.root_mut() = (church);
-            assert_eq!(format!("{}", &church_test), "(\\a. (\\b. (a (a b))))");
+            assert_eq!(format!("{}", &church_test), "(a => (b => (a (a b))))");
 
             let mut expr = <$ty>::new(Term::Var(1), Empty);
             let prev = expr.get_last_id();
@@ -165,9 +165,9 @@ macro_rules! tests {
             let abs1 = expr.add(Term::abs(app2));
             let abs2 = expr.add(Term::abs(abs1));
             *expr.root_mut() = (abs2);
-            assert_eq!(format!("{}", &expr), "(\\a. (\\b. (a (a b))))");
+            assert_eq!(format!("{}", &expr), "(a => (b => (a (a b))))");
             expr.reduce();
-            assert_eq!(format!("{}", &expr), "(\\a. (\\b. (a (a b))))");
+            assert_eq!(format!("{}", &expr), "(a => (b => (a (a b))))");
             assert_eq!(expr.as_church(expr.root()), Some(2));
         }
 
@@ -191,7 +191,7 @@ macro_rules! tests {
 
             assert_eq!(
                 format!("{}", &expr),
-                "(\\a. (\\b. (\\c. (\\d. ((a c) ((b c) d))))))"
+                "(a => (b => (c => (d => ((a c) ((b c) d))))))"
             );
 
             for n in 0..10 {
@@ -229,7 +229,7 @@ macro_rules! tests {
 
             assert_eq!(
                 format!("{}", &expr),
-                "(\\a. (\\b. (\\c. (\\d. ((a (b c)) d)))))"
+                "(a => (b => (c => (d => ((a (b c)) d)))))"
             );
 
             for n in 0..10 {
