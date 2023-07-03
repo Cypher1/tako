@@ -65,7 +65,7 @@ pub mod tests {
     fn can_print_hello_world_using_codegen() -> Result<(), TError> {
         let (path, ast, root) = setup("x=1")?;
 
-        codegen(&path, &ast, root)?;
+        codegen(&path, &ast, Some(root))?;
 
         // TODO: Run and check hello world program's output.
         Ok(())
