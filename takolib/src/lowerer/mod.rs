@@ -33,7 +33,9 @@ pub fn lower(_path: &Path, og_ast: &Ast, root: NodeId) -> Result<Llamada, TError
     // TODO: Others...
     // For every abs var and cons
     // Map them in and track them with `.lowered_to`
-    let root = ast.get(root).lowered_to.expect("root wasn't lowered");
+    let root = ast.get(root).lowered_to.unwrap_or_else(||
+        todo!("root wasn't lowered: {}", ast.pretty_node(root))
+    );
     *expr.root_mut() = root;
     Ok(expr)
 }
