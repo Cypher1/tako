@@ -1,17 +1,24 @@
-use crate::ast::Ast;
-use crate::ast::NodeId;
+use crate::ast::{Ast, NodeId, Node, Contains};
 use crate::error::TError;
 use llamada::base_types::Empty;
 use llamada::ext;
 use llamada::{Expr, Llamada};
 use std::path::Path;
 
-pub fn lower(_path: &Path, _ast: &Ast, _root: Option<NodeId>) -> Result<Llamada, TError> {
-    // TODO: ???
-    // let mut ast = ast.clone();
+pub fn lower(_path: &Path, ast: &Ast, root: Option<NodeId>) -> Result<Llamada, TError> {
+    let mut ast = ast.clone();
+    let mut expr = Llamada::new(ext(24), Empty);
+
+    for (nodeid, val) in ast.literals.iter() {
+        let e_id = expr.add(ext(val));
+        let node: &mut Node = ast.get_mut(*nodeid);
+        node.lowered_to.insert(e_id);
+    }
+    // TODO: Others...
     // For every abs var and cons
     // Map them in and track them with `.lowered_to`
-    let /*mut*/ expr = Llamada::new(ext(24), Empty);
+    let root = ast.get(root.expect("No root")).lowered_to.expect("root wasn't lowered");
+    *expr.root_mut() = root;
     Ok(expr)
 }
 
