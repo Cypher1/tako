@@ -71,6 +71,13 @@ impl<
         // TODO: Checked version?
         &id.val
     }
+    fn get_mut<'a>(
+        &'a mut self,
+        id: &'a mut Self::Index,
+    ) -> &'a mut Term<Self::Value, Self::Index> {
+        // TODO: Checked version?
+        &mut Rc::make_mut(id).val
+    }
     fn get_meta<'a>(&'a self, id: &'a Self::Index) -> &'a Self::Meta {
         // TODO: Checked version?
         &id.meta

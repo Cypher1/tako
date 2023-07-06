@@ -234,7 +234,7 @@ mod tests {
         let mul = expr.add(Term::abs(abs1_mab));
         *expr.root_mut() = mul;
 
-        assert_eq!(format!("{}", &expr), "(\\a. (\\b. ((Mul a) b)))");
+        assert_eq!(format!("{}", &expr), "(a => (b => ((Mul a) b)))");
 
         for n in 998..1000 {
             for m in 998..1000 {
@@ -265,7 +265,7 @@ mod tests {
         let add = expr.add(Term::abs(abs1_mab));
         *expr.root_mut() = add;
 
-        assert_eq!(format!("{}", &expr), "(\\a. (\\b. ((Add a) b)))");
+        assert_eq!(format!("{}", &expr), "(a => (b => ((Add a) b)))");
 
         for n in 998..1000 {
             for m in 998..1000 {
@@ -293,7 +293,7 @@ mod tests {
         let not = expr.add(Term::abs(ma));
         *expr.root_mut() = not;
 
-        assert_eq!(format!("{}", &expr), "(\\a. (Not a))");
+        assert_eq!(format!("{}", &expr), "(a => (Not a))");
 
         for n in 998..1000 {
             let church_n = expr.add(ext(n));
@@ -320,7 +320,7 @@ mod tests {
         let or = expr.add(Term::abs(abs1_mab));
         *expr.root_mut() = or;
 
-        assert_eq!(format!("{}", &expr), "(\\a. (\\b. ((Or a) b)))");
+        assert_eq!(format!("{}", &expr), "(a => (b => ((Or a) b)))");
 
         for n in 998..1000 {
             for m in 998..1000 {
@@ -351,7 +351,7 @@ mod tests {
         let and = expr.add(Term::abs(abs1_mab));
         *expr.root_mut() = and;
 
-        assert_eq!(format!("{}", &expr), "(\\a. (\\b. ((And a) b)))");
+        assert_eq!(format!("{}", &expr), "(a => (b => ((And a) b)))");
 
         for n in 998..1000 {
             for m in 998..1000 {

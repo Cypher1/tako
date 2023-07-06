@@ -36,7 +36,7 @@ pub fn desugar(_path: &Path, old_ast: &Ast, _root: Option<NodeId>) -> Result<Ast
         // let var:  = ast.get(left);
         let name = ast.add_identifier(name, location);
         let inner = Op {
-            op: Symbol::Arrow,
+            op: Symbol::DoubleArrow,
             args: smallvec![name, *right],
         };
         let inner = ast.add_op(inner, location);
@@ -102,21 +102,21 @@ mod tests {
 
     #[test]
     fn exp_var_and_use() -> Result<(), TError> {
-        desugars_to("x=2;x", "(x->x)(x=2)")
+        desugars_to("x=2;x", "(x=>x)(x=2)")
     }
 
     #[test]
     fn exp_var_from_expr_and_use() -> Result<(), TError> {
-        desugars_to("x=3+2;x", "(x->x)(x=3+2)")
+        desugars_to("x=3+2;x", "(x=>x)(x=3+2)")
     }
 
     #[test]
     fn exp_nested_vars() -> Result<(), TError> {
-        desugars_to("x=(y=3;2*y);x", "(x->x)(x=(y->(2*y))(y=3))")
+        desugars_to("x=(y=3;2*y);x", "(x=>x)(x=(y=>(2*y))(y=3))")
     }
 
     #[test]
     fn exp_multiple_statements() -> Result<(), TError> {
-        desugars_to("x=3;y=x+4;2*y", "(x->((y->(2*y))(y=x+4)))(x=3)")
+        desugars_to("x=3;y=x+4;2*y", "(x=>((y=>(2*y))(y=x+4)))(x=3)")
     }
 }

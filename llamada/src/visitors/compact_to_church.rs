@@ -182,7 +182,7 @@ mod test {
 
         assert_eq!(
             format!("{church_expr}"),
-            "(\\a. (\\b. (a (a (a (a (a (a (a (a (a b)))))))))))"
+            "(a => (b => (a (a (a (a (a (a (a (a (a b)))))))))))"
         );
     }
 
@@ -210,7 +210,7 @@ mod test {
 
         assert_eq!(
             format!("{church_expr}"),
-            "(\\a. (\\b. (a (a (a (a (a (a (a (a (a (a (a (a b))))))))))))))"
+            "(a => (b => (a (a (a (a (a (a (a (a (a (a (a (a b))))))))))))))"
         );
     }
 

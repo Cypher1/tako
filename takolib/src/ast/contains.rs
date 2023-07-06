@@ -42,6 +42,7 @@ macro_rules! make_contains(
                 let node: TypedIndex<Node> = TypedIndex::new(std::sync::Arc::make_mut(&mut self.nodes), Node {
                     id: NodeData::$kind(id),
                     equivalents: None,
+                    lowered_to: None,
                     ty: None,
                     location,
                 })

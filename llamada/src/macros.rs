@@ -31,6 +31,9 @@ macro_rules! derive_expr_from(
         fn get<'a>(&'a self, id: &'a Self::Index) -> &Term<Self::Value, Self::Index> {
             self.$inner.get(id)
         }
+        fn get_mut<'a>(&'a mut self, id: &'a mut Self::Index) -> &mut Term<Self::Value, Self::Index> {
+            self.$inner.get_mut(id)
+        }
         fn get_meta<'a>(&'a self, id: &'a Self::Index) -> &Self::Meta {
             self.$inner.get_meta(id)
         }

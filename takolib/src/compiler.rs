@@ -222,6 +222,9 @@ impl Compiler {
         spawn(async move {
             // TODO: Use a proper map from in paths to out paths.
             while let Some(EvalFileTask { path: _, ast, root }) = rx1.recv().await {
+                let Some(root) = root else {
+                    todo!("No known root!?")
+                };
                 tx2.send(LowerFileTask {
                     path: path.clone(),
                     ast: ast.clone(),

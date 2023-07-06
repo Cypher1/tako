@@ -375,7 +375,7 @@ mod test {
 
         assert_eq!(
             format!("{with_ty}"),
-            "((Mul: (\\a: U32. (\\b: U32. U32)) 3: U32): (\\a: U32. U32) 4: U32): U32"
+            "((Mul: (a: U32 => (b: U32 => U32)) 3: U32): (a: U32 => U32) 4: U32): U32"
         );
         // TODO: Show constraints.
     }
