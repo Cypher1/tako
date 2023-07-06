@@ -300,9 +300,7 @@ impl Task for CodegenTask {
     #[cfg(feature = "backend")]
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
         trace!("CodegenTask (backend): {path}", path = self.path.display());
-        let Some(root) = self.root else {
-            todo!("Handle not having a root for codegen!?");
-        };
+        let root = self.root;
         let result = crate::codegen::codegen(&self.path, &self.ast, root)
             .map_err(|err| self.decorate_error(err));
         result_sender
