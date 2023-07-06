@@ -1,4 +1,4 @@
-use crate::ast::{Ast, Contains, Node, NodeId, NodeData};
+use crate::ast::{Ast, Contains, Node, NodeData, NodeId};
 use crate::error::TError;
 use crate::parser::semantics::Literal;
 use crate::parser::tokens::Symbol;
@@ -19,7 +19,9 @@ pub fn lower(_path: &Path, og_ast: &Ast, root: NodeId) -> Result<Llamada, TError
     let mut expr = Llamada::new(Term::Var(0), Empty);
     let mut ast_to_expr = HashMap::new();
     let mut get_expr = move |expr: &mut Llamada, id: NodeId, term: Option<Term>| {
-        let e_id = ast_to_expr.entry(id).or_insert_with(||expr.add(Term::Var(0)));
+        let e_id = ast_to_expr
+            .entry(id)
+            .or_insert_with(|| expr.add(Term::Var(0)));
         if let Some(term) = term {
             *expr.get_mut(e_id) = term;
         }
@@ -94,9 +96,13 @@ pub fn lower(_path: &Path, og_ast: &Ast, root: NodeId) -> Result<Llamada, TError
     while let Some(equi) = node.equivalents {
         node = ast.get(equi);
     }
-    let root = node.lowered_to.unwrap_or_else(||
-        todo!("root wasn't lowered: {:?}\n{}", ast.get(root), ast.pretty_node(root))
-    );
+    let root = node.lowered_to.unwrap_or_else(|| {
+        todo!(
+            "root wasn't lowered: {:?}\n{}",
+            ast.get(root),
+            ast.pretty_node(root)
+        )
+    });
     *expr.root_mut() = root;
     Ok(expr)
 }
