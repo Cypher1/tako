@@ -55,6 +55,7 @@ pub trait Expr: Sized {
 
     fn get_last_id(&self) -> Self::Index;
     fn get<'a>(&'a self, id: &'a Self::Index) -> &'a Term<Self::Value, Self::Index>;
+    fn get_mut<'a>(&'a mut self, id: &'a mut Self::Index) -> &'a mut Term<Self::Value, Self::Index>;
     fn get_meta<'a>(&'a self, id: &'a Self::Index) -> &'a Self::Meta;
     fn root(&self) -> &Self::Index;
     fn root_mut(&mut self) -> &mut Self::Index;

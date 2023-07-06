@@ -50,6 +50,10 @@ impl<T: Evaluable + Clone + std::fmt::Display, Meta: Clone + Default + std::fmt:
         // TODO: Checked version?
         &self.terms[*id].0
     }
+    fn get_mut(&mut self, id: &mut Self::Index) -> &mut Term<Self::Value, Self::Index> {
+        // TODO: Checked version?
+        &mut self.terms[*id].0
+    }
     fn get_meta(&self, id: &Self::Index) -> &Self::Meta {
         // TODO: Checked version?
         &self.terms[*id].1
