@@ -30,6 +30,24 @@ pub fn lower(_path: &Path, og_ast: &Ast, root: NodeId) -> Result<Llamada, TError
         let node: &mut Node = ast.get_mut(*nodeid);
         node.lowered_to = Some(e_id);
     }
+    for (nodeid, val) in og_ast.calls.iter() {
+        let val = match val {
+            Literal::Numeric => {
+                let location = ast.get(*nodeid).location;
+                let str = ast.string_interner.get_str_by_loc(location.start);
+                trace!("GOT NUMERIC AT {:?} => {:?}", &location, str);
+                let str = str.expect("Got nothing for the string");
+                let val = str
+                    .parse::<u32>()
+                    .expect("Could not parse string as number");
+                val.into()
+            }
+            _ => todo!("Unhandled value type {val:?}"),
+        };
+        let e_id = expr.add(Ext(val));
+        let node: &mut Node = ast.get_mut(*nodeid);
+        node.lowered_to = Some(e_id);
+    }
     // TODO: Others...
     // For every abs var and cons
     // Map them in and track them with `.lowered_to`
