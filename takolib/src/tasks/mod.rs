@@ -300,7 +300,7 @@ impl Task for CodegenTask {
     #[cfg(feature = "backend")]
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
         trace!("CodegenTask (backend): {path}", path = self.path.display());
-        let result = crate::codegen::codegen(&self.path, &self.ast, Some(*self.root))
+        let result = crate::codegen::codegen(&self.path, &self.ast, Some(self.root))
             .map_err(|err| self.decorate_error(err));
         result_sender
             .send((
