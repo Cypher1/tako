@@ -1,5 +1,9 @@
 # TODOs
 
+## MVP
+
+- Re association of lambda calculus terms
+
 ## Features
 
 - Shift+enter in REPL continues without execution
