@@ -45,7 +45,7 @@ impl std::fmt::Display for TaskStats {
         let num_real = num_requests - num_already_running;
         let num_done = num_succeeded + num_cached;
         write!(f, "{num_done}/{num_real}")?;
-        let items: Vec<String> = vec![(num_cached, "cached"), (num_failed, "failed")]
+        let items: Vec<String> = [(num_cached, "cached"), (num_failed, "failed")]
             .iter()
             .filter(|(n, _label)| **n > 0)
             .map(|(n, label)| format!("{n} {label}"))
