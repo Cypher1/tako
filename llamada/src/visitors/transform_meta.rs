@@ -240,7 +240,7 @@ mod test {
 
     #[test]
     fn arity_checker() {
-        let expr = new_expr!(
+        let (expr, _) = new_expr!(
             LambdaCalc,
             p_a_b,
             a = ext(3),

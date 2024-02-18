@@ -3,7 +3,7 @@ macro_rules! expr(
     { $ctx: expr, $final: ident, $( $name: ident = $ex: expr ),* $(,)? } => {
         {
             #[allow(unused_imports)]
-            use $crate::Term::*;
+            use $crate::{expr, Term::*};
             $( let $name = $ctx.add($ex); )*
             $final
         }
@@ -19,8 +19,8 @@ macro_rules! new_expr(
             let mut e = <$ty>::new($first_ex, Empty {});
             let $first = e.get_last_id();
             let f = expr!(e, $final, $( $name = $ex, )*);
-            *e.root_mut() = f;
-            e
+            *e.root_mut() = f.clone();
+            (e, f)
         }
     }
 );
