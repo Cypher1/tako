@@ -205,6 +205,7 @@ macro_rules! tests {
                         plus_m = App(plus.clone(), church_m),
                         plus_n_m = App(plus_m, church_n)
                     );
+                    *expr.root_mut() = plus_n_m.clone();
                     expr.reduce();
                     let result = expr.as_church(&plus_n_m);
                     eprintln!("{n:?} + {m:?} = {result:?}");
