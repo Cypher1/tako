@@ -35,6 +35,7 @@ impl<T> std::hash::Hash for Meta<T> {
 }
 
 impl<T> PartialOrd for Meta<T> {
+    #[allow(clippy::non_canonical_partial_ord_impl)]
     fn partial_cmp(&self, _other: &Self) -> Option<std::cmp::Ordering> {
         Some(std::cmp::Ordering::Equal)
     }

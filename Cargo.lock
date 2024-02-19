@@ -1116,6 +1116,10 @@ dependencies = [
 [[package]]
 name = "llamada"
 version = "0.1.0"
+dependencies = [
+ "better-std",
+ "pretty_assertions",
+]
 
 [[package]]
 name = "llvm-sys"

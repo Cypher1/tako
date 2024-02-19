@@ -95,7 +95,10 @@ impl<
         term: Term<Self::Value, Self::Index>,
         meta: Self::Meta,
     ) -> Self::Index {
-        Ptr::new(term, meta)
+        let node = Ptr::new(term, meta);
+        // TODO: Consider a way to avoid this copy.
+        self.terms.push(node.clone());
+        node
     }
     fn print_meta(&self) -> bool {
         self.print_meta
@@ -109,5 +112,6 @@ pub type LambdaCalc = SparseRepr<Never, Empty>;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use better_std::assert_eq;
     tests!(LambdaCalc);
 }
