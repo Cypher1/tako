@@ -145,7 +145,8 @@ impl<'a> Ctx<'a> {
                     }
                 } else {
                     let arg = self.eval(
-                        *op.args.first()
+                        *op.args
+                            .first()
                             .expect("Sub should have at least one operand"),
                     )?;
                     match arg {
