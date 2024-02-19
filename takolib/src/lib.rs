@@ -60,7 +60,6 @@ pub fn ensure_initialized() {
     use std::fs::OpenOptions;
     build_logger(|env| {
         let log_file = OpenOptions::new()
-            .write(true)
             .append(true)
             .create(true)
             .open(".tako.log")

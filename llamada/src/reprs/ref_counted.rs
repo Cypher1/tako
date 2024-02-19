@@ -65,6 +65,7 @@ impl<
         }
     }
     fn get_last_id(&self) -> Self::Index {
+        // This clone is always cheap thanks to reference counting.
         self.terms.last().unwrap().clone()
     }
     fn get<'a>(&'a self, id: &'a Self::Index) -> &'a Term<Self::Value, Self::Index> {
@@ -93,7 +94,9 @@ impl<
         term: Term<Self::Value, Self::Index>,
         meta: Self::Meta,
     ) -> Self::Index {
-        Rc::new(Ptr::new(term, meta))
+        let node = Rc::new(Ptr::new(term, meta));
+        self.terms.push(node.clone());
+        node
     }
     fn print_meta(&self) -> bool {
         self.print_meta
@@ -107,5 +110,6 @@ pub type LambdaCalc = RcRepr<Never, Empty>;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use better_std::assert_eq;
     tests!(LambdaCalc);
 }

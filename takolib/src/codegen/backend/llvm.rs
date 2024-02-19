@@ -66,6 +66,7 @@ impl<'ctx> Backend<'ctx> for Llvm<'ctx> {
             reloc: RelocMode::Default,
             model: CodeModel::Default,
             opt: OptimizationLevel::Default,
+            #[allow(clippy::arc_with_non_send_sync)]
             target_triple: Arc::new(TargetMachine::get_default_triple()),
             target_machine: None,
         };

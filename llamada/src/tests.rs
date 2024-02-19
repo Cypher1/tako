@@ -172,6 +172,48 @@ macro_rules! tests {
         }
 
         #[test]
+        fn plus_expr_using_macros() {
+            let (mut expr, plus) = $crate::new_expr!(
+                $ty,
+                plus,
+                x = Var(1),
+                f = Var(2),
+                m = Var(3),
+                n = Var(4),
+                nf = App(n.clone(), f.clone()),
+                mf = App(m.clone(), f.clone()),
+                mfx = App(mf, x.clone()),
+                nfmfx = App(nf.clone(), mfx.clone()),
+                abs1_nfmfx = Term::abs(nfmfx),
+                abs2_nfmfx = Term::abs(abs1_nfmfx),
+                abs3_nfmfx = Term::abs(abs2_nfmfx),
+                plus = Term::abs(abs3_nfmfx)
+            );
+
+            assert_eq!(
+                format!("{}", &expr),
+                "(a => (b => (c => (d => ((a c) ((b c) d))))))"
+            );
+            for n in 0..10 {
+                for m in 0..10 {
+                    let church_n = expr.to_church(n);
+                    let church_m = expr.to_church(m);
+
+                    let plus_n_m = $crate::expr!(
+                        &mut expr,
+                        plus_n_m,
+                        plus_m = App(plus.clone(), church_m),
+                        plus_n_m = App(plus_m, church_n)
+                    );
+                    expr.reduce();
+                    let result = expr.as_church(&plus_n_m);
+                    eprintln!("{n:?} + {m:?} = {result:?}");
+                    assert_eq!(result, Some(n + m));
+                }
+            }
+        }
+
+        #[test]
         fn plus_expr() {
             let mut expr = <$ty>::new(Term::Var(1), Empty);
             let x = expr.get_last_id();

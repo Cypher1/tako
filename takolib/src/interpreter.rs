@@ -60,7 +60,7 @@ pub fn run(path: &Path, ast: &Ast, root: Option<NodeId>) -> Result<Prim, TError>
 
 impl<'a> Ctx<'a> {
     pub fn eval2(&mut self, args: &[NodeId]) -> Result<[Prim; 2], TError> {
-        let l = args.get(0).expect("requires a left argument");
+        let l = args.first().expect("requires a left argument");
         let r = args.get(1).expect("requires a right argument");
         let l = self.eval(*l)?;
         let r = self.eval(*r)?;
@@ -146,7 +146,7 @@ impl<'a> Ctx<'a> {
                 } else {
                     let arg = self.eval(
                         *op.args
-                            .get(0)
+                            .first()
                             .expect("Sub should have at least one operand"),
                     )?;
                     match arg {
@@ -226,7 +226,7 @@ impl<'a> Ctx<'a> {
             Symbol::HasType => todo!(),
             Symbol::Arrow | Symbol::DoubleArrow => {
                 // TODO(clarity): Type arrow vs value arrow?
-                let Some(_l) = op.args.get(0) else {
+                let Some(_l) = op.args.first() else {
                     panic!("-> expects a left and a right. Left not found");
                 };
                 let Some(r) = op.args.get(1) else {
@@ -245,7 +245,7 @@ impl<'a> Ctx<'a> {
             Symbol::Spread => todo!(),
             Symbol::Comma => todo!(),
             Symbol::Sequence => {
-                let Some(l) = op.args.get(0) else {
+                let Some(l) = op.args.first() else {
                     panic!("; expects a left and a right. Neither found");
                 };
                 let Some(r) = op.args.get(1) else {

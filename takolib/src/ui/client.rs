@@ -93,7 +93,7 @@ impl Client {
                 trace!("TaskManager status: {kind:?} => {stats}\nerrors: {errors:#?}");
                 for (_id, err) in errors {
                     let file = err.location.as_ref().map(|loc| loc.filename.clone());
-                    let errs = self.errors_for_file.entry(file).or_insert_with(BTreeSet::new);
+                    let errs = self.errors_for_file.entry(file).or_default();
                     errs.insert(err);
                 }
                 self.manager_status.insert(kind, stats);

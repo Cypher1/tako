@@ -45,7 +45,7 @@ impl std::fmt::Display for TaskStats {
         let num_real = num_requests - num_already_running;
         let num_done = num_succeeded + num_cached;
         write!(f, "{num_done}/{num_real}")?;
-        let items: Vec<String> = vec![(num_cached, "cached"), (num_failed, "failed")]
+        let items: Vec<String> = [(num_cached, "cached"), (num_failed, "failed")]
             .iter()
             .filter(|(n, _label)| **n > 0)
             .map(|(n, label)| format!("{n} {label}"))
@@ -143,10 +143,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
             Self::name()
         );
         let task_id = task.get_hash();
-        let current_results = self
-            .result_store
-            .entry(task_id)
-            .or_insert_with(TaskStatus::new);
+        let current_results = self.result_store.entry(task_id).or_default();
         let mut is_complete = false;
         let mut error = None;
         let results_so_far = &mut current_results.results;
@@ -197,10 +194,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
     ) {
         // Get a new job from 'upstream'.
         self.stats.num_requests += 1;
-        let status = self
-            .result_store
-            .entry(task.get_hash())
-            .or_insert_with(TaskStatus::new);
+        let status = self.result_store.entry(task.get_hash()).or_default();
         if task.invalidate() {
             *status = TaskStatus::new(); // Forget the previous value!
         }
