@@ -146,7 +146,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
         let current_results = self
             .result_store
             .entry(task_id)
-            .or_insert_with(TaskStatus::new);
+            .or_default();
         let mut is_complete = false;
         let mut error = None;
         let results_so_far = &mut current_results.results;
@@ -200,7 +200,7 @@ impl<T: Debug + Task + 'static> TaskManager<T> {
         let status = self
             .result_store
             .entry(task.get_hash())
-            .or_insert_with(TaskStatus::new);
+            .or_default();
         if task.invalidate() {
             *status = TaskStatus::new(); // Forget the previous value!
         }
