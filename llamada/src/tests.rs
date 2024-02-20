@@ -172,6 +172,39 @@ macro_rules! tests {
         }
 
         #[test]
+        fn simple_expr_using_macros() {
+            let (mut expr, constf) = $crate::new_expr!(
+                $ty,
+                constf,
+                a = Var(2),
+                ba = Term::abs(a),
+                constf = Term::abs(ba),
+            );
+
+            assert_eq!(
+                format!("{}", &expr),
+                "(a => (b => a))"
+            );
+            for n in 0..3 {
+                for m in 0..3 {
+                    let church_n = expr.to_church(n);
+                    let church_m = expr.to_church(m);
+
+                    let constf_n_m = $crate::expr!(
+                        &mut expr,
+                        constf_n_m,
+                        constf_m = App(constf.clone(), church_m),
+                        constf_n_m = App(constf_m, church_n)
+                    );
+                    *expr.root_mut() = constf_n_m.clone();
+                    expr.reduce();
+                    let result = expr.as_church(&constf_n_m);
+                    assert_eq!(result, Some(n), "a where a={n:?}, b={m:?} = {result:?}");
+                }
+            }
+        }
+
+        #[test]
         fn plus_expr_using_macros() {
             let (mut expr, plus) = $crate::new_expr!(
                 $ty,
@@ -208,8 +241,7 @@ macro_rules! tests {
                     *expr.root_mut() = plus_n_m.clone();
                     expr.reduce();
                     let result = expr.as_church(&plus_n_m);
-                    eprintln!("{n:?} + {m:?} = {result:?}");
-                    assert_eq!(result, Some(n + m));
+                    assert_eq!(result, Some(n + m), "Got: {n:?} + {m:?} = {result:?}");
                 }
             }
         }
@@ -245,10 +277,14 @@ macro_rules! tests {
                     let plus_m = expr.add(Term::App(plus.clone(), church_m));
                     let plus_n_m = expr.add(Term::App(plus_m, church_n));
                     *expr.root_mut() = (plus_n_m);
+                    assert_eq!(
+                        format!("{}", &expr),
+                        "(a => (b => (c => (d => ((a c) ((b c) d))))))"
+                    );
+
                     expr.reduce();
                     let result = expr.as_church(expr.root());
-                    eprintln!("{n:?} + {m:?} = {result:?}");
-                    assert_eq!(result, Some(n + m));
+                    assert_eq!(result, Some(n + m), "Got: {n:?} + {m:?} = {result:?}");
                 }
             }
         }
@@ -285,8 +321,7 @@ macro_rules! tests {
                     *expr.root_mut() = (mul_n_m);
                     expr.reduce();
                     let result = expr.as_church(expr.root());
-                    eprintln!("{n:?} * {m:?} = {result:?}");
-                    assert_eq!(result, Some(n * m));
+                    assert_eq!(result, Some(n * m), "Got: {n:?} * {m:?} = {result:?}");
                 }
             }
         }
