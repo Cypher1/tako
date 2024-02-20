@@ -93,5 +93,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use better_std::assert_eq;
     tests!(LambdaCalc);
 }
