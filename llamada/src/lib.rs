@@ -2,6 +2,8 @@
 #[macro_use]
 pub mod tests;
 
+use log::debug;
+
 pub mod base_types;
 mod expr_result;
 pub mod reprs;
@@ -219,25 +221,30 @@ pub trait Expr: Sized {
 
     fn as_church(&self, id: &Self::Index) -> Option<u32> {
         // (\f. (\x. (f ... (f x)...) ))
+        debug!("as_church - start: {:?}", id);
         let inner = match self.get(id) {
             Term::Abs(_arg_meta, inner) => inner,
             _ => return None,
         };
+        debug!("as_church - unwrap abs1: {:?}", inner);
         let mut inner = match self.get(inner) {
             Term::Abs(_arg_meta, inner) => inner,
             _ => return None,
         };
+        debug!("as_church - unwrap abs2: {:?}", inner);
         let mut i = 0;
         loop {
             match self.get(inner) {
                 Term::App(a, b) => match self.get(a) {
                     Term::Var(2) => {
+                        debug!("as_church - unwrap app: {:?} {:?}", i, inner);
                         i += 1;
                         inner = b;
                     }
                     _ => return None,
                 },
                 Term::Var(x) if *x == 1 => {
+                    debug!("as_church - unwrap var: {:?}", i);
                     return Some(i);
                 }
                 _ => return None,

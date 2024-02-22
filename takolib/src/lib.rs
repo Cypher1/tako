@@ -25,22 +25,20 @@ fn build_logger(finish: impl FnOnce(&mut env_logger::Builder)) {
         unsafe {
             LOGS_UNINITIALISED = false;
         }
-        finish(
-            env_logger::Builder::from_env(
-                env_logger::Env::default()
-                    .filter_or("RUST_LOG", "debug")
-                    .write_style_or("RUST_LOG_STYLE", "AUTO"),
-            )
-            .format_timestamp(None),
-        );
+        let env = env_logger::Env::default()
+                .filter_or("RUST_LOG", "debug")
+                .write_style_or("RUST_LOG_STYLE", "AUTO");
+        let mut builder = env_logger::Builder::from_env(env);
+        let logger = builder.format_timestamp(None);
+        finish(logger);
     }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 #[cfg(test)]
 pub fn ensure_initialized() {
-    build_logger(|env| {
-        let _ = env.is_test(true).try_init();
+    build_logger(|logger| {
+        let _ = logger.is_test(true).try_init();
     });
 }
 
@@ -58,13 +56,14 @@ pub fn ensure_initialized() {
 #[cfg(not(test))]
 pub fn ensure_initialized() {
     use std::fs::OpenOptions;
-    build_logger(|env| {
+    build_logger(|logger| {
         let log_file = OpenOptions::new()
             .append(true)
             .create(true)
             .open(".tako.log")
             .expect("Failed to setup log file.");
-        env_logger::Builder::init(env.target(env_logger::fmt::Target::Pipe(Box::new(log_file))));
+        let target = env_logger::fmt::Target::Pipe(Box::new(log_file));
+        env_logger::Builder::init(logger.target(target));
     });
     build_logger(env_logger::Builder::init);
 }
