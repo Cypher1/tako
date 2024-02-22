@@ -1,18 +1,18 @@
-use env_logger;
-
-pub fn setup() {
-    let env = env_logger::Env::default()
-            .filter_or("RUST_LOG", "debug")
-            .write_style_or("RUST_LOG_STYLE", "AUTO");
-    let mut builder = env_logger::Builder::from_env(env);
-    let logger = builder.format_timestamp(None);
-    let _ = logger.is_test(true).try_init();
-}
-
 macro_rules! tests {
     ($ty: ty) => {
+        fn logger_setup() {
+            use env_logger;
+            let env = env_logger::Env::default()
+                    .filter_or("RUST_LOG", "debug")
+                    .write_style_or("RUST_LOG_STYLE", "AUTO");
+            let mut builder = env_logger::Builder::from_env(env);
+            let logger = builder.format_timestamp(None);
+            let _ = logger.is_test(true).try_init();
+        }
+
         #[test]
         fn id_expr() {
+            logger_setup();
             let mut expr = <$ty>::new(Term::Var(1), Empty);
             let prev = expr.get_last_id();
             let abs = expr.add(Term::abs(prev));
@@ -37,6 +37,7 @@ macro_rules! tests {
 
         #[test]
         fn true_expr() {
+            logger_setup();
             let mut expr = <$ty>::new(Term::Var(2), Empty);
             let prev = expr.get_last_id();
             let abs1 = expr.add(Term::abs(prev));
@@ -49,6 +50,7 @@ macro_rules! tests {
 
         #[test]
         fn false_expr() {
+            logger_setup();
             let mut expr = <$ty>::new(Term::Var(1), Empty);
             let prev = expr.get_last_id();
             let abs1 = expr.add(Term::abs(prev));
@@ -61,6 +63,7 @@ macro_rules! tests {
 
         #[test]
         fn id_a_expr() {
+            logger_setup();
             let mut expr = <$ty>::new(Term::Var(1), Empty);
             let prev = expr.get_last_id();
             let abs1 = expr.add(Term::abs(prev));
@@ -75,6 +78,7 @@ macro_rules! tests {
 
         #[test]
         fn not_expr() {
+            logger_setup();
             let mut expr = <$ty>::new(Term::Var(1), Empty);
             let true_case = expr.get_last_id();
             let false_case = expr.add(Term::Var(2));
@@ -92,6 +96,7 @@ macro_rules! tests {
 
         #[test]
         fn not_true_false_expr() {
+            logger_setup();
             let mut expr = <$ty>::new(Term::Var(1), Empty);
             let inner = {
                 let true_case = expr.get_last_id();
@@ -125,6 +130,7 @@ macro_rules! tests {
 
         #[test]
         fn zero_expr() {
+            logger_setup();
             let mut church_test = <$ty>::new(Term::Var(1), Empty);
             let church = church_test.to_church(0);
             *church_test.root_mut() = (church);
@@ -143,6 +149,7 @@ macro_rules! tests {
 
         #[test]
         fn one_expr() {
+            logger_setup();
             let mut church_test = <$ty>::new(Term::Var(1), Empty);
             let church = church_test.to_church(1);
             *church_test.root_mut() = (church);
@@ -163,6 +170,7 @@ macro_rules! tests {
 
         #[test]
         fn two_expr() {
+            logger_setup();
             let mut church_test = <$ty>::new(Term::Var(1), Empty);
             let church = church_test.to_church(2);
             *church_test.root_mut() = (church);
@@ -184,6 +192,7 @@ macro_rules! tests {
 
         #[test]
         fn simple_expr_using_macros() {
+            logger_setup();
             let (mut expr, constf) = $crate::new_expr!(
                 $ty,
                 constf,
@@ -214,6 +223,7 @@ macro_rules! tests {
 
         #[test]
         fn plus_expr_using_macros() {
+            logger_setup();
             let (mut expr, plus) = $crate::new_expr!(
                 $ty,
                 plus,
@@ -265,6 +275,7 @@ macro_rules! tests {
 
         #[test]
         fn plus_expr() {
+            logger_setup();
             let mut expr = <$ty>::new(Term::Var(1), Empty);
             let x = expr.get_last_id();
 
@@ -322,6 +333,7 @@ macro_rules! tests {
 
         #[test]
         fn mul_expr() {
+            logger_setup();
             let mut expr = <$ty>::new(Term::Var(1), Empty);
             let x = expr.get_last_id();
 

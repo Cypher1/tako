@@ -224,7 +224,18 @@ pub trait Expr: Sized {
         debug!("as_church - start: {:?}", id);
         let inner = match self.get(id) {
             Term::Abs(_arg_meta, inner) => inner,
-            _ => return None,
+            Term::App(..) => {
+                debug!("as_church - not abs1: App");
+                return None
+            },
+            Term::Var(..) => {
+                debug!("as_church - not abs1: Var");
+                return None
+            }
+            Term::Ext(..) => {
+                debug!("as_church - not abs1: Ext");
+                return None
+            }
         };
         debug!("as_church - unwrap abs1: {:?}", inner);
         let mut inner = match self.get(inner) {
