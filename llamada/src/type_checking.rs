@@ -327,7 +327,7 @@ mod test {
 
     #[test]
     fn simple_type_system_with_no_collapsing() {
-        let (expr, _) = new_expr!(
+        let expr = new_expr!(
             LambdaCalc,
             p_a_b,
             a = ext(3),
@@ -350,7 +350,7 @@ mod test {
 
     #[test]
     fn simply_typed() {
-        let (expr, _) = new_expr!(
+        let expr = new_expr!(
             LambdaCalc,
             p_a_b,
             a = ext(3),

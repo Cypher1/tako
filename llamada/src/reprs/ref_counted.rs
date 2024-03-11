@@ -94,9 +94,7 @@ impl<
         term: Term<Self::Value, Self::Index>,
         meta: Self::Meta,
     ) -> Self::Index {
-        let node = Rc::new(Ptr::new(term, meta));
-        self.terms.push(node.clone());
-        node
+        Rc::new(Ptr::new(term, meta))
     }
     fn print_meta(&self) -> bool {
         self.print_meta

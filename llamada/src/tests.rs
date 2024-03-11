@@ -193,17 +193,18 @@ macro_rules! tests {
         #[test]
         fn simple_expr_using_macros() {
             logger_setup();
-            let (mut expr, constf) = $crate::new_expr!(
-                $ty,
-                constf,
-                a = Var(2),
-                ba = Term::abs(a),
-                constf = Term::abs(ba),
-            );
-
-            assert_eq!(format!("{}", &expr), "(a => (b => a))");
             for n in 0..3 {
                 for m in 0..3 {
+                    let mut expr = $crate::new_expr!(
+                    $ty,
+                    constf,
+                    a = Var(2),
+                    ba = Term::abs(a),
+                    constf = Term::abs(ba),
+                    );
+                    assert_eq!(format!("{}", &expr), "(a => (b => a))");
+
+                    let constf = expr.root().clone();
                     let church_n = expr.to_church(n);
                     let church_m = expr.to_church(m);
 
@@ -224,7 +225,7 @@ macro_rules! tests {
         #[test]
         fn plus_expr_using_macros() {
             logger_setup();
-            let (mut expr, plus) = $crate::new_expr!(
+            let mut expr = $crate::new_expr!(
                 $ty,
                 plus,
                 x = Var(1),
@@ -240,6 +241,7 @@ macro_rules! tests {
                 abs3_nfmfx = Term::abs(abs2_nfmfx),
                 plus = Term::abs(abs3_nfmfx)
             );
+            let plus = expr.root().clone();
 
             assert_eq!(
                 format!("{}", &expr),

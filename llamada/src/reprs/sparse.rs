@@ -95,10 +95,7 @@ impl<
         term: Term<Self::Value, Self::Index>,
         meta: Self::Meta,
     ) -> Self::Index {
-        let node = Ptr::new(term, meta);
-        // TODO: Consider a way to avoid this copy.
-        self.terms.push(node.clone());
-        node
+        Ptr::new(term, meta)
     }
     fn print_meta(&self) -> bool {
         self.print_meta
