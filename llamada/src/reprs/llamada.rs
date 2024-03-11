@@ -220,6 +220,7 @@ where
 mod tests {
     use super::*;
     use crate::ext;
+    use better_std::assert_eq;
     tests!(CompactNumerals<Empty>);
 
     #[test]

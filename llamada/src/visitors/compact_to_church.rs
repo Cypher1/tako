@@ -192,7 +192,7 @@ mod test {
             output: LambdaCalc::new(Term::Var(1), Empty {}),
         };
 
-        let (expr, _) = new_expr!(
+        let expr = new_expr!(
             LambdaCalc,
             p_a_b,
             a = Ext(3.into()),
@@ -216,7 +216,7 @@ mod test {
 
     #[test]
     fn arity_checker() {
-        let (expr, _) = new_expr!(
+        let expr = new_expr!(
             LambdaCalc,
             p_a_b,
             a = ext(3),

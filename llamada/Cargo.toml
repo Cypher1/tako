@@ -15,3 +15,7 @@ include = ["src/**/*", "LICENSE.md", "README.md"]
 [dependencies]
 pretty_assertions = "1.0"
 better-std = { path = "../better-std", features = [ ] }
+log = "0.4"
+
+[dev-dependencies]
+env_logger = { version = "0.9" }
