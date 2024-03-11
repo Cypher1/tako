@@ -211,8 +211,8 @@ macro_rules! tests {
                     let constf_n_m = $crate::expr!(
                         &mut expr,
                         constf_n_m,
-                        constf_m = App(constf.clone(), church_m),
-                        constf_n_m = App(constf_m, church_n)
+                        constf_m = App(constf.clone(), church_m.clone()),
+                        constf_n_m = App(constf_m.clone(), church_n.clone())
                     );
                     *expr.root_mut() = constf_n_m.clone();
                     expr.reduce();
