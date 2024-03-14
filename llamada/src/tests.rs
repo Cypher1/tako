@@ -205,8 +205,9 @@ macro_rules! tests {
                         plus_m = App(plus.clone(), church_m),
                         plus_n_m = App(plus_m, church_n)
                     );
+                    *expr.root_mut() = (plus_n_m);
                     expr.reduce();
-                    let result = expr.as_church(&plus_n_m);
+                    let result = expr.as_church(expr.root());
                     eprintln!("{n:?} + {m:?} = {result:?}");
                     assert_eq!(result, Some(n + m));
                 }
