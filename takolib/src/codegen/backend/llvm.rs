@@ -160,7 +160,10 @@ impl<'ctx> BackendStateTrait for LlvmState<'ctx> {
     }
 
     fn access_into_array(&mut self, ty: Self::ValueType, array: Self::PointerValue) -> Self::Value {
-        self.builder.build_load(ty, array, "load_array").expect("Array access should be safe...").into()
+        self.builder
+            .build_load(ty, array, "load_array")
+            .expect("Array access should be safe...")
+            .into()
     }
 
     fn array_of_strings_type(&mut self) -> Self::PointerType {
@@ -173,9 +176,13 @@ impl<'ctx> BackendStateTrait for LlvmState<'ctx> {
     }
     fn build_return(&mut self, value: Self::ReturnValue) {
         if let Some(value) = value {
-            self.builder.build_return(Some(value)).expect("Returning a value should always succeed");
+            self.builder
+                .build_return(Some(value))
+                .expect("Returning a value should always succeed");
         } else {
-            self.builder.build_return(None).expect("Returning nothing should always succeed");
+            self.builder
+                .build_return(None)
+                .expect("Returning nothing should always succeed");
         }
     }
 
@@ -199,7 +206,9 @@ impl<'ctx> BackendStateTrait for LlvmState<'ctx> {
     fn global_string(&mut self, value: &str) -> Self::PointerValue {
         self.strings.get(value).copied().unwrap_or_else(|| {
             let ptr_value = self.builder.build_global_string_ptr(value, "global_string");
-            let ptr = ptr_value.expect("This value should always be constructable").as_pointer_value();
+            let ptr = ptr_value
+                .expect("This value should always be constructable")
+                .as_pointer_value();
             self.strings.insert(value.to_string(), ptr);
             ptr
         })
@@ -211,7 +220,8 @@ impl<'ctx> BackendStateTrait for LlvmState<'ctx> {
         let mut arg_array: Vec<BasicMetadataValueEnum<'ctx>> = vec![fmt_str.into()];
         arg_array.extend_from_slice(args);
         self.builder
-            .build_call(printf, &arg_array[..], "_call_printf").expect("Printf call should always succeed");
+            .build_call(printf, &arg_array[..], "_call_printf")
+            .expect("Printf call should always succeed");
     }
 
     fn create_binary(&self, bin_path: &Path) -> Result<(), TError> {
