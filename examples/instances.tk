@@ -1,3 +1,5 @@
+#!/usr/bin/env tako
+
 Bounded = Enum
   .open()
   .based_on({

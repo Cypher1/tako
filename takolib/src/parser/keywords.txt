@@ -1,9 +1,8 @@
-False
-TRUE
-True
 any
 construct
 exists
+export
+exports
 false
 forall
 from
@@ -18,8 +17,12 @@ lambda
 module
 pi
 preserve
+private
+public
+publish
 read
 require
+requires
 sigma
 such
 suchthat
