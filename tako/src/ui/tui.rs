@@ -1,10 +1,10 @@
 use crate::cli_options::Options;
 use async_trait::async_trait;
-use crokey::{key, KeyEventFormat};
+use crokey::{key, Combiner, KeyCombination, KeyCombinationFormat};
 use crossterm::{
     cursor::MoveTo,
-    event::{Event, EventStream, KeyCode, KeyEvent},
-    style::{/*Color,*/ Print, ResetColor /*, SetBackgroundColor, SetForegroundColor*/},
+    event::{Event, EventStream},
+    style::{Print, ResetColor},
     terminal::{disable_raw_mode, enable_raw_mode, size, Clear, ClearType},
     QueueableCommand,
 };
@@ -30,7 +30,8 @@ extern "C" fn shutdown() {
 
 #[derive(Debug)]
 pub struct Tui {
-    key_fmt: KeyEventFormat,
+    key_fmt: KeyCombinationFormat,
+    key_combiner: Combiner,
     should_exit: bool,
     input: String,
     input_after_cursor: String,
@@ -42,7 +43,8 @@ impl Tui {
     fn new(client: Client) -> Self {
         Self {
             client,
-            key_fmt: KeyEventFormat::default(),
+            key_combiner: Combiner::default(),
+            key_fmt: KeyCombinationFormat::default(),
             should_exit: false,
             input: String::new(),
             input_after_cursor: String::new(),
@@ -111,15 +113,18 @@ impl Tui {
         let mut characters = String::new();
         match event {
             Event::Key(key_event) => {
-                match key_event {
-                    ::crokey::__private::crossterm::event::KeyEvent {
-                        modifiers: ::crokey::__private::MODS_CTRL,
-                        code: ::crokey::__private::crossterm::event::KeyCode::Char('c' | 'q'),
-                    } => self.should_exit = true,
-                    key!(Backspace) => {
+                let combo: KeyCombination =
+                    if let Some(combo) = self.key_combiner.transform(key_event) {
+                        combo
+                    } else {
+                        return Ok(());
+                    };
+                match combo {
+                    key!(ctrl - c) | key!(ctrl - q) => self.should_exit = true,
+                    key!(backspace) => {
                         self.input.pop(); // Discard
                     }
-                    key!(Delete) => {
+                    key!(delete) => {
                         let mut chars = self.input_after_cursor.chars();
                         chars.next();
                         self.input_after_cursor = chars.collect();
@@ -154,10 +159,10 @@ impl Tui {
                             self.input_after_cursor = format!("{last}{}", self.input_after_cursor);
                         }
                     }
-                    key!(Shift - Enter) => {
+                    key!(shift - enter) => {
                         self.input.push('\n');
                     }
-                    key!(Enter) => {
+                    key!(enter) => {
                         // Submit the expression
                         let mut line = String::new();
                         std::mem::swap(&mut self.input, &mut line);
@@ -169,14 +174,12 @@ impl Tui {
                         }
                         self.input_after_cursor = String::new();
                     }
-                    KeyEvent {
-                        code: KeyCode::Char(letter),
-                        modifiers: _,
-                    } => {
-                        self.input.push(letter);
-                    }
-                    _ => {
-                        // discard
+                    other => {
+                        if let Some(letter) = other.as_letter() {
+                            self.input.push(letter);
+                        } else {
+                            // discard
+                        }
                     }
                 };
                 characters = format!("{characters}{}", self.key_fmt.to_string(key_event));

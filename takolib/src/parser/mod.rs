@@ -1,7 +1,5 @@
-pub mod keywords;
 pub mod semantics;
 pub mod tokens;
-// use rand::Rng;
 use crate::ast::location::Location;
 use crate::ast::string_interner::Identifier;
 use crate::ast::{Ast, Atom, Call, Contains, Definition, NodeData, NodeId, Op};
@@ -13,6 +11,15 @@ use smallvec::smallvec;
 use std::path::Path;
 use thiserror::Error;
 use tokens::{assign_op, binding_mode_operation, is_assign, OpBinding, Symbol, Token, TokenType};
+
+use lazy_static::lazy_static;
+
+lazy_static! {
+    pub static ref KEYWORDS: Vec<String> = include_str!("keywords.txt")
+        .split('\n')
+        .map(|s| s.to_string())
+        .collect();
+}
 
 #[derive(Debug, Error, PartialEq, Eq, Ord, PartialOrd, Clone, Hash)]
 pub enum ParseError {

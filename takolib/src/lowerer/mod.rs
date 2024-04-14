@@ -34,8 +34,8 @@ pub fn lower(_path: &Path, og_ast: &Ast, root: NodeId) -> Result<Llamada, TError
                 let location = ast.get(*nodeid).location;
                 let str = ast.string_interner.get_str_by_loc(location.start);
                 trace!("GOT NUMERIC AT {:?} => {:?}", &location, str);
-                let str = str.expect("Got nothing for the string");
                 let val = str
+                    .expect("Got nothing for the string")
                     .parse::<u32>()
                     .expect("Could not parse string as number");
                 val.into()
@@ -56,10 +56,12 @@ pub fn lower(_path: &Path, og_ast: &Ast, root: NodeId) -> Result<Llamada, TError
                 todo!("WHAT?")
             };
             eprintln!("ABS OVER {}", ast.pretty_node(inner));
-            let curr = get_expr(&mut expr, inner, Some(Term::Var(1))); // TODO: Reassociate...
-            let curr = get_expr(&mut expr, *nodeid, Some(Term::Abs(None, curr))); // TODO: Add the type info?
+            // TODO: Reassociate...
+            let var = get_expr(&mut expr, inner, Some(Term::Var(1)));
+            // TODO: Add the type info?
+            let abs = get_expr(&mut expr, *nodeid, Some(Term::Abs(None, var)));
             let node: &mut Node = ast.get_mut(*nodeid);
-            node.lowered_to = Some(curr);
+            node.lowered_to = Some(abs);
             continue;
         }
         // TODO!?
