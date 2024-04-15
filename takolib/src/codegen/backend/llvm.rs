@@ -167,8 +167,7 @@ impl<'ctx> BackendStateTrait for LlvmState<'ctx> {
     }
 
     fn array_of_strings_type(&mut self) -> Self::PointerType {
-        let char_star_type = self.char_ptr_type();
-        char_star_type.ptr_type(AddressSpace::default())
+        self.char_ptr_type()
     }
     fn const_int<T: Into<u64>>(&mut self, ty: Self::IntType, value: T) -> Self::Value {
         // TODO: Check bounds.
@@ -200,7 +199,7 @@ impl<'ctx> BackendStateTrait for LlvmState<'ctx> {
     }
 
     fn char_ptr_type(&mut self) -> Self::PointerType {
-        self.context.i8_type().ptr_type(AddressSpace::default())
+        self.context.ptr_type(AddressSpace::default())
     }
 
     fn global_string(&mut self, value: &str) -> Self::PointerValue {
