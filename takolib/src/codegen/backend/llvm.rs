@@ -167,7 +167,7 @@ impl<'ctx> BackendStateTrait for LlvmState<'ctx> {
     }
 
     fn array_of_strings_type(&mut self) -> Self::PointerType {
-        self.char_ptr_type()
+        self.context.ptr_type(AddressSpace::default())
     }
     fn const_int<T: Into<u64>>(&mut self, ty: Self::IntType, value: T) -> Self::Value {
         // TODO: Check bounds.
