@@ -36,16 +36,16 @@ jobs:
         path: |
           C:/Program Files/LLVM
           ./llvm
-        key: llvm-15.0
+        key: llvm-17.0
     - name: Install LLVM and Clang
       uses: KyleMayes/install-llvm-action@v1
       with:
-        version: "15.0"
+        version: "17.0"
         cached: ${{ steps.cache-llvm.outputs.cache-hit }}
     - name: Setup LLVM_PATH
-      run: "export LLVM_SYS_150_PREFIX=\"$LLVM_PATH\""
+      run: "export LLVM_SYS_170_PREFIX=\"$LLVM_PATH\""
     - name: Check llvm path
-      run: "echo \"LLVM_PATH: $LLVM_PATH\"; echo \"LLVM_SYS_150_PREFIX: $LLVM_SYS_150_PREFIX\"; ls $LLVM_SYS_150_PREFIX"
+      run: "echo \"LLVM_PATH: $LLVM_PATH\"; echo \"LLVM_SYS_170_PREFIX: $LLVM_SYS_170_PREFIX\"; ls $LLVM_SYS_170_PREFIX"
     - name: Run tests
       run: cargo test --locked --release --verbose
     - name: Run ignored tests

@@ -1,5 +1,5 @@
 use super::location::IndexIntoFile;
-use crate::parser::keywords::KEYWORDS;
+use crate::parser::KEYWORDS;
 use crate::primitives::typed_index::TypedIndex;
 use num_traits::Bounded;
 use std::collections::BTreeMap;
@@ -42,7 +42,7 @@ impl Default for StringInterner {
         n.pi = n.register_str("pi");
         n.forall = n.register_str("forall");
         n.exists = n.register_str("exists");
-        for key in KEYWORDS {
+        for key in KEYWORDS.iter() {
             n.register_str(key);
         }
         n

@@ -285,7 +285,9 @@ pub mod tests {
         // let zero = llvm.const_int(i32_type, 0);
         let argv_0 = llvm.access_into_array(char_star_type.into(), argv.into_pointer_value());
         llvm.printf("ARGC: %d, ARGV: %s\n", &[argc, argv_0]);
-        llvm.builder.build_return(Some(&argc.into_int_value()));
+        llvm.builder
+            .build_return(Some(&argc.into_int_value()))
+            .expect("building return should not fail");
 
         // dbg!(&llvm);
         let elf_path = test_build_output_dir().join("hello_world.elf");
