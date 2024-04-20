@@ -1,0 +1,25 @@
+boolean = Enum.new(
+  true=1,
+  false=0,
+)
+
+boolean.importLiterals()
+
+color = Enum
+  .basedOn(
+    byte[3]
+  )
+  .open(
+    red=#ff0000,
+    green=#00ff00,
+    blue=#0000ff,
+  )
+
+color.addValues(
+  purple=#ff00ff,
+  cyan=#00ffff,
+)
+
+main = {
+  print("Color {red} is red")
+}

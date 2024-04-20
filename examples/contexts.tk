@@ -1,0 +1,25 @@
+test = {
+  allocator = import("allocator")
+  ptr = allocator.allocate(sizeof(char[100]))
+  if (ptr == nullptr) {
+    print("Success")
+    exit(0)
+  } else {
+    print("Failure")
+  }
+}
+
+main = {
+  allocator = import("allocator")
+  logger = import("logger")
+
+  test_logger = logger.new_logger()
+  with {
+    allocator.allocate = allocator.reportOom,
+    system.out = test_logger,
+    system.error = test_logger,
+    run = test
+  }
+
+  print(test_logger)
+}
