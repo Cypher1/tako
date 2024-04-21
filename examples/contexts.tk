@@ -1,4 +1,4 @@
-test = {
+test() = {
   allocator = import("allocator")
   ptr = allocator.allocate(sizeof(char[100]))
   if (ptr == nullptr) {
@@ -9,13 +9,13 @@ test = {
   }
 }
 
-main = {
+main() = {
   allocator = import("allocator")
   logger = import("logger")
 
   test_logger = logger.new_logger()
   with {
-    allocator.allocate = allocator.reportOom,
+    allocator.allocate = allocator.report_oom,
     system.out = test_logger,
     system.error = test_logger,
     run = test

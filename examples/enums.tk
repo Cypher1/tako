@@ -3,10 +3,10 @@ boolean = Enum.new(
   false=0,
 )
 
-boolean.importLiterals()
+boolean.import_literals()
 
 color = Enum
-  .basedOn(
+  .based_on(
     byte[3]
   )
   .open(
@@ -15,11 +15,11 @@ color = Enum
     blue=#0000ff,
   )
 
-color.addValues(
+color.add_values(
   purple=#ff00ff,
   cyan=#00ffff,
 )
 
-main = {
+main() = {
   print("Color {red} is red")
 }

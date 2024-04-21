@@ -1,4 +1,4 @@
-main = {
+main() = {
   x3by2 = Vector.new([
       [ 0, 1 ],
       [ 2, 3 ],
