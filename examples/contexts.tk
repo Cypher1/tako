@@ -1,6 +1,6 @@
 test() = {
   allocator = import("allocator")
-  ptr = allocator.allocate(sizeof(char[100]))
+  ptr = allocator.allocate(sizeof(Char[100]))
   if (ptr == nullptr) {
     print("Success")
     exit(0)
