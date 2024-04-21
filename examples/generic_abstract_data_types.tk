@@ -1,0 +1,34 @@
+
+// A simple, untyped  implementation of S expressions.
+SExpr: Type = struct.new(
+  func: (args: Value[n]),
+  args: SExpr[n],
+  {n: Int},
+)
+
+// A well typed, but little, language using GADTs.
+Expr(
+  SubExpr(R: AllowedType): Reference(Expr(SubExpr, R))=Expr,
+  R: AllowedType,
+  with {AllowedType = Integer|Boolean}
+) = gadt.new(
+
+  // Control flow:
+  if(
+    cond: SubExpr(R=Boolean),
+    then: SubExpr(R=T),
+    else: SubExpr(R=T),
+    {T: AllowedType}
+  ): Expr(SubExpr, R=T),
+
+  // Binary operations:
+  or     (left:  SubExpr(R=Boolean), right: SubExpr(R=Boolean)): Expr(SubExpr, R=Boolean),
+  and    (left:  SubExpr(R=Boolean), right: SubExpr(R=Boolean)): Expr(SubExpr, R=Boolean),
+  add    (left:  SubExpr(R=Integer), right: SubExpr(R=Integer)): Expr(SubExpr, R=Integer),
+  mul    (left:  SubExpr(R=Integer), right: SubExpr(R=Integer)): Expr(SubExpr, R=Integer),
+  eq     (left:  SubExpr(R=Integer), right: SubExpr(R=Integer)): Expr(SubExpr, R=Boolean),
+
+  // Constants:
+  integer(value: Integer): Expr(SubExpr, R=Integer),
+  boolean(value: Boolean): Expr(SubExpr, R=Boolean),
+)
