@@ -1,3 +1,5 @@
+#!/usr/bin/env tako
+
 fib(n: T, {T: Nat}): T=if(n<=1, 1, fib(n-1)+fib(n-2))
 
 print(fib(80))

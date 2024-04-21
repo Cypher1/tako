@@ -1,3 +1,4 @@
+#!/usr/bin/env tako
 
 // A simple, untyped  implementation of S expressions.
 SExpr: Type = struct.new(

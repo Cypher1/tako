@@ -1,3 +1,5 @@
+#!/usr/bin/env tako
+
 test() = {
   allocator = import("allocator")
   ptr = allocator.allocate(sizeof(Char[100]))

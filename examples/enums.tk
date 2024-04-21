@@ -1,3 +1,5 @@
+#!/usr/bin/env tako
+
 boolean = Enum.new(
   true=1,
   false=0,
