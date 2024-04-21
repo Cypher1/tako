@@ -1,0 +1,27 @@
+#!/usr/bin/env tako
+
+boolean = Enum.new(
+  true=1,
+  false=0,
+)
+
+boolean.import_literals()
+
+color = Enum
+  .based_on(
+    byte[3]
+  )
+  .open(
+    red=#ff0000,
+    green=#00ff00,
+    blue=#0000ff,
+  )
+
+color.add_values(
+  purple=#ff00ff,
+  cyan=#00ffff,
+)
+
+main() = {
+  print("Color {red} is red")
+}
