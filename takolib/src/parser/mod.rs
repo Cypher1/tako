@@ -614,13 +614,13 @@ pub fn parse(filepath: &Path, contents: &str, tokens: &[Token]) -> Result<Ast, T
 
 fn normalize_keywords_as_ops(ast: &Ast, name: Identifier) -> TokenType {
     let interner = &ast.string_interner;
-    let op = if name == interner.lambda {
+    let op = if name == interner.kw_lambda {
         Symbol::Lambda
-    } else if name == interner.pi {
+    } else if name == interner.kw_pi {
         Symbol::Pi
-    } else if name == interner.forall {
+    } else if name == interner.kw_forall {
         Symbol::Forall
-    } else if name == interner.exists {
+    } else if name == interner.kw_exists {
         Symbol::Exists
     } else {
         return TokenType::Ident;

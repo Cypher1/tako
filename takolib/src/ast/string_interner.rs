@@ -21,12 +21,13 @@ pub struct StringInterner {
     // BUT: We can also merge the hashes without losing any information.
     pub loc2string: Arc<BTreeMap<IndexIntoFile, StrId>>,
     pub strings: Arc<BTreeMap<StrId, String>>,
-    pub lambda: StrId,
-    pub pi: StrId,
-    pub forall: StrId,
-    pub exists: StrId,
-    pub r#use: StrId,
-    pub provide: StrId,
+    pub kw_lambda: StrId,
+    pub kw_pi: StrId,
+    pub kw_forall: StrId,
+    pub kw_exists: StrId,
+    pub kw_use: StrId,
+    pub kw_provide: StrId,
+    pub kw_public: StrId,
 }
 
 impl Default for StringInterner {
@@ -35,19 +36,21 @@ impl Default for StringInterner {
             loc2string: Arc::new(BTreeMap::new()),
             strings: Arc::new(BTreeMap::new()),
             // These are, temporarily, invalid.
-            lambda: TypedIndex::max_value(),
-            pi: TypedIndex::max_value(),
-            forall: TypedIndex::max_value(),
-            exists: TypedIndex::max_value(),
-            r#use: TypedIndex::max_value(),
-            provide: TypedIndex::max_value(),
+            kw_lambda: TypedIndex::max_value(),
+            kw_pi: TypedIndex::max_value(),
+            kw_forall: TypedIndex::max_value(),
+            kw_exists: TypedIndex::max_value(),
+            kw_use: TypedIndex::max_value(),
+            kw_provide: TypedIndex::max_value(),
+            kw_public: TypedIndex::max_value(),
         };
-        n.lambda = n.register_str("lambda");
-        n.pi = n.register_str("pi");
-        n.forall = n.register_str("forall");
-        n.exists = n.register_str("exists");
-        n.r#use = n.register_str("use");
-        n.provide = n.register_str("provide");
+        n.kw_lambda = n.register_str("lambda");
+        n.kw_pi = n.register_str("pi");
+        n.kw_forall = n.register_str("forall");
+        n.kw_exists = n.register_str("exists");
+        n.kw_use = n.register_str("use");
+        n.kw_provide = n.register_str("provide");
+        n.kw_public = n.register_str("public");
         for key in KEYWORDS.iter() {
             n.register_str(key);
         }
