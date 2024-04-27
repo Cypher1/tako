@@ -25,6 +25,22 @@ impl std::fmt::Debug for MultiPretty<String> {
 }
 
 #[macro_export]
+macro_rules! include_strs_impl {
+    ($($line:expr)*) => {
+        &[
+            $(stringify!($line),)*
+        ]
+    }
+}
+
+#[macro_export]
+macro_rules! include_strs {
+    ($file:expr) => {
+        $crate::include_strs_impl!(include!($file))
+    };
+}
+
+#[macro_export]
 macro_rules! assert_str_eq {
     ($left:expr, $right:expr) => {
         pretty_assertions::assert_eq!(
