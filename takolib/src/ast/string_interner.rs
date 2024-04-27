@@ -25,6 +25,8 @@ pub struct StringInterner {
     pub pi: StrId,
     pub forall: StrId,
     pub exists: StrId,
+    pub r#use: StrId,
+    pub provide: StrId,
 }
 
 impl Default for StringInterner {
@@ -37,11 +39,15 @@ impl Default for StringInterner {
             pi: TypedIndex::max_value(),
             forall: TypedIndex::max_value(),
             exists: TypedIndex::max_value(),
+            r#use: TypedIndex::max_value(),
+            provide: TypedIndex::max_value(),
         };
         n.lambda = n.register_str("lambda");
         n.pi = n.register_str("pi");
         n.forall = n.register_str("forall");
         n.exists = n.register_str("exists");
+        n.r#use = n.register_str("use");
+        n.provide = n.register_str("provide");
         for key in KEYWORDS.iter() {
             n.register_str(key);
         }
