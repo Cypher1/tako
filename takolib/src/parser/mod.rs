@@ -4,6 +4,7 @@ use crate::ast::location::Location;
 use crate::ast::string_interner::Identifier;
 use crate::ast::{Ast, Atom, Call, Contains, Definition, NodeData, NodeId, Op};
 use crate::error::TError;
+use better_std::include_strs;
 use log::trace;
 use semantics::BindingMode;
 use semantics::Literal;
@@ -12,14 +13,7 @@ use std::path::Path;
 use thiserror::Error;
 use tokens::{assign_op, binding_mode_operation, is_assign, OpBinding, Symbol, Token, TokenType};
 
-use lazy_static::lazy_static;
-
-lazy_static! {
-    pub static ref KEYWORDS: Vec<String> = include_str!("keywords.txt")
-        .split('\n')
-        .map(|s| s.to_string())
-        .collect();
-}
+pub const KEYWORDS: &[&str] = include_strs!("keywords.txt");
 
 #[derive(Debug, Error, PartialEq, Eq, Ord, PartialOrd, Clone, Hash)]
 pub enum ParseError {
@@ -620,13 +614,13 @@ pub fn parse(filepath: &Path, contents: &str, tokens: &[Token]) -> Result<Ast, T
 
 fn normalize_keywords_as_ops(ast: &Ast, name: Identifier) -> TokenType {
     let interner = &ast.string_interner;
-    let op = if name == interner.lambda {
+    let op = if name == interner.kw_lambda {
         Symbol::Lambda
-    } else if name == interner.pi {
+    } else if name == interner.kw_pi {
         Symbol::Pi
-    } else if name == interner.forall {
+    } else if name == interner.kw_forall {
         Symbol::Forall
-    } else if name == interner.exists {
+    } else if name == interner.kw_exists {
         Symbol::Exists
     } else {
         return TokenType::Ident;
