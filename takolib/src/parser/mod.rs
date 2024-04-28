@@ -1013,29 +1013,29 @@ pub mod tests {
     }
 
     /*
-        TODO(testing): Type annotations:
-            - "12 : Int"
-            - "3 * 4 : Int"
-            - "3 * (4 : Int)"
-            - "(3 * 4) : 12"
-            - "\"hello world\" : String"
+    TODO(testing): Type annotations:
+        - "12 : Int"
+        - "3 * 4 : Int"
+        - "3 * (4 : Int)"
+        - "(3 * 4) : 12"
+        - "\"hello world\" : String"
 
-        TODO(testing): String literals:
-            - "\"hello world\""
+    TODO(testing): String literals:
+        - "\"hello world\""
 
         TODO(testing): Numeric literals:
-            - "-12"
+        - "-12"
 
-        TODO(testing): Operations:
-            - "14-12"
-            - "\"hello\"+\" world\""
+    TODO(testing): Operations:
+        - "14-12"
+        - "\"hello\"+\" world\""
 
-        TODO(testing): Errors:
-            - "\"hello world\"\n7"
+    TODO(testing): Errors:
+        - "\"hello world\"\n7"
 
-        TODO(testing): Definitions:
-            - "f(arg=\"hello world\")"
-            - "mul(x, y)= x*y"
-            - "x()= !\"hello world\";\n7"
+    TODO(testing): Definitions:
+        - "f(arg=\"hello world\")"
+        - "mul(x, y)= x*y"
+        - "x()= !\"hello world\";\n7"
     */
 }
