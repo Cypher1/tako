@@ -1,8 +1,8 @@
 // Integration tests
-use std::path::PathBuf;
-use std::fs;
-use walkdir::{DirEntry, WalkDir};
 use log::info;
+use std::fs;
+use std::path::PathBuf;
+use walkdir::{DirEntry, WalkDir};
 
 const EXAMPLES_DIR: &'static str = "../examples";
 
@@ -18,10 +18,11 @@ const EXCEPTIONS: &'static [&'static str] = &[
 ];
 
 fn is_hidden(entry: &DirEntry) -> bool {
-    entry.file_name()
-         .to_str()
-         .map(|s| s.starts_with("."))
-         .unwrap_or(false)
+    entry
+        .file_name()
+        .to_str()
+        .map(|s| s.starts_with("."))
+        .unwrap_or(false)
 }
 
 fn find_files() -> Result<Vec<PathBuf>, walkdir::Error> {
@@ -54,8 +55,7 @@ fn find_example_files() {
     info!("Files: {files:#?}");
     let num_files = files.len();
     assert_eq!(
-        num_files,
-        1,
+        num_files, 1,
         "Example files appear to be missing, found {num_files}"
     );
 }
@@ -67,14 +67,15 @@ fn parse_example_files() {
 
     for file in files {
         info!("Start: {file:#?}");
-        let contents = fs::read_to_string(&file)
-            .expect("Should have been able to read the file");
+        let contents = fs::read_to_string(&file).expect("Should have been able to read the file");
 
-        let tokens = crate::parser::tokens::lex(&contents).expect(&format!("Should be able to lex: {file:?}"));
+        let tokens = crate::parser::tokens::lex(&contents)
+            .expect(&format!("Should be able to lex: {file:?}"));
 
         info!("Tokens: {tokens:#?}");
 
-        let _ast = crate::parser::parse(&file, &contents, &tokens).expect(&format!("Should be able to parse: {file:?}"));
+        let _ast = crate::parser::parse(&file, &contents, &tokens)
+            .expect(&format!("Should be able to parse: {file:?}"));
         info!("Done: {file:#?}");
     }
 }
