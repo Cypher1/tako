@@ -383,7 +383,7 @@ pub enum TokenType {
     Ident,      // A named value.
     Atom,       // A symbol starting with a '$', used differently to symbols which have values.
     // Literals (i.e. tokens representing values):
-    NumLit,
+    NumberLit,
     ColorLit,
     // Short strings can be stored as symbols.
     StringLit,
@@ -402,7 +402,7 @@ impl fmt::Display for TokenType {
             Self::Op(sym) => write!(f, "a '{sym:?}' symbol"),
             Self::Ident => write!(f, "an identifier"),
             Self::Atom => write!(f, "an atom"),
-            Self::NumLit => write!(f, "a number"),
+            Self::NumberLit => write!(f, "a number"),
             Self::ColorLit => write!(f, "a color"),
             Self::StringLit => write!(f, "a string literal"),
             Self::FmtStringLitStart => write!(f, "the start of a format string literal"),
@@ -457,7 +457,7 @@ const _MULTI_COMMENT: &str = "/*";
 #[inline]
 fn classify_char(ch: char) -> CharacterType {
     use CharacterType::{AtomHead, HexSym, PartialToken, Whitespace};
-    use TokenType::{Ident, NumLit, Op, StringLit};
+    use TokenType::{Ident, NumberLit, Op, StringLit};
     PartialToken(match ch {
         '\n' | '\r' | '\t' | ' ' => return Whitespace,
         '$' => return AtomHead,
@@ -494,7 +494,7 @@ fn classify_char(ch: char) -> CharacterType {
         'Σ' => Op(Symbol::Sigma),
         '∀' => Op(Symbol::Forall),
         '∃' => Op(Symbol::Exists),
-        '0'..='9' => NumLit,
+        '0'..='9' => NumberLit,
         'A'..='Z' | 'a'..='z' | '_' => Ident, // Overlapped by colors.
         '"' | '\'' => StringLit,
         _ => panic!("Unknown token character {ch}"),
@@ -617,7 +617,7 @@ pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> boo
     }
     // TODO(usability): Work out a better way of printing pretty spaces.
     use CharacterType::{AtomHead, HexSym, PartialToken};
-    use TokenType::{Atom, ColorLit, Ident, NumLit, Op, StringLit};
+    use TokenType::{Atom, ColorLit, Ident, NumberLit, Op, StringLit};
     let chr = if let Some(chr) = characters.next() {
         chr
     } else {
@@ -663,17 +663,17 @@ pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> boo
                     (_, _) => break,
                 }))
             }
-            (PartialToken(Op(Symbol::Hash)), HexSym | PartialToken(NumLit)) => {
+            (PartialToken(Op(Symbol::Hash)), HexSym | PartialToken(NumberLit)) => {
                 PartialToken(ColorLit)
             } // Color Literal.
-            (PartialToken(ColorLit), HexSym | PartialToken(NumLit)) => PartialToken(ColorLit), // Color Literal.
-            (AtomHead, HexSym | PartialToken(NumLit | Ident)) => PartialToken(Atom), // Atom.
-            (PartialToken(Atom), HexSym | PartialToken(NumLit | Ident)) => PartialToken(Atom), // Atom.
-            (HexSym | PartialToken(Ident), HexSym | PartialToken(NumLit | Ident)) => {
+            (PartialToken(ColorLit), HexSym | PartialToken(NumberLit)) => PartialToken(ColorLit), // Color Literal.
+            (AtomHead, HexSym | PartialToken(NumberLit | Ident)) => PartialToken(Atom), // Atom.
+            (PartialToken(Atom), HexSym | PartialToken(NumberLit | Ident)) => PartialToken(Atom), // Atom.
+            (HexSym | PartialToken(Ident), HexSym | PartialToken(NumberLit | Ident)) => {
                 PartialToken(Ident)
             } // Symbol.
-            (PartialToken(NumLit), PartialToken(NumLit)) => PartialToken(NumLit), // Continuation
-            (PartialToken(NumLit), PartialToken(Ident)) => PartialToken(NumLit), // Number with suffix.
+            (PartialToken(NumberLit), PartialToken(NumberLit)) => PartialToken(NumberLit), // Continuation
+            (PartialToken(NumberLit), PartialToken(Ident)) => PartialToken(NumberLit), // Number with suffix.
             _ => break, // Token finished can't continue here.
         };
         characters.next(); // Continue past the character.
@@ -777,7 +777,7 @@ mod tests {
     use super::*;
     use super::{
         CharacterType::{PartialToken, Whitespace},
-        TokenType::{Atom, ColorLit, Ident, NumLit, Op, StringLit},
+        TokenType::{Atom, ColorLit, Ident, NumberLit, Op, StringLit},
     };
     use better_std::assert_eq;
     use strum::IntoEnumIterator; // TODO(cleanup): Make these test only
@@ -805,9 +805,9 @@ mod tests {
 
     #[test]
     fn classify_number() {
-        assert_eq!(classify_char('0'), PartialToken(NumLit));
-        assert_eq!(classify_char('1'), PartialToken(NumLit));
-        assert_eq!(classify_char('2'), PartialToken(NumLit));
+        assert_eq!(classify_char('0'), PartialToken(NumberLit));
+        assert_eq!(classify_char('1'), PartialToken(NumberLit));
+        assert_eq!(classify_char('2'), PartialToken(NumberLit));
     }
 
     #[test]
@@ -816,7 +816,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![Token {
-                kind: NumLit,
+                kind: NumberLit,
                 start: 0,
                 length: 3
             }]
@@ -914,7 +914,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![Token {
-                kind: NumLit,
+                kind: NumberLit,
                 start: 1,
                 length: 2
             }]
@@ -927,7 +927,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![Token {
-                kind: NumLit,
+                kind: NumberLit,
                 start: 2,
                 length: 2
             }]
@@ -941,7 +941,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![Token {
-                kind: NumLit,
+                kind: NumberLit,
                 start: 1,
                 length: 2
             }]
@@ -1010,7 +1010,7 @@ mod tests {
                     length: 13
                 },
                 Token {
-                    kind: NumLit,
+                    kind: NumberLit,
                     start: 15,
                     length: 1
                 },
@@ -1092,7 +1092,7 @@ mod tests {
     fn lex_strings_with_operators() {
         let contents = "!\"hello world\"\n7";
         let tokens = setup(contents);
-        let expected = vec![Op(Symbol::LogicalNot), StringLit, NumLit];
+        let expected = vec![Op(Symbol::LogicalNot), StringLit, NumberLit];
         assert_eq!(
             tokens
                 .iter()
@@ -1138,7 +1138,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![Token {
-                kind: NumLit,
+                kind: NumberLit,
                 start: length as IndexIntoFile,
                 length: 3,
             },]
@@ -1157,7 +1157,7 @@ mod tests {
         assert_eq!(
             tokens,
             vec![Token {
-                kind: NumLit,
+                kind: NumberLit,
                 start: length as IndexIntoFile,
                 length: 3,
             },]
@@ -1213,7 +1213,7 @@ mod tests {
                         length: length as SymbolLength,
                     },
                     Token {
-                        kind: NumLit,
+                        kind: NumberLit,
                         start: length as IndexIntoFile,
                         length: 3,
                     },

@@ -490,8 +490,10 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             self.call_or_definition(token, binding)?
         } else if let Ok(token) = self.token_of_type(TokenType::Atom) {
             self.atom(token, location)
-        } else if let Ok(token) = self.token_of_type(TokenType::NumLit) {
+        } else if let Ok(token) = self.token_of_type(TokenType::NumberLit) {
             self.number_literal(token, location)
+        } else if let Ok(token) = self.token_of_type(TokenType::StringLit) {
+            self.string_literal(token, location)
         } else {
             return Err(ParseError::UnexpectedTokenTypeInExpression {
                 got: token.kind,
@@ -577,8 +579,18 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         self.ast.add_atom(Atom { name }, location)
     }
 
+    fn string_literal(&mut self, res: Token, location: Location) -> NodeId {
+        assert!(res.kind == TokenType::StringLit);
+        trace!("Saving literal: {res:?}");
+        let _id = self
+            .ast
+            .string_interner
+            .register_str_by_loc(res.get_src(self.contents), location.start);
+        self.ast.add_literal(Literal::Text, location)
+    }
+
     fn number_literal(&mut self, res: Token, location: Location) -> NodeId {
-        assert!(res.kind == TokenType::NumLit);
+        assert!(res.kind == TokenType::NumberLit);
         trace!("Saving literal: {res:?}");
         let _id = self
             .ast
