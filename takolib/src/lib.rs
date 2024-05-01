@@ -11,6 +11,8 @@ pub mod lowerer;
 pub mod parser;
 pub mod primitives;
 pub mod tasks;
+#[cfg(test)]
+pub mod test;
 pub mod ui;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
