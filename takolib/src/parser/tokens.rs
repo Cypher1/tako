@@ -287,6 +287,7 @@ impl Symbol {
             Self::OpenCurly => OpBinding::Open(Self::CloseCurly),
             Self::OpenParen => OpBinding::Open(Self::CloseParen),
             Self::OpenBracket => OpBinding::Open(Self::CloseParen),
+            Self::Sequence | Self::Comma => OpBinding::InfixOrPostfixBinOp,
             _ => OpBinding::InfixBinOp,
         }
     }
