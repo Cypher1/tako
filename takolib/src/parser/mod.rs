@@ -51,6 +51,7 @@ pub enum ParseError {
     },
     MissingLeftHandSideOfOperator {
         op: Symbol,
+        bind_type: OpBinding,
         location: Location,
     },
     UnparsedTokens {
@@ -460,28 +461,26 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         Ok(ident)
     }
 
-    fn file(&mut self) -> Result<NodeId, TError> {
-        let mut left = self.expr(Symbol::OpenParen)?;
-        while let Ok(token) = self.peek().copied() {
-            let right = self.expr(Symbol::OpenParen)?;
-            left = self.ast.add_op(
-                Op {
-                    op: Symbol::Sequence,
-                    args: smallvec![left, right],
-                },
-                token.location(),
-            );
+    fn file(&mut self) -> Result<Vec<NodeId>, TError> {
+        let mut roots = vec![];
+        while self.peek().is_ok() {
+            roots.push(self.any_expr()?);
         }
-        Ok(left)
+        Ok(roots)
+    }
+
+    fn any_expr(&mut self) -> Result<NodeId, TError> {
+        self.expr(Symbol::OpenParen)
     }
 
     fn expr(&mut self, binding: Symbol) -> Result<NodeId, TError> {
+        let _scope = self.depth.clone();
         let Ok(mut token) = self.peek().copied() else {
             return Err(ParseError::UnexpectedEof.into());
         };
         token.kind = self.get_kind(&token);
         let location = token.location();
-        trace!("Expr: {token:?} (binding {binding:?})");
+        trace!("{indent}Expr: {token:?} (binding {binding:?})", indent=self.indent());
         let mut left = if self.operator_is(Symbol::OpenBracket).is_ok() {
             // TODO: Support tuples.
             // Tuple, parenthesized expr... etc.
@@ -524,7 +523,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             left
         } else if let TokenType::Op(symbol) = token.kind {
             if let Some(def_binding) = self.binding()? {
-                trace!("Binding? {def_binding:?}");
+                trace!("{indent}Binding? {def_binding:?}", indent=self.indent());
                 def_binding
             } else {
                 let _ = self.token();
@@ -684,11 +683,15 @@ pub fn parse(filepath: &Path, contents: &str, tokens: &[Token]) -> Result<Ast, T
         contents,
         ast: Ast::new(filepath.to_path_buf()),
         tokens: tokens.iter().peekable(),
+        depth: std::rc::Rc::new(()),
     };
     if !tokens.is_empty() {
         // Support empty files!
-        let root = state.file()?;
-        state.ast.set_root(root);
+        let roots = state.file()?;
+        if roots.len() > 0 {
+            // Use the last root?
+            state.ast.set_root(roots[roots.len()-1]);
+        }
     }
     // TODO(testing): REMOVE THIS (it's just to test the threading model)
     // let mut rng = rand::thread_rng();
