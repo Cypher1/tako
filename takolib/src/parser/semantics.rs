@@ -23,7 +23,7 @@ impl std::fmt::Display for BindingMode {
             match self {
                 Self::Lambda => "lambda",
                 Self::Pi => "forall",
-                Self::Sigma => "exists",
+                Self::Sigma => "with",
             }
         )
     }
