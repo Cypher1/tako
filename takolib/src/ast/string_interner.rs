@@ -26,6 +26,7 @@ pub struct StringInterner {
     pub kw_pi: StrId,
     pub kw_forall: StrId,
     pub kw_exists: StrId,
+    pub kw_with: StrId,
     pub kw_use: StrId,
     pub kw_provide: StrId,
     pub kw_public: StrId,
@@ -41,6 +42,7 @@ impl Default for StringInterner {
             kw_pi: TypedIndex::max_value(),
             kw_forall: TypedIndex::max_value(),
             kw_exists: TypedIndex::max_value(),
+            kw_with: TypedIndex::max_value(),
             kw_use: TypedIndex::max_value(),
             kw_provide: TypedIndex::max_value(),
             kw_public: TypedIndex::max_value(),
@@ -49,6 +51,7 @@ impl Default for StringInterner {
         n.kw_pi = n.register_str("pi");
         n.kw_forall = n.register_str("forall");
         n.kw_exists = n.register_str("exists");
+        n.kw_with = n.register_str("with");
         n.kw_use = n.register_str("use");
         n.kw_provide = n.register_str("provide");
         n.kw_public = n.register_str("public");
