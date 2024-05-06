@@ -5,7 +5,7 @@ use crate::ast::string_interner::Identifier;
 use crate::ast::{Ast, Atom, Call, Contains, Definition, NodeData, NodeId, Op};
 use crate::error::TError;
 use better_std::include_strs;
-use log::trace;
+use log::{debug, trace};
 use semantics::BindingMode;
 use semantics::Literal;
 use smallvec::smallvec;
@@ -313,15 +313,20 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         Ok(args)
     }
 
-    fn call_or_definition(&mut self, name: Token, binding: Symbol) -> Result<NodeId, TError> {
+    fn call_definition_or_repeated(
+        &mut self,
+        name: Token,
+        binding: Symbol,
+    ) -> Result<NodeId, TError> {
         let name_id = self.name(name);
         trace!(
-            "Call or definition: {name:?}: {:?}",
+            "Call, definition or repeated: {name:?}: {:?}",
             self.ast.string_interner.get_str(name_id)
         );
         let location = name.location();
         let mut bindings = vec![];
         let mut has_args = false;
+        let mut is_a_repeated = false;
         let mut has_non_bind_args = false; // i.e. this should be a definition...
         if self.operator_is(Symbol::OpenParen).is_ok() {
             trace!("has arguments");
@@ -331,6 +336,17 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 bindings.push(self.binding_or_arg(&mut has_non_bind_args)?);
                 if self.require(TokenType::Op(Symbol::Comma)).is_err() {
                     self.require(TokenType::Op(Symbol::CloseParen))?;
+                    break;
+                }
+            }
+        } else if self.operator_is(Symbol::OpenBracket).is_ok() {
+            has_args = true;
+            is_a_repeated = true;
+            // Read args...
+            while self.operator_is(Symbol::CloseBracket).is_err() {
+                bindings.push(self.binding_or_arg(&mut has_non_bind_args)?);
+                if self.require(TokenType::Op(Symbol::Comma)).is_err() {
+                    self.require(TokenType::Op(Symbol::CloseBracket))?;
                     break;
                 }
             }
@@ -420,6 +436,9 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             // TODO: USE bindings
             trace!("Add call");
             let args = self.handle_bindings(bindings)?.into();
+            if is_a_repeated {
+                todo!("Handle lists and arrays");
+            }
             let call = self.ast.add_call(Call { inner, args }, location);
             if let Some(ty) = ty {
                 return Ok(self.ast.add_annotation(call, ty));
@@ -432,6 +451,21 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             return Ok(self.ast.add_annotation(ident, ty));
         }
         Ok(ident)
+    }
+
+    fn file(&mut self) -> Result<NodeId, TError> {
+        let mut left = self.expr(Symbol::OpenParen)?;
+        while let Ok(token) = self.peek().copied() {
+            let right = self.expr(Symbol::OpenParen)?;
+            left = self.ast.add_op(
+                Op {
+                    op: Symbol::Sequence,
+                    args: smallvec![left, right],
+                },
+                token.location(),
+            );
+        }
+        Ok(left)
     }
 
     fn expr(&mut self, binding: Symbol) -> Result<NodeId, TError> {
@@ -450,8 +484,30 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         } else if self.operator_is(Symbol::OpenCurly).is_ok() {
             // TODO: Support sequence&dictionary syntax.
             // Tuple, parenthesized expr... etc.
-            let left = self.expr(Symbol::OpenParen)?;
-            self.require(TokenType::Op(Symbol::CloseCurly))?;
+            let mut left = self.expr(Symbol::OpenParen)?;
+            let mut joiner = Symbol::Sequence;
+            while self.operator_is(Symbol::CloseCurly).is_err() {
+                // TODO: Clean up sequence generation.
+                // TODO: Check that a sequence / args is of the right structure?
+                let next = self.expr(Symbol::OpenParen)?;
+                left = self.ast.add_op(
+                    Op {
+                        op: joiner,
+                        args: smallvec![left, next],
+                    },
+                    location,
+                );
+                if self.require(TokenType::Op(Symbol::Comma)).is_ok() {
+                    // TODO: Set next joiner
+                    joiner = Symbol::Comma;
+                } else if self.require(TokenType::Op(Symbol::Sequence)).is_ok() {
+                    // TODO: Set next joiner
+                    joiner = Symbol::Sequence;
+                } else {
+                    // Allow it? Maybe...
+                    joiner = Symbol::Sequence;
+                }
+            }
             left
         } else if self.operator_is(Symbol::OpenParen).is_ok() {
             // TODO: Support list syntax.
@@ -478,22 +534,27 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                         )
                     }
                     _ => {
+                        let st = location.start.into();
+                        let end = std::cmp::min(st + 50, self.contents.len());
+                        debug!("ERROR AT:\n{}", &self.contents[st..end]);
                         return Err(ParseError::MissingLeftHandSideOfOperator {
                             op: symbol,
                             location,
                         }
-                        .into())
+                        .into());
                     }
                 }
             }
         } else if let Ok(token) = self.ident() {
-            self.call_or_definition(token, binding)?
+            self.call_definition_or_repeated(token, binding)?
         } else if let Ok(token) = self.token_of_type(TokenType::Atom) {
             self.atom(token, location)
         } else if let Ok(token) = self.token_of_type(TokenType::NumberLit) {
             self.number_literal(token, location)
         } else if let Ok(token) = self.token_of_type(TokenType::StringLit) {
             self.string_literal(token, location)
+        } else if let Ok(token) = self.token_of_type(TokenType::ColorLit) {
+            self.color_literal(token, location)
         } else {
             return Err(ParseError::UnexpectedTokenTypeInExpression {
                 got: token.kind,
@@ -589,6 +650,16 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         self.ast.add_literal(Literal::Text, location)
     }
 
+    fn color_literal(&mut self, res: Token, location: Location) -> NodeId {
+        assert!(res.kind == TokenType::ColorLit);
+        trace!("Saving literal: {res:?}");
+        let _id = self
+            .ast
+            .string_interner
+            .register_str_by_loc(res.get_src(self.contents), location.start);
+        self.ast.add_literal(Literal::Color, location)
+    }
+
     fn number_literal(&mut self, res: Token, location: Location) -> NodeId {
         assert!(res.kind == TokenType::NumberLit);
         trace!("Saving literal: {res:?}");
@@ -609,7 +680,7 @@ pub fn parse(filepath: &Path, contents: &str, tokens: &[Token]) -> Result<Ast, T
     };
     if !tokens.is_empty() {
         // Support empty files!
-        let root = state.expr(Symbol::OpenParen)?;
+        let root = state.file()?;
         state.ast.set_root(root);
     }
     // TODO(testing): REMOVE THIS (it's just to test the threading model)
@@ -1003,9 +1074,14 @@ pub mod tests {
     }
 
     #[test]
+    fn parse_atom_atom_in_file() {
+        setup("$a $b").expect("Top level allowed syntax");
+    }
+
+    #[test]
     #[should_panic] // TODO(errors): Implement!
-    fn parse_atom_atom() {
-        setup("$a $b").expect("Disallowed syntax");
+    fn parse_atom_atom_in_expr() {
+        setup("($a $b)").expect("Disallowed syntax");
     }
 
     #[test]
