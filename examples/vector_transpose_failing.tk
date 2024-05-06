@@ -1,4 +1,5 @@
 #!/usr/bin/env tako
+// test: todo type error fix parse error
 
 main() = {
   x3by2 = Vector.new([

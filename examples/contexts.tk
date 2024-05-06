@@ -1,14 +1,15 @@
 #!/usr/bin/env tako
+// test: all
 
 test() = {
   allocator = import("allocator")
-  ptr = allocator.allocate(sizeof(Char[100]))
-  if (ptr == nullptr) {
+  ptr = allocator.allocate(sizeof(Char)*100)
+  if(ptr == nullptr, {
     print("Success")
     exit(0)
-  } else {
+  }, {
     print("Failure")
-  }
+  })
 }
 
 main() = {
@@ -16,12 +17,12 @@ main() = {
   logger = import("logger")
 
   test_logger = logger.new_logger()
-  with {
+  with(
     allocator.allocate = allocator.report_oom,
     system.out = test_logger,
     system.error = test_logger,
     run = test
-  }
+  )
 
   print(test_logger)
 }

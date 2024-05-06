@@ -1,4 +1,5 @@
 #!/usr/bin/env tako
+// test: all
 
 boolean = Enum.new(
   true=1,
@@ -9,7 +10,7 @@ boolean.import_literals()
 
 color = Enum
   .based_on(
-    byte[3]
+    [byte; 3]
   )
   .open(
     red=#ff0000,
