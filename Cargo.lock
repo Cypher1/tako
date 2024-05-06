@@ -2693,7 +2693,7 @@ dependencies = [
  "static_assertions",
  "strum",
  "strum_macros",
- "test-each",
+ "test_each_file",
  "thiserror",
  "tokio",
  "walkdir",
@@ -2741,24 +2741,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "test-each"
-version = "0.2.1"
+name = "test_each_file"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d822711cf1d4a8d8adc34414c26c85f9144c692903c45a47a04ee4ffb360e5bc"
+checksum = "0f1a92330478de0709111391059475f7d960692519e2c54c823c662408bab365"
 dependencies = [
- "test-each-codegen",
-]
-
-[[package]]
-name = "test-each-codegen"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad5bbe324addbdc5ee683822d0812e9bb63fbeabff10baf0d11fcfc7a0ff2122"
-dependencies = [
- "glob",
  "proc-macro2",
  "quote",
  "syn 2.0.60",
+ "unicode-ident",
 ]
 
 [[package]]
