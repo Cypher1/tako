@@ -578,8 +578,8 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 trace!("{indent}Back up Expr: {left:?} binding: {binding:?} inside symbol: {symbol:?}", indent=self.indent());
                 break;
             }
-            trace!("Continuing Expr: {left:?} sym: {sym:?} inside binding: {binding:?}");
-            if sym == Symbol::OpenParen {
+            trace!("Continuing Expr: {left:?} sym: {symbol:?} inside binding: {binding:?}");
+            if symbol == Symbol::OpenParen {
                 let token = self.token().expect("Internal error");
                 let location = token.location();
                 // Require an 'apply' to balance it's parens.
@@ -594,11 +594,11 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             } else {
                 // TODO: Check that this is the right kind of operator.
                 let token = self.token().expect("Internal error");
-                let right = self.expr(sym)?;
+                let right = self.expr(symbol)?;
                 let location = token.location();
                 left = self.ast.add_op(
                     Op {
-                        op: sym,
+                        op: symbol,
                         args: smallvec![left, right],
                     },
                     location,
@@ -608,6 +608,40 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         trace!("Expr done: {}", self.ast.pretty_node(left));
         trace!("(next token: {:?})", self.peek());
         Ok(left)
+    }
+
+    fn repeated(&mut self, closer: Symbol) -> Result<SmallVec<NodeId, 2>, TError> {
+        let mut args = smallvec![];
+        if self.operator_is(closer).is_err() {
+            let mut left = self.any_expr()?;
+            while self.operator_is(closer).is_err() {
+                let Ok(token) = self.peek().copied() else {
+                    return Err(ParseError::UnexpectedEof.into());
+                };
+                let location = token.location();
+                let op = if self.require(TokenType::Op(Symbol::Comma)).is_ok() {
+                    Symbol::Comma
+                } else if self.require(TokenType::Op(Symbol::Sequence)).is_ok() {
+                    Symbol::Sequence // TODO: This isn't well supported
+                } else {
+                    Symbol::Comma
+                };
+                if self.require(TokenType::Op(closer)).is_ok() {
+                    break;
+                }
+
+                let right = self.any_expr()?;
+                left = self.ast.add_op(
+                    Op {
+                        op,
+                        args: smallvec![left, right],
+                    },
+                    location,
+                );
+            }
+            args.push(left);
+        }
+        return Ok(args);
     }
 
     fn name(&mut self, res: Token) -> Identifier {
