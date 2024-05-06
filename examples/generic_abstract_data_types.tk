@@ -1,5 +1,5 @@
 #!/usr/bin/env tako
-// test: todo
+// test: all
 
 // A simple, untyped  implementation of S expressions.
 SExpr: Type = struct.new(

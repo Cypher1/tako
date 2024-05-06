@@ -1,5 +1,5 @@
 #!/usr/bin/env tako
-// test: todo parse
+// test: all
 
 main = {
   x3by2 = Vector.new([
