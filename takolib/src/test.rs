@@ -2,80 +2,117 @@
 use log::info;
 use std::fs;
 use std::path::PathBuf;
-use walkdir::{DirEntry, WalkDir};
+use test_each;
 
-const EXAMPLES_DIR: &'static str = "../examples";
+const TEST_CONFIG_PREFIX: &str = "// test: ";
 
-const EXCEPTIONS: &'static [&'static str] = &[
-    "contexts.tk",
-    "enums.tk",
-    "fib.tk",
-    "fib_acc.tk",
-    "generic_abstract_data_types.tk",
-    "instances.tk",
-    "vector_transpose.tk",
-    "vector_transpose_failing.tk",
-];
-
-fn is_hidden(entry: &DirEntry) -> bool {
-    entry
-        .file_name()
-        .to_str()
-        .map(|s| s.starts_with("."))
-        .unwrap_or(false)
+#[derive(Debug, Default, Eq, PartialEq, Ord, PartialOrd)]
+enum TestResult {
+    #[default]
+    All, // Pass all stages
+    TypeError,
+    ParseError,
+    LexError,
 }
 
-fn find_files() -> Result<Vec<PathBuf>, walkdir::Error> {
-    let walker = WalkDir::new(EXAMPLES_DIR).into_iter();
-    let mut paths = vec![];
-    for entry in walker.filter_entry(|e| !is_hidden(e)) {
-        let entry = entry?;
-        let meta = entry.metadata()?;
-        if !meta.is_file() {
-            continue;
+#[derive(Debug, Default, Eq, PartialEq, Ord, PartialOrd)]
+struct TestConfig {
+    todo: bool,
+    expect: TestResult,
+}
+impl TestConfig {
+    fn from_strings(ctx: &PathBuf, tags: Vec<&str>) -> Self {
+        let mut todo = false;
+        let mut expect = TestResult::default();
+        for tag in tags {
+            match &*tag.to_lowercase() {
+                "todo" => todo = true,
+                "fix" | "error" => { /* Ignore these tags to support readable descriptions */ }
+                "type" => expect = TestResult::TypeError,
+                "lex" => expect = TestResult::LexError,
+                "parse" => expect = TestResult::ParseError,
+                "all" => expect = TestResult::All,
+                _ => panic!("Unknown test tag {tag:?} in {ctx:#?}"),
+            }
         }
-        let path = entry.path();
-        let name = path
-            .file_name()
-            .expect("Require that file names can be printed")
-            .to_str()
-            .expect("OSString to str");
-        if EXCEPTIONS.contains(&name) {
-            info!("Skipping exception: {name}");
-            continue;
-        }
-        paths.push(path.to_path_buf());
+        Self { todo, expect }
     }
-    Ok(paths)
 }
 
-#[test]
-fn find_example_files() {
-    let files = find_files().expect("Should be able to walk files");
-    info!("Files: {files:#?}");
-    let num_files = files.len();
+fn file_and_options(file: &PathBuf) -> (String, TestConfig) {
+    let contents = fs::read_to_string(&file).expect("Should have been able to read the file");
+    let header = contents.splitn(3, '\n');
+    let mut setting = TestConfig::default();
+
+    for line in header {
+        if !line.starts_with(TEST_CONFIG_PREFIX) {
+            continue;
+        }
+        if let Some(value) = line.strip_prefix(TEST_CONFIG_PREFIX).map(|s| s.to_owned()) {
+            setting = TestConfig::from_strings(file, value.split(" ").collect());
+        }
+    }
+
+    (contents, setting)
+}
+
+#[test_each::path(glob = "examples/*.tk")]
+fn parse_example_files(file: PathBuf) {
+    let (contents, setting) = file_and_options(&file);
+    if false && setting.todo {
+        info!("Skipping todo file: {file:#?}");
+        return;
+    }
+    info!("Start: {file:#?} ({setting:#?})");
+
+    let tokens = match crate::parser::tokens::lex(&contents) {
+        Err(e) => {
+            assert_eq!(
+                setting.expect,
+                TestResult::LexError,
+                "Unexpected failure for: {file:?}\n{e:?}"
+            );
+            return;
+        }
+        Ok(tokens) => {
+            assert_ne!(
+                setting.expect,
+                TestResult::LexError,
+                "Expected lex failure for: {file:?}\n{tokens:?}"
+            );
+            tokens
+        }
+    };
+
+    // TODO: Macro or helper?
+    let _ast = match crate::parser::parse(&file, &contents, &tokens) {
+        Err(e) => {
+            assert_eq!(
+                setting.expect,
+                TestResult::ParseError,
+                "Unexpected failure for: {file:?}\n{e:?}"
+            );
+            return;
+        }
+        Ok(ast) => {
+            assert_ne!(
+                setting.expect,
+                TestResult::ParseError,
+                "Expected parse failure for: {file:?}\n{ast:?}"
+            );
+            ast
+        }
+    };
+
+    // TODO: Interpret
+    // TODO: Type check
+    // TODO: Compile
+    // TODO: Run
+    // TODO: Use tasks to get 'decorate_error:
+    info!("Done: {file:#?}");
     assert_eq!(
-        num_files, 1,
-        "Example files appear to be missing, found {num_files}"
+        setting.expect,
+        TestResult::All,
+        "Performed all stages on: {file:?} but did not expect to?"
     );
-}
-
-#[test]
-fn parse_example_files() {
-    let mut files = find_files().expect("Should be able to walk files");
-    files.sort();
-
-    for file in files {
-        info!("Start: {file:#?}");
-        let contents = fs::read_to_string(&file).expect("Should have been able to read the file");
-
-        let tokens = crate::parser::tokens::lex(&contents)
-            .expect(&format!("Should be able to lex: {file:?}"));
-
-        info!("Tokens: {tokens:#?}");
-
-        let _ast = crate::parser::parse(&file, &contents, &tokens)
-            .expect(&format!("Should be able to parse: {file:?}"));
-        info!("Done: {file:#?}");
-    }
 }
