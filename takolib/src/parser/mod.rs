@@ -530,12 +530,10 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                             location,
                         )
                     }
-                    _ => {
-                        let st = location.start.into();
-                        let end = std::cmp::min(st + 50, self.contents.len());
-                        debug!("ERROR AT:\n{}", &self.contents[st..end]);
+                    OpBinding::InfixBinOp | OpBinding::InfixOrPostfixBinOp | OpBinding::PostfixOp => {
                         return Err(ParseError::MissingLeftHandSideOfOperator {
                             op: symbol,
+                            bind_type,
                             location,
                         }
                         .into());
