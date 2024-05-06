@@ -482,39 +482,25 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         let location = token.location();
         trace!("{indent}Expr: {token:?} (binding {binding:?})", indent=self.indent());
         let mut left = if self.operator_is(Symbol::OpenBracket).is_ok() {
-            // TODO: Support tuples.
-            // Tuple, parenthesized expr... etc.
-            let left = self.expr(Symbol::OpenParen)?;
-            self.require(TokenType::Op(Symbol::CloseBracket))?;
-            left
+            // Array, Tuple, List, Vector, Matrix, etc.
+            let args = self.repeated(Symbol::CloseBracket)?;
+            self.ast.add_op(
+                Op {
+                    op: Symbol::OpenBracket,
+                    args,
+                },
+                location
+            )
         } else if self.operator_is(Symbol::OpenCurly).is_ok() {
-            // TODO: Support sequence&dictionary syntax.
-            // Tuple, parenthesized expr... etc.
-            let mut left = self.expr(Symbol::OpenParen)?;
-            let mut joiner = Symbol::Sequence;
-            while self.operator_is(Symbol::CloseCurly).is_err() {
-                // TODO: Clean up sequence generation.
-                // TODO: Check that a sequence / args is of the right structure?
-                let next = self.expr(Symbol::OpenParen)?;
-                left = self.ast.add_op(
-                    Op {
-                        op: joiner,
-                        args: smallvec![left, next],
-                    },
-                    location,
-                );
-                if self.require(TokenType::Op(Symbol::Comma)).is_ok() {
-                    // TODO: Set next joiner
-                    joiner = Symbol::Comma;
-                } else if self.require(TokenType::Op(Symbol::Sequence)).is_ok() {
-                    // TODO: Set next joiner
-                    joiner = Symbol::Sequence;
-                } else {
-                    // Allow it? Maybe...
-                    joiner = Symbol::Sequence;
-                }
-            }
-            left
+            // Block, set, dictionary, etc.
+            let args = self.repeated(Symbol::CloseCurly)?;
+            self.ast.add_op(
+                Op {
+                    op: Symbol::OpenCurly,
+                    args,
+                },
+                location
+            )
         } else if self.operator_is(Symbol::OpenParen).is_ok() {
             // TODO: Support list syntax.
             // Tuple, parenthesized expr... etc.
