@@ -502,9 +502,8 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 location
             )
         } else if self.operator_is(Symbol::OpenParen).is_ok() {
-            // TODO: Support list syntax.
-            // Tuple, parenthesized expr... etc.
-            let left = self.expr(Symbol::OpenParen)?;
+            // Parenthesized expr... etc.
+            let left = self.any_expr()?;
             self.require(TokenType::Op(Symbol::CloseParen))?;
             left
         } else if let TokenType::Op(symbol) = token.kind {
@@ -513,8 +512,14 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 def_binding
             } else {
                 let _ = self.token();
-                match symbol.binding_type() {
-                    OpBinding::Open => todo!("Should have already been handled"),
+                let bind_type = symbol.binding_type();
+                match bind_type {
+                    OpBinding::Open | OpBinding::Close => {
+                        return Err(TError::InternalError {
+                            message: format!("{symbol:?} should have already been handled"),
+                            location: Some(location),
+                        })
+                    }
                     OpBinding::PrefixOp | OpBinding::PrefixOrInfixBinOp => {
                         let right = self.expr(binding)?;
                         self.ast.add_op(
