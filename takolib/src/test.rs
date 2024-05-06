@@ -1,8 +1,10 @@
 // Integration tests
-use log::info;
+use log::{debug, info};
 use std::fs;
-use std::path::PathBuf;
-use test_each;
+use std::path::Path;
+use test_each_file::test_each_path;
+
+use crate::error::TError;
 
 const TEST_CONFIG_PREFIX: &str = "// test: ";
 
@@ -13,6 +15,7 @@ enum TestResult {
     TypeError,
     ParseError,
     LexError,
+    InternalError,
 }
 
 #[derive(Debug, Default, Eq, PartialEq, Ord, PartialOrd)]
@@ -21,7 +24,7 @@ struct TestConfig {
     expect: TestResult,
 }
 impl TestConfig {
-    fn from_strings(ctx: &PathBuf, tags: Vec<&str>) -> Self {
+    fn from_strings(ctx: &Path, tags: Vec<&str>) -> Self {
         let mut todo = false;
         let mut expect = TestResult::default();
         for tag in tags {
@@ -31,6 +34,7 @@ impl TestConfig {
                 "type" => expect = TestResult::TypeError,
                 "lex" => expect = TestResult::LexError,
                 "parse" => expect = TestResult::ParseError,
+                "internal" => expect = TestResult::InternalError,
                 "all" => expect = TestResult::All,
                 _ => panic!("Unknown test tag {tag:?} in {ctx:#?}"),
             }
@@ -39,7 +43,7 @@ impl TestConfig {
     }
 }
 
-fn file_and_options(file: &PathBuf) -> (String, TestConfig) {
+fn file_and_options(file: &Path) -> (String, TestConfig) {
     let contents = fs::read_to_string(file).expect("Should have been able to read the file");
     let header = contents.splitn(3, '\n');
     let mut setting = TestConfig::default();
@@ -56,12 +60,13 @@ fn file_and_options(file: &PathBuf) -> (String, TestConfig) {
     (contents, setting)
 }
 
-#[test_each::path(glob = "examples/*.tk")]
-fn parse_example_files(file: PathBuf) {
-    let (contents, setting) = file_and_options(&file);
-    if false && setting.todo {
-        info!("Skipping todo file: {file:#?}");
-        return;
+test_each_path! { in "examples" => parse_example_files }
+fn parse_example_files(file: &Path) {
+    crate::ensure_initialized();
+
+    let (contents, setting) = file_and_options(file);
+    if setting.todo {
+        // TODO: Support the todo tag to expect failure.
     }
     info!("Start: {file:#?} ({setting:#?})");
 
@@ -86,6 +91,29 @@ fn parse_example_files(file: PathBuf) {
 
     // TODO: Macro or helper?
     let _ast = match crate::parser::parse(&file, &contents, &tokens) {
+        Err(TError::InternalError { message, location }) => {
+            let st = location.map(|l| l.start.into()).unwrap_or(0);
+            let end = std::cmp::min(st + 50, contents.len());
+            debug!("ERROR AT:\n{}", &contents[st..end]);
+            assert_eq!(
+                setting.expect,
+                TestResult::InternalError,
+                "Unexpected failure for: {file:?}\n{message:?}"
+            );
+            return;
+        }
+        Err(TError::ParseError(e)) => {
+            let location = e.location();
+            let st = location.map(|l| l.start.into()).unwrap_or(0);
+            let end = std::cmp::min(st + 50, contents.len());
+            debug!("ERROR AT:\n{}", &contents[st..end]);
+            assert_eq!(
+                setting.expect,
+                TestResult::ParseError,
+                "Unexpected failure for: {file:?}\n{e:?}"
+            );
+            return;
+        }
         Err(e) => {
             assert_eq!(
                 setting.expect,
