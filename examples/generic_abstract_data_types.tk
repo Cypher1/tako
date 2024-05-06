@@ -1,9 +1,10 @@
 #!/usr/bin/env tako
+// test: todo
 
 // A simple, untyped  implementation of S expressions.
 SExpr: Type = struct.new(
-  func: (args: Value[n]),
-  args: SExpr[n],
+  func: (args: [Value; n]),
+  args: [SExpr; n],
   {n: Int},
 )
 
@@ -11,7 +12,7 @@ SExpr: Type = struct.new(
 Expr(
   SubExpr(R: AllowedType): Reference(Expr(SubExpr, R))=Expr,
   R: AllowedType,
-  with {AllowedType = Integer|Boolean}
+  {AllowedType = Integer|Boolean}
 ) = gadt.new(
 
   // Control flow:

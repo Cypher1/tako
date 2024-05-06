@@ -1,4 +1,5 @@
 #!/usr/bin/env tako
+// test: todo parse error
 
 Bounded = Enum
   .open()
