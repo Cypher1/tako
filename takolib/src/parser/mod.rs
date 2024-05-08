@@ -514,7 +514,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 let _ = self.token();
                 let bind_type = symbol.binding_type();
                 match bind_type {
-                    OpBinding::Open | OpBinding::Close => {
+                    OpBinding::Open(_) | OpBinding::Close(_) => {
                         return Err(TError::InternalError {
                             message: format!("{symbol:?} should have already been handled"),
                             location: Some(location),
@@ -559,8 +559,8 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         };
         trace!("{indent}Maybe continue: {left:?} (binding {binding:?})", indent=self.indent());
         while let Ok(TokenType::Op(symbol)) = self.peek_kind() {
-            if symbol.binding_type() == OpBinding::Close {
-                trace!("{indent}Closing Expr: {left:?} symbol: {symbol:?}", indent=self.indent());
+            if let OpBinding::Close(opener) = symbol.binding_type() {
+                trace!("{indent}Closing {opener:?} Expr: {left:?} symbol: {symbol:?}", indent=self.indent());
                 break;
             }
             if symbol != binding && symbol.is_looser(binding) && binding.is_looser(symbol) {
