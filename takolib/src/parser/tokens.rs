@@ -26,8 +26,8 @@ pub enum OpBinding {
     PrefixOrInfixBinOp,
     InfixOrPostfixBinOp,
     InfixBinOp,
-    Open,
-    Close,
+    Open(Symbol), // Closer
+    Close(Symbol), // Opener
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
@@ -119,6 +119,8 @@ lazy_static! {
     // Left associativity is the current default.
     static ref RIGHT_ASSOCIATIVE: HashSet<Symbol> = hash_set!{
         Symbol::OpenParen,
+        Symbol::OpenCurly,
+        Symbol::OpenBracket,
         Symbol::Exp,
         Symbol::Sequence,
     };
@@ -279,9 +281,12 @@ impl Symbol {
             | Self::Exists => OpBinding::PrefixOp,
             Self::Try => OpBinding::PostfixOp,
             Self::Sub => OpBinding::PrefixOrInfixBinOp,
-            Self::Sequence | Self::Comma => OpBinding::InfixOrPostfixBinOp,
-            Self::CloseCurly | Self::CloseParen | Self::CloseBracket => OpBinding::Close,
-            Self::OpenCurly | Self::OpenParen | Self::OpenBracket => OpBinding::Open,
+            Self::CloseCurly => OpBinding::Close(Self::OpenCurly),
+            Self::CloseParen => OpBinding::Close(Self::OpenParen),
+            Self::CloseBracket => OpBinding::Close(Self::CloseParen),
+            Self::OpenCurly => OpBinding::Open(Self::CloseCurly),
+            Self::OpenParen => OpBinding::Open(Self::CloseParen),
+            Self::OpenBracket => OpBinding::Open(Self::CloseParen),
             _ => OpBinding::InfixBinOp,
         }
     }
