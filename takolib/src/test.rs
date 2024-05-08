@@ -90,7 +90,7 @@ fn parse_example_files(file: &Path) {
     };
 
     // TODO: Macro or helper?
-    let _ast = match crate::parser::parse(&file, &contents, &tokens) {
+    let _ast = match crate::parser::parse(file, &contents, &tokens) {
         Err(TError::InternalError { message, location }) => {
             let st = location.map(|l| l.start.into()).unwrap_or(0);
             let end = std::cmp::min(st + 50, contents.len());
