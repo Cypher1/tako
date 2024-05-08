@@ -641,7 +641,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             }
             args.push(left);
         }
-        return Ok(args);
+        Ok(args)
     }
 
     fn name(&mut self, res: Token) -> Identifier {
@@ -711,7 +711,7 @@ pub fn parse(filepath: &Path, contents: &str, tokens: &[Token]) -> Result<Ast, T
     if !tokens.is_empty() {
         // Support empty files!
         let roots = state.file()?;
-        if roots.len() > 0 {
+        if !roots.is_empty() {
             // Use the last root?
             state.ast.set_root(roots[roots.len()-1]);
         }
