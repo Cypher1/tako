@@ -227,16 +227,6 @@ pub trait Expr: Sized {
         value
     }
 
-    fn as_context<'a, U>(&'a self, val: &'a U) -> WithContext<'a, Self, U> {
-        WithContext::new(
-            BoundExpr {
-                expr: self,
-                bind_depth: 0,
-            },
-            val,
-        )
-    }
-
     fn to_church(&mut self, i: u32) -> Self::Index {
         let startv = self.add(Term::Var(1));
         let mut curr = startv;
@@ -294,6 +284,16 @@ pub trait Expr: Sized {
         let meta = &self.get_meta(root);
         let root = &self.get(root);
         visitor.on_term(self, root, meta)
+    }
+
+    fn as_context<'a>(&'a self, val: &'a Self::Index) -> WithContext<'a, Self, Self::Index> {
+        WithContext::new(
+            BoundExpr {
+                expr: self,
+                bind_depth: 0,
+            },
+            val,
+        )
     }
 }
 
