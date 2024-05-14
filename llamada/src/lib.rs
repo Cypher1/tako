@@ -17,22 +17,33 @@ pub use reprs::dense::{DenseRepr, LambdaCalc};
 pub use reprs::llamada::Llamada;
 pub use visitors::Visitor;
 
-pub struct WithContext<'a, Ctx: ?Sized, T> {
-    // TODO(cleanup): Update to use better_std::InContext
-    pub ctx: &'a Ctx,
-    pub val: &'a T,
-    pub names: Vec<String>,
+pub struct BoundExpr<'a, Expr: ?Sized> {
+    pub expr: &'a Expr,
+    pub bind_depth: usize,
 }
 
-impl<'a, Ctx: ?Sized, T> WithContext<'a, Ctx, T> {
-    pub fn new(ctx: &'a Ctx, val: &'a T, names: Vec<String>) -> Self {
-        WithContext { ctx, val, names }
+impl<'a, Expr> Clone for BoundExpr<'a, Expr> {
+    fn clone(&self) -> Self {
+        Self {
+            expr: self.expr,
+            bind_depth: self.bind_depth,
+        }
+    }
+}
+
+pub struct WithContext<'a, Ctx: ?Sized, T> {
+    // TODO(cleanup): Update to use better_std::InContext
+    pub ctx: BoundExpr<'a, Ctx>,
+    pub val: &'a T,
+}
+
+impl<'a, Ctx, T> WithContext<'a, Ctx, T> {
+    pub fn new(ctx: BoundExpr<'a, Ctx>, val: &'a T) -> Self {
+        WithContext { ctx, val }
     }
 
-    pub fn child<U>(&self, val: &'a U, new_names: Vec<String>) -> WithContext<'a, Ctx, U> {
-        let mut names = self.names.clone();
-        names.extend(new_names);
-        WithContext::new(self.ctx, val, names)
+    pub fn child<U>(&self, val: &'a U) -> WithContext<'a, Ctx, U> {
+        WithContext::new(self.ctx.clone(), val)
     }
 }
 
@@ -217,7 +228,13 @@ pub trait Expr: Sized {
     }
 
     fn as_context<'a, U>(&'a self, val: &'a U) -> WithContext<'a, Self, U> {
-        WithContext::new(self, val, vec!["?".to_string()])
+        WithContext::new(
+            BoundExpr {
+                expr: self,
+                bind_depth: 0,
+            },
+            val,
+        )
     }
 
     fn to_church(&mut self, i: u32) -> Self::Index {
@@ -280,47 +297,73 @@ pub trait Expr: Sized {
     }
 }
 
+struct NameIndex {
+    depth: usize,
+}
+
+impl std::fmt::Display for NameIndex {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let len = self.depth;
+        let chr = ((len % 26) + ('a' as usize)) as u8 as char;
+        let name_ind = len / 26;
+        write!(f, "{chr}")?;
+        if name_ind > 0 {
+            write!(f, "{:?}", name_ind - 1)?;
+        }
+        Ok(())
+    }
+}
+
 impl<'a, Ctx> std::fmt::Display for WithContext<'a, Ctx, Ctx::Index>
 where
     Ctx: Expr,
     Ctx::Value: std::fmt::Display,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let term: &Term<Ctx::Value, Ctx::Index> = self.ctx.get(self.val);
+        let term: &Term<Ctx::Value, Ctx::Index> = self.ctx.expr.get(self.val);
         match term {
             Term::Ext(val) => write!(f, "{val}")?,
             Term::Var(var_id) => {
-                let ind = self.names.len().checked_sub(*var_id);
-                if let Some(name) = ind.and_then(|ind| self.names.get(ind)) {
+                // TODO(cleanup): Name lookup and generation is deterministic based on the number of bindings.
+                // Replace with a simple index counter.
+                if let Some(ind) = self.ctx.bind_depth.checked_sub(*var_id) {
+                    let name = format!("{}", NameIndex { depth: ind });
                     write!(f, "{name}")?;
                 } else {
                     write!(f, "#{var_id:?}")?;
                 }
             }
             Term::App(x, y) => {
-                write!(f, "({} {})", &self.child(x, vec![]), &self.child(y, vec![]))?;
+                write!(f, "({} {})", &self.child(x), &self.child(y))?;
             }
             Term::Abs(arg_meta, ind) => {
-                let len = self.names.len() - 1;
-                let chr = ((len % 26) + ('a' as usize)) as u8 as char;
-                let name_ind = len / 26;
-                let name = format!(
-                    "{chr}{}",
-                    if name_ind > 0 {
-                        format!("{}", name_ind - 1)
-                    } else {
-                        String::new()
+                // TODO(cleanup): Name generation is deterministic based on the number of bindings.
+                // Replace with a simple index counter.
+                write!(
+                    f,
+                    "({name}",
+                    name = NameIndex {
+                        depth: self.ctx.bind_depth
                     }
-                );
-                write!(f, "({name}")?;
+                )?;
                 if let Some(arg_meta) = arg_meta {
-                    write!(f, ": {}", &self.child(arg_meta, vec![]),)?;
+                    write!(f, ": {}", &self.child(arg_meta))?;
                 }
-                write!(f, " => {})", &self.child(ind, vec![name]),)?;
+                write!(
+                    f,
+                    " => {})",
+                    &WithContext::new(
+                        BoundExpr {
+                            expr: self.ctx.expr,
+                            bind_depth: self.ctx.bind_depth + 1
+                        },
+                        ind
+                    ),
+                )?;
             }
         }
-        if self.ctx.print_meta() {
-            let meta = self.ctx.get_meta(self.val);
+        if self.ctx.expr.print_meta() {
+            let meta = self.ctx.expr.get_meta(self.val);
             write!(f, ": {meta}")?;
         }
         Ok(())
