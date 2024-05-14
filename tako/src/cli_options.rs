@@ -69,7 +69,7 @@ impl Options {
         let mut got_dashdash = false;
         for f in args.into_iter().map(Into::into) {
             if opts.executable_location.is_empty() {
-                opts.executable_location = f.clone();
+                opts.executable_location.clone_from(&f);
                 continue;
             }
             if got_dashdash {

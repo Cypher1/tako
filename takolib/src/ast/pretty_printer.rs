@@ -1,31 +1,20 @@
 #![allow(unused)]
 use crate::ast::{string_interner::Identifier, Ast, Contains, Definition, Node, NodeData, NodeId};
 use crate::parser::semantics::BindingMode;
+use better_std::as_context;
 use smallvec::SmallVec;
 use std::fmt;
 use std::fmt::Write;
 
-/*
-// TODO: Consider a generic form of this.
-struct InContext<'a, T> {
-    value: T,
-    ast: &'a Ast,
-}
-*/
-
-#[derive(Debug)]
-struct PrintNodes<'ast> {
-    nodes: Vec<PrintNode<'ast>>,
-}
-
-#[derive(Debug)]
-struct PrintNode<'ast> {
-    ast: &'ast Ast,
-    node: NodeId,
-}
+as_context!(NodeId, Ast, PrintNode);
+as_context!(Vec<NodeId>, Ast, PrintNodes);
 
 pub fn pretty(ast: &Ast) -> impl fmt::Display + fmt::Debug + '_ {
-    PrintNode::from_context(ast)
+    let mut nodes = vec![];
+    for node in ast.roots.iter() {
+        nodes.push(*node)
+    }
+    PrintNodes::in_context(ast, nodes)
 }
 
 pub fn pretty_node(ast: &Ast, node: NodeId) -> impl fmt::Display + fmt::Debug + '_ {
@@ -33,23 +22,6 @@ pub fn pretty_node(ast: &Ast, node: NodeId) -> impl fmt::Display + fmt::Debug + 
 }
 
 impl<'ast> PrintNode<'ast> {
-    pub fn from_context(ast: &'ast Ast) -> PrintNodes<'ast> {
-        let mut nodes = vec![];
-        for node in ast.roots.iter() {
-            nodes.push(Self::in_context(ast, *node))
-        }
-        PrintNodes { nodes }
-    }
-    pub fn in_context(ast: &'ast Ast, node: NodeId) -> Self {
-        Self { ast, node }
-    }
-    pub fn child(&self, node: NodeId) -> Self {
-        Self {
-            ast: self.ast,
-            node,
-        }
-    }
-
     fn print_ty(&self, f: &mut fmt::Formatter<'_>, ty: &mut Option<NodeId>) -> fmt::Result {
         if let Some(ty) = ty.take() {
             write!(f, ": {}", self.child(ty))?;
@@ -73,8 +45,8 @@ impl<'ast> PrintNode<'ast> {
             let mut implicits = String::new();
             let mut explicits = String::new();
             for binding in bindings.into_iter() {
-                let into = if let NodeData::Definition(def) = self.ast.get(*binding).id {
-                    let (_nodeid, def) = self.ast.get(def);
+                let into = if let NodeData::Definition(def) = self.context().get(*binding).id {
+                    let (_nodeid, def) = self.context().get(def);
                     if def.mode != BindingMode::Lambda {
                         &mut implicits
                     } else {
@@ -101,7 +73,7 @@ impl<'ast> PrintNode<'ast> {
     }
 
     fn print_identifier(&self, f: &mut fmt::Formatter<'_>, ident: Identifier) -> fmt::Result {
-        let s = self.ast.string_interner.get_str(ident);
+        let s = self.context().string_interner.get_str(ident);
         if let Some(s) = s {
             write!(f, "{s}")
         } else {
@@ -113,18 +85,18 @@ impl<'ast> PrintNode<'ast> {
 impl<'ast> fmt::Display for PrintNodes<'ast> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut first = true;
-        for node in &self.nodes {
+        for node in &**self {
             if !first {
                 writeln!(f);
             }
-            write!(f, "{node}");
+            write!(f, "{}", PrintNode::in_context(self.context(), *node));
             first = false;
         }
         write!(f, "")
     }
 }
 
-impl<'ast> fmt::Display for PrintNode<'ast> {
+impl std::fmt::Display for PrintNode<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let Node {
             id: node,
@@ -132,23 +104,23 @@ impl<'ast> fmt::Display for PrintNode<'ast> {
             ty,
             location,
             lowered_to: _,
-        } = self.ast.get(self.node);
+        } = self.context().get(**self);
         if let Some(eq) = equivalents {
             return write!(f, "{}", self.child(*eq)); // Watch out for cycles...
         }
         let mut ty = *ty;
         match node {
             NodeData::Warning(node) => {
-                let (_node_id, node) = self.ast.get(*node);
+                let (_node_id, node) = self.context().get(*node);
                 write!(f, "Warning {node:?}")?;
             }
             NodeData::Atom(node) => {
-                let (_node_id, node) = self.ast.get(*node);
+                let (_node_id, node) = self.context().get(*node);
                 self.print_identifier(f, node.name)?;
             }
             NodeData::Call(node) => {
-                let (_node_id, node) = self.ast.get(*node);
-                let is_ident = matches!(self.ast.get(node.inner).id, NodeData::Identifier(_));
+                let (_node_id, node) = self.context().get(*node);
+                let is_ident = matches!(self.context().get(node.inner).id, NodeData::Identifier(_));
                 if !is_ident {
                     write!(f, "(")?;
                 }
@@ -169,12 +141,15 @@ impl<'ast> fmt::Display for PrintNode<'ast> {
                 write!(f, ")")?;
             }
             NodeData::Identifier(node) => {
-                let (_node_id, node) = self.ast.get(*node);
+                let (_node_id, node) = self.context().get(*node);
                 self.print_identifier(f, *node)?;
             }
             NodeData::Literal(node) => {
-                let (_node_id, node) = self.ast.get(*node);
-                let s = self.ast.string_interner.get_str_by_loc(location.start);
+                let (_node_id, node) = self.context().get(*node);
+                let s = self
+                    .context()
+                    .string_interner
+                    .get_str_by_loc(location.start);
                 if let Some(s) = s {
                     write!(f, "{s}")?;
                 } else {
@@ -185,7 +160,7 @@ impl<'ast> fmt::Display for PrintNode<'ast> {
                 write!(f, "{}", self.child(*node))?;
             }
             NodeData::Definition(node) => {
-                let (_node_id, node) = self.ast.get(*node);
+                let (_node_id, node) = self.context().get(*node);
                 let Definition {
                     mode,
                     name,
@@ -204,7 +179,7 @@ impl<'ast> fmt::Display for PrintNode<'ast> {
                 }
             }
             NodeData::Op(node) => {
-                let (_node_id, node) = self.ast.get(*node);
+                let (_node_id, node) = self.context().get(*node);
                 let mut first = true;
                 for arg in node.args.iter() {
                     // TODO: Postfix and infix ops?
@@ -215,7 +190,7 @@ impl<'ast> fmt::Display for PrintNode<'ast> {
                     }
                     // TODO: Cancel out brackets.
                     let needs_parens = {
-                        let node = self.ast.get(*arg);
+                        let node = self.context().get(*arg);
                         matches!(node.id, NodeData::Op(_) | NodeData::Definition(_))
                     };
                     if needs_parens {

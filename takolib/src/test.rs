@@ -40,7 +40,7 @@ impl TestConfig {
 }
 
 fn file_and_options(file: &PathBuf) -> (String, TestConfig) {
-    let contents = fs::read_to_string(&file).expect("Should have been able to read the file");
+    let contents = fs::read_to_string(file).expect("Should have been able to read the file");
     let header = contents.splitn(3, '\n');
     let mut setting = TestConfig::default();
 
@@ -49,7 +49,7 @@ fn file_and_options(file: &PathBuf) -> (String, TestConfig) {
             continue;
         }
         if let Some(value) = line.strip_prefix(TEST_CONFIG_PREFIX).map(|s| s.to_owned()) {
-            setting = TestConfig::from_strings(file, value.split(" ").collect());
+            setting = TestConfig::from_strings(file, value.split(' ').collect());
         }
     }
 
