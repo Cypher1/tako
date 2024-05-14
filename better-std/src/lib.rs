@@ -1,4 +1,7 @@
 #[macro_use]
+pub mod contexts;
+
+#[macro_use]
 pub mod map_macros;
 
 #[macro_use]

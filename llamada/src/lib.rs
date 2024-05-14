@@ -10,14 +10,31 @@ pub mod visitors;
 #[macro_use]
 pub mod macros;
 pub mod union_find;
-pub mod with_context;
 use crate::expr_result::EvalInfo;
 use base_types::{Empty, Never};
 pub use expr_result::ExprResult;
 pub use reprs::dense::{DenseRepr, LambdaCalc};
 pub use reprs::llamada::Llamada;
 pub use visitors::Visitor;
-pub use with_context::WithContext;
+
+pub struct WithContext<'a, Ctx: ?Sized, T> {
+    // TODO(cleanup): Update to use better_std::InContext
+    pub ctx: &'a Ctx,
+    pub val: &'a T,
+    pub names: Vec<String>,
+}
+
+impl<'a, Ctx: ?Sized, T> WithContext<'a, Ctx, T> {
+    pub fn new(ctx: &'a Ctx, val: &'a T, names: Vec<String>) -> Self {
+        WithContext { ctx, val, names }
+    }
+
+    pub fn child<U>(&self, val: &'a U, new_names: Vec<String>) -> WithContext<'a, Ctx, U> {
+        let mut names = self.names.clone();
+        names.extend(new_names);
+        WithContext::new(self.ctx, val, names)
+    }
+}
 
 #[derive(Debug, Clone, Eq, Hash, Ord, PartialOrd, PartialEq)]
 pub enum Term<T, Id> {
@@ -245,37 +262,46 @@ pub trait Expr: Sized {
         }
     }
 
-    fn fmt_index_term(
-        ctx: &WithContext<'_, Self, Self::Index>,
-        f: &mut std::fmt::Formatter<'_>,
-    ) -> std::fmt::Result
+    fn print_meta(&self) -> bool;
+    fn set_print_meta(&mut self, print_meta: bool);
+
+    fn fmt_root(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
     where
-        Self: Sized,
         Self::Value: std::fmt::Display,
     {
-        let this = ctx.ctx;
-        let id = ctx.val;
-        let term: &Term<Self::Value, Self::Index> = this.get(id);
+        write!(f, "{}", &self.as_context(self.root()))
+    }
+
+    fn traverse<T, E, V: Visitor<E, Self, Type = T>>(&self, visitor: &mut V) -> Result<T, E> {
+        let root = self.root();
+        let meta = &self.get_meta(root);
+        let root = &self.get(root);
+        visitor.on_term(self, root, meta)
+    }
+}
+
+impl<'a, Ctx> std::fmt::Display for WithContext<'a, Ctx, Ctx::Index>
+where
+    Ctx: Expr,
+    Ctx::Value: std::fmt::Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let term: &Term<Ctx::Value, Ctx::Index> = self.ctx.get(self.val);
         match term {
             Term::Ext(val) => write!(f, "{val}")?,
             Term::Var(var_id) => {
-                let ind = ctx.names.len().checked_sub(*var_id);
-                if let Some(ind) = ind {
-                    if let Some(name) = ctx.names.get(ind) {
-                        return write!(f, "{name}");
-                    }
+                let ind = self.names.len().checked_sub(*var_id);
+                if let Some(name) = ind.and_then(|ind| self.names.get(ind)) {
+                    write!(f, "{name}")?;
+                } else {
+                    write!(f, "#{var_id:?}")?;
                 }
-                write!(f, "#{var_id:?}")?;
             }
             Term::App(x, y) => {
-                write!(f, "(")?;
-                Self::fmt_index(&ctx.child(x, vec![]), f)?;
-                write!(f, " ")?;
-                Self::fmt_index(&ctx.child(y, vec![]), f)?;
-                write!(f, ")")?;
+                write!(f, "({} {})", &self.child(x, vec![]), &self.child(y, vec![]))?;
             }
             Term::Abs(arg_meta, ind) => {
-                let len = ctx.names.len() - 1;
+                let len = self.names.len() - 1;
                 let chr = ((len % 26) + ('a' as usize)) as u8 as char;
                 let name_ind = len / 26;
                 let name = format!(
@@ -288,57 +314,15 @@ pub trait Expr: Sized {
                 );
                 write!(f, "({name}")?;
                 if let Some(arg_meta) = arg_meta {
-                    write!(f, ": ")?;
-                    Self::fmt_index(&ctx.child(arg_meta, vec![]), f)?;
+                    write!(f, ": {}", &self.child(arg_meta, vec![]),)?;
                 }
-                write!(f, " => ")?;
-                Self::fmt_index(&ctx.child(ind, vec![name]), f)?;
-                write!(f, ")")?;
+                write!(f, " => {})", &self.child(ind, vec![name]),)?;
             }
         }
-        Ok(())
-    }
-
-    fn fmt_index(
-        ctx: &WithContext<'_, Self, Self::Index>,
-        f: &mut std::fmt::Formatter<'_>,
-    ) -> std::fmt::Result
-    where
-        Self::Value: std::fmt::Display,
-    {
-        Self::fmt_index_term(ctx, f)?;
-        let this = ctx.ctx;
-        let id = ctx.val;
-        if this.print_meta() {
-            let meta = this.get_meta(id);
+        if self.ctx.print_meta() {
+            let meta = self.ctx.get_meta(self.val);
             write!(f, ": {meta}")?;
         }
         Ok(())
-    }
-
-    fn print_meta(&self) -> bool;
-    fn set_print_meta(&mut self, print_meta: bool);
-
-    fn fmt_root(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
-    where
-        Self::Value: std::fmt::Display,
-    {
-        Self::fmt_index(&self.as_context(self.root()), f)
-    }
-
-    fn traverse<T, E, V: Visitor<E, Self, Type = T>>(&self, visitor: &mut V) -> Result<T, E> {
-        let root = self.root();
-        let meta = &self.get_meta(root);
-        let root = &self.get(root);
-        visitor.on_term(self, root, meta)
-    }
-}
-
-impl<'a, Ctx: Expr> std::fmt::Display for WithContext<'a, Ctx, Ctx::Index>
-where
-    Ctx::Value: std::fmt::Display,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        Ctx::fmt_index(self, f)
     }
 }

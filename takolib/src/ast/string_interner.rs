@@ -1,6 +1,7 @@
 use super::location::IndexIntoFile;
 use crate::parser::KEYWORDS;
 use crate::primitives::typed_index::TypedIndex;
+use better_std::as_context;
 use num_traits::Bounded;
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
@@ -58,6 +59,18 @@ impl Default for StringInterner {
     }
 }
 
+as_context!(StrId, StringInterner, InternedString);
+
+impl std::fmt::Display for InternedString<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(s) = self.context().get_str(**self) {
+            write!(f, "{s}")
+        } else {
+            write!(f, "<unknown symbol: {self:?}>")
+        }
+    }
+}
+
 impl StringInterner {
     #[must_use]
     pub fn new() -> Self {
@@ -88,22 +101,6 @@ impl StringInterner {
     pub fn get_str_by_loc(&self, s: IndexIntoFile) -> Option<&str> {
         let s = self.loc2string.get(&s)?;
         self.get_str(*s)
-    }
-}
-
-#[derive(Debug)]
-struct InContext<'a, T> {
-    value: T,
-    string_interner: &'a StringInterner,
-}
-
-impl<'a> std::fmt::Display for InContext<'a, Identifier> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(s) = self.string_interner.get_str(self.value) {
-            write!(f, "{s}")
-        } else {
-            write!(f, "<unknown symbol: {self:?}>")
-        }
     }
 }
 
