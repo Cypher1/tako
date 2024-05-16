@@ -175,8 +175,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
     ) -> Result<OnTok, ParseError> {
         let tk = self.peek()?;
         let res = test(tk)?;
-        self.token()
-            .expect("Internal error: Token missing after check");
+        let Some(_) = self.token() else { unreachable!() };
         Ok(res)
     }
     fn token_of_type(&mut self, expected: TokenType) -> Result<Token, ParseError> {
@@ -579,9 +578,9 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 break;
             }
             trace!("Continuing Expr: {left:?} sym: {symbol:?} inside binding: {binding:?}");
+            let token = self.token().expect("Internal error");
+            let location = token.location();
             if symbol == Symbol::OpenParen {
-                let token = self.token().expect("Internal error");
-                let location = token.location();
                 // Require an 'apply' to balance it's parens.
                 let mut args = vec![];
                 let mut _has_non_bind_args = false;
@@ -593,9 +592,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 left = self.ast.add_call(Call { inner: left, args }, location);
             } else {
                 // TODO: Check that this is the right kind of operator.
-                let token = self.token().expect("Internal error");
                 let right = self.expr(symbol)?;
-                let location = token.location();
                 left = self.ast.add_op(
                     Op {
                         op: symbol,
