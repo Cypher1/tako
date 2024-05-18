@@ -1,6 +1,6 @@
 # Tako
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-1-orange.svg?style=flat-square)](#contributors)
+[![All Contributors](https://img.shields.io/badge/all_contributors-1-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 [![Cherry](./takoweb/static/tako.png)](https://takolang.dev)
@@ -97,9 +97,11 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 <!-- prettier-ignore-start -->
 <!-- markdownlint-disable -->
 <table>
-  <tr>
-    <td align="center"><a href="https://cypher1.github.io"><img src="https://avatars.githubusercontent.com/u/1120798?v=4?s=100" width="100px;" alt=""/><br /><sub><b>J Pratt</b></sub></a><br /><a href="#design-Cypher1" title="Design">🎨</a> <a href="https://github.com/Cypher1/tako/commits?author=Cypher1" title="Code">💻</a> <a href="#example-Cypher1" title="Examples">💡</a></td>
-  </tr>
+  <tbody>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://cypher1.github.io"><img src="https://avatars.githubusercontent.com/u/1120798?v=4?s=100" width="100px;" alt="Jay Pratt"/><br /><sub><b>Jay Pratt</b></sub></a><br /><a href="https://github.com/Cypher1/tako/commits?author=cypher1" title="Code">💻</a> <a href="#design-cypher1" title="Design">🎨</a></td>
+    </tr>
+  </tbody>
 </table>
 
 <!-- markdownlint-restore -->
