@@ -5,7 +5,7 @@ use crate::ast::string_interner::Identifier;
 use crate::ast::{Ast, Atom, Call, Contains, Definition, NodeData, NodeId, Op};
 use crate::error::TError;
 use better_std::include_strs;
-use log::trace;
+use log::{debug, trace};
 use semantics::BindingMode;
 use semantics::Literal;
 use smallvec::{smallvec, SmallVec};
@@ -262,7 +262,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             None
         };
         let implementation = if self.assignment_op(binding).is_ok() {
-            Some(self.expr(Symbol::Comma)?)
+            Some(self.any_expr()?)
         } else {
             None
         };
@@ -282,7 +282,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
     }
 
     fn binding_or_arg(&mut self, has_non_bind_args: &mut bool) -> Result<BindingOrValue, TError> {
-        let value = self.expr(Symbol::Comma)?;
+        let value = self.any_expr()?;
         let node = &self.ast.get(value);
         let location = node.location;
         if let NodeData::Definition(binding) = node.id {
@@ -341,7 +341,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             // Read args...
             while self.operator_is(Symbol::CloseParen).is_err() {
                 bindings.push(self.binding_or_arg(&mut has_non_bind_args)?);
-                if self.require(TokenType::Op(Symbol::Comma)).is_err() {
+                if self.require(TokenType::Comma).is_err() {
                     self.require(TokenType::Op(Symbol::CloseParen))?;
                     break;
                 }
@@ -352,7 +352,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             // Read args...
             while self.operator_is(Symbol::CloseBracket).is_err() {
                 bindings.push(self.binding_or_arg(&mut has_non_bind_args)?);
-                if self.require(TokenType::Op(Symbol::Comma)).is_err() {
+                if self.require(TokenType::Comma).is_err() {
                     self.require(TokenType::Op(Symbol::CloseBracket))?;
                     break;
                 }
@@ -482,6 +482,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         trace!("{indent}Expr: {token:?} (binding {binding:?})", indent=self.indent());
         let mut left = if self.operator_is(Symbol::OpenBracket).is_ok() {
             // Array, Tuple, List, Vector, Matrix, etc.
+            debug!("{indent}Got opener {:?}", Symbol::OpenBracket, indent=self.indent());
             let args = self.repeated(Symbol::CloseBracket)?;
             self.ast.add_op(
                 Op {
@@ -492,6 +493,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             )
         } else if self.operator_is(Symbol::OpenCurly).is_ok() {
             // Block, set, dictionary, etc.
+            debug!("{indent}Got opener {:?}", Symbol::OpenCurly, indent=self.indent());
             let args = self.repeated(Symbol::CloseCurly)?;
             self.ast.add_op(
                 Op {
@@ -502,6 +504,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             )
         } else if self.operator_is(Symbol::OpenParen).is_ok() {
             // Parenthesized expr... etc.
+            debug!("{indent}Got opener {:?}", Symbol::OpenParen, indent=self.indent());
             let left = self.any_expr()?;
             self.require(TokenType::Op(Symbol::CloseParen))?;
             left
@@ -609,35 +612,19 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
 
     fn repeated(&mut self, closer: Symbol) -> Result<SmallVec<NodeId, 2>, TError> {
         let mut args = smallvec![];
-        if self.operator_is(closer).is_err() {
-            let mut left = self.any_expr()?;
-            while self.operator_is(closer).is_err() {
-                let Ok(token) = self.peek().copied() else {
-                    return Err(ParseError::UnexpectedEof.into());
-                };
-                let location = token.location();
-                let op = if self.require(TokenType::Op(Symbol::Comma)).is_ok() {
-                    Symbol::Comma
-                } else if self.require(TokenType::Op(Symbol::Sequence)).is_ok() {
-                    Symbol::Sequence // TODO: This isn't well supported
-                } else {
-                    Symbol::Comma
-                };
-                if self.require(TokenType::Op(closer)).is_ok() {
-                    break;
-                }
-
-                let right = self.any_expr()?;
-                left = self.ast.add_op(
-                    Op {
-                        op,
-                        args: smallvec![left, right],
-                    },
-                    location,
-                );
+        while self.operator_is(closer).is_err() {
+            while self.require(TokenType::Comma).is_ok() {
+                // Eat extra commas
             }
-            args.push(left);
+            if self.require(TokenType::Op(closer)).is_ok() {
+                debug!("{indent}Got a closer {closer:?}", indent=self.indent());
+                break;
+            }
+            debug!("{indent}Got no closer {closer:?} expecting another arg", indent=self.indent());
+            let arg = self.any_expr()?;
+            args.push(arg);
         }
+        debug!("{indent}Got closer {closer:?}", indent=self.indent());
         Ok(args)
     }
 
