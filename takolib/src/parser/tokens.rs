@@ -84,9 +84,6 @@ pub enum Symbol {
     Gt,
     GtEqs,
 
-    // Groups
-    Comma,
-
     // Maths
     LeftShift,
     RightShift,
@@ -151,8 +148,7 @@ lazy_static! {
         Symbol::OpenParen => vec![Symbol::OpenCurly],
         Symbol::OpenCurly => vec![Symbol::OpenBracket],
         Symbol::OpenBracket => vec![Symbol::Sequence],
-        Symbol::Sequence => vec![Symbol::Comma],
-        Symbol::Comma => vec![
+        Symbol::Sequence => vec![
             Symbol::Assign,
             Symbol::AddAssign,
             Symbol::SubAssign,
@@ -287,7 +283,7 @@ impl Symbol {
             Self::OpenCurly => OpBinding::Open(Self::CloseCurly),
             Self::OpenParen => OpBinding::Open(Self::CloseParen),
             Self::OpenBracket => OpBinding::Open(Self::CloseParen),
-            Self::Sequence | Self::Comma => OpBinding::InfixOrPostfixBinOp,
+            Self::Sequence => OpBinding::InfixOrPostfixBinOp,
             _ => OpBinding::InfixBinOp,
         }
     }
@@ -333,7 +329,6 @@ impl std::fmt::Display for Symbol {
                 Self::Dot => ".",
                 Self::Range => "..",
                 Self::Spread => "...",
-                Self::Comma => ",",
                 Self::Sequence => ";",
                 Self::Arrow => "->",
                 Self::DoubleArrow => "=>",
@@ -388,6 +383,7 @@ pub enum CharacterType {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum TokenType {
     Op(Symbol), // An operator (i.e. a known symbol used as a prefix or infix operator).
+    Comma,      // A regular comma.
     Ident,      // A named value.
     Atom,       // A symbol starting with a '$', used differently to symbols which have values.
     // Literals (i.e. tokens representing values):
@@ -408,6 +404,7 @@ impl fmt::Display for TokenType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Op(sym) => write!(f, "a '{sym:?}' symbol"),
+            Self::Comma => write!(f, "a comma"),
             Self::Ident => write!(f, "an identifier"),
             Self::Atom => write!(f, "an atom"),
             Self::NumberLit => write!(f, "a number"),
@@ -465,11 +462,12 @@ const _MULTI_COMMENT: &str = "/*";
 #[inline]
 fn classify_char(ch: char) -> CharacterType {
     use CharacterType::{AtomHead, HexSym, PartialToken, Whitespace};
-    use TokenType::{Ident, NumberLit, Op, StringLit};
+    use TokenType::{Ident, Comma, NumberLit, Op, StringLit};
     PartialToken(match ch {
         '\n' | '\r' | '\t' | ' ' => return Whitespace,
         '$' => return AtomHead,
         'A'..='F' | 'a'..='f' => return HexSym,
+        ',' => Comma,
         '#' => Op(Symbol::Hash),
         '~' => Op(Symbol::BitNot),
         '!' => Op(Symbol::LogicalNot),
@@ -487,7 +485,6 @@ fn classify_char(ch: char) -> CharacterType {
         '/' => Op(Symbol::Div),
         '?' => Op(Symbol::Try),
         '.' => Op(Symbol::Dot),
-        ',' => Op(Symbol::Comma),
         ':' => Op(Symbol::HasType),
         ';' => Op(Symbol::Sequence),
         '(' => Op(Symbol::OpenParen),
