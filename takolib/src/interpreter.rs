@@ -243,7 +243,6 @@ impl<'a> Ctx<'a> {
             Symbol::Dot => todo!(),
             Symbol::Range => todo!(),
             Symbol::Spread => todo!(),
-            Symbol::Comma => todo!(),
             Symbol::Sequence => {
                 let Some(l) = op.args.first() else {
                     panic!("; expects a left and a right. Neither found");
