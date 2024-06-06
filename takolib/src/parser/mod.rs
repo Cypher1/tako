@@ -473,7 +473,15 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
     }
 
     fn expr(&mut self, binding: Symbol) -> Result<NodeId, TError> {
+        let indent = self.indent();
+        debug!("{indent}Inside {:?}", binding);
         let _scope = self.depth.clone();
+        let res = self.expr_impl(binding);
+        debug!("{indent}Done {:?}", binding);
+        res
+    }
+
+    fn expr_impl(&mut self, binding: Symbol) -> Result<NodeId, TError> {
         let Ok(mut token) = self.peek().copied() else {
             return Err(ParseError::UnexpectedEof.into());
         };
@@ -482,7 +490,6 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         trace!("{indent}Expr: {token:?} (binding {binding:?})", indent=self.indent());
         let mut left = if self.operator_is(Symbol::OpenBracket).is_ok() {
             // Array, Tuple, List, Vector, Matrix, etc.
-            debug!("{indent}Got opener {:?}", Symbol::OpenBracket, indent=self.indent());
             let args = self.repeated(Symbol::CloseBracket)?;
             self.ast.add_op(
                 Op {
@@ -493,7 +500,6 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             )
         } else if self.operator_is(Symbol::OpenCurly).is_ok() {
             // Block, set, dictionary, etc.
-            debug!("{indent}Got opener {:?}", Symbol::OpenCurly, indent=self.indent());
             let args = self.repeated(Symbol::CloseCurly)?;
             self.ast.add_op(
                 Op {
@@ -504,7 +510,6 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             )
         } else if self.operator_is(Symbol::OpenParen).is_ok() {
             // Parenthesized expr... etc.
-            debug!("{indent}Got opener {:?}", Symbol::OpenParen, indent=self.indent());
             let left = self.any_expr()?;
             self.require(TokenType::Op(Symbol::CloseParen))?;
             left
@@ -1016,7 +1021,7 @@ pub mod tests {
 
     #[test]
     fn parse_tuple() -> Result<(), TError> {
-        let ast = setup("1,2")?;
+        let ast = setup("[1,2]")?;
         assert_eq!(ast.identifiers.len(), 0);
         assert_eq!(ast.literals.len(), 2);
         assert_eq!(ast.ops.len(), 1);

@@ -75,9 +75,12 @@ pub fn lower(_path: &Path, og_ast: &Ast, root: NodeId) -> Result<Llamada, TError
             let arg_node: &Node = ast.get(*arg);
 
             // Get the implementation of the definition...
-            let arg_def_id = match arg_node.id {
-                NodeData::Definition(def) => def,
-                _ => todo!("WAT"),
+            let arg_def_id = match &arg_node.id {
+                NodeData::Definition(def) => *def,
+                _ => todo!(
+                    "Unexpected definition node {}",
+                    ast.pretty_node(*arg)
+                ),
             };
             let (arg, arg_def) = ast.get(arg_def_id);
             eprintln!("ARG: {}", ast.pretty_node(*arg));
@@ -174,7 +177,7 @@ mod tests {
 
     #[test]
     fn lower_gives_constant_from_id_id_ap_constant() -> Result<(), TError> {
-        let ast = setup("(x=>x)((x=(x=>x))(x=2))")?;
+        let ast = setup("(x=>x)(x=(x=>x)(x=2))")?;
         let out = lower(&test_path(), &ast, ast.roots[0])?;
         dbg!(&out);
 
