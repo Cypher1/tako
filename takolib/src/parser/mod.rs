@@ -54,6 +54,11 @@ pub enum ParseError {
         bind_type: OpBinding,
         location: Location,
     },
+    MissingRightHandSideOfOperator {
+        op: Symbol,
+        bind_type: OpBinding,
+        location: Location,
+    },
     UnparsedTokens {
         token: TokenType,
         location: Location,
@@ -90,6 +95,7 @@ impl ParseError {
             }
             | Self::UnexpectedExpressionInDefinitionArguments { location, .. }
             | Self::MissingLeftHandSideOfOperator { location, .. } => Some(location),
+            | Self::MissingRightHandSideOfOperator { location, .. } => Some(location),
             Self::UnparsedTokens { location, .. } => Some(location),
         }
     }
@@ -130,6 +136,12 @@ impl std::fmt::Display for ParseError {
                 write!(
                     f,
                     "Operator {op} needs a 'left' side. (e.g. 'a{op}b' rather than '{op}b'"
+                )
+            }
+            Self::MissingRightHandSideOfOperator { op, .. } => {
+                write!(
+                    f,
+                    "Operator {op} needs a 'right' side. (e.g. 'a{op}b' rather than 'a{op}'"
                 )
             }
             Self::UnparsedTokens { token, .. } => {
@@ -262,7 +274,10 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             None
         };
         let implementation = if self.assignment_op(binding).is_ok() {
-            Some(self.any_expr()?)
+            debug!("Start binding definition parse {:?}", name);
+            let def_impl = self.any_expr();
+            debug!("Binding value is {:?}", def_impl);
+            Some(def_impl?)
         } else {
             None
         };
@@ -367,8 +382,12 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             None
         };
         if let Ok(assignment) = self.assignment_op(binding) {
+            let name_s = &self.contents
+                [(location.start as usize)..(location.start as usize) + (location.length as usize)];
             let op = assign_op(assignment);
+            debug!("Start definition parse {:?}", name_s);
             let mut implementation = self.expr(assignment)?;
+            debug!("Value is {:?}", implementation);
             if let Some(op) = op {
                 let name = self.identifier(name, location);
                 implementation = self.ast.add_op(
@@ -379,12 +398,10 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                     location,
                 );
             }
-            let name = &self.contents
-                [(location.start as usize)..(location.start as usize) + (location.length as usize)];
             let name = self
                 .ast
                 .string_interner
-                .register_str_by_loc(name, location.start);
+                .register_str_by_loc(name_s, location.start);
             let mut only_bindings = vec![];
             for binding in bindings {
                 match binding {
@@ -477,7 +494,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         debug!("{indent}Inside {:?}", binding);
         let _scope = self.depth.clone();
         let res = self.expr_impl(binding);
-        debug!("{indent}Done {:?}", binding);
+        debug!("{indent}Done subexpr ({:?})", binding);
         res
     }
 
@@ -600,14 +617,51 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 left = self.ast.add_call(Call { inner: left, args }, location);
             } else {
                 // TODO: Check that this is the right kind of operator.
-                let right = self.expr(symbol)?;
-                left = self.ast.add_op(
-                    Op {
-                        op: symbol,
-                        args: smallvec![left, right],
-                    },
-                    location,
-                );
+                let bind_type = symbol.binding_type();
+                left = match bind_type {
+                    OpBinding::Open(_) | OpBinding::Close(_) | OpBinding::PrefixOp => {
+                        return Err(TError::InternalError {
+                            message: format!("{symbol:?} should have already been handled"),
+                            location: Some(location),
+                        })
+                    }
+                    OpBinding::PostfixOp => {
+                        self.ast.add_op(
+                            Op {
+                                op: symbol,
+                                args: smallvec![left],
+                            },
+                            location,
+                        )
+                    }
+                    OpBinding::InfixBinOp | OpBinding::PrefixOrInfixBinOp | OpBinding::InfixOrPostfixBinOp => {
+                        let right = self.expr(symbol);
+                        if let Ok(right) = right {
+                            self.ast.add_op(
+                                Op {
+                                    op: symbol,
+                                    args: smallvec![left, right],
+                                },
+                                location,
+                            )
+                        } else if bind_type == OpBinding::InfixOrPostfixBinOp {
+                            self.ast.add_op(
+                                Op {
+                                    op: symbol,
+                                    args: smallvec![left],
+                                },
+                                location,
+                            )
+                        } else {
+                            return Err(ParseError::MissingRightHandSideOfOperator {
+                                op: symbol,
+                                bind_type,
+                                location,
+                            }
+                            .into());
+                        }
+                    }
+                }
             }
         }
         trace!("Expr done: {}", self.ast.pretty_node(left));
@@ -621,7 +675,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             while self.require(TokenType::Comma).is_ok() {
                 // Eat extra commas
             }
-            if self.require(TokenType::Op(closer)).is_ok() {
+            if self.operator_is(closer).is_ok() {
                 debug!("{indent}Got a closer {closer:?}", indent=self.indent());
                 break;
             }
