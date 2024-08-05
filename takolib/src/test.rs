@@ -73,16 +73,16 @@ fn parse_example_files(file: &Path) {
     let tokens = match crate::parser::tokens::lex(&contents) {
         Err(e) => {
             assert_eq!(
-                setting.expect,
                 TestResult::LexError,
+                setting.expect,
                 "Unexpected failure for: {file:?}\n{e:?}"
             );
             return;
         }
         Ok(tokens) => {
             assert_ne!(
-                setting.expect,
                 TestResult::LexError,
+                setting.expect,
                 "Expected lex failure for: {file:?}\n{tokens:?}"
             );
             tokens
@@ -96,8 +96,8 @@ fn parse_example_files(file: &Path) {
             let end = std::cmp::min(st + 50, contents.len());
             debug!("ERROR AT:\n{}", &contents[st..end]);
             assert_eq!(
-                setting.expect,
                 TestResult::InternalError,
+                setting.expect,
                 "Unexpected failure for: {file:?}\n{message:?}"
             );
             return;
@@ -108,24 +108,24 @@ fn parse_example_files(file: &Path) {
             let end = std::cmp::min(st + 50, contents.len());
             debug!("ERROR AT:\n{}", &contents[st..end]);
             assert_eq!(
-                setting.expect,
                 TestResult::ParseError,
+                setting.expect,
                 "Unexpected failure for: {file:?}\n{e:?}"
             );
             return;
         }
         Err(e) => {
             assert_eq!(
-                setting.expect,
                 TestResult::ParseError,
+                setting.expect,
                 "Unexpected failure for: {file:?}\n{e:?}"
             );
             return;
         }
         Ok(ast) => {
             assert_ne!(
-                setting.expect,
                 TestResult::ParseError,
+                setting.expect,
                 "Expected parse failure for: {file:?}\n{ast:?}"
             );
             ast
@@ -139,8 +139,8 @@ fn parse_example_files(file: &Path) {
     // TODO: Use tasks to get 'decorate_error:
     info!("Done: {file:#?}");
     assert_eq!(
-        setting.expect,
         TestResult::All,
+        setting.expect,
         "Performed all stages on: {file:?} but did not expect to?"
     );
 }
