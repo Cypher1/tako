@@ -77,10 +77,7 @@ pub fn lower(_path: &Path, og_ast: &Ast, root: NodeId) -> Result<Llamada, TError
             // Get the implementation of the definition...
             let arg_def_id = match &arg_node.id {
                 NodeData::Definition(def) => *def,
-                _ => todo!(
-                    "Unexpected definition node {}",
-                    ast.pretty_node(*arg)
-                ),
+                _ => todo!("Unexpected definition node {}", ast.pretty_node(*arg)),
             };
             let (arg, arg_def) = ast.get(arg_def_id);
             eprintln!("ARG: {}", ast.pretty_node(*arg));
