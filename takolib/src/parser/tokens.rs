@@ -26,7 +26,7 @@ pub enum OpBinding {
     PrefixOrInfixBinOp,
     InfixOrPostfixBinOp,
     InfixBinOp,
-    Open(Symbol), // Closer
+    Open(Symbol),  // Closer
     Close(Symbol), // Opener
 }
 
@@ -462,7 +462,7 @@ const _MULTI_COMMENT: &str = "/*";
 #[inline]
 fn classify_char(ch: char) -> CharacterType {
     use CharacterType::{AtomHead, HexSym, PartialToken, Whitespace};
-    use TokenType::{Ident, Comma, NumberLit, Op, StringLit};
+    use TokenType::{Comma, Ident, NumberLit, Op, StringLit};
     PartialToken(match ch {
         '\n' | '\r' | '\t' | ' ' => return Whitespace,
         '$' => return AtomHead,
