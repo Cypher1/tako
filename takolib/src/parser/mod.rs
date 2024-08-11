@@ -655,29 +655,29 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                     | OpBinding::PrefixOrInfixBinOp
                     | OpBinding::InfixOrPostfixBinOp => {
                         let right = self.expr(symbol);
-                        if let Ok(right) = right {
-                            self.ast.add_op(
+                        match right {
+                            Ok(right) => self.ast.add_op(
                                 Op {
                                     op: symbol,
                                     args: smallvec![left, right],
                                 },
                                 location,
-                            )
-                        } else if bind_type == OpBinding::InfixOrPostfixBinOp {
-                            self.ast.add_op(
+                            ),
+                            _ if bind_type == OpBinding::InfixOrPostfixBinOp => self.ast.add_op(
                                 Op {
                                     op: symbol,
                                     args: smallvec![left],
                                 },
                                 location,
-                            )
-                        } else {
-                            return Err(ParseError::MissingRightHandSideOfOperator {
-                                op: symbol,
-                                bind_type,
-                                location,
-                            }
-                            .into());
+                            ),
+                            Err(TError::ParseError(ParseError::UnexpectedEof)) => return Err(
+                                TError::ParseError(ParseError::MissingRightHandSideOfOperator {
+                                    op: symbol,
+                                    bind_type,
+                                    location,
+                                }),
+                            ),
+                            Err(right) => return Err(right),
                         }
                     }
                 }
