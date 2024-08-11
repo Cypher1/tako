@@ -1,7 +1,7 @@
 pub mod semantics;
 pub mod tokens;
 use crate::ast::location::Location;
-use crate::ast::string_interner::Identifier;
+use crate::ast::string_interner::{Identifier, StrId};
 use crate::ast::{Ast, Atom, Call, Contains, Definition, NodeData, NodeId, Op};
 use crate::error::TError;
 use better_std::include_strs;
@@ -303,7 +303,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         let node = &self.ast.get(value);
         let location = node.location;
         if let NodeData::Definition(binding) = node.id {
-            trace!("{indent}Definition: {binding:?}", indent = self.indent());
+            debug!("{indent}Definition: {binding:?}", indent = self.indent());
             return Ok(BindingOrValue::Binding(value));
         }
         if let NodeData::Identifier(ident) = node.id {
@@ -338,24 +338,24 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         Ok(args)
     }
 
-    fn call_or_definition(&mut self, name: Token, binding: Symbol) -> Result<NodeId, TError> {
-        let name_id = self.name(name);
-        trace!(
+    fn call_or_definition(&mut self, name_tok: Token, binding: Symbol) -> Result<NodeId, TError> {
+        let name = self.name(name_tok);
+        let location = name_tok.location();
+        debug!(
             "{indent}Call or definition: {name:?}: {:?}",
-            self.ast.string_interner.get_str(name_id),
+            self.ast.string_interner.get_str(name),
             indent = self.indent(),
         );
-        let location = name.location();
         let bindings = if self.operator_is(Symbol::OpenParen).is_ok() {
-            trace!("{indent}has arguments", indent = self.indent());
+            debug!("{indent}has arguments", indent = self.indent());
             let args = self.repeated(Symbol::CloseParen, |this| this.binding_or_arg())?;
             Some(args)
         } else if self.operator_is(Symbol::OpenBracket).is_ok() {
-            trace!("{indent}has arguments", indent = self.indent());
+            debug!("{indent}has arguments", indent = self.indent());
             let args = self.repeated(Symbol::CloseBracket, |this| this.binding_or_arg())?;
             Some(args)
         } else if self.operator_is(Symbol::OpenCurly).is_ok() {
-            trace!("{indent}has arguments", indent = self.indent());
+            debug!("{indent}has arguments", indent = self.indent());
             let args = self.repeated(Symbol::CloseCurly, |this| this.binding_or_arg())?;
             Some(args)
         } else {
@@ -372,20 +372,6 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         if let Ok(assignment) = self.assignment_op(binding) {
             let name_s = &self.contents
                 [(location.start as usize)..(location.start as usize) + (location.length as usize)];
-            let op = assign_op(assignment);
-            debug!("Start definition parse {:?}", name_s);
-            let mut implementation = self.expr(assignment)?;
-            debug!("Value is {:?}", implementation);
-            if let Some(op) = op {
-                let name = self.identifier(name, location);
-                implementation = self.ast.add_op(
-                    Op {
-                        op,
-                        args: smallvec![name, implementation],
-                    },
-                    location,
-                );
-            }
             let name = self
                 .ast
                 .string_interner
@@ -424,6 +410,20 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             } else {
                 None
             };
+            let op = assign_op(assignment);
+            debug!("Parse implementation of {:?}", name_s);
+            let mut implementation = self.expr(assignment)?;
+            debug!("Value is {:?}", implementation);
+            if let Some(op) = op {
+                let name = self.identifier(name, location);
+                implementation = self.ast.add_op(
+                    Op {
+                        op,
+                        args: smallvec![name, implementation],
+                    },
+                    location,
+                );
+            }
             // TODO: USE bindings
             trace!("{indent}Add definition", indent = self.indent());
             let def = self.ast.add_definition(
@@ -702,11 +702,11 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             .register_str_by_loc(name, res.location().start)
     }
 
-    fn identifier(&mut self, res: Token, location: Location) -> NodeId {
-        assert!(res.kind == TokenType::Ident);
-        let name = res.get_src(self.contents);
-        trace!("{indent}Identifier: {name}", indent = self.indent());
-        let name = self.ast.string_interner.register_str(name);
+    fn identifier(&mut self, name: StrId, location: Location) -> NodeId {
+        trace!("{indent}Identifier: {name:?}",
+            name = self.ast.string_interner.get_str(name),
+            indent = self.indent()
+        );
         self.ast.add_identifier(name, location)
     }
 
