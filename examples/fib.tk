@@ -1,6 +1,6 @@
 #!/usr/bin/env tako
 // test: all
 
-fib(n: T, {T: Nat}): T=if(n<=1, 1, fib(n-1)+fib(n-2))
+fib(n: T, forall T: Nat): T=if(n<=1, 1, fib(n-1)+fib(n-2))
 
 print(fib(80))

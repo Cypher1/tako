@@ -312,7 +312,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             // TODO: Try for an assignment binding...
             return Ok(BindingOrValue::Identifier(*ident, ty, location));
         }
-        trace!("{indent}Arg value: {value:?}", indent = self.indent());
+        debug!("{indent}Arg value: {value:?}", indent = self.indent());
         Ok(BindingOrValue::Value(value))
     }
 
