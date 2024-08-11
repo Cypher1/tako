@@ -497,7 +497,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         }
         if self.operator_is(Symbol::OpenCurly).is_ok() {
             // Block, set, dictionary, etc.
-            let args = self.repeated(Symbol::CloseBracket, |this| this.any_expr())?;
+            let args = self.repeated(Symbol::CloseCurly, |this| this.any_expr())?;
             return Ok(self.ast.add_op(
                 Op {
                     op: Symbol::OpenCurly,
