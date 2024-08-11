@@ -205,9 +205,6 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             }
         })
     }
-    fn ident(&mut self) -> Result<Token, ParseError> {
-        self.token_of_type(TokenType::Ident)
-    }
     fn operator_is(&mut self, sym: Symbol) -> Result<Token, ParseError> {
         self.token_of_type(TokenType::Op(sym))
     }
@@ -266,7 +263,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             trace!("{indent}Named arg?", indent = self.indent());
             BindingMode::Lambda
         };
-        let Ok(tok) = self.ident() else {
+        let Ok(tok) = self.token_of_type(TokenType::Ident) else {
             trace!("{indent}No name found for binding", indent = self.indent());
             return Ok(None);
         };
@@ -301,7 +298,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         Ok(Some(def))
     }
 
-    fn binding_or_arg(&mut self, has_non_bind_args: &mut bool) -> Result<BindingOrValue, TError> {
+    fn binding_or_arg(&mut self) -> Result<BindingOrValue, TError> {
         let value = self.any_expr()?;
         let node = &self.ast.get(value);
         let location = node.location;
@@ -315,12 +312,14 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             // TODO: Try for an assignment binding...
             return Ok(BindingOrValue::Identifier(*ident, ty, location));
         }
-        *has_non_bind_args = true;
         trace!("{indent}Arg value: {value:?}", indent = self.indent());
         Ok(BindingOrValue::Value(value))
     }
 
-    fn handle_bindings(&mut self, bindings: Vec<BindingOrValue>) -> Result<Vec<NodeId>, TError> {
+    fn handle_bindings(
+        &mut self,
+        bindings: SmallVec<BindingOrValue, 2>,
+    ) -> Result<Vec<NodeId>, TError> {
         let mut args = vec![];
         for binding in bindings {
             let binding = match binding {
@@ -339,45 +338,24 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         Ok(args)
     }
 
-    fn call_definition_or_repeated(
-        &mut self,
-        name: Token,
-        binding: Symbol,
-    ) -> Result<NodeId, TError> {
+    fn call_or_definition(&mut self, name: Token, binding: Symbol) -> Result<NodeId, TError> {
         let name_id = self.name(name);
         trace!(
-            "{indent}Call, definition or repeated: {name:?}: {:?}",
+            "{indent}Call or definition: {name:?}: {:?}",
             self.ast.string_interner.get_str(name_id),
             indent = self.indent(),
         );
         let location = name.location();
-        let mut bindings = vec![];
-        let mut has_args = false;
-        let mut is_a_repeated = false;
-        let mut has_non_bind_args = false; // i.e. this should be a definition...
-        if self.operator_is(Symbol::OpenParen).is_ok() {
+        let bindings = if self.operator_is(Symbol::OpenParen).is_ok() {
             trace!("{indent}has arguments", indent = self.indent());
-            has_args = true;
-            // Read args...
-            while self.operator_is(Symbol::CloseParen).is_err() {
-                bindings.push(self.binding_or_arg(&mut has_non_bind_args)?);
-                if self.require(TokenType::Comma).is_err() {
-                    self.require(TokenType::Op(Symbol::CloseParen))?;
-                    break;
-                }
-            }
+            let args = self.repeated(Symbol::CloseParen, |this| this.binding_or_arg())?;
+            Some(args)
         } else if self.operator_is(Symbol::OpenBracket).is_ok() {
-            has_args = true;
-            is_a_repeated = true;
-            // Read args...
-            while self.operator_is(Symbol::CloseBracket).is_err() {
-                bindings.push(self.binding_or_arg(&mut has_non_bind_args)?);
-                if self.require(TokenType::Comma).is_err() {
-                    self.require(TokenType::Op(Symbol::CloseBracket))?;
-                    break;
-                }
-            }
-        }
+            let args = self.repeated(Symbol::CloseBracket, |this| this.binding_or_arg())?;
+            Some(args)
+        } else {
+            None
+        };
         let ty = if self.has_type().is_ok() {
             trace!("{indent}HasType started", indent = self.indent());
             let ty = self.expr(Symbol::HasType)?;
@@ -407,50 +385,47 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 .ast
                 .string_interner
                 .register_str_by_loc(name_s, location.start);
-            let mut only_bindings = vec![];
-            for binding in bindings {
-                match binding {
-                    BindingOrValue::Binding(binding) => only_bindings.push(binding),
-                    BindingOrValue::Identifier(name, ty, _location) => {
-                        let def = self.ast.add_definition(
-                            Definition {
-                                mode: BindingMode::Lambda,
-                                name,
-                                bindings: None,
-                                implementation: None,
-                            },
-                            location,
-                        );
-                        if let Some(ty) = ty {
-                            self.ast.add_annotation(def, ty);
+            let only_bindings = if let Some(bindings) = bindings {
+                let mut only_bindings: SmallVec<NodeId, 2> = smallvec![];
+                for binding in bindings {
+                    match binding {
+                        BindingOrValue::Binding(binding) => only_bindings.push(binding),
+                        BindingOrValue::Identifier(name, ty, _location) => {
+                            let def = self.ast.add_definition(
+                                Definition {
+                                    mode: BindingMode::Lambda,
+                                    name,
+                                    bindings: None,
+                                    implementation: None,
+                                },
+                                location,
+                            );
+                            if let Some(ty) = ty {
+                                self.ast.add_annotation(def, ty);
+                            }
+                            only_bindings.push(def);
                         }
-                        only_bindings.push(def);
-                    }
-                    BindingOrValue::Value(value) => {
-                        return Err(ParseError::UnexpectedExpressionInDefinitionArguments {
-                            arg: value,
-                            arg_str: format!("{}", self.ast.pretty_node(value)),
-                            location,
+                        BindingOrValue::Value(value) => {
+                            return Err(ParseError::UnexpectedExpressionInDefinitionArguments {
+                                arg: value,
+                                arg_str: format!("{}", self.ast.pretty_node(value)),
+                                location,
+                            }
+                            .into())
                         }
-                        .into())
                     }
                 }
-            }
-            let bindings = if has_args {
-                Some(only_bindings.into())
+                Some(only_bindings)
             } else {
                 None
             };
             // TODO: USE bindings
             trace!("{indent}Add definition", indent = self.indent());
-            if has_non_bind_args {
-                todo!("Concern");
-            }
             let def = self.ast.add_definition(
                 Definition {
                     name,
                     mode: BindingMode::Lambda,
-                    bindings,
+                    bindings: only_bindings,
                     implementation: Some(implementation),
                 },
                 location,
@@ -460,14 +435,10 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             }
             return Ok(def);
         }
-        if has_args {
+        if let Some(bindings) = bindings {
             let inner = self.identifier(name, location);
-            // TODO: USE bindings
             trace!("{indent}Add call", indent = self.indent());
             let args = self.handle_bindings(bindings)?.into();
-            if is_a_repeated {
-                todo!("Handle lists and arrays");
-            }
             let call = self.ast.add_call(Call { inner, args }, location);
             if let Some(ty) = ty {
                 return Ok(self.ast.add_annotation(call, ty));
@@ -503,7 +474,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         res
     }
 
-    fn expr_impl(&mut self, binding: Symbol) -> Result<NodeId, TError> {
+    fn parse_left(&mut self, binding: Symbol) -> Result<NodeId, TError> {
         let Ok(mut token) = self.peek().copied() else {
             return Err(ParseError::UnexpectedEof.into());
         };
@@ -513,89 +484,93 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             "{indent}Expr: {token:?} (binding {binding:?})",
             indent = self.indent()
         );
-        let mut left = if self.operator_is(Symbol::OpenBracket).is_ok() {
+        if self.operator_is(Symbol::OpenBracket).is_ok() {
             // Array, Tuple, List, Vector, Matrix, etc.
-            let args = self.repeated(Symbol::CloseBracket)?;
-            self.ast.add_op(
+            let args = self.repeated(Symbol::CloseBracket, |this| this.any_expr())?;
+            return Ok(self.ast.add_op(
                 Op {
                     op: Symbol::OpenBracket,
                     args,
                 },
                 location,
-            )
-        } else if self.operator_is(Symbol::OpenCurly).is_ok() {
+            ));
+        }
+        if self.operator_is(Symbol::OpenCurly).is_ok() {
             // Block, set, dictionary, etc.
-            let args = self.repeated(Symbol::CloseCurly)?;
-            self.ast.add_op(
+            let args = self.repeated(Symbol::CloseBracket, |this| this.any_expr())?;
+            return Ok(self.ast.add_op(
                 Op {
                     op: Symbol::OpenCurly,
                     args,
                 },
                 location,
-            )
-        } else if self.operator_is(Symbol::OpenParen).is_ok() {
+            ));
+        }
+        if self.operator_is(Symbol::OpenParen).is_ok() {
             // Parenthesized expr... etc.
             let left = self.any_expr()?;
             self.require(TokenType::Op(Symbol::CloseParen))?;
-            left
-        } else if let TokenType::Op(symbol) = token.kind {
+            return Ok(left);
+        }
+        if let TokenType::Op(symbol) = token.kind {
             if let Some(def_binding) = self.binding()? {
                 trace!("{indent}Binding? {def_binding:?}", indent = self.indent());
-                def_binding
-            } else {
-                let _ = self.token();
-                let bind_type = symbol.binding_type();
-                match bind_type {
-                    OpBinding::Open(_) | OpBinding::Close(_) => {
-                        return Err(TError::InternalError {
-                            message: format!("{symbol:?} should have already been handled"),
-                            location: Some(location),
-                        })
-                    }
-                    OpBinding::PrefixOp | OpBinding::PrefixOrInfixBinOp => {
-                        let right = self.expr(binding)?;
-                        self.ast.add_op(
-                            Op {
-                                op: symbol,
-                                args: smallvec![right],
-                            },
-                            location,
-                        )
-                    }
-                    OpBinding::InfixBinOp
-                    | OpBinding::InfixOrPostfixBinOp
-                    | OpBinding::PostfixOp => {
-                        return Err(ParseError::MissingLeftHandSideOfOperator {
+                return Ok(def_binding);
+            }
+            let _ = self.token();
+            let bind_type = symbol.binding_type();
+            match bind_type {
+                OpBinding::Open(_) | OpBinding::Close(_) => {
+                    return Err(TError::InternalError {
+                        message: format!("{symbol:?} should have already been handled"),
+                        location: Some(location),
+                    })
+                }
+                OpBinding::PrefixOp | OpBinding::PrefixOrInfixBinOp => {
+                    let right = self.expr(binding)?;
+                    return Ok(self.ast.add_op(
+                        Op {
                             op: symbol,
-                            bind_type,
-                            location,
-                        }
-                        .into());
+                            args: smallvec![right],
+                        },
+                        location,
+                    ));
+                }
+                OpBinding::InfixBinOp | OpBinding::InfixOrPostfixBinOp | OpBinding::PostfixOp => {
+                    return Err(ParseError::MissingLeftHandSideOfOperator {
+                        op: symbol,
+                        bind_type,
+                        location,
                     }
+                    .into());
                 }
             }
-        } else if let Ok(token) = self.ident() {
-            self.call_definition_or_repeated(token, binding)?
-        } else if let Ok(token) = self.token_of_type(TokenType::Atom) {
-            self.atom(token, location)
-        } else if let Ok(token) = self.token_of_type(TokenType::NumberLit) {
-            self.number_literal(token, location)
-        } else if let Ok(token) = self.token_of_type(TokenType::StringLit) {
-            self.string_literal(token, location)
-        } else if let Ok(token) = self.token_of_type(TokenType::ColorLit) {
-            self.color_literal(token, location)
-        } else {
-            return Err(ParseError::UnexpectedTokenTypeInExpression {
+        }
+        let Some(token) = self.token() else {
+            return Err(ParseError::UnexpectedEof.into());
+        };
+        match token.kind {
+            TokenType::Ident => self.call_or_definition(token, binding),
+            TokenType::Atom => self.atom(token, location),
+            TokenType::NumberLit => self.number_literal(token, location),
+            TokenType::StringLit => self.string_literal(token, location),
+            TokenType::ColorLit => self.color_literal(token, location),
+            _ => Err(ParseError::UnexpectedTokenTypeInExpression {
                 got: token.kind,
                 location,
             }
-            .into());
-        };
+            .into()),
+        }
+    }
+
+    fn expr_impl(&mut self, binding: Symbol) -> Result<NodeId, TError> {
+        let mut left = self.parse_left(binding)?;
         trace!(
             "{indent}Maybe continue: {left:?} (binding {binding:?})",
             indent = self.indent()
         );
         while let Ok(TokenType::Op(symbol)) = self.peek_kind() {
+            let location = self.peek().expect("Internal error").location();
             if let OpBinding::Close(opener) = symbol.binding_type() {
                 trace!(
                     "{indent}Closing {opener:?} Expr: {left:?} symbol: {symbol:?}",
@@ -626,11 +601,9 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             let location = token.location();
             if symbol == Symbol::OpenParen {
                 // Require an 'apply' to balance it's parens.
-                let mut args = vec![];
-                let mut _has_non_bind_args = false;
+                let mut args = smallvec![];
                 while self.operator_is(Symbol::CloseParen).is_err() {
-                    let arg = self.binding_or_arg(&mut _has_non_bind_args)?;
-                    args.push(arg);
+                    args.push(self.binding_or_arg()?);
                 }
                 let args = self.handle_bindings(args)?.into();
                 left = self.ast.add_call(Call { inner: left, args }, location);
@@ -670,13 +643,15 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                                 },
                                 location,
                             ),
-                            Err(TError::ParseError(ParseError::UnexpectedEof)) => return Err(
-                                TError::ParseError(ParseError::MissingRightHandSideOfOperator {
-                                    op: symbol,
-                                    bind_type,
-                                    location,
-                                }),
-                            ),
+                            Err(TError::ParseError(ParseError::UnexpectedEof)) => {
+                                return Err(TError::ParseError(
+                                    ParseError::MissingRightHandSideOfOperator {
+                                        op: symbol,
+                                        bind_type,
+                                        location,
+                                    },
+                                ))
+                            }
                             Err(right) => return Err(right),
                         }
                     }
@@ -688,7 +663,11 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         Ok(left)
     }
 
-    fn repeated(&mut self, closer: Symbol) -> Result<SmallVec<NodeId, 2>, TError> {
+    fn repeated<A, F: FnMut(&mut Self) -> Result<A, TError>>(
+        &mut self,
+        closer: Symbol,
+        mut get_arg: F,
+    ) -> Result<SmallVec<A, 2>, TError> {
         let mut args = smallvec![];
         while self.operator_is(closer).is_err() {
             while self.require(TokenType::Comma).is_ok() {
@@ -702,7 +681,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 "{indent}Got no closer {closer:?} expecting another arg",
                 indent = self.indent()
             );
-            let arg = self.any_expr()?;
+            let arg = get_arg(self)?;
             args.push(arg);
         }
         debug!("{indent}Got closer {closer:?}", indent = self.indent());
@@ -726,42 +705,42 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         self.ast.add_identifier(name, location)
     }
 
-    fn atom(&mut self, res: Token, location: Location) -> NodeId {
+    fn atom(&mut self, res: Token, location: Location) -> Result<NodeId, TError> {
         assert!(res.kind == TokenType::Atom);
         let name = res.get_src(self.contents);
         trace!("{indent}Atom: {name}", indent = self.indent());
         let name = self.ast.string_interner.register_str(name);
-        self.ast.add_atom(Atom { name }, location)
+        Ok(self.ast.add_atom(Atom { name }, location))
     }
 
-    fn string_literal(&mut self, res: Token, location: Location) -> NodeId {
+    fn string_literal(&mut self, res: Token, location: Location) -> Result<NodeId, TError> {
         assert!(res.kind == TokenType::StringLit);
         trace!("{indent}Saving literal: {res:?}", indent = self.indent());
         let _id = self
             .ast
             .string_interner
             .register_str_by_loc(res.get_src(self.contents), location.start);
-        self.ast.add_literal(Literal::Text, location)
+        Ok(self.ast.add_literal(Literal::Text, location))
     }
 
-    fn color_literal(&mut self, res: Token, location: Location) -> NodeId {
+    fn color_literal(&mut self, res: Token, location: Location) -> Result<NodeId, TError> {
         assert!(res.kind == TokenType::ColorLit);
         trace!("{indent}Saving literal: {res:?}", indent = self.indent());
         let _id = self
             .ast
             .string_interner
             .register_str_by_loc(res.get_src(self.contents), location.start);
-        self.ast.add_literal(Literal::Color, location)
+        Ok(self.ast.add_literal(Literal::Color, location))
     }
 
-    fn number_literal(&mut self, res: Token, location: Location) -> NodeId {
+    fn number_literal(&mut self, res: Token, location: Location) -> Result<NodeId, TError> {
         assert!(res.kind == TokenType::NumberLit);
         trace!("{indent}Saving literal: {res:?}", indent = self.indent());
         let _id = self
             .ast
             .string_interner
             .register_str_by_loc(res.get_src(self.contents), location.start);
-        self.ast.add_literal(Literal::Numeric, location)
+        Ok(self.ast.add_literal(Literal::Numeric, location))
     }
 }
 
