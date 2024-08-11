@@ -351,7 +351,12 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             let args = self.repeated(Symbol::CloseParen, |this| this.binding_or_arg())?;
             Some(args)
         } else if self.operator_is(Symbol::OpenBracket).is_ok() {
+            trace!("{indent}has arguments", indent = self.indent());
             let args = self.repeated(Symbol::CloseBracket, |this| this.binding_or_arg())?;
+            Some(args)
+        } else if self.operator_is(Symbol::OpenCurly).is_ok() {
+            trace!("{indent}has arguments", indent = self.indent());
+            let args = self.repeated(Symbol::CloseCurly, |this| this.binding_or_arg())?;
             Some(args)
         } else {
             None
