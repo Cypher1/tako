@@ -13,6 +13,7 @@ use std::path::Path;
 use thiserror::Error;
 use tokens::{assign_op, binding_mode_operation, is_assign, OpBinding, Symbol, Token, TokenType};
 
+const CTX_SIZE: usize = 5;
 pub const KEYWORDS: &[&str] = include_strs!("keywords.txt");
 
 #[derive(Debug, Error, PartialEq, Eq, Ord, PartialOrd, Clone, Hash)]
@@ -470,9 +471,29 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         self.expr(Symbol::OpenParen)
     }
 
+    fn token_in_context(&mut self) -> String {
+        let location = self.tokens.peek().map(|x|x.location()).unwrap_or(Location { start: self.contents.len() as u16, length: 0 });
+        let start = location.start as usize;
+        let end = (location.start as usize)+(location.length as usize);
+        let bytes = &self.contents.as_bytes();
+        let before = &bytes[start.saturating_sub(CTX_SIZE)..start];
+        let head = &bytes[start..end];
+        let after = &bytes[end..std::cmp::min(bytes.len(), end.saturating_add(CTX_SIZE))];
+        format!(
+            "{before}<{head}>{after}",
+            before=std::str::from_utf8(before).unwrap_or("?"),
+            head=std::str::from_utf8(head).unwrap_or("?"),
+            after=std::str::from_utf8(after).unwrap_or("?"),
+        )
+    }
+
     fn expr(&mut self, binding: Symbol) -> Result<NodeId, TError> {
         let indent = self.indent();
-        debug!("{indent}Inside {:?}", binding);
+        debug!(
+            "{indent}Inside {:?} => {}",
+            binding,
+            self.token_in_context()
+        );
         let _scope = self.depth.clone();
         let res = self.expr_impl(binding);
         debug!("{indent}Done subexpr ({:?})", binding);
@@ -527,7 +548,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             match bind_type {
                 OpBinding::Open(_) | OpBinding::Close(_) => {
                     return Err(TError::InternalError {
-                        message: format!("{symbol:?} should have already been handled"),
+                        message: format!("{symbol:?} should have already been handled but was found in an expression in prefix position"),
                         location: Some(location),
                     })
                 }
@@ -616,9 +637,21 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 // TODO: Check that this is the right kind of operator.
                 let bind_type = symbol.binding_type();
                 left = match bind_type {
-                    OpBinding::Open(_) | OpBinding::Close(_) | OpBinding::PrefixOp => {
+                    OpBinding::Open(closer) => {
+                        let right = self.expr(symbol)?;
+                        let res = self.ast.add_op(
+                            Op {
+                                op: symbol,
+                                args: smallvec![left, right],
+                            },
+                            location,
+                        );
+                        self.require(TokenType::Op(closer))?;
+                        res
+                    },
+                    OpBinding::Close(_) | OpBinding::PrefixOp => {
                         return Err(TError::InternalError {
-                            message: format!("{symbol:?} should have already been handled"),
+                            message: format!("{symbol:?} should have already been handled but was found in an expression in postfix or infix position"),
                             location: Some(location),
                         })
                     }
@@ -1179,6 +1212,17 @@ pub mod tests {
         assert_eq!(ast.calls[0].1.args.len(), 3);
         assert_eq!(ast.ops.len(), 2); // Lt and Sub
         assert_eq!(ast.definitions.len(), 2);
+        Ok(())
+    }
+
+    #[test]
+    fn parse_indexing_exprs() -> Result<(), TError> {
+        let ast = setup("[1, 2, 3][0]")?;
+        // dbg!(ast);
+        assert_eq!(ast.literals.len(), 4);
+        assert_eq!(ast.calls.len(), 0);
+        assert_eq!(ast.ops.len(), 2); // [ (array construction), [ (indexing)
+        assert_eq!(ast.definitions.len(), 0);
         Ok(())
     }
 

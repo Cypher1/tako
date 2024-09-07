@@ -26,8 +26,8 @@ pub enum OpBinding {
     PrefixOrInfixBinOp,
     InfixOrPostfixBinOp,
     InfixBinOp,
-    Open(Symbol),  // Closer
-    Close(Symbol), // Opener
+    Open(Symbol),  // the associated Closer
+    Close(Symbol), // the associated Opener
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
@@ -282,7 +282,7 @@ impl Symbol {
             Self::CloseBracket => OpBinding::Close(Self::CloseParen),
             Self::OpenCurly => OpBinding::Open(Self::CloseCurly),
             Self::OpenParen => OpBinding::Open(Self::CloseParen),
-            Self::OpenBracket => OpBinding::Open(Self::CloseParen),
+            Self::OpenBracket => OpBinding::Open(Self::CloseBracket),
             Self::Sequence => OpBinding::InfixOrPostfixBinOp,
             _ => OpBinding::InfixBinOp,
         }
