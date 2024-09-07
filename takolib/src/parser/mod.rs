@@ -472,18 +472,25 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
     }
 
     fn token_in_context(&mut self) -> String {
-        let location = self.tokens.peek().map(|x|x.location()).unwrap_or(Location { start: self.contents.len() as u16, length: 0 });
+        let location = self
+            .tokens
+            .peek()
+            .map(|x| x.location())
+            .unwrap_or(Location {
+                start: self.contents.len() as u16,
+                length: 0,
+            });
         let start = location.start as usize;
-        let end = (location.start as usize)+(location.length as usize);
+        let end = (location.start as usize) + (location.length as usize);
         let bytes = &self.contents.as_bytes();
         let before = &bytes[start.saturating_sub(CTX_SIZE)..start];
         let head = &bytes[start..end];
         let after = &bytes[end..std::cmp::min(bytes.len(), end.saturating_add(CTX_SIZE))];
         format!(
             "{before}<{head}>{after}",
-            before=std::str::from_utf8(before).unwrap_or("?"),
-            head=std::str::from_utf8(head).unwrap_or("?"),
-            after=std::str::from_utf8(after).unwrap_or("?"),
+            before = std::str::from_utf8(before).unwrap_or("?"),
+            head = std::str::from_utf8(head).unwrap_or("?"),
+            after = std::str::from_utf8(after).unwrap_or("?"),
         )
     }
 
@@ -736,7 +743,8 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
     }
 
     fn identifier(&mut self, name: StrId, location: Location) -> NodeId {
-        trace!("{indent}Identifier: {name:?}",
+        trace!(
+            "{indent}Identifier: {name:?}",
             name = self.ast.string_interner.get_str(name),
             indent = self.indent()
         );
