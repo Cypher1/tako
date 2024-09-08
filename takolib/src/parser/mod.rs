@@ -313,7 +313,12 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             // TODO: Try for an assignment binding...
             return Ok(BindingOrValue::Identifier(*ident, ty, location));
         }
-        debug!("{indent}Arg value: {value:?}", indent = self.indent());
+        debug!(
+            "{indent}Arg value: ({value:?}) {arg_str}",
+            value = self.ast.get(value).id,
+            arg_str = self.ast.pretty_node(value),
+            indent = self.indent()
+        );
         Ok(BindingOrValue::Value(value))
     }
 
@@ -1231,6 +1236,78 @@ pub mod tests {
         assert_eq!(ast.calls.len(), 0);
         assert_eq!(ast.ops.len(), 2); // [ (array construction), [ (indexing)
         assert_eq!(ast.definitions.len(), 0);
+        Ok(())
+    }
+
+    #[test]
+    fn parse_forall_name() -> Result<(), TError> {
+        let ast = setup("forall T: AllowedType")?;
+
+        // dbg!(ast);
+        assert_eq!(ast.literals.len(), 0);
+        assert_eq!(ast.ops.len(), 0);
+        assert_eq!(ast.calls.len(), 0);
+        assert_eq!(ast.definitions.len(), 1);
+        Ok(())
+    }
+
+    #[test]
+    fn parse_forall_name_arg() -> Result<(), TError> {
+        let ast = setup("f(forall T: AllowedType) = 1")?;
+
+        // dbg!(ast);
+        assert_eq!(ast.literals.len(), 1);
+        assert_eq!(ast.ops.len(), 0);
+        assert_eq!(ast.calls.len(), 0);
+        assert_eq!(ast.definitions.len(), 2);
+        Ok(())
+    }
+
+    #[test]
+    fn parse_forall_name_arg_no_def() -> Result<(), TError> {
+        let ast = setup("f(forall T: AllowedType)")?;
+
+        // dbg!(ast);
+        assert_eq!(ast.literals.len(), 0);
+        assert_eq!(ast.ops.len(), 0);
+        assert_eq!(ast.calls.len(), 1);
+        assert_eq!(ast.definitions.len(), 1);
+        Ok(())
+    }
+
+    #[test]
+    fn parse_forall_name_arg_no_def_as_arg() -> Result<(), TError> {
+        let ast = setup("sink(f(forall T: AllowedType))")?;
+
+        // dbg!(ast);
+        assert_eq!(ast.literals.len(), 0);
+        assert_eq!(ast.ops.len(), 0);
+        assert_eq!(ast.calls.len(), 2);
+        assert_eq!(ast.definitions.len(), 1);
+        Ok(())
+    }
+
+    #[test]
+    fn parse_forall_name_arg_no_def_as_second_arg() -> Result<(), TError> {
+        let ast = setup("sink(f(a, forall T: AllowedType))")?;
+
+        // dbg!(ast);
+        assert_eq!(ast.literals.len(), 0);
+        assert_eq!(ast.ops.len(), 0);
+        assert_eq!(ast.calls.len(), 2);
+        assert_eq!(ast.definitions.len(), 1);
+        Ok(())
+    }
+
+    #[test]
+    fn parse_forall_name_arg_no_def_as_second_arg_with_type() -> Result<(), TError> {
+        let ast = setup("sink(f(a, forall T: AllowedType)): Sink(T)")?;
+
+        // dbg!(ast);
+        assert_eq!(ast.literals.len(), 0);
+        assert_eq!(ast.ops.len(), 0);
+        assert_eq!(ast.calls.len(), 3);
+        assert_eq!(ast.definitions.len(), 1);
         Ok(())
     }
 
