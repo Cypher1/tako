@@ -11,9 +11,9 @@ use semantics::Literal;
 use smallvec::{smallvec, SmallVec};
 use std::path::Path;
 use thiserror::Error;
-use tokens::{assign_op, binding_mode_operation, is_assign, OpBinding, Symbol, Token, TokenType};
+use tokens::{op_from_assign_op, binding_mode_operation, is_assign, OpBinding, Symbol, Token, TokenType};
 
-const CTX_SIZE: usize = 5;
+const CTX_SIZE: usize = 20;
 pub const KEYWORDS: &[&str] = include_strs!("keywords.txt");
 
 #[derive(Debug, Error, PartialEq, Eq, Ord, PartialOrd, Clone, Hash)]
@@ -416,7 +416,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             } else {
                 None
             };
-            let op = assign_op(assignment);
+            let op = op_from_assign_op(assignment);
             debug!("Parse implementation of {:?}", name_s);
             let mut implementation = self.expr(assignment)?;
             debug!("Value is {:?}", implementation);
@@ -550,17 +550,17 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             self.require(TokenType::Op(Symbol::CloseParen))?;
             return Ok(left);
         }
-        if let TokenType::Op(symbol) = token.kind {
+        if let TokenType::Op(prefix_op) = token.kind {
             if let Some(def_binding) = self.binding()? {
                 trace!("{indent}Binding? {def_binding:?}", indent = self.indent());
                 return Ok(def_binding);
             }
             let _ = self.token();
-            let bind_type = symbol.binding_type();
+            let bind_type = prefix_op.binding_type();
             match bind_type {
                 OpBinding::Open(_) | OpBinding::Close(_) => {
                     return Err(TError::InternalError {
-                        message: format!("{symbol:?} should have already been handled but was found in an expression in prefix position"),
+                        message: format!("{prefix_op:?} should have already been handled but was found in an expression in prefix position"),
                         location: Some(location),
                     })
                 }
@@ -568,7 +568,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                     let right = self.expr(binding)?;
                     return Ok(self.ast.add_op(
                         Op {
-                            op: symbol,
+                            op: prefix_op,
                             args: smallvec![right],
                         },
                         location,
@@ -576,7 +576,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 }
                 OpBinding::InfixBinOp | OpBinding::InfixOrPostfixBinOp | OpBinding::PostfixOp => {
                     return Err(ParseError::MissingLeftHandSideOfOperator {
-                        op: symbol,
+                        op: prefix_op,
                         bind_type,
                         location,
                     }
@@ -653,7 +653,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                         let right = self.expr(symbol)?;
                         let res = self.ast.add_op(
                             Op {
-                                op: symbol,
+                                op: symbol, // opener
                                 args: smallvec![left, right],
                             },
                             location,
@@ -677,6 +677,12 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                     OpBinding::InfixBinOp
                     | OpBinding::PrefixOrInfixBinOp
                     | OpBinding::InfixOrPostfixBinOp => {
+                        if let Ok(_assignment) = self.assignment_op(symbol) {
+                            return Err(TError::InternalError {
+                                message: format!("assignment {symbol:?} should have already been handled but was found in an expression in postfix or infix position"),
+                                location: Some(location),
+                            })
+                        }
                         let right = self.expr(symbol);
                         match right {
                             Ok(right) => self.ast.add_op(
@@ -1311,6 +1317,29 @@ pub mod tests {
         Ok(())
     }
 
+    #[test]
+    fn parse_forall_name_arg_in_def() -> Result<(), TError> {
+        let ast = setup("sink(forall T: AllowedType) = Sink(T)")?;
+
+        // dbg!(ast);
+        assert_eq!(ast.literals.len(), 0);
+        assert_eq!(ast.ops.len(), 0);
+        assert_eq!(ast.calls.len(), 1);
+        assert_eq!(ast.definitions.len(), 2);
+        Ok(())
+    }
+
+
+    #[test]
+    fn parse_arg_with_default() -> Result<(), TError> {
+        let ast = setup("f(forall A = B) = A")?;
+        // dbg!(ast);
+        assert_eq!(ast.literals.len(), 0);
+        assert_eq!(ast.ops.len(), 0);
+        assert_eq!(ast.calls.len(), 0);
+        assert_eq!(ast.definitions.len(), 2);
+        Ok(())
+    }
     /*
     TODO(testing): Type annotations:
         - "12 : Int"

@@ -508,7 +508,7 @@ fn classify_char(ch: char) -> CharacterType {
 
 #[inline]
 #[must_use]
-pub const fn assign_op(s: Symbol) -> Option<Symbol> {
+pub const fn op_from_assign_op(s: Symbol) -> Option<Symbol> {
     // TODO(clarity): Move to a symbol module.
     Some(match s {
         Symbol::AddAssign => Symbol::Add,
@@ -543,7 +543,7 @@ pub const fn binding_mode_operation(s: Symbol) -> Option<BindingMode> {
 #[must_use]
 pub const fn is_assign(s: Symbol) -> bool {
     // TODO(clarity): Move to a symbol module.
-    matches!(s, Symbol::Assign) || assign_op(s).is_some()
+    matches!(s, Symbol::Assign) || op_from_assign_op(s).is_some()
 }
 
 #[inline]
