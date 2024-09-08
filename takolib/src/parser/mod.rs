@@ -320,7 +320,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         };
         let name = self.name(tok);
         let location = tok.location();
-        let arguments = self.arguments()?;
+        let arguments = self.arguments();
         let ty = if self.has_type().is_ok() {
             trace!("{indent}HasType started", indent = self.indent());
             let ty = self.expr(Symbol::HasType)?;
@@ -329,7 +329,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         } else {
             None
         };
-        if let Some(arguments) = arguments {
+        if let Ok(arguments) = arguments {
             if let Ok(assignment) = self.assignment_op(binding_strength) {
                 let op = op_from_assign_op(assignment);
                 debug!("Start binding definition parse {:?}", name);
@@ -347,7 +347,11 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 } else {
                     def_impl
                 });
-                let arguments = Some(self.arguments_as_bindings(arguments, location)?);
+                let arguments = if let Some(arguments) = arguments {
+                    Some(self.arguments_as_bindings(arguments, location)?)
+                } else {
+                    None
+                };
                 let def = self.ast.add_definition(
                     Definition {
                         mode,
@@ -362,14 +366,16 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 }
                 return Ok(Some(def));
             }
-            let inner = self.identifier(name, location);
-            trace!("{indent}Add call", indent = self.indent());
-            let args = self.handle_bindings(arguments)?.into();
-            let call = self.ast.add_call(Call { inner, args }, location);
-            if let Some(ty) = ty {
-                return Ok(Some(self.ast.add_annotation(call, ty)));
+            if let Some(arguments) = arguments {
+                let inner = self.identifier(name, location);
+                trace!("{indent}Add call", indent = self.indent());
+                let args = self.handle_bindings(arguments)?.into();
+                let call = self.ast.add_call(Call { inner, args }, location);
+                if let Some(ty) = ty {
+                    return Ok(Some(self.ast.add_annotation(call, ty)));
+                }
+                return Ok(Some(call));
             }
-            return Ok(Some(call));
         }
         trace!("{indent}Add ident", indent = self.indent());
         let ident = self.identifier(name, location);
@@ -513,7 +519,11 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             return Ok(left);
         }
         if let Some(expr) = self.call_or_definition()? {
-            debug!("{indent}Binding? {expr:?}", indent = self.indent());
+            debug!(
+                "{indent}Binding? {}",
+                self.ast.pretty_node(expr),
+                indent = self.indent(),
+            );
             return Ok(expr);
         }
         if let TokenType::Op(prefix_op) = token.kind {
@@ -644,6 +654,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                                 location: Some(location),
                             })
                         }
+                        // TODO: Shouldn't consume tokens here if right fails for a post fix op.
                         let right = self.expr(symbol);
                         match right {
                             Ok(right) => self.ast.add_op(
@@ -653,6 +664,15 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                                 },
                                 location,
                             ),
+                            Err(_) if bind_type == OpBinding::InfixOrPostfixBinOp => {
+                                return Ok(self.ast.add_op(
+                                    Op {
+                                        op: symbol,
+                                        args: smallvec![left],
+                                    },
+                                    location,
+                                ))
+                            }
                             Err(TError::ParseError(ParseError::UnexpectedEof)) => {
                                 return Err(TError::ParseError(
                                     ParseError::MissingRightHandSideOfOperator {
