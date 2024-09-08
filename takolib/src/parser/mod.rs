@@ -387,7 +387,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             if let Some(arguments) = arguments {
                 let inner = self.identifier(name, location);
                 trace!("{indent}Add call", indent = self.indent());
-                let args = self.handle_bindings(arguments)?.into();
+                let args = self.bindings_as_values(arguments)?.into();
                 let call = self.ast.add_call(Call { inner, args }, location);
                 if let Some(ty) = ty {
                     return Ok(Some(self.ast.add_annotation(call, ty)));
@@ -426,7 +426,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         Ok(BindingOrValue::Value(value))
     }
 
-    fn handle_bindings(
+    fn bindings_as_values(
         &mut self,
         bindings: SmallVec<BindingOrValue, 2>,
     ) -> Result<Vec<NodeId>, TError> {
@@ -636,7 +636,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 while self.operator_is(Symbol::CloseParen).is_err() {
                     args.push(self.binding_or_arg()?);
                 }
-                let args = self.handle_bindings(args)?.into();
+                let args = self.bindings_as_values(args)?.into();
                 left = self.ast.add_call(Call { inner: left, args }, location);
             } else {
                 // TODO: Check that this is the right kind of operator.
