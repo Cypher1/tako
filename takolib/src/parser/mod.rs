@@ -314,7 +314,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             return Ok(BindingOrValue::Identifier(*ident, ty, location));
         }
         debug!(
-            "{indent}Arg value: ({value:?}) {arg_str}",
+            "{indent}Arg value: {value:?} => {arg_str}",
             value = self.ast.get(value).id,
             arg_str = self.ast.pretty_node(value),
             indent = self.indent()
@@ -353,15 +353,18 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             indent = self.indent(),
         );
         let bindings = if self.operator_is(Symbol::OpenParen).is_ok() {
-            debug!("{indent}has arguments", indent = self.indent());
+            let _scope = self.depth.clone();
+            debug!("{indent}Function style arguments (parens)", indent = self.indent());
             let args = self.repeated(Symbol::CloseParen, |this| this.binding_or_arg())?;
             Some(args)
         } else if self.operator_is(Symbol::OpenBracket).is_ok() {
-            debug!("{indent}has arguments", indent = self.indent());
+            let _scope = self.depth.clone();
+            debug!("{indent}Index style arguments [brackets]", indent = self.indent());
             let args = self.repeated(Symbol::CloseBracket, |this| this.binding_or_arg())?;
             Some(args)
         } else if self.operator_is(Symbol::OpenCurly).is_ok() {
-            debug!("{indent}has arguments", indent = self.indent());
+            let _scope = self.depth.clone();
+            debug!("{indent}Body style arguments {{curlies}}", indent = self.indent());
             let args = self.repeated(Symbol::CloseCurly, |this| this.binding_or_arg())?;
             Some(args)
         } else {
@@ -500,16 +503,18 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
     }
 
     fn expr(&mut self, binding: Symbol) -> Result<NodeId, TError> {
-        let indent = self.indent();
         debug!(
             "{indent}Inside {:?} => {}",
             binding,
-            self.token_in_context()
+            self.token_in_context(),
+            indent=self.indent()
         );
-        let _scope = self.depth.clone();
-        let res = self.expr_impl(binding);
-        debug!("{indent}Done subexpr ({:?})", binding);
-        res
+        let res = {
+            let _scope = self.depth.clone();
+            self.expr_impl(binding)?
+        };
+        debug!("{indent}Done subexpr ({:?})", binding, indent=self.indent());
+        Ok(res)
     }
 
     fn parse_left(&mut self, binding: Symbol) -> Result<NodeId, TError> {
@@ -677,7 +682,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                     OpBinding::InfixBinOp
                     | OpBinding::PrefixOrInfixBinOp
                     | OpBinding::InfixOrPostfixBinOp => {
-                        if let Ok(_assignment) = self.assignment_op(symbol) {
+                        if is_assign(symbol) {
                             return Err(TError::InternalError {
                                 message: format!("assignment {symbol:?} should have already been handled but was found in an expression in postfix or infix position"),
                                 location: Some(location),
@@ -689,13 +694,6 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                                 Op {
                                     op: symbol,
                                     args: smallvec![left, right],
-                                },
-                                location,
-                            ),
-                            _ if bind_type == OpBinding::InfixOrPostfixBinOp => self.ast.add_op(
-                                Op {
-                                    op: symbol,
-                                    args: smallvec![left],
                                 },
                                 location,
                             ),
@@ -733,10 +731,6 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 debug!("{indent}Got a closer {closer:?}", indent = self.indent());
                 break;
             }
-            debug!(
-                "{indent}Got no closer {closer:?} expecting another arg",
-                indent = self.indent()
-            );
             let arg = get_arg(self)?;
             args.push(arg);
         }
