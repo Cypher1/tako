@@ -335,11 +335,24 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         } else {
             None
         };
-        let implementation = if self.assignment_op(binding_strength).is_ok() {
+        let implementation = if let Ok(assignment) = self.assignment_op(binding_strength) {
+            let op = op_from_assign_op(assignment);
             debug!("Start binding definition parse {:?}", name);
-            let def_impl = self.any_expr();
+            let def_impl = self.any_expr()?;
             debug!("Binding value is {:?}", def_impl);
-            Some(def_impl?)
+            let def_impl = if let Some(op) = op {
+                let ident = self.identifier(name, location);
+                self.ast.add_op(
+                    Op {
+                        op,
+                        args: smallvec![ident, def_impl],
+                    },
+                    location,
+                )
+            } else {
+                def_impl
+            };
+            Some(def_impl)
         } else {
             None
         };
@@ -420,27 +433,6 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         }
         Ok(args)
     }
-
-    /*
-    fn call_or_definition(&mut self, name_tok: Token, binding: Symbol) -> Result<NodeId, TError> {
-        if let Ok(assignment) = self.assignment_op(binding) {
-            let op = op_from_assign_op(assignment);
-        ...
-        ...
-        ...
-        if let Some(op) = op {
-            let name = self.identifier(name, location);
-            implementation = self.ast.add_op(
-                Op {
-                    op,
-                    args: smallvec![name, implementation],
-                },
-                location,
-            );
-        }
-        );
-    }
-    */
 
     fn file(&mut self) -> Result<Vec<NodeId>, TError> {
         let mut roots = vec![];
