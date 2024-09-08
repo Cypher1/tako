@@ -108,7 +108,7 @@ impl Op {
 pub struct Definition {
     pub mode: BindingMode,
     pub name: Identifier,
-    pub bindings: Option<SmallVec<NodeId, 2>>,
+    pub arguments: Option<SmallVec<NodeId, 2>>,
     pub implementation: Option<NodeId>,
 }
 make_contains!(

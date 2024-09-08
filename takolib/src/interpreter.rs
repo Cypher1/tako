@@ -98,7 +98,7 @@ impl Ctx<'_> {
                     Definition {
                         mode: _,
                         name,
-                        bindings,
+                        arguments: bindings,
                         implementation,
                     },
                 ) = self.ast.get(def);
