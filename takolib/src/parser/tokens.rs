@@ -49,7 +49,7 @@ pub enum Symbol {
     OpenBracket,
     // Sequences/
     Sequence,
-    // Assignments
+    // Assignments // TODO: Put ops separately if they shouldn't be in the AST.
     Assign,
     AddAssign,
     SubAssign,
@@ -527,14 +527,14 @@ pub const fn op_from_assign_op(s: Symbol) -> Option<Symbol> {
 
 #[inline]
 #[must_use]
-pub const fn binding_mode_operation(s: Symbol) -> Option<BindingMode> {
+pub const fn binding_mode_from_op(s: Symbol) -> Option<BindingMode> {
     // TODO(clarity): Move to a symbol module.
     Some(match s {
-        Symbol::Lambda => BindingMode::Lambda,
-        Symbol::Pi => BindingMode::Pi,
-        Symbol::Forall => BindingMode::Pi,
-        Symbol::Exists => BindingMode::Sigma,
-        Symbol::Sigma => BindingMode::Sigma,
+        Symbol::Lambda => BindingMode::Given,
+        Symbol::Pi => BindingMode::Forall,
+        Symbol::Forall => BindingMode::Forall,
+        Symbol::Exists => BindingMode::With,
+        Symbol::Sigma => BindingMode::With,
         _ => return None,
     })
 }

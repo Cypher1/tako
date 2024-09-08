@@ -34,20 +34,20 @@ impl PrintNode<'_> {
         f: &mut fmt::Formatter<'_>,
         mode: BindingMode,
         name: Identifier,
-        bindings: Option<T>,
+        arguments: Option<T>,
         ty: &mut Option<NodeId>,
     ) -> fmt::Result {
-        if mode != BindingMode::Lambda {
+        if mode != BindingMode::Given {
             write!(f, "{mode} ");
         }
         self.print_identifier(f, name)?;
-        if let Some(bindings) = bindings {
+        if let Some(arguments) = arguments {
             let mut implicits = String::new();
             let mut explicits = String::new();
-            for binding in bindings.into_iter() {
+            for binding in arguments.into_iter() {
                 let into = if let NodeData::Definition(def) = self.context().get(*binding).id {
                     let (_nodeid, def) = self.context().get(def);
-                    if def.mode != BindingMode::Lambda {
+                    if def.mode != BindingMode::Given {
                         &mut implicits
                     } else {
                         &mut explicits
@@ -164,14 +164,14 @@ impl std::fmt::Display for PrintNode<'_> {
                 let Definition {
                     mode,
                     name,
-                    bindings,
+                    arguments,
                     implementation,
                 } = node;
                 self.print_definition_head(
                     f,
                     *mode,
                     *name,
-                    bindings.as_ref().map(|bs| bs.iter()),
+                    arguments.as_ref().map(|bs| bs.iter()),
                     &mut ty,
                 )?;
                 if let Some(implementation) = implementation {

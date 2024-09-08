@@ -11,7 +11,7 @@ use semantics::Literal;
 use smallvec::{smallvec, SmallVec};
 use std::path::Path;
 use thiserror::Error;
-use tokens::{op_from_assign_op, binding_mode_operation, is_assign, OpBinding, Symbol, Token, TokenType};
+use tokens::{op_from_assign_op, binding_mode_from_op, is_assign, OpBinding, Symbol, Token, TokenType};
 
 const CTX_SIZE: usize = 20;
 pub const KEYWORDS: &[&str] = include_strs!("keywords.txt");
@@ -239,30 +239,25 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
     }
 
     fn binding(&mut self) -> Result<Option<NodeId>, TError> {
-        let Ok(binding) = self.peek().cloned() else {
+        let Ok(head) = self.peek().cloned() else {
             trace!(
                 "{indent}Unexpected eof when looking for binding",
                 indent = self.indent()
             );
             return Ok(None);
         };
-        let binding_kind = self.get_kind(&binding);
-        let binding = if let TokenType::Op(binding) = binding_kind {
-            binding
-        } else {
-            Symbol::OpenParen
-        };
-        let mode = if let TokenType::Op(binding) = binding_kind {
-            let Some(mode) = binding_mode_operation(binding) else {
+        let (binding_strength, mode) = if let TokenType::Op(op) = self.get_kind(&head) {
+            let Some(mode) = binding_mode_from_op(op) else {
                 trace!("{indent}Not a binding Op", indent = self.indent());
                 return Ok(None);
             };
+            debug!("{indent}Binding {head:?} => {mode:?}", indent = self.indent());
             self.token(); // Consume the mode.
-            mode
+            (op, mode)
         } else {
             // Named arg!
             trace!("{indent}Named arg?", indent = self.indent());
-            BindingMode::Lambda
+            (Symbol::OpenParen, BindingMode::Given)
         };
         let Ok(tok) = self.token_of_type(TokenType::Ident) else {
             trace!("{indent}No name found for binding", indent = self.indent());
@@ -276,7 +271,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         } else {
             None
         };
-        let implementation = if self.assignment_op(binding).is_ok() {
+        let implementation = if self.assignment_op(binding_strength).is_ok() {
             debug!("Start binding definition parse {:?}", name);
             let def_impl = self.any_expr();
             debug!("Binding value is {:?}", def_impl);
@@ -288,7 +283,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             Definition {
                 mode,
                 name,
-                bindings,
+                arguments: bindings,
                 implementation,
             },
             location,
@@ -393,9 +388,9 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                         BindingOrValue::Identifier(name, ty, _location) => {
                             let def = self.ast.add_definition(
                                 Definition {
-                                    mode: BindingMode::Lambda,
+                                    mode: BindingMode::Given,
                                     name,
-                                    bindings: None,
+                                    arguments: None,
                                     implementation: None,
                                 },
                                 location,
@@ -438,8 +433,8 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             let def = self.ast.add_definition(
                 Definition {
                     name,
-                    mode: BindingMode::Lambda,
-                    bindings: only_bindings,
+                    mode: BindingMode::Given, // TODO: This isn't right
+                    arguments: only_bindings,
                     implementation: Some(implementation),
                 },
                 location,
@@ -557,7 +552,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         }
         if let TokenType::Op(prefix_op) = token.kind {
             if let Some(def_binding) = self.binding()? {
-                trace!("{indent}Binding? {def_binding:?}", indent = self.indent());
+                debug!("{indent}Binding? {def_binding:?}", indent = self.indent());
                 return Ok(def_binding);
             }
             let _ = self.token();
@@ -609,7 +604,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
     fn expr_impl(&mut self, binding: Symbol) -> Result<NodeId, TError> {
         let mut left = self.parse_left(binding)?;
         trace!(
-            "{indent}Maybe continue: {left:?} (binding {binding:?})",
+            "{indent}Check for right hand side: {left:?} (binding {binding:?})",
             indent = self.indent()
         );
         while let Ok(TokenType::Op(symbol)) = self.peek_kind() {
@@ -1103,13 +1098,13 @@ pub mod tests {
         assert_eq!(ast.definitions.len(), 3);
         let (_id, def) = &ast.definitions[0];
         dbg!(def);
-        assert_eq!(def.bindings.as_ref().map(|it| it.len()), None);
+        assert_eq!(def.arguments.as_ref().map(|it| it.len()), None);
         let (_id, def) = &ast.definitions[1];
         dbg!(def);
-        assert_eq!(def.bindings.as_ref().map(|it| it.len()), None);
+        assert_eq!(def.arguments.as_ref().map(|it| it.len()), None);
         let (_id, def) = &ast.definitions[2];
         dbg!(def);
-        assert_eq!(def.bindings.as_ref().map(|it| it.len()), Some(2));
+        assert_eq!(def.arguments.as_ref().map(|it| it.len()), Some(2));
         Ok(())
     }
 
