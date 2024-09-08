@@ -145,9 +145,9 @@ mod tests {
         let call = ast.make_node(call, Location::dummy_for_test());
         let a_prime = lits.register_str("a_prime");
         let definition = Definition {
-            mode: BindingMode::Lambda,
+            mode: BindingMode::Given,
             name: a_prime,
-            bindings: None,
+            arguments: None,
             implementation: Some(call),
         };
         let definition = ast.make_node(definition, Location::dummy_for_test());
