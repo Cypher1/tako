@@ -11,7 +11,9 @@ use semantics::Literal;
 use smallvec::{smallvec, SmallVec};
 use std::path::Path;
 use thiserror::Error;
-use tokens::{op_from_assign_op, binding_mode_from_op, is_assign, OpBinding, Symbol, Token, TokenType};
+use tokens::{
+    binding_mode_from_op, is_assign, op_from_assign_op, OpBinding, Symbol, Token, TokenType,
+};
 
 const CTX_SIZE: usize = 20;
 pub const KEYWORDS: &[&str] = include_strs!("keywords.txt");
@@ -241,17 +243,26 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
     fn arguments(&mut self) -> Result<Option<SmallVec<BindingOrValue, 2>>, TError> {
         let arguments = if self.operator_is(Symbol::OpenParen).is_ok() {
             let _scope = self.depth.clone();
-            debug!("{indent}Function style arguments (parens)", indent = self.indent());
+            debug!(
+                "{indent}Function style arguments (parens)",
+                indent = self.indent()
+            );
             let args = self.repeated(Symbol::CloseParen, |this| this.binding_or_arg())?;
             Some(args)
         } else if self.operator_is(Symbol::OpenBracket).is_ok() {
             let _scope = self.depth.clone();
-            debug!("{indent}Index style arguments [brackets]", indent = self.indent());
+            debug!(
+                "{indent}Index style arguments [brackets]",
+                indent = self.indent()
+            );
             let args = self.repeated(Symbol::CloseBracket, |this| this.binding_or_arg())?;
             Some(args)
         } else if self.operator_is(Symbol::OpenCurly).is_ok() {
             let _scope = self.depth.clone();
-            debug!("{indent}Body style arguments {{curlies}}", indent = self.indent());
+            debug!(
+                "{indent}Body style arguments {{curlies}}",
+                indent = self.indent()
+            );
             let args = self.repeated(Symbol::CloseCurly, |this| this.binding_or_arg())?;
             Some(args)
         } else {
@@ -260,7 +271,11 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         Ok(arguments)
     }
 
-    fn arguments_as_bindings(&mut self, arguments: SmallVec<BindingOrValue, 2>, location: Location) -> Result<SmallVec<NodeId, 2>, TError> {
+    fn arguments_as_bindings(
+        &mut self,
+        arguments: SmallVec<BindingOrValue, 2>,
+        location: Location,
+    ) -> Result<SmallVec<NodeId, 2>, TError> {
         let mut only_bindings: SmallVec<NodeId, 2> = smallvec![];
         for binding in arguments {
             match binding {
@@ -306,7 +321,10 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 trace!("{indent}Not a binding Op", indent = self.indent());
                 return Ok(None);
             };
-            debug!("{indent}Binding mode {head:?} => {mode:?}", indent = self.indent());
+            debug!(
+                "{indent}Binding mode {head:?} => {mode:?}",
+                indent = self.indent()
+            );
             self.token(); // Consume the mode.
             (op, mode)
         } else {
@@ -470,13 +488,17 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             "{indent}Inside {:?} => {}",
             binding,
             self.token_in_context(),
-            indent=self.indent()
+            indent = self.indent()
         );
         let res = {
             let _scope = self.depth.clone();
             self.expr_impl(binding)?
         };
-        debug!("{indent}Done subexpr ({:?})", binding, indent=self.indent());
+        debug!(
+            "{indent}Done subexpr ({:?})",
+            binding,
+            indent = self.indent()
+        );
         Ok(res)
     }
 
@@ -1298,7 +1320,6 @@ pub mod tests {
         assert_eq!(ast.definitions.len(), 2);
         Ok(())
     }
-
 
     #[test]
     fn parse_arg_with_default() -> Result<(), TError> {
