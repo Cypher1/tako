@@ -260,41 +260,36 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         Ok(arguments)
     }
 
-    fn arguments_as_bindings(&mut self, arguments: &Option<SmallVec<BindingOrValue, 2>>, location: Location) -> Result<Option<SmallVec<NodeId, 2>>, TError> {
-        let only_bindings = if let Some(bindings) = arguments {
-            let mut only_bindings: SmallVec<NodeId, 2> = smallvec![];
-            for binding in bindings {
-                match binding {
-                    BindingOrValue::Binding(binding) => only_bindings.push(binding.clone()),
-                    BindingOrValue::Identifier(name, ty, _location) => {
-                        let def = self.ast.add_definition(
-                            Definition {
-                                mode: BindingMode::Given,
-                                name: name.clone(),
-                                arguments: None,
-                                implementation: None,
-                            },
-                            location,
-                        );
-                        if let Some(ty) = ty {
-                            self.ast.add_annotation(def, ty.clone());
-                        }
-                        only_bindings.push(def);
+    fn arguments_as_bindings(&mut self, arguments: SmallVec<BindingOrValue, 2>, location: Location) -> Result<SmallVec<NodeId, 2>, TError> {
+        let mut only_bindings: SmallVec<NodeId, 2> = smallvec![];
+        for binding in arguments {
+            match binding {
+                BindingOrValue::Binding(binding) => only_bindings.push(binding.clone()),
+                BindingOrValue::Identifier(name, ty, _location) => {
+                    let def = self.ast.add_definition(
+                        Definition {
+                            mode: BindingMode::Given,
+                            name: name.clone(),
+                            arguments: None,
+                            implementation: None,
+                        },
+                        location,
+                    );
+                    if let Some(ty) = ty {
+                        self.ast.add_annotation(def, ty.clone());
                     }
-                    BindingOrValue::Value(value) => {
-                        return Err(ParseError::UnexpectedExpressionInDefinitionArguments {
-                            arg: value.clone(),
-                            arg_str: format!("{}", self.ast.pretty_node(value.clone())),
-                            location,
-                        }
-                        .into())
+                    only_bindings.push(def);
+                }
+                BindingOrValue::Value(value) => {
+                    return Err(ParseError::UnexpectedExpressionInDefinitionArguments {
+                        arg: value.clone(),
+                        arg_str: format!("{}", self.ast.pretty_node(value.clone())),
+                        location,
                     }
+                    .into())
                 }
             }
-            Some(only_bindings)
-        } else {
-            None
-        };
+        }
         Ok(only_bindings)
     }
 
@@ -326,7 +321,6 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         let name = self.name(tok);
         let location = tok.location();
         let arguments = self.arguments()?;
-        let arguments_as_bindings = self.arguments_as_bindings(&arguments, location);
         let ty = if self.has_type().is_ok() {
             trace!("{indent}HasType started", indent = self.indent());
             let ty = self.expr(Symbol::HasType)?;
@@ -335,46 +329,42 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         } else {
             None
         };
-        let implementation = if let Ok(assignment) = self.assignment_op(binding_strength) {
-            let op = op_from_assign_op(assignment);
-            debug!("Start binding definition parse {:?}", name);
-            let def_impl = self.any_expr()?;
-            debug!("Binding value is {:?}", def_impl);
-            let def_impl = if let Some(op) = op {
-                let ident = self.identifier(name, location);
-                self.ast.add_op(
-                    Op {
-                        op,
-                        args: smallvec![ident, def_impl],
+        if let Some(arguments) = arguments {
+            if let Ok(assignment) = self.assignment_op(binding_strength) {
+                let op = op_from_assign_op(assignment);
+                debug!("Start binding definition parse {:?}", name);
+                let def_impl = self.any_expr()?;
+                debug!("Binding value is {:?}", def_impl);
+                let implementation = Some(if let Some(op) = op {
+                    let ident = self.identifier(name, location);
+                    self.ast.add_op(
+                        Op {
+                            op,
+                            args: smallvec![ident, def_impl],
+                        },
+                        location,
+                    )
+                } else {
+                    def_impl
+                });
+                let arguments = Some(self.arguments_as_bindings(arguments, location)?);
+                let def = self.ast.add_definition(
+                    Definition {
+                        mode,
+                        name,
+                        arguments,
+                        implementation,
                     },
                     location,
-                )
-            } else {
-                def_impl
-            };
-            Some(def_impl)
-        } else {
-            None
-        };
-        if let Ok(arguments) = arguments_as_bindings {
-            let def = self.ast.add_definition(
-                Definition {
-                    mode,
-                    name,
-                    arguments,
-                    implementation,
-                },
-                location,
-            );
-            if let Some(ty) = ty {
-                self.ast.add_annotation(def, ty);
+                );
+                if let Some(ty) = ty {
+                    self.ast.add_annotation(def, ty);
+                }
+                return Ok(Some(def));
             }
-            return Ok(Some(def));
-        }
-        if let Some(bindings) = arguments {
             let inner = self.identifier(name, location);
             trace!("{indent}Add call", indent = self.indent());
-            let args = self.handle_bindings(bindings)?.into();
+            let args = self.handle_bindings(arguments)?.into();
             let call = self.ast.add_call(Call { inner, args }, location);
             if let Some(ty) = ty {
                 return Ok(Some(self.ast.add_annotation(call, ty)));
@@ -650,7 +640,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                     | OpBinding::InfixOrPostfixBinOp => {
                         if is_assign(symbol) {
                             return Err(TError::InternalError {
-                                message: format!("assignment {symbol:?} should have already been handled but was found in an expression in postfix or infix position"),
+                                message: format!("Assignment op {symbol:?} should have already been handled but was found in an expression in postfix or infix position"),
                                 location: Some(location),
                             })
                         }
