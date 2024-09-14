@@ -23,7 +23,7 @@ pub const KEYWORDS: &[&str] = include_strs!("keywords.txt");
 
 #[derive(Debug)]
 enum BindingOrValue {
-    Identifier(BindingMode, Identifier, Option<NodeId>, Location),
+    Identifier(BindingMode, Identifier, NodeId, Option<NodeId>, Location),
     Binding(NodeId),
     Value(NodeId),
 }
@@ -147,7 +147,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         for binding in arguments {
             match binding {
                 BindingOrValue::Binding(binding) => only_bindings.push(binding.clone()),
-                BindingOrValue::Identifier(mode, name, ty, _location) => {
+                BindingOrValue::Identifier(mode, name, _ident, _ty, _location) => {
                     let def = self.ast.add_definition(
                         Definition {
                             mode,
@@ -157,9 +157,6 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                         },
                         location,
                     );
-                    if let Some(ty) = ty {
-                        self.ast.add_annotation(def, ty.clone());
-                    }
                     only_bindings.push(def);
                 }
                 BindingOrValue::Value(value) => {
@@ -280,10 +277,10 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         }
         if let NodeData::Identifier(ident) = node.id {
             let ty = node.ty;
-            let (_node_id, ident) = self.ast.get_mut(ident);
+            let (node_id, str_id) = self.ast.get_mut(ident);
             // TODO: Try for an assignment binding...
             let mode = BindingMode::Given;
-            return Ok(BindingOrValue::Identifier(mode, *ident, ty, location));
+            return Ok(BindingOrValue::Identifier(mode, *str_id, *node_id, ty, location));
         }
         debug!(
             "{indent}Arg value: {value:?} => {arg_str}",
@@ -302,17 +299,13 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         for binding in bindings {
             let binding = match binding {
                 BindingOrValue::Binding(binding) => binding,
-                BindingOrValue::Identifier(mode, ident, ty, location) => {
+                BindingOrValue::Identifier(mode, _str_id, ident, _ty, location) => {
                     if mode != BindingMode::Given {
                         // TODO: Support more binding modes
                         return Err(TError::InternalError {
                             message: format!("{mode:?} for {ident:?} is not supported as a value"),
                             location: Some(location),
                         });
-                    }
-                    let ident = self.ast.add_identifier(ident, location);
-                    if let Some(ty) = ty {
-                        self.ast.add_annotation(ident, ty);
                     }
                     ident
                 }
