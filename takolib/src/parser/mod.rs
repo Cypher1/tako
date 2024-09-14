@@ -1,8 +1,8 @@
 pub mod error;
 pub mod semantics;
-pub mod tokens;
 #[cfg(test)]
 mod tests;
+pub mod tokens;
 use crate::ast::location::Location;
 use crate::ast::string_interner::{Identifier, StrId};
 use crate::ast::{Ast, Atom, Call, Contains, Definition, NodeData, NodeId, Op};
@@ -475,37 +475,37 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             "{indent}Check for right hand side: {left:?} (binding {binding:?})",
             indent = self.indent()
         );
-        while let Ok(TokenType::Op(symbol)) = self.peek_kind() {
+        while let Ok(TokenType::Op(op)) = self.peek_kind() {
             let location = self.peek().expect("Internal error").location();
-            if let OpBinding::Close(opener) = symbol.binding_type() {
+            if let OpBinding::Close(opener) = op.binding_type() {
                 trace!(
-                    "{indent}Closing {opener:?} Expr: {left:?} symbol: {symbol:?}",
+                    "{indent}Closing {opener:?} Expr: {left:?} symbol: {op:?}",
                     indent = self.indent()
                 );
                 break;
             }
-            if symbol != binding && symbol.is_looser(binding) && binding.is_looser(symbol) {
+            if op != binding && op.is_looser(binding) && binding.is_looser(op) {
                 // If both can be inside the other
                 // and they're not associative...
                 // then this is ambiguous and needs parens.
                 return Err(ParseError::AmbiguousExpression {
                     left: binding,
-                    right: symbol,
+                    right: op,
                     location,
                 }
                 .into());
             }
-            if !binding.is_looser(symbol) {
+            if !binding.is_looser(op) {
                 trace!(
-                    "{indent}Back up Expr: {left:?} binding: {binding:?} inside symbol: {symbol:?}",
+                    "{indent}Back up Expr: {left:?} binding: {binding:?} inside symbol: {op:?}",
                     indent = self.indent()
                 );
                 break;
             }
-            trace!("Continuing Expr: {left:?} sym: {symbol:?} inside binding: {binding:?}");
+            trace!("Continuing Expr: {left:?} sym: {op:?} inside binding: {binding:?}");
             let token = self.token().expect("Internal error");
             let location = token.location();
-            if symbol == Symbol::OpenParen {
+            if op == Symbol::OpenParen {
                 // Require an 'apply' to balance it's parens.
                 let mut args = smallvec![];
                 while self.operator_is(Symbol::CloseParen).is_err() {
@@ -515,13 +515,13 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 left = self.ast.add_call(Call { inner: left, args }, location);
             } else {
                 // TODO: Check that this is the right kind of operator.
-                let bind_type = symbol.binding_type();
+                let bind_type = op.binding_type();
                 left = match bind_type {
                     OpBinding::Open(closer) => {
-                        let right = self.expr(symbol)?;
+                        let right = self.expr(op)?;
                         let res = self.ast.add_op(
                             Op {
-                                op: symbol, // opener
+                                op, // opener
                                 args: smallvec![left, right],
                             },
                             location,
@@ -531,13 +531,13 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                     },
                     OpBinding::Close(_) | OpBinding::PrefixOp => {
                         return Err(TError::InternalError {
-                            message: format!("{symbol:?} should have already been handled but was found in an expression in postfix or infix position"),
+                            message: format!("{op:?} should have already been handled but was found in an expression in postfix or infix position"),
                             location: Some(location),
                         })
                     }
                     OpBinding::PostfixOp => self.ast.add_op(
                         Op {
-                            op: symbol,
+                            op,
                             args: smallvec![left],
                         },
                         location,
@@ -545,18 +545,18 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                     OpBinding::InfixBinOp
                     | OpBinding::PrefixOrInfixBinOp
                     | OpBinding::InfixOrPostfixBinOp => {
-                        if is_assign(symbol) {
+                        if is_assign(op) {
                             return Err(TError::InternalError {
-                                message: format!("Assignment op {symbol:?} should have already been handled but was found in an expression in postfix or infix position"),
+                                message: format!("Assignment op {op:?} should have already been handled but was found in an expression in postfix or infix position"),
                                 location: Some(location),
                             })
                         }
                         // TODO: Shouldn't consume tokens here if right fails for a post fix op.
-                        let right = self.expr(symbol);
+                        let right = self.expr(op);
                         match right {
                             Ok(right) => self.ast.add_op(
                                 Op {
-                                    op: symbol,
+                                    op,
                                     args: smallvec![left, right],
                                 },
                                 location,
@@ -564,7 +564,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                             Err(_) if bind_type == OpBinding::InfixOrPostfixBinOp => {
                                 return Ok(self.ast.add_op(
                                     Op {
-                                        op: symbol,
+                                        op,
                                         args: smallvec![left],
                                     },
                                     location,
@@ -573,7 +573,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                             Err(TError::ParseError(ParseError::UnexpectedEof)) => {
                                 return Err(TError::ParseError(
                                     ParseError::MissingRightHandSideOfOperator {
-                                        op: symbol,
+                                        op,
                                         bind_type,
                                         location,
                                     },
