@@ -377,98 +377,6 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         Ok(res)
     }
 
-    fn parse_left(&mut self, binding: Symbol) -> Result<NodeId, TError> {
-        let Ok(mut token) = self.peek().copied() else {
-            return Err(ParseError::UnexpectedEof.into());
-        };
-        token.kind = self.get_kind(&token);
-        let location = token.location();
-        trace!(
-            "{indent}Expr: {token:?} (binding {binding:?})",
-            indent = self.indent()
-        );
-        if self.operator_is(Symbol::OpenBracket).is_ok() {
-            // Array, Tuple, List, Vector, Matrix, etc.
-            let args = self.repeated(Symbol::CloseBracket, |this| this.any_expr())?;
-            return Ok(self.ast.add_op(
-                Op {
-                    op: Symbol::OpenBracket,
-                    args,
-                },
-                location,
-            ));
-        }
-        if self.operator_is(Symbol::OpenCurly).is_ok() {
-            // Block, set, dictionary, etc.
-            let args = self.repeated(Symbol::CloseCurly, |this| this.any_expr())?;
-            return Ok(self.ast.add_op(
-                Op {
-                    op: Symbol::OpenCurly,
-                    args,
-                },
-                location,
-            ));
-        }
-        if self.operator_is(Symbol::OpenParen).is_ok() {
-            // Parenthesized expr... etc.
-            let left = self.any_expr()?;
-            self.require(TokenType::Op(Symbol::CloseParen))?;
-            return Ok(left);
-        }
-        if let Some(expr) = self.call_or_definition()? {
-            debug!(
-                "{indent}Binding? {}",
-                self.ast.pretty_node(expr),
-                indent = self.indent(),
-            );
-            return Ok(expr);
-        }
-        if let TokenType::Op(prefix_op) = token.kind {
-            let _ = self.token();
-            let bind_type = prefix_op.binding_type();
-            match bind_type {
-                OpBinding::PrefixOp | OpBinding::PrefixOrInfixBinOp => {},
-                OpBinding::Open(_) | OpBinding::Close(_) => {
-                    return Err(TError::InternalError {
-                        message: format!("{prefix_op:?} should have already been handled but was found in an expression in prefix position"),
-                        location: Some(location),
-                    })
-                }
-                OpBinding::InfixBinOp | OpBinding::InfixOrPostfixBinOp | OpBinding::PostfixOp => {
-                    return Err(ParseError::MissingLeftHandSideOfOperator {
-                        op: prefix_op,
-                        bind_type,
-                        location,
-                    }
-                    .into());
-                }
-            };
-            // Handle a nested prefix ops
-            let right = self.expr(binding)?;
-            return Ok(self.ast.add_op(
-                Op {
-                    op: prefix_op,
-                    args: smallvec![right],
-                },
-                location,
-            ));
-        }
-        let Some(token) = self.token() else {
-            return Err(ParseError::UnexpectedEof.into());
-        };
-        match token.kind {
-            TokenType::Atom => self.atom(token, location),
-            TokenType::NumberLit => self.number_literal(token, location),
-            TokenType::StringLit => self.string_literal(token, location),
-            TokenType::ColorLit => self.color_literal(token, location),
-            _ => Err(ParseError::UnexpectedTokenTypeInExpression {
-                got: token.kind,
-                location,
-            }
-            .into()),
-        }
-    }
-
     fn expr_impl(&mut self, binding: Symbol) -> Result<NodeId, TError> {
         let mut left = self.parse_left(binding)?;
         trace!(
@@ -588,6 +496,99 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         trace!("Expr done: {}", self.ast.pretty_node(left));
         trace!("(next token: {:?})", self.peek());
         Ok(left)
+    }
+
+    fn parse_left(&mut self, binding: Symbol) -> Result<NodeId, TError> {
+        let Ok(mut token) = self.peek().copied() else {
+            return Err(ParseError::UnexpectedEof.into());
+        };
+        token.kind = self.get_kind(&token);
+        let location = token.location();
+        trace!(
+            "{indent}Expr: {token:?} (binding {binding:?})",
+            indent = self.indent()
+        );
+        if self.operator_is(Symbol::OpenBracket).is_ok() {
+            // Array, Tuple, List, Vector, Matrix, etc.
+            let args = self.repeated(Symbol::CloseBracket, |this| this.any_expr())?;
+            return Ok(self.ast.add_op(
+                Op {
+                    op: Symbol::OpenBracket,
+                    args,
+                },
+                location,
+            ));
+        }
+        if self.operator_is(Symbol::OpenCurly).is_ok() {
+            // Block, set, dictionary, etc.
+            let args = self.repeated(Symbol::CloseCurly, |this| this.any_expr())?;
+            return Ok(self.ast.add_op(
+                Op {
+                    op: Symbol::OpenCurly,
+                    args,
+                },
+                location,
+            ));
+        }
+        if self.operator_is(Symbol::OpenParen).is_ok() {
+            // Parenthesized expr... etc.
+            let left = self.any_expr()?;
+            self.require(TokenType::Op(Symbol::CloseParen))?;
+            return Ok(left);
+        }
+
+        if let Some(expr) = self.call_or_definition()? {
+            debug!(
+                "{indent}Binding? {}",
+                self.ast.pretty_node(expr),
+                indent = self.indent(),
+            );
+            return Ok(expr);
+        }
+        if let TokenType::Op(prefix_op) = token.kind {
+            let _ = self.token();
+            let bind_type = prefix_op.binding_type();
+            match bind_type {
+                OpBinding::PrefixOp | OpBinding::PrefixOrInfixBinOp => {},
+                OpBinding::Open(_) | OpBinding::Close(_) => {
+                    return Err(TError::InternalError {
+                        message: format!("{prefix_op:?} should have already been handled but was found in an expression in prefix position"),
+                        location: Some(location),
+                    })
+                }
+                OpBinding::InfixBinOp | OpBinding::InfixOrPostfixBinOp | OpBinding::PostfixOp => {
+                    return Err(ParseError::MissingLeftHandSideOfOperator {
+                        op: prefix_op,
+                        bind_type,
+                        location,
+                    }
+                    .into());
+                }
+            };
+            // Handle a nested prefix ops
+            let right = self.expr(binding)?;
+            return Ok(self.ast.add_op(
+                Op {
+                    op: prefix_op,
+                    args: smallvec![right],
+                },
+                location,
+            ));
+        }
+        let Some(token) = self.token() else {
+            return Err(ParseError::UnexpectedEof.into());
+        };
+        match token.kind {
+            TokenType::Atom => self.atom(token, location),
+            TokenType::NumberLit => self.number_literal(token, location),
+            TokenType::StringLit => self.string_literal(token, location),
+            TokenType::ColorLit => self.color_literal(token, location),
+            _ => Err(ParseError::UnexpectedTokenTypeInExpression {
+                got: token.kind,
+                location,
+            }
+            .into()),
+        }
     }
 
     fn repeated<A, F: FnMut(&mut Self) -> Result<A, TError>>(
