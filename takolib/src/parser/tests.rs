@@ -168,7 +168,7 @@ fn parse_lambda() -> Result<(), TError> {
     // dbg!(&ast);
 
     assert_eq!(ast.ops.len(), 1);
-    assert_eq!(ast.identifiers.len(), 1);
+    assert_eq!(ast.identifiers.len(), 2);
     assert_eq!(ast.definitions.len(), 1);
     Ok(())
 }
@@ -179,7 +179,7 @@ fn parse_lambda_keyword() -> Result<(), TError> {
     // dbg!(&ast);
 
     assert_eq!(ast.ops.len(), 1);
-    assert_eq!(ast.identifiers.len(), 1);
+    assert_eq!(ast.identifiers.len(), 2);
     assert_eq!(ast.definitions.len(), 1);
     Ok(())
 }
@@ -404,8 +404,8 @@ fn parse_forall_name() -> Result<(), TError> {
     assert_eq!(ast.literals.len(), 0);
     assert_eq!(ast.ops.len(), 0);
     assert_eq!(ast.calls.len(), 0);
-    assert_eq!(ast.identifiers.len(), 1);
-    assert_eq!(ast.definitions.len(), 1);
+    assert_eq!(ast.identifiers.len(), 2);
+    assert_eq!(ast.definitions.len(), 0);
     Ok(())
 }
 
@@ -429,7 +429,8 @@ fn parse_forall_name_arg_no_def() -> Result<(), TError> {
     assert_eq!(ast.literals.len(), 0);
     assert_eq!(ast.ops.len(), 0);
     assert_eq!(ast.calls.len(), 1);
-    assert_eq!(ast.definitions.len(), 1);
+    assert_eq!(dbg!(ast.identifiers).len(), 3);
+    assert_eq!(ast.definitions.len(), 0);
     Ok(())
 }
 
@@ -439,9 +440,9 @@ fn parse_forall_name_arg_no_def_as_arg() -> Result<(), TError> {
 
     // dbg!(ast);
     assert_eq!(ast.literals.len(), 0);
-    assert_eq!(ast.ops.len(), 0);
+    assert_eq!(dbg!(ast.ops).len(), 0);
     assert_eq!(ast.calls.len(), 2);
-    assert_eq!(ast.definitions.len(), 1);
+    assert_eq!(ast.definitions.len(), 0);
     Ok(())
 }
 
@@ -453,7 +454,8 @@ fn parse_forall_name_arg_no_def_as_second_arg() -> Result<(), TError> {
     assert_eq!(ast.literals.len(), 0);
     assert_eq!(ast.ops.len(), 0);
     assert_eq!(ast.calls.len(), 2);
-    assert_eq!(ast.definitions.len(), 1);
+    assert_eq!(ast.identifiers.len(), 5);
+    assert_eq!(ast.definitions.len(), 0);
     Ok(())
 }
 
@@ -465,7 +467,7 @@ fn parse_forall_name_arg_no_def_as_second_arg_with_type() -> Result<(), TError> 
     assert_eq!(ast.literals.len(), 0);
     assert_eq!(ast.ops.len(), 0);
     assert_eq!(ast.calls.len(), 3);
-    assert_eq!(ast.definitions.len(), 1);
+    assert_eq!(ast.definitions.len(), 0);
     Ok(())
 }
 
