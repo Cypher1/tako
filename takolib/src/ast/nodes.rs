@@ -13,6 +13,8 @@ use smallvec::SmallVec;
 pub struct Node {
     pub id: NodeData,
     // This could be an expression, function or not specified.
+
+    // TODO(perf): These should be stored with struct of arrays.
     pub ty: Option<NodeId>,
     pub equivalents: Option<NodeId>,
     pub lowered_to: Option<usize>,
@@ -93,7 +95,8 @@ impl Call {
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Op {
     pub op: Symbol,
-    pub args: SmallVec<NodeId, 2>, // TODO: Track L/R?
+    // TODO(perf): Use left: Option<NodeId>, right: Option<NodeId>
+    pub args: SmallVec<NodeId, 2>,
 }
 make_contains!(ops, (NodeId, Op), Op, OpId, add_op);
 
