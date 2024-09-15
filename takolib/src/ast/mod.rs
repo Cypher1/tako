@@ -18,6 +18,7 @@ use std::sync::Arc;
 use string_interner::{Identifier, StringInterner};
 
 type Container<T> = Arc<Vec<T>>;
+type BackRefContainer<T> = Container<(NodeId, T)>;
 
 #[derive(Clone, Default, Debug, Hash, PartialEq, Eq)]
 pub struct Ast {
@@ -28,15 +29,15 @@ pub struct Ast {
     pub nodes: Container<Node>,
 
     // Partials:
-    pub warnings: Container<(NodeId, Warning)>,
+    pub warnings: BackRefContainer<Warning>,
 
     // Syntactic constructs:
-    pub calls: Container<(NodeId, Call)>, // Convert to this from definition head.
-    pub identifiers: Container<(NodeId, Identifier)>, // Convert to this from definition head.
-    pub ops: Container<(NodeId, Op)>,
-    pub definitions: Container<(NodeId, Definition)>,
-    pub literals: Container<(NodeId, Literal)>,
-    pub atoms: Container<(NodeId, Atom)>,
+    pub calls: BackRefContainer<Call>, // Convert to this from definition head.
+    pub identifiers: BackRefContainer<Identifier>, // Convert to this from definition head.
+    pub ops: BackRefContainer<Op>,
+    pub definitions: BackRefContainer<Definition>,
+    pub literals: BackRefContainer<Literal>,
+    pub atoms: BackRefContainer<Atom>,
 
     pub string_interner: StringInterner,
 }
