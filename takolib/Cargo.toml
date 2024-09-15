@@ -53,6 +53,7 @@ smallvec = { version = "2.0.0-alpha.5" }
 llamada = { path = "../llamada", features = [ ] }
 better-std = { path = "../better-std", features = [ ] }
 short-typed-index = { path = "../short-typed-index", features = [ ] }
+entity-component-slab = { path = "../entity-component-slab", features = [ ] }
 test_each_file = "0.3.2"
 
 [dev-dependencies]

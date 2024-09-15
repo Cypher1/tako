@@ -1,7 +1,8 @@
 #![allow(unused)]
-use crate::ast::{string_interner::Identifier, Ast, Contains, Definition, Node, NodeData, NodeId};
+use crate::ast::{string_interner::Identifier, Ast, Definition, Node, NodeData, NodeId};
 use crate::parser::semantics::BindingMode;
 use better_std::as_context;
+use entity_component_slab::Contains;
 use smallvec::SmallVec;
 use std::fmt;
 use std::fmt::Write;
