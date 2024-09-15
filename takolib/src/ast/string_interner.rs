@@ -1,6 +1,6 @@
 use super::location::IndexIntoFile;
 use crate::parser::KEYWORDS;
-use crate::primitives::typed_index::TypedIndex;
+use short_typed_index::TypedIndex;
 use better_std::as_context;
 use num_traits::Bounded;
 use std::collections::BTreeMap;

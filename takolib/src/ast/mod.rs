@@ -9,7 +9,7 @@ pub mod string_interner;
 
 use crate::parser::semantics::Literal;
 use crate::parser::tokens::Symbol;
-use crate::primitives::typed_index::TypedIndex;
+use short_typed_index::TypedIndex;
 use location::Location;
 use pretty_printer::{pretty, pretty_node};
 use smallvec::smallvec;
@@ -17,6 +17,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use string_interner::{Identifier, StringInterner};
 
+// Note: Arc is used here to allow passes to make cheap copies.
+// Cow would probably be better.
 type Container<T> = Arc<Vec<T>>;
 type BackRefContainer<T> = Container<(NodeId, T)>;
 
