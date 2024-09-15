@@ -6,18 +6,21 @@ use std::num::NonZero;
 use static_assertions::assert_eq_size;
 assert_eq_size!(TypedIndex<Vec<u8>, u8>, [u8; 1]);
 assert_eq_size!(Option<TypedIndex<Vec<u8>, u8>>, [u8; 2]);
-assert_eq_size!(Option<TypedIndex<Vec<u8>, NonZero<u8>>>, [u8; 1]);
+assert_eq_size!(Option<TypedNonZeroIndex<Vec<u8>, u8>>, [u8; 1]);
 
 assert_eq_size!(TypedIndex<Vec<u32>, u32>, [u32; 1]);
 assert_eq_size!(Option<TypedIndex<Vec<u32>, u32>>, [u32; 2]);
-assert_eq_size!(Option<TypedIndex<Vec<u32>, NonZero<u32>>>, [u32; 1]);
+assert_eq_size!(Option<TypedNonZeroIndex<Vec<u32>, u32>>, [u32; 1]);
 
 assert_eq_size!(TypedIndex<Vec<&str>, u8>, [u8; 1]);
 assert_eq_size!(Option<TypedIndex<Vec<&str>, u8>>, [u8; 2]);
+assert_eq_size!(Option<TypedNonZeroIndex<Vec<&str>, u8>>, [u8; 1]);
 
 assert_eq_size!(TypedIndex<Vec<&str>, u32>, [u32; 1]);
 assert_eq_size!(Option<TypedIndex<Vec<&str>, u32>>, [u32; 2]);
-assert_eq_size!(Option<TypedIndex<Vec<&str>, NonZero<u32>>>, [u32; 1]);
+assert_eq_size!(Option<TypedNonZeroIndex<Vec<&str>, u32>>, [u32; 1]);
+
+pub type TypedNonZeroIndex<T, Idx, Container=Vec<T>> = TypedIndex<T, NonZero<Idx>, Container>;
 
 #[repr(transparent)]
 pub struct TypedIndex<T, Idx = u32, Container: Index<usize> = Vec<T>> {
