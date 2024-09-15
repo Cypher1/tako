@@ -1,6 +1,12 @@
 pub use paste::paste;
 use short_typed_index::TypedIndex;
-// TODO(clarity): Use macro for defining and registering each of these.
+use std::sync::Arc;
+
+// Note: Arc is used here to allow passes to make cheap copies of the 'slab'.
+// Each system get's its own Arc when mutating, but uses the Arcs of the previous
+// system otherwise.
+pub type Slab<T> = Arc<Vec<T>>;
+pub type ChildSlab<T, EntityId> = Slab<(EntityId, T)>;
 
 pub trait World {
     type EntityType;
@@ -33,7 +39,7 @@ pub trait Contains<T, Archetypes>: World {
 
 #[macro_export]
 macro_rules! make_contains(
-    { $field:ident, $type:ty, $kind: ident, $id_type: ident, $alloc_fn_name: ident, $world: ident} => {
+    { $world: ident, $field:ident, $type:ty, $kind: ident, $id_type: ident, $alloc_fn_name: ident} => {
         impl $crate::Contains<$type, <$world as $crate::World>::Archetypes> for $world {
             fn get_all(&self) -> &Vec<$type> {
                 &self.$field
@@ -58,6 +64,7 @@ macro_rules! make_contains(
                     &mut self.get_all_mut(),
                     entity_data
                 ).expect("Should always be able to allocate a new entity");
+                debug_assert_eq!(entity, next_entity, "The new entity should be the next entity");
                 entity
             }
         }
@@ -84,7 +91,7 @@ macro_rules! make_contains(
 
 #[macro_export]
 macro_rules! make_world(
-{ $field:ident, $type:ty, $kind: ident, $archetypes: ident, $meta: ty, $world: ident, $alloc_lambda: expr } => {
+{ $world: ident, $field:ident, $type:ty, $kind: ident, $archetypes: ident, $meta: ty, $alloc_lambda: expr } => {
 $crate::paste!{
     impl $crate::World for $world {
         type EntityType = $type;
@@ -96,12 +103,12 @@ $crate::paste!{
             $alloc_lambda(archetype, meta)
         }
     }
-    $crate::make_contains!($field, $type, $kind, [<$type Id>], [<add_ $kind:lower>], $world);
+    $crate::make_contains!($world, $field, $type, $kind, [<$type Id>], [<add_ $kind:lower>]);
 }});
 
 #[macro_export]
 macro_rules! make_component(
-{ $field:ident, $kind: ident, $world: ident } => {
+{ $world: ident, $field:ident, $kind: ident } => {
 $crate::paste!{
-    $crate::make_contains!($field, (<$world as $crate::World>::EntityId, $kind), $kind, [<$kind Id>], [<add_ $kind:lower>], $world);
+    $crate::make_contains!($world, $field, (<$world as $crate::World>::EntityId, $kind), $kind, [<$kind Id>], [<add_ $kind:lower>]);
 }});
