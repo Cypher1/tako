@@ -72,7 +72,6 @@ impl<'a> Ctx<'a> {
         // TODO(core): implement evaluation of the AST
         let node = node.get(&self.ast.nodes);
         match node.id {
-            NodeData::NodeRef(_id) => todo!(),
             NodeData::Identifier(ident) => {
                 let (_id, name) = self.ast[ident];
                 let Some(value) = self.state.get_binding(&name) else {

@@ -2,7 +2,7 @@
 use crate::ast::{string_interner::Identifier, Ast, Definition, Node, NodeData, NodeId};
 use crate::parser::semantics::BindingMode;
 use better_std::as_context;
-use entity_component_slab::Contains;
+use entity_component_slab::ContainsSlab;
 use smallvec::SmallVec;
 use std::fmt;
 use std::fmt::Write;
@@ -156,9 +156,6 @@ impl std::fmt::Display for PrintNode<'_> {
                 } else {
                     write!(f, "Missing {node:?} Literal at {location:?}")?;
                 }
-            }
-            NodeData::NodeRef(node) => {
-                write!(f, "{}", self.child(*node))?;
             }
             NodeData::Definition(node) => {
                 let (_node_id, node) = self.context().get(*node);
