@@ -2474,6 +2474,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
+name = "short-typed-index"
+version = "0.0.0"
+dependencies = [
+ "num-traits",
+ "static_assertions",
+]
+
+[[package]]
 name = "shutdown_hooks"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2689,6 +2697,7 @@ dependencies = [
  "num-traits",
  "pretty_assertions",
  "rand 0.9.0-alpha.1",
+ "short-typed-index",
  "smallvec 2.0.0-alpha.5",
  "static_assertions",
  "strum",

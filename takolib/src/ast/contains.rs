@@ -1,5 +1,5 @@
 use super::nodes::NodeData;
-use crate::primitives::typed_index::TypedIndex;
+use short_typed_index::TypedIndex;
 // TODO(clarity): Use macro for defining and registering each of these.
 
 pub trait Contains<T> {
