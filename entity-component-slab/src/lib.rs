@@ -24,6 +24,10 @@ pub trait World {
 pub trait Contains<T, Archetypes>: World {
     fn get_all(&self) -> &Vec<T>;
     fn get_all_mut(&mut self) -> &mut Vec<T>;
+    fn next_internal(&mut self) -> TypedIndex<T> {
+        TypedIndex::next(self.get_all())
+            .expect("Should always be able to allocate a new entity")
+    }
     fn alloc_internal(&mut self, value: T) -> TypedIndex<T> {
         TypedIndex::new(self.get_all_mut(), value)
             .expect("Should never have that many entities of a particular type...")
@@ -34,38 +38,20 @@ pub trait Contains<T, Archetypes>: World {
     fn get_mut(&mut self, id: TypedIndex<T>) -> &mut T {
         id.get_mut(self.get_all_mut())
     }
-    fn to_entity(index: TypedIndex<T>) -> Archetypes;
 }
 
 #[macro_export]
 macro_rules! make_contains(
-    { $world: ident, $field:ident, $type:ty, $kind: ident, $id_type: ident, $alloc_fn_name: ident} => {
+    { $world: ident, $field:ident, $type:ty, $kind: ident, $id_type: ident} => {
         impl $crate::Contains<$type, <$world as $crate::World>::Archetypes> for $world {
             fn get_all(&self) -> &Vec<$type> {
                 &self.$field
             }
             fn get_all_mut(&mut self) -> &mut Vec<$type> {
+                // TODO(perf): This may be slow as it must check that the Arc is 'safe' to mutate
+                // or must copy it.
+                // We could do this statically...
                 std::sync::Arc::make_mut(&mut self.$field)
-            }
-            fn to_entity(index: TypedIndex<$type>) -> <$world as $crate::World>::Archetypes {
-                <$world as $crate::World>::Archetypes::$kind(index)
-            }
-        }
-
-        impl $world {
-            pub fn $alloc_fn_name<T>(&mut self, item: T, meta: <$world as $crate::World>::EntityMeta) -> <$world as $crate::World>::EntityId where (<$world as $crate::World>::EntityId, T): Into<$type> {
-                use $crate::{Contains, World};
-                let next_entity: TypedIndex<<$world as $crate::World>::EntityType> = TypedIndex::next(&self.get_all())
-                    .expect("Should always be able to allocate a new entity");
-                let id = TypedIndex::new(&mut self.get_all_mut(), (next_entity, item).into())
-                    .expect("Should always be able to allocate a new entity");
-                let entity_data = self.new_entity(<$world as $crate::World>::Archetypes::$kind(id), meta);
-                let entity: TypedIndex<<$world as $crate::World>::EntityType> = TypedIndex::new(
-                    &mut self.get_all_mut(),
-                    entity_data
-                ).expect("Should always be able to allocate a new entity");
-                debug_assert_eq!(entity, next_entity, "The new entity should be the next entity");
-                entity
             }
         }
 
@@ -82,11 +68,32 @@ macro_rules! make_contains(
 
         impl std::ops::IndexMut<$id_type> for $world {
             fn index_mut(&mut self, id: $id_type) -> &mut Self::Output {
+                // TODO(perf): Add a clippy warning that this isn't 'fast'.
+                // Instead get_all_mut should be called once and operated on.
                 use $crate::Contains;
                 id.get_mut(self.get_all_mut())
             }
         }
      };
+);
+#[macro_export]
+macro_rules! make_alloc(
+    { $world: ident, $field:ident, $type:ty, $kind: ident, $id_type: ident, $alloc_fn_name: ident} => {
+
+    impl $world {
+        pub fn $alloc_fn_name<T>(&mut self, item: T, meta: <$world as $crate::World>::EntityMeta) -> <$world as $crate::World>::EntityId where (<$world as $crate::World>::EntityId, T): Into<$type> {
+            use $crate::{Contains, World};
+            let next_entity = self.next_internal();
+            let id = self.alloc_internal((next_entity, item).into());
+            let entity_data = self.new_entity(<$world as $crate::World>::Archetypes::$kind(id), meta);
+            let entity = self.alloc_internal(entity_data);
+            debug_assert_eq!(entity, next_entity, "The new entity should be the next entity");
+            entity
+        }
+    }
+
+    $crate::make_contains!($world, $field, $type, $kind, $id_type);
+                                                                                                      }
 );
 
 #[macro_export]
@@ -103,12 +110,12 @@ $crate::paste!{
             $alloc_lambda(archetype, meta)
         }
     }
-    $crate::make_contains!($world, $field, $type, $kind, [<$type Id>], [<add_ $kind:lower>]);
+    $crate::make_alloc!($world, $field, $type, $kind, [<$type Id>], [<add_ $kind:lower>]);
 }});
 
 #[macro_export]
 macro_rules! make_component(
 { $world: ident, $field:ident, $kind: ident } => {
 $crate::paste!{
-    $crate::make_contains!($world, $field, (<$world as $crate::World>::EntityId, $kind), $kind, [<$kind Id>], [<add_ $kind:lower>]);
+    $crate::make_alloc!($world, $field, (<$world as $crate::World>::EntityId, $kind), $kind, [<$kind Id>], [<add_ $kind:lower>]);
 }});
