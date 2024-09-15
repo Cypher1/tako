@@ -6,7 +6,8 @@
 - https://docs.rs/bevy_ecs/0.14.2/bevy_ecs
 
 ## Talks on data oriented design
-- https://youtu.be/rX0ItVEVjHc?si=AOvxjR99Ddkf98aw
+- [Andrew Kelly "Practical Data Oriented Design"](https://youtu.be/IroPQ150F6c?si=Qb6b2HjkAWGq_Xsj)
+- [Mike Acton "Data-Oriented Design and C++"](https://youtu.be/rX0ItVEVjHc?si=AOvxjR99Ddkf98aw)
 
 ## Other References
 
