@@ -5,9 +5,16 @@ use std::ops::{Index, IndexMut};
 use static_assertions::assert_eq_size;
 assert_eq_size!(TypedIndex<Vec<u8>, u8>, [u8; 1]);
 assert_eq_size!(Option<TypedIndex<Vec<u8>, u8>>, [u8; 2]); // TODO(perf): Option optimisation
+
 assert_eq_size!(TypedIndex<Vec<u32>, u32>, [u32; 1]);
 assert_eq_size!(Option<TypedIndex<Vec<u32>, u32>>, [u32; 2]); // TODO(perf): Option optimisation
 
+assert_eq_size!(TypedIndex<Vec<&str>, u8>, [u8; 1]);
+assert_eq_size!(Option<TypedIndex<Vec<&str>, u8>>, [u8; 2]); // TODO(perf): Option optimisation
+
+assert_eq_size!(TypedIndex<Vec<&str>, u32>, [u32; 1]);
+assert_eq_size!(Option<TypedIndex<Vec<&str>, u32>>, [u32; 2]); // TODO(perf): Option optimisation
+                                                             //
 #[repr(transparent)]
 pub struct TypedIndex<T, Idx = u32, Container: Index<usize> = Vec<T>> {
     index: Idx,
@@ -126,5 +133,17 @@ impl<T, Idx: std::fmt::Debug + std::convert::TryInto<usize> + std::convert::TryF
         let id = Self::next(container)?;
         container.push(value);
         Ok(id)
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+
+    #[test]
+    fn index() {
+
     }
 }
