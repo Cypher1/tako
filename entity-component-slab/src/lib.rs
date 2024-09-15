@@ -84,7 +84,7 @@ macro_rules! make_contains(
 
 #[macro_export]
 macro_rules! make_world(
-{ $field:ident, $type:ty, $kind: ident, $alloc_fn_name: ident, $archetypes: ident, $meta: ty, $world: ident, $alloc_lambda: expr } => {
+{ $field:ident, $type:ty, $kind: ident, $archetypes: ident, $meta: ty, $world: ident, $alloc_lambda: expr } => {
 $crate::paste!{
     impl $crate::World for $world {
         type EntityType = $type;
@@ -96,7 +96,7 @@ $crate::paste!{
             $alloc_lambda(archetype, meta)
         }
     }
-    $crate::make_contains!($field, $type, $kind, [<$type Id>], $alloc_fn_name, $world);
+    $crate::make_contains!($field, $type, $kind, [<$type Id>], [<add_ $kind:lower>], $world);
 }});
 
 #[macro_export]
