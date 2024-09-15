@@ -86,7 +86,13 @@ impl Ast {
                 },
                 location,
             );
-            ty = self.add_op(Op::new(Symbol::And, smallvec![old_ty, ty]), location);
+            ty = self.add_op(
+                Op {
+                    op: Symbol::And,
+                    args: smallvec![old_ty, ty],
+                },
+                location,
+            );
         }
         let node: &mut Node = self.get_mut(node_id);
         node.ty = Some(ty);
@@ -101,7 +107,6 @@ make_world!(
     nodes,
     Node,
     NodeRef,
-    unsafe_add_node,
     NodeData,
     Location,
     Ast,

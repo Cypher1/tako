@@ -9,14 +9,17 @@ pub struct Node {
     pub id: NodeData,
     // This could be an expression, function or not specified.
 
-    // TODO(perf): These should be stored with struct of arrays.
+    // TODO(perf): The following should be stored with struct of arrays.
     pub ty: Option<NodeId>,
+    // TODO(perf, clarity): Should not be a linked list.
     pub equivalents: Option<NodeId>,
+    // TODO(perf, clarity): Should not be a usize.
     pub lowered_to: Option<usize>,
     pub location: Location,
 }
 
 // TODO(clarity): Use macro for defining and registering each of these.
+// TODO(perf): Consider a tag and index pair as they should all be the same size and shape.
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum NodeData {
     // TODO(clarity): consider how to split this up.
@@ -59,33 +62,11 @@ pub struct Call {
     pub args: SmallVec<NodeId, 2>,
 }
 
-impl Call {
-    #[cfg(test)]
-    #[must_use]
-    pub fn from_slice(inner: NodeId, args: &[NodeId]) -> Self {
-        Self {
-            inner,
-            args: args.into(),
-        }
-    }
-    #[must_use]
-    pub fn new(inner: NodeId, args: SmallVec<NodeId, 2>) -> Self {
-        Self { inner, args }
-    }
-}
-
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Op {
     pub op: Symbol,
     // TODO(perf): Use left: Option<NodeId>, right: Option<NodeId>
     pub args: SmallVec<NodeId, 2>,
-}
-
-impl Op {
-    #[must_use]
-    pub fn new(op: Symbol, args: SmallVec<NodeId, 2>) -> Self {
-        Self { op, args }
-    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
