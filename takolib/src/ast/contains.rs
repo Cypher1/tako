@@ -25,7 +25,7 @@ macro_rules! make_contains(
                 &self.$field
             }
             fn get_all_mut(&mut self) -> &mut Vec<$type> {
-                std::sync::Arc::make_mut(&mut self.$field)
+                &mut self.$field
             }
             fn to_node(index: TypedIndex<$type>) -> NodeData {
                 NodeData::$kind(index)
@@ -37,9 +37,9 @@ macro_rules! make_contains(
             pub fn $alloc_fn_name<T>(&mut self, item: T, location: Location) -> NodeId where (NodeId, T): Into<$type> {
                 let node = TypedIndex::next(&self.nodes)
                     .expect("Should always be able to allocate a new Ast Node");
-                let id = TypedIndex::new(std::sync::Arc::make_mut(&mut self.$field), (node, item).into())
+                let id = TypedIndex::new(&mut self.$field, (node, item).into())
                     .expect("Should always be able to allocate a new Ast Node");
-                let node: TypedIndex<Node> = TypedIndex::new(std::sync::Arc::make_mut(&mut self.nodes), Node {
+                let node: TypedIndex<Node> = TypedIndex::new(&mut self.nodes, Node {
                     id: NodeData::$kind(id),
                     equivalents: None,
                     lowered_to: None,
