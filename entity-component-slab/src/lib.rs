@@ -78,24 +78,18 @@ macro_rules! make_contains(
 
 #[macro_export]
 macro_rules! make_world(
-    { $field:ident, $type:ty, $kind: ident, $alloc_fn_name: ident, $archetypes: ident, $world: ident } => {
-
-    $crate::paste!{
-        impl $crate::World for $world {
-            type RootId = [<$type Id> ];
-            type Archetypes = $archetypes;
-        }
-
-        $crate::make_contains!($field, $type, $kind, [<$type Id>], $alloc_fn_name, $world);
-    }                                                                                                                          }
-);
+{ $field:ident, $type:ty, $kind: ident, $alloc_fn_name: ident, $archetypes: ident, $world: ident } => {
+$crate::paste!{
+    impl $crate::World for $world {
+        type RootId = [<$type Id> ];
+        type Archetypes = $archetypes;
+    }
+    $crate::make_contains!($field, $type, $kind, [<$type Id>], $alloc_fn_name, $world);
+}});
 
 #[macro_export]
 macro_rules! make_component(
-    { $field:ident, $kind: ident, $alloc_fn_name: ident, $world: ident } => {
-
-    $crate::paste!{
-        $crate::make_contains!($field, (<$world as $crate::World>::RootId, $kind), $kind, [< $kind Id >], $alloc_fn_name, $world);
-    }
-                                                                                                                                            }
-);
+{ $field:ident, $kind: ident, $world: ident } => {
+$crate::paste!{
+    $crate::make_contains!($field, (<$world as $crate::World>::RootId, $kind), $kind, [<$kind Id>], [<add_ $kind:lower>], $world);
+}});
