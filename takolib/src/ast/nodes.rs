@@ -55,13 +55,11 @@ pub enum NodeData {
 make_component!(
     identifiers,
     Identifier,
-    add_identifier,
     Ast
 );
 make_component!(
     literals,
     Literal,
-    add_literal,
     Ast
 );
 
@@ -76,7 +74,6 @@ pub enum Warning {
 make_component!(
     warnings,
     Warning,
-    add_warning,
     Ast
 );
 
@@ -87,7 +84,6 @@ pub struct Atom {
 make_component!(
     atoms,
     Atom,
-    add_atom,
     Ast
 );
 
@@ -99,7 +95,6 @@ pub struct Call {
 make_component!(
     calls,
     Call,
-    add_call,
     Ast
 );
 
@@ -124,7 +119,7 @@ pub struct Op {
     // TODO(perf): Use left: Option<NodeId>, right: Option<NodeId>
     pub args: SmallVec<NodeId, 2>,
 }
-make_component!(ops, Op, add_op, Ast);
+make_component!(ops, Op, Ast);
 
 impl Op {
     #[must_use]
@@ -143,6 +138,5 @@ pub struct Definition {
 make_component!(
     definitions,
     Definition,
-    add_definition,
     Ast
 );
