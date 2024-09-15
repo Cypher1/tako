@@ -1,5 +1,5 @@
 mod nodes;
-use entity_component_slab::{Contains, Slab, ChildSlab};
+use entity_component_slab::{Slab, ChildSlab};
 pub use nodes::*;
 pub mod location;
 mod pretty_printer;
@@ -60,18 +60,18 @@ impl Ast {
 impl Ast {
     pub fn add_equivalent(&mut self, mut node_id: NodeId, eq: NodeId) -> NodeId {
         while node_id != eq {
-            let eqs = &mut self.get_mut(node_id).equivalents;
+            let eqs = &mut self[node_id].equivalents;
             node_id = *eqs.get_or_insert(eq);
         }
         eq
     }
     pub fn add_annotation(&mut self, node_id: NodeId, mut ty: NodeId) -> NodeId {
-        let old_ty: Option<NodeId> = self.get(node_id).ty;
+        let old_ty: Option<NodeId> = self[node_id].ty;
         if let Some(old_ty) = old_ty {
             // In the case where two annotations were added:
             // e.g. 12: Int: Int
             // It is probably a mistake, but we can safely handle it.
-            let location = self.get(node_id).location;
+            let location = self[node_id].location;
             self.add_warning(
                 Warning::DoubleAnnotation {
                     node_id,
@@ -88,7 +88,7 @@ impl Ast {
                 location,
             );
         }
-        let node: &mut Node = self.get_mut(node_id);
+        let node: &mut Node = &mut self[node_id];
         node.ty = Some(ty);
         node_id
     }
