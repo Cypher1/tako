@@ -15,10 +15,10 @@ pub trait World {
     ) -> Self::EntityType;
 }
 
-pub trait Contains<T, Archetypes> {
+pub trait Contains<T, Archetypes>: World {
     fn get_all(&self) -> &Vec<T>;
     fn get_all_mut(&mut self) -> &mut Vec<T>;
-    fn alloc(&mut self, value: T) -> TypedIndex<T> {
+    fn alloc_internal(&mut self, value: T) -> TypedIndex<T> {
         TypedIndex::new(self.get_all_mut(), value)
             .expect("Should never have that many entities of a particular type...")
     }
@@ -88,7 +88,7 @@ macro_rules! make_world(
 $crate::paste!{
     impl $crate::World for $world {
         type EntityType = $type;
-        type EntityId = [<$type Id> ];
+        type EntityId = [<$type Id>];
         type Archetypes = $archetypes;
         type EntityMeta = $meta;
 

@@ -9,6 +9,7 @@ use crate::parser::semantics::Literal;
 use crate::parser::tokens::Symbol;
 use location::Location;
 use pretty_printer::{pretty, pretty_node};
+use entity_component_slab::{make_component, make_world};
 use short_typed_index::TypedIndex;
 use smallvec::smallvec;
 use std::path::PathBuf;
@@ -63,36 +64,6 @@ impl Ast {
 }
 
 impl Ast {
-    pub fn make_node<T>(&mut self, value: T, location: Location) -> NodeId
-    where
-        Self: Contains<(NodeId, T), NodeData>,
-    {
-        self.make_node_with_id(|_node_id| value, location)
-    }
-
-    pub fn make_node_with_id<T, F: FnOnce(NodeId) -> T>(
-        &mut self,
-        value: F,
-        location: Location,
-    ) -> NodeId
-    where
-        Self: Contains<(NodeId, T), NodeData>,
-    {
-        let node_id =
-            TypedIndex::next(&self.nodes).expect("Should never have that many AstNodes..."); // Reserve it...
-        let value_id = self.alloc((node_id, value(node_id)));
-        let node = Node {
-            id: Self::to_entity(value_id),
-            equivalents: None,
-            ty: None,
-            location,
-            lowered_to: None,
-        };
-        let new_node_id = TypedIndex::new(Arc::make_mut(&mut self.nodes), node)
-            .expect("Should never have that many AstNodes...");
-        assert_eq!(node_id, new_node_id);
-        new_node_id
-    }
     pub fn add_equivalent(&mut self, mut node_id: NodeId, eq: NodeId) -> NodeId {
         while node_id != eq {
             let eqs = &mut self.get_mut(node_id).equivalents;
@@ -126,6 +97,30 @@ impl Ast {
     }
 }
 
+make_world!(
+    nodes,
+    Node,
+    NodeRef,
+    unsafe_add_node,
+    NodeData,
+    Location,
+    Ast,
+    |archetype, location| Node {
+        id: archetype,
+        equivalents: None,
+        lowered_to: None,
+        ty: None,
+        location,
+    }
+);
+make_component!(identifiers, Identifier, Ast);
+make_component!(literals, Literal, Ast);
+make_component!(warnings, Warning, Ast);
+make_component!(atoms, Atom, Ast);
+make_component!(calls, Call, Ast);
+make_component!(ops, Op, Ast);
+make_component!(definitions, Definition, Ast);
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -138,13 +133,13 @@ mod tests {
         let mut ast = Ast::default();
         let a = lits.register_str("a");
         let b = Literal::Numeric; // ("123456789");
-        let a = ast.make_node(a, Location::dummy_for_test());
-        let b = ast.make_node(b, Location::dummy_for_test());
+        let a = ast.alloc(a, Location::dummy_for_test());
+        let b = ast.alloc(b, Location::dummy_for_test());
         let call = Op {
             op: Symbol::Add,
             args: smallvec![a, b],
         };
-        let call = ast.make_node(call, Location::dummy_for_test());
+        let call = ast.alloc(call, Location::dummy_for_test());
         let a_prime = lits.register_str("a_prime");
         let definition = Definition {
             mode: BindingMode::Given,
@@ -152,7 +147,7 @@ mod tests {
             arguments: None,
             implementation: Some(call),
         };
-        let definition = ast.make_node(definition, Location::dummy_for_test());
+        let definition = ast.alloc(definition, Location::dummy_for_test());
         ast.set_root(definition);
         dbg!(&ast);
 

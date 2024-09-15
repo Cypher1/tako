@@ -1,13 +1,11 @@
 use super::location::Location;
-use super::Ast;
 use crate::ast::string_interner::Identifier;
 use crate::parser::{
-    semantics::{BindingMode, Literal},
+    semantics::BindingMode,
     tokens::Symbol,
 };
-use entity_component_slab::{make_component, make_world};
-use short_typed_index::TypedIndex;
 use smallvec::SmallVec;
+use super::*;
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Node {
@@ -20,22 +18,6 @@ pub struct Node {
     pub lowered_to: Option<usize>,
     pub location: Location,
 }
-make_world!(
-    nodes,
-    Node,
-    NodeRef,
-    unsafe_add_node,
-    NodeData,
-    Location,
-    Ast,
-    |archetype, location| Node {
-        id: archetype,
-        equivalents: None,
-        lowered_to: None,
-        ty: None,
-        location,
-    }
-);
 
 // TODO(clarity): Use macro for defining and registering each of these.
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
@@ -60,9 +42,6 @@ pub enum NodeData {
     Warning(WarningId), // Represents a warning.
 }
 
-make_component!(identifiers, Identifier, Ast);
-make_component!(literals, Literal, Ast);
-
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub enum Warning {
     DoubleAnnotation {
@@ -71,20 +50,17 @@ pub enum Warning {
         ty: NodeId,
     },
 }
-make_component!(warnings, Warning, Ast);
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Atom {
     pub name: Identifier,
 }
-make_component!(atoms, Atom, Ast);
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Call {
     pub inner: NodeId,
     pub args: SmallVec<NodeId, 2>,
 }
-make_component!(calls, Call, Ast);
 
 impl Call {
     #[cfg(test)]
@@ -107,7 +83,6 @@ pub struct Op {
     // TODO(perf): Use left: Option<NodeId>, right: Option<NodeId>
     pub args: SmallVec<NodeId, 2>,
 }
-make_component!(ops, Op, Ast);
 
 impl Op {
     #[must_use]
@@ -123,4 +98,3 @@ pub struct Definition {
     pub arguments: Option<SmallVec<NodeId, 2>>,
     pub implementation: Option<NodeId>,
 }
-make_component!(definitions, Definition, Ast);
