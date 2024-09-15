@@ -108,7 +108,7 @@ impl std::fmt::Display for PrintNode<'_> {
         if let Some(eq) = equivalents {
             return write!(f, "{}", self.child(*eq)); // Watch out for cycles...
         }
-        let mut ty = *ty;
+        let mut ty = *ty; // This is a copy
         match node {
             NodeData::Warning(node) => {
                 let (_node_id, node) = self.context().get(*node);

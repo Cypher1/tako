@@ -146,12 +146,12 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         let mut only_bindings: SmallVec<NodeId, 2> = smallvec![];
         for binding in arguments {
             match binding {
-                BindingOrValue::Binding(binding) => only_bindings.push(binding.clone()),
+                BindingOrValue::Binding(binding) => only_bindings.push(binding),
                 BindingOrValue::Identifier(mode, name, _ident, _ty, _location) => {
                     let def = self.ast.add_definition(
                         Definition {
                             mode,
-                            name: name.clone(),
+                            name,
                             arguments: None,
                             implementation: None,
                         },
@@ -159,10 +159,10 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                     );
                     only_bindings.push(def);
                 }
-                BindingOrValue::Value(value) => {
+                BindingOrValue::Value(arg) => {
                     return Err(ParseError::UnexpectedExpressionInDefinitionArguments {
-                        arg: value.clone(),
-                        arg_str: format!("{}", self.ast.pretty_node(value.clone())),
+                        arg,
+                        arg_str: format!("{}", self.ast.pretty_node(arg)),
                         location,
                     }
                     .into())
