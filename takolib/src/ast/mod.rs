@@ -17,8 +17,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use string_interner::{Identifier, StringInterner};
 
-// Note: Arc is used here to allow passes to make cheap copies.
-// Cow would probably be better.
+// Note: Arc is used here to allow passes to make cheap copies of the AST.
+// Each AST get's its own Arcs when mutating, but uses the Arcs of the previous
+// pass otherwise.
 type Container<T> = Arc<Vec<T>>;
 type BackRefContainer<T> = Container<(NodeId, T)>;
 
