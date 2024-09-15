@@ -1,5 +1,5 @@
 mod nodes;
-use entity_component_slab::Contains;
+use entity_component_slab::{Contains, Slab, ChildSlab};
 pub use nodes::*;
 pub mod location;
 mod pretty_printer;
@@ -13,33 +13,27 @@ use pretty_printer::{pretty, pretty_node};
 use short_typed_index::TypedIndex;
 use smallvec::smallvec;
 use std::path::PathBuf;
-use std::sync::Arc;
 use string_interner::{Identifier, StringInterner};
 
-// Note: Arc is used here to allow passes to make cheap copies of the AST.
-// Each AST get's its own Arcs when mutating, but uses the Arcs of the previous
-// pass otherwise.
-type Container<T> = Arc<Vec<T>>;
-type BackRefContainer<T> = Container<(NodeId, T)>;
 
 #[derive(Clone, Default, Debug, Hash, PartialEq, Eq)]
 pub struct Ast {
     // TODO(usability): Add a range tree for mapping from locations to nodes.
     // Abstract syntax tree... forest
     pub filepath: PathBuf,
-    pub roots: Container<NodeId>,
-    pub nodes: Container<Node>,
+    pub roots: Slab<NodeId>,
+    pub nodes: Slab<Node>,
 
     // Partials:
-    pub warnings: BackRefContainer<Warning>,
+    pub warnings: ChildSlab<Warning, NodeId>,
 
     // Syntactic constructs:
-    pub calls: BackRefContainer<Call>, // Convert to this from definition head.
-    pub identifiers: BackRefContainer<Identifier>, // Convert to this from definition head.
-    pub ops: BackRefContainer<Op>,
-    pub definitions: BackRefContainer<Definition>,
-    pub literals: BackRefContainer<Literal>,
-    pub atoms: BackRefContainer<Atom>,
+    pub calls: ChildSlab<Call, NodeId>, // Convert to this from definition head.
+    pub identifiers: ChildSlab<Identifier, NodeId>, // Convert to this from definition head.
+    pub ops: ChildSlab<Op, NodeId>,
+    pub definitions: ChildSlab<Definition, NodeId>,
+    pub literals: ChildSlab<Literal, NodeId>,
+    pub atoms: ChildSlab<Atom, NodeId>,
 
     pub string_interner: StringInterner,
 }
@@ -99,17 +93,17 @@ impl Ast {
         node_id
     }
     pub fn set_root(&mut self, new_root: NodeId) {
-        Arc::make_mut(&mut self.roots).push(new_root);
+        std::sync::Arc::make_mut(&mut self.roots).push(new_root);
     }
 }
 
 make_world!(
+    Ast,
     nodes,
     Node,
     NodeRef,
     NodeData,
     Location,
-    Ast,
     |archetype, location| Node {
         id: archetype,
         equivalents: None,
@@ -118,13 +112,13 @@ make_world!(
         location,
     }
 );
-make_component!(identifiers, Identifier, Ast);
-make_component!(literals, Literal, Ast);
-make_component!(warnings, Warning, Ast);
-make_component!(atoms, Atom, Ast);
-make_component!(calls, Call, Ast);
-make_component!(ops, Op, Ast);
-make_component!(definitions, Definition, Ast);
+make_component!(Ast, identifiers, Identifier);
+make_component!(Ast, literals, Literal);
+make_component!(Ast, warnings, Warning);
+make_component!(Ast, atoms, Atom);
+make_component!(Ast, calls, Call);
+make_component!(Ast, ops, Op);
+make_component!(Ast, definitions, Definition);
 
 #[cfg(test)]
 mod tests {
