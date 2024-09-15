@@ -2,8 +2,9 @@ pub use paste::paste;
 use short_typed_index::TypedIndex;
 // TODO(clarity): Use macro for defining and registering each of these.
 
-pub trait World<Archetypes> {
-    // type ...
+pub trait World {
+    type RootId;
+    type Archetypes;
 }
 
 pub trait Contains<T, Archetypes> {
@@ -24,27 +25,27 @@ pub trait Contains<T, Archetypes> {
 
 #[macro_export]
 macro_rules! make_contains(
-    { $field:ident, $type:ty, $kind: ident, $id_type: ident, $alloc_fn_name: ident, $root_id: ident, $archetypes: ident, $world: ident } => {
-        impl $crate::Contains<$type, $archetypes> for $world {
+    { $field:ident, $type:ty, $kind: ident, $id_type: ident, $alloc_fn_name: ident, $world: ident } => {
+        impl $crate::Contains<$type, <$world as $crate::World>::Archetypes> for $world {
             fn get_all(&self) -> &Vec<$type> {
                 &self.$field
             }
             fn get_all_mut(&mut self) -> &mut Vec<$type> {
                 std::sync::Arc::make_mut(&mut self.$field)
             }
-            fn to_node(index: TypedIndex<$type>) -> $archetypes {
-                $archetypes::$kind(index)
+            fn to_node(index: TypedIndex<$type>) -> <$world as $crate::World>::Archetypes {
+                <$world as $crate::World>::Archetypes::$kind(index)
             }
         }
 
         impl $world {
-            pub fn $alloc_fn_name<T>(&mut self, item: T, location: Location) -> $root_id where ($root_id, T): Into<$type> {
+            pub fn $alloc_fn_name<T>(&mut self, item: T, location: Location) -> <$world as $crate::World>::RootId where (<$world as $crate::World>::RootId, T): Into<$type> {
                 let node = TypedIndex::next(&self.nodes)
                     .expect("Should always be able to allocate a new Ast Node");
                 let id = TypedIndex::new(std::sync::Arc::make_mut(&mut self.$field), (node, item).into())
                     .expect("Should always be able to allocate a new Ast Node");
                 let node: TypedIndex<Node> = TypedIndex::new(std::sync::Arc::make_mut(&mut self.nodes), Node {
-                    id: $archetypes::$kind(id),
+                    id: <$world as $crate::World>::Archetypes::$kind(id),
                     equivalents: None,
                     lowered_to: None,
                     ty: None,
@@ -77,16 +78,21 @@ macro_rules! make_contains(
 
 #[macro_export]
 macro_rules! make_world(
-    { $field:ident, $type:ty, $kind: ident, $id_type: ident, $alloc_fn_name: ident, $root_id: ident, $archetypes: ident, $world: ident } => {
+    { $field:ident, $type:ty, $kind: ident, $alloc_fn_name: ident, $root_id: ident, $archetypes: ident, $world: ident } => {
 
-    $crate::make_contains!($field, $type, $kind, $id_type, $alloc_fn_name, $root_id, $archetypes, $world);
+    impl $crate::World for $world {
+        type RootId = $root_id;
+        type Archetypes = $archetypes;
+    }
+
+    $crate::make_contains!($field, $type, $kind, $root_id, $alloc_fn_name, $world);
                                                                                                                                   }
 );
 
 #[macro_export]
 macro_rules! make_component(
-    { $field:ident, $kind: ident, $id_type: ident, $alloc_fn_name: ident, $root_id: ident, $archetypes: ident, $world: ident } => {
+    { $field:ident, $kind: ident, $id_type: ident, $alloc_fn_name: ident, $world: ident } => {
 
-    $crate::make_contains!($field, ($root_id, $kind), $kind, $id_type, $alloc_fn_name, $root_id, $archetypes, $world);
+    $crate::make_contains!($field, (<$world as $crate::World>::RootId, $kind), $kind, $id_type, $alloc_fn_name, $world);
                                                                                                                                             }
 );

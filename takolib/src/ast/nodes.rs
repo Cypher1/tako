@@ -24,7 +24,6 @@ make_world!(
     nodes,
     Node,
     NodeRef,
-    NodeId,
     unsafe_add_node,
     NodeId,
     NodeData,
@@ -59,8 +58,6 @@ make_component!(
     Identifier,
     IdentifierId,
     add_identifier,
-    NodeId,
-    NodeData,
     Ast
 );
 make_component!(
@@ -68,8 +65,6 @@ make_component!(
     Literal,
     LiteralId,
     add_literal,
-    NodeId,
-    NodeData,
     Ast
 );
 
@@ -86,8 +81,6 @@ make_component!(
     Warning,
     WarningId,
     add_warning,
-    NodeId,
-    NodeData,
     Ast
 );
 
@@ -100,8 +93,6 @@ make_component!(
     Atom,
     AtomId,
     add_atom,
-    NodeId,
-    NodeData,
     Ast
 );
 
@@ -115,8 +106,6 @@ make_component!(
     Call,
     CallId,
     add_call,
-    NodeId,
-    NodeData,
     Ast
 );
 
@@ -141,7 +130,7 @@ pub struct Op {
     // TODO(perf): Use left: Option<NodeId>, right: Option<NodeId>
     pub args: SmallVec<NodeId, 2>,
 }
-make_component!(ops, Op, OpId, add_op, NodeId, NodeData, Ast);
+make_component!(ops, Op, OpId, add_op, Ast);
 
 impl Op {
     #[must_use]
@@ -162,7 +151,5 @@ make_component!(
     Definition,
     DefinitionId,
     add_definition,
-    NodeId,
-    NodeData,
     Ast
 );
