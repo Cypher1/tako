@@ -2,10 +2,11 @@ pub use paste::paste;
 use short_typed_index::TypedIndex;
 use std::sync::Arc;
 
-// Note: Arc is used here to allow passes to make cheap copies of the 'slab'.
+// Note: Arc is used here to allow passes to cheaply Clone+Sync the 'slab'.
 // Each system get's its own Arc when mutating, but uses the Arcs of the previous
 // system otherwise.
 // TODO(clarity): Consider newtype-ing...
+// TODO(feature): Investigate Mutex to support cases with mutation.
 pub type Slab<T> = Arc<Vec<T>>;
 pub type ChildSlab<T, EntityId> = Slab<(EntityId, T)>;
 
@@ -71,6 +72,8 @@ macro_rules! make_contains_slab(
             fn index_mut(&mut self, id: $id_type) -> &mut Self::Output {
                 // TODO(perf): Add a clippy warning that this isn't 'fast'.
                 // Instead get_all_mut should be called once and operated on.
+                // TODO(perf): Add a 'system' interface which gets the
+                // underlying memory when mutating the data.
                 use $crate::ContainsSlab;
                 id.get_mut(self.get_all_mut())
             }
