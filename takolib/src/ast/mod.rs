@@ -101,7 +101,6 @@ make_world!(
     Ast,
     nodes,
     Node,
-    NodeRef,
     NodeData,
     Location,
     |archetype, location| Node {

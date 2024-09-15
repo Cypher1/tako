@@ -38,7 +38,6 @@ pub enum NodeData {
 
     // Sugar:
     Definition(DefinitionId),
-    NodeRef(NodeId), // Represents an indirection (i.e. when two things have been found to be the same)
     Warning(WarningId), // Represents a warning.
 }
 
