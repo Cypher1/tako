@@ -13,3 +13,4 @@ include = ["src/**/*", "LICENSE.md", "README.md"]
 
 [dependencies]
 short-typed-index = { path = "../short-typed-index", features = [ ] }
+paste = "1.0"
