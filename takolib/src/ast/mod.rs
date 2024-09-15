@@ -14,9 +14,12 @@ use location::Location;
 use pretty_printer::{pretty, pretty_node};
 use smallvec::smallvec;
 use std::path::PathBuf;
+use std::sync::Arc;
 use string_interner::{Identifier, StringInterner};
 
-type Container<T> = Vec<T>;
+// Note: Arc is used here to allow passes to make cheap copies.
+// Cow would probably be better.
+type Container<T> = Arc<Vec<T>>;
 type BackRefContainer<T> = Container<(NodeId, T)>;
 
 #[derive(Clone, Default, Debug, Hash, PartialEq, Eq)]
@@ -86,7 +89,7 @@ impl Ast {
             location,
             lowered_to: None,
         };
-        let new_node_id = TypedIndex::new(&mut self.nodes, node)
+        let new_node_id = TypedIndex::new(Arc::make_mut(&mut self.nodes), node)
             .expect("Should never have that many AstNodes...");
         assert_eq!(node_id, new_node_id);
         new_node_id
@@ -120,7 +123,7 @@ impl Ast {
         node_id
     }
     pub fn set_root(&mut self, new_root: NodeId) {
-        self.roots.push(new_root);
+        Arc::make_mut(&mut self.roots).push(new_root);
     }
 }
 
@@ -160,6 +163,6 @@ mod tests {
         assert_eq!(ast.ops.len(), 1);
         assert_eq!(ast.calls.len(), 0);
         assert_eq!(ast.definitions.len(), 1);
-        assert_eq!(ast.roots, vec![definition]);
+        assert_eq!(ast.roots, vec![definition].into());
     }
 }
