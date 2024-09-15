@@ -1,5 +1,5 @@
 mod nodes;
-use entity_component_slab::{Slab, ChildSlab};
+use entity_component_slab::{ChildSlab, Slab};
 pub use nodes::*;
 pub mod location;
 mod pretty_printer;
@@ -14,7 +14,6 @@ use short_typed_index::TypedIndex;
 use smallvec::{smallvec, SmallVec};
 use std::path::PathBuf;
 use string_interner::{Identifier, StringInterner};
-
 
 #[derive(Clone, Default, Debug, Hash, PartialEq, Eq)]
 pub struct Ast {
