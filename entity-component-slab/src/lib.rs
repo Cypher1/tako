@@ -27,8 +27,7 @@ pub trait ContainsSlab<T, Archetypes>: World {
     fn get_all(&self) -> &Vec<T>;
     fn get_all_mut(&mut self) -> &mut Vec<T>;
     fn next_internal(&mut self) -> TypedIndex<T> {
-        TypedIndex::next(self.get_all())
-            .expect("Should always be able to allocate a new entity")
+        TypedIndex::next(self.get_all()).expect("Should always be able to allocate a new entity")
     }
     fn alloc_internal(&mut self, value: T) -> TypedIndex<T> {
         TypedIndex::new(self.get_all_mut(), value)
