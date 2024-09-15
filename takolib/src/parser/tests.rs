@@ -26,8 +26,7 @@ fn parse_literal() -> Result<(), TError> {
         vec![(
             NodeId::from_raw(0),
             Literal::Numeric, // ("123".to_string()),
-        )]
-        .into(),
+        )],
         "Should have parsed a number"
     );
 
@@ -50,8 +49,7 @@ fn parse_add_literals() -> Result<(), TError> {
                 NodeId::from_raw(1),
                 Literal::Numeric, // ("2".to_string()),
             )
-        ]
-        .into(),
+        ],
         "Should have parsed a number"
     );
     assert_eq!(ast.ops.len(), 1);
