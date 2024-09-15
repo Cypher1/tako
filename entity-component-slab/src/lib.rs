@@ -1,3 +1,4 @@
+pub use paste::paste;
 use short_typed_index::TypedIndex;
 // TODO(clarity): Use macro for defining and registering each of these.
 
