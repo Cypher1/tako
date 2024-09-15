@@ -15,6 +15,11 @@ pub type Identifier = StrId;
 use static_assertions::assert_eq_size;
 assert_eq_size!(Identifier, [u8; 8]);
 assert_eq_size!([Identifier; 2], [u8; 16]);
+// This means we can store two identifier references in the AST in the same
+// memory as a &str.
+assert_eq_size!([Identifier; 2], &str);
+// And 3 in the space of a String.
+assert_eq_size!([Identifier; 3], String);
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct StringInterner {
