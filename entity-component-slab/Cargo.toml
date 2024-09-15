@@ -1,0 +1,15 @@
+
+[package]
+name = "entity-component-slab"
+version = "0.0.0"
+repository = "https://github.com/cypher1/tako"
+description = "An implementation of a slab or area using typed indexes and entity component system style patterns for data oriented design purposes"
+authors = ["Jay Pratt <jay@skfl.tech>"]
+edition = "2021"
+readme = "README.md"
+license = "MIT"
+keywords = ["entity", "component", "data", "oriented", "design"]
+include = ["src/**/*", "LICENSE.md", "README.md"]
+
+[dependencies]
+short-typed-index = { path = "../short-typed-index", features = [ ] }

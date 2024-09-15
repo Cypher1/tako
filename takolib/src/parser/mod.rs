@@ -5,7 +5,7 @@ mod tests;
 pub mod tokens;
 use crate::ast::location::Location;
 use crate::ast::string_interner::{Identifier, StrId};
-use crate::ast::{Ast, Atom, Call, Contains, Definition, NodeData, NodeId, Op};
+use crate::ast::{Ast, Atom, Call, Definition, NodeData, NodeId, Op};
 use crate::error::TError;
 use better_std::include_strs;
 pub use error::ParseError;
@@ -269,7 +269,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
 
     fn binding_or_arg(&mut self) -> Result<BindingOrValue, TError> {
         let value = self.any_expr()?;
-        let node = &self.ast.get(value);
+        let node = &self.ast[value];
         let location = node.location;
         if let NodeData::Definition(binding) = node.id {
             debug!("{indent}Definition: {binding:?}", indent = self.indent());
@@ -277,14 +277,16 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         }
         if let NodeData::Identifier(ident) = node.id {
             let ty = node.ty;
-            let (node_id, str_id) = self.ast.get_mut(ident);
+            let (node_id, str_id) = self.ast[ident];
             // TODO: Try for an assignment binding...
             let mode = BindingMode::Given;
-            return Ok(BindingOrValue::Identifier(mode, *str_id, *node_id, ty, location));
+            return Ok(BindingOrValue::Identifier(
+                mode, str_id, node_id, ty, location,
+            ));
         }
         debug!(
             "{indent}Arg value: {value:?} => {arg_str}",
-            value = self.ast.get(value).id,
+            value = self.ast[value].id,
             arg_str = self.ast.pretty_node(value),
             indent = self.indent()
         );

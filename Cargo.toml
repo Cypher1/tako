@@ -4,11 +4,13 @@ default-members=[
   "better-std",
   "llamada",
   "short-typed-index",
+  "entity-component-slab",
   "tako",
   "takolib"
 ]
 members = [
     "better-std",
+    "entity-component-slab",
     "llamada",
     "short-typed-index",
     "tako",

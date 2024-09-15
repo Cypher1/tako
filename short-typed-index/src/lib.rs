@@ -1,7 +1,7 @@
 use num_traits::bounds::Bounded;
 use std::marker::PhantomData;
-use std::ops::{Index, IndexMut};
 use std::num::NonZero;
+use std::ops::{Index, IndexMut};
 
 use static_assertions::assert_eq_size;
 assert_eq_size!(TypedIndex<Vec<u8>, u8>, [u8; 1]);
@@ -20,7 +20,7 @@ assert_eq_size!(TypedIndex<Vec<&str>, u32>, [u32; 1]);
 assert_eq_size!(Option<TypedIndex<Vec<&str>, u32>>, [u32; 2]);
 assert_eq_size!(Option<TypedNonZeroIndex<Vec<&str>, u32>>, [u32; 1]);
 
-pub type TypedNonZeroIndex<T, Idx, Container=Vec<T>> = TypedIndex<T, NonZero<Idx>, Container>;
+pub type TypedNonZeroIndex<T, Idx, Container = Vec<T>> = TypedIndex<T, NonZero<Idx>, Container>;
 
 #[repr(transparent)]
 pub struct TypedIndex<T, Idx = u32, Container: Index<usize> = Vec<T>> {
@@ -143,27 +143,24 @@ impl<T, Idx: std::fmt::Debug + std::convert::TryInto<usize> + std::convert::TryF
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
-
     #[test]
     fn indexing() {
-        let vec: Vec<i32> = vec![2,3,5,7,11];
+        let vec: Vec<i32> = vec![2, 3, 5, 7, 11];
         for ind in 0..vec.len() {
             let id: TypedIndex<i32, u32> = TypedIndex::from_raw(ind as u32);
 
             assert_eq!(*id.get(&vec), vec[ind]);
         }
-        assert_eq!(vec, vec![2,3,5,7,11]);
+        assert_eq!(vec, vec![2, 3, 5, 7, 11]);
     }
-
 
     #[test]
     fn mut_indexing() {
-        let mut vec: Vec<i32> = vec![2,3,5,7,11];
+        let mut vec: Vec<i32> = vec![2, 3, 5, 7, 11];
         for ind in 0..vec.len() {
             let id: TypedIndex<i32, u32> = TypedIndex::from_raw(ind as u32);
 
@@ -173,6 +170,6 @@ mod tests {
 
             assert_eq!(*id.get(&vec), vec[ind]);
         }
-        assert_eq!(vec, vec![3,4,6,8,12]);
+        assert_eq!(vec, vec![3, 4, 6, 8, 12]);
     }
 }

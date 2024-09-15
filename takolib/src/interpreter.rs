@@ -1,5 +1,5 @@
 use crate::ast::string_interner::{StrId, StringInterner};
-use crate::ast::{Ast, Call, Contains, Definition, LiteralId, Node, NodeData, NodeId, OpId};
+use crate::ast::{Ast, Call, Definition, LiteralId, Node, NodeData, NodeId, OpId};
 use crate::error::TError;
 use crate::parser::semantics::Literal;
 use crate::parser::tokens::Symbol;
@@ -74,9 +74,9 @@ impl Ctx<'_> {
         match node.id {
             NodeData::NodeRef(_id) => todo!(),
             NodeData::Identifier(ident) => {
-                let (_id, name) = self.ast.get(ident);
-                let Some(value) = self.state.get_binding(name) else {
-                    let Some(name) = self.ast.string_interner.get_str(*name) else {
+                let (_id, name) = self.ast[ident];
+                let Some(value) = self.state.get_binding(&name) else {
+                    let Some(name) = self.ast.string_interner.get_str(name) else {
                         panic!("Not found (unknown name): {name:?}");
                     };
                     panic!("Not found: {name}");
@@ -85,7 +85,7 @@ impl Ctx<'_> {
             }
             NodeData::Atom(_id) => todo!(),
             NodeData::Call(call) => {
-                let (_id, Call { inner, args }) = self.ast.get(call);
+                let (_id, Call { inner, args }) = &self.ast[call];
                 for arg in args.iter() {
                     self.eval(*arg)?;
                 }
@@ -101,7 +101,7 @@ impl Ctx<'_> {
                         arguments: bindings,
                         implementation,
                     },
-                ) = self.ast.get(def);
+                ) = &self.ast[def];
                 match bindings {
                     None => {
                         let value =

@@ -1,5 +1,5 @@
+use crate::ast::Ast;
 use crate::ast::NodeData::Definition;
-use crate::ast::{Ast, Contains};
 use crate::ast::{Call, NodeId, Op};
 use crate::error::TError;
 use crate::parser::tokens::Symbol;
@@ -21,11 +21,11 @@ pub fn desugar(_path: &Path, old_ast: &Ast, _root: Option<NodeId>) -> Result<Ast
             todo!("Unexpected arguments to ';' operator: {op:?}");
         };
         // debug!("desugar Definition: {} ; {}", ast.pretty_node(*left), ast.pretty_node(*right));
-        let left_node = ast.get(*left);
+        let left_node = &ast[*left];
         let location = left_node.location;
         let name = match left_node.id {
             Definition(id) => {
-                let (_node, left_node) = ast.get(id);
+                let (_node, left_node) = &ast[id];
                 left_node.name
             }
             _ => {

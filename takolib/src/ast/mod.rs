@@ -1,7 +1,5 @@
-#[macro_use]
-mod contains;
-pub use contains::*;
 mod nodes;
+use entity_component_slab::Contains;
 pub use nodes::*;
 pub mod location;
 mod pretty_printer;
@@ -9,9 +7,9 @@ pub mod string_interner;
 
 use crate::parser::semantics::Literal;
 use crate::parser::tokens::Symbol;
-use short_typed_index::TypedIndex;
 use location::Location;
 use pretty_printer::{pretty, pretty_node};
+use short_typed_index::TypedIndex;
 use smallvec::smallvec;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -67,7 +65,7 @@ impl Ast {
 impl Ast {
     pub fn make_node<T>(&mut self, value: T, location: Location) -> NodeId
     where
-        Self: Contains<(NodeId, T)>,
+        Self: Contains<(NodeId, T), NodeData>,
     {
         self.make_node_with_id(|_node_id| value, location)
     }
@@ -78,7 +76,7 @@ impl Ast {
         location: Location,
     ) -> NodeId
     where
-        Self: Contains<(NodeId, T)>,
+        Self: Contains<(NodeId, T), NodeData>,
     {
         let node_id =
             TypedIndex::next(&self.nodes).expect("Should never have that many AstNodes..."); // Reserve it...

@@ -1,4 +1,3 @@
-use super::contains::Contains;
 use super::location::Location;
 use super::Ast;
 use crate::ast::string_interner::Identifier;
@@ -6,6 +5,7 @@ use crate::parser::{
     semantics::{BindingMode, Literal},
     tokens::Symbol,
 };
+use entity_component_slab::{make_component, make_world};
 use short_typed_index::TypedIndex;
 use smallvec::SmallVec;
 
@@ -20,7 +20,16 @@ pub struct Node {
     pub lowered_to: Option<usize>,
     pub location: Location,
 }
-make_contains!(nodes, Node, NodeRef, NodeId, unsafe_add_node);
+make_world!(
+    nodes,
+    Node,
+    NodeRef,
+    NodeId,
+    unsafe_add_node,
+    NodeId,
+    NodeData,
+    Ast
+);
 
 // TODO(clarity): Use macro for defining and registering each of these.
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
@@ -45,14 +54,24 @@ pub enum NodeData {
     Warning(WarningId), // Represents a warning.
 }
 
-make_contains!(
+make_component!(
     identifiers,
-    (NodeId, Identifier),
     Identifier,
     IdentifierId,
-    add_identifier
+    add_identifier,
+    NodeId,
+    NodeData,
+    Ast
 );
-make_contains!(literals, (NodeId, Literal), Literal, LiteralId, add_literal);
+make_component!(
+    literals,
+    Literal,
+    LiteralId,
+    add_literal,
+    NodeId,
+    NodeData,
+    Ast
+);
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub enum Warning {
@@ -62,20 +81,44 @@ pub enum Warning {
         ty: NodeId,
     },
 }
-make_contains!(warnings, (NodeId, Warning), Warning, WarningId, add_warning);
+make_component!(
+    warnings,
+    Warning,
+    WarningId,
+    add_warning,
+    NodeId,
+    NodeData,
+    Ast
+);
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Atom {
     pub name: Identifier,
 }
-make_contains!(atoms, (NodeId, Atom), Atom, AtomId, add_atom);
+make_component!(
+    atoms,
+    Atom,
+    AtomId,
+    add_atom,
+    NodeId,
+    NodeData,
+    Ast
+);
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Call {
     pub inner: NodeId,
     pub args: SmallVec<NodeId, 2>,
 }
-make_contains!(calls, (NodeId, Call), Call, CallId, add_call);
+make_component!(
+    calls,
+    Call,
+    CallId,
+    add_call,
+    NodeId,
+    NodeData,
+    Ast
+);
 
 impl Call {
     #[cfg(test)]
@@ -98,7 +141,7 @@ pub struct Op {
     // TODO(perf): Use left: Option<NodeId>, right: Option<NodeId>
     pub args: SmallVec<NodeId, 2>,
 }
-make_contains!(ops, (NodeId, Op), Op, OpId, add_op);
+make_component!(ops, Op, OpId, add_op, NodeId, NodeData, Ast);
 
 impl Op {
     #[must_use]
@@ -114,10 +157,12 @@ pub struct Definition {
     pub arguments: Option<SmallVec<NodeId, 2>>,
     pub implementation: Option<NodeId>,
 }
-make_contains!(
+make_component!(
     definitions,
-    (NodeId, Definition),
     Definition,
     DefinitionId,
-    add_definition
+    add_definition,
+    NodeId,
+    NodeData,
+    Ast
 );
