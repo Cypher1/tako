@@ -7,9 +7,9 @@ pub mod string_interner;
 
 use crate::parser::semantics::Literal;
 use crate::parser::tokens::Symbol;
+use entity_component_slab::{make_component, make_world};
 use location::Location;
 use pretty_printer::{pretty, pretty_node};
-use entity_component_slab::{make_component, make_world};
 use short_typed_index::TypedIndex;
 use smallvec::smallvec;
 use std::path::PathBuf;
@@ -125,29 +125,29 @@ make_component!(definitions, Definition, Ast);
 mod tests {
     use super::*;
     use crate::parser::semantics::BindingMode;
-    use string_interner::StringInterner;
 
     #[test]
     fn can_add_nodes_to_ast() {
-        let mut lits = StringInterner::new();
         let mut ast = Ast::default();
-        let a = lits.register_str("a");
+        let a = ast.string_interner.register_str("a");
         let b = Literal::Numeric; // ("123456789");
-        let a = ast.alloc(a, Location::dummy_for_test());
-        let b = ast.alloc(b, Location::dummy_for_test());
-        let call = Op {
-            op: Symbol::Add,
-            args: smallvec![a, b],
-        };
-        let call = ast.alloc(call, Location::dummy_for_test());
-        let a_prime = lits.register_str("a_prime");
+        let a = ast.add_identifier(a, Location::dummy_for_test());
+        let b = ast.add_literal(b, Location::dummy_for_test());
+        let op = ast.add_op(
+            Op {
+                op: Symbol::Add,
+                args: smallvec![a, b],
+            },
+            Location::dummy_for_test(),
+        );
+        let a_prime = ast.string_interner.register_str("a_prime");
         let definition = Definition {
             mode: BindingMode::Given,
             name: a_prime,
             arguments: None,
-            implementation: Some(call),
+            implementation: Some(op),
         };
-        let definition = ast.alloc(definition, Location::dummy_for_test());
+        let definition = ast.add_definition(definition, Location::dummy_for_test());
         ast.set_root(definition);
         dbg!(&ast);
 
