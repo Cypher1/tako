@@ -26,7 +26,15 @@ make_world!(
     NodeRef,
     unsafe_add_node,
     NodeData,
-    Ast
+    Location,
+    Ast,
+    |archetype, location| Node {
+        id: archetype,
+        equivalents: None,
+        lowered_to: None,
+        ty: None,
+        location,
+    }
 );
 
 // TODO(clarity): Use macro for defining and registering each of these.
@@ -48,20 +56,12 @@ pub enum NodeData {
 
     // Sugar:
     Definition(DefinitionId),
-    NodeRef(NodeId), // Represents an indirection (i.e. when two things have been found to be
+    NodeRef(NodeId), // Represents an indirection (i.e. when two things have been found to be the same)
     Warning(WarningId), // Represents a warning.
 }
 
-make_component!(
-    identifiers,
-    Identifier,
-    Ast
-);
-make_component!(
-    literals,
-    Literal,
-    Ast
-);
+make_component!(identifiers, Identifier, Ast);
+make_component!(literals, Literal, Ast);
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub enum Warning {
@@ -71,32 +71,20 @@ pub enum Warning {
         ty: NodeId,
     },
 }
-make_component!(
-    warnings,
-    Warning,
-    Ast
-);
+make_component!(warnings, Warning, Ast);
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Atom {
     pub name: Identifier,
 }
-make_component!(
-    atoms,
-    Atom,
-    Ast
-);
+make_component!(atoms, Atom, Ast);
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Call {
     pub inner: NodeId,
     pub args: SmallVec<NodeId, 2>,
 }
-make_component!(
-    calls,
-    Call,
-    Ast
-);
+make_component!(calls, Call, Ast);
 
 impl Call {
     #[cfg(test)]
@@ -135,8 +123,4 @@ pub struct Definition {
     pub arguments: Option<SmallVec<NodeId, 2>>,
     pub implementation: Option<NodeId>,
 }
-make_component!(
-    definitions,
-    Definition,
-    Ast
-);
+make_component!(definitions, Definition, Ast);

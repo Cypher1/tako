@@ -82,7 +82,7 @@ impl Ast {
             TypedIndex::next(&self.nodes).expect("Should never have that many AstNodes..."); // Reserve it...
         let value_id = self.alloc((node_id, value(node_id)));
         let node = Node {
-            id: Self::to_node(value_id),
+            id: Self::to_entity(value_id),
             equivalents: None,
             ty: None,
             location,
