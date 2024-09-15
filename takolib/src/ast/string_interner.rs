@@ -24,7 +24,8 @@ assert_eq_size!([Identifier; 3], String);
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct StringInterner {
     // This ensures we can look up the string from the hash.
-    // BUT: We can also merge the hashes without losing any information.
+    // BT: We can also merge the hashes without losing any information.
+    // TODO(perf): Look at alternatives to BTreeMap.
     pub loc2string: Arc<BTreeMap<IndexIntoFile, StrId>>,
     pub strings: Arc<BTreeMap<StrId, String>>,
     pub kw_lambda: StrId,
