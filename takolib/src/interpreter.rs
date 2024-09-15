@@ -33,7 +33,7 @@ pub fn run(path: &Path, ast: &Ast, root: Option<NodeId>) -> Result<Prim, TError>
         root
     } else if ast.roots.len() == 1 {
         ast.roots[0]
-    } else if ast.roots.len() == 0 {
+    } else if ast.roots.is_empty() {
         return Err(TError::InternalError {
             message: format!(
                 "Ambiguous run command: No root found for {path}",
