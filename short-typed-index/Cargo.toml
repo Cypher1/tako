@@ -1,0 +1,15 @@
+[package]
+name = "short-typed-index"
+version = "0.0.0"
+repository = "https://github.com/cypher1/tako"
+description = "An implementation of small typed indexes for data oriented design purposes"
+authors = ["Jay Pratt <jay@skfl.tech>"]
+edition = "2021"
+readme = "README.md"
+license = "MIT"
+keywords = ["data", "oriented", "design"]
+include = ["src/**/*", "LICENSE.md", "README.md"]
+
+[dependencies]
+static_assertions = "1.1"
+num-traits = "0.2"

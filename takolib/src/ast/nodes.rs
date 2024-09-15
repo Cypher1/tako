@@ -6,7 +6,7 @@ use crate::parser::{
     semantics::{BindingMode, Literal},
     tokens::Symbol,
 };
-use crate::primitives::typed_index::TypedIndex;
+use short_typed_index::TypedIndex;
 use smallvec::SmallVec;
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]

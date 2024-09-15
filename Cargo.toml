@@ -3,6 +3,7 @@ resolver = "2"
 default-members=["tako", "takolib", "llamada"]
 members = [
     "better-std",
+    "short-typed-index",
     "takolib",
     "tako",
     "takoweb",
