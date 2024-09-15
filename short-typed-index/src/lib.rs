@@ -143,7 +143,29 @@ mod tests {
 
 
     #[test]
-    fn index() {
+    fn indexing() {
+        let vec: Vec<i32> = vec![2,3,5,7,11];
+        for ind in 0..vec.len() {
+            let id: TypedIndex<i32, u32> = TypedIndex::from_raw(ind as u32);
 
+            assert_eq!(*id.get(&vec), vec[ind]);
+        }
+        assert_eq!(vec, vec![2,3,5,7,11]);
+    }
+
+
+    #[test]
+    fn mut_indexing() {
+        let mut vec: Vec<i32> = vec![2,3,5,7,11];
+        for ind in 0..vec.len() {
+            let id: TypedIndex<i32, u32> = TypedIndex::from_raw(ind as u32);
+
+            assert_eq!(*id.get(&vec), vec[ind]);
+
+            *id.get_mut(&mut vec) += 1;
+
+            assert_eq!(*id.get(&vec), vec[ind]);
+        }
+        assert_eq!(vec, vec![3,4,6,8,12]);
     }
 }
