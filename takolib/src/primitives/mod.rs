@@ -68,6 +68,7 @@ macro_rules! rec(
      };
 );
 
+// use std::sync::Arc;
 type InnerVal = Box<Val>;
 
 #[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Hash)]
