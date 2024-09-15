@@ -11,7 +11,7 @@ use entity_component_slab::{make_component, make_world};
 use location::Location;
 use pretty_printer::{pretty, pretty_node};
 use short_typed_index::TypedIndex;
-use smallvec::smallvec;
+use smallvec::{smallvec, SmallVec};
 use std::path::PathBuf;
 use string_interner::{Identifier, StringInterner};
 
@@ -21,7 +21,7 @@ pub struct Ast {
     // TODO(usability): Add a range tree for mapping from locations to nodes.
     // Abstract syntax tree... forest
     pub filepath: PathBuf,
-    pub roots: Slab<NodeId>,
+    pub roots: SmallVec<NodeId, 10>,
     pub nodes: Slab<Node>,
 
     // Partials:
@@ -93,7 +93,7 @@ impl Ast {
         node_id
     }
     pub fn set_root(&mut self, new_root: NodeId) {
-        std::sync::Arc::make_mut(&mut self.roots).push(new_root);
+        self.roots.push(new_root);
     }
 }
 
@@ -155,6 +155,6 @@ mod tests {
         assert_eq!(ast.ops.len(), 1);
         assert_eq!(ast.calls.len(), 0);
         assert_eq!(ast.definitions.len(), 1);
-        assert_eq!(ast.roots, vec![definition].into());
+        assert_eq!(ast.roots[..], [definition]);
     }
 }
