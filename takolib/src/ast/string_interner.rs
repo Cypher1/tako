@@ -1,8 +1,8 @@
 use super::location::IndexIntoFile;
 use crate::parser::KEYWORDS;
-use short_typed_index::TypedIndex;
 use better_std::as_context;
 use num_traits::Bounded;
+use short_typed_index::TypedIndex;
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
@@ -26,6 +26,8 @@ pub struct StringInterner {
     // This ensures we can look up the string from the hash.
     // BT: We can also merge the hashes without losing any information.
     // TODO(perf): Look at alternatives to BTreeMap.
+    // Consider indexes into
+    // https://docs.rs/arrayvec/0.7.6/src/arrayvec/array_string.rs.html
     pub loc2string: Arc<BTreeMap<IndexIntoFile, StrId>>,
     pub strings: Arc<BTreeMap<StrId, String>>,
     pub kw_lambda: StrId,

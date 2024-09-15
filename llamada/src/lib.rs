@@ -32,7 +32,7 @@ impl<'a, Expr> Clone for BoundExpr<'a, Expr> {
 }
 
 pub struct WithContext<'a, Ctx: ?Sized, T> {
-    // TODO(cleanup): Update to use better_std::InContext
+    // TODO(cleanup): Update to use better_std::as_context
     pub ctx: BoundExpr<'a, Ctx>,
     pub val: &'a T,
 }
