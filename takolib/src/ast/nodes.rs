@@ -1,11 +1,8 @@
 use super::location::Location;
-use crate::ast::string_interner::Identifier;
-use crate::parser::{
-    semantics::BindingMode,
-    tokens::Symbol,
-};
-use smallvec::SmallVec;
 use super::*;
+use crate::ast::string_interner::Identifier;
+use crate::parser::{semantics::BindingMode, tokens::Symbol};
+use smallvec::SmallVec;
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Node {
