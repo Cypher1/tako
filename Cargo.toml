@@ -1,14 +1,20 @@
 [workspace]
 resolver = "2"
-default-members=["tako", "takolib", "llamada"]
+default-members=[
+  "better-std",
+  "llamada",
+  "short-typed-index",
+  "tako",
+  "takolib"
+]
 members = [
     "better-std",
-    "short-typed-index",
-    "takolib",
-    "tako",
-    "takoweb",
-    "takobench",
     "llamada",
+    "short-typed-index",
+    "tako",
+    "takobench",
+    "takolib",
+    "takoweb"
 ]
 
 [workspace.package]
