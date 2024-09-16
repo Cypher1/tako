@@ -180,7 +180,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             );
             return Ok(None);
         };
-        let (_binding_strength, mode) = if let TokenType::Op(op) = self.get_kind(&head) {
+        let mode = if let TokenType::Op(op) = self.get_kind(&head) {
             let Some(mode) = binding_mode_from_op(op) else {
                 trace!("{indent}Not a binding Op", indent = self.indent());
                 return Ok(None);
@@ -190,11 +190,11 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
                 indent = self.indent()
             );
             self.token(); // Consume the mode.
-            (op, mode)
+            mode
         } else {
             // Named arg!
             trace!("{indent}Named arg?", indent = self.indent());
-            (Symbol::OpenParen, BindingMode::Given)
+            BindingMode::Given
         };
         let Ok(tok) = self.token_of_type(TokenType::Ident) else {
             trace!("{indent}No name found for binding", indent = self.indent());
