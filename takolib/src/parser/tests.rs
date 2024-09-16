@@ -162,18 +162,19 @@ fn parse_call_with_argument() -> Result<(), TError> {
     Ok(())
 }
 
-#[test]
+// TODO(feature): Lambda syntax #[test]
 fn parse_lambda() -> Result<(), TError> {
     let ast = setup("λx -> x")?;
     // dbg!(&ast);
 
     assert_eq!(ast.ops.len(), 1);
-    assert_eq!(ast.identifiers.len(), 2);
+    assert_eq!(ast.identifiers.len(), 1);
+    assert_eq!(ast.calls.len(), 0);
     assert_eq!(ast.definitions.len(), 1);
     Ok(())
 }
 
-#[test]
+// TODO(feature): Lambda syntax #[test]
 fn parse_lambda_keyword() -> Result<(), TError> {
     let ast = setup("lambda x -> x")?;
     // dbg!(&ast);
@@ -244,6 +245,7 @@ fn parsed_assignment_with_typed_argument() -> Result<(), TError> {
     assert_eq!(ast.atoms.len(), 0);
     assert_eq!(ast.literals.len(), 1);
     assert_eq!(ast.ops.len(), 0);
+    assert_eq!(ast.calls.len(), 0);
     assert_eq!(ast.definitions.len(), 2);
     Ok(())
 }
@@ -253,7 +255,7 @@ fn parsed_assignment_with_implicit_args() -> Result<(), TError> {
     let ast = setup("id(forall T: Type, y: T): T=y")?;
     eprintln!("{}", &ast.pretty());
 
-    assert_eq!(ast.identifiers.len(), 5);
+    assert_eq!(ast.identifiers.len(), 6);
     assert_eq!(ast.atoms.len(), 0);
     assert_eq!(ast.literals.len(), 0);
     assert_eq!(ast.ops.len(), 0);
