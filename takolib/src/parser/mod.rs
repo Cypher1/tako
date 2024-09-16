@@ -172,7 +172,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         Ok(only_bindings)
     }
 
-    fn call_or_definition(&mut self) -> Result<Option<NodeId>, TError> {
+    fn call_or_definition(&mut self, binding_strength: Symbol) -> Result<Option<NodeId>, TError> {
         let Ok(head) = self.peek().cloned() else {
             trace!(
                 "{indent}Unexpected eof when looking for binding",
@@ -180,7 +180,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             );
             return Ok(None);
         };
-        let (binding_strength, mode) = if let TokenType::Op(op) = self.get_kind(&head) {
+        let (_binding_strength, mode) = if let TokenType::Op(op) = self.get_kind(&head) {
             let Some(mode) = binding_mode_from_op(op) else {
                 trace!("{indent}Not a binding Op", indent = self.indent());
                 return Ok(None);
@@ -202,7 +202,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         };
         let name = self.name(tok);
         let location = tok.location();
-        let arguments = self.arguments();
+        let arguments = self.arguments()?;
         let ty = if self.has_type().is_ok() {
             trace!("{indent}HasType started", indent = self.indent());
             let ty = self.expr(Symbol::HasType)?;
@@ -211,53 +211,51 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
         } else {
             None
         };
-        if let Ok(arguments) = arguments {
-            if let Ok(assignment) = self.assignment_op(binding_strength) {
-                let op = op_from_assign_op(assignment);
-                debug!("Start binding definition parse {:?}", name);
-                let def_impl = self.any_expr()?;
-                debug!("Binding value is {:?}", def_impl);
-                let implementation = Some(if let Some(op) = op {
-                    let ident = self.identifier(name, location);
-                    self.ast.add_op(
-                        Op {
-                            op,
-                            args: smallvec![ident, def_impl],
-                        },
-                        location,
-                    )
-                } else {
-                    def_impl
-                });
-                let arguments = if let Some(arguments) = arguments {
-                    Some(self.arguments_as_bindings(arguments, location)?)
-                } else {
-                    None
-                };
-                let def = self.ast.add_definition(
-                    Definition {
-                        mode,
-                        name,
-                        arguments,
-                        implementation,
+        if let Ok(assignment) = self.assignment_op(binding_strength) {
+            let op = op_from_assign_op(assignment);
+            debug!("Start binding definition parse {:?}", name);
+            let def_impl = self.any_expr()?;
+            debug!("Binding value is {:?}", def_impl);
+            let implementation = Some(if let Some(op) = op {
+                let ident = self.identifier(name, location);
+                self.ast.add_op(
+                    Op {
+                        op,
+                        args: smallvec![ident, def_impl],
                     },
                     location,
-                );
-                if let Some(ty) = ty {
-                    self.ast.add_annotation(def, ty);
-                }
-                return Ok(Some(def));
+                )
+            } else {
+                def_impl
+            });
+            let arguments = if let Some(arguments) = arguments {
+                Some(self.arguments_as_bindings(arguments, location)?)
+            } else {
+                None
+            };
+            let def = self.ast.add_definition(
+                Definition {
+                    mode,
+                    name,
+                    arguments,
+                    implementation,
+                },
+                location,
+            );
+            if let Some(ty) = ty {
+                self.ast.add_annotation(def, ty);
             }
-            if let Some(arguments) = arguments {
-                let inner = self.identifier(name, location);
-                trace!("{indent}Add call", indent = self.indent());
-                let args = self.bindings_as_values(arguments)?.into();
-                let call = self.ast.add_call(Call { inner, args }, location);
-                if let Some(ty) = ty {
-                    return Ok(Some(self.ast.add_annotation(call, ty)));
-                }
-                return Ok(Some(call));
+            return Ok(Some(def));
+        }
+        if let Some(arguments) = arguments {
+            let inner = self.identifier(name, location);
+            trace!("{indent}Add call", indent = self.indent());
+            let args = self.bindings_as_values(arguments)?.into();
+            let call = self.ast.add_call(Call { inner, args }, location);
+            if let Some(ty) = ty {
+                return Ok(Some(self.ast.add_annotation(call, ty)));
             }
+            return Ok(Some(call));
         }
         trace!("{indent}Add ident", indent = self.indent());
         let ident = self.identifier(name, location);
@@ -532,7 +530,7 @@ impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
             return Ok(left);
         }
 
-        if let Some(expr) = self.call_or_definition()? {
+        if let Some(expr) = self.call_or_definition(binding)? {
             debug!(
                 "{indent}Binding? {}",
                 self.ast.pretty_node(expr),
@@ -672,10 +670,10 @@ pub fn parse(filepath: &Path, contents: &str, tokens: &[Token]) -> Result<Ast, T
         tokens: tokens.iter().peekable(),
         depth: std::rc::Rc::new(()),
     };
-    if !tokens.is_empty() {
+    if tokens.is_empty() {
         // Support empty files!
         let roots = state.file()?;
-        if !roots.is_empty() {
+        if roots.is_empty() {
             // Use the last root?
             state.ast.set_root(roots[roots.len() - 1]);
         }
