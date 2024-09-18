@@ -123,8 +123,6 @@ enum Symbol {
     IntegerMulHole,
     Add,
     IntegerAddHole,
-    // TODO: Remove the need for this.
-    SIZE, // NOT A SYMBOL NEEDED TO constexpr determine the size of the enum.
 }
 
 fn classify_char(ch: char) -> Option<Symbol> {
@@ -222,10 +220,9 @@ const EMPTY_ROW: Vec<Entry> = Vec::new();
 const DEFAULT_TABLE: [Vec<Entry>; Symbol::COUNT] = [EMPTY_ROW; Symbol::COUNT];
 
 fn run_test(input: &str) {
-    // TODO: Ideally this would be const / compile time.
     let symbols: Vec<Symbol> = Symbol::iter().collect();
-    for sym in symbols {
-        println!("SYMBOL: {sym:?}");
+    for symbol in symbols {
+        println!("SYMBOL: {:?}", symbol);
     }
     for rule in RULES {
         println!("RULE:   {rule:?}");
@@ -255,6 +252,7 @@ fn run_test(input: &str) {
     };
     for rule in RULES {
         run_rule(&mut state, &rule);
+        println!();
     }
     // println!("{entries:#?}");
     todo!();
