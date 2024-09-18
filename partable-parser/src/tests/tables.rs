@@ -1,6 +1,12 @@
-#![allow(unused)]
-
-use strum_macros::EnumIter;
+use strum::{EnumCount, IntoEnumIterator};
+use strum_macros::{EnumCount, EnumIter};
+fn padded<T: std::fmt::Debug>(d: T, s: usize) -> String {
+    let content = format!("{:?}", d);
+    format!(
+        "{content}{p}",
+        p = " ".repeat(s.saturating_sub(content.len()))
+    )
+}
 
 /*
 
@@ -12,19 +18,20 @@ use strum_macros::EnumIter;
 - This requires that:
     - Every non-deterministic choice is either:
         - A Noop (waiting on further input)
-        - Produces an update that can be performed out of order (i.e. other steps 
+        - Produces an update that can be performed out of order (i.e. other steps
 
 
-    Can Lex but we shouldn't count the cost because we're not for Pratt & RD
 
     Parllelizable for systems (toposort) & only run later rules on new tokens
     Cost for each update, O(nm) (where n is the size of the update and m is the size of the pre-existing data).
 
-# Performance estimates:
+# Performance
+    - Can Lex but we shouldn't count the cost because we're not for Pratt & RD
 
-    Pratt: 6+2*stack
-    RD: 13+6*stack
-    PT: 36
+    - Estimates:
+        Pratt: 6+2*stack
+        RD: 13+6*stack
+        PT: 36
 
 
 # Example
@@ -35,7 +42,7 @@ use strum_macros::EnumIter;
     (1+20)*3
     ODADDCMD
 
-    Entries are (start, end, type, parent)
+    Entries are (range, type, parent)
 
     Digits = [1,2,0,3]
     Ops = [+,*]
@@ -50,7 +57,7 @@ use strum_macros::EnumIter;
 
     I = [1,20,3]
     IMH=[]
-    IPH=[]
+    IAH=[]
 
     Parsing
 
@@ -60,10 +67,10 @@ use strum_macros::EnumIter;
     ( I+  I )* I Merge(IMH,I => I)
     .............
 
-    ( I+  I)*I Right(I+ => IPH)
-    (IPH I)*I
+    ( I+  I)*I Right(I+ => IAH)
+    (IAH I)*I
 
-    (IPH I)*I  Merge(IPH,I => I)
+    (IAH I)*I  Merge(IAH,I => I)
     ( I    )*I
 
     ( I ) *I Merge(O,!C => O)
@@ -86,19 +93,17 @@ use strum_macros::EnumIter;
 
 */
 
-/// Library stuff
-#[repr(u8)]
-#[derive(Debug, Copy, Clone)]
-enum Merge {
-    Right = 0b01,
-    Left = 0b10,
-    Paste = 0b11,
+#[derive(Debug, Default, Copy, Clone, PartialEq, Hash, Eq)]
+struct Entry {
+    kind: Symbol,
+    start: usize,
+    end: usize,
+    parent: Option<usize>,
 }
 
-
-/// Example Language stuff
+// Example Language stuff
 #[repr(u8)]
-#[derive(Debug, Default, Copy, Clone, PartialEq, Hash, Eq)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Hash, Eq, EnumIter)]
 enum Op {
     #[default]
     Noop,
@@ -107,164 +112,157 @@ enum Op {
 }
 
 #[repr(u8)]
-#[derive(Default, Debug, Copy, Clone, PartialEq, Hash, Eq, EnumIter)]
+#[derive(Default, Debug, EnumCount, Copy, Clone, PartialEq, Hash, Eq, EnumIter)]
 enum Symbol {
     #[default]
     Digits,
-    //Open, Close,
-    Raw(Op),
-    Prefix(Op),
-    // Suffix(Op),
-    SubExpr(Op),
+    Integer,
+    OpenParen,
+    CloseParen,
+    Mul,
+    IntegerMulHole,
+    Add,
+    IntegerAddHole,
+    // TODO: Remove the need for this.
+    SIZE, // NOT A SYMBOL NEEDED TO constexpr determine the size of the enum.
 }
 
 fn classify_char(ch: char) -> Option<Symbol> {
     let ty = match ch {
         '0'..'9' => Symbol::Digits,
-        '+' => Symbol::Raw(Op::Add),
-        '*' => Symbol::Raw(Op::Mul),
+        '+' => Symbol::Add,
+        '*' => Symbol::Mul,
+        '(' => Symbol::OpenParen,
+        ')' => Symbol::CloseParen,
         _ => return None,
     };
     Some(ty)
 }
 
-
-
-fn promote(e: Symbol) -> Option<Symbol> {
-    let promotion = match e {
-        Symbol::Digits => Symbol::SubExpr(Op::Mul),
-        //Symbol::Prefix(Op::Add) => Symbol::SubExpr(Op::Add),
-        Symbol::SubExpr(Op::Mul) => Symbol::SubExpr(Op::Add),
-        _ => return None,
-    };
-    return Some(promotion);
+#[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]
+enum SymbolPattern {
+    Eqs(Symbol),
+    Not(Symbol),
 }
 
-fn merge(l: Symbol, r: Symbol) -> Option<(Merge, Symbol)> {
-    let res = match l {
-        Symbol::Prefix(_) => return None,
-        Symbol::Digits => match r {
-            Symbol::Digits => (Merge::Paste, Symbol::Digits),
-            _ => return None,
-        }
-        Symbol::Raw(op) => match r {
-            Symbol::SubExpr(sub_op) if op == sub_op => (Merge::Left, Symbol::Prefix(op)),
-            _ => return None,
-        },
-        Symbol::SubExpr(op) => match r {
-            Symbol::Prefix(sub_op) if op == sub_op => (Merge::Right, Symbol::SubExpr(op)),
-            _ => return None,
-        }
-    };
-    Some(res)
+#[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]
+enum Rule {
+    Paste {
+        left: SymbolPattern,
+        right: SymbolPattern,
+        out: Symbol,
+    },
+    Merge {
+        left: SymbolPattern,
+        right: SymbolPattern,
+        out: Symbol,
+    },
+    Promote {
+        from: SymbolPattern,
+        to: Symbol,
+    },
 }
 
-fn padded<T: std::fmt::Debug>(d: T, s: usize) -> String {
-    let content = format!("{:?}", d);
-    format!("{content}{p}", p=" ".repeat(s.saturating_sub(content.len())))
+use SymbolPattern::*;
+
+impl Rule {
+    const fn paste(left: SymbolPattern, right: SymbolPattern, out: Symbol) -> Self {
+        Self::Paste { left, right, out }
+    }
+    const fn merge(left: SymbolPattern, right: SymbolPattern, out: Symbol) -> Self {
+        Self::Merge { left, right, out }
+    }
+    const fn promote(from: SymbolPattern, to: Symbol) -> Self {
+        Self::Promote { from, to }
+    }
+}
+
+const RULES: &[Rule] = &[
+    Rule::paste(Eqs(Symbol::Digits), Eqs(Symbol::Digits), Symbol::Digits),
+    Rule::promote(Eqs(Symbol::Digits), Symbol::Integer),
+    Rule::merge(
+        Eqs(Symbol::Integer),
+        Eqs(Symbol::Mul),
+        Symbol::IntegerMulHole,
+    ),
+    Rule::merge(
+        Eqs(Symbol::IntegerMulHole),
+        Eqs(Symbol::Integer),
+        Symbol::Integer,
+    ),
+    Rule::merge(
+        Eqs(Symbol::Integer),
+        Eqs(Symbol::Add),
+        Symbol::IntegerAddHole,
+    ),
+    Rule::merge(
+        Eqs(Symbol::IntegerAddHole),
+        Eqs(Symbol::Integer),
+        Symbol::Integer,
+    ),
+    Rule::merge(
+        Eqs(Symbol::OpenParen),
+        Not(Symbol::CloseParen),
+        Symbol::Integer,
+    ),
+];
+
+#[derive(Debug, Default, Clone, PartialEq, Hash, Eq)]
+struct State {
+    entries: Vec<Entry>,
+    table: [Vec<Entry>; Symbol::COUNT],
+}
+
+fn run_rule(state: &State, rule: &'static Rule) {
+    println!("{state:?}");
+    println!("{rule:?}");
+}
+
+const EMPTY_ROW: Vec<Entry> = Vec::new();
+const DEFAULT_TABLE: [Vec<Entry>; Symbol::COUNT] = [EMPTY_ROW; Symbol::COUNT];
+
+fn run_test(input: &str) {
+    // TODO: Ideally this would be const / compile time.
+    let symbols: Vec<Symbol> = Symbol::iter().collect();
+    for sym in symbols {
+        println!("SYMBOL: {sym:?}");
+    }
+    for rule in RULES {
+        println!("RULE:   {rule:?}");
+    }
+
+    println!("START\n");
+    println!("{input}");
+
+    let mut entries: Vec<Entry> = vec![];
+
+    for (start, ch) in input.chars().enumerate() {
+        let Some(kind) = classify_char(ch) else {
+            todo!("DID NOT HANDLE {ch:?}");
+        };
+        let entry = Entry {
+            kind,
+            start,
+            end: start+1,
+            parent: None,
+        };
+        entries.push(entry);
+    }
+
+    let mut state = State {
+        entries,
+        table: DEFAULT_TABLE.clone(),
+    };
+    for rule in RULES {
+        run_rule(&mut state, &rule);
+    }
+    // println!("{entries:#?}");
+    todo!();
 }
 
 #[test]
 fn table_test() {
-    let initial = [
-      //  Symbol::Raw(Op::Add),
-      //  Symbol::Digits,
-      //  Symbol::Digits,
-      //  Symbol::Raw(Op::Add),
-      //  Symbol::Digits,
-        Symbol::Digits,
-        Symbol::Raw(Op::Mul),
-      //  Symbol::Digits,
-      //  Symbol::Digits,
-      //  Symbol::Digits,
-        Symbol::Digits,
-    ].to_vec();
+    let initial = "(1+20)*3";
 
-    println!("\n{initial:?} START");
-
-    let mut seen = vec![];
-    let mut pool = vec![initial];
-    let mut solutions = vec![];
-
-    while let Some(toks) = pool.pop() {
-        let mut terminal = true;
-        let mut merged = false;
-        let mut new_candidate = |ty: &str, toks: &Vec<Symbol>, candidate: Vec<Symbol>| {
-            let has_seen = seen.contains(&candidate);
-            println!("{toks:?} => {ty} {candidate:?}{s}", s=if has_seen {" DONE"} else {""});
-            if has_seen {
-                return;
-            }
-            seen.push(candidate.clone());
-            pool.push(candidate);
-            terminal = false;
-
-        };
-        for (pos, win) in toks.windows(2).enumerate() {
-            let [l, r] = win else { unreachable!() };
-            let m = merge(*l, *r);
-            /*println!(
-                "{pos:3?}: {l} vs {r} => {m}",
-                l=padded(l, 10),
-                r=padded(r, 10),
-                m=padded(m, 10),
-            );*/
-
-            let Some((m, new)) = m else { continue };
-
-            // New candidate
-            let candidate = [&toks[0..pos], &[new][..], &toks[(pos+2)..]].concat();
-            new_candidate(&format!("{m:?}"), &toks, candidate);
-            merged = true;
-        }
-        
-        // Promotions!
-        if merged {
-            continue;
-        }
-
-        match toks[..] {
-            [] => {},
-            [a] => {
-                if let Some(new) = promote(a) {
-                    new_candidate("pro1", &toks, vec![new]);
-                }
-            }
-            [a, b] => {
-                if let Some(new) = promote(a) {
-                    new_candidate("pro2.0", &toks, vec![new, b]);
-                }
-                if let Some(new) = promote(b) {
-                    new_candidate("pro2.1", &toks, vec![a, new]);
-                }
-            }
-            [a, b, c] => {
-                if let Some(new) = promote(a) {
-                    new_candidate("pro3.0", &toks, vec![new, b, c]);
-                }
-                if let Some(new) = promote(c) {
-                    new_candidate("pro3.2", &toks, vec![a, b, new]);
-                }
-            }
-            _ => {}
-        };
-
-        for (pos, win) in toks.windows(3).enumerate() {
-            let [a, b, c] = win else { unreachable!() };
-            let Some(new) = promote(*b) else { continue };
-
-            let candidate = [&toks[0..pos], &[*a, new, *c][..], &toks[(pos+3)..]].concat();
-            new_candidate("pro", &toks, candidate);
-        }
-
-        if terminal {
-            solutions.push(toks);
-        }
-    }
-    println!("DONE");
-
-    for sol in &solutions {
-        println!("{sol:?}");
-    }
-    assert_eq!(solutions.len(), 1);
+    run_test(initial);
 }
