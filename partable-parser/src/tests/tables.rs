@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use strum_macros::EnumIter;
 
 /*
@@ -126,7 +128,8 @@ fn classify_char(ch: char) -> Option<Symbol> {
     Some(ty)
 }
 
-#[no_mangle]
+
+
 fn promote(e: Symbol) -> Option<Symbol> {
     let promotion = match e {
         Symbol::Digits => Symbol::SubExpr(Op::Mul),
@@ -137,7 +140,6 @@ fn promote(e: Symbol) -> Option<Symbol> {
     return Some(promotion);
 }
 
-#[no_mangle]
 fn merge(l: Symbol, r: Symbol) -> Option<(Merge, Symbol)> {
     let res = match l {
         Symbol::Prefix(_) => return None,
@@ -163,7 +165,7 @@ fn padded<T: std::fmt::Debug>(d: T, s: usize) -> String {
 }
 
 #[test]
-fn main() {
+fn table_test() {
     let initial = [
       //  Symbol::Raw(Op::Add),
       //  Symbol::Digits,
