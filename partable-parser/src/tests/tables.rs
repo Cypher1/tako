@@ -138,82 +138,98 @@ fn classify_char(ch: char) -> Option<Symbol> {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]
-enum SymbolPattern {
-    Eqs(Symbol),
-    Not(Symbol),
+enum Parent {
+    Both, // Merge/Paste, update symbol type
+    Left, // Left is new parent, update symbol type
+    Right, // Right is new parent, update symbol type
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]
 enum Rule {
-    Paste {
-        left: SymbolPattern,
-        right: SymbolPattern,
-        out: Symbol,
-    },
     Merge {
-        left: SymbolPattern,
-        right: SymbolPattern,
+        left: Symbol,
+        right: Symbol,
         out: Symbol,
+        Parent: Parent,
     },
     Promote {
-        from: SymbolPattern,
+        from: Symbol,
         to: Symbol,
     },
 }
 
-use SymbolPattern::*;
+use Symbol::*;
 
 impl Rule {
-    const fn paste(left: SymbolPattern, right: SymbolPattern, out: Symbol) -> Self {
-        Self::Paste { left, right, out }
+    const fn paste(left: Symbol, right: Symbol, out: Symbol) -> Self {
+        Self::Merge { left, right, out, Parent: Parent::Paste }
     }
-    const fn merge(left: SymbolPattern, right: SymbolPattern, out: Symbol) -> Self {
-        Self::Merge { left, right, out }
+    const fn left(left: Symbol, right: Symbol, out: Symbol) -> Self {
+        Self::Merge { left, right, out, Parent: Parent::ParentUpdateLeft }
     }
-    const fn promote(from: SymbolPattern, to: Symbol) -> Self {
+    const fn right(left: Symbol, right: Symbol, out: Symbol) -> Self {
+        Self::Merge { left, right, out, Parent: Parent::ParentUpdateRight }
+    }
+    const fn promote(from: Symbol, to: Symbol) -> Self {
         Self::Promote { from, to }
     }
 }
 
 const RULES: &[Rule] = &[
-    Rule::paste(Eqs(Symbol::Digits), Eqs(Symbol::Digits), Symbol::Digits),
-    Rule::promote(Eqs(Symbol::Digits), Symbol::Integer),
-    Rule::merge(
-        Eqs(Symbol::Integer),
-        Eqs(Symbol::Mul),
+    Rule::paste(Symbol::Digits, Symbol::Digits, Symbol::Digits),
+    Rule::promote(Symbol::Digits, Symbol::Integer),
+    Rule::right(
+        Symbol::Integer,
+        Symbol::Mul,
         Symbol::IntegerMulHole,
     ),
-    Rule::merge(
-        Eqs(Symbol::IntegerMulHole),
-        Eqs(Symbol::Integer),
+    Rule::left(
+        Symbol::IntegerMulHole,
+        Symbol::Integer,
         Symbol::Integer,
     ),
-    Rule::merge(
-        Eqs(Symbol::Integer),
-        Eqs(Symbol::Add),
+    Rule::right(
+        Symbol::Integer,
+        Symbol::Add,
         Symbol::IntegerAddHole,
     ),
-    Rule::merge(
-        Eqs(Symbol::IntegerAddHole),
-        Eqs(Symbol::Integer),
+    Rule::left(
+        Symbol::IntegerAddHole),
+        Symbol::Integer,
         Symbol::Integer,
     ),
-    Rule::merge(
-        Eqs(Symbol::OpenParen),
-        Not(Symbol::CloseParen),
+    //Rule::left(
+        //Symbol::OpenParen,
+        //<AnyNoneClose>,
+        //Symbol::OpenParen,
+    //),
+    Rule::paste(
+        Symbol::OpenParenn,
+        Symbol::CloseParen,
         Symbol::Integer,
     ),
 ];
 
 #[derive(Debug, Default, Clone, PartialEq, Hash, Eq)]
 struct State {
-    entries: Vec<Entry>,
     table: [Vec<Entry>; Symbol::COUNT],
 }
 
 fn run_rule(state: &State, rule: &'static Rule) {
     println!("{state:?}");
     println!("{rule:?}");
+    
+    match rule {
+        Rule::Merge { Parent: Parent::Paste, left, right, out } => {
+            eprintln!("{rule:?} paste");
+            let ls = state.table[left.kind as usize];
+            let rs = state.table[right.kind as usize];
+            println!("{ls:?}");
+            println!("{rs:?}");
+            println!("{out:?}");
+        }
+        _ => todo!(),
+    }
 }
 
 const EMPTY_ROW: Vec<Entry> = Vec::new();
@@ -232,6 +248,7 @@ fn run_test(input: &str) {
     println!("{input}");
 
     let mut entries: Vec<Entry> = vec![];
+    let mut table = DEFAULT_TABLE.clone();
 
     for (start, ch) in input.chars().enumerate() {
         let Some(kind) = classify_char(ch) else {
@@ -243,18 +260,18 @@ fn run_test(input: &str) {
             end: start+1,
             parent: None,
         };
-        entries.push(entry);
+        entries.push(entry.clone());
+        table[kind as usize].push(entry);
     }
+    println!("{entries:#?}");
 
     let mut state = State {
-        entries,
-        table: DEFAULT_TABLE.clone(),
+        table,
     };
     for rule in RULES {
         run_rule(&mut state, &rule);
         println!();
     }
-    // println!("{entries:#?}");
     todo!();
 }
 
