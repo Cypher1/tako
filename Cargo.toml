@@ -12,6 +12,7 @@ members = [
     "better-std",
     "entity-component-slab",
     "llamada",
+    "partable-parser",
     "short-typed-index",
     "tako",
     "takobench",
