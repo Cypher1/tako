@@ -37,7 +37,8 @@ pub fn add(left: u64, right: u64) -> u64 {
 mod tests {
     use super::*;
     mod simple;
-    mod strat;
+    // mod bottom_up_merging;
+    mod tables;
 
     #[test]
     fn it_works() {
