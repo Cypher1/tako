@@ -1,14 +1,11 @@
 use strum::{EnumCount, IntoEnumIterator};
 use strum_macros::{EnumCount, EnumIter};
-fn padded<T: std::fmt::Debug>(d: T, s: usize) -> String {
-    let content = format!("{:?}", d);
-    format!(
-        "{content}{p}",
-        p = " ".repeat(s.saturating_sub(content.len()))
-    )
-}
-
 /*
+ *
+# Par-table
+
+The result of a parser to parse parts in parallel tables:
+    a part-able par-table parse-table!
 
 # Partable approach
 
@@ -42,7 +39,7 @@ fn padded<T: std::fmt::Debug>(d: T, s: usize) -> String {
     (1+20)*3
     ODADDCMD
 
-    Entries are (range, type, parent)
+    Entries are (range, type, ?parent)
 
     Digits = [1,2,0,3]
     Ops = [+,*]
@@ -98,7 +95,6 @@ struct Entry {
     kind: Symbol,
     start: usize,
     end: usize,
-    parent: Option<usize>,
 }
 
 // Example Language stuff
@@ -162,7 +158,8 @@ enum Rule {
 }
 
 impl Rule {
-    // TODO: These could be const functions.
+    // TODO: These could be const functions if `into` was const.
+    // This is waiting on `~const Into<_>` stabilization.
 
     fn paste<L: Into<Pattern>, R: Into<Pattern>>(left: L, right: R, out: Symbol) -> Self {
         Self::Merge { left: left.into(), right: right.into(), out, mode: ReplaceMode::Both }
@@ -222,20 +219,51 @@ struct State {
     table: [Vec<Entry>; Symbol::COUNT],
 }
 
-fn run_rule(state: &State, rule: &Rule) {
-    println!("{state:?}");
-    println!("{rule:?}");
-    
+impl std::ops::Index<&Symbol> for State {
+    type Output = Vec<Entry>;
+
+    fn index<'a>(&'a self, row: &Symbol) -> &'a Vec<Entry> {
+        &self.table[*row as usize]
+    }
+}
+
+impl std::ops::IndexMut<&Symbol> for State {
+    fn index_mut<'a>(&'a mut self, row: &Symbol) -> &'a mut Vec<Entry> {
+        &mut self.table[*row as usize]
+    }
+}
+
+fn run_rule(state: &mut State, rule: &Rule) {
+    // println!("{state:?}");
     match rule {
-        Rule::Merge { mode: ReplaceMode::Both, left, right, out } => {
-            eprintln!("{rule:?} paste");
-            let ls = &state.table[*left as usize];
-            let rs = &state.table[*right as usize];
-            println!("{ls:?}");
-            println!("{rs:?}");
-            println!("{out:?}");
+        Rule::Merge { mode, left, right, out } => {
+            eprintln!("{left:?} {right:?} => {mode:?} => {out:?}");
+            for li in 0..state[left].len() {
+                let l = state[left][li];
+                for ri in 0..state[right].len() {
+                    let r = state[right][ri];
+                    if l.end != r.start {
+                        continue
+                    }
+                    println!(
+                        "{l_start:?}..{l_end:?}@{li:?} {r_start:?}..{r_end:?}@{ri:?}",
+                        l_start =  l.start,
+                        l_end =  l.end,
+                        r_start =  r.start,
+                        r_end =  r.end,
+                    );
+                    
+                    let new = Entry {
+                        kind: *out,
+                        start: l.start,
+                        end: r.end,
+                    };
+
+                    // Replace the old nodes, swapping the second out if necessary.
+                }
+            }
         }
-        _ => todo!(),
+        rule => todo!("Unhandled rule {rule:?}"),
     }
 }
 
@@ -266,12 +294,11 @@ fn run_test(input: &str) {
             kind,
             start,
             end: start+1,
-            parent: None,
         };
         entries.push(entry.clone());
         table[kind as usize].push(entry);
     }
-    println!("{entries:#?}");
+    // println!("{entries:#?}");
 
     let mut state = State {
         table,
@@ -280,7 +307,7 @@ fn run_test(input: &str) {
         run_rule(&mut state, &rule);
         println!();
     }
-    todo!();
+    todo!("TESTING");
 }
 
 #[test]
