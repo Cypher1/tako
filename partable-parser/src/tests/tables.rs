@@ -138,92 +138,99 @@ fn classify_char(ch: char) -> Option<Symbol> {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]
-enum Parent {
-    Both, // Merge/Paste, update symbol type
-    Left, // Left is new parent, update symbol type
-    Right, // Right is new parent, update symbol type
+enum ReplaceMode {
+    Both,
+    Left,
+    Right,
 }
+
+type Pattern = Symbol;
 
 #[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]
 enum Rule {
     Merge {
-        left: Symbol,
-        right: Symbol,
+        left: Pattern,
+        right: Pattern,
         out: Symbol,
-        Parent: Parent,
+        mode: ReplaceMode,
     },
     Promote {
-        from: Symbol,
+        from: Pattern,
         to: Symbol,
     },
+    // TODO: Consider rules to inject missing stuff and produce a warning
 }
-
-use Symbol::*;
 
 impl Rule {
-    const fn paste(left: Symbol, right: Symbol, out: Symbol) -> Self {
-        Self::Merge { left, right, out, Parent: Parent::Paste }
+    // TODO: These could be const functions.
+
+    fn paste<L: Into<Pattern>, R: Into<Pattern>>(left: L, right: R, out: Symbol) -> Self {
+        Self::Merge { left: left.into(), right: right.into(), out, mode: ReplaceMode::Both }
     }
-    const fn left(left: Symbol, right: Symbol, out: Symbol) -> Self {
-        Self::Merge { left, right, out, Parent: Parent::ParentUpdateLeft }
+    fn left<L: Into<Pattern>, R: Into<Pattern>>(left: L, right: R, out: Symbol) -> Self {
+        Self::Merge { left: left.into(), right: right.into(), out, mode: ReplaceMode::Left }
     }
-    const fn right(left: Symbol, right: Symbol, out: Symbol) -> Self {
-        Self::Merge { left, right, out, Parent: Parent::ParentUpdateRight }
+    fn right<L: Into<Pattern>, R: Into<Pattern>>(left: L, right: R, out: Symbol) -> Self {
+        Self::Merge { left: left.into(), right: right.into(), out, mode: ReplaceMode::Right }
     }
-    const fn promote(from: Symbol, to: Symbol) -> Self {
-        Self::Promote { from, to }
+    fn promote<F: Into<Pattern>>(from: F, to: Symbol) -> Self {
+        Self::Promote { from: from.into(), to }
     }
 }
 
-const RULES: &[Rule] = &[
-    Rule::paste(Symbol::Digits, Symbol::Digits, Symbol::Digits),
-    Rule::promote(Symbol::Digits, Symbol::Integer),
-    Rule::right(
-        Symbol::Integer,
-        Symbol::Mul,
-        Symbol::IntegerMulHole,
-    ),
-    Rule::left(
-        Symbol::IntegerMulHole,
-        Symbol::Integer,
-        Symbol::Integer,
-    ),
-    Rule::right(
-        Symbol::Integer,
-        Symbol::Add,
-        Symbol::IntegerAddHole,
-    ),
-    Rule::left(
-        Symbol::IntegerAddHole),
-        Symbol::Integer,
-        Symbol::Integer,
-    ),
-    //Rule::left(
-        //Symbol::OpenParen,
-        //<AnyNoneClose>,
-        //Symbol::OpenParen,
-    //),
-    Rule::paste(
-        Symbol::OpenParenn,
-        Symbol::CloseParen,
-        Symbol::Integer,
-    ),
-];
+// TODO: This could be a const.
+fn get_rules() -> Vec<Rule> {
+    vec![
+        Rule::paste(Symbol::Digits, Symbol::Digits, Symbol::Digits),
+        Rule::promote(Symbol::Digits, Symbol::Integer),
+        Rule::right(
+            Symbol::Integer,
+            Symbol::Mul,
+            Symbol::IntegerMulHole,
+        ),
+        Rule::left(
+            Symbol::IntegerMulHole,
+            Symbol::Integer,
+            Symbol::Integer,
+        ),
+        Rule::right(
+            Symbol::Integer,
+            Symbol::Add,
+            Symbol::IntegerAddHole,
+        ),
+        Rule::left(
+            Symbol::IntegerAddHole,
+            Symbol::Integer,
+            Symbol::Integer,
+        ),
+        /*
+        Rule::left(
+            Symbol::OpenParen,
+            Pattern::Not(Symbol::CloseParen),
+            Symbol::OpenParen,
+        ),*/
+        Rule::paste(
+            Symbol::OpenParen,
+            Symbol::CloseParen,
+            Symbol::Integer,
+        ),
+    ]
+}
 
 #[derive(Debug, Default, Clone, PartialEq, Hash, Eq)]
 struct State {
     table: [Vec<Entry>; Symbol::COUNT],
 }
 
-fn run_rule(state: &State, rule: &'static Rule) {
+fn run_rule(state: &State, rule: &Rule) {
     println!("{state:?}");
     println!("{rule:?}");
     
     match rule {
-        Rule::Merge { Parent: Parent::Paste, left, right, out } => {
+        Rule::Merge { mode: ReplaceMode::Both, left, right, out } => {
             eprintln!("{rule:?} paste");
-            let ls = state.table[left.kind as usize];
-            let rs = state.table[right.kind as usize];
+            let ls = &state.table[*left as usize];
+            let rs = &state.table[*right as usize];
             println!("{ls:?}");
             println!("{rs:?}");
             println!("{out:?}");
@@ -237,10 +244,11 @@ const DEFAULT_TABLE: [Vec<Entry>; Symbol::COUNT] = [EMPTY_ROW; Symbol::COUNT];
 
 fn run_test(input: &str) {
     let symbols: Vec<Symbol> = Symbol::iter().collect();
+    let rules = get_rules();
     for symbol in symbols {
         println!("SYMBOL: {:?}", symbol);
     }
-    for rule in RULES {
+    for rule in &rules {
         println!("RULE:   {rule:?}");
     }
 
@@ -268,7 +276,7 @@ fn run_test(input: &str) {
     let mut state = State {
         table,
     };
-    for rule in RULES {
+    for rule in &rules {
         run_rule(&mut state, &rule);
         println!();
     }
