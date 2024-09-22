@@ -4,6 +4,29 @@ use strum_macros::{EnumCount, EnumIter};
  *
 # Par-table
 
+Concept TODOs:
+- Is the algorithm what TreeSitter is doing?
+- Can we generate partables from TreeSitter grammars?
+- Can we generate partables from parsec style parser combinators?
+
+Impl TODOs:
+- Finish gathering children
+- Run from 'cache' (or previous)
+- With parallel workers
+- Left vs right 'recursion'
+- Rules as systems with topological sort and parallelism
+- Semantic analysis / systems with topological sort
+- Split out library code vs language definitions
+- FUZZ tests
+
+Benchmark TODOs:
+- Write JSON parser
+- Write Python parser
+- Benchmark against off the shelf parsers
+- Is the algorithm faster than Pratt / RD / TreeSitter / peg
+- e.g. tree-sitter parser react.dev.js --time = ~54ms.
+
+
 The result of a parser to parse parts in parallel tables:
     a part-able par-table parse-table!
 
@@ -137,11 +160,11 @@ enum Kind {
 
 fn classify_char(ch: char) -> Option<Kind> {
     let ty = match ch {
-        '0'..'9' => Kind::Digits,
         '+' => Kind::Add,
         '*' => Kind::Mul,
         '(' => Kind::OpenParen,
         ')' => Kind::CloseParen,
+        '0'..'9' => Kind::Digits,
         _ => return None,
     };
     Some(ty)
