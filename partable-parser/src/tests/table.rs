@@ -126,7 +126,7 @@ The result of a parser to parse parts in parallel tables:
 struct Entry {
     kind: Kind,
     at: usize,
-    nodes: Vec<(SubExprKind, usize)>,
+    nodes: Vec<(NodeKind, usize)>, // TODO: Avoid nested vec
 }
 
 impl std::fmt::Debug for Entry {
@@ -136,7 +136,7 @@ impl std::fmt::Debug for Entry {
             return Ok(());
         }
         let mut ch = '(';
-        for (exprkind, id) in self.nodes {
+        for (exprkind, id) in &self.nodes {
             write!(f, "{ch}{exprkind:?}_{id:?}")?;
             ch = ' ';
         }
@@ -147,9 +147,9 @@ impl std::fmt::Debug for Entry {
 // Example Language stuff
 #[repr(u8)]
 #[derive(Debug, Default, Copy, Clone, PartialEq, Hash, Eq, EnumIter, EnumCount)]
-enum SubExprKind {
+enum NodeKind {
     #[default]
-    None, // TODO: Omit from table in future?
+    Noop, // TODO: Omit from table in future?
     NumLit,
     Add,
     Mul,
@@ -198,12 +198,12 @@ enum Rule {
         right: Archetype,
         out: Kind,
         mode: ParentChoice,
-        expr: SubExprKind,
+        expr: NodeKind,
     },
     Promote {
         from: Archetype,
         to: Kind,
-        expr: SubExprKind,
+        expr: NodeKind,
     },
     // TODO: Consider rules to inject missing stuff and produce a warning
 }
@@ -216,7 +216,7 @@ impl Rule {
         left: L,
         right: R,
         out: Kind,
-        expr: SubExprKind,
+        expr: NodeKind,
     ) -> Self {
         Self::Merge {
             left: left.into(),
@@ -230,7 +230,7 @@ impl Rule {
         left: L,
         right: R,
         out: Kind,
-        expr: SubExprKind,
+        expr: NodeKind,
     ) -> Self {
         Self::Merge {
             left: left.into(),
@@ -244,7 +244,7 @@ impl Rule {
         left: L,
         right: R,
         out: Kind,
-        expr: SubExprKind,
+        expr: NodeKind,
     ) -> Self {
         Self::Merge {
             left: left.into(),
@@ -254,7 +254,7 @@ impl Rule {
             expr,
         }
     }
-    fn promote<F: Into<Archetype>>(from: F, to: Kind, expr: SubExprKind) -> Self {
+    fn promote<F: Into<Archetype>>(from: F, to: Kind, expr: NodeKind) -> Self {
         Self::Promote {
             from: from.into(),
             to,
@@ -266,33 +266,33 @@ impl Rule {
 // TODO: This could be a const.
 fn get_rules() -> Vec<Rule> {
     vec![
-        Rule::paste(Kind::Digits, Kind::Digits, Kind::Digits, SubExprKind::None),
-        Rule::promote(Kind::Digits, Kind::Expr, SubExprKind::NumLit),
+        Rule::paste(Kind::Digits, Kind::Digits, Kind::Digits, NodeKind::Noop),
+        Rule::promote(Kind::Digits, Kind::Expr, NodeKind::NumLit),
         Rule::right(
             Kind::Expr,
             Kind::Mul,
             Kind::ExprMulHole,
-            SubExprKind::None, // Already captured
+            NodeKind::Noop, // Already captured
         ),
-        Rule::left(Kind::ExprMulHole, Kind::Expr, Kind::Expr, SubExprKind::Mul),
+        Rule::left(Kind::ExprMulHole, Kind::Expr, Kind::Expr, NodeKind::Mul),
         Rule::right(
             Kind::Expr,
             Kind::Add,
             Kind::ExprAddHole,
-            SubExprKind::None, // Already captured
+            NodeKind::Noop, // Already captured
         ),
-        Rule::left(Kind::ExprAddHole, Kind::Expr, Kind::Expr, SubExprKind::Add),
+        Rule::left(Kind::ExprAddHole, Kind::Expr, Kind::Expr, NodeKind::Add),
         Rule::left(
             Kind::OpenParen,
             Kind::Expr,
             Kind::OpenParen,
-            SubExprKind::None, // Already captured
+            NodeKind::Noop, // Already captured
         ),
         Rule::paste(
             Kind::OpenParen,
             Kind::CloseParen,
             Kind::Expr,
-            SubExprKind::SubExpr,
+            NodeKind::SubExpr,
         ),
     ]
 }
@@ -309,7 +309,7 @@ struct State<'a> {
     input: &'a str,
     rules: &'a [Rule],
     // Finish subexpressions
-    expression_table: [TableRow; SubExprKind::COUNT],
+    expression_table: [TableRow; NodeKind::COUNT],
 
     // Tokens / expressions being parsed.
     entries: Vec<Entry>,
@@ -332,7 +332,7 @@ impl std::fmt::Debug for State<'_> {
         writeln!(f)?;
 
         writeln!(f, "TABLES")?;
-        for symbol in SubExprKind::iter() {
+        for symbol in NodeKind::iter() {
             let table = &self[&symbol];
             writeln!(
                 f,
@@ -360,16 +360,16 @@ impl std::fmt::Debug for State<'_> {
     }
 }
 
-impl std::ops::Index<&SubExprKind> for State<'_> {
+impl std::ops::Index<&NodeKind> for State<'_> {
     type Output = Vec<Entry>;
 
-    fn index<'a>(&'a self, row: &SubExprKind) -> &'a Vec<Entry> {
+    fn index<'a>(&'a self, row: &NodeKind) -> &'a Vec<Entry> {
         &self.expression_table[*row as usize].entries
     }
 }
 
-impl std::ops::IndexMut<&SubExprKind> for State<'_> {
-    fn index_mut<'a>(&'a mut self, row: &SubExprKind) -> &'a mut Vec<Entry> {
+impl std::ops::IndexMut<&NodeKind> for State<'_> {
+    fn index_mut<'a>(&'a mut self, row: &NodeKind) -> &'a mut Vec<Entry> {
         &mut self.expression_table[*row as usize].entries
     }
 }
@@ -378,7 +378,7 @@ const EMPTY_ROW: TableRow = TableRow {
     entries: Vec::new(),
     processed: 0,
 };
-const EMPTY_TABLE: [TableRow; SubExprKind::COUNT] = [EMPTY_ROW; SubExprKind::COUNT];
+const EMPTY_TABLE: [TableRow; NodeKind::COUNT] = [EMPTY_ROW; NodeKind::COUNT];
 
 impl<'a> State<'a> {
     fn run_rule(&mut self, rule: &Rule) -> bool {
@@ -404,14 +404,15 @@ impl<'a> State<'a> {
                 let mut ri = 1;
                 while ri < self.entries.len() {
                     self.token_runs += 1;
-                    let l = self.entries[li];
-                    let r = self.entries[ri];
+                    let start = self.entries[li].at;
+                    let l = self.entries[li].clone(); // TODO: Avoid clone
+                    let r = self.entries[ri].clone(); // TODO: Avoid clone
                     if l.kind != *left || r.kind != *right {
                         // Move up!
                         self.entries[output_index] = l;
+                        li = ri;
                         output_index += 1;
                         self.entries[output_index] = r;
-                        li = ri;
                         ri += 1;
                         continue;
                     }
@@ -424,7 +425,7 @@ impl<'a> State<'a> {
 
                     let mut new = Entry {
                         kind: *out,
-                        at: l.at,
+                        at: start,
                         nodes: vec![], // todo update.
                     };
                     // Replace the old nodes, swapping the second out if necessary.
@@ -438,15 +439,15 @@ impl<'a> State<'a> {
                         ParentChoice::Both => {}
                         ParentChoice::Left => {
                             // Left is parent, preserve the right as a child.
-                            new.nodes = vec![(*expr, self[expr].len())];
+                            new.nodes.push((*expr, self[expr].len()));
                             // FIXME: Capture multiple children
-                            self[expr].push(r);
+                            self[expr].push(new.clone());
                         }
                         ParentChoice::Right => {
                             // Right is parent, preserve the left as a child.
-                            new.nodes = vec![(*expr, self[expr].len())];
+                            new.nodes.push((*expr, self[expr].len()));
                             // FIXME: Capture multiple children
-                            self[expr].push(l);
+                            self[expr].push(new.clone());
                         }
                     }
                     self.entries[output_index] = new;
@@ -471,7 +472,7 @@ impl<'a> State<'a> {
                     progress = true;
                     entry.kind = *to;
                     entry.nodes = vec![(*expr, id)];
-                    let entry = self.entries[i];
+                    let entry = self.entries[i].clone();
                     self[expr].push(entry);
                 }
             }
@@ -571,7 +572,7 @@ mod example1 {
     fn table_test_5() {
         let rules = &get_rules()[..5]; // Expr + -> ExprAddHole
         let state = setup(EXAMPLE, rules);
-        assert_eq!(format!("{:?}", state.entries), "[OpenParen@0, ExprAddHole@1(None_0), Expr@3(NumLit_1), CloseParen@6, Mul@7, Expr@8(NumLit_2)]");
+        assert_eq!(format!("{:?}", state.entries), "[OpenParen@0, ExprAddHole@1(Noop_0), Expr@3(NumLit_1), CloseParen@6, Mul@7, Expr@8(NumLit_2)]");
         // TODO: Add test case for this that is not a noop.
     }
 
@@ -592,7 +593,7 @@ mod example1 {
         let state = setup(EXAMPLE, rules);
         assert_eq!(
             format!("{:?}", state.entries),
-            "[OpenParen@0(None_1), CloseParen@6, Mul@7, Expr@8(NumLit_2)]"
+            "[OpenParen@0(Noop_1), CloseParen@6, Mul@7, Expr@8(NumLit_2)]"
         );
         // TODO: Add test case for this that is not a noop.
     }
@@ -644,7 +645,7 @@ mod example2 {
     fn table_test_5() {
         let rules = &get_rules()[..5]; // Expr + -> ExprAddHole
         let state = setup(EXAMPLE, rules);
-        assert_eq!(format!("{:?}", state.entries), "[ExprAddHole@0(None_0), OpenParen@2, Expr@3(NumLit_1), Expr@5(NumLit_2), CloseParen@8, Mul@9, Expr@10(NumLit_3)]");
+        assert_eq!(format!("{:?}", state.entries), "[ExprAddHole@0(NumLit_0), OpenParen@2, Expr@3(NumLit_1), Expr@5(NumLit_2), CloseParen@8, Mul@9, Expr@10(NumLit_3)]");
         // TODO: Add test case for this that is not a noop.
     }
 
@@ -652,7 +653,7 @@ mod example2 {
     fn table_test_6() {
         let rules = &get_rules()[..6]; // ExprAddHole Expr -> Expr
         let state = setup(EXAMPLE, rules);
-        assert_eq!(format!("{:?}", state.entries), "[ExprAddHole@0(None_0), OpenParen@2, Expr@3(NumLit_1), Expr@5(NumLit_2), CloseParen@8, Mul@9, Expr@10(NumLit_3)]");
+        assert_eq!(format!("{:?}", state.entries), "[ExprAddHole@0(NumLit_0), OpenParen@2, Expr@3(NumLit_1), Expr@5(NumLit_2), CloseParen@8, Mul@9, Expr@10(NumLit_3)]");
         // TODO: Add test case for this that is not a noop.
     }
 
@@ -662,7 +663,7 @@ mod example2 {
         let state = setup(EXAMPLE, rules);
         assert_eq!(
             format!("{:?}", state.entries),
-            "[ExprAddHole@0(None_0), OpenParen@2(None_3), CloseParen@8, Mul@9, Expr@10(NumLit_3)]"
+            "[ExprAddHole@0(NumLit_0), OpenParen@2(Add_0), CloseParen@8, Mul@9, Expr@10(NumLit_3)]"
         );
         // TODO: Add test case for this that is not a noop.
     }
@@ -671,7 +672,7 @@ mod example2 {
     fn table_test_all() {
         let rules = get_rules();
         let state = setup(EXAMPLE, &rules);
-        assert_eq!(format!("{:?}", state.entries), "[Expr@0(Add_0)]");
+        assert_eq!(format!("{:?}", state.entries), "[Expr@0(Add_1)]");
         assert_eq!(format!("{:?}", state.expression_table), "");
     }
 }
