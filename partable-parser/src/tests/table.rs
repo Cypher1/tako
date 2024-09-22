@@ -157,13 +157,13 @@ enum SubExprKind {
 enum Kind {
     #[default]
     Digits,
-    Integer,
+    Expr,
     OpenParen,
     CloseParen,
     Mul,
-    IntegerMulHole,
+    ExprMulHole,
     Add,
-    IntegerAddHole,
+    ExprAddHole,
 }
 
 fn classify_char(ch: char) -> Option<Kind> {
@@ -185,19 +185,19 @@ enum ParentChoice {
     Right,
 }
 
-type Pattern = Kind; // TODO: Implement negative patterns if necessary
+type Archetype = Kind; // TODO: Implement negative patterns if necessary
 
 #[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]
 enum Rule {
     Merge {
-        left: Pattern,
-        right: Pattern,
+        left: Archetype,
+        right: Archetype,
         out: Kind,
         mode: ParentChoice,
         expr: SubExprKind,
     },
     Promote {
-        from: Pattern,
+        from: Archetype,
         to: Kind,
         expr: SubExprKind,
     },
@@ -208,7 +208,7 @@ impl Rule {
     // TODO: These could be const functions if `into` was const.
     // This is waiting on `~const Into<_>` stabilization.
 
-    fn paste<L: Into<Pattern>, R: Into<Pattern>>(
+    fn paste<L: Into<Archetype>, R: Into<Archetype>>(
         left: L,
         right: R,
         out: Kind,
@@ -222,7 +222,7 @@ impl Rule {
             expr,
         }
     }
-    fn left<L: Into<Pattern>, R: Into<Pattern>>(
+    fn left<L: Into<Archetype>, R: Into<Archetype>>(
         left: L,
         right: R,
         out: Kind,
@@ -236,7 +236,7 @@ impl Rule {
             expr,
         }
     }
-    fn right<L: Into<Pattern>, R: Into<Pattern>>(
+    fn right<L: Into<Archetype>, R: Into<Archetype>>(
         left: L,
         right: R,
         out: Kind,
@@ -250,7 +250,7 @@ impl Rule {
             expr,
         }
     }
-    fn promote<F: Into<Pattern>>(from: F, to: Kind, expr: SubExprKind) -> Self {
+    fn promote<F: Into<Archetype>>(from: F, to: Kind, expr: SubExprKind) -> Self {
         Self::Promote {
             from: from.into(),
             to,
@@ -263,41 +263,41 @@ impl Rule {
 fn get_rules() -> Vec<Rule> {
     vec![
         Rule::paste(Kind::Digits, Kind::Digits, Kind::Digits, SubExprKind::None),
-        Rule::promote(Kind::Digits, Kind::Integer, SubExprKind::NumLit),
+        Rule::promote(Kind::Digits, Kind::Expr, SubExprKind::NumLit),
         Rule::right(
-            Kind::Integer,
+            Kind::Expr,
             Kind::Mul,
-            Kind::IntegerMulHole,
+            Kind::ExprMulHole,
             SubExprKind::None, // Already captured
         ),
         Rule::left(
-            Kind::IntegerMulHole,
-            Kind::Integer,
-            Kind::Integer,
+            Kind::ExprMulHole,
+            Kind::Expr,
+            Kind::Expr,
             SubExprKind::Mul,
         ),
         Rule::right(
-            Kind::Integer,
+            Kind::Expr,
             Kind::Add,
-            Kind::IntegerAddHole,
+            Kind::ExprAddHole,
             SubExprKind::None, // Already captured
         ),
         Rule::left(
-            Kind::IntegerAddHole,
-            Kind::Integer,
-            Kind::Integer,
+            Kind::ExprAddHole,
+            Kind::Expr,
+            Kind::Expr,
             SubExprKind::Add,
         ),
         Rule::left(
             Kind::OpenParen,
-            Kind::Integer,
+            Kind::Expr,
             Kind::OpenParen,
             SubExprKind::None, // Already captured
         ),
         Rule::paste(
             Kind::OpenParen,
             Kind::CloseParen,
-            Kind::Integer,
+            Kind::Expr,
             SubExprKind::SubExpr,
         ),
     ]
@@ -486,7 +486,9 @@ impl<'a> State<'a> {
     }
 
     fn run(&mut self) -> () {
-        let mut earliest_progressing_rule = 0; // TODO: Is this working? Helping?
+        // TODO: Only run rules with inputs (/ updates).
+        // TODO: Is this working? Helping?
+        let mut earliest_progressing_rule = 0;
         while earliest_progressing_rule < self.rules.len() {
             self.loop_runs += 1;
             let start = earliest_progressing_rule;
@@ -550,53 +552,53 @@ mod example1 {
 
     #[test]
     fn table_test_2() {
-        let rules = &get_rules()[..2]; // Digits -> Integer
+        let rules = &get_rules()[..2]; // Digits -> Expr
         let state = setup(EXAMPLE, rules);
-        assert_eq!(format!("{:?}", state.entries), "[OpenParen@0, Integer@1(NumLit_0), Add@2, Integer@3(NumLit_1), CloseParen@6, Mul@7, Integer@8(NumLit_2)]");
+        assert_eq!(format!("{:?}", state.entries), "[OpenParen@0, Expr@1(NumLit_0), Add@2, Expr@3(NumLit_1), CloseParen@6, Mul@7, Expr@8(NumLit_2)]");
     }
 
     #[test]
     fn table_test_3() {
-        let rules = &get_rules()[..3]; // Integer * -> IntegerMulHole
+        let rules = &get_rules()[..3]; // Expr * -> ExprMulHole
         let state = setup(EXAMPLE, rules);
-        assert_eq!(format!("{:?}", state.entries), "[OpenParen@0, Integer@1(NumLit_0), Add@2, Integer@3(NumLit_1), CloseParen@6, Mul@7, Integer@8(NumLit_2)]");
+        assert_eq!(format!("{:?}", state.entries), "[OpenParen@0, Expr@1(NumLit_0), Add@2, Expr@3(NumLit_1), CloseParen@6, Mul@7, Expr@8(NumLit_2)]");
         // TODO: Add test case for this that is not a noop.
     }
 
     #[test]
     fn table_test_4() {
-        let rules = &get_rules()[..4]; // IntegerMulHole Integer -> Integer
+        let rules = &get_rules()[..4]; // ExprMulHole Expr -> Expr
         let state = setup(EXAMPLE, rules);
-        assert_eq!(format!("{:?}", state.entries), "[OpenParen@0, Integer@1(NumLit_0), Add@2, Integer@3(NumLit_1), CloseParen@6, Mul@7, Integer@8(NumLit_2)]");
+        assert_eq!(format!("{:?}", state.entries), "[OpenParen@0, Expr@1(NumLit_0), Add@2, Expr@3(NumLit_1), CloseParen@6, Mul@7, Expr@8(NumLit_2)]");
         // TODO: Add test case for this that is not a noop.
     }
 
     #[test]
     fn table_test_5() {
-        let rules = &get_rules()[..5]; // Integer + -> IntegerAddHole
+        let rules = &get_rules()[..5]; // Expr + -> ExprAddHole
         let state = setup(EXAMPLE, rules);
-        assert_eq!(format!("{:?}", state.entries), "[OpenParen@0, IntegerAddHole@1(None_0), Integer@3(NumLit_1), CloseParen@6, Mul@7, Integer@8(NumLit_2)]");
+        assert_eq!(format!("{:?}", state.entries), "[OpenParen@0, ExprAddHole@1(None_0), Expr@3(NumLit_1), CloseParen@6, Mul@7, Expr@8(NumLit_2)]");
         // TODO: Add test case for this that is not a noop.
     }
 
     #[test]
     fn table_test_6() {
-        let rules = &get_rules()[..6]; // IntegerAddHole Integer -> Integer
+        let rules = &get_rules()[..6]; // ExprAddHole Expr -> Expr
         let state = setup(EXAMPLE, rules);
         assert_eq!(
             format!("{:?}", state.entries),
-            "[OpenParen@0, Integer@1(Add_0), CloseParen@6, Mul@7, Integer@8(NumLit_2)]"
+            "[OpenParen@0, Expr@1(Add_0), CloseParen@6, Mul@7, Expr@8(NumLit_2)]"
         );
         // TODO: Add test case for this that is not a noop.
     }
 
     #[test]
     fn table_test_7() {
-        let rules = &get_rules()[..7]; // OpenParen Integer -> OpenParen
+        let rules = &get_rules()[..7]; // OpenParen Expr -> OpenParen
         let state = setup(EXAMPLE, rules);
         assert_eq!(
             format!("{:?}", state.entries),
-            "[OpenParen@0(None_1), CloseParen@6, Mul@7, Integer@8(NumLit_2)]"
+            "[OpenParen@0(None_1), CloseParen@6, Mul@7, Expr@8(NumLit_2)]"
         );
         // TODO: Add test case for this that is not a noop.
     }
@@ -605,7 +607,7 @@ mod example1 {
     fn table_test_all() {
         let rules = get_rules();
         let state = setup(EXAMPLE, &rules);
-        assert_eq!(format!("{:?}", state.entries), "[Integer@0(Mul_0)]");
+        assert_eq!(format!("{:?}", state.entries), "[Expr@0(Mul_0)]");
         assert_eq!(format!("{:?}", state.expression_table), "");
     }
 }
@@ -623,48 +625,48 @@ mod example2 {
 
     #[test]
     fn table_test_2() {
-        let rules = &get_rules()[..2]; // Digits -> Integer
+        let rules = &get_rules()[..2]; // Digits -> Expr
         let state = setup(EXAMPLE, rules);
-        assert_eq!(format!("{:?}", state.entries), "[Integer@0(NumLit_0), Add@1, OpenParen@2, Integer@3(NumLit_1), Add@4, Integer@5(NumLit_2), CloseParen@8, Mul@9, Integer@10(NumLit_3)]");
+        assert_eq!(format!("{:?}", state.entries), "[Expr@0(NumLit_0), Add@1, OpenParen@2, Expr@3(NumLit_1), Add@4, Expr@5(NumLit_2), CloseParen@8, Mul@9, Expr@10(NumLit_3)]");
     }
 
     #[test]
     fn table_test_3() {
-        let rules = &get_rules()[..3]; // Integer * -> IntegerMulHole
+        let rules = &get_rules()[..3]; // Expr * -> ExprMulHole
         let state = setup(EXAMPLE, rules);
-        assert_eq!(format!("{:?}", state.entries), "[Integer@0(NumLit_0), Add@1, OpenParen@2, Integer@3(NumLit_1), Add@4, Integer@5(NumLit_2), CloseParen@8, Mul@9, Integer@10(NumLit_3)]");
+        assert_eq!(format!("{:?}", state.entries), "[Expr@0(NumLit_0), Add@1, OpenParen@2, Expr@3(NumLit_1), Add@4, Expr@5(NumLit_2), CloseParen@8, Mul@9, Expr@10(NumLit_3)]");
         // TODO: Add test case for this that is not a noop.
     }
 
     #[test]
     fn table_test_4() {
-        let rules = &get_rules()[..4]; // IntegerMulHole Integer -> Integer
+        let rules = &get_rules()[..4]; // ExprMulHole Expr -> Expr
         let state = setup(EXAMPLE, rules);
-        assert_eq!(format!("{:?}", state.entries), "[Integer@0(NumLit_0), Add@1, OpenParen@2, Integer@3(NumLit_1), Add@4, Integer@5(NumLit_2), CloseParen@8, Mul@9, Integer@10(NumLit_3)]");
+        assert_eq!(format!("{:?}", state.entries), "[Expr@0(NumLit_0), Add@1, OpenParen@2, Expr@3(NumLit_1), Add@4, Expr@5(NumLit_2), CloseParen@8, Mul@9, Expr@10(NumLit_3)]");
         // TODO: Add test case for this that is not a noop.
     }
 
     #[test]
     fn table_test_5() {
-        let rules = &get_rules()[..5]; // Integer + -> IntegerAddHole
+        let rules = &get_rules()[..5]; // Expr + -> ExprAddHole
         let state = setup(EXAMPLE, rules);
-        assert_eq!(format!("{:?}", state.entries), "[IntegerAddHole@0(None_0), OpenParen@2, Integer@3(NumLit_1), Integer@5(NumLit_2), CloseParen@8, Mul@9, Integer@10(NumLit_3)]");
+        assert_eq!(format!("{:?}", state.entries), "[ExprAddHole@0(None_0), OpenParen@2, Expr@3(NumLit_1), Expr@5(NumLit_2), CloseParen@8, Mul@9, Expr@10(NumLit_3)]");
         // TODO: Add test case for this that is not a noop.
     }
 
     #[test]
     fn table_test_6() {
-        let rules = &get_rules()[..6]; // IntegerAddHole Integer -> Integer
+        let rules = &get_rules()[..6]; // ExprAddHole Expr -> Expr
         let state = setup(EXAMPLE, rules);
-        assert_eq!(format!("{:?}", state.entries), "[IntegerAddHole@0(None_0), OpenParen@2, Integer@3(NumLit_1), Integer@5(NumLit_2), CloseParen@8, Mul@9, Integer@10(NumLit_3)]");
+        assert_eq!(format!("{:?}", state.entries), "[ExprAddHole@0(None_0), OpenParen@2, Expr@3(NumLit_1), Expr@5(NumLit_2), CloseParen@8, Mul@9, Expr@10(NumLit_3)]");
         // TODO: Add test case for this that is not a noop.
     }
 
     #[test]
     fn table_test_7() {
-        let rules = &get_rules()[..7]; // OpenParen Integer -> OpenParen
+        let rules = &get_rules()[..7]; // OpenParen Expr -> OpenParen
         let state = setup(EXAMPLE, rules);
-        assert_eq!(format!("{:?}", state.entries), "[IntegerAddHole@0(None_0), OpenParen@2(None_3), CloseParen@8, Mul@9, Integer@10(NumLit_3)]");
+        assert_eq!(format!("{:?}", state.entries), "[ExprAddHole@0(None_0), OpenParen@2(None_3), CloseParen@8, Mul@9, Expr@10(NumLit_3)]");
         // TODO: Add test case for this that is not a noop.
     }
 
@@ -672,7 +674,7 @@ mod example2 {
     fn table_test_all() {
         let rules = get_rules();
         let state = setup(EXAMPLE, &rules);
-        assert_eq!(format!("{:?}", state.entries), "[Integer@0(Add_0)]");
+        assert_eq!(format!("{:?}", state.entries), "[Expr@0(Add_0)]");
         assert_eq!(format!("{:?}", state.expression_table), "");
     }
 }
