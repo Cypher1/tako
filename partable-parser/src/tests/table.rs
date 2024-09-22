@@ -172,7 +172,7 @@ fn classify_char(ch: char) -> Option<Kind> {
         '*' => Kind::Mul,
         '(' => Kind::OpenParen,
         ')' => Kind::CloseParen,
-        '0'..'9' => Kind::Digits,
+        '0'..='9' => Kind::Digits,
         _ => return None,
     };
     Some(ty)
@@ -270,24 +270,14 @@ fn get_rules() -> Vec<Rule> {
             Kind::ExprMulHole,
             SubExprKind::None, // Already captured
         ),
-        Rule::left(
-            Kind::ExprMulHole,
-            Kind::Expr,
-            Kind::Expr,
-            SubExprKind::Mul,
-        ),
+        Rule::left(Kind::ExprMulHole, Kind::Expr, Kind::Expr, SubExprKind::Mul),
         Rule::right(
             Kind::Expr,
             Kind::Add,
             Kind::ExprAddHole,
             SubExprKind::None, // Already captured
         ),
-        Rule::left(
-            Kind::ExprAddHole,
-            Kind::Expr,
-            Kind::Expr,
-            SubExprKind::Add,
-        ),
+        Rule::left(Kind::ExprAddHole, Kind::Expr, Kind::Expr, SubExprKind::Add),
         Rule::left(
             Kind::OpenParen,
             Kind::Expr,
@@ -485,7 +475,7 @@ impl<'a> State<'a> {
         progress
     }
 
-    fn run(&mut self) -> () {
+    fn run(&mut self) {
         // TODO: Only run rules with inputs (/ updates).
         // TODO: Is this working? Helping?
         let mut earliest_progressing_rule = 0;
@@ -495,7 +485,7 @@ impl<'a> State<'a> {
             earliest_progressing_rule = self.rules.len();
             for (rule_index, rule) in self.rules[start..].iter().enumerate() {
                 // println!("{:?}", self.entries);
-                if self.run_rule(&rule) {
+                if self.run_rule(rule) {
                     earliest_progressing_rule =
                         std::cmp::min(earliest_progressing_rule, rule_index);
                 }
@@ -518,7 +508,7 @@ fn setup<'a>(input: &'a str, rules: &'a [Rule]) -> State<'a> {
             at,
             node: None,
         };
-        entries.push(entry.clone());
+        entries.push(entry);
     }
     // println!("{entries:#?}");
 
@@ -538,7 +528,7 @@ fn setup<'a>(input: &'a str, rules: &'a [Rule]) -> State<'a> {
 
 mod example1 {
     use super::*;
-    const EXAMPLE: &'static str = "(1+201)*3";
+    const EXAMPLE: &str = "(1+201)*3";
 
     #[test]
     fn table_test_1() {
@@ -614,7 +604,7 @@ mod example1 {
 
 mod example2 {
     use super::*;
-    const EXAMPLE: &'static str = "2+(1+201)*3";
+    const EXAMPLE: &str = "2+(1+201)*3";
 
     #[test]
     fn table_test_1() {
@@ -666,7 +656,10 @@ mod example2 {
     fn table_test_7() {
         let rules = &get_rules()[..7]; // OpenParen Expr -> OpenParen
         let state = setup(EXAMPLE, rules);
-        assert_eq!(format!("{:?}", state.entries), "[ExprAddHole@0(None_0), OpenParen@2(None_3), CloseParen@8, Mul@9, Expr@10(NumLit_3)]");
+        assert_eq!(
+            format!("{:?}", state.entries),
+            "[ExprAddHole@0(None_0), OpenParen@2(None_3), CloseParen@8, Mul@9, Expr@10(NumLit_3)]"
+        );
         // TODO: Add test case for this that is not a noop.
     }
 
