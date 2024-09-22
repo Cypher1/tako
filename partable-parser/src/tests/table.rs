@@ -190,7 +190,7 @@ enum ParentChoice {
 
 type Archetype = Kind; // TODO: Implement negative patterns if necessary
 
-#[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]
+#[derive(Copy, Clone, PartialEq, Hash, Eq)]
 enum Rule {
     // TODO: Split out NodeKind::None into rule types.
     // TODO: Split out ParentChoice::* into rule types.
@@ -207,6 +207,37 @@ enum Rule {
         expr: NodeKind,
     },
     // TODO: Consider rules to inject missing stuff and produce a warning
+}
+
+impl std::fmt::Debug for Rule {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Rule::Merge {
+                mode,
+                left,
+                right,
+                out,
+                expr,
+            } => {
+                write!(
+                    f,
+                    "{left} {right} => {out} {mode} {expr:?}",
+                    left = rpad(&format!("{:?}", left), 11, " "),
+                    right = rpad(&format!("{:?}", right), 11, " "),
+                    out = rpad(&format!("{:?}", out), 11, " "),
+                    mode = rpad(&format!("{:?}", mode), 11, " "),
+                )
+            }
+            Rule::Promote { from, to, expr } => {
+                write!(
+                    f,
+                    "{from} => {to} {expr:?}",
+                    from = rpad(&format!("{:?}", from), 23, " "),
+                    to = rpad(&format!("{:?}", to), 11, " "),
+                )
+            }
+        }
+    }
 }
 
 impl Rule {
@@ -326,11 +357,13 @@ impl std::fmt::Debug for State<'_> {
         writeln!(f, "INPUT")?;
         writeln!(f, "  {}", self.input)?;
         writeln!(f)?;
+        /*
         writeln!(f, "RULES")?;
         for rule in self.rules {
             writeln!(f, "  {rule:?}")?;
         }
         writeln!(f)?;
+        */
 
         writeln!(f, "TABLES")?;
         for symbol in NodeKind::iter() {
@@ -386,6 +419,7 @@ impl<'a> State<'a> {
         self.rule_runs += 1;
         let mut progress = false;
         // println!("{self:?}");
+        // println!("  {:3?}: {rule:?}", self.rule_runs);
         match rule {
             Rule::Merge {
                 mode,
@@ -394,14 +428,6 @@ impl<'a> State<'a> {
                 out,
                 expr,
             } => {
-                println!(
-                    "  {:3?}: {left} {right} => {out} {mode}",
-                    self.rule_runs,
-                    left=rpad(&format!("{:?}", left), 11, " "),
-                    right=rpad(&format!("{:?}", right), 11, " "),
-                    out=rpad(&format!("{:?}", out), 11, " "),
-                    mode=rpad(&format!("{:?}", mode), 11, " "),
-                );
                 // FIXME: Scan backwards for ParentChoice::Right.
                 let mut delete = 0;
                 let mut output_index = 0;
@@ -462,12 +488,6 @@ impl<'a> State<'a> {
                 }
             }
             Rule::Promote { from, to, expr } => {
-                println!(
-                    "  {:3?}: {from} => {to}",
-                    self.rule_runs,
-                    from=rpad(&format!("{:?}", from), 23, " "),
-                    to=rpad(&format!("{:?}", to), 11, " "),
-                );
                 // println!();
                 for i in 0..self.entries.len() {
                     self.token_runs += 1;
@@ -511,8 +531,6 @@ impl<'a> State<'a> {
 }
 
 fn setup<'a>(input: &'a str, rules: &'a [Rule]) -> State<'a> {
-    println!("START");
-
     let mut entries: Vec<Entry> = vec![];
     for (at, ch) in input.chars().enumerate() {
         let Some(kind) = classify_char(ch) else {
@@ -682,7 +700,7 @@ mod example2 {
     fn table_test_all() {
         let rules = get_rules();
         let state = setup(EXAMPLE, &rules);
-        assert_eq!(format!("{:?}", state.entries), "[Expr@0(Add_1)]");
+        assert_eq!(format!("{:?}", state.entries), "[Expr@0(Add_0)]");
         assert_eq!(format!("{:?}", state.expression_table), "");
     }
 }
