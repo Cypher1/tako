@@ -70,7 +70,7 @@ The result of a parser to parse parts in parallel tables:
     (1+20)*3
     ODADDCMD
 
-    Entries are (type, at, ?node)
+    Entries are (type, at, nodes)
 
     Entries = [(1,+,2,0),*,3]
 
@@ -122,21 +122,25 @@ The result of a parser to parse parts in parallel tables:
 
 */
 
-#[derive(Default, Copy, Clone, PartialEq, Hash, Eq)]
+#[derive(Default, Clone, PartialEq, Hash, Eq)]
 struct Entry {
     kind: Kind,
     at: usize,
-    node: Option<(SubExprKind, usize)>,
+    nodes: Vec<(SubExprKind, usize)>,
 }
 
 impl std::fmt::Debug for Entry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}@{:?}", self.kind, self.at)?;
-        if let Some((exprkind, id)) = self.node {
-            write!(f, "({exprkind:?}_{id:?})")
-        } else {
-            Ok(())
+        if self.nodes.is_empty() {
+            return Ok(());
         }
+        let mut ch = '(';
+        for (exprkind, id) in self.nodes {
+            write!(f, "{ch}{exprkind:?}_{id:?}")?;
+            ch = ' ';
+        }
+        write!(f, ")")
     }
 }
 
@@ -421,7 +425,7 @@ impl<'a> State<'a> {
                     let mut new = Entry {
                         kind: *out,
                         at: l.at,
-                        node: None, // todo update.
+                        nodes: vec![], // todo update.
                     };
                     // Replace the old nodes, swapping the second out if necessary.
 
@@ -434,13 +438,13 @@ impl<'a> State<'a> {
                         ParentChoice::Both => {}
                         ParentChoice::Left => {
                             // Left is parent, preserve the right as a child.
-                            new.node = Some((*expr, self[expr].len()));
+                            new.nodes = vec![(*expr, self[expr].len())];
                             // FIXME: Capture multiple children
                             self[expr].push(r);
                         }
                         ParentChoice::Right => {
                             // Right is parent, preserve the left as a child.
-                            new.node = Some((*expr, self[expr].len()));
+                            new.nodes = vec![(*expr, self[expr].len())];
                             // FIXME: Capture multiple children
                             self[expr].push(l);
                         }
@@ -466,7 +470,7 @@ impl<'a> State<'a> {
                     // println!("    {entry:?}");
                     progress = true;
                     entry.kind = *to;
-                    entry.node = Some((*expr, id));
+                    entry.nodes = vec![(*expr, id)];
                     let entry = self.entries[i];
                     self[expr].push(entry);
                 }
@@ -506,7 +510,7 @@ fn setup<'a>(input: &'a str, rules: &'a [Rule]) -> State<'a> {
         let entry = Entry {
             kind,
             at,
-            node: None,
+            nodes: vec![],
         };
         entries.push(entry);
     }
