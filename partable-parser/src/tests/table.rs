@@ -153,7 +153,6 @@ enum NodeKind {
     NumLit,
     Add,
     Mul,
-    SubExpr, // TODO: Omit from table and promote children?
 }
 
 #[repr(u8)]
@@ -193,6 +192,8 @@ type Archetype = Kind; // TODO: Implement negative patterns if necessary
 
 #[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]
 enum Rule {
+    // TODO: Split out NodeKind::None into rule types.
+    // TODO: Split out ParentChoice::* into rule types.
     Merge {
         left: Archetype,
         right: Archetype,
@@ -292,7 +293,7 @@ fn get_rules() -> Vec<Rule> {
             Kind::OpenParen,
             Kind::CloseParen,
             Kind::Expr,
-            NodeKind::SubExpr,
+            NodeKind::Noop,
         ),
     ]
 }
@@ -345,17 +346,17 @@ impl std::fmt::Debug for State<'_> {
         writeln!(f, "PERF")?;
         writeln!(
             f,
-            "  Ran {num_rules} rules {rule_runs} times",
+            "  Ran    {num_rules:3} rules      {rule_runs:4} times",
             num_rules = self.rules.len(),
             rule_runs = self.rule_runs
         )?;
         writeln!(
             f,
-            "  Ran on {num_bytes} bytes with {token_runs} merge/promotion attempts",
+            "  Ran on {num_bytes:3} bytes with {token_runs:4} merge/promotion attempts",
             num_bytes = self.input.len(),
             token_runs = self.token_runs
         )?;
-        writeln!(f, "  Ran loop {loops} times", loops = self.loop_runs)?;
+        writeln!(f, "  Ran    {loops:3} times", loops = self.loop_runs)?;
         Ok(())
     }
 }
@@ -394,8 +395,12 @@ impl<'a> State<'a> {
                 expr,
             } => {
                 println!(
-                    "  {:3?}: {left:?} {right:?} => {out:?} {mode:?}",
-                    self.rule_runs
+                    "  {:3?}: {left} {right} => {out} {mode}",
+                    self.rule_runs,
+                    left=rpad(&format!("{:?}", left), 11, " "),
+                    right=rpad(&format!("{:?}", right), 11, " "),
+                    out=rpad(&format!("{:?}", out), 11, " "),
+                    mode=rpad(&format!("{:?}", mode), 11, " "),
                 );
                 // FIXME: Scan backwards for ParentChoice::Right.
                 let mut delete = 0;
@@ -457,7 +462,12 @@ impl<'a> State<'a> {
                 }
             }
             Rule::Promote { from, to, expr } => {
-                println!("  {:3?}: {from:?} => {to:?}", self.rule_runs);
+                println!(
+                    "  {:3?}: {from} => {to}",
+                    self.rule_runs,
+                    from=rpad(&format!("{:?}", from), 23, " "),
+                    to=rpad(&format!("{:?}", to), 11, " "),
+                );
                 // println!();
                 for i in 0..self.entries.len() {
                     self.token_runs += 1;
