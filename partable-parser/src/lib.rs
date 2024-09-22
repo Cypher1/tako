@@ -24,10 +24,9 @@ pub struct DirTable<const N: usize> {
 
 impl <const N: usize> DirTable<N> {
     pub fn dir<S: Symbol<N> + Into<usize>>(&self, left: S, right: S) -> Direction {
-        self.table[left.into()][right.into()] 
+        self.table[left.into()][right.into()]
     }
 }
-
 
 pub fn add(left: u64, right: u64) -> u64 {
     left + right
