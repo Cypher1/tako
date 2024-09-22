@@ -12,17 +12,19 @@ pub enum Direction {
     C = 0b101, // Close (i.e. return first child)
 }
 
-pub trait Symbol<const SIZE: usize>: Copy + Clone + std::hash::Hash + PartialEq + PartialOrd + Eq + Ord {
+pub trait Symbol<const SIZE: usize>:
+    Copy + Clone + std::hash::Hash + PartialEq + PartialOrd + Eq + Ord
+{
     const SIZE: usize = SIZE;
 
-    const TABLE: DirTable< SIZE >;
+    const TABLE: DirTable<SIZE>;
 }
 
 pub struct DirTable<const N: usize> {
-    table: [[Direction; N]; N]
+    table: [[Direction; N]; N],
 }
 
-impl <const N: usize> DirTable<N> {
+impl<const N: usize> DirTable<N> {
     pub fn dir<S: Symbol<N> + Into<usize>>(&self, left: S, right: S) -> Direction {
         self.table[left.into()][right.into()]
     }

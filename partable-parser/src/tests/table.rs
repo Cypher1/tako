@@ -177,7 +177,7 @@ enum ParentChoice {
     Right,
 }
 
-type Pattern = Kind;
+type Pattern = Kind; // TODO: Implement negative patterns if necessary
 
 #[derive(Debug, Copy, Clone, PartialEq, Hash, Eq)]
 enum Rule {
@@ -200,17 +200,54 @@ impl Rule {
     // TODO: These could be const functions if `into` was const.
     // This is waiting on `~const Into<_>` stabilization.
 
-    fn paste<L: Into<Pattern>, R: Into<Pattern>>(left: L, right: R, out: Kind, expr: SubExprKind) -> Self {
-        Self::Merge { left: left.into(), right: right.into(), out, mode: ParentChoice::Both, expr }
+    fn paste<L: Into<Pattern>, R: Into<Pattern>>(
+        left: L,
+        right: R,
+        out: Kind,
+        expr: SubExprKind,
+    ) -> Self {
+        Self::Merge {
+            left: left.into(),
+            right: right.into(),
+            out,
+            mode: ParentChoice::Both,
+            expr,
+        }
     }
-    fn left<L: Into<Pattern>, R: Into<Pattern>>(left: L, right: R, out: Kind, expr: SubExprKind) -> Self {
-        Self::Merge { left: left.into(), right: right.into(), out, mode: ParentChoice::Left, expr }
+    fn left<L: Into<Pattern>, R: Into<Pattern>>(
+        left: L,
+        right: R,
+        out: Kind,
+        expr: SubExprKind,
+    ) -> Self {
+        Self::Merge {
+            left: left.into(),
+            right: right.into(),
+            out,
+            mode: ParentChoice::Left,
+            expr,
+        }
     }
-    fn right<L: Into<Pattern>, R: Into<Pattern>>(left: L, right: R, out: Kind, expr: SubExprKind) -> Self {
-        Self::Merge { left: left.into(), right: right.into(), out, mode: ParentChoice::Right, expr }
+    fn right<L: Into<Pattern>, R: Into<Pattern>>(
+        left: L,
+        right: R,
+        out: Kind,
+        expr: SubExprKind,
+    ) -> Self {
+        Self::Merge {
+            left: left.into(),
+            right: right.into(),
+            out,
+            mode: ParentChoice::Right,
+            expr,
+        }
     }
     fn promote<F: Into<Pattern>>(from: F, to: Kind, expr: SubExprKind) -> Self {
-        Self::Promote { from: from.into(), to, expr }
+        Self::Promote {
+            from: from.into(),
+            to,
+            expr,
+        }
     }
 }
 
@@ -258,8 +295,10 @@ fn get_rules() -> Vec<Rule> {
     ]
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Hash, Eq)]
-struct State {
+#[derive(Default, Clone, PartialEq, Hash, Eq)]
+struct State<'a> {
+    input: &'a str,
+    rules: &'a [Rule],
     // Finish subexpressions
     expression_table: [Vec<Entry>; SubExprKind::COUNT],
 
@@ -272,7 +311,51 @@ struct State {
     token_runs: u32,
 }
 
-impl std::ops::Index<&SubExprKind> for State {
+fn padded<T: std::fmt::Debug>(d: T, s: usize) -> String {
+    let content = format!("{:?}", d);
+    format!(
+        "{content}{p}",
+        p = " ".repeat(s.saturating_sub(content.len()))
+    )
+}
+
+impl std::fmt::Debug for State<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "INPUT")?;
+        writeln!(f, "  {}", self.input)?;
+        writeln!(f)?;
+        writeln!(f, "RULES")?;
+        for rule in self.rules {
+            writeln!(f, "  {rule:?}")?;
+        }
+        writeln!(f)?;
+
+        writeln!(f, "TABLES")?;
+        for symbol in SubExprKind::iter() {
+            let table = &self[&symbol];
+            writeln!(f, "  {symbol}: {table:?}", symbol = padded(symbol, 10))?;
+        }
+        writeln!(f)?;
+
+        writeln!(f, "PERF")?;
+        writeln!(
+            f,
+            "  Ran {num_rules} rules {rule_runs} times",
+            num_rules = self.rules.len(),
+            rule_runs = self.rule_runs
+        )?;
+        writeln!(
+            f,
+            "  Ran on {num_bytes} bytes with {token_runs} merge/promotion attempts",
+            num_bytes = self.input.len(),
+            token_runs = self.token_runs
+        )?;
+        writeln!(f, "  Ran loop {loops} times", loops = self.loop_runs)?;
+        Ok(())
+    }
+}
+
+impl std::ops::Index<&SubExprKind> for State<'_> {
     type Output = Vec<Entry>;
 
     fn index<'a>(&'a self, row: &SubExprKind) -> &'a Vec<Entry> {
@@ -280,119 +363,131 @@ impl std::ops::Index<&SubExprKind> for State {
     }
 }
 
-impl std::ops::IndexMut<&SubExprKind> for State {
+impl std::ops::IndexMut<&SubExprKind> for State<'_> {
     fn index_mut<'a>(&'a mut self, row: &SubExprKind) -> &'a mut Vec<Entry> {
         &mut self.expression_table[*row as usize]
     }
 }
 
-fn run_rule(state: &mut State, rule: &Rule) -> bool {
-    state.rule_runs += 1;
-    let mut progress = false;
-    // println!("{state:?}");
-    match rule {
-        Rule::Merge { mode, left, right, out, expr } => {
-            println!("  {left:?} {right:?} => {out:?} {mode:?}");
-            println!();
-            // FIXME: Scan backwards for ParentChoice::Right.
-            let mut delete = 0;
-            let mut output_index = 0;
-            let mut li = 0; 
-            let mut ri = 1; 
-            while ri < state.entries.len() {
-                state.token_runs += 1;
-                let l = state.entries[li];
-                let r = state.entries[ri];
-                if l.kind != *left || r.kind != *right {
-                    // Move up!
-                    state.entries[output_index] = l;
-                    output_index += 1;
-                    state.entries[output_index] = r;
-                    li = ri;
-                    ri += 1;
-                    continue;
-                }
-                // println!(
-                    // "    [{li:?}..{ri:?}] = {l:?} & {r:?}",
-                // );
-
-                progress = true;
-                ri += 1; // Right moves up
-
-                let mut new = Entry {
-                    kind: *out,
-                    at: l.at,
-                    node: None, // todo update.
-                };
-                // Replace the old nodes, swapping the second out if necessary.
-
-                // println!(
-                    // "      [{output_index:?}] = {new:?}",
-                // );
-                
-                delete += 1; // Merging at least one!
-                match mode {
-                    ParentChoice::Both => {}
-                    ParentChoice::Left => {
-                        // Left is parent, preserve the right as a child.
-                        new.node = Some((*expr, state[expr].len()));
-                        // FIXME: Capture multiple children
-                        state[expr].push(r);
-                    }
-                    ParentChoice::Right => {
-                        // Right is parent, preserve the left as a child.
-                        new.node = Some((*expr, state[expr].len()));
-                        // FIXME: Capture multiple children
-                        state[expr].push(l);
-                    }
-                }
-                state.entries[output_index] = new;
-            }
-            for _ in 0..delete {
-                state.entries.pop();
-            }
-        }
-        Rule::Promote { from, to, expr } => {
-            // println!("  {from:?} => {to:?}");
-            // println!();
-            for i in 0..state.entries.len() {
-                state.token_runs += 1;
-                // TODO: Avoid reserving id here to avoid locking issues.
-                let id = state[expr].len();
-                let entry = &mut state.entries[i];
-
-                if entry.kind != *from {
-                    continue;
-                }
-                // println!("    {entry:?}");
-                progress = true;
-                entry.kind = *to;
-                entry.node = Some((*expr, id));
-                let entry = state.entries[i];
-                state[expr].push(entry);
-            }
-        }
-    }
-    progress
-}
-
 const EMPTY_ROW: Vec<Entry> = Vec::new();
 const EMPTY_TABLE: [Vec<Entry>; SubExprKind::COUNT] = [EMPTY_ROW; SubExprKind::COUNT];
 
-fn setup(input: &str, rules: &[Rule]) -> State {
-    let kinds: Vec<Kind> = Kind::iter().collect();
-    for kinds in kinds {
-        println!("KINDS:  {:?}", kinds);
-    }
-    println!();
-    for rule in rules {
-        println!("RULE:   {rule:?}");
+impl<'a> State<'a> {
+    fn run_rule(&mut self, rule: &Rule) -> bool {
+        self.rule_runs += 1;
+        let mut progress = false;
+        // println!("{self:?}");
+        match rule {
+            Rule::Merge {
+                mode,
+                left,
+                right,
+                out,
+                expr,
+            } => {
+                println!("  {:3?}: {left:?} {right:?} => {out:?} {mode:?}", self.rule_runs);
+                // FIXME: Scan backwards for ParentChoice::Right.
+                let mut delete = 0;
+                let mut output_index = 0;
+                let mut li = 0;
+                let mut ri = 1;
+                while ri < self.entries.len() {
+                    self.token_runs += 1;
+                    let l = self.entries[li];
+                    let r = self.entries[ri];
+                    if l.kind != *left || r.kind != *right {
+                        // Move up!
+                        self.entries[output_index] = l;
+                        output_index += 1;
+                        self.entries[output_index] = r;
+                        li = ri;
+                        ri += 1;
+                        continue;
+                    }
+                    // println!(
+                    // "    [{li:?}..{ri:?}] = {l:?} & {r:?}",
+                    // );
+
+                    progress = true;
+                    ri += 1; // Right moves up
+
+                    let mut new = Entry {
+                        kind: *out,
+                        at: l.at,
+                        node: None, // todo update.
+                    };
+                    // Replace the old nodes, swapping the second out if necessary.
+
+                    // println!(
+                    // "      [{output_index:?}] = {new:?}",
+                    // );
+
+                    delete += 1; // Merging at least one!
+                    match mode {
+                        ParentChoice::Both => {}
+                        ParentChoice::Left => {
+                            // Left is parent, preserve the right as a child.
+                            new.node = Some((*expr, self[expr].len()));
+                            // FIXME: Capture multiple children
+                            self[expr].push(r);
+                        }
+                        ParentChoice::Right => {
+                            // Right is parent, preserve the left as a child.
+                            new.node = Some((*expr, self[expr].len()));
+                            // FIXME: Capture multiple children
+                            self[expr].push(l);
+                        }
+                    }
+                    self.entries[output_index] = new;
+                }
+                for _ in 0..delete {
+                    self.entries.pop();
+                }
+            }
+            Rule::Promote { from, to, expr } => {
+                println!("  {:3?}: {from:?} => {to:?}", self.rule_runs);
+                // println!();
+                for i in 0..self.entries.len() {
+                    self.token_runs += 1;
+                    // TODO: Avoid reserving id here to avoid locking issues.
+                    let id = self[expr].len();
+                    let entry = &mut self.entries[i];
+
+                    if entry.kind != *from {
+                        continue;
+                    }
+                    // println!("    {entry:?}");
+                    progress = true;
+                    entry.kind = *to;
+                    entry.node = Some((*expr, id));
+                    let entry = self.entries[i];
+                    self[expr].push(entry);
+                }
+            }
+        }
+        progress
     }
 
-    println!();
+    fn run(&mut self) -> () {
+        let mut earliest_progressing_rule = 0; // TODO: Is this working? Helping?
+        while earliest_progressing_rule < self.rules.len() {
+            self.loop_runs += 1;
+            let start = earliest_progressing_rule;
+            earliest_progressing_rule = self.rules.len();
+            for (rule_index, rule) in self.rules[start..].iter().enumerate() {
+                // println!("{:?}", self.entries);
+                if self.run_rule(&rule) {
+                    earliest_progressing_rule =
+                        std::cmp::min(earliest_progressing_rule, rule_index);
+                }
+                // println!();
+            }
+        }
+    }
+}
+
+fn setup<'a>(input: &'a str, rules: &'a [Rule]) -> State<'a> {
     println!("START");
-    println!();
-    println!("{input}");
 
     let mut entries: Vec<Entry> = vec![];
     for (at, ch) in input.chars().enumerate() {
@@ -409,28 +504,16 @@ fn setup(input: &str, rules: &[Rule]) -> State {
     // println!("{entries:#?}");
 
     let mut state = State {
+        input,
+        rules,
         expression_table: EMPTY_TABLE.clone(),
         entries,
         loop_runs: 0,
         rule_runs: 0,
         token_runs: 0,
     };
-    let mut earliest_progressing_rule = 0; // TODO: Is this working? Helping?
-    while earliest_progressing_rule < rules.len() {
-        state.loop_runs += 1;
-        let start = earliest_progressing_rule;
-        earliest_progressing_rule = rules.len();
-        for (rule_index, rule) in rules[start..].iter().enumerate() {
-            // println!("{:?}", state.entries);
-            if run_rule(&mut state, &rule) {
-                earliest_progressing_rule = std::cmp::min(earliest_progressing_rule, rule_index);
-            }
-            // println!();
-        }
-    }
-    println!("Ran {num_rules} rules {rule_runs} times", num_rules=rules.len(), rule_runs = state.rule_runs);
-    println!("Ran on {num_bytes} bytes with {token_runs} merge/promotion attempts", num_bytes=input.len(), token_runs = state.token_runs);
-    println!("Ran loop {loops} times", loops = state.loop_runs);
+    state.run();
+    println!("{state:?}");
     state
 }
 
@@ -442,7 +525,10 @@ mod example1 {
     fn table_test_1() {
         let rules = &get_rules()[..1]; // Digits* -> Digits
         let state = setup(EXAMPLE, rules);
-        assert_eq!(format!("{:?}", state.entries), "[OpenParen@0, Digits@1, Add@2, Digits@3, CloseParen@6, Mul@7, Digits@8]");
+        assert_eq!(
+            format!("{:?}", state.entries),
+            "[OpenParen@0, Digits@1, Add@2, Digits@3, CloseParen@6, Mul@7, Digits@8]"
+        );
     }
 
     #[test]
@@ -480,7 +566,10 @@ mod example1 {
     fn table_test_6() {
         let rules = &get_rules()[..6]; // IntegerAddHole Integer -> Integer
         let state = setup(EXAMPLE, rules);
-        assert_eq!(format!("{:?}", state.entries), "[OpenParen@0, Integer@1(Add 0), CloseParen@6, Mul@7, Integer@8(NumLit 2)]");
+        assert_eq!(
+            format!("{:?}", state.entries),
+            "[OpenParen@0, Integer@1(Add 0), CloseParen@6, Mul@7, Integer@8(NumLit 2)]"
+        );
         // TODO: Add test case for this that is not a noop.
     }
 
@@ -488,7 +577,10 @@ mod example1 {
     fn table_test_7() {
         let rules = &get_rules()[..7]; // OpenParen Integer -> OpenParen
         let state = setup(EXAMPLE, rules);
-        assert_eq!(format!("{:?}", state.entries), "[OpenParen@0(None 1), CloseParen@6, Mul@7, Integer@8(NumLit 2)]");
+        assert_eq!(
+            format!("{:?}", state.entries),
+            "[OpenParen@0(None 1), CloseParen@6, Mul@7, Integer@8(NumLit 2)]"
+        );
         // TODO: Add test case for this that is not a noop.
     }
 
