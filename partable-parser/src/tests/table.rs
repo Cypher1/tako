@@ -379,7 +379,7 @@ impl std::fmt::Debug for State<'_> {
         writeln!(f, "PERF")?;
         writeln!(
             f,
-            "  Ran    {num_rules:3} rules      {rule_runs:4} times",
+            "  Ran on {num_rules:3} rules      {rule_runs:4} times",
             num_rules = self.rules.len(),
             rule_runs = self.rule_runs
         )?;
@@ -389,7 +389,7 @@ impl std::fmt::Debug for State<'_> {
             num_bytes = self.input.len(),
             token_runs = self.token_runs
         )?;
-        writeln!(f, "  Ran    {loops:3} times", loops = self.loop_runs)?;
+        writeln!(f, "  Ran                    {loops:3} times", loops = self.loop_runs)?;
         Ok(())
     }
 }
