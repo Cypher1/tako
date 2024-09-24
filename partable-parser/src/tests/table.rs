@@ -561,7 +561,7 @@ mod example1 {
     fn table_test_4() {
         let rules = &get_rules()[..4]; // ExprMulHole Expr -> Expr
         let state = setup(EXAMPLE, rules);
-        assert_eq!(format!("{:?}", state.entries), "[OpenParen@0, Expr@1(Digits_0), AddOp@2, Expr@3(Digits_1), CloseParen@6, MulOp@7, Expr@8(Digits_4)]");
+        assert_eq!(format!("{:?}", state.entries), "[OpenParen@0..1, Expr@1..2(Digits_0), AddOp@2..3, Expr@3..6(Digits_6), CloseParen@6..7, MulOp@7..8, Expr@8..9(Digits_4)]");
         // TODO: Add test case for this that is not a noop.
     }
 
@@ -569,7 +569,7 @@ mod example1 {
     fn table_test_5() {
         let rules = &get_rules()[..5]; // Expr + -> ExprAddHole
         let state = setup(EXAMPLE, rules);
-        assert_eq!(format!("{:?}", state.entries), "[OpenParen@0, ExprAddHole@1(Noop_0), Expr@3(Digits_1), CloseParen@6, MulOp@7, Expr@8(Digits_4)]");
+        assert_eq!(format!("{:?}", state.entries), "[OpenParen@0..1, ExprAddHole@1..3(Digits_0), Expr@3..6(Digits_1), CloseParen@6..7, MulOp@7..8, Expr@8..9(Digits_4)]");
         // TODO: Add test case for this that is not a noop.
     }
 
@@ -599,7 +599,7 @@ mod example1 {
     fn table_test_all() {
         let rules = get_rules();
         let state = setup(EXAMPLE, &rules);
-        assert_eq!(format!("{:?}", state.entries), "[Expr@0..9(Expr_4)]");
+        assert_eq!(format!("{:?}", state.entries), "[Expr@0..9(Mul_0)]");
         // assert_eq!(format!("{:?}", state.expression_table), "");
     }
 }
@@ -638,7 +638,7 @@ mod example2 {
     fn table_test_4() {
         let rules = &get_rules()[..4]; // ExprMulHole Expr -> Expr
         let state = setup(EXAMPLE, rules);
-        assert_eq!(format!("{:?}", state.entries), "[Expr@0(Digits_0), AddOp@1, OpenParen@2, Expr@3(Digits_4), AddOp@4, Expr@5(Digits_2), CloseParen@8, MulOp@9, Expr@10(Digits_5)]");
+        assert_eq!(format!("{:?}", state.entries), "[Expr@0..1(Digits_0), AddOp@1..2, OpenParen@2..3, Expr@3..4(Digits_1), AddOp@4..5, Expr@5..8(Digits_7), CloseParen@8..9, MulOp@9..10, Expr@10..11(Digits_5)]");
         // TODO: Add test case for this that is not a noop.
     }
 
@@ -646,7 +646,7 @@ mod example2 {
     fn table_test_5() {
         let rules = &get_rules()[..5]; // Expr + -> ExprAddHole
         let state = setup(EXAMPLE, rules);
-        assert_eq!(format!("{:?}", state.entries), "[ExprAddHole@0(Digits_0), OpenParen@2, Expr@3(Digits_4), Expr@5(Digits_2), CloseParen@8, MulOp@9, Expr@10(Digits_5)]");
+        assert_eq!(format!("{:?}", state.entries), "[ExprAddHole@0..1(Digits_0), OpenParen@2..3, ExprAddHole@3..5(Digits_1), Expr@5..8(Digits_7), CloseParen@8..9, MulOp@9..10, Expr@10..11(Digits_5)]");
         // TODO: Add test case for this that is not a noop.
     }
 
@@ -674,7 +674,7 @@ mod example2 {
     fn table_test_all() {
         let rules = get_rules();
         let state = setup(EXAMPLE, &rules);
-        assert_eq!(format!("{:?}", state.entries), "[Expr@0..11(Expr_5)]");
+        assert_eq!(format!("{:?}", state.entries), "[Expr@0..11(Add_1)]");
         // assert_eq!(format!("{:?}", state.expression_table), "");
     }
 }
