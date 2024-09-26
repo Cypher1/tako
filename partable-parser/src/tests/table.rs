@@ -381,7 +381,7 @@ impl<'a> State<'a> {
         self.rule_runs += 1;
         let mut progress = false;
         // println!("{self:?}");
-        // println!("  {:3?}: {rule:?}", self.rule_runs);
+        println!("  {:3?}: {rule:?}", self.rule_runs);
         match rule {
             Rule::Merge {
                 mode,
@@ -393,8 +393,7 @@ impl<'a> State<'a> {
                 let mut delete = 0;
                 let mut output_index = 0;
                 let mut li = 0;
-                let mut ri = 1;
-                while ri < self.entries.len() {
+                for ri in 1..self.entries.len() {
                     self.token_runs += 1;
                     let start = self.entries[li].at;
                     let end = self.entries[ri].end;
@@ -402,19 +401,15 @@ impl<'a> State<'a> {
                     let r = self.entries[ri].clone(); // TODO: Avoid clone
                     if l.kind != *left || r.kind != *right {
                         // Move up!
-                        self.entries[output_index] = l;
                         li = ri;
                         output_index += 1;
+                        println!("    {output_index:?} <= {ri:?}");
                         self.entries[output_index] = r;
-                        ri += 1;
                         continue;
                     }
-                    // println!(
-                    // "    [{li:?}..{ri:?}] = {l:?} & {r:?}",
-                    // );
+                    println!("    [{li:?}..{ri:?}] = {l:?} & {r:?}",);
 
                     progress = true;
-                    ri += 1; // Right moves up
 
                     let mut new = Entry {
                         kind: *out,
@@ -425,29 +420,26 @@ impl<'a> State<'a> {
                     };
                     // Replace the old nodes, swapping the second out if necessary.
 
-                    // println!(
-                    // "      [{output_index:?}] = {new:?}",
-                    // );
-
                     delete += 1; // Merging at least one!
                     match mode {
                         ParentChoice::Both => {}
                         ParentChoice::Left => {
                             // Left is parent, preserve the right as a child.
-                            new.nodes.push((*out, r.id));
+                            new.nodes.push((r.kind, r.id));
                             // FIXME: Capture multiple children
                         }
                         ParentChoice::Right => {
                             // Right is parent, preserve the left as a child.
-                            new.nodes.push((*out, l.id));
+                            new.nodes.push((l.kind, l.id));
                             // FIXME: Capture multiple children
                         }
                     }
                     self[out].push(new.clone());
+                    println!("      [{output_index:?}] <= {new:?}",);
                     self.entries[output_index] = new;
                 }
                 for _ in 0..delete {
-                    self.entries.pop();
+                    self.entries.pop(); // There's a cleaner version kf this
                 }
             }
             Rule::Promote { from, to } => {
@@ -461,7 +453,7 @@ impl<'a> State<'a> {
                     if entry.kind != *from {
                         continue;
                     }
-                    // println!("    {entry:?}");
+                    println!("    {entry:?} => {to:?}");
                     progress = true;
                     entry.kind = *to;
                     entry.nodes = vec![(*from, entry.id)];
@@ -483,7 +475,7 @@ impl<'a> State<'a> {
             let start = earliest_progressing_rule;
             earliest_progressing_rule = self.rules.len();
             for (rule_index, rule) in self.rules[start..].iter().enumerate() {
-                // println!("{:?}", self.entries);
+                println!("{:?}", self.entries);
                 if self.run_rule(rule) {
                     earliest_progressing_rule =
                         std::cmp::min(earliest_progressing_rule, rule_index);
@@ -559,7 +551,7 @@ mod example1 {
 
     #[test]
     fn table_test_4() {
-        let rules = &get_rules()[..4]; // ExprMulHole Expr -> Expr
+        let rules = &get_rules()[..4]; // ExprMulHole Expr -> Mul
         let state = setup(EXAMPLE, rules);
         assert_eq!(format!("{:?}", state.entries), "[OpenParen@0..1, Expr@1..2(Digits_0), AddOp@2..3, Expr@3..6(Digits_6), CloseParen@6..7, MulOp@7..8, Expr@8..9(Digits_4)]");
         // TODO: Add test case for this that is not a noop.
@@ -567,32 +559,54 @@ mod example1 {
 
     #[test]
     fn table_test_5() {
-        let rules = &get_rules()[..5]; // Expr + -> ExprAddHole
+        let rules = &get_rules()[..5]; // Mul -> Expr
         let state = setup(EXAMPLE, rules);
-        assert_eq!(format!("{:?}", state.entries), "[OpenParen@0..1, ExprAddHole@1..3(Digits_0), Expr@3..6(Digits_1), CloseParen@6..7, MulOp@7..8, Expr@8..9(Digits_4)]");
+        assert_eq!(format!("{:?}", state.entries), "[OpenParen@0..1, Expr@1..2(Digits_0), AddOp@2..3, Expr@3..6(Digits_6), CloseParen@6..7, MulOp@7..8, Expr@8..9(Digits_4)]");
         // TODO: Add test case for this that is not a noop.
     }
 
     #[test]
     fn table_test_6() {
-        let rules = &get_rules()[..6]; // ExprAddHole Expr -> Expr
+        let rules = &get_rules()[..6]; // Expr + -> ExprAddHole
         let state = setup(EXAMPLE, rules);
-        assert_eq!(
-            format!("{:?}", state.entries),
-            "[OpenParen@0, Expr@1(Add_0), CloseParen@6, MulOp@7, Expr@8(Digits_4)]"
-        );
-        // TODO: Add test case for this that is not a noop.
+        assert_eq!(format!("{:?}", state.entries), "[OpenParen@0..1, ExprAddHole@1..3(Expr_0), Expr@3..6(Digits_6), CloseParen@6..7, MulOp@7..8, Expr@8..9(Digits_4)]");
     }
 
     #[test]
     fn table_test_7() {
-        let rules = &get_rules()[..7]; // OpenParen Expr -> OpenParen
+        let rules = &get_rules()[..7]; // ExprAddHole Expr -> Add
         let state = setup(EXAMPLE, rules);
         assert_eq!(
             format!("{:?}", state.entries),
-            "[OpenParen@0(Noop_1), CloseParen@6, MulOp@7, Expr@8(Digits_4)]"
+            "[OpenParen@0..1, Add@1..6(Expr_1), CloseParen@6..7, MulOp@7..8, Expr@8..9(Digits_4)]"
         );
-        // TODO: Add test case for this that is not a noop.
+    }
+
+    #[test]
+    fn table_test_8() {
+        let rules = &get_rules()[..8]; // Add -> Expr
+        let state = setup(EXAMPLE, rules);
+        assert_eq!(
+            format!("{:?}", state.entries),
+            "[OpenParen@0..1, Expr@1..6(Add_0), CloseParen@6..7, MulOp@7..8, Expr@8..9(Digits_4)]"
+        );
+    }
+
+    #[test]
+    fn table_test_9() {
+        let rules = &get_rules()[..9]; // OpenParen Expr -> OpenParen
+        let state = setup(EXAMPLE, rules);
+        assert_eq!(
+            format!("{:?}", state.entries),
+            "[OpenParen@0..6(Expr_3), CloseParen@6..7, MulOp@7..8, Expr@8..9(Digits_4)]"
+        );
+    }
+
+    #[test]
+    fn table_test_10() {
+        let rules = &get_rules()[..10]; // OpenParen CloseParen -> Expr
+        let state = setup(EXAMPLE, rules);
+        assert_eq!(format!("{:?}", state.entries), "[Expr@0..9(Mul_0)]");
     }
 
     #[test]
@@ -636,7 +650,7 @@ mod example2 {
 
     #[test]
     fn table_test_4() {
-        let rules = &get_rules()[..4]; // ExprMulHole Expr -> Expr
+        let rules = &get_rules()[..4]; // ExprMulHole Expr -> Mul
         let state = setup(EXAMPLE, rules);
         assert_eq!(format!("{:?}", state.entries), "[Expr@0..1(Digits_0), AddOp@1..2, OpenParen@2..3, Expr@3..4(Digits_1), AddOp@4..5, Expr@5..8(Digits_7), CloseParen@8..9, MulOp@9..10, Expr@10..11(Digits_5)]");
         // TODO: Add test case for this that is not a noop.
@@ -644,29 +658,54 @@ mod example2 {
 
     #[test]
     fn table_test_5() {
-        let rules = &get_rules()[..5]; // Expr + -> ExprAddHole
+        let rules = &get_rules()[..5]; // Mul -> Expr
         let state = setup(EXAMPLE, rules);
-        assert_eq!(format!("{:?}", state.entries), "[ExprAddHole@0..1(Digits_0), OpenParen@2..3, ExprAddHole@3..5(Digits_1), Expr@5..8(Digits_7), CloseParen@8..9, MulOp@9..10, Expr@10..11(Digits_5)]");
+        assert_eq!(format!("{:?}", state.entries), "[Expr@0..1(Digits_0), AddOp@1..2, OpenParen@2..3, Expr@3..4(Digits_1), AddOp@4..5, Expr@5..8(Digits_7), CloseParen@8..9, MulOp@9..10, Expr@10..11(Digits_5)]");
         // TODO: Add test case for this that is not a noop.
     }
 
     #[test]
     fn table_test_6() {
-        let rules = &get_rules()[..6]; // ExprAddHole Expr -> Expr
+        let rules = &get_rules()[..6]; // Expr + -> ExprAddHole
         let state = setup(EXAMPLE, rules);
-        assert_eq!(format!("{:?}", state.entries),
-        "[ExprAddHole@0..2(ExprAddHole_0), OpenParen@2..3, Expr@3..4(Expr_1), Expr@5..8(Expr_2), CloseParen@8..9, MulOp@9..10, Expr@10..11(Expr_3)]");
+        assert_eq!(format!("{:?}", state.entries), "[ExprAddHole@0..2(Expr_0), OpenParen@2..3, ExprAddHole@3..5(Expr_1), Expr@5..8(Digits_7), CloseParen@8..9, MulOp@9..10, Expr@10..11(Digits_5)]");
         // TODO: Add test case for this that is not a noop.
     }
 
     #[test]
     fn table_test_7() {
-        let rules = &get_rules()[..7]; // OpenParen Expr -> OpenParen
+        let rules = &get_rules()[..7]; // ExprAddHole Expr -> Add
+        let state = setup(EXAMPLE, rules);
+        assert_eq!(format!("{:?}", state.entries),
+        "[ExprAddHole@0..2(Expr_0), OpenParen@2..3, Add@3..8(Expr_2), CloseParen@8..9, MulOp@9..10, Expr@10..11(Digits_5)]");
+        // TODO: Add test case for this that is not a noop.
+    }
+
+    #[test]
+    fn table_test_8() {
+        let rules = &get_rules()[..8]; // Add -> Expr
+        let state = setup(EXAMPLE, rules);
+        assert_eq!(format!("{:?}", state.entries),
+        "[ExprAddHole@0..2(Expr_0), OpenParen@2..3, Expr@3..8(Add_0), CloseParen@8..9, MulOp@9..10, Expr@10..11(Digits_5)]");
+        // TODO: Add test case for this that is not a noop.
+    }
+
+    #[test]
+    fn table_test_9() {
+        let rules = &get_rules()[..9]; // OpenParen Expr -> OpenParen
         let state = setup(EXAMPLE, rules);
         assert_eq!(
             format!("{:?}", state.entries),
-            "[ExprAddHole@0..2(ExprAddHole_0), OpenParen@2..3, Expr@3..8(Expr_2), CloseParen@8..9, MulOp@9..10, Expr@10..11(Expr_3)]",
+            "[ExprAddHole@0..2(Expr_0), OpenParen@2..8(Expr_4), CloseParen@8..9, MulOp@9..10, Expr@10..11(Digits_5)]",
         );
+        // TODO: Add test case for this that is not a noop.
+    }
+
+    #[test]
+    fn table_test_10() {
+        let rules = &get_rules()[..10]; // OpenParen CloseParen -> Expr
+        let state = setup(EXAMPLE, rules);
+        assert_eq!(format!("{:?}", state.entries), "[Expr@0..11(Add_1)]");
         // TODO: Add test case for this that is not a noop.
     }
 
