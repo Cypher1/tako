@@ -1,47 +1,60 @@
 %start Expr
 %parse-param ctx: *mut crate::parser::Ast
 %%
-Expr -> Result<NodeId, ParseError>:
-      Expr 'Add' Term
-      {
-        let loc = $2.expect("Add").span();
-        let add = with(ctx).add_op(Op{
-            op: Symbol::Add,
-            args: smallvec![]
-          },
-          loc.into()
-        );
-        Ok(add)
-      }
-    | Term { $1 }
-    ;
+IdentExpr -> Result<NodeId, ParseError>:
+      'Ident'
+{
+  let str_for_hash = $lexer.span_str($1.as_ref().unwrap().span());
+  let str_id = with(ctx)
+      .string_interner
+      .register_str_by_loc(str_for_hash, $span.start() as u16);
+  let id = with(ctx).add_identifier(str_id, $span.into());
+  Ok(id)
+};
+
+IntegerLitExpr -> Result<NodeId, ParseError>:
+  'IntegerLit'
+{
+  let str_for_hash = $lexer.span_str($1.as_ref().unwrap().span());
+  let _id = with(ctx)
+      .string_interner
+      .register_str_by_loc(str_for_hash, $span.start() as u16);
+  Ok(with(ctx).add_literal(Literal::Numeric,
+    $span.into()
+  ))
+};
+
+Expr -> Result<NodeId, ParseError>: AddArg { $1 };
+
+AddArg -> Result<NodeId, ParseError>:
+  AddArg 'Add' Term
+  {
+    let add = with(ctx).add_op(Op{
+        op: Symbol::Add,
+        args: smallvec![$1?, $3?]
+      },
+      $span.into()
+    );
+    Ok(add)
+  }
+| Term { $1 };
 
 Term -> Result<NodeId, ParseError>:
-      Term 'Mul' Factor {
-        let mul = with(ctx).add_op(Op{
-            op: Symbol::Mul,
-            args: smallvec![]
-          },
-          $span.into()
-        );
-        Ok(mul)
-    }
-    | Factor { $1 }
-    ;
+  Term 'Mul' Factor {
+    let mul = with(ctx).add_op(Op{
+        op: Symbol::Mul,
+        args: smallvec![$1?, $3?]
+      },
+      $span.into()
+    );
+    Ok(mul)
+}
+| Factor { $1 };
 
 Factor -> Result<NodeId, ParseError>:
-      'OpenParen' Expr 'CloseParen' { $2 }
-    | 'IntegerLit'
-      {
-        let str_for_hash = $lexer.span_str($1.as_ref().unwrap().span());
-        let _id = with(ctx)
-            .string_interner
-            .register_str_by_loc(str_for_hash, $span.start() as u16);
-        Ok(with(ctx).add_literal(Literal::Numeric,
-          $span.into()
-        ))
-      }
-    ;
+  'OpenParen' Expr 'CloseParen' { $2 }
+  | IntegerLitExpr { $1 }
+  | IdentExpr { $1 };
 %%
 /*
 Array 'OpenBracket' ManyTerms 'CloseBracket'
