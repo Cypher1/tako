@@ -204,9 +204,78 @@ pub mod tokens {
         Forall,
         Exists,
     }
+
     impl std::fmt::Display for Symbol {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            write!(f, "{self:?}")
+            write!(
+                f,
+                "{}",
+                match self {
+                    Self::Hash => "#",
+                    Self::Shebang => "#!",
+                    Self::Comment => "//",
+                    Self::MultiCommentOpen => "/*",
+                    Self::MultiCommentClose => "*/",
+                    // Basics
+                    Self::Add => "+",
+                    Self::Sub => "-",
+                    Self::Div => "/",
+                    Self::Mul => "*",
+                    Self::Exp => "**",
+                    Self::LogicalNot => "!",
+                    Self::BitNot => "~",
+                    Self::And => "&",
+                    Self::BitXor => "^",
+                    Self::Or => "|",
+                    Self::LogicalAnd => "&&",
+                    Self::LogicalOr => "||",
+                    Self::Modulo => "%",
+                    Self::GetAddress => "@",
+                    Self::HasType => ":",
+                    Self::Try => "?",
+                    Self::Dot => ".",
+                    Self::Range => "..",
+                    Self::Spread => "...",
+                    Self::Sequence => ";",
+                    Self::Arrow => "->",
+                    Self::DoubleArrow => "=>",
+                    Self::LeftShift => "<<",
+                    Self::RightShift => ">>",
+                    Self::LeftPipe => "<|",
+                    Self::RightPipe => "|>",
+                    // Assignment versions
+                    Self::Assign => "=",
+                    Self::AddAssign => "+=",
+                    Self::SubAssign => "-=",
+                    Self::DivAssign => "/=",
+                    Self::MulAssign => "*=",
+                    Self::AndAssign => "&=",
+                    Self::OrAssign => "|=",
+                    Self::BitXorAssign => "^=",
+                    Self::LogicalAndAssign => "&&=",
+                    Self::LogicalOrAssign => "||=",
+                    Self::ModuloAssign => "%=",
+                    // Quantification
+                    Self::Lambda => "λ",
+                    Self::Sigma => "Σ",
+                    Self::Pi => "Π",
+                    Self::Forall => "∀",
+                    Self::Exists => "∃",
+                    // Comparisons
+                    Self::Eqs => "==",
+                    Self::NotEqs => "!=",
+                    Self::Lt => "<",
+                    Self::Gt => ">",
+                    Self::LtEqs => "<=",
+                    Self::GtEqs => ">=",
+                    Self::OpenParen => "(",
+                    Self::CloseParen => ")",
+                    Self::OpenCurly => "{",
+                    Self::CloseCurly => "}",
+                    Self::OpenBracket => "[",
+                    Self::CloseBracket => "]",
+                }
+            )
         }
     }
     #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]

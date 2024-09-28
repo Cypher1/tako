@@ -51,8 +51,8 @@ write "write"
 
 [0-9]+\.[0-9]+ "FloatingLit"
 [0-9]+ "IntegerLit"
-# [A-Fa-f]* "ColorLit"
-^[a-zA-Z][_a-zA-Z0-9]*$ "Ident"
+#[A-Fa-f]* "ColorLit"
+[a-zA-Z][_a-zA-Z0-9]* "Ident"
 \$[a-zA-Z][_a-zA-Z0-9] "Atom"
 
 \' "Quote"
