@@ -1,45 +1,80 @@
 %start Expr
 %parse-param ctx: *mut crate::parser::Ast
 %%
-Expr -> Result<u64, ()>:
-      Expr 'Add' Term {
-        with(ctx).add_op(Op{ op: Symbol::Add, args: smallvec![] }, Location { start: 0, length: 0});
-        Ok($1? + $3?)
+Expr -> Result<NodeId, ParseError>:
+      Expr 'Add' Term
+      {
+        let loc = $2.expect("Add").span();
+        let add = with(ctx).add_op(Op{
+            op: Symbol::Add,
+            args: smallvec![]
+          },
+          loc.into()
+        );
+        Ok(add)
       }
-    | 'OpenBracket' ManyTerms 'CloseBracket' { Ok( $2?.len() as u64) }
     | Term { $1 }
     ;
 
-Term -> Result<u64, ()>:
-      Term 'Mul' Factor { Ok($1? * $3?) }
+Term -> Result<NodeId, ParseError>:
+      Term 'Mul' Factor {
+        let mul = with(ctx).add_op(Op{
+            op: Symbol::Mul,
+            args: smallvec![]
+          },
+          $span.into()
+        );
+        Ok(mul)
+    }
     | Factor { $1 }
     ;
 
-Factor -> Result<u64, ()>:
+Factor -> Result<NodeId, ParseError>:
       'OpenParen' Expr 'CloseParen' { $2 }
     | 'IntegerLit'
       {
-          let v = $1.map_err(|_| ())?;
-          parse_int($lexer.span_str(v.span()))
+        let str_for_hash = $lexer.span_str($1.as_ref().unwrap().span());
+        let _id = with(ctx)
+            .string_interner
+            .register_str_by_loc(str_for_hash, $span.start() as u16);
+        Ok(with(ctx).add_literal(Literal::Numeric,
+          $span.into()
+        ))
       }
     ;
+%%
+/*
+Array 'OpenBracket' ManyTerms 'CloseBracket'
+{
+  Ok( $2?.len() as NodeId)
+}
 
-ManyTerms -> Result<Vec<u64>, ()>:
+ManyTerms -> Result<NodeId, ParseError>:
       Term { Ok(vec![$1?]) }
     | ManyTerms Term { flatten($1, $2) }
     ;
 
 %%
+*/
 
 use smallvec::smallvec;
 use crate::ast::*;
-use crate::parser::{Symbol, Location};
+use crate::parser::{ParseError, Symbol, Location, semantics::Literal};
 // Any functions here are in scope for all the grammar actions above.
 
 fn with(ctx: *mut crate::parser::Ast) -> &'static mut Ast {
   // TODO: Replace with this something safer... but... for now
   // the context is guaranteed to live long enough and not be moved.
   unsafe {&mut (*ctx)}
+}
+
+impl Into<Location> for cfgrammar::Span {
+  fn into(self) -> Location {
+    Location {
+      start: self.start() as u16,
+      length: self.len() as u8,
+    }
+  }
 }
 
 //AssignExpr -> ASTAssign: 'Assign' Expr
@@ -53,16 +88,6 @@ fn with(ctx: *mut crate::parser::Ast) -> &'static mut Ast {
     // id: lrpar::Span,
     // expr: Box<u32>,
 // }
-
-fn parse_int(s: &str) -> Result<u64, ()> {
-    match s.parse::<u64>() {
-        Ok(val) => Ok(val),
-        Err(_) => {
-            eprintln!("{} cannot be represented as a u64", s);
-            Err(())
-        }
-    }
-}
 
 fn flatten<T>(lhs: Result<Vec<T>, ()>, rhs: Result<T, ()>)
            -> Result<Vec<T>, ()>
