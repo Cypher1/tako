@@ -274,8 +274,9 @@ impl Rule {
 // TODO: This could be a const.
 fn get_rules() -> Vec<Rule> {
     vec![
-        Rule::m2(Kind::Digits, Kind::Digits, Kind::MulArg),
-        Rule::m3(Kind::MulArg, Kind::MulOp, Kind::MulArg, Kind::AddArg),
+        Rule::paste(Kind::Digits, Kind::Digits, Kind::Digits),
+        Rule::promote(Kind::Digits, Kind::Expr),
+        Rule::right(Kind::Expr, Kind::MulOp, Kind::ExprMulHole),
         Rule::left(Kind::ExprMulHole, Kind::Expr, Kind::Mul),
         Rule::promote(Kind::Mul, Kind::Expr),
         Rule::right(Kind::Expr, Kind::AddOp, Kind::ExprAddHole),
@@ -299,6 +300,9 @@ struct State<'a> {
     rules: &'a [Rule],
     // Finish subexpressions
     expression_table: [TableRow; Kind::COUNT],
+
+    // Tokens / expressions being parsed.
+    entries: Vec<Entry>,
 
     // Performance / work counters
     loop_runs: u32,
@@ -504,8 +508,10 @@ fn setup<'a>(input: &'a str, rules: &'a [Rule]) -> State<'a> {
             end: at + 1,
             nodes: vec![],
         };
+        state.entries.push(entry.clone());
         state[&kind].push(entry);
     }
+    // println!("{entries:#?}", entries=state.entries);
 
     state.run();
     println!("{state:?}");
