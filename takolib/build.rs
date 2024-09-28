@@ -6,10 +6,10 @@ fn main() {
         .lrpar_config(|ctp| {
             ctp.yacckind(YaccKind::Grmtools)
                 .grammar_in_src_dir("tako.y")
-                .unwrap()
+                .expect("tako.y failed to build")
         })
         .lexer_in_src_dir("tako.l")
-        .unwrap()
+        .expect("tako.l failed to build")
         .build()
-        .unwrap();
+        .expect("tako's parser failed to build");
 }
