@@ -229,11 +229,14 @@ pub fn parse(_file: &Path, _s: &str, _tokens: &[Token]) -> Result<Ast, TError> {
 #[test]
 fn simple_expressions() {
     // Get the `LexerDef` for the `tako` language.
+    let path = Path::new("test.tk").to_path_buf();
+    let mut ast = Ast::new(path);
     let lexerdef = tako_l::lexerdef();
     let mut results = vec![];
     let input = "2 + 3
 2 + 3 * 4
 (2 + 3) * 4
+[2 3 4]
 ";
     for l in input.lines() {
         println!(">>> {l}");
@@ -244,7 +247,7 @@ fn simple_expressions() {
         // we can lex an input.
         let lexer = lexerdef.lexer(l);
         // Pass the lexer to the parser and lex and parse the input.
-        let (res, errs) = tako_y::parse(&lexer);
+        let (res, errs) = tako_y::parse(&lexer, &mut ast);
         for e in errs {
             println!("{}", e.pp(&lexer, &tako_y::token_epp));
         }
@@ -259,5 +262,6 @@ fn simple_expressions() {
             None => eprintln!("Unable to evaluate expression."),
         }
     }
-    assert_eq!(results, [Ok(5), Ok(14), Ok(20)]);
+    assert_eq!(results, [Ok(5), Ok(14), Ok(20), Ok(3)]);
+    assert_eq!(ast.ops.len(), 3);
 }
