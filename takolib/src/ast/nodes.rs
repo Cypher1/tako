@@ -1,7 +1,7 @@
 use super::location::Location;
 use super::*;
 use crate::ast::string_interner::Identifier;
-use crate::parser::{semantics::BindingMode, tokens::Symbol};
+use crate::parser::semantics::BindingMode;
 use smallvec::SmallVec;
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
@@ -59,6 +59,11 @@ pub struct Atom {
 pub struct Call {
     pub inner: NodeId,
     pub args: SmallVec<NodeId, 2>,
+}
+
+
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+enum Symbol {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
