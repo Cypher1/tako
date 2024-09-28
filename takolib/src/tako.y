@@ -1,7 +1,12 @@
 %start Expr
+%parse-param ctx: *mut crate::parser::Ast
 %%
 Expr -> Result<u64, ()>:
-      Expr 'Add' Term { Ok($1? + $3?) }
+      Expr 'Add' Term {
+        with(ctx).add_op(Op{ op: Symbol::Add, args: smallvec![] }, Location { start: 0, length: 0});
+        Ok($1? + $3?)
+      }
+    | 'OpenBracket' ManyTerms 'CloseBracket' { Ok( $2?.len() as u64) }
     | Term { $1 }
     ;
 
@@ -19,8 +24,35 @@ Factor -> Result<u64, ()>:
       }
     ;
 
+ManyTerms -> Result<Vec<u64>, ()>:
+      Term { Ok(vec![$1?]) }
+    | ManyTerms Term { flatten($1, $2) }
+    ;
+
 %%
+
+use smallvec::smallvec;
+use crate::ast::*;
+use crate::parser::{Symbol, Location};
 // Any functions here are in scope for all the grammar actions above.
+
+fn with(ctx: *mut crate::parser::Ast) -> &'static mut Ast {
+  // TODO: Replace with this something safer... but... for now
+  // the context is guaranteed to live long enough and not be moved.
+  unsafe {&mut (*ctx)}
+}
+
+//AssignExpr -> ASTAssign: 'Assign' Expr
+//{
+ // let v = $2?;
+  //ASTAssign { $1.span(), expr: Box.new(v) }
+//};
+
+    // | AssignExpr { Ok( 0 ) }
+// struct ASTAssign {
+    // id: lrpar::Span,
+    // expr: Box<u32>,
+// }
 
 fn parse_int(s: &str) -> Result<u64, ()> {
     match s.parse::<u64>() {
@@ -31,6 +63,15 @@ fn parse_int(s: &str) -> Result<u64, ()> {
         }
     }
 }
+
+fn flatten<T>(lhs: Result<Vec<T>, ()>, rhs: Result<T, ()>)
+           -> Result<Vec<T>, ()>
+{
+    let mut flt = lhs?;
+    flt.push(rhs?);
+    Ok(flt)
+}
+
 
 /*
     RIGHT_ASSOCIATIVE
