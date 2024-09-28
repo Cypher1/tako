@@ -28,3 +28,37 @@ impl std::fmt::Display for BindingMode {
         )
     }
 }
+
+pub const fn op_from_assign_op(s: Symbol) -> Option<Symbol> {
+    // TODO(clarity): Move to a symbol module.
+    Some(match s {
+        Symbol::AddAssign => Symbol::Add,
+        Symbol::SubAssign => Symbol::Sub,
+        Symbol::DivAssign => Symbol::Div,
+        Symbol::MulAssign => Symbol::Mul,
+        Symbol::AndAssign => Symbol::And,
+        Symbol::OrAssign => Symbol::Or,
+        Symbol::BitXorAssign => Symbol::BitXor,
+        Symbol::LogicalAndAssign => Symbol::LogicalAnd,
+        Symbol::LogicalOrAssign => Symbol::LogicalOr,
+        Symbol::ModuloAssign => Symbol::Modulo,
+        _ => return None,
+    })
+}
+
+pub const fn binding_mode_from_op(s: Symbol) -> Option<BindingMode> {
+    // TODO(clarity): Move to a symbol module.
+    Some(match s {
+        Symbol::Lambda => BindingMode::Given,
+        Symbol::Pi => BindingMode::Forall,
+        Symbol::Forall => BindingMode::Forall,
+        Symbol::Exists => BindingMode::With,
+        Symbol::Sigma => BindingMode::With,
+        _ => return None,
+    })
+}
+
+pub const fn is_assign(s: Symbol) -> bool {
+    // TODO(clarity): Move to a symbol module.
+    matches!(s, Symbol::Assign) || op_from_assign_op(s).is_some()
+}
