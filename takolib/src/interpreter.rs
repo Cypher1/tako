@@ -221,7 +221,6 @@ impl Ctx<'_> {
             Symbol::GetAddress => todo!(),
             Symbol::LeftPipe => todo!(),
             Symbol::RightPipe => todo!(),
-            Symbol::Escape => todo!(),
             Symbol::HasType => todo!(),
             Symbol::Arrow | Symbol::DoubleArrow => {
                 // TODO(clarity): Type arrow vs value arrow?
