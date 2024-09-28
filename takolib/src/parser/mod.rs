@@ -227,9 +227,10 @@ pub fn parse(_file: &Path, _s: &str, _tokens: &[Token]) -> Result<Ast, TError> {
 }
 
 #[test]
-fn main() {
+fn simple_expressions() {
     // Get the `LexerDef` for the `tako` language.
     let lexerdef = tako_l::lexerdef();
+    let mut results = vec![];
     let input = "2 + 3
 2 + 3 * 4
 (2 + 3) * 4
@@ -248,10 +249,15 @@ fn main() {
             println!("{}", e.pp(&lexer, &tako_y::token_epp));
         }
         match res {
-            Some(Ok(r)) => println!("Result: {:?}", r),
-            Some(e) => eprintln!("Unable to evaluate expression.\n{e:?}"),
+            Some(res) => {
+                match res {
+                    Ok(r) => println!("Result: {:?}", r),
+                    Err(e) => eprintln!("Unable to evaluate expression.\n{e:?}"),
+                };
+                results.push(res);
+            }
             None => eprintln!("Unable to evaluate expression."),
         }
     }
-    assert_eq!("WTF", "");
+    assert_eq!(results, [Ok(5), Ok(14), Ok(20)]);
 }
