@@ -1,3 +1,5 @@
+use super::tokens::Symbol;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum Literal {
     Bool,    // A boolean of arbitrary size :P (true/false)

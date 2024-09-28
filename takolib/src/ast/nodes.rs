@@ -63,10 +63,6 @@ pub struct Call {
 
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
-enum Symbol {
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Op {
     pub op: Symbol,
     // TODO(perf): Use left: Option<NodeId>, right: Option<NodeId>
