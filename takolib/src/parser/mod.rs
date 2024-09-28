@@ -1,4 +1,5 @@
 use std::path::Path;
+use log::error;
 
 use lrlex::lrlex_mod;
 use lrpar::lrpar_mod;
@@ -218,12 +219,45 @@ pub mod tokens {
     }
 
     pub fn lex(_s: &str) -> Result<Vec<Token>, TError> {
-        todo!()
+        // TODO: Remove
+        Ok(vec![])
     }
 }
 
-pub fn parse(_file: &Path, _s: &str, _tokens: &[Token]) -> Result<Ast, TError> {
-    todo!()
+pub fn parse(file: &Path, input: &str, _tokens: &[Token]) -> Result<Ast, TError> {
+    let mut ast = Ast::new(file.to_path_buf());
+
+    // TODO: Don't 'get' this every time?
+    // TODO: Use a lazy once
+    let lexerdef = tako_l::lexerdef();
+
+    let lexer = lexerdef.lexer(input);
+    // Pass the lexer to the parser and lex and parse the input.
+    let (res, errs) = tako_y::parse(&lexer, &mut ast);
+    // TODO: Handle errors
+    for e in errs {
+        error!("{}", e.pp(&lexer, &tako_y::token_epp));
+    }
+    match res {
+        Some(res) => {
+            match res {
+                Ok(r) => {
+                    println!("Result: {:?}", r);
+                    Ok(ast)
+                }
+                // TODO: Handle this error
+                Err(e) => {
+                    error!("Unable to evaluate expression.\n{e:?}");
+                    todo!("Some other kind of error")
+                }
+            }
+        }
+        None => {
+            // TODO: Handle this error
+            error!("Unable to evaluate expression.");
+            todo!("There appears to have been an error")
+        }
+    }
 }
 
 #[test]
@@ -234,10 +268,10 @@ fn simple_expressions() {
     let lexerdef = tako_l::lexerdef();
     let mut results = vec![];
     let input = "2 + 3
-2 + 3 * 4
-(2 + 3) * 4
-[2 3 4]
-";
+        2 + 3 * 4
+        (2 + 3) * 4
+        [2 3 4]
+        ";
     for l in input.lines() {
         println!(">>> {l}");
         if l.trim().is_empty() {
