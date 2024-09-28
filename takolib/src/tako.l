@@ -1,14 +1,12 @@
 %%
 [\t\n\r ]+ ;
 
-// Terms
 [0-9]+\.[0-9]+ "FloatingLit"
 [0-9]+ "IntegerLit"
 "#" [A-Fa-f]* "ColorLit"
 [a-zA-Z][_a-zA-Z0-9]* "Ident"
 "$"[a-zA-Z][_a-zA-Z0-9] "Atom"
 
-// Groups
 \' "Quote"
 \" "DoubleQuote"
 
@@ -16,17 +14,22 @@
 "*/" "MultiCommentClose"
 "//" "Comment"
 
-"(" "OpenParen"
-")" "CloseParen"
-"{" "OpenCurly"
-"}" "CloseCurly"
-"[" "OpenBracket"
-"]" "CloseBracket"
+\( "OpenParen"
+\) "CloseParen"
+\{ "OpenCurly"
+\} "CloseCurly"
+\[ "OpenBracket"
+\] "CloseBracket"
 
 "," "Comma"
 
-// Assignment operators
-"=" "Assign"
+"==" "Eqs"
+"!=" "NotEqs"
+"<" "Lt"
+">" "Gt"
+"<=" "LtEqs"
+">=" "GtEqs"
+
 "+=" "AddAssign"
 "-=" "SubAssign"
 "/=" "DivAssign"
@@ -37,8 +40,8 @@
 "&&=" "LogicalAndAssign"
 "||=" "LogicalOrAssign"
 "%=" "ModuloAssign"
+"=" "Assign"
 
-// Operators
 "!" "LogicalNot"
 "#!" "Shebang"
 "#" "Hash"
@@ -47,7 +50,7 @@
 "&&" "LogicalAnd"
 "*" "Mul"
 "**" "Exp"
-"+" "Add"
+\+ "Add"
 "-" "Sub"
 "->" "Arrow"
 "." "Dot"
@@ -56,11 +59,9 @@
 "/" "Div"
 ":" "HasType"
 ";" "Sequence"
-"<" "Lt"
 "<<" "LeftShift"
 "<|" "LeftPipe"
 "=>" "DoubleArrow"
-">" "Gt"
 ">>" "RightShift"
 "?" "Try"
 "@" "GetAddress"
@@ -70,19 +71,10 @@
 "||" "LogicalOr"
 "~" "BitNot"
 
-// "Quantification"
 "λ" "Lambda"
 "Π" "Pi"
 "Σ" "Sigma"
 "∀" "Forall"
 "∃" "Exists"
-
-// "Comparisons"
-"==" "Eqs"
-"!=" "NotEqs"
-"<" "Lt"
-">" "Gt"
-"<=" "LtEqs"
-">=" "GtEqs"
 
 . "Unknown"
