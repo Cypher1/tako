@@ -3064,12 +3064,13 @@ dependencies = [
 
 [[package]]
 name = "tree-sitter"
-version = "0.20.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e747b1f9b7b931ed39a548c1fae149101497de3c1fc8d9e18c62c1a66c683d3d"
+version = "0.23.0"
+source = "git+https://github.com/tree-sitter/tree-sitter#12007d3ebef80cf26459e3cb807f8eba04b1fdd0"
 dependencies = [
  "cc",
  "regex",
+ "regex-syntax",
+ "tree-sitter-language 0.1.0 (git+https://github.com/tree-sitter/tree-sitter)",
 ]
 
 [[package]]
@@ -3079,12 +3080,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2545046bd1473dac6c626659cc2567c6c0ff302fc8b84a56c4243378276f7f57"
 
 [[package]]
+name = "tree-sitter-language"
+version = "0.1.0"
+source = "git+https://github.com/tree-sitter/tree-sitter#12007d3ebef80cf26459e3cb807f8eba04b1fdd0"
+
+[[package]]
 name = "tree-sitter-tako"
 version = "0.0.1"
 dependencies = [
  "cc",
  "tree-sitter",
- "tree-sitter-language",
+ "tree-sitter-language 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
