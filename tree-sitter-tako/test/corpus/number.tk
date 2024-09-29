@@ -25,3 +25,17 @@ Long float
 1_000_000_000.000_000
 ---
 (source_file (expression (number (float_literal))))
+
+==================
+Hex / Color
+==================
+#FF0000AA
+---
+(source_file (expression (color)))
+
+==================
+Hex / Color Mixed case
+==================
+#ff00aa
+---
+(source_file (expression (color)))
