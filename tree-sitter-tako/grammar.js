@@ -27,7 +27,6 @@ module.exports = grammar({
       $.int_literal,
       $.float_literal
     ),
-    comment: ($) => choice($.single_line_comment, $.nesting_comment),
     _nesting_comment_contents: ($) => choice(
       $.nesting_comment,
       $._anything,
