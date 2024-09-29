@@ -37,27 +37,65 @@ ComparisonArg -> R: MathsExpr { $1 };
 
 MathsExpr -> R: Add { $1 } | LeftShift { $1 } | RightShift { $1 } | Try { $1 };
 
-LeftShiftArg -> R: SimpleExpr { $1 };
-RightShiftArg -> R: SimpleExpr { $1 };
+LeftShiftArg -> R: Expr { $1 };
+RightShiftArg -> R: Expr { $1 };
 
 AddArg -> R: Mul { $1 };
 MulArg -> R: Exp { $1 };
-ExpArg -> R: BitOr { $1 } | LogicalOr { $1 } | BitXor { $1 } | Modulo { $1 };
-BitOrArg -> R: And { $1 };
-AndArg -> R: SimpleExpr { $1 };
-LogicalOrArg -> R: LogicalAnd { $1 };
+
+ExpArg -> R:
+  And 'BitOr' And {
+    let op = with(ctx).add_op(Op{
+        op: Symbol::BitOr,
+        args: smallvec![$1?, $3?]
+      },
+      $span.into()
+    );
+    Ok(op)
+}
+| LogicalAnd 'LogicalOr' LogicalAnd {
+    let op = with(ctx).add_op(Op{
+        op: Symbol::LogicalOr,
+        args: smallvec![$1?, $3?]
+      },
+      $span.into()
+    );
+    Ok(op)
+}
+| And 'BitXor' And {
+    let op = with(ctx).add_op(Op{
+        op: Symbol::BitXor,
+        args: smallvec![$1?, $3?]
+      },
+      $span.into()
+    );
+    Ok(op)
+}
+| And 'Modulo' And {
+    let op = with(ctx).add_op(Op{
+        op: Symbol::Modulo,
+        args: smallvec![$1?, $3?]
+      },
+      $span.into()
+    );
+    Ok(op)
+}
+| And { $1 };
+
+AndArg -> R: Dot { $1 };
 TryArg -> R: Range { $1 };
-RangeArg -> R: Dot { $1 };
-LogicalAndArg -> R: SimpleExpr { $1 };
-BitXorArg -> R: SimpleExpr { $1 };
+RangeArg -> R: PrefixOp { $1 };
+
+PrefixOp -> R:
+  BitNot { $1 }
+| LogicalNot { $1 }
+| Spread { $1 }
+| GetAddress { $1 };
+
 DotArg -> R: SimpleExpr { $1 };
 
 SimpleExpr -> R:
   'OpenParen' Expr 'CloseParen' { $2 }
-  | GetAddress { $1 }
-  | BitNot { $1 }
-  | LogicalNot { $1 }
-  | Spread { $1 }
   | ListLikeExpr { $1 }
   | IntegerLitExpr { $1 }
   | IdentExpr { $1 };
@@ -393,17 +431,6 @@ Add -> R:
 }
 | AddArg { $1 };
 
-Modulo -> R:
-  SimpleExpr 'Modulo' Modulo {
-    let op = with(ctx).add_op(Op{
-        op: Symbol::Modulo,
-        args: smallvec![$1?, $3?]
-      },
-      $span.into()
-    );
-    Ok(op)
-};
-
 GetAddress -> R:
   'GetAddress' GetAddress {
     let op = with(ctx).add_op(Op{
@@ -452,7 +479,7 @@ Dot -> R:
 | DotArg { $1 };
 
 Range -> R:
-  SimpleExpr 'Range' SimpleExpr {
+  Dot 'Range' Dot {
     let op = with(ctx).add_op(Op{
         op: Symbol::Range,
         args: smallvec![$1?, $3?]
@@ -462,30 +489,6 @@ Range -> R:
     Ok(op)
 }
 | RangeArg { $1 };
-
-BitOr -> R:
-  BitOr 'BitOr' BitOrArg {
-    let op = with(ctx).add_op(Op{
-        op: Symbol::BitOr,
-        args: smallvec![$1?, $3?]
-      },
-      $span.into()
-    );
-    Ok(op)
-}
-| BitOrArg { $1 };
-
-LogicalOr -> R:
-  LogicalOr 'LogicalOr' LogicalOrArg {
-    let op = with(ctx).add_op(Op{
-        op: Symbol::LogicalOr,
-        args: smallvec![$1?, $3?]
-      },
-      $span.into()
-    );
-    Ok(op)
-}
-| LogicalOrArg { $1 };
 
 And -> R:
   And 'And' AndArg {
@@ -500,7 +503,7 @@ And -> R:
 | AndArg { $1 };
 
 LogicalAnd -> R:
-  LogicalAnd 'LogicalAnd' LogicalAndArg {
+  LogicalAnd 'LogicalAnd' Dot {
     let op = with(ctx).add_op(Op{
         op: Symbol::LogicalAnd,
         args: smallvec![$1?, $3?]
@@ -509,22 +512,10 @@ LogicalAnd -> R:
     );
     Ok(op)
 }
-| LogicalAndArg { $1 };
-
-BitXor -> R:
-  BitXor 'BitXor' BitXorArg {
-    let op = with(ctx).add_op(Op{
-        op: Symbol::BitXor,
-        args: smallvec![$1?, $3?]
-      },
-      $span.into()
-    );
-    Ok(op)
-}
-| BitXorArg { $1 };
+| Dot { $1 };
 
 BitNot -> R:
-  'BitNot' SimpleExpr {
+  'BitNot' Dot {
     let op = with(ctx).add_op(Op{
         op: Symbol::BitNot,
         args: smallvec![$2?]
@@ -535,7 +526,7 @@ BitNot -> R:
 };
 
 LogicalNot -> R:
-  'LogicalNot' SimpleExpr {
+  'LogicalNot' Dot {
     let op = with(ctx).add_op(Op{
         op: Symbol::LogicalNot,
         args: smallvec![$2?]
@@ -546,7 +537,7 @@ LogicalNot -> R:
 };
 
 Spread -> R:
-  'Spread' SimpleExpr {
+  'Spread' Dot {
     let op = with(ctx).add_op(Op{
         op: Symbol::Spread,
         args: smallvec![$2?]
@@ -569,19 +560,6 @@ Try -> R:
 | TryArg { $1 };
 
 %%
-/*
-Array 'OpenBracket' ManyTerms 'CloseBracket'
-{
-  Ok( $2?.len() as NodeId)
-}
-
-ManyTerms -> R:
-      Term { Ok(vec![$1?]) }
-    | ManyTerms Term { flatten($1, $2) }
-    ;
-
-%%
-*/
 
 type R = Result<NodeId, ParseError>;
 type Maybe = Result<Option<NodeId>, ParseError>;
