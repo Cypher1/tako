@@ -6,6 +6,7 @@
   "types": "bindings/node",
   "scripts": {
     "install": "node-gyp-build",
+    "build": "tree-sitter generate",
     "prestart": "tree-sitter build --wasm",
     "start": "tree-sitter playground",
     "test": "node --test bindings/node/*_test.js"
@@ -32,10 +33,6 @@
     "url": "https://github.com/Cypher1/tako/issues"
   },
   "homepage": "https://github.com/Cypher1/tako#readme",
-  "dependencies": {
-    "node-addon-api": "^8.0.0",
-    "node-gyp-build": "^4.8.1"
-  },
   "peerDependencies": {
     "tree-sitter": "^0.21.1"
   },
@@ -45,13 +42,16 @@
     }
   },
   "devDependencies": {
-    "tree-sitter-cli": "^0.23.0",
-    "prebuildify": "^6.0.1"
+    "prebuildify": "^6.0.1",
+    "tree-sitter-cli": "^0.23.0"
   },
   "tree-sitter": [
     {
       "scope": "source.tako",
       "injection-regex": "^tako$"
     }
-  ]
+  ],
+  "dependencies": {
+    "node-gyp-build": "^4.8.1"
+  }
 }
