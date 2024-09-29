@@ -3,14 +3,14 @@ Integer literal
 ==================
 1
 ---
-(source_file (expression (number (int_literal))))
+(source_file (number (int_literal)))
 
 ==================
 Float literal
 ==================
 1.0
 ---
-(source_file (expression (number (float_literal))))
+(source_file (number (float_literal)))
 
 ==================
 Float literal with too many decimal points
@@ -18,9 +18,8 @@ Float literal with too many decimal points
 1.0.0
 ---
 (source_file
-  (expression
-    (number
-      (float_literal)))
+  (number
+    (float_literal))
   (ERROR
     (UNEXPECTED '.')))
 
@@ -29,39 +28,39 @@ Long int
 ==================
 1_000_000_000
 ---
-(source_file (expression (number (int_literal))))
+(source_file (number (int_literal)))
 
 ==================
 Long float
 ==================
 1_000_000_000.000_000
 ---
-(source_file (expression (number (float_literal))))
+(source_file (number (float_literal)))
 
 ==================
 Hex
 ==================
 0xff00
 ---
-(source_file (expression (hex_literal)))
+(source_file (hex_literal))
 
 ==================
 Color
 ==================
 #FF0000AA
 ---
-(source_file (expression (color)))
+(source_file (color))
 
 ==================
 Color Mixed case
 ==================
 #ff00aa
 ---
-(source_file (expression (color)))
+(source_file (color))
 
 ==================
 Color wrong number of digits
 ==================
 #ff00aaa
 ---
-(source_file (expression (color)) (ERROR))
+(source_file (color) (ERROR (ident)))
