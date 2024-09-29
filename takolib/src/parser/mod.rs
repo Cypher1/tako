@@ -1,23 +1,61 @@
 use std::path::Path;
 use log::error;
 
-use lrlex::lrlex_mod;
-use lrpar::lrpar_mod;
 use tokens::{Symbol, Token};
-// pub use lrpar::ParseError as UnderlyingParserError;
 
 use crate::{ast::{location::Location, Ast, NodeId}, error::TError};
 
-pub mod semantics;
+#[rust_sitter::grammar("tako")]
+pub mod grammar {
+    use std::cell::RefCell;
 
-// Using `lrlex_mod!` brings the lexer for `calc.l` into scope. By default the
-// module name will be `calc_l` (i.e. the file name, minus any extensions,
-// with a suffix of `_l`).
-lrlex_mod!("tako.l");
-// Using `lrpar_mod!` brings the parser for `tako.y` into scope. By default the
-// module name will be `tako` (i.e. the file name, minus any extensions,
-// with a suffix of `_y`).
-lrpar_mod!("tako.y");
+
+const count: RefCell<u32> = 0;
+
+#[rust_sitter::language]
+#[derive(Debug)]
+pub enum Expr {
+    Number(
+        #[rust_sitter::leaf(pattern = r"\d+", transform = |v| {
+            count.as_mut() += 1;
+            v.parse().unwrap()
+        })]
+        u32
+    ),
+    #[rust_sitter::prec_left(1)]
+    Add(
+        Box<Expr>, 
+        #[rust_sitter::leaf(text = "+")] (),
+        Box<Expr>
+        ),
+    #[rust_sitter::prec_left(2)]
+    Mul(
+        Box<Expr>, 
+        #[rust_sitter::leaf(text = "*")] (),
+        Box<Expr>
+        ),
+    #[rust_sitter::word]
+    Ident(
+        #[rust_sitter::leaf(pattern = r"[A-Za-z][A-Za-z0-9_]*")] (),
+    )
+}
+
+pub struct CommaSeparatedExprs {
+    #[rust_sitter::delimited(
+        #[rust_sitter::leaf(text = ",")]
+        ()
+    )]
+    values: Vec<Option<Expr>>, // Allow missing...
+}
+
+#[rust_sitter::extra]
+struct Whitespace {
+    #[rust_sitter::leaf(pattern = r"\s")]
+    _whitespace: (),
+}
+
+}
+pub mod semantics;
 
 pub const KEYWORDS: &[&str] = &[]; // TODO: Recover from tako.l
 
@@ -296,41 +334,12 @@ pub mod tokens {
 pub fn parse(file: &Path, input: &str, _tokens: &[Token]) -> Result<Ast, TError> {
     let mut ast = Ast::new(file.to_path_buf());
 
-    // TODO: Don't 'get' this every time?
-    // TODO: Use a lazy once
-    let lexerdef = tako_l::lexerdef();
-
-    let lexer = lexerdef.lexer(input);
     // Pass the lexer to the parser and lex and parse the input.
-    let (res, errs) = tako_y::parse(&lexer, &mut ast);
+    let res = grammar::parse(input);// , &mut ast)?;
     // TODO: Handle errors
-    if !errs.is_empty() {
-        error!("CONTENT: '{}'", input);
-    }
-    for e in errs {
-        error!("Parser: {}", e.pp(&lexer, &tako_y::token_epp));
-    }
-    match res {
-        Some(res) => {
-            match res {
-                Ok(r) => {
-                    println!("Result: {:?}", r);
-                    ast.roots.push(r);
-                    Ok(ast)
-                }
-                // TODO: Handle this error
-                Err(e) => {
-                    error!("{e:?}");
-                    todo!("Some other kind of error")
-                }
-            }
-        }
-        None => {
-            // TODO: Handle this error
-            error!("Unable to evaluate expression.");
-            todo!("There appears to have been a yacc error")
-        }
-    }
+    println!("Result: {:?}", res);
+    // ast.roots.push(res);
+    Ok(ast)
 }
 
 // TODO: Recover tests from ./old_mod.rs

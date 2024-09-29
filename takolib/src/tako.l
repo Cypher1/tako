@@ -1,6 +1,3 @@
-%%
-[\t\n\r ]+ ;
-
 any "any"
 check "check"
 construct "construct"
