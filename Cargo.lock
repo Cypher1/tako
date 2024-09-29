@@ -301,26 +301,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "514de17de45fdb8dc022b1a7975556c53c86f9f0aa5f534b98977b171857c2c9"
 
 [[package]]
-name = "c2rust-bitfields"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb34f0c0ace43530b2df7f18bc69ee0c4082158aa451ece29602f8c841e73764"
-dependencies = [
- "c2rust-bitfields-derive",
-]
-
-[[package]]
-name = "c2rust-bitfields-derive"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3dd1601a7b828ab874d890e5a895563ca8ad485bdd3d2a359f148c8b72537241"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
 name = "cactus"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2650,34 +2630,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "adad44e29e4c806119491a7f06f03de4d1af22c3a680dd47f1e6e179439d1f56"
 
 [[package]]
-name = "rust-sitter"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f69b9a5d53b74db5166799a0024c2849e144c652dd6253c5bf58dfe086798cbc"
-dependencies = [
- "rust-sitter-macro",
- "tree-sitter-c2rust",
-]
-
-[[package]]
 name = "rust-sitter-common"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b559ebfd4114d398a36dfe25d7221bf84839fc3ef1309a6b7f4d1eece78dc690"
 dependencies = [
  "quote",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "rust-sitter-macro"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8238447de92f7104ddbda8b5fd38a9be055229373283ef42b774b340d8117def"
-dependencies = [
- "proc-macro2",
- "quote",
- "rust-sitter-common",
  "syn 1.0.109",
 ]
 
@@ -3116,7 +3074,6 @@ dependencies = [
  "num-traits",
  "pretty_assertions",
  "rand 0.9.0-alpha.1",
- "rust-sitter",
  "rust-sitter-tool",
  "short-typed-index",
  "smallvec 2.0.0-alpha.5",
@@ -3414,17 +3371,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df7cc499ceadd4dcdf7ec6d4cbc34ece92c3fa07821e287aedecd4416c516dca"
 dependencies = [
  "cc",
- "regex",
-]
-
-[[package]]
-name = "tree-sitter-c2rust"
-version = "0.22.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62cd4f1075a82f3c4ae5e93dc39d4e0765d132a6d2773b3d86214fcc54e6d1e9"
-dependencies = [
- "c2rust-bitfields",
- "once_cell",
  "regex",
 ]
 
