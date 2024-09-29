@@ -4,20 +4,22 @@ module.exports = grammar({
   extras: ($) => [$.nesting_comment, $.single_line_comment, "\r", "\n", "\t", " "],
   rules: {
     // TODO: add the actual grammar rules
-    source_file: ($) => seq(optional($.shebang), repeat($._statement)),
-    _block: ($) => seq('{', $._block, '}'),
-    _sequence: ($) => repeat(seq(optional($._statement), ';')),
-    _statement: ($) => choice(
+    source_file: ($) => seq(optional($.shebang), optional($._body)),
+    _body: ($) => seq(repeat($._statement), $._unterminated_statement),
+    _statement: ($) => seq(optional($._unterminated_statement), ';'),
+    _unterminated_statement: ($) => choice(
       $.definition,
       $._block,
       $.expression
     ),
+    _block: ($) => seq('{', optional($._body), '}'),
     definition: ($) => seq($.ident, '=', $.expression),
     expression: ($) => $._inner_expression,
     _inner_expression: ($) => choice(
       seq('(', $.expression ,')'),
       $.string,
       $.number,
+      $.hex_literal,
       $.color,
       $.ident
     ),
@@ -42,7 +44,17 @@ module.exports = grammar({
     forall: (_) => "forall",
     exists: (_) => "exists",
     given: (_) => "given",
-    color: (_) => /#[a-fA-F0-9_]+/,
+    color: ($) => seq('#', choice(
+      $._hex_char_3,
+      $._hex_char_4,
+      $._hex_char_6,
+      $._hex_char_8,
+    )),
+    hex_literal: ($) => seq('0x', /[a-fA-F0-9_]+/),
+    _hex_char_3: (_) => /[a-fA-F0-9_]{3}/,
+    _hex_char_4: (_) => /[a-fA-F0-9_]{4}/,
+    _hex_char_6: (_) => /[a-fA-F0-9_]{6}/,
+    _hex_char_8: (_) =>  /[a-fA-F0-9_]{8}/,
     ident: (_) => /[a-zA-Z][a-zA-Z0-9_]*/,
     string: $ => seq(
       '"',
@@ -63,6 +75,7 @@ module.exports = grammar({
       )),
     int_literal: (_) => /[0-9][0-9_]*/,
     float_literal: (_) => /[0-9][0-9_]*\.[0-9_]*/,
+    // TODO: Add semver.
     shebang: (_) => seq('#!', /[^\n\r]*/),
     single_line_comment: (_) => seq('//', /.*/),
   }
