@@ -1,0 +1,22 @@
+{
+  "name": "tree-sitter-tako",
+  "version": "1.0.0",
+  "description": "A tree-sitter parser for Tako",
+  "main": "index.js",
+  "scripts": {
+    "test": "tree-sitter test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Cypher1/tako.git"
+  },
+  "keywords": [
+    "parser"
+  ],
+  "author": "Jay Pratt",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Cypher1/tako/issues"
+  },
+  "homepage": "https://github.com/Cypher1/tako#readme"
+}
