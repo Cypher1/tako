@@ -55,7 +55,7 @@ llamada = { path = "../llamada", features = [ ] }
 better-std = { path = "../better-std", features = [ ] }
 short-typed-index = { path = "../short-typed-index", features = [ ] }
 tree-sitter-tako = { path = "../tree-sitter-tako", features = [ ] }
-tree-sitter = "0.20.4"
+tree-sitter = { git = "https://github.com/tree-sitter/tree-sitter" }
 entity-component-slab = { path = "../entity-component-slab", features = [ ] }
 test_each_file = "0.3.2"
 
