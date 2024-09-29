@@ -1,3 +1,25 @@
+// For now we match rust.
+// https://doc.rust-lang.org/reference/expressions.html#expression-precedence
+const PREC = {
+  call: 15,
+  field: 14,
+  try: 13,
+  unary: 12,
+  cast: 11,
+  multiplicative: 10,
+  additive: 9,
+  shift: 8,
+  bitand: 7,
+  bitxor: 6,
+  bitor: 5,
+  comparative: 4,
+  and: 3,
+  or: 2,
+  range: 1,
+  assign: 0,
+  closure: -1,
+};
+
 module.exports = grammar({
   name: 'tako',
 
@@ -10,19 +32,38 @@ module.exports = grammar({
     _unterminated_statement: ($) => choice(
       $.definition,
       $._block,
-      $.expression
+      $._expression
     ),
     _block: ($) => seq('{', optional($._body), '}'),
-    definition: ($) => seq($.ident, '=', $.expression),
-    expression: ($) => $._inner_expression,
-    _inner_expression: ($) => choice(
-      seq('(', $.expression ,')'),
-      $.string,
+    definition: ($) => seq($.ident, '=', $._expression),
+    _expression: ($) => choice(
+      $.binary_expression,
+      seq('(', $._expression ,')'),
+      $.string_literal,
       $.number,
       $.hex_literal,
       $.color,
       $.ident
     ),
+    binary_expression: ($) => {
+      const table = [
+        [PREC.and, '&&'],
+        [PREC.or, '||'],
+        [PREC.bitand, '&'],
+        [PREC.bitor, '|'],
+        [PREC.bitxor, '^'],
+        [PREC.comparative, choice('==', '!=', '<', '<=', '>', '>=')],
+        [PREC.shift, choice('<<', '>>')],
+        [PREC.additive, choice('+', '-')],
+        [PREC.multiplicative, choice('*', '/', '%')],
+      ];
+      return choice(...table.map(([precedence, operator]) => prec.left(precedence, seq(
+        field('left', $._expression),
+        // @ts-ignore
+        field('operator', operator),
+        field('right', $._expression),
+      ))));
+    },
     number: ($) => choice(
       $.int_literal,
       $.float_literal
@@ -55,7 +96,7 @@ module.exports = grammar({
     _hex_char_6: (_) => /[a-fA-F0-9_]{6}/,
     _hex_char_8: (_) =>  /[a-fA-F0-9_]{8}/,
     ident: (_) => /[a-zA-Z][a-zA-Z0-9_]*/,
-    string: $ => seq(
+    string_literal: $ => seq(
       '"',
       repeat(choice(
         $.escape_sequence,
