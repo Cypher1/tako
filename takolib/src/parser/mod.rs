@@ -1,59 +1,17 @@
 use std::path::Path;
 use log::error;
 
+use tree_sitter::{Tree, Parser as TSParser};
+
 use tokens::{Symbol, Token};
 
 use crate::{ast::{location::Location, Ast, NodeId}, error::TError};
 
-#[rust_sitter::grammar("tako")]
-pub mod grammar {
-
-#[rust_sitter::language]
-#[derive(Debug)]
-pub enum Expr {
-    Number(
-        #[rust_sitter::leaf(pattern = r"\d+", transform = |v| {
-            v.parse().unwrap()
-        })]
-        u32
-    ),
-    #[rust_sitter::prec_left(1)]
-    Add(
-        Box<Expr>, 
-        #[rust_sitter::leaf(text = "+")] (),
-        Box<Expr>
-        ),
-    #[rust_sitter::prec_left(2)]
-    Mul(
-        Box<Expr>, 
-        #[rust_sitter::leaf(text = "*")] (),
-        Box<Expr>
-        ),
-    #[rust_sitter::word]
-    Ident(
-        #[rust_sitter::leaf(pattern = r"[A-Za-z][A-Za-z0-9_]*")] (),
-    )
-}
-
-pub struct CommaSeparatedExprs {
-    #[rust_sitter::delimited(
-        #[rust_sitter::leaf(text = ",")]
-        ()
-    )]
-    values: Vec<Option<Expr>>, // Allow missing...
-}
-
-#[rust_sitter::extra]
-struct Whitespace {
-    #[rust_sitter::leaf(pattern = r"\s")]
-    _whitespace: (),
-}
-
-}
 pub mod semantics;
 
 pub const KEYWORDS: &[&str] = &[]; // TODO: Recover from tako.l
 
+// TODO: REMOVE
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TokenType {
     Op(Symbol), // An operator (i.e. a known symbol used as a prefix or infix operator).
@@ -74,6 +32,7 @@ pub enum TokenType {
     Group,
 }
 
+// TODO: REMOVE
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum OpBinding {
     PostfixOp,
@@ -166,6 +125,7 @@ impl std::fmt::Display for ParseError {
     }
 }
 
+// TODO: REMOVE
 pub mod tokens {
     use crate::error::TError;
 
@@ -329,8 +289,17 @@ pub mod tokens {
 pub fn parse(file: &Path, input: &str, _tokens: &[Token]) -> Result<Ast, TError> {
     let mut ast = Ast::new(file.to_path_buf());
 
-    // Pass the lexer to the parser and lex and parse the input.
-    let res = grammar::parse(input);// , &mut ast)?;
+    let mut parser = TSParser::new();
+    // TODO: Set logger.
+    parser
+        .set_language(&tree_sitter_tako::LANGUAGE)
+        .expect("Error loading Tako parser");
+
+    let old_tree: Option<&Tree> = None;
+    let Some(res) = parser.parse(input.as_bytes(), old_tree) else {
+        error!("Unknown parser error");
+        panic!("Unknown parser error");
+    };
     // TODO: Handle errors
     println!("Result: {:?}", res);
     // ast.roots.push(res);
