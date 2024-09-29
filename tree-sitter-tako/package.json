@@ -47,7 +47,8 @@
       "scope": "source.tako",
       "injection-regex": "(tako|tk)",
       "file-types": [
-        "tk"
+        "tk",
+        "tako"
       ],
       "file-line-regex": "#!.*\\btako$",
       "highlights": "./queries/highlights.scm",
