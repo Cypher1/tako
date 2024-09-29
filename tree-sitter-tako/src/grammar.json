@@ -3,7 +3,7 @@
   "rules": {
     "source_file": {
       "type": "STRING",
-      "value": "hello"
+      "value": "\"Hello\""
     }
   },
   "extras": [
@@ -18,4 +18,3 @@
   "inline": [],
   "supertypes": []
 }
-

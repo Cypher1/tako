@@ -1,7 +1,6 @@
-#include <tree_sitter/parser.h>
+#include "tree_sitter/parser.h"
 
 #if defined(__GNUC__) || defined(__clang__)
-#pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #endif
 
@@ -16,20 +15,20 @@
 #define MAX_ALIAS_SEQUENCE_LENGTH 1
 #define PRODUCTION_ID_COUNT 1
 
-enum {
-  anon_sym_hello = 1,
+enum ts_symbol_identifiers {
+  anon_sym_DQUOTEHello_DQUOTE = 1,
   sym_source_file = 2,
 };
 
 static const char * const ts_symbol_names[] = {
   [ts_builtin_sym_end] = "end",
-  [anon_sym_hello] = "hello",
+  [anon_sym_DQUOTEHello_DQUOTE] = "\"Hello\"",
   [sym_source_file] = "source_file",
 };
 
 static const TSSymbol ts_symbol_map[] = {
   [ts_builtin_sym_end] = ts_builtin_sym_end,
-  [anon_sym_hello] = anon_sym_hello,
+  [anon_sym_DQUOTEHello_DQUOTE] = anon_sym_DQUOTEHello_DQUOTE,
   [sym_source_file] = sym_source_file,
 };
 
@@ -38,7 +37,7 @@ static const TSSymbolMetadata ts_symbol_metadata[] = {
     .visible = false,
     .named = true,
   },
-  [anon_sym_hello] = {
+  [anon_sym_DQUOTEHello_DQUOTE] = {
     .visible = true,
     .named = false,
   },
@@ -68,30 +67,34 @@ static bool ts_lex(TSLexer *lexer, TSStateId state) {
   eof = lexer->eof(lexer);
   switch (state) {
     case 0:
-      if (eof) ADVANCE(5);
-      if (lookahead == 'h') ADVANCE(1);
-      if (lookahead == '\t' ||
-          lookahead == '\n' ||
-          lookahead == '\r' ||
-          lookahead == ' ') SKIP(0)
+      if (eof) ADVANCE(7);
+      if (lookahead == '"') ADVANCE(2);
+      if (('\t' <= lookahead && lookahead <= '\r') ||
+          lookahead == ' ') SKIP(0);
       END_STATE();
     case 1:
-      if (lookahead == 'e') ADVANCE(3);
+      if (lookahead == '"') ADVANCE(8);
       END_STATE();
     case 2:
-      if (lookahead == 'l') ADVANCE(4);
+      if (lookahead == 'H') ADVANCE(3);
       END_STATE();
     case 3:
-      if (lookahead == 'l') ADVANCE(2);
+      if (lookahead == 'e') ADVANCE(5);
       END_STATE();
     case 4:
-      if (lookahead == 'o') ADVANCE(6);
+      if (lookahead == 'l') ADVANCE(6);
       END_STATE();
     case 5:
-      ACCEPT_TOKEN(ts_builtin_sym_end);
+      if (lookahead == 'l') ADVANCE(4);
       END_STATE();
     case 6:
-      ACCEPT_TOKEN(anon_sym_hello);
+      if (lookahead == 'o') ADVANCE(1);
+      END_STATE();
+    case 7:
+      ACCEPT_TOKEN(ts_builtin_sym_end);
+      END_STATE();
+    case 8:
+      ACCEPT_TOKEN(anon_sym_DQUOTEHello_DQUOTE);
       END_STATE();
     default:
       return false;
@@ -108,11 +111,11 @@ static const TSLexMode ts_lex_modes[STATE_COUNT] = {
 static const uint16_t ts_parse_table[LARGE_STATE_COUNT][SYMBOL_COUNT] = {
   [0] = {
     [ts_builtin_sym_end] = ACTIONS(1),
-    [anon_sym_hello] = ACTIONS(1),
+    [anon_sym_DQUOTEHello_DQUOTE] = ACTIONS(1),
   },
   [1] = {
     [sym_source_file] = STATE(3),
-    [anon_sym_hello] = ACTIONS(3),
+    [anon_sym_DQUOTEHello_DQUOTE] = ACTIONS(3),
   },
 };
 
@@ -134,18 +137,22 @@ static const TSParseActionEntry ts_parse_actions[] = {
   [0] = {.entry = {.count = 0, .reusable = false}},
   [1] = {.entry = {.count = 1, .reusable = false}}, RECOVER(),
   [3] = {.entry = {.count = 1, .reusable = true}}, SHIFT(2),
-  [5] = {.entry = {.count = 1, .reusable = true}}, REDUCE(sym_source_file, 1),
+  [5] = {.entry = {.count = 1, .reusable = true}}, REDUCE(sym_source_file, 1, 0, 0),
   [7] = {.entry = {.count = 1, .reusable = true}},  ACCEPT_INPUT(),
 };
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-#ifdef _WIN32
-#define extern __declspec(dllexport)
+#ifdef TREE_SITTER_HIDE_SYMBOLS
+#define TS_PUBLIC
+#elif defined(_WIN32)
+#define TS_PUBLIC __declspec(dllexport)
+#else
+#define TS_PUBLIC __attribute__((visibility("default")))
 #endif
 
-extern const TSLanguage *tree_sitter_tako(void) {
+TS_PUBLIC const TSLanguage *tree_sitter_tako(void) {
   static const TSLanguage language = {
     .version = LANGUAGE_VERSION,
     .symbol_count = SYMBOL_COUNT,
