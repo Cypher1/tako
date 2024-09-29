@@ -42,8 +42,8 @@ RightShiftArg -> R: SimpleExpr { $1 };
 
 AddArg -> R: Mul { $1 };
 MulArg -> R: Exp { $1 };
-ExpArg -> R: Or { $1 } | LogicalOr { $1 } | BitXor { $1 } | Modulo { $1 };
-OrArg -> R: And { $1 };
+ExpArg -> R: BitOr { $1 } | LogicalOr { $1 } | BitXor { $1 } | Modulo { $1 };
+BitOrArg -> R: And { $1 };
 AndArg -> R: SimpleExpr { $1 };
 LogicalOrArg -> R: LogicalAnd { $1 };
 TryArg -> R: Range { $1 };
@@ -200,10 +200,10 @@ Assign -> R:
     // TODO: Flatten
     Ok(op)
   }
-| AssignTarget 'OrAssign' AssignArg
+| AssignTarget 'BitOrAssign' AssignArg
   {
     let op = with(ctx).add_op(Op{
-        op: Symbol::OrAssign,
+        op: Symbol::BitOrAssign,
         args: smallvec![$1?, $3?]
       },
       $span.into()
@@ -463,17 +463,17 @@ Range -> R:
 }
 | RangeArg { $1 };
 
-Or -> R:
-  Or 'Or' OrArg {
+BitOr -> R:
+  BitOr 'BitOr' BitOrArg {
     let op = with(ctx).add_op(Op{
-        op: Symbol::Or,
+        op: Symbol::BitOr,
         args: smallvec![$1?, $3?]
       },
       $span.into()
     );
     Ok(op)
 }
-| OrArg { $1 };
+| BitOrArg { $1 };
 
 LogicalOr -> R:
   LogicalOr 'LogicalOr' LogicalOrArg {
