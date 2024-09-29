@@ -5,7 +5,7 @@
     "fields": {}
   },
   {
-    "type": "hello",
+    "type": "\"Hello\"",
     "named": false
   }
 ]

@@ -1,0 +1,12 @@
+==================
+Fibonacci Accumulator
+==================
+#!/usr/bin/env tako
+// test: all
+
+fib_helper(n: T, a: T, b: T, with T: Nat): T=if(n==0, a, fib_helper(n-1, b, a+b))
+
+fib(n: T, forall T: Nat): T=fib_helper(n, 0, 1)
+
+print(fib(80))
+---

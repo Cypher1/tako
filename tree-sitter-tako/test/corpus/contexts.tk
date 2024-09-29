@@ -1,0 +1,32 @@
+==================
+Contexts
+==================
+#!/usr/bin/env tako
+// test: all
+
+test() = {
+  allocator = import("allocator")
+  ptr = allocator.allocate(sizeof(Char)*100)
+  if(ptr == nullptr, {
+    print("Success")
+    exit(0)
+  }, {
+    print("Failure")
+  })
+}
+
+main() = {
+  allocator = import("allocator")
+  logger = import("logger")
+
+  test_logger = logger.new_logger()
+  with(
+    allocator.allocate = allocator.report_oom,
+    system.out = test_logger,
+    system.error = test_logger,
+    run = test
+  )
+
+  print(test_logger)
+}
+---
