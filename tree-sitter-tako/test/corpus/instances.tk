@@ -1,0 +1,51 @@
+==================
+Instances
+==================
+#!/usr/bin/env tako
+// test: all
+
+Bounded = Enum
+  .open()
+  .based_on({
+    min: (T: Type): T,
+    max: (T: Type): T,
+  })
+
+Bounded.add_values(
+  boolean = {
+    min(T)=false,
+    max(T)=true,
+  }
+  integer = {
+    min(T)=0,
+    max(T)=2**64-1,
+  }
+)
+
+Showable = Enum.based_on({
+  to_string: (t: Type): String
+}).open()
+
+print(t: Type, forall end: String="\n"): String = system.out.write(t.to_string()+end)
+
+to_base(value: integer, forall base: integer=10) = {
+  out: Char[math.log(Integer.max, base)]="0";
+  i: integer = 0;
+  while(
+    cond = t > 0,
+    loop = {
+      out[-i] = value%10,
+      value=value/10,
+      i=i+1
+    },
+    result = out[-i..],
+  )
+}
+
+Showable.add_values(
+  char(t: Char)=String.from_chars([t]),
+  chars(t: Char[n], forall n: Integer)=String.from_chars(t),
+  string(t: String)=t,
+  integer(t: Integer)=t.to_base(base=10)
+)
+---

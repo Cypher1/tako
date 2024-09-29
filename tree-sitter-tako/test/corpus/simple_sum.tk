@@ -1,0 +1,13 @@
+==================
+Simple Sum
+==================
+#!/usr/bin/env tako
+// test: all
+
+1/*one*/+2/*two*/+3/*three*/
+
+/* Comment
+/* Double comment */
+/* Second double comment */
+*/
+---
