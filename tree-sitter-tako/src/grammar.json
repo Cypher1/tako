@@ -186,19 +186,6 @@
         }
       ]
     },
-    "comment": {
-      "type": "CHOICE",
-      "members": [
-        {
-          "type": "SYMBOL",
-          "name": "single_line_comment"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "nesting_comment"
-        }
-      ]
-    },
     "_nesting_comment_contents": {
       "type": "CHOICE",
       "members": [

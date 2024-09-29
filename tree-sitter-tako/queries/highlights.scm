@@ -9,5 +9,6 @@
 (int_literal) @number
 (float_literal) @number
 (hex_literal) @number
-(comment) @comment
-(definition name: (identifier) @function)
+(nesting_comment) @comment
+(single_line_comment) @comment
+(definition) @function
