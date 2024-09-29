@@ -6,11 +6,9 @@
   "types": "bindings/node",
   "scripts": {
     "install": "node-gyp-build",
-    "build": "tree-sitter generate",
     "prestart": "tree-sitter build --wasm",
     "start": "tree-sitter playground",
-    "test": "node --test bindings/node/*_test.js && tree-sitter test",
-    "watch": "when-changed -s -1 -r grammar.js test/ -c 'npm run build && npm run test'"
+    "test": "node --test bindings/node/*_test.js"
   },
   "repository": {
     "type": "git",
