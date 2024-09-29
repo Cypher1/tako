@@ -49,7 +49,10 @@
       "file-types": [
         "tk"
       ],
-      "file-line-regex": "#!.*\\btako$"
+      "file-line-regex": "#!.*\\btako$",
+      "highlights": "./queries/highlights.scm",
+      "injections": "./queries/injections.scm",
+      "locals": "./queries/locals.scm"
     }
   ],
   "dependencies": {
