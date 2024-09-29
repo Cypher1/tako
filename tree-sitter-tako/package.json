@@ -49,7 +49,10 @@
   "tree-sitter": [
     {
       "scope": "source.tako",
-      "injection-regex": "^tako$"
+      "injection-regex": "^tako$",
+      "file-types": ["tk"],
+      "injection-regex": "(tako|tk)",
+      "file-line-regex": "#!.*\\btako$"
     }
   ],
   "dependencies": {
