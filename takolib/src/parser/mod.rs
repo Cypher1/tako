@@ -7,17 +7,12 @@ use crate::{ast::{location::Location, Ast, NodeId}, error::TError};
 
 #[rust_sitter::grammar("tako")]
 pub mod grammar {
-    use std::cell::RefCell;
-
-
-const count: RefCell<u32> = 0;
 
 #[rust_sitter::language]
 #[derive(Debug)]
 pub enum Expr {
     Number(
         #[rust_sitter::leaf(pattern = r"\d+", transform = |v| {
-            count.as_mut() += 1;
             v.parse().unwrap()
         })]
         u32
