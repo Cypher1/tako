@@ -32,9 +32,6 @@
     "url": "https://github.com/Cypher1/tako/issues"
   },
   "homepage": "https://github.com/Cypher1/tako#readme",
-  "peerDependencies": {
-    "tree-sitter": "^0.21.1"
-  },
   "peerDependenciesMeta": {
     "tree_sitter": {
       "optional": true

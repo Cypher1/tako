@@ -31,15 +31,7 @@ path = "src/lib.rs"
 # name = "tako_bench"
 # harness = false
 
-[build-dependencies]
-cfgrammar = "0.13"
-lrlex = "0.13"
-lrpar = "0.13"
-rust-sitter-tool = "0.4.2"
-
 [dependencies]
-lrlex = "0.13"
-lrpar = "0.13"
 thiserror = "1.0"
 bitvec = "1"
 # TODO(perf): Use bitsvec = "0.1.1" when portable_simd is on stable.
@@ -62,6 +54,8 @@ smallvec = { version = "2.0.0-alpha.5" }
 llamada = { path = "../llamada", features = [ ] }
 better-std = { path = "../better-std", features = [ ] }
 short-typed-index = { path = "../short-typed-index", features = [ ] }
+tree-sitter-tako = { path = "../tree-sitter-tako", features = [ ] }
+tree-sitter = "0.20.4"
 entity-component-slab = { path = "../entity-component-slab", features = [ ] }
 test_each_file = "0.3.2"
 
