@@ -5,6 +5,7 @@ default-members=[
   "llamada",
   "short-typed-index",
   "entity-component-slab",
+  "tree-sitter-tako",
   "tako",
   "takolib"
 ]
