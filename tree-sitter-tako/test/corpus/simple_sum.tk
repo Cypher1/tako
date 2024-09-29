@@ -1,9 +1,26 @@
 ==================
 Simple Sum
 ==================
-#!/usr/bin/env tako
-// test: all
+1+2+3
 
+---
+(source_file
+    (binary_expression
+        left: (binary_expression
+            left: (number
+                (int_literal))
+            right: (number
+                (int_literal))
+        )
+        right: (number
+            (int_literal)
+        )
+    )
+)
+
+==================
+Simple Sum with comments
+==================
 1/*one*/+2/*two*/+3/*three*/
 
 /* Comment
@@ -11,3 +28,19 @@ Simple Sum
 /* Second double comment */
 */
 ---
+(source_file
+    (binary_expression
+        left: (binary_expression
+              left: (number (int_literal))
+              (nesting_comment)
+              right: (number (int_literal))
+              )
+        (nesting_comment)
+        right: (number (int_literal)))
+        (nesting_comment)
+        (nesting_comment
+          (nesting_comment)
+          (nesting_comment)
+        )
+)
+

@@ -5,10 +5,9 @@
 (exists) @keyword
 (given) @keyword
 (ident) @type
-(string) @string
 (int_literal) @number
 (float_literal) @number
 (hex_literal) @number
 (nesting_comment) @comment
 (single_line_comment) @comment
-(definition) @function
+(definition ) @function
