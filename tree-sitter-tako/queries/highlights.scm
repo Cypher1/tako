@@ -1,10 +1,10 @@
-"return" @keyword
-"break" @keyword
-"continue" @keyword
-"forall" @keyword
-"exists" @keyword
-"given" @keyword
-(type_identifier) @type
+(return) @keyword
+(break) @keyword
+(continue) @keyword
+(forall) @keyword
+(exists) @keyword
+(given) @keyword
+(ident) @type
 (string) @string
 (int_literal) @number
 (float_literal) @number
