@@ -28,11 +28,7 @@ Block -> R: 'OpenCurly' Sequence 'CloseCurly' { $1 };
 SequenceArg -> R: Assign { $1 } | LeftPipe { $1 } | RightPipe { $1 };
 AssignArg -> R: ExprWithBinding { $1 };
 
-Expr -> R: HasType { $1 } | ComparisonExpr { $1 } | IfExpr { $1 } | Block { $1 };
-
-IfExpr -> R:
-  'if' Expr Block 'else' Block { todo!() }
-| 'if' Expr Block { todo!() };
+Expr -> R: HasType { $1 } | ComparisonExpr { $1 } | Block { $1 };
 
 HasTypeArg -> R: UntypedExpr { $1 };
 UntypedExpr -> R: MathsExpr { $1 } | Try { $1 };
@@ -41,47 +37,52 @@ ComparisonArg -> R: MathsExpr { $1 };
 
 MathsExpr -> R: Add { $1 } | LeftShift { $1 } | RightShift { $1 } | Try { $1 };
 
-LeftShiftArg -> R: BitNot { $1 };
-RightShiftArg -> R: BitNot { $1 };
+LeftShiftArg -> R: SimpleExpr { $1 };
+RightShiftArg -> R: SimpleExpr { $1 };
 
 AddArg -> R: Mul { $1 };
 MulArg -> R: Exp { $1 };
-ExpArg -> R: Or { $1 } | LogicalOr { $1 } | BitXor { $1 } | Modulo { $1 } | GetAddress { $1 };
-ModuloArg -> R: SimpleExpr { $1 };
+ExpArg -> R: Or { $1 } | LogicalOr { $1 } | BitXor { $1 } | Modulo { $1 };
 OrArg -> R: And { $1 };
 AndArg -> R: SimpleExpr { $1 };
-GetAddressArg -> R: SimpleExpr { $1 };
 LogicalOrArg -> R: LogicalAnd { $1 };
-LogicalAndArg -> R: BitNot { $1 } | LogicalNot { $1 };
-BitXorArg -> R: BitNot { $1 } | LogicalNot { $1 };
-BitNotArg -> R: SimpleExpr { $1 };
-LogicalNotArg -> R: SimpleExpr { $1 };
-TryArg -> R: Dot { $1 };
-DotArg -> R: Range { $1 };
-RangeArg -> R: Spread { $1 };
-SpreadArg -> R: SimpleExpr { $1 };
+TryArg -> R: Range { $1 };
+RangeArg -> R: Dot { $1 };
+LogicalAndArg -> R: SimpleExpr { $1 };
+BitXorArg -> R: SimpleExpr { $1 };
+DotArg -> R: SimpleExpr { $1 };
 
 SimpleExpr -> R:
   'OpenParen' Expr 'CloseParen' { $2 }
+  | GetAddress { $1 }
+  | BitNot { $1 }
+  | LogicalNot { $1 }
+  | Spread { $1 }
   | ListLikeExpr { $1 }
   | IntegerLitExpr { $1 }
   | IdentExpr { $1 };
 
 ListLikeExpr -> Rs: 'OpenBracket' MultipleExprs 'CloseBracket' { $2 };
 
+ExprWithBinding -> R:
+  BoundIdent MaybeArgs BindingBody { todo!() };
+
 Binding -> R: 'Sigma' { $1 } | 'Lambda' { $1 } | 'Pi' { $1 } | 'Forall' { $1 } | 'Exists' { $1 };
 
-ExprWithBinding -> R:
-  Binding Ident Args 'Assign' Expr {
+BoundIdent -> R: Binding Ident { todo!(); };
+
+BindingBody -> R: Binding Ident { todo!(); };
+
+BindingBody -> R: 'Assign' Expr {
   todo!("not handled")
 }
-| Binding Ident Args 'DoubleArrow' Expr {
+| 'DoubleArrow' Expr {
   todo!("not handled")
 }
-| Ident Args 'Arrow' Expr {
+| 'Arrow' Expr {
   todo!("not handled")
 }
-| Ident Args 'Assign' Expr {
+| 'Assign' Expr {
   todo!("not handled")
 };
 
@@ -111,14 +112,18 @@ MultipleExprs -> Rs:
   Expr { Ok(vec![$1?]) }
 | MultipleExprs Expr { flatten($1, $2) };
 
-Args -> Rs: 'OpenParen' MultipleArgs 'CloseParen' { $2 };
+MaybeArgs -> MaybeRs:
+  Args { Ok(Some($1?)) }
+| { Ok(None) };
+  
+Args -> Rs: 'OpenParen' MultipleArgs 'CloseParen' { Ok($2?) };
 
 MultipleArgs -> Rs:
   ExprWithBinding { Ok(vec![$1?]) }
 | MultipleArgs ExprWithBinding { flatten($1, $2) };
 
 AssignTarget -> R:
-IdentExpr Args {
+IdentExpr MaybeArgs {
   // TODO: Add args...
   todo!()
   $1
@@ -389,7 +394,7 @@ Add -> R:
 | AddArg { $1 };
 
 Modulo -> R:
-  ModuloArg 'Modulo' Modulo {
+  SimpleExpr 'Modulo' Modulo {
     let op = with(ctx).add_op(Op{
         op: Symbol::Modulo,
         args: smallvec![$1?, $3?]
@@ -397,11 +402,10 @@ Modulo -> R:
       $span.into()
     );
     Ok(op)
-}
-| ModuloArg { $1 };
+};
 
 GetAddress -> R:
-  GetAddressArg 'GetAddress' GetAddress {
+  'GetAddress' GetAddress {
     let op = with(ctx).add_op(Op{
         op: Symbol::GetAddress,
         args: smallvec![$1?, $3?]
@@ -409,8 +413,7 @@ GetAddress -> R:
       $span.into()
     );
     Ok(op)
-}
-| GetAddressArg { $1 };
+};
 
 LeftShift -> R:
   LeftShift 'LeftShift' LeftShiftArg {
@@ -449,7 +452,7 @@ Dot -> R:
 | DotArg { $1 };
 
 Range -> R:
-  RangeArg 'Range' RangeArg {
+  SimpleExpr 'Range' SimpleExpr {
     let op = with(ctx).add_op(Op{
         op: Symbol::Range,
         args: smallvec![$1?, $3?]
@@ -521,7 +524,7 @@ BitXor -> R:
 | BitXorArg { $1 };
 
 BitNot -> R:
-  'BitNot' BitNotArg {
+  'BitNot' SimpleExpr {
     let op = with(ctx).add_op(Op{
         op: Symbol::BitNot,
         args: smallvec![$2?]
@@ -529,11 +532,10 @@ BitNot -> R:
       $span.into()
     );
     Ok(op)
-}
-| BitNotArg { $1 };
+};
 
 LogicalNot -> R:
-  'LogicalNot' LogicalNotArg {
+  'LogicalNot' SimpleExpr {
     let op = with(ctx).add_op(Op{
         op: Symbol::LogicalNot,
         args: smallvec![$2?]
@@ -541,11 +543,10 @@ LogicalNot -> R:
       $span.into()
     );
     Ok(op)
-}
-| LogicalNotArg { $1 };
+};
 
 Spread -> R:
-  'Spread' SpreadArg {
+  'Spread' SimpleExpr {
     let op = with(ctx).add_op(Op{
         op: Symbol::Spread,
         args: smallvec![$2?]
@@ -553,8 +554,7 @@ Spread -> R:
       $span.into()
     );
     Ok(op)
-}
-| SpreadArg { $1 };
+};
 
 Try -> R:
   TryArg 'Try' {
@@ -584,7 +584,9 @@ ManyTerms -> R:
 */
 
 type R = Result<NodeId, ParseError>;
+type Maybe = Result<Option<NodeId>, ParseError>;
 type Rs = Result<Vec<NodeId>, ParseError>;
+type MaybeRs = Result<Option<Vec<NodeId>>, ParseError>;
 
 use smallvec::smallvec;
 use crate::ast::*;
