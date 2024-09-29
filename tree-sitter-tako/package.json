@@ -2,11 +2,11 @@
   "name": "tree-sitter-tako",
   "version": "1.0.0",
   "description": "A tree-sitter parser for Tako",
-  "main": "index.js",
+  "main": "bindings/node",
   "types": "bindings/node",
   "scripts": {
     "install": "node-gyp-build",
-    "build": "tree-sitter build",
+    "build": "tree-sitter generate",
     "prestart": "tree-sitter build --wasm",
     "start": "tree-sitter playground",
     "test": "node --test bindings/node/*_test.js && tree-sitter test",
@@ -49,9 +49,10 @@
   "tree-sitter": [
     {
       "scope": "source.tako",
-      "injection-regex": "^tako$",
-      "file-types": ["tk"],
       "injection-regex": "(tako|tk)",
+      "file-types": [
+        "tk"
+      ],
       "file-line-regex": "#!.*\\btako$"
     }
   ],

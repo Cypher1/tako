@@ -46,5 +46,6 @@ jobs:
 
       - run: npm set cache .npm # set the npm cache to be a local .npm dir for simplicity
       - run: npm install
+      - run: npm run build
       - run: npm run test
       - run: git diff --stat --exit-code || exit 1 # Require that there are no changes made
