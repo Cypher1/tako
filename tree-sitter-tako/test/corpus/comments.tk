@@ -1,0 +1,35 @@
+==================
+Single line comment
+==================
+// Hello world
+---
+(source_file (single_line_comment))
+
+==================
+Shebang
+==================
+#!/usr/bin/env tako
+---
+(source_file (shebang))
+
+==================
+Single line comment and shebang
+==================
+#!/usr/bin/env tako
+// Hello world
+---
+(source_file (shebang) (single_line_comment))
+
+==================
+Nesting Comment
+==================
+/* Hello world */
+---
+(source_file (nesting_comment))
+
+==================
+Nested Nesting Comment
+==================
+/* Hello /*world */ Wow */
+---
+(source_file (nesting_comment (nesting_comment)))
