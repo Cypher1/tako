@@ -13,6 +13,18 @@ Float literal
 (source_file (expression (number (float_literal))))
 
 ==================
+Float literal with too many decimal points
+==================
+1.0.0
+---
+(source_file
+  (expression
+    (number
+      (float_literal)))
+  (ERROR
+    (UNEXPECTED '.')))
+
+==================
 Long int
 ==================
 1_000_000_000
@@ -27,15 +39,29 @@ Long float
 (source_file (expression (number (float_literal))))
 
 ==================
-Hex / Color
+Hex
+==================
+0xff00
+---
+(source_file (expression (hex_literal)))
+
+==================
+Color
 ==================
 #FF0000AA
 ---
 (source_file (expression (color)))
 
 ==================
-Hex / Color Mixed case
+Color Mixed case
 ==================
 #ff00aa
 ---
 (source_file (expression (color)))
+
+==================
+Color wrong number of digits
+==================
+#ff00aaa
+---
+(source_file (expression (color)) (ERROR))

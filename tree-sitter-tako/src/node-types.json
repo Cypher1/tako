@@ -1,5 +1,10 @@
 [
   {
+    "type": "color",
+    "named": true,
+    "fields": {}
+  },
+  {
     "type": "definition",
     "named": true,
     "fields": {},
@@ -35,6 +40,10 @@
           "named": true
         },
         {
+          "type": "hex_literal",
+          "named": true
+        },
+        {
           "type": "ident",
           "named": true
         },
@@ -48,6 +57,11 @@
         }
       ]
     }
+  },
+  {
+    "type": "hex_literal",
+    "named": true,
+    "fields": {}
   },
   {
     "type": "nesting_comment",
@@ -137,6 +151,10 @@
     "named": false
   },
   {
+    "type": "#",
+    "named": false
+  },
+  {
     "type": "#!",
     "named": false
   },
@@ -169,16 +187,16 @@
     "named": false
   },
   {
+    "type": "0x",
+    "named": false
+  },
+  {
     "type": ";",
     "named": false
   },
   {
     "type": "=",
     "named": false
-  },
-  {
-    "type": "color",
-    "named": true
   },
   {
     "type": "escape_sequence",
