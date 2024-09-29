@@ -37,3 +37,5 @@ dist/
 *.wasm
 *.obj
 *.o
+src/parser.c
+src/tree_sitter/parser.h
