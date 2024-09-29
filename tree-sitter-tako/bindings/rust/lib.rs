@@ -47,7 +47,7 @@ mod tests {
     fn test_can_load_grammar() {
         let mut parser = tree_sitter::Parser::new();
         parser
-            .set_language(super::LANGUAGE)
+            .set_language(&super::LANGUAGE.into())
             .expect("Error loading Tako parser");
     }
 }

@@ -292,7 +292,7 @@ pub fn parse(file: &Path, input: &str, _tokens: &[Token]) -> Result<Ast, TError>
     let mut parser = TSParser::new();
     // TODO: Set logger.
     parser
-        .set_language(tree_sitter_tako::LANGUAGE)
+        .set_language(&tree_sitter_tako::LANGUAGE.into())
         .expect("Error loading Tako parser");
 
     let old_tree: Option<&Tree> = None;
