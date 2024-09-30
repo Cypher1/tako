@@ -1,4 +1,11 @@
 ==================
+Python style Single line comment
+==================
+# Hello world
+---
+(source_file (single_line_comment))
+
+==================
 Single line comment
 ==================
 // Hello world

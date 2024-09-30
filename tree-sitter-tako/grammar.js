@@ -117,6 +117,6 @@ module.exports = grammar({
     float_literal: (_) => /[0-9][0-9_]*\.[0-9_]*/,
     // TODO: Add semver.
     shebang: (_) => seq('#!', /[^\n\r]*/),
-    single_line_comment: (_) => seq('//', /.*/),
+    single_line_comment: (_) => seq(choice('//', '#'), /.*/),
   }
 });
