@@ -264,7 +264,7 @@ pub mod tokens {
                     Self::OpenParen => "(",
                     Self::CloseParen => ")",
                     Self::OpenCurly => "{",
-                    Self::CloseCurly => "}",
+                   Self::CloseCurly => "}",
                     Self::OpenBracket => "[",
                     Self::CloseBracket => "]",
                 }
@@ -289,8 +289,9 @@ pub mod tokens {
 pub fn parse(file: &Path, input: &str, _tokens: &[Token]) -> Result<Ast, TError> {
     let mut ast = Ast::new(file.to_path_buf());
 
-    let mut parser = TSParser::new();
+    // TODO: Put parser in a state to get caching
     // TODO: Set logger.
+    let mut parser = TSParser::new();
     parser
         .set_language(&tree_sitter_tako::LANGUAGE.into())
         .expect("Error loading Tako parser");
