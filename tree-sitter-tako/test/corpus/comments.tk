@@ -1,11 +1,4 @@
 ==================
-Python style Single line comment
-==================
-# Hello world
----
-(source_file (single_line_comment))
-
-==================
 Single line comment
 ==================
 // Hello world
@@ -35,7 +28,7 @@ Nesting Comment
 (source_file (nesting_comment))
 
 ==================
-Nested Nesting Comment
+Nesting Comment nested
 ==================
 /* Hello /*world */ Wow */
 ---
