@@ -4,9 +4,9 @@ Constant Definition
 a=3
 ---
 (source_file
-  (definition
-    (definition_target (ident))
-    (number (int_literal))
+  (assign
+    (ident)
+    (int_literal)
   )
 )
 ==================
@@ -15,9 +15,9 @@ Function Definition
 test() = 3
 ---
 (source_file
-  (definition
-    (definition_target (ident) (definition_arguments))
-    (number (int_literal))
+  (assign
+    (call (ident))
+    (int_literal)
   )
 )
 ==================
@@ -26,13 +26,9 @@ Function Definition with argument
 test(a) = 3
 ---
 (source_file
-  (definition
-    (definition_target (ident)
-      (definition_arguments
-        (argument_definition (definition_target (ident)))
-      )
-    )
-    (number (int_literal))
+  (assign
+    (call (ident) (ident))
+    (int_literal)
   )
 )
 ==================
@@ -41,14 +37,9 @@ Function Definition with arguments
 test(a, b) = 3
 ---
 (source_file
-  (definition
-    (definition_target (ident)
-      (definition_arguments
-          (argument_definition (definition_target (ident)))
-          (argument_definition (definition_target (ident)))
-      )
-    )
-    (number (int_literal))
+  (assign
+    (call (ident) (ident) (ident))
+    (int_literal)
   )
 )
 ==================
@@ -57,14 +48,9 @@ Function Definition with arguments and trailing comma
 test(a,b,) = 3
 ---
 (source_file
-  (definition
-    (definition_target (ident)
-      (definition_arguments
-          (argument_definition (definition_target (ident)))
-          (argument_definition (definition_target (ident)))
-      )
-    )
-    (number (int_literal))
+  (assign
+    (call (ident) (ident) (ident))
+    (int_literal)
   )
 )
 ==================
@@ -73,16 +59,9 @@ Function Definition with argument with default
 test(a=3) = 3
 ---
 (source_file
-  (definition
-    (definition_target (ident)
-      (definition_arguments
-        (argument_definition
-          (definition_target (ident))
-          (number (int_literal))
-        )
-      )
-    )
-    (number (int_literal))
+  (assign
+    (call (ident) (assign (ident) (int_literal)))
+    (int_literal)
   )
 )
 ==================
@@ -91,20 +70,12 @@ Function Definition with arguments with defaults
 test(a=3,b=2) = 3
 ---
 (source_file
-  (definition
-    (definition_target (ident)
-      (definition_arguments
-        (argument_definition
-          (definition_target (ident))
-          (number (int_literal))
-        )
-        (argument_definition
-          (definition_target (ident))
-          (number (int_literal))
-        )
-      )
+  (assign
+    (call (ident)
+      (assign (ident) (int_literal))
+      (assign (ident) (int_literal))
     )
-    (number (int_literal))
+    (int_literal)
   )
 )
 ==================
@@ -114,8 +85,8 @@ test = {
 }
 ---
 (source_file
-  (definition
-    (definition_target (ident))
+  (assign
+    (call (ident))
     (block)
   )
 )
@@ -127,9 +98,9 @@ test = {
 }
 ---
 (source_file
-  (definition
-    (definition_target (ident))
-    (block (number (int_literal)))
+  (assign
+    (ident)
+    (block (int_literal))
   )
 )
 ==================
@@ -140,8 +111,8 @@ test() = {
 }
 ---
 (source_file
-  (definition
-    (definition_target (ident) (definition_arguments))
-    (block (number (int_literal)))
+  (assign
+    (call (ident) (definition_arguments))
+    (block (int_literal))
   )
 )

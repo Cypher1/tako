@@ -17,19 +17,24 @@ const PREC = {
   or: 2,
   range: 1,
   assign: 0,
-  closure: -1,
+  comma: -1,
+  has_type: -2,
+  closure: -3,
 };
 
 const OPERATORS = [
-  [PREC.and, '&&'],
-  [PREC.or, '||'],
-  [PREC.bitand, '&'],
-  [PREC.bitor, '|'],
-  [PREC.bitxor, '^'],
-  [PREC.comparative, choice('==', '!=', '<', '<=', '>', '>=')],
-  [PREC.shift, choice('<<', '>>')],
-  [PREC.additive, choice('+', '-')],
-  [PREC.multiplicative, choice('*', '/', '%')],
+  ['comma', ','],
+  ['assign', '='],
+  ['has_type', ':'],
+  ['and', '&&'],
+  ['or', '||'],
+  ['bitand', '&'],
+  ['bitor', '|'],
+  ['bitxor', '^'],
+  ['comparative', choice('==', '!=', '<', '<=', '>', '>=')],
+  ['shift', choice('<<', '>>')],
+  ['additive', choice('+', '-')],
+  ['multiplicative', choice('*', '/', '%')],
 ];
 
 const separated_one = (entry, delimiter) => {
@@ -40,9 +45,22 @@ const separated = (entry, delimiter) => {
   return optional(separated_one(entry, delimiter));
 };
 
+function operators_gen() {
+  const operators = {};
+  for (const [name, operator] of OPERATORS) {
+    const precedence = PREC[name];
+    operators[name] = ($) => prec.left(precedence, seq(
+      field('left', $._expression),
+      // @ts-ignore
+      field('operator', operator),
+      field('right', $._expression),
+    ));
+  }
+  return operators;
+}
+
 module.exports = grammar({
   name: 'tako',
-
   extras: ($) => [$.nesting_comment, $.single_line_comment, "\r", "\n", "\t", " "],
   rules: {
     // TODO: add the actual grammar rules
@@ -50,32 +68,31 @@ module.exports = grammar({
     _non_empty_body: ($) => separated_one($._statement, ';'),
     _statement: ($) => choice(
       $.block,
-      $.definition,
       $._expression
     ),
     block: ($) => seq('{', optional($._non_empty_body), '}'),
-    definition_target: ($) => seq($.ident, optional($.definition_arguments)),
-    definition_arguments: ($) => seq('(', separated($.argument_definition, ','), optional(','), ')'),
-    argument_definition: ($) => seq($.definition_target, optional(seq('=', $._expression))),
-    definition: ($) => seq($.definition_target, '=', $._expression),
     _expression: ($) => choice(
-      $.binary_expression,
+      $._binary_expression, // Consider keeping this name to support editing?
+      $.call,
       seq('(', $._expression ,')'),
       $.string_literal,
-      $.number,
+      $._number,
       $.hex_literal,
       $.color,
-      $.ident
+      $.ident,
     ),
-    binary_expression: ($) => {
-      return choice(...OPERATORS.map(([precedence, operator]) => prec.left(precedence, seq(
-        field('left', $._expression),
-        // @ts-ignore
-        field('operator', operator),
-        field('right', $._expression),
-      ))));
+    call: ($) => seq($._expression, '(', separated($._expression, ','), optional(','), ')'),
+    _binary_expression: ($) => {
+      return choice(...OPERATORS.map(([name, _operator_parser]) => {
+        try {
+          return ($)[name]; // Get the parser 'named'.
+        } catch (e) {
+          e.message = `OPERATOR: ${name} ('${operator}') PRECEDENCE: '${precedence}'.\n${e.message}`;
+          throw e;
+        }
+      }));
     },
-    number: ($) => choice(
+    _number: ($) => choice(
       $.int_literal,
       $.float_literal
     ),
@@ -129,5 +146,6 @@ module.exports = grammar({
     // TODO: Add semver.
     shebang: (_) => seq('#!', /[^\n\r]*/),
     single_line_comment: (_) => seq('//', /.*/),
+    ...operators_gen(),
   }
 });
