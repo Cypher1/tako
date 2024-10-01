@@ -3,14 +3,14 @@ Integer literal
 ==================
 1
 ---
-(source_file (number (int_literal)))
+(source_file (int_literal))
 
 ==================
 Float literal
 ==================
 1.0
 ---
-(source_file (number (float_literal)))
+(source_file (float_literal))
 
 ==================
 Float literal with too many decimal points
@@ -18,8 +18,7 @@ Float literal with too many decimal points
 1.0.0
 ---
 (source_file
-  (number
-    (float_literal))
+  (float_literal)
   (ERROR
     (UNEXPECTED '.')))
 
@@ -28,14 +27,14 @@ Long int
 ==================
 1_000_000_000
 ---
-(source_file (number (int_literal)))
+(source_file (int_literal))
 
 ==================
 Long float
 ==================
 1_000_000_000.000_000
 ---
-(source_file (number (float_literal)))
+(source_file (float_literal))
 
 ==================
 Hex

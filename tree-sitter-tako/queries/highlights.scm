@@ -11,4 +11,4 @@
 (hex_literal) @number
 (nesting_comment) @comment
 (single_line_comment) @comment
-(definition ) @function
+(assign) @function
