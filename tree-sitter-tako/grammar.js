@@ -49,8 +49,8 @@ module.exports = grammar({
     source_file: ($) => seq(optional($.shebang), optional($._non_empty_body)),
     _non_empty_body: ($) => separated_one($._statement, ';'),
     _statement: ($) => choice(
-      $.definition,
       $.block,
+      $.definition,
       $._expression
     ),
     block: ($) => seq('{', optional($._non_empty_body), '}'),
@@ -86,9 +86,9 @@ module.exports = grammar({
     nesting_comment: ($) => seq(
       '/*',
       repeat($._nesting_comment_contents),
-      '*/'
+      '*/' // This has to be immediately after the contents.
     ),
-    _anything: (_) => choice('\*', '/', /[^*/]/),
+    _anything: (_) => token.immediate(/[^*/]|\*[^/]|\/[^*]/),
     break: (_) => "break",
     continue: (_) => "continue",
     return: (_) => "return",

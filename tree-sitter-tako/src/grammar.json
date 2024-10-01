@@ -61,11 +61,11 @@
       "members": [
         {
           "type": "SYMBOL",
-          "name": "definition"
+          "name": "block"
         },
         {
           "type": "SYMBOL",
-          "name": "block"
+          "name": "definition"
         },
         {
           "type": "SYMBOL",
@@ -675,21 +675,11 @@
       ]
     },
     "_anything": {
-      "type": "CHOICE",
-      "members": [
-        {
-          "type": "STRING",
-          "value": "*"
-        },
-        {
-          "type": "STRING",
-          "value": "/"
-        },
-        {
-          "type": "PATTERN",
-          "value": "[^*/]"
-        }
-      ]
+      "type": "IMMEDIATE_TOKEN",
+      "content": {
+        "type": "PATTERN",
+        "value": "[^*/]|\\*[^/]|\\/[^*]"
+      }
     },
     "break": {
       "type": "STRING",
