@@ -64,7 +64,7 @@ module.exports = grammar({
   extras: ($) => [$.nesting_comment, $.single_line_comment, "\r", "\n", "\t", " "],
   rules: {
     // TODO: add the actual grammar rules
-    source_file: ($) => seq(optional($.shebang), optional($._non_empty_body)),
+    source_file: ($) => seq(optional($.shebang), separated_one(optional($._non_empty_body), $.heading)),
     _non_empty_body: ($) => separated_one($._statement, ';'),
     _statement: ($) => choice(
       $.block,
@@ -146,6 +146,7 @@ module.exports = grammar({
     // TODO: Add semver.
     shebang: (_) => seq('#!', /[^\n\r]*/),
     single_line_comment: (_) => seq('//', /.*/),
+    heading: (_) => /====*[^='"]*====*/,
     ...operators_gen(),
   }
 });
