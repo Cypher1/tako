@@ -20,22 +20,44 @@ const PREC = {
   closure: -1,
 };
 
+const OPERATORS = [
+  [PREC.and, '&&'],
+  [PREC.or, '||'],
+  [PREC.bitand, '&'],
+  [PREC.bitor, '|'],
+  [PREC.bitxor, '^'],
+  [PREC.comparative, choice('==', '!=', '<', '<=', '>', '>=')],
+  [PREC.shift, choice('<<', '>>')],
+  [PREC.additive, choice('+', '-')],
+  [PREC.multiplicative, choice('*', '/', '%')],
+];
+
+const separated_one = (entry, delimiter) => {
+  return seq(entry, repeat(seq(delimiter, entry)));
+};
+
+const separated = (entry, delimiter) => {
+  return optional(separated_one(entry, delimiter));
+};
+
 module.exports = grammar({
   name: 'tako',
 
   extras: ($) => [$.nesting_comment, $.single_line_comment, "\r", "\n", "\t", " "],
   rules: {
     // TODO: add the actual grammar rules
-    source_file: ($) => seq(optional($.shebang), optional($._body)),
-    _body: ($) => seq(repeat($._statement), $._unterminated_statement),
-    _statement: ($) => seq(optional($._unterminated_statement), ';'),
-    _unterminated_statement: ($) => choice(
+    source_file: ($) => seq(optional($.shebang), optional($._non_empty_body)),
+    _non_empty_body: ($) => separated_one($._statement, ';'),
+    _statement: ($) => choice(
       $.definition,
-      $._block,
+      $.block,
       $._expression
     ),
-    _block: ($) => seq('{', optional($._body), '}'),
-    definition: ($) => seq($.ident, '=', $._expression),
+    block: ($) => seq('{', optional($._non_empty_body), '}'),
+    definition_target: ($) => seq($.ident, optional($.definition_arguments)),
+    definition_arguments: ($) => seq('(', separated($.argument_definition, ','), optional(','), ')'),
+    argument_definition: ($) => seq($.definition_target, optional(seq('=', $._expression))),
+    definition: ($) => seq($.definition_target, '=', $._expression),
     _expression: ($) => choice(
       $.binary_expression,
       seq('(', $._expression ,')'),
@@ -46,18 +68,7 @@ module.exports = grammar({
       $.ident
     ),
     binary_expression: ($) => {
-      const table = [
-        [PREC.and, '&&'],
-        [PREC.or, '||'],
-        [PREC.bitand, '&'],
-        [PREC.bitor, '|'],
-        [PREC.bitxor, '^'],
-        [PREC.comparative, choice('==', '!=', '<', '<=', '>', '>=')],
-        [PREC.shift, choice('<<', '>>')],
-        [PREC.additive, choice('+', '-')],
-        [PREC.multiplicative, choice('*', '/', '%')],
-      ];
-      return choice(...table.map(([precedence, operator]) => prec.left(precedence, seq(
+      return choice(...OPERATORS.map(([precedence, operator]) => prec.left(precedence, seq(
         field('left', $._expression),
         // @ts-ignore
         field('operator', operator),
@@ -90,7 +101,7 @@ module.exports = grammar({
       $._hex_char_6,
       $._hex_char_8,
     )),
-    hex_literal: ($) => seq('0x', /[a-fA-F0-9_]+/),
+    hex_literal: (_) => seq('0x', /[a-fA-F0-9_]+/),
     _hex_char_3: (_) => /[a-fA-F0-9_]{3}/,
     _hex_char_4: (_) => /[a-fA-F0-9_]{4}/,
     _hex_char_6: (_) => /[a-fA-F0-9_]{6}/,
@@ -117,6 +128,6 @@ module.exports = grammar({
     float_literal: (_) => /[0-9][0-9_]*\.[0-9_]*/,
     // TODO: Add semver.
     shebang: (_) => seq('#!', /[^\n\r]*/),
-    single_line_comment: (_) => seq(choice('//', '#'), /.*/),
+    single_line_comment: (_) => seq('//', /.*/),
   }
 });
