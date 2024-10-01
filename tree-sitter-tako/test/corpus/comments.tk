@@ -33,3 +33,56 @@ Nesting Comment nested
 /* Hello /*world */ Wow */
 ---
 (source_file (nesting_comment (nesting_comment)))
+
+==================
+Nesting Comment with slash
+==================
+/*/*/
+---
+(source_file (ERROR))
+
+==================
+Nesting Comment with star
+==================
+/***/
+---
+(source_file (ERROR))
+
+==================
+Nesting Comment with start comment
+==================
+/*/**/
+---
+(source_file (ERROR (nesting_comment)))
+
+==================
+Nesting Comment with end comment
+==================
+/**/*/
+---
+(source_file (nesting_comment) (ERROR))
+
+==================
+Nesting Comment nested tight
+==================
+/*/*world */*/
+---
+(source_file (ERROR) (nesting_comment (nesting_comment)))
+==================
+Nesting Comment nested with single space at start
+==================
+/* /*world */*/
+---
+(source_file (ERROR) (nesting_comment (nesting_comment)))
+==================
+Nesting Comment nested with single space at end
+==================
+/*/*world */ */
+---
+(source_file (ERROR) (nesting_comment (nesting_comment)))
+==================
+Nesting Comment nested with single space
+==================
+/* /*world */ */
+---
+(source_file (nesting_comment (nesting_comment)))
