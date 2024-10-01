@@ -1,0 +1,147 @@
+==================
+Constant Definition
+==================
+a=3
+---
+(source_file
+  (definition
+    (definition_target (ident))
+    (number (int_literal))
+  )
+)
+==================
+Function Definition
+==================
+test() = 3
+---
+(source_file
+  (definition
+    (definition_target (ident) (definition_arguments))
+    (number (int_literal))
+  )
+)
+==================
+Function Definition with argument
+==================
+test(a) = 3
+---
+(source_file
+  (definition
+    (definition_target (ident)
+      (definition_arguments
+        (argument_definition (definition_target (ident)))
+      )
+    )
+    (number (int_literal))
+  )
+)
+==================
+Function Definition with arguments
+==================
+test(a, b) = 3
+---
+(source_file
+  (definition
+    (definition_target (ident)
+      (definition_arguments
+          (argument_definition (definition_target (ident)))
+          (argument_definition (definition_target (ident)))
+      )
+    )
+    (number (int_literal))
+  )
+)
+==================
+Function Definition with arguments and trailing comma
+==================
+test(a,b,) = 3
+---
+(source_file
+  (definition
+    (definition_target (ident)
+      (definition_arguments
+          (argument_definition (definition_target (ident)))
+          (argument_definition (definition_target (ident)))
+      )
+    )
+    (number (int_literal))
+  )
+)
+==================
+Function Definition with argument with default
+==================
+test(a=3) = 3
+---
+(source_file
+  (definition
+    (definition_target (ident)
+      (definition_arguments
+        (argument_definition
+          (definition_target (ident))
+          (number (int_literal))
+        )
+      )
+    )
+    (number (int_literal))
+  )
+)
+==================
+Function Definition with arguments with defaults
+==================
+test(a=3,b=2) = 3
+---
+(source_file
+  (definition
+    (definition_target (ident)
+      (definition_arguments
+        (argument_definition
+          (definition_target (ident))
+          (number (int_literal))
+        )
+        (argument_definition
+          (definition_target (ident))
+          (number (int_literal))
+        )
+      )
+    )
+    (number (int_literal))
+  )
+)
+==================
+Function Definition using empty block
+==================
+test = {
+}
+---
+(source_file
+  (definition
+    (definition_target (ident))
+    (block)
+  )
+)
+==================
+Function Definition using block
+==================
+test = {
+  3
+}
+---
+(source_file
+  (definition
+    (definition_target (ident))
+    (block (number (int_literal)))
+  )
+)
+==================
+Function Definition With Arguments Using Block
+==================
+test() = {
+  3
+}
+---
+(source_file
+  (definition
+    (definition_target (ident) (definition_arguments))
+    (block (number (int_literal)))
+  )
+)
