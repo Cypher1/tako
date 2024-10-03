@@ -40,3 +40,4 @@ dist/
 src/parser.c
 src/tree_sitter/*.*
 src/*.json
+bindings
