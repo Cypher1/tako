@@ -1,40 +1,85 @@
 // For now we match rust.
 // https://doc.rust-lang.org/reference/expressions.html#expression-precedence
+const {left, right} = prec;
 const PREC = {
-  call: 15,
-  field: 14,
-  try: 13,
-  unary: 12,
-  cast: 11,
-  multiplicative: 10,
-  additive: 9,
-  shift: 8,
-  bitand: 7,
-  bitxor: 6,
-  bitor: 5,
-  comparative: 4,
-  and: 3,
-  or: 2,
-  range: 1,
+  call: 17,
+  field: 16,
+  try: 15,
+  neg: 14,
+  not: 14,
+  bitnot: 14,
+  cast: 13,
+  mul: 12,
+  div: 12,
+  mod: 12,
+  add: 11,
+  sub: 11,
+  left_shift: 10,
+  right_shift: 10,
+  bitand: 9,
+  bitxor: 8,
+  bitor: 7,
+  // comparative: 6,
+  equals: 6,
+  not_equals: 6,
+  less_than: 6,
+  less_than_equals: 6,
+  greater_than: 6,
+  greater_than_equals: 6,
+  and: 5,
+  or: 4,
+  range: 3,
+  has_type: 2,
   assign: 0,
-  comma: -1,
-  has_type: -2,
-  closure: -3,
+  closure: -2,
+  sequence: -3,
+  postfix_sequence: -3,
 };
 
-const OPERATORS = [
-  ['comma', ','],
+const RIGHT_OPERATORS = [
   ['assign', '='],
+];
+
+const OPERATORS = [
+  ['field', '.'],
   ['has_type', ':'],
+  ['sequence', ';'],
   ['and', '&&'],
   ['or', '||'],
   ['bitand', '&'],
   ['bitor', '|'],
   ['bitxor', '^'],
-  ['comparative', choice('==', '!=', '<', '<=', '>', '>=')],
-  ['shift', choice('<<', '>>')],
-  ['additive', choice('+', '-')],
-  ['multiplicative', choice('*', '/', '%')],
+  ['equals', '=='],
+  ['not_equals', '!='],
+  ['less_than', '<'],
+  ['less_than_equals', '<='],
+  ['greater_than', '>'],
+  ['greater_than_equals', '>='],
+  ['left_shift', '<<'],
+  ['right_shift', '>>'],
+  ['add', '+'],
+  ['sub', '-'],
+  ['mul', '*'],
+  ['div', '/'],
+  ['mod', '%'],
+];
+
+const POSTFIX_OPERATORS = [
+  ['try', '?'],
+  ['sequence', ';'],
+];
+
+const UNARY_OPERATORS = [
+  ['neg', '-'],
+  ['not', '!'],
+  ['bitnot', '~'],
+];
+
+const ALL_OPERATORS = [
+  ...OPERATORS,
+  ...RIGHT_OPERATORS,
+  ...POSTFIX_OPERATORS,
+  ...UNARY_OPERATORS,
 ];
 
 const separated_one = (entry, delimiter) => {
@@ -49,9 +94,30 @@ function operators_gen() {
   const operators = {};
   for (const [name, operator] of OPERATORS) {
     const precedence = PREC[name];
-    operators[name] = ($) => prec.left(precedence, seq(
+    operators[name] = ($) => left(precedence, seq(
       field('left', $._expression),
-      // @ts-ignore
+      field('operator', operator),
+      field('right', $._expression),
+    ));
+  }
+  for (const [name, operator] of RIGHT_OPERATORS) {
+    const precedence = PREC[name];
+    operators[name] = ($) => right(precedence, seq(
+      field('left', $._expression),
+      field('operator', operator),
+      field('right', $._expression),
+    ));
+  }
+  for (const [name, operator] of POSTFIX_OPERATORS) {
+    const precedence = PREC[name];
+    operators[name] = ($) => left(precedence, seq(
+      field('left', $._expression),
+      field('operator', operator),
+    ));
+  }
+  for (const [name, operator] of UNARY_OPERATORS) {
+    const precedence = PREC[name];
+    operators[name] = ($) => right(precedence, seq(
       field('operator', operator),
       field('right', $._expression),
     ));
@@ -64,26 +130,22 @@ module.exports = grammar({
   extras: ($) => [$.nesting_comment, $.single_line_comment, "\r", "\n", "\t", " "],
   rules: {
     // TODO: add the actual grammar rules
-    source_file: ($) => seq(optional($.shebang), separated_one(optional($._non_empty_body), $.heading)),
-    _non_empty_body: ($) => separated_one($._statement, ';'),
-    _statement: ($) => choice(
-      $.block,
-      $._expression
-    ),
-    block: ($) => seq('{', optional($._non_empty_body), '}'),
+    source_file: ($) => seq(optional($.shebang), separated_one(optional($._expression), $.heading)),
+    block: ($) => seq('{', optional($._expression), '}'),
     _expression: ($) => choice(
-      $._binary_expression, // Consider keeping this name to support editing?
+      $._operator_expression, // Consider keeping this name to support editing?
       $.call,
       seq('(', $._expression ,')'),
+      $.block,
       $.string_literal,
       $._number,
       $.hex_literal,
       $.color,
       $.ident,
     ),
-    call: ($) => seq($._expression, '(', separated($._expression, ','), optional(','), ')'),
-    _binary_expression: ($) => {
-      return choice(...OPERATORS.map(([name, _operator_parser]) => {
+    call: ($) => left(PREC.call, seq($._expression, '(', separated($._expression, ','), optional(','), ')')),
+    _operator_expression: ($) => {
+      return choice(...ALL_OPERATORS.map(([name, _operator_parser]) => {
         try {
           return ($)[name]; // Get the parser 'named'.
         } catch (e) {
@@ -124,13 +186,23 @@ module.exports = grammar({
     _hex_char_6: (_) => /[a-fA-F0-9_]{6}/,
     _hex_char_8: (_) =>  /[a-fA-F0-9_]{8}/,
     ident: (_) => /[a-zA-Z][a-zA-Z0-9_]*/,
-    string_literal: $ => seq(
-      '"',
-      repeat(choice(
-        $.escape_sequence,
-        /[^\"]/,
-      )),
-      token.immediate('"'),
+    string_literal: $ => choice(
+      seq(
+        '\'',
+        repeat(choice(
+          $.escape_sequence,
+          /[^\']/,
+        )),
+        token.immediate('\''),
+      ),
+      seq(
+        '"',
+        repeat(choice(
+          $.escape_sequence,
+          /[^\"]/,
+        )),
+        token.immediate('"'),
+      ),
     ),
     escape_sequence: _ => token.immediate(
       seq('\\',

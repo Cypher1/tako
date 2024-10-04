@@ -18,9 +18,11 @@ Float literal with too many decimal points
 1.0.0
 ---
 (source_file
-  (float_literal)
-  (ERROR
-    (UNEXPECTED '.')))
+  (field
+    (float_literal)
+    (int_literal)
+  )
+)
 
 ==================
 Long int
@@ -62,4 +64,4 @@ Color wrong number of digits
 ==================
 #ff00aaa
 ---
-(source_file (color) (ERROR (ident)))
+(source_file (color) (ERROR))
