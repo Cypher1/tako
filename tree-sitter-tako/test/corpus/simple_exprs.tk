@@ -1,4 +1,31 @@
 ==================
+Simple value with postfix sequence
+==================
+
+0;
+
+---
+(source_file
+  (sequence
+    (int_literal)
+  )
+)
+
+==================
+Simple values with infix sequence
+==================
+
+0;1
+
+---
+(source_file
+  (sequence
+    (int_literal)
+    (int_literal)
+  )
+)
+
+==================
 Simple Expressions
 ==================
 
