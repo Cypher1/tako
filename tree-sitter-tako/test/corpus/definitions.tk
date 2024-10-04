@@ -79,19 +79,19 @@ test(a=3,b=2) = 3
   )
 )
 ==================
-Function Definition using empty block
+Constant Definition using empty block
 ==================
 test = {
 }
 ---
 (source_file
   (assign
-    (call (ident))
+    (ident)
     (block)
   )
 )
 ==================
-Function Definition using block
+Constant Definition using block
 ==================
 test = {
   3
@@ -104,7 +104,7 @@ test = {
   )
 )
 ==================
-Function Definition With Arguments Using Block
+Function Definition using Block
 ==================
 test() = {
   3
@@ -112,7 +112,23 @@ test() = {
 ---
 (source_file
   (assign
-    (call (ident) (definition_arguments))
+    (call (ident))
+    (block (int_literal))
+  )
+)
+==================
+Function Definition with arguments using Block
+==================
+test(a, b) = {
+  3
+}
+---
+(source_file
+  (assign
+    (call (ident)
+      (ident)
+      (ident)
+    )
     (block (int_literal))
   )
 )
