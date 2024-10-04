@@ -7,7 +7,7 @@ const PREC = {
   try: 15,
   neg: 14,
   not: 14,
-  bitnot: 14,
+  bit_not: 14,
   cast: 13,
   mul: 12,
   div: 12,
@@ -16,9 +16,9 @@ const PREC = {
   sub: 11,
   left_shift: 10,
   right_shift: 10,
-  bitand: 9,
-  bitxor: 8,
-  bitor: 7,
+  bit_and: 9,
+  bit_xor: 8,
+  bit_or: 7,
   // comparative: 6,
   equals: 6,
   not_equals: 6,
@@ -44,9 +44,9 @@ const OPERATORS = [
   ['has_type', ':'],
   ['and', '&&'],
   ['or', '||'],
-  ['bitand', '&'],
-  ['bitor', '|'],
-  ['bitxor', '^'],
+  ['bit_and', '&'],
+  ['bit_or', '|'],
+  ['bit_xor', '^'],
   ['equals', '=='],
   ['not_equals', '!='],
   ['less_than', '<'],
@@ -73,7 +73,7 @@ const OPTIONALLY_POSTFIX_OPERATORS = [
 const UNARY_OPERATORS = [
   ['neg', '-'],
   ['not', '!'],
-  ['bitnot', '~'],
+  ['bit_not', '~'],
 ];
 
 const ALL_OPERATORS = [

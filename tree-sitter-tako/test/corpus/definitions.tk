@@ -132,3 +132,56 @@ test(a, b) = {
     (block (int_literal))
   )
 )
+
+==================
+Definition with type
+==================
+test: Num = 3
+---
+(source_file
+  (assign
+    (has_type
+      (ident)
+      (ident)
+    )
+    (int_literal)
+  )
+)
+
+==================
+Definition with type that is an expression
+==================
+test: Float | Int = 3
+---
+(source_file
+  (assign
+    (has_type
+      (ident)
+      (bit_or
+        (ident)
+        (ident)
+      )
+    )
+    (int_literal)
+  )
+)
+
+==================
+Function Definition with arguments and types using Block
+==================
+test(a: AType, b: BType): TestResultType = {
+  3: TestResultType
+}
+---
+(source_file
+  (assign
+    (has_type
+      (call (ident)
+        (has_type (ident) (ident))
+        (has_type (ident) (ident))
+      )
+      (ident)
+    )
+    (block (has_type (int_literal) (ident)))
+  )
+)
