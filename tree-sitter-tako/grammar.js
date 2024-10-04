@@ -33,7 +33,6 @@ const PREC = {
   assign: 0,
   closure: -2,
   sequence: -3,
-  postfix_sequence: -3,
 };
 
 const RIGHT_OPERATORS = [
@@ -43,7 +42,6 @@ const RIGHT_OPERATORS = [
 const OPERATORS = [
   ['field', '.'],
   ['has_type', ':'],
-  ['sequence', ';'],
   ['and', '&&'],
   ['or', '||'],
   ['bitand', '&'],
@@ -66,6 +64,9 @@ const OPERATORS = [
 
 const POSTFIX_OPERATORS = [
   ['try', '?'],
+];
+
+const OPTIONALLY_POSTFIX_OPERATORS = [
   ['sequence', ';'],
 ];
 
@@ -79,6 +80,7 @@ const ALL_OPERATORS = [
   ...OPERATORS,
   ...RIGHT_OPERATORS,
   ...POSTFIX_OPERATORS,
+  ...OPTIONALLY_POSTFIX_OPERATORS,
   ...UNARY_OPERATORS,
 ];
 
@@ -108,6 +110,14 @@ function operators_gen() {
       field('right', $._expression),
     ));
   }
+  for (const [name, operator] of OPTIONALLY_POSTFIX_OPERATORS) {
+    const precedence = PREC[name];
+    operators[name] = ($) => right(precedence, seq(
+      field('left', $._expression),
+      field('operator', operator),
+      field('right', optional($._expression)),
+    ));
+  }
   for (const [name, operator] of POSTFIX_OPERATORS) {
     const precedence = PREC[name];
     operators[name] = ($) => left(precedence, seq(
@@ -131,11 +141,10 @@ module.exports = grammar({
   rules: {
     // TODO: add the actual grammar rules
     source_file: ($) => seq(optional($.shebang), separated_one(optional($._expression), $.heading)),
-    block: ($) => seq('{', optional($._expression), '}'),
     _expression: ($) => choice(
       $._operator_expression, // Consider keeping this name to support editing?
       $.call,
-      seq('(', $._expression ,')'),
+      $.parens,
       $.block,
       $.string_literal,
       $._number,
@@ -143,6 +152,8 @@ module.exports = grammar({
       $.color,
       $.ident,
     ),
+    block: ($) => seq('{', optional($._expression), '}'),
+    parens: ($) => seq('(', $._expression ,')'),
     call: ($) => left(PREC.call, seq($._expression, '(', separated($._expression, ','), optional(','), ')')),
     _operator_expression: ($) => {
       return choice(...ALL_OPERATORS.map(([name, _operator_parser]) => {
