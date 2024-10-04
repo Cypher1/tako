@@ -64,4 +64,4 @@ Color wrong number of digits
 ==================
 #ff00aaa
 ---
-(source_file (color) (ERROR))
+(source_file (color) (ERROR (ident)))

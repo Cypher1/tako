@@ -79,7 +79,7 @@ test(a=3,b=2) = 3
   )
 )
 ==================
-Constant Definition using empty block
+Constant Definition using empty Block
 ==================
 test = {
 }
@@ -91,7 +91,7 @@ test = {
   )
 )
 ==================
-Constant Definition using block
+Constant Definition using Block
 ==================
 test = {
   3
