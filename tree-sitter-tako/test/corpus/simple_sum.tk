@@ -5,16 +5,12 @@ Simple Sum
 
 ---
 (source_file
-    (binary_expression
-        left: (binary_expression
-            left: (number
-                (int_literal))
-            right: (number
-                (int_literal))
+    (add
+        left: (add
+            left: (int_literal)
+            right: (int_literal)
         )
-        right: (number
-            (int_literal)
-        )
+        right: (int_literal)
     )
 )
 
@@ -29,14 +25,14 @@ Simple Sum with comments
 */
 ---
 (source_file
-    (binary_expression
-        left: (binary_expression
-              left: (number (int_literal))
+    (add
+        left: (add
+              left: (int_literal)
               (nesting_comment)
-              right: (number (int_literal))
+              right: (int_literal)
               )
         (nesting_comment)
-        right: (number (int_literal)))
+        right: (int_literal))
         (nesting_comment)
         (nesting_comment
           (nesting_comment)
