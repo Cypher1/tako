@@ -26,6 +26,146 @@ Simple values with infix sequence
 )
 
 ==================
+Simple values with parens
+==================
+
+(0)
+
+---
+(source_file
+  (parens
+    (int_literal)
+  )
+)
+
+==================
+Simple values with more parens
+==================
+
+((0))
+
+---
+(source_file
+  (parens
+    (parens
+      (int_literal)
+    )
+  )
+)
+
+==================
+Simple values with mismatched parens
+==================
+
+((0()
+
+---
+(source_file
+  (parens
+    (parens
+      (int_literal)
+      (ERROR))
+    (MISSING ")")
+  )
+)
+
+==================
+Empty Block
+==================
+
+{}
+
+---
+(source_file
+  (block)
+)
+
+==================
+Empty Block with suffix sequence
+==================
+
+{};
+
+---
+(source_file
+  (sequence (block))
+)
+
+==================
+Empty Container notation
+==================
+
+[]
+
+---
+(source_file
+  (container)
+)
+
+
+==================
+Container notation with a single value
+==================
+
+[1]
+
+---
+(source_file
+  (container
+    (int_literal)
+  )
+)
+
+==================
+Container notation with multiple values
+==================
+
+[1,2,3,4,]
+
+---
+(source_file
+  (container
+    (int_literal)
+    (int_literal)
+    (int_literal)
+    (int_literal)
+  )
+)
+
+==================
+Container notation containing multiple identifiers
+==================
+
+[a,b,c,d,]
+
+---
+(source_file
+  (container
+    (ident)
+    (ident)
+    (ident)
+    (ident)
+  )
+)
+
+
+==================
+Container notation containing multiple subexpressions
+==================
+
+[3+a,b*c,c=0,"Wow",]
+
+---
+(source_file
+  (container
+    (add (int_literal) (ident))
+    (mul (ident) (ident))
+    (assign (ident) (int_literal))
+    (string_literal)
+  )
+)
+
+==================
 Simple Expressions
 ==================
 
