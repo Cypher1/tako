@@ -142,19 +142,24 @@ module.exports = grammar({
     // TODO: add the actual grammar rules
     source_file: ($) => seq(optional($.shebang), separated_one(optional($._expression), $.heading)),
     _expression: ($) => choice(
-      $._operator_expression, // Consider keeping this name to support editing?
-      $.call,
-      $.parens,
-      $.block,
+      $._expression_not_literal,
       $.string_literal,
       $._number,
       $.hex_literal,
       $.color,
+    ),
+    _expression_not_literal: ($) => choice(
+      $._operator_expression, // Consider keeping this name to support editing?
+      $.parens,
+      $.container,
+      $.call,
+      $.block,
       $.ident,
     ),
     block: ($) => seq('{', optional($._expression), '}'),
     parens: ($) => seq('(', $._expression ,')'),
-    call: ($) => left(PREC.call, seq($._expression, '(', separated($._expression, ','), optional(','), ')')),
+    container: ($) => seq('[', separated($._expression, ','), optional(',') ,']'),
+    call: ($) => left(PREC.call, seq($._expression_not_literal, '(', separated($._expression, ','), optional(','), ')')),
     _operator_expression: ($) => {
       return choice(...ALL_OPERATORS.map(([name, _operator_parser]) => {
         try {
