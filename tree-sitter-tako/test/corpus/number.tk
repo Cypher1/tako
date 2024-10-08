@@ -3,65 +3,82 @@ Integer literal
 ==================
 1
 ---
-(source_file (int_literal))
+
+(source_file
+  (int_literal))
 
 ==================
 Float literal
 ==================
 1.0
 ---
-(source_file (float_literal))
+
+(source_file
+  (float_literal))
 
 ==================
 Float literal with too many decimal points
 ==================
 1.0.0
 ---
+
 (source_file
   (field
     (float_literal)
-    (int_literal)
-  )
-)
+    (int_literal)))
 
 ==================
 Long int
 ==================
 1_000_000_000
 ---
-(source_file (int_literal))
+
+(source_file
+  (int_literal))
 
 ==================
 Long float
 ==================
 1_000_000_000.000_000
 ---
-(source_file (float_literal))
+
+(source_file
+  (float_literal))
 
 ==================
 Hex
 ==================
 0xff00
 ---
-(source_file (hex_literal))
+
+(source_file
+  (hex_literal))
 
 ==================
 Color
 ==================
 #FF0000AA
 ---
-(source_file (color))
+
+(source_file
+  (color))
 
 ==================
 Color Mixed case
 ==================
 #ff00aa
 ---
-(source_file (color))
+
+(source_file
+  (color))
 
 ==================
 Color wrong number of digits
 ==================
 #ff00aaa
 ---
-(source_file (color) (ERROR (ident)))
+
+(source_file
+  (color)
+  (ERROR
+    (ident)))
