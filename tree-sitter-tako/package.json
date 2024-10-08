@@ -58,5 +58,8 @@
   ],
   "dependencies": {
     "node-gyp-build": "^4.8.1"
+  },
+  "peerDependencies": {
+    "tree-sitter": "^0.21.1"
   }
 }
