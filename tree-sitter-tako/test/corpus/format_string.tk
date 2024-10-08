@@ -6,4 +6,13 @@ Format strings
 ---
 
 (source_file
-  (string_literal (add (int_literal) (int_literal)))
+  (string_literal (format_expression (add (int_literal) (int_literal)))))
+
+==================
+Lazy Format strings
+==================
+"expensive() = {expensive()}"
+---
+
+(source_file
+  (string_literal (format_expression (call (ident)))))

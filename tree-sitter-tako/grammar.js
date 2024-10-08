@@ -202,10 +202,17 @@ module.exports = grammar({
     _hex_char_6: (_) => /[a-fA-F0-9_]{6}/,
     _hex_char_8: (_) =>  /[a-fA-F0-9_]{8}/,
     ident: (_) => /[a-zA-Z][a-zA-Z0-9_]*/,
-    string_literal: $ => choice(
+    format_expression: ($) => seq(
+      '{',
+      $._expression,
+      /* Add format specifiers here if needed, prefer to use zero cost wrappers */
+      '}'
+    ),
+    string_literal: ($) => choice(
       seq(
         '\'',
         repeat(choice(
+          $.format_expression,
           $.escape_sequence,
           /[^\']/,
         )),
@@ -214,6 +221,7 @@ module.exports = grammar({
       seq(
         '"',
         repeat(choice(
+          $.format_expression,
           $.escape_sequence,
           /[^\"]/,
         )),
