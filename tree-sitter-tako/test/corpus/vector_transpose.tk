@@ -54,4 +54,8 @@ main = {
           (sequence
             (call
               (ident)
-              (string_literal))))))))
+              (string_literal
+                (format_expression
+                  (ident))
+                (format_expression
+                  (ident))))))))))
