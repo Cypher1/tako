@@ -80,5 +80,4 @@ Color wrong number of digits
 
 (source_file
   (color)
-  (ERROR
-    (ident)))
+  (ERROR))
