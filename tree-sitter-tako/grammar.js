@@ -2,13 +2,16 @@
 // https://doc.rust-lang.org/reference/expressions.html#expression-precedence
 const {left, right} = prec;
 const PREC = {
-  call: 17,
-  field: 16,
-  try: 15,
-  neg: 14,
-  not: 14,
-  bit_not: 14,
-  cast: 13,
+  call: 18,
+  index: 18,
+  field: 17,
+  try: 16,
+  spread: 15,
+  neg: 15,
+  not: 15,
+  bit_not: 15,
+  cast: 14,
+  exp: 13,
   mul: 12,
   div: 12,
   mod: 12,
@@ -32,11 +35,13 @@ const PREC = {
   has_type: 2,
   assign: 0,
   closure: -2,
-  sequence: -3,
+  set: -3,
+  sequence: -4,
 };
 
 const RIGHT_OPERATORS = [
   ['assign', '='],
+  ['exp', '**'],
 ];
 
 const OPERATORS = [
@@ -66,11 +71,17 @@ const POSTFIX_OPERATORS = [
   ['try', '?'],
 ];
 
-const OPTIONALLY_POSTFIX_OPERATORS = [
+const JOINING_OPERATORS = [
   ['sequence', ';'],
+  ['set', ','],
+];
+
+const OPTIONALLY_INFIX_OPERATORS = [
+  ['range', '..'],
 ];
 
 const UNARY_OPERATORS = [
+  ['spread', '...'],
   ['neg', '-'],
   ['not', '!'],
   ['bit_not', '~'],
@@ -80,7 +91,8 @@ const ALL_OPERATORS = [
   ...OPERATORS,
   ...RIGHT_OPERATORS,
   ...POSTFIX_OPERATORS,
-  ...OPTIONALLY_POSTFIX_OPERATORS,
+  ...JOINING_OPERATORS,
+  ...OPTIONALLY_INFIX_OPERATORS,
   ...UNARY_OPERATORS,
 ];
 
@@ -110,10 +122,19 @@ function operators_gen() {
       field('right', $._expression),
     ));
   }
-  for (const [name, operator] of OPTIONALLY_POSTFIX_OPERATORS) {
+  for (const [name, operator] of JOINING_OPERATORS) {
     const precedence = PREC[name];
+    // TODO: Flatten
     operators[name] = ($) => right(precedence, seq(
       field('left', $._expression),
+      field('operator', operator),
+      field('right', optional($._expression)),
+    ));
+  }
+  for (const [name, operator] of OPTIONALLY_INFIX_OPERATORS) {
+    const precedence = PREC[name];
+    operators[name] = ($) => right(precedence, seq(
+      field('left', optional($._expression)),
       field('operator', operator),
       field('right', optional($._expression)),
     ));
@@ -141,25 +162,26 @@ module.exports = grammar({
   rules: {
     // TODO: add the actual grammar rules
     source_file: ($) => seq(optional($.shebang), separated_one(optional($._expression), $.heading)),
-    _expression: ($) => choice(
-      $._expression_not_literal,
-      $.string_literal,
-      $._number,
-      $.hex_literal,
-      $.color,
-    ),
     _expression_not_literal: ($) => choice(
       $._operator_expression, // Consider keeping this name to support editing?
       $.parens,
       $.container,
       $.call,
+      $.index,
       $.block,
+      $.binding,
       $.ident,
+    ),
+    _expression: ($) => choice(
+      $._expression_not_literal,
+      $.string_literal,
+      $._number,
     ),
     block: ($) => seq('{', optional($._expression), '}'),
     parens: ($) => seq('(', $._expression ,')'),
     container: ($) => seq('[', separated($._expression, ','), optional(',') ,']'),
     call: ($) => left(PREC.call, seq($._expression_not_literal, '(', separated($._expression, ','), optional(','), ')')),
+    index: ($) => left(PREC.index, seq($._expression, '[', separated($._expression, ','), optional(','), ']')),
     _operator_expression: ($) => {
       return choice(...ALL_OPERATORS.map(([name, _operator_parser]) => {
         try {
@@ -171,8 +193,10 @@ module.exports = grammar({
       }));
     },
     _number: ($) => choice(
+      $.hex_literal,
       $.int_literal,
-      $.float_literal
+      $.float_literal,
+      $.color,
     ),
     _nesting_comment_contents: ($) => choice(
       $.nesting_comment,
@@ -184,6 +208,7 @@ module.exports = grammar({
       '*/' // This has to be immediately after the contents.
     ),
     _anything: (_) => token.immediate(/[^*/]|\*[^/]|\/[^*]/),
+    // TODO: Add control flow statements or functions.
     break: (_) => "break",
     continue: (_) => "continue",
     return: (_) => "return",
@@ -201,6 +226,14 @@ module.exports = grammar({
     _hex_char_4: (_) => /[a-fA-F0-9_]{4}/,
     _hex_char_6: (_) => /[a-fA-F0-9_]{6}/,
     _hex_char_8: (_) =>  /[a-fA-F0-9_]{8}/,
+    binding: ($) => seq(
+      choice(
+        $.forall,
+        $.exists,
+        $.given
+      ),
+      $.ident
+    ),
     ident: (_) => /[a-zA-Z][a-zA-Z0-9_]*/,
     format_expression: ($) => seq(
       '{',
