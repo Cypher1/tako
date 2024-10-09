@@ -5,6 +5,7 @@ pub mod location;
 mod pretty_printer;
 pub mod string_interner;
 
+use tree_sitter::Language;
 use crate::parser::semantics::Literal;
 use crate::parser::tokens::Symbol;
 use entity_component_slab::{make_component, make_world};
@@ -14,6 +15,8 @@ use short_typed_index::TypedIndex;
 use smallvec::{smallvec, SmallVec};
 use std::path::PathBuf;
 use string_interner::{Identifier, StringInterner};
+
+type TsNodeId = u16;
 
 #[derive(Clone, Default, Debug, Hash, PartialEq, Eq)]
 pub struct Ast {
@@ -35,13 +38,72 @@ pub struct Ast {
     pub atoms: ChildSlab<Atom, NodeId>,
 
     pub string_interner: StringInterner,
+
+    // TS Node Ids
+    // TODO: generated from
+    // ../../../tree_sitter_tako/src/node-types.json
+    pub add_node_id: TsNodeId,
+    pub and_node_id: TsNodeId,
+    pub assign_node_id: TsNodeId,
+    pub binding_node_id: TsNodeId,
+    pub bit_and_node_id: TsNodeId,
+    pub bit_not_node_id: TsNodeId,
+    pub bit_or_node_id: TsNodeId,
+    pub bit_xor_node_id: TsNodeId,
+    pub block_node_id: TsNodeId,
+    pub call_node_id: TsNodeId,
+    pub color_node_id: TsNodeId,
+    pub container_node_id: TsNodeId,
+    pub div_node_id: TsNodeId,
+    pub equals_node_id: TsNodeId,
+    pub exp_node_id: TsNodeId,
+    pub field_node_id: TsNodeId,
+    pub format_expression_node_id: TsNodeId,
+    pub greater_than_node_id: TsNodeId,
+    pub greater_than_equals_node_id: TsNodeId,
+    pub has_type_node_id: TsNodeId,
+    pub hex_literal_node_id: TsNodeId,
+    pub index_node_id: TsNodeId,
+    pub left_shift_node_id: TsNodeId,
+    pub less_than_node_id: TsNodeId,
+    pub less_than_equals_node_id: TsNodeId,
+    pub mod_node_id: TsNodeId,
+    pub mul_node_id: TsNodeId,
+    pub neg_node_id: TsNodeId,
+    pub nesting_comment_node_id: TsNodeId,
+    pub not_node_id: TsNodeId,
+    pub not_equals_node_id: TsNodeId,
+    pub or_node_id: TsNodeId,
+    pub parens_node_id: TsNodeId,
+    pub range_node_id: TsNodeId,
+    pub right_shift_node_id: TsNodeId,
+    pub sequence_node_id: TsNodeId,
+    pub set_node_id: TsNodeId,
+    pub shebang_node_id: TsNodeId,
+    pub single_line_comment_node_id: TsNodeId,
+    pub source_file_node_id: TsNodeId,
+    pub spread_node_id: TsNodeId,
+    pub string_literal_node_id: TsNodeId,
+    pub sub_node_id: TsNodeId,
+    pub try_node_id: TsNodeId,
+    pub escape_sequence_node_id: TsNodeId,
+    pub exists_node_id: TsNodeId,
+    pub float_literal_node_id: TsNodeId,
+    pub forall_node_id: TsNodeId,
+    pub given_node_id: TsNodeId,
+    pub heading_node_id: TsNodeId,
+    pub ident_node_id: TsNodeId,
+    pub int_literal_node_id: TsNodeId,
 }
 
 impl Ast {
     #[must_use]
     pub fn new(filepath: PathBuf) -> Self {
+        let tako_lang: &Language = &tree_sitter_tako::LANGUAGE.into();
+        let int_literal_node_id = tako_lang.id_for_node_kind("int_literal", /*named*/true);
         Self {
             filepath,
+            int_literal_node_id,
             ..Self::default()
         }
     }
