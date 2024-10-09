@@ -1,6 +1,8 @@
 use std::path::Path;
 use log::error;
 
+use smallvec::{SmallVec, smallvec};
+use tree_sitter::{Language, TreeCursor, Node as TreeNode};
 use tree_sitter::{Tree, Parser as TSParser};
 
 use tokens::{Symbol, Token};
@@ -264,7 +266,7 @@ pub mod tokens {
                     Self::OpenParen => "(",
                     Self::CloseParen => ")",
                     Self::OpenCurly => "{",
-                   Self::CloseCurly => "}",
+                    Self::CloseCurly => "}",
                     Self::OpenBracket => "[",
                     Self::CloseBracket => "]",
                 }
@@ -286,14 +288,52 @@ pub mod tokens {
     }
 }
 
+fn handle_subtree<'a>(curr: &mut TreeCursor<'a>, ts_node: TreeNode<'a>, file: &Path, input: &str, ast: &mut Ast) -> Result<Option<NodeId>, TError> {
+    // TODO: Check that this is large enough but not too large
+    let mut children: SmallVec::<NodeId, 5> = smallvec![];
+    let mut children_walker = ts_node.walk();
+    for ts_child in ts_node.children(&mut children_walker) {
+        if !ts_child.is_named() {
+            // BIG assumption being made here...
+            continue;
+        }
+        let child = handle_subtree(curr, ts_child, file, input, ast)?;
+
+        // TODO: Check that this subtree is allowed.
+        
+        if let Some(child) = child {
+            children.push(child);
+        }
+    }
+    // TODO: Handle merging
+    // TODO: Handle constructing this kind of node from it's children
+
+    if ts_node.kind_id() == ast.int_literal_node_id {
+        println!("INT_LITERAL");
+    }
+    let info = (
+        ts_node.id(),
+        ts_node.kind_id(),
+        ts_node.kind(),
+        ts_node.is_missing(),
+        ts_node.is_extra(),
+        ts_node.is_error(),
+        ts_node.is_named(),
+    );
+    println!("{:?} {:?} FROM {}", info, ts_node, ts_node.utf8_text(input.as_bytes()).unwrap());
+    // TODO: return the ID
+    Ok(None)
+}
+
 pub fn parse(file: &Path, input: &str, _tokens: &[Token]) -> Result<Ast, TError> {
     let mut ast = Ast::new(file.to_path_buf());
 
     // TODO: Put parser in a state to get caching
     // TODO: Set logger.
+    let tako_lang: &Language = &tree_sitter_tako::LANGUAGE.into();
     let mut parser = TSParser::new();
     parser
-        .set_language(&tree_sitter_tako::LANGUAGE.into())
+        .set_language(tako_lang)
         .expect("Error loading Tako parser");
 
     let old_tree: Option<&Tree> = None;
@@ -303,7 +343,16 @@ pub fn parse(file: &Path, input: &str, _tokens: &[Token]) -> Result<Ast, TError>
     };
     // TODO: Handle errors
     println!("Result: {:?}", res);
-    // ast.roots.push(res);
+
+    let mut ts_curr = res.walk();
+
+    let ts_root = ts_curr.node();
+    let Some(root) = handle_subtree(&mut ts_curr, ts_root, file, input, &mut ast)? else {
+        todo!("Handle file with no root!?")
+    };
+
+    // Done converting to ast
+    ast.roots.push(root);
     Ok(ast)
 }
 
