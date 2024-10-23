@@ -13,16 +13,16 @@ use inkwell::{
     AddressSpace, OptimizationLevel,
 };
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, LazyLock, Mutex};
 use std::{
     io::{stderr, stdout, Write},
     path::Path,
     process::Command,
 };
 
-lazy_static::lazy_static! {
-    static ref CONTEXT: Arc<Mutex<Context>> = Arc::new(Mutex::new(Context::create()));
-}
+static CONTEXT: LazyLock<Arc<Mutex<Context>>> = LazyLock::new(|| {
+    Arc::new(Mutex::new(Context::create()));
+});
 
 #[derive(Debug)]
 pub struct Llvm<'ctx> {

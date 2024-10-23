@@ -5,7 +5,6 @@ pub mod location;
 mod pretty_printer;
 pub mod string_interner;
 
-use tree_sitter::Language;
 use crate::parser::semantics::Literal;
 use crate::parser::tokens::Symbol;
 use entity_component_slab::{make_component, make_world};
@@ -15,6 +14,7 @@ use short_typed_index::TypedIndex;
 use smallvec::{smallvec, SmallVec};
 use std::path::PathBuf;
 use string_interner::{Identifier, StringInterner};
+use tree_sitter::Language;
 
 type TsNodeId = u16;
 
@@ -100,7 +100,7 @@ impl Ast {
     #[must_use]
     pub fn new(filepath: PathBuf) -> Self {
         let tako_lang: &Language = &tree_sitter_tako::LANGUAGE.into();
-        let int_literal_node_id = tako_lang.id_for_node_kind("int_literal", /*named*/true);
+        let int_literal_node_id = tako_lang.id_for_node_kind("int_literal", /*named*/ true);
         Self {
             filepath,
             int_literal_node_id,

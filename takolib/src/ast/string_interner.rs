@@ -17,10 +17,10 @@ assert_eq_size!(Identifier, [u8; 8]);
 assert_eq_size!([Identifier; 2], [u8; 16]);
 // This means we can store two identifier references in the AST in the same
 // memory as a &str.
-#[cfg(not(target_family="wasm"))]
+#[cfg(not(target_family = "wasm"))]
 assert_eq_size!([Identifier; 2], &str);
 // And 3 in the space of a String.
-#[cfg(not(target_family="wasm"))]
+#[cfg(not(target_family = "wasm"))]
 assert_eq_size!([Identifier; 3], String);
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
