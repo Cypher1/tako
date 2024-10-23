@@ -2793,7 +2793,6 @@ dependencies = [
  "futures",
  "fxhash",
  "inkwell",
- "lazy_static",
  "llamada",
  "log",
  "melior",

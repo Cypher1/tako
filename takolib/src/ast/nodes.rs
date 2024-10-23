@@ -61,7 +61,6 @@ pub struct Call {
     pub args: SmallVec<NodeId, 2>,
 }
 
-
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Op {
     pub op: Symbol,

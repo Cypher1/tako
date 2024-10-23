@@ -1,13 +1,16 @@
-use std::path::Path;
 use log::error;
+use std::path::Path;
 
-use smallvec::{SmallVec, smallvec};
-use tree_sitter::{Language, TreeCursor, Node as TreeNode};
-use tree_sitter::{Tree, Parser as TSParser};
+use smallvec::{smallvec, SmallVec};
+use tree_sitter::{Language, Node as TreeNode, TreeCursor};
+use tree_sitter::{Parser as TSParser, Tree};
 
 use tokens::{Symbol, Token};
 
-use crate::{ast::{location::Location, Ast, NodeId}, error::TError};
+use crate::{
+    ast::{location::Location, Ast, NodeId},
+    error::TError,
+};
 
 pub mod semantics;
 
@@ -20,7 +23,7 @@ pub enum TokenType {
     Comma,      // A regular comma.
     Ident,      // A named value.
     Atom,       // A symbol starting with a '$', used differently to symbols which have values.
-                // Literals (i.e. tokens representing values):
+    // Literals (i.e. tokens representing values):
     NumberLit,
     ColorLit,
     // Short strings can be stored as symbols.
@@ -133,7 +136,6 @@ pub mod tokens {
 
     #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
     pub enum Symbol {
-
         MultiCommentOpen,
         MultiCommentClose,
         Comment,
@@ -274,8 +276,7 @@ pub mod tokens {
         }
     }
     #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-    pub enum Token {
-    }
+    pub enum Token {}
     impl std::fmt::Display for Token {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             write!(f, "{self:?}")
@@ -288,9 +289,15 @@ pub mod tokens {
     }
 }
 
-fn handle_subtree<'a>(curr: &mut TreeCursor<'a>, ts_node: TreeNode<'a>, file: &Path, input: &str, ast: &mut Ast) -> Result<Option<NodeId>, TError> {
+fn handle_subtree<'a>(
+    curr: &mut TreeCursor<'a>,
+    ts_node: TreeNode<'a>,
+    file: &Path,
+    input: &str,
+    ast: &mut Ast,
+) -> Result<Option<NodeId>, TError> {
     // TODO: Check that this is large enough but not too large
-    let mut children: SmallVec::<NodeId, 5> = smallvec![];
+    let mut children: SmallVec<NodeId, 5> = smallvec![];
     let mut children_walker = ts_node.walk();
     for ts_child in ts_node.children(&mut children_walker) {
         if !ts_child.is_named() {
@@ -300,7 +307,7 @@ fn handle_subtree<'a>(curr: &mut TreeCursor<'a>, ts_node: TreeNode<'a>, file: &P
         let child = handle_subtree(curr, ts_child, file, input, ast)?;
 
         // TODO: Check that this subtree is allowed.
-        
+
         if let Some(child) = child {
             children.push(child);
         }
@@ -320,7 +327,12 @@ fn handle_subtree<'a>(curr: &mut TreeCursor<'a>, ts_node: TreeNode<'a>, file: &P
         ts_node.is_error(),
         ts_node.is_named(),
     );
-    println!("{:?} {:?} FROM {}", info, ts_node, ts_node.utf8_text(input.as_bytes()).unwrap());
+    println!(
+        "{:?} {:?} FROM {}",
+        info,
+        ts_node,
+        ts_node.utf8_text(input.as_bytes()).unwrap()
+    );
     // TODO: return the ID
     Ok(None)
 }
