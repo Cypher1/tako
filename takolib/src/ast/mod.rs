@@ -1,3 +1,4 @@
+pub use paste::paste;
 mod nodes;
 use entity_component_slab::{ChildSlab, Slab};
 pub use nodes::*;
@@ -38,74 +39,91 @@ pub struct Ast {
     pub atoms: ChildSlab<Atom, NodeId>,
 
     pub string_interner: StringInterner,
+    pub node_types: NodeTypes,
+}
 
-    // TS Node Ids
-    // TODO: generated from
-    // ../../../tree_sitter_tako/src/node-types.json
-    pub add_node_id: TsNodeId,
-    pub and_node_id: TsNodeId,
-    pub assign_node_id: TsNodeId,
-    pub binding_node_id: TsNodeId,
-    pub bit_and_node_id: TsNodeId,
-    pub bit_not_node_id: TsNodeId,
-    pub bit_or_node_id: TsNodeId,
-    pub bit_xor_node_id: TsNodeId,
-    pub block_node_id: TsNodeId,
-    pub call_node_id: TsNodeId,
-    pub color_node_id: TsNodeId,
-    pub container_node_id: TsNodeId,
-    pub div_node_id: TsNodeId,
-    pub equals_node_id: TsNodeId,
-    pub exp_node_id: TsNodeId,
-    pub field_node_id: TsNodeId,
-    pub format_expression_node_id: TsNodeId,
-    pub greater_than_node_id: TsNodeId,
-    pub greater_than_equals_node_id: TsNodeId,
-    pub has_type_node_id: TsNodeId,
-    pub hex_literal_node_id: TsNodeId,
-    pub index_node_id: TsNodeId,
-    pub left_shift_node_id: TsNodeId,
-    pub less_than_node_id: TsNodeId,
-    pub less_than_equals_node_id: TsNodeId,
-    pub mod_node_id: TsNodeId,
-    pub mul_node_id: TsNodeId,
-    pub neg_node_id: TsNodeId,
-    pub nesting_comment_node_id: TsNodeId,
-    pub not_node_id: TsNodeId,
-    pub not_equals_node_id: TsNodeId,
-    pub or_node_id: TsNodeId,
-    pub parens_node_id: TsNodeId,
-    pub range_node_id: TsNodeId,
-    pub right_shift_node_id: TsNodeId,
-    pub sequence_node_id: TsNodeId,
-    pub set_node_id: TsNodeId,
-    pub shebang_node_id: TsNodeId,
-    pub single_line_comment_node_id: TsNodeId,
-    pub source_file_node_id: TsNodeId,
-    pub spread_node_id: TsNodeId,
-    pub string_literal_node_id: TsNodeId,
-    pub sub_node_id: TsNodeId,
-    pub try_node_id: TsNodeId,
-    pub escape_sequence_node_id: TsNodeId,
-    pub exists_node_id: TsNodeId,
-    pub float_literal_node_id: TsNodeId,
-    pub forall_node_id: TsNodeId,
-    pub given_node_id: TsNodeId,
-    pub heading_node_id: TsNodeId,
-    pub ident_node_id: TsNodeId,
-    pub int_literal_node_id: TsNodeId,
+macro_rules! construct_lang {
+    ($start_value: expr, $( $name: ident ),*) => {
+        {
+            let _lang: &Language = &tree_sitter_tako::LANGUAGE.into();
+
+            paste!{
+                Ast {
+                    node_types: NodeTypes {
+                        $(
+                            [< _ $name>]: _lang.id_for_node_kind(stringify!($name), /*named*/ true),
+                        )*
+                    },
+                    ..$start_value
+                }
+            }
+        }
+    }
 }
 
 impl Ast {
     #[must_use]
     pub fn new(filepath: PathBuf) -> Self {
-        let tako_lang: &Language = &tree_sitter_tako::LANGUAGE.into();
-        let int_literal_node_id = tako_lang.id_for_node_kind("int_literal", /*named*/ true);
-        Self {
-            filepath,
-            int_literal_node_id,
-            ..Self::default()
-        }
+        construct_lang!(
+            Self {
+                filepath,
+                ..Self::default()
+            },
+            // TODO: generate from
+            // ./tree_sitter_tako/src/node-types.json | jq "map(.type)"
+            add,
+            and,
+            assign,
+            binding,
+            bit_and,
+            bit_not,
+            bit_or,
+            bit_xor,
+            block,
+            call,
+            color,
+            container,
+            div,
+            equals,
+            exp,
+            field,
+            format_expression,
+            greater_than,
+            greater_than_equals,
+            has_type,
+            hex_literal,
+            index,
+            left_shift,
+            less_than,
+            less_than_equals,
+            mod,
+            mul,
+            neg,
+            nesting_comment,
+            not,
+            not_equals,
+            or,
+            parens,
+            range,
+            right_shift,
+            sequence,
+            set,
+            shebang,
+            single_line_comment,
+            source_file,
+            spread,
+            string_literal,
+            sub,
+            try,
+            escape_sequence,
+            exists,
+            float_literal,
+            forall,
+            given,
+            heading,
+            ident,
+            int_literal
+        )
     }
 
     #[must_use]

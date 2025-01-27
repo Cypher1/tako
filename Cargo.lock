@@ -2797,6 +2797,7 @@ dependencies = [
  "log",
  "melior",
  "num-traits",
+ "paste",
  "pretty_assertions",
  "rand 0.9.0-alpha.2",
  "short-typed-index",

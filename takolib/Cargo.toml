@@ -57,6 +57,7 @@ tree-sitter-tako = { path = "../tree-sitter-tako", features = [ ] }
 tree-sitter = { git = "https://github.com/tree-sitter/tree-sitter" }
 entity-component-slab = { path = "../entity-component-slab", features = [ ] }
 test_each_file = "0.3.2"
+paste = "1.0.15"
 
 [dev-dependencies]
 strum = "0.26.2"
