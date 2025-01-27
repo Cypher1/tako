@@ -316,8 +316,42 @@ fn handle_subtree<'a>(
     // TODO: Handle constructing this kind of node from it's children
     let nt = &ast.node_types;
 
+    // TODO: Handle ts_node.is_missing()
+    // TODO: Handle ts_node.is_extra()
+    // TODO: Handle ts_node.is_error()
+
+    // TODO: Handle complex node types?
+
+    // Handle text extraction node types
+
+    let contents = ts_node.utf8_text(input.as_bytes()).unwrap();
+    let start = ts_node.start_byte();
+    let end = ts_node.end_byte();
+    let start_pos = ts_node.start_position();
+    let end_pos = ts_node.end_position();
+    if ts_node.kind_id() == nt._ident {
+        println!("IDENT {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
+        return Ok(None);
+    }
     if ts_node.kind_id() == nt._int_literal {
-        println!("INT_LITERAL");
+        println!("INT_LITERAL {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
+        return Ok(None);
+    }
+    if ts_node.kind_id() == nt._float_literal {
+        println!("FLOAT_LITERAL {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
+        return Ok(None);
+    }
+    if ts_node.kind_id() == nt._string_literal {
+        println!("STRING_LITERAL {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
+        return Ok(None);
+    }
+    if ts_node.kind_id() == nt._hex_literal {
+        println!("HEX_LITERAL {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
+        return Ok(None);
+    }
+    if ts_node.kind_id() == nt._color {
+        println!("COLOR {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
+        return Ok(None);
     }
     let info = (
         ts_node.id(),
@@ -330,9 +364,9 @@ fn handle_subtree<'a>(
     );
     println!(
         "{:?} {:?} FROM {}",
-        info,
-        ts_node,
-        ts_node.utf8_text(input.as_bytes()).unwrap()
+         info,
+         ts_node,
+         ts_node.utf8_text(input.as_bytes()).unwrap()
     );
     // TODO: return the ID
     Ok(None)
