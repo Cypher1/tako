@@ -314,8 +314,9 @@ fn handle_subtree<'a>(
     }
     // TODO: Handle merging
     // TODO: Handle constructing this kind of node from it's children
+    let nt = &ast.node_types;
 
-    if ts_node.kind_id() == ast.int_literal_node_id {
+    if ts_node.kind_id() == nt._int_literal {
         println!("INT_LITERAL");
     }
     let info = (
