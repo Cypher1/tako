@@ -325,8 +325,9 @@ fn handle_subtree<'a>(
     // Handle text extraction node types
 
     let contents = ts_node.utf8_text(input.as_bytes()).unwrap();
-    let start = ts_node.start_byte();
-    let end = ts_node.end_byte();
+    let start: u16 = ts_node.start_byte().try_into().expect("big index 1");
+    let end: u16 = ts_node.end_byte().try_into().expect("big index 2");
+    let length: u8 = (end-start).try_into().expect("big index 3");
     let start_pos = ts_node.start_position();
     let end_pos = ts_node.end_position();
     if ts_node.kind_id() == nt._ident {
@@ -335,7 +336,13 @@ fn handle_subtree<'a>(
     }
     if ts_node.kind_id() == nt._int_literal {
         println!("INT_LITERAL {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
-        return Ok(None);
+        let _s = ast.string_interner.register_str_by_loc(contents, start);
+        let t = semantics::Literal::Numeric; // ("123456789");
+        let b = ast.add_literal(t, Location {
+            start,
+            length,
+        });
+        return Ok(Some(b));
     }
     if ts_node.kind_id() == nt._float_literal {
         println!("FLOAT_LITERAL {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
@@ -352,6 +359,11 @@ fn handle_subtree<'a>(
     if ts_node.kind_id() == nt._color {
         println!("COLOR {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
         return Ok(None);
+    }
+    if ts_node.kind_id() == nt._source_file {
+        println!("SRC {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, children);
+        let last_child = children.last().copied();
+        return Ok(last_child);
     }
     let info = (
         ts_node.id(),
