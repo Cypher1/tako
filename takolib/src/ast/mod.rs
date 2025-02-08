@@ -1,5 +1,5 @@
 pub use paste::paste;
-mod nodes;
+pub mod nodes;
 use entity_component_slab::{ChildSlab, Slab};
 pub use nodes::*;
 pub mod location;

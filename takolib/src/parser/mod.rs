@@ -9,6 +9,7 @@ use tokens::{Symbol, Token};
 
 use crate::{
     ast::{location::Location, Ast, NodeId},
+    ast::nodes::{Op},
     error::TError,
 };
 
@@ -297,7 +298,7 @@ fn handle_subtree<'a>(
     ast: &mut Ast,
 ) -> Result<Option<NodeId>, TError> {
     // TODO: Check that this is large enough but not too large
-    let mut children: SmallVec<NodeId, 5> = smallvec![];
+    let mut children: SmallVec<NodeId, 2> = smallvec![];
     let mut children_walker = ts_node.walk();
     for ts_child in ts_node.children(&mut children_walker) {
         if !ts_child.is_named() {
@@ -330,6 +331,10 @@ fn handle_subtree<'a>(
     let length: u8 = (end-start).try_into().expect("big index 3");
     let start_pos = ts_node.start_position();
     let end_pos = ts_node.end_position();
+    let loc = Location {
+        start,
+        length,
+    };
     if ts_node.kind_id() == nt._ident {
         println!("IDENT {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
         return Ok(None);
@@ -338,10 +343,7 @@ fn handle_subtree<'a>(
         println!("INT_LITERAL {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
         let _s = ast.string_interner.register_str_by_loc(contents, start);
         let t = semantics::Literal::Numeric; // ("123456789");
-        let b = ast.add_literal(t, Location {
-            start,
-            length,
-        });
+        let b = ast.add_literal(t, loc);
         return Ok(Some(b));
     }
     if ts_node.kind_id() == nt._float_literal {
@@ -360,8 +362,64 @@ fn handle_subtree<'a>(
         println!("COLOR {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
         return Ok(None);
     }
+    if ts_node.kind_id() == nt._mul {
+        println!("MUL {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, children);
+        assert_eq!(children.len(), 2);
+        let op = ast.add_op(
+            Op {
+                op: Symbol::Mul,
+                args: children,
+            }, loc
+        );
+        return Ok(Some(op));
+    }
+    if ts_node.kind_id() == nt._div {
+        println!("DIV {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, children);
+        assert_eq!(children.len(), 2);
+        let op = ast.add_op(
+            Op {
+                op: Symbol::Div,
+                args: children,
+            }, loc
+        );
+        return Ok(Some(op));
+    }
+    if ts_node.kind_id() == nt._sub {
+        println!("SUB {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, children);
+        assert_eq!(children.len(), 2);
+        let op = ast.add_op(
+            Op {
+                op: Symbol::Sub,
+                args: children,
+            }, loc
+        );
+        return Ok(Some(op));
+    }
+    if ts_node.kind_id() == nt._exp {
+        println!("EXP {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, children);
+        assert_eq!(children.len(), 2);
+        let op = ast.add_op(
+            Op {
+                op: Symbol::Exp,
+                args: children,
+            }, loc
+        );
+        return Ok(Some(op));
+    }
+    if ts_node.kind_id() == nt._add {
+        println!("ADD {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, children);
+        assert_eq!(children.len(), 2);
+        let op = ast.add_op(
+            Op {
+                op: Symbol::Add,
+                args: children,
+            }, loc
+        );
+        return Ok(Some(op));
+    }
     if ts_node.kind_id() == nt._source_file {
         println!("SRC {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, children);
+        assert_eq!(children.len(), 1);
         let last_child = children.last().copied();
         return Ok(last_child);
     }
