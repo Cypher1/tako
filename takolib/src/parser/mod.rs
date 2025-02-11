@@ -342,6 +342,20 @@ fn handle_subtree<'a>(
         let b = ast.add_identifier(t, loc);
         return Ok(Some(b));
     }
+    if ts_node.kind_id() == nt._forall {
+        println!("FORALL {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
+        let _s = ast.string_interner.register_str_by_loc(contents, start);
+        let t = semantics::Literal::Numeric; // ("123456789");
+        let b = ast.add_literal(t, loc);
+        return Ok(Some(b));
+    }
+    if ts_node.kind_id() == nt._binding {
+        println!("BINDING {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
+        let _s = ast.string_interner.register_str_by_loc(contents, start);
+        let t = semantics::Literal::Numeric; // ("123456789");
+        let b = ast.add_literal(t, loc);
+        return Ok(Some(b));
+    }
     if ts_node.kind_id() == nt._int_literal {
         // println!("INT_LITERAL {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
         let _s = ast.string_interner.register_str_by_loc(contents, start);
