@@ -8,7 +8,7 @@ use tree_sitter::{Parser as TSParser, Tree};
 use tokens::{Symbol, Token};
 
 use crate::{
-    ast::{location::Location, nodes::Op, Ast, NodeId},
+    ast::{location::Location, nodes::Op, Ast, NodeId, Definition},
     error::TError,
 };
 
@@ -295,16 +295,18 @@ fn handle_subtree<'a>(
     file: &Path,
     input: &str,
     ast: &mut Ast,
+    parent_params: &mut ParseParams,
 ) -> Result<Option<NodeId>, TError> {
     // TODO: Check that this is large enough but not too large
     let mut children: SmallVec<NodeId, 2> = smallvec![];
     let mut children_walker = ts_node.walk();
+    let mut params = ParseParams::default();
     for ts_child in ts_node.children(&mut children_walker) {
         if !ts_child.is_named() {
             // BIG assumption being made here...
             continue;
         }
-        let child = handle_subtree(curr, ts_child, file, input, ast)?;
+        let child = handle_subtree(curr, ts_child, file, input, ast, &mut params)?;
 
         // TODO: Check that this subtree is allowed.
 
@@ -344,17 +346,26 @@ fn handle_subtree<'a>(
     }
     if ts_node.kind_id() == nt._forall {
         println!("FORALL {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
-        let _s = ast.string_interner.register_str_by_loc(contents, start);
-        let t = semantics::Literal::Numeric; // ("123456789");
-        let b = ast.add_literal(t, loc);
-        return Ok(Some(b));
+        //let _s = ast.string_interner.register_str_by_loc(contents, start);
+        //let b = ast.add_literal(t, loc);
+        parent_params.binding = BindingMode::Forall
+        return Ok(None);
     }
     if ts_node.kind_id() == nt._binding {
         println!("BINDING {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
-        let _s = ast.string_interner.register_str_by_loc(contents, start);
-        let t = semantics::Literal::Numeric; // ("123456789");
-        let b = ast.add_literal(t, loc);
-        return Ok(Some(b));
+        let name = if let Some(name) = params.name {
+            name
+        } else {
+            todo!("Missing name")
+        };
+        let d = Definition {
+            mode: params.binding,
+            name,
+            arguments: None,
+            implementation: None,
+        };
+        let n = ast.add_definition(d, loc);
+        return Ok(Some(n));
     }
     if ts_node.kind_id() == nt._int_literal {
         // println!("INT_LITERAL {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
