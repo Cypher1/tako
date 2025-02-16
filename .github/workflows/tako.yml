@@ -54,13 +54,13 @@ jobs:
       run: cargo build --locked --release --verbose
     - name: Upload executable Linux
       if: runner.os == 'Linux'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: tako
         path: ./target/release/tako
     - name: Upload executable Windows
       if: runner.os == 'Windows'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: tako.exe
         path: ./target/release/tako.exe
