@@ -65,6 +65,7 @@ const OPERATORS = [
   ['mul', '*'],
   ['div', '/'],
   ['mod', '%'],
+  ['closure', '->'],
 ];
 
 const POSTFIX_OPERATORS = [
