@@ -10,8 +10,9 @@ pub enum Literal {
     Map, // An abstract map literal, any of OrderedMap, HashMap, Dictionary, etc. (e.g. { 'a': 123, 'b': 234 })
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Default, Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum BindingMode {
+    #[default]
     Given,  // i.e. value, lambda/given x, y
     Forall, // i.e. dependant type, pi/forall x, y
     With,   // i.e. dependant type, sigma/with/exists x, y

@@ -11,6 +11,7 @@ pub struct NodeTypes {
     // ./tree_sitter_tako/src/node-types.json | jq "map(.type)"
     pub _add: TsNodeId,
     pub _and: TsNodeId,
+    pub _arrow: TsNodeId,
     pub _assign: TsNodeId,
     pub _binding: TsNodeId,
     pub _bit_and: TsNodeId,
