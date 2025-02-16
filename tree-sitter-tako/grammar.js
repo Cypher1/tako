@@ -34,7 +34,7 @@ const PREC = {
   range: 3,
   has_type: 2,
   assign: 0,
-  closure: -2,
+  arrow: -2,
   set: -3,
   sequence: -4,
 };
@@ -65,7 +65,7 @@ const OPERATORS = [
   ['mul', '*'],
   ['div', '/'],
   ['mod', '%'],
-  ['closure', '->'],
+  ['arrow', '->'],
 ];
 
 const POSTFIX_OPERATORS = [
