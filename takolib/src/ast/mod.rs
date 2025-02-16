@@ -73,6 +73,7 @@ impl Ast {
             // ./tree_sitter_tako/src/node-types.json | jq "map(.type)"
             add,
             and,
+            arrow,
             assign,
             binding,
             bit_and,

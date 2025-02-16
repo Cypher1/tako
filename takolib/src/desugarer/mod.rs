@@ -17,19 +17,21 @@ pub fn desugar(_path: &Path, old_ast: &Ast, _root: Option<NodeId>) -> Result<Ast
     }
 
     for (node_id, op) in new_seqs {
+        assert_eq!(op.args.len(), 2);
         let [left, right] = &op.args[0..2] else {
             todo!("Unexpected arguments to ';' operator: {op:?}");
         };
         // debug!("desugar Definition: {} ; {}", ast.pretty_node(*left), ast.pretty_node(*right));
         let left_node = &ast[*left];
         let location = left_node.location;
-        let name = match left_node.id {
+        let name = match &left_node.id {
             Definition(id) => {
-                let (_node, left_node) = &ast[id];
+                let (_node, left_node) = &ast[*id];
                 left_node.name
             }
-            _ => {
-                eprintln!("Unexpected arguments to ';' operator: {op:?}");
+            left_node => {
+                eprintln!("Expected declaration\n    {}", ast.pretty_node(*left));
+                eprintln!("Unexpected arguments to ';' operator:\n    {op:?}\n  with\n    {left_node:?}",);
                 todo!("Unexpected arguments to ';' operator: {op:?}");
             }
         };

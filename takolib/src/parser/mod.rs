@@ -7,8 +7,9 @@ use tree_sitter::{Parser as TSParser, Tree};
 
 use tokens::{Symbol, Token};
 
+use crate::ast::string_interner::StrId;
 use crate::{
-    ast::{location::Location, nodes::Op, Ast, NodeId, Definition},
+    ast::{location::Location, nodes::Op, Ast, Call, Definition, NodeId},
     error::TError,
 };
 
@@ -289,6 +290,12 @@ pub mod tokens {
     }
 }
 
+#[derive(Default, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+struct ParseParams {
+    binding: semantics::BindingMode,
+    name: Option<StrId>,
+}
+
 fn handle_subtree<'a>(
     curr: &mut TreeCursor<'a>,
     ts_node: TreeNode<'a>,
@@ -341,18 +348,25 @@ fn handle_subtree<'a>(
     if ts_node.kind_id() == nt._ident {
         // println!("IDENT {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
         let t = ast.string_interner.register_str(contents);
+        parent_params.name = Some(t);
         let b = ast.add_identifier(t, loc);
         return Ok(Some(b));
     }
     if ts_node.kind_id() == nt._forall {
-        println!("FORALL {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
+        println!(
+            "FORALL {:?} {:?}..{:?} {:?}..{:?}",
+            contents, start, end, start_pos, end_pos
+        );
         //let _s = ast.string_interner.register_str_by_loc(contents, start);
         //let b = ast.add_literal(t, loc);
-        parent_params.binding = BindingMode::Forall
+        parent_params.binding = semantics::BindingMode::Forall;
         return Ok(None);
     }
     if ts_node.kind_id() == nt._binding {
-        println!("BINDING {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
+        println!(
+            "BINDING {:?} {:?}..{:?} {:?}..{:?}",
+            contents, start, end, start_pos, end_pos
+        );
         let name = if let Some(name) = params.name {
             name
         } else {
@@ -366,6 +380,16 @@ fn handle_subtree<'a>(
         };
         let n = ast.add_definition(d, loc);
         return Ok(Some(n));
+    }
+    if ts_node.kind_id() == nt._assign {
+        println!(
+            "ASSIGN {:?} {:?}..{:?} {:?}..{:?}",
+            contents, start, end, start_pos, end_pos
+        );
+        let _s = ast.string_interner.register_str_by_loc(contents, start);
+        let t = semantics::Literal::Numeric; // ("123456789");
+        let b = ast.add_literal(t, loc);
+        return Ok(Some(b));
     }
     if ts_node.kind_id() == nt._int_literal {
         // println!("INT_LITERAL {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
@@ -462,13 +486,77 @@ fn handle_subtree<'a>(
         );
         return Ok(Some(op));
     }
-    if ts_node.kind_id() == nt._has_type {
+    if ts_node.kind_id() == nt._call {
         println!(
-            "HASTYPE {:?} {:?}..{:?} {:?}..{:?}: {:?}",
+            "CALL {:?} {:?}..{:?} {:?}..{:?}: {:?}",
             contents, start, end, start_pos, end_pos, children
         );
+        assert!(children.len() > 0);
+        let call = ast.add_call(
+            Call {
+                inner: children[0],
+                args: children[1..].into(),
+            },
+            loc,
+        );
+        return Ok(Some(call));
+    }
+    if ts_node.kind_id() == nt._has_type {
+        //println!(
+        //"HASTYPE {:?} {:?}..{:?} {:?}..{:?}: {:?}",
+        //contents, start, end, start_pos, end_pos, children
+        //);
         assert_eq!(children.len(), 2);
         let op = ast.add_annotation(children[0], children[1]);
+        return Ok(Some(op));
+    }
+    if ts_node.kind_id() == nt._arrow {
+        // TODO: Consider removing this syntax...
+        //println!(
+        //"Arrow {:?} {:?}..{:?} {:?}..{:?}: {:?}",
+        //contents, start, end, start_pos, end_pos, children
+        //);
+        // TODO: Handle multiple inputs.
+        assert_eq!(children.len(), 2);
+        let op = ast.add_op(
+            Op {
+                op: Symbol::Arrow,
+                args: children,
+            },
+            loc,
+        );
+        return Ok(Some(op));
+    }
+    if ts_node.kind_id() == nt._parens {
+        //println!(
+        //"PARENS {:?} {:?}..{:?} {:?}..{:?}: {:?}",
+        //contents, start, end, start_pos, end_pos, children
+        //);
+        // Consider: Handle multiple values?
+        assert_eq!(children.len(), 1);
+        //let op = ast.add_op(
+            //Op {
+                //op: Symbol::OpenParen,
+                //args: children,
+            //},
+            //loc,
+        //);
+        return Ok(Some(children[0]));
+    }
+    if ts_node.kind_id() == nt._sequence {
+        //println!(
+        //"SEQUENCE {:?} {:?}..{:?} {:?}..{:?}: {:?}",
+        //contents, start, end, start_pos, end_pos, children
+        //);
+        // Consider: Handle many values?
+        assert_eq!(children.len(), 2);
+        let op = ast.add_op(
+            Op {
+                op: Symbol::Sequence,
+                args: children,
+            },
+            loc,
+        );
         return Ok(Some(op));
     }
     if ts_node.kind_id() == nt._source_file {
@@ -521,7 +609,16 @@ pub fn parse(file: &Path, input: &str, _tokens: &[Token]) -> Result<Ast, TError>
     let mut ts_curr = res.walk();
 
     let ts_root = ts_curr.node();
-    let Some(root) = handle_subtree(&mut ts_curr, ts_root, file, input, &mut ast)? else {
+    let mut parse_params = ParseParams::default();
+    let Some(root) = handle_subtree(
+        &mut ts_curr,
+        ts_root,
+        file,
+        input,
+        &mut ast,
+        &mut parse_params,
+    )?
+    else {
         todo!("Handle file with no root!?")
     };
 
