@@ -145,6 +145,58 @@ impl Ast {
         }
         eq
     }
+    pub fn add_implementation(&mut self, node_id: NodeId,  imp: NodeId) -> NodeId {
+        use crate::parser::semantics::BindingMode;
+        let location = self[node_id].location.clone();
+        let id = self[node_id].id.clone();
+        let mut ty = self[node_id].ty.clone();
+        let d = match id {
+            NodeData::Definition(def_id) => {
+                let def = &mut self[def_id].1;
+                if let Some(_old_imp) = def.implementation {
+                    // e.g. x = y = 3
+                    todo!("Double assignment support");
+                }
+                def.implementation = Some(imp);
+                ty = None;
+                node_id
+            }
+            NodeData::Identifier(id_id) => {
+                let name = self[id_id].1;
+                let def = Definition {
+                    mode: BindingMode::Given,
+                    name,
+                    arguments: None,
+                    implementation: Some(imp),
+                };
+                self.add_definition(def, location)
+            }
+            NodeData::Call(call_id) => {
+                let call = &self[call_id].1;
+                let name_id = self[call.inner].id.clone();
+                let name = match name_id {
+                    NodeData::Identifier(name_id) => {
+                        let name = self[name_id].1;
+                        name
+                    }
+                    d => todo!("assignment to {d:?}"),
+                };
+                let def = Definition {
+                    mode: BindingMode::Given,
+                    name,
+                    arguments: Some(call.args.clone()),
+                    implementation: Some(imp),
+                };
+                self.add_definition(def, location)
+            }
+            node => todo!("Assignment to non definition head support: {node:?}"),
+        };
+        if let Some(ty) = ty {
+            self.add_annotation(d, ty)
+        } else {
+            d
+        }
+    }
     pub fn add_annotation(&mut self, node_id: NodeId, mut ty: NodeId) -> NodeId {
         let old_ty: Option<NodeId> = self[node_id].ty;
         if let Some(old_ty) = old_ty {
