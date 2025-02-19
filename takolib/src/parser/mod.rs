@@ -386,10 +386,9 @@ fn handle_subtree<'a>(
             "ASSIGN {:?} {:?}..{:?} {:?}..{:?}",
             contents, start, end, start_pos, end_pos
         );
-        let _s = ast.string_interner.register_str_by_loc(contents, start);
-        let t = semantics::Literal::Numeric; // ("123456789");
-        let b = ast.add_literal(t, loc);
-        return Ok(Some(b));
+        assert_eq!(children.len(), 2);
+        let n = ast.add_implementation(children[0], children[1]);
+        return Ok(Some(n));
     }
     if ts_node.kind_id() == nt._int_literal {
         // println!("INT_LITERAL {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
@@ -480,6 +479,66 @@ fn handle_subtree<'a>(
         let op = ast.add_op(
             Op {
                 op: Symbol::Add,
+                args: children,
+            },
+            loc,
+        );
+        return Ok(Some(op));
+    }
+    if ts_node.kind_id() == nt._less_than {
+        // println!("LT {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, children);
+        assert_eq!(children.len(), 2);
+        let op = ast.add_op(
+            Op {
+                op: Symbol::Lt,
+                args: children,
+            },
+            loc,
+        );
+        return Ok(Some(op));
+    }
+    if ts_node.kind_id() == nt._greater_than {
+        // println!("GT {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, children);
+        assert_eq!(children.len(), 2);
+        let op = ast.add_op(
+            Op {
+                op: Symbol::Gt,
+                args: children,
+            },
+            loc,
+        );
+        return Ok(Some(op));
+    }
+    if ts_node.kind_id() == nt._less_than_equals {
+        // println!("LTE {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, children);
+        assert_eq!(children.len(), 2);
+        let op = ast.add_op(
+            Op {
+                op: Symbol::LtEqs,
+                args: children,
+            },
+            loc,
+        );
+        return Ok(Some(op));
+    }
+    if ts_node.kind_id() == nt._greater_than_equals {
+        // println!("GTE {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, children);
+        assert_eq!(children.len(), 2);
+        let op = ast.add_op(
+            Op {
+                op: Symbol::GtEqs,
+                args: children,
+            },
+            loc,
+        );
+        return Ok(Some(op));
+    }
+    if ts_node.kind_id() == nt._neg {
+        // println!("NEG {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, children);
+        assert_eq!(children.len(), 1);
+        let op = ast.add_op(
+            Op {
+                op: Symbol::Sub,
                 args: children,
             },
             loc,
@@ -577,14 +636,23 @@ fn handle_subtree<'a>(
         ts_node.is_error(),
         ts_node.is_named(),
     );
-    println!(
+    if ts_node.kind_id() == nt._shebang {
+        return Ok(None);
+    }
+    if ts_node.kind_id() == nt._single_line_comment {
+        return Ok(None);
+    }
+    if ts_node.kind_id() == nt._nesting_comment {
+        return Ok(None);
+    }
+    todo!(
         "{:?} {:?} FROM {}",
         info,
         ts_node,
         ts_node.utf8_text(input.as_bytes()).unwrap()
     );
     // TODO: return the ID
-    Ok(None)
+    // Ok(None)
 }
 
 pub fn parse(file: &Path, input: &str, _tokens: &[Token]) -> Result<Ast, TError> {
