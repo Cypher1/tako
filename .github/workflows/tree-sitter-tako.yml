@@ -24,7 +24,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@main
         with:
-          node-version-file: 'package.json'
+          node-version-file: 'tree-sitter-tako/package.json'
 
       - name: Cache node modules
         id: cache-npm
