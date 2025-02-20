@@ -1,7 +1,7 @@
 use log::error;
 use std::path::Path;
 
-use smallvec::{smallvec, SmallVec};
+use smallvec::SmallVec;
 use tree_sitter::{Language, Node as TreeNode, TreeCursor};
 use tree_sitter::{Parser as TSParser, Tree};
 
@@ -294,6 +294,7 @@ pub mod tokens {
 struct ParseParams {
     binding: semantics::BindingMode,
     name: Option<StrId>,
+    children: SmallVec<NodeId, 2>,
 }
 
 fn handle_subtree<'a>(
@@ -305,7 +306,6 @@ fn handle_subtree<'a>(
     parent_params: &mut ParseParams,
 ) -> Result<Option<NodeId>, TError> {
     // TODO: Check that this is large enough but not too large
-    let mut children: SmallVec<NodeId, 2> = smallvec![];
     let mut children_walker = ts_node.walk();
     let mut params = ParseParams::default();
     for ts_child in ts_node.children(&mut children_walker) {
@@ -318,7 +318,7 @@ fn handle_subtree<'a>(
         // TODO: Check that this subtree is allowed.
 
         if let Some(child) = child {
-            children.push(child);
+            params.children.push(child);
         }
     }
     // TODO: Handle merging
@@ -332,12 +332,6 @@ fn handle_subtree<'a>(
     // TODO: Handle complex node types?
 
     // Handle text extraction node types
-    let children_pretty: Vec<String> = children
-        .iter()
-        .map(|ch| format!("{}", ast.pretty_node(*ch)))
-        .collect();
-    println!("{:?}", children_pretty);
-
     let contents = ts_node.utf8_text(input.as_bytes()).unwrap();
     let start: u16 = ts_node.start_byte().try_into().expect("big index 1");
     let end: u16 = ts_node.end_byte().try_into().expect("big index 2");
@@ -386,8 +380,8 @@ fn handle_subtree<'a>(
             "ASSIGN {:?} {:?}..{:?} {:?}..{:?}",
             contents, start, end, start_pos, end_pos
         );
-        assert_eq!(children.len(), 2);
-        let n = ast.add_implementation(children[0], children[1]);
+        assert_eq!(params.children.len(), 2);
+        let n = ast.add_implementation(params.children[0], params.children[1]);
         return Ok(Some(n));
     }
     if ts_node.kind_id() == nt._int_literal {
@@ -402,159 +396,191 @@ fn handle_subtree<'a>(
             "FLOAT_LITERAL {:?} {:?}..{:?} {:?}..{:?}",
             contents, start, end, start_pos, end_pos
         );
-        return Ok(None);
     }
     if ts_node.kind_id() == nt._string_literal {
         println!(
             "STRING_LITERAL {:?} {:?}..{:?} {:?}..{:?}",
             contents, start, end, start_pos, end_pos
         );
-        return Ok(None);
     }
     if ts_node.kind_id() == nt._hex_literal {
         println!(
             "HEX_LITERAL {:?} {:?}..{:?} {:?}..{:?}",
             contents, start, end, start_pos, end_pos
         );
-        return Ok(None);
     }
     if ts_node.kind_id() == nt._color {
         println!(
             "COLOR {:?} {:?}..{:?} {:?}..{:?}",
             contents, start, end, start_pos, end_pos
         );
-        return Ok(None);
+    }
+    if ts_node.kind_id() == nt._field {
+        // println!("MUL {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, params.children);
+        assert_eq!(params.children.len(), 2);
+        let op = ast.add_op(
+            Op {
+                op: Symbol::Dot,
+                args: params.children,
+            },
+            loc,
+        );
+        return Ok(Some(op));
     }
     if ts_node.kind_id() == nt._mul {
-        // println!("MUL {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, children);
-        assert_eq!(children.len(), 2);
+        // println!("MUL {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, params.children);
+        assert_eq!(params.children.len(), 2);
         let op = ast.add_op(
             Op {
                 op: Symbol::Mul,
-                args: children,
+                args: params.children,
             },
             loc,
         );
         return Ok(Some(op));
     }
     if ts_node.kind_id() == nt._div {
-        // println!("DIV {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, children);
-        assert_eq!(children.len(), 2);
+        // println!("DIV {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, params.children);
+        assert_eq!(params.children.len(), 2);
         let op = ast.add_op(
             Op {
                 op: Symbol::Div,
-                args: children,
+                args: params.children,
             },
             loc,
         );
         return Ok(Some(op));
     }
     if ts_node.kind_id() == nt._sub {
-        // println!("SUB {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, children);
-        assert_eq!(children.len(), 2);
+        // println!("SUB {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, params.children);
+        assert_eq!(params.children.len(), 2);
         let op = ast.add_op(
             Op {
                 op: Symbol::Sub,
-                args: children,
+                args: params.children,
             },
             loc,
         );
         return Ok(Some(op));
     }
     if ts_node.kind_id() == nt._exp {
-        // println!("EXP {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, children);
-        assert_eq!(children.len(), 2);
+        // println!("EXP {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, params.children);
+        assert_eq!(params.children.len(), 2);
         let op = ast.add_op(
             Op {
                 op: Symbol::Exp,
-                args: children,
+                args: params.children,
             },
             loc,
         );
         return Ok(Some(op));
     }
     if ts_node.kind_id() == nt._add {
-        // println!("ADD {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, children);
-        assert_eq!(children.len(), 2);
+        // println!("ADD {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, params.children);
+        assert_eq!(params.children.len(), 2);
         let op = ast.add_op(
             Op {
                 op: Symbol::Add,
-                args: children,
+                args: params.children,
+            },
+            loc,
+        );
+        return Ok(Some(op));
+    }
+    if ts_node.kind_id() == nt._equals {
+        // println!("EQS {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, params.children);
+        assert_eq!(params.children.len(), 2);
+        let op = ast.add_op(
+            Op {
+                op: Symbol::Eqs,
+                args: params.children,
+            },
+            loc,
+        );
+        return Ok(Some(op));
+    }
+    if ts_node.kind_id() == nt._not_equals {
+        // println!("EQS {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, params.children);
+        assert_eq!(params.children.len(), 2);
+        let op = ast.add_op(
+            Op {
+                op: Symbol::NotEqs,
+                args: params.children,
             },
             loc,
         );
         return Ok(Some(op));
     }
     if ts_node.kind_id() == nt._less_than {
-        // println!("LT {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, children);
-        assert_eq!(children.len(), 2);
+        // println!("LT {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, params.children);
+        assert_eq!(params.children.len(), 2);
         let op = ast.add_op(
             Op {
                 op: Symbol::Lt,
-                args: children,
+                args: params.children,
             },
             loc,
         );
         return Ok(Some(op));
     }
     if ts_node.kind_id() == nt._greater_than {
-        // println!("GT {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, children);
-        assert_eq!(children.len(), 2);
+        // println!("GT {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, params.children);
+        assert_eq!(params.children.len(), 2);
         let op = ast.add_op(
             Op {
                 op: Symbol::Gt,
-                args: children,
+                args: params.children,
             },
             loc,
         );
         return Ok(Some(op));
     }
     if ts_node.kind_id() == nt._less_than_equals {
-        // println!("LTE {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, children);
-        assert_eq!(children.len(), 2);
+        // println!("LTE {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, params.children);
+        assert_eq!(params.children.len(), 2);
         let op = ast.add_op(
             Op {
                 op: Symbol::LtEqs,
-                args: children,
+                args: params.children,
             },
             loc,
         );
         return Ok(Some(op));
     }
     if ts_node.kind_id() == nt._greater_than_equals {
-        // println!("GTE {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, children);
-        assert_eq!(children.len(), 2);
+        // println!("GTE {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, params.children);
+        assert_eq!(params.children.len(), 2);
         let op = ast.add_op(
             Op {
                 op: Symbol::GtEqs,
-                args: children,
+                args: params.children,
             },
             loc,
         );
         return Ok(Some(op));
     }
     if ts_node.kind_id() == nt._neg {
-        // println!("NEG {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, children);
-        assert_eq!(children.len(), 1);
+        // println!("NEG {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, params.children);
+        assert_eq!(params.children.len(), 1);
         let op = ast.add_op(
             Op {
                 op: Symbol::Sub,
-                args: children,
+                args: params.children,
             },
             loc,
         );
         return Ok(Some(op));
     }
     if ts_node.kind_id() == nt._call {
-        println!(
-            "CALL {:?} {:?}..{:?} {:?}..{:?}: {:?}",
-            contents, start, end, start_pos, end_pos, children
-        );
-        assert!(children.len() > 0);
+        // println!(
+        // "CALL {:?} {:?}..{:?} {:?}..{:?}: {:?}",
+        // contents, start, end, start_pos, end_pos, params.children
+        // );
+        assert!(params.children.len() > 0);
         let call = ast.add_call(
             Call {
-                inner: children[0],
-                args: children[1..].into(),
+                inner: params.children[0],
+                args: params.children[1..].into(),
             },
             loc,
         );
@@ -563,24 +589,41 @@ fn handle_subtree<'a>(
     if ts_node.kind_id() == nt._has_type {
         //println!(
         //"HASTYPE {:?} {:?}..{:?} {:?}..{:?}: {:?}",
-        //contents, start, end, start_pos, end_pos, children
+        //contents, start, end, start_pos, end_pos, params.children
         //);
-        assert_eq!(children.len(), 2);
-        let op = ast.add_annotation(children[0], children[1]);
+        assert_eq!(params.children.len(), 2);
+        let op = ast.add_annotation(params.children[0], params.children[1]);
         return Ok(Some(op));
     }
     if ts_node.kind_id() == nt._arrow {
         // TODO: Consider removing this syntax...
         //println!(
-        //"Arrow {:?} {:?}..{:?} {:?}..{:?}: {:?}",
-        //contents, start, end, start_pos, end_pos, children
+        //"ARROW {:?} {:?}..{:?} {:?}..{:?}: {:?}",
+        //contents, start, end, start_pos, end_pos, params.children
         //);
         // TODO: Handle multiple inputs.
-        assert_eq!(children.len(), 2);
+        assert_eq!(params.children.len(), 2);
         let op = ast.add_op(
             Op {
                 op: Symbol::Arrow,
-                args: children,
+                args: params.children,
+            },
+            loc,
+        );
+        return Ok(Some(op));
+    }
+    if ts_node.kind_id() == nt._double_arrow {
+        // TODO: Consider removing this syntax...
+        //println!(
+        //"DOUBLEARROW {:?} {:?}..{:?} {:?}..{:?}: {:?}",
+        //contents, start, end, start_pos, end_pos, params.children
+        //);
+        // TODO: Handle multiple inputs.
+        assert_eq!(params.children.len(), 2);
+        let op = ast.add_op(
+            Op {
+                op: Symbol::DoubleArrow,
+                args: params.children,
             },
             loc,
         );
@@ -589,30 +632,83 @@ fn handle_subtree<'a>(
     if ts_node.kind_id() == nt._parens {
         //println!(
         //"PARENS {:?} {:?}..{:?} {:?}..{:?}: {:?}",
-        //contents, start, end, start_pos, end_pos, children
+        //contents, start, end, start_pos, end_pos, params.children
         //);
         // Consider: Handle multiple values?
-        assert_eq!(children.len(), 1);
+        assert_eq!(params.children.len(), 1);
         //let op = ast.add_op(
-            //Op {
-                //op: Symbol::OpenParen,
-                //args: children,
-            //},
-            //loc,
+        //Op {
+        //op: Symbol::OpenParen,
+        //args: params.children,
+        //},
+        //loc,
         //);
-        return Ok(Some(children[0]));
+        return Ok(Some(params.children[0]));
+    }
+    if ts_node.kind_id() == nt._container {
+        //println!(
+        //"CONTAINER {:?} {:?}..{:?} {:?}..{:?}: {:?}",
+        //contents, start, end, start_pos, end_pos, params.children
+        //);
+        // Consider: Handle multiple values?
+        let op = ast.add_op(
+            Op {
+                op: Symbol::OpenBracket,
+                args: params.children,
+            },
+            loc,
+        );
+        return Ok(Some(op));
+    }
+    if ts_node.kind_id() == nt._set {
+        //println!(
+        //"SET {:?} {:?}..{:?} {:?}..{:?}: {:?}",
+        //contents, start, end, start_pos, end_pos, params.children
+        //);
+        parent_params.children.extend(params.children);
+        return Ok(None);
     }
     if ts_node.kind_id() == nt._sequence {
         //println!(
         //"SEQUENCE {:?} {:?}..{:?} {:?}..{:?}: {:?}",
-        //contents, start, end, start_pos, end_pos, children
+        //contents, start, end, start_pos, end_pos, params.children
         //);
         // Consider: Handle many values?
-        assert_eq!(children.len(), 2);
+        assert_eq!(params.children.len(), 2);
         let op = ast.add_op(
             Op {
                 op: Symbol::Sequence,
-                args: children,
+                args: params.children,
+            },
+            loc,
+        );
+        return Ok(Some(op));
+    }
+    if ts_node.kind_id() == nt._block {
+        //println!(
+        //"BLOCK {:?} {:?}..{:?} {:?}..{:?}: {:?}",
+        //contents, start, end, start_pos, end_pos, params.children
+        //);
+        // Consider: Handle many values?
+        let op = ast.add_op(
+            Op {
+                op: Symbol::OpenCurly,
+                args: params.children,
+            },
+            loc,
+        );
+        return Ok(Some(op));
+    }
+    if ts_node.kind_id() == nt._format_expression {
+        //println!(
+        //"BLOCK {:?} {:?}..{:?} {:?}..{:?}: {:?}",
+        //contents, start, end, start_pos, end_pos, params.children
+        //);
+        // Consider: Handle many values?
+        let op = ast.add_op(
+            Op {
+                op: Symbol::OpenCurly,
+                args: params.children,
             },
             loc,
         );
@@ -621,10 +717,10 @@ fn handle_subtree<'a>(
     if ts_node.kind_id() == nt._source_file {
         println!(
             "SRC {:?} {:?}..{:?} {:?}..{:?}: {:?}",
-            contents, start, end, start_pos, end_pos, children
+            contents, start, end, start_pos, end_pos, params.children
         );
-        assert_eq!(children.len(), 1);
-        let last_child = children.last().copied();
+        assert_eq!(params.children.len(), 1);
+        let last_child = params.children.last().copied();
         return Ok(last_child);
     }
     let info = (
@@ -645,6 +741,13 @@ fn handle_subtree<'a>(
     if ts_node.kind_id() == nt._nesting_comment {
         return Ok(None);
     }
+    let children_pretty: Vec<String> = params
+        .children
+        .iter()
+        .map(|ch| format!("{}", ast.pretty_node(*ch)))
+        .collect();
+    println!("{:?}", children_pretty);
+
     todo!(
         "{:?} {:?} FROM {}",
         info,
@@ -677,15 +780,8 @@ pub fn parse(file: &Path, input: &str, _tokens: &[Token]) -> Result<Ast, TError>
     let mut ts_curr = res.walk();
 
     let ts_root = ts_curr.node();
-    let mut parse_params = ParseParams::default();
-    let Some(root) = handle_subtree(
-        &mut ts_curr,
-        ts_root,
-        file,
-        input,
-        &mut ast,
-        &mut parse_params,
-    )?
+    let mut params = ParseParams::default();
+    let Some(root) = handle_subtree(&mut ts_curr, ts_root, file, input, &mut ast, &mut params)?
     else {
         todo!("Handle file with no root!?")
     };

@@ -85,6 +85,7 @@ impl Ast {
             color,
             container,
             div,
+            double_arrow,
             equals,
             exp,
             field,
@@ -145,7 +146,7 @@ impl Ast {
         }
         eq
     }
-    pub fn add_implementation(&mut self, node_id: NodeId,  imp: NodeId) -> NodeId {
+    pub fn add_implementation(&mut self, node_id: NodeId, imp: NodeId) -> NodeId {
         use crate::parser::semantics::BindingMode;
         let location = self[node_id].location.clone();
         let id = self[node_id].id.clone();
