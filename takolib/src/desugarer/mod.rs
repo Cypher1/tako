@@ -31,7 +31,9 @@ pub fn desugar(_path: &Path, old_ast: &Ast, _root: Option<NodeId>) -> Result<Ast
             }
             left_node => {
                 eprintln!("Expected declaration\n    {}", ast.pretty_node(*left));
-                eprintln!("Unexpected arguments to ';' operator:\n    {op:?}\n  with\n    {left_node:?}",);
+                eprintln!(
+                    "Unexpected arguments to ';' operator:\n    {op:?}\n  with\n    {left_node:?}",
+                );
                 todo!("Unexpected arguments to ';' operator: {op:?}");
             }
         };
