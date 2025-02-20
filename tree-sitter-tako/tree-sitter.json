@@ -1,0 +1,39 @@
+{
+  "grammars": [
+    {
+      "name": "tako",
+      "camelcase": "Tako",
+      "scope": "source.tako",
+      "path": ".",
+      "file-types": [
+        "tk",
+        "tako"
+      ],
+      "highlights": "./queries/highlights.scm",
+      "injections": "./queries/injections.scm",
+      "locals": "./queries/locals.scm",
+      "injection-regex": "(tako|tk)"
+    }
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "license": "MIT",
+    "description": "A tree-sitter parser for Tako",
+    "authors": [
+      {
+        "name": "Jay Pratt"
+      }
+    ],
+    "links": {
+      "repository": "git+https://github.com/Cypher1/tako.git"
+    }
+  },
+  "bindings": {
+    "c": true,
+    "go": true,
+    "node": true,
+    "python": true,
+    "rust": true,
+    "swift": true
+  }
+}

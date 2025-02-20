@@ -13,7 +13,7 @@ pub enum Literal {
 #[derive(Default, Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum BindingMode {
     #[default]
-    Given,  // i.e. value, lambda/given x, y
+    Given, // i.e. value, lambda/given x, y
     Forall, // i.e. dependant type, pi/forall x, y
     With,   // i.e. dependant type, sigma/with/exists x, y
 }
