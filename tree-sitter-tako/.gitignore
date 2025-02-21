@@ -34,9 +34,9 @@ dist/
 /examples/*/
 
 # Grammar volatiles
-*.wasm
-*.obj
-*.o
-src/parser.c
-src/tree_sitter/*.*
-src/*.json
+# *.wasm
+# *.obj
+# *.o
+# src/parser.c
+# src/tree_sitter/*.*
+# src/*.json
