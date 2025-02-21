@@ -46,6 +46,6 @@ jobs:
 
       - run: npm set cache .npm # set the npm cache to be a local .npm dir for simplicity
       - run: npm install
-      - run: tree-sitter generate
-      - run: tree-sitter test
+      - run: npm exec tree-sitter generate
+      - run: npm exec tree-sitter test
       - run: node --test bindings/node/*_test.js
