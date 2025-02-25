@@ -392,28 +392,32 @@ fn handle_subtree<'a>(
         return Ok(Some(b));
     }
     if ts_node.kind_id() == nt._float_literal {
-        println!(
-            "FLOAT_LITERAL {:?} {:?}..{:?} {:?}..{:?}",
-            contents, start, end, start_pos, end_pos
-        );
+        // println!("FLOAT_LITERAL {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
+        let _s = ast.string_interner.register_str_by_loc(contents, start);
+        let t = semantics::Literal::Numeric; // ("123456789");
+        let b = ast.add_literal(t, loc);
+        return Ok(Some(b));
     }
     if ts_node.kind_id() == nt._string_literal {
-        println!(
-            "STRING_LITERAL {:?} {:?}..{:?} {:?}..{:?}",
-            contents, start, end, start_pos, end_pos
-        );
+        // println!("STRIMG_LITERAL {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
+        let _s = ast.string_interner.register_str_by_loc(contents, start);
+        let t = semantics::Literal::String; // ("123456789");
+        let b = ast.add_literal(t, loc);
+        return Ok(Some(b));
     }
     if ts_node.kind_id() == nt._hex_literal {
-        println!(
-            "HEX_LITERAL {:?} {:?}..{:?} {:?}..{:?}",
-            contents, start, end, start_pos, end_pos
-        );
+        // println!("HEX_LITERAL {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
+        let _s = ast.string_interner.register_str_by_loc(contents, start);
+        let t = semantics::Literal::Numeric; // ("123456789");
+        let b = ast.add_literal(t, loc);
+        return Ok(Some(b));
     }
     if ts_node.kind_id() == nt._color {
-        println!(
-            "COLOR {:?} {:?}..{:?} {:?}..{:?}",
-            contents, start, end, start_pos, end_pos
-        );
+        // println!("COLOR {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
+        let _s = ast.string_interner.register_str_by_loc(contents, start);
+        let t = semantics::Literal::Color; // ("123456789");
+        let b = ast.add_literal(t, loc);
+        return Ok(Some(b));
     }
     if ts_node.kind_id() == nt._field {
         // println!("MUL {:?} {:?}..{:?} {:?}..{:?}: {:?}", contents, start, end, start_pos, end_pos, params.children);
