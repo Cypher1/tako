@@ -22,6 +22,7 @@ use crate::compiler::Compiler;
 static mut LOGS_UNINITIALISED: bool = true;
 
 #[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "env_logger")]
 fn build_logger(finish: impl FnOnce(&mut env_logger::Builder)) {
     if unsafe { LOGS_UNINITIALISED } {
         unsafe {
@@ -57,6 +58,7 @@ pub fn ensure_initialized() {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "env_logger")]
 #[cfg(not(test))]
 pub fn ensure_initialized() {
     use std::fs::OpenOptions;
@@ -69,6 +71,14 @@ pub fn ensure_initialized() {
         env_logger::Builder::init(env.target(env_logger::fmt::Target::Pipe(Box::new(log_file))));
     });
     build_logger(env_logger::Builder::init);
+}
+
+#[cfg(not(feature = "env_logger"))]
+pub fn ensure_initialized() {
+    // TODO: Support this?
+    unsafe {
+        LOGS_UNINITIALISED = false;
+    }
 }
 
 pub async fn start() -> Compiler {
