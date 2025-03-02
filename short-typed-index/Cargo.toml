@@ -1,6 +1,6 @@
 [package]
 name = "short-typed-index"
-version = "0.0.0"
+version = "0.2.0"
 repository = "https://github.com/cypher1/tako"
 description = "An implementation of small typed indexes for data oriented design purposes"
 authors = ["Jay Pratt <jay@skfl.tech>"]

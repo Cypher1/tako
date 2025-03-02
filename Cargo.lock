@@ -164,7 +164,7 @@ checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
 name = "better-std"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "pretty_assertions",
 ]
@@ -905,7 +905,7 @@ checksum = "b5320ae4c3782150d900b79807611a59a99fc9a1d61d686faafc24b93fc8d7ca"
 
 [[package]]
 name = "entity-component-slab"
-version = "0.0.0"
+version = "0.2.0"
 dependencies = [
  "paste",
  "short-typed-index",
@@ -2141,7 +2141,7 @@ checksum = "4ee93343901ab17bd981295f2cf0026d4ad018c7c31ba84549a4ddbb47a45104"
 
 [[package]]
 name = "llamada"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "better-std",
  "pretty_assertions",
@@ -3012,7 +3012,7 @@ checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
 name = "short-typed-index"
-version = "0.0.0"
+version = "0.2.0"
 dependencies = [
  "num-traits",
  "static_assertions",
@@ -3223,7 +3223,7 @@ dependencies = [
 
 [[package]]
 name = "tako"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "crokey",
@@ -3241,7 +3241,7 @@ dependencies = [
 
 [[package]]
 name = "takobench"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "criterion",
  "takolib",
@@ -3283,11 +3283,12 @@ dependencies = [
 
 [[package]]
 name = "takoweb"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "takolib",
  "tokio",
+ "tree-sitter-wasm-build-tool",
  "web-sys",
  "yew",
  "yew-hooks",
@@ -3560,12 +3561,11 @@ source = "git+https://github.com/tree-sitter/tree-sitter#3b67861def2f37439d16e08
 
 [[package]]
 name = "tree-sitter-tako"
-version = "0.0.1"
+version = "0.2.0"
 dependencies = [
  "cc",
  "tree-sitter",
  "tree-sitter-language",
- "tree-sitter-wasm-build-tool",
 ]
 
 [[package]]
