@@ -58,7 +58,7 @@ pub fn run(path: &Path, ast: &Ast, root: Option<NodeId>) -> Result<Prim, TError>
     ctx.eval(start)
 }
 
-impl<'a> Ctx<'a> {
+impl Ctx<'_> {
     pub fn eval2(&mut self, args: &[NodeId]) -> Result<[Prim; 2], TError> {
         let l = args.first().expect("requires a left argument");
         let r = args.get(1).expect("requires a right argument");

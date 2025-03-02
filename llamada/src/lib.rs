@@ -22,7 +22,7 @@ pub struct BoundExpr<'a, Expr: ?Sized> {
     pub bind_depth: usize,
 }
 
-impl<'a, Expr> Clone for BoundExpr<'a, Expr> {
+impl<Expr> Clone for BoundExpr<'_, Expr> {
     fn clone(&self) -> Self {
         Self {
             expr: self.expr,
@@ -314,7 +314,7 @@ impl std::fmt::Display for NameIndex {
     }
 }
 
-impl<'a, Ctx> std::fmt::Display for WithContext<'a, Ctx, Ctx::Index>
+impl<Ctx> std::fmt::Display for WithContext<'_, Ctx, Ctx::Index>
 where
     Ctx: Expr,
     Ctx::Value: std::fmt::Display,

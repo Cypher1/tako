@@ -148,9 +148,9 @@ impl Ast {
     }
     pub fn add_implementation(&mut self, node_id: NodeId, imp: NodeId) -> NodeId {
         use crate::parser::semantics::BindingMode;
-        let location = self[node_id].location.clone();
+        let location = self[node_id].location;
         let id = self[node_id].id.clone();
-        let mut ty = self[node_id].ty.clone();
+        let mut ty = self[node_id].ty;
         let d = match id {
             NodeData::Definition(def_id) => {
                 let def = &mut self[def_id].1;
@@ -176,10 +176,7 @@ impl Ast {
                 let call = &self[call_id].1;
                 let name_id = self[call.inner].id.clone();
                 let name = match name_id {
-                    NodeData::Identifier(name_id) => {
-                        let name = self[name_id].1;
-                        name
-                    }
+                    NodeData::Identifier(name_id) => self[name_id].1,
                     d => todo!("assignment to {d:?}"),
                 };
                 let def = Definition {
