@@ -782,8 +782,7 @@ pub fn parse(file: &Path, input: &str, _tokens: &[Token]) -> Result<Ast, TError>
 
     let ts_root = res.walk().node();
     let mut params = ParseParams::default();
-    let Some(root) = handle_subtree(ts_root, file, input, &mut ast, &mut params)?
-    else {
+    let Some(root) = handle_subtree(ts_root, file, input, &mut ast, &mut params)? else {
         todo!("Handle file with no root!?")
     };
 

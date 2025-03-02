@@ -271,7 +271,10 @@ mod tests {
         let s = expr.add(Term::App(abs_2a, ap));
         *expr.root_mut() = s;
 
-        assert_eq!(format!("{}", &expr), "((a => ((Mul 2) a)) ((a => ((Mul 2) a)) 2))");
+        assert_eq!(
+            format!("{}", &expr),
+            "((a => ((Mul 2) a)) ((a => ((Mul 2) a)) 2))"
+        );
 
         expr.reduce();
         eprintln!("result: {}", expr.as_context(expr.root()));
