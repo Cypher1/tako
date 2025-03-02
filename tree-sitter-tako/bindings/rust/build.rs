@@ -4,8 +4,16 @@ fn main() {
     let mut c_config = cc::Build::new();
     c_config.std("c11").include(src_dir);
 
+    c_config
+        .flag("-Wno-unused-parameter")
+        .flag("-Wno-unused-but-set-variable")
+        .flag("-Wno-trigraphs");
+
     #[cfg(target_env = "msvc")]
     c_config.flag("-utf-8");
+
+    #[cfg(feature = "c2rust")]
+    tree_sitter_wasm_build_tool::add_wasm_headers(&mut c_config).unwrap();
 
     let parser_path = src_dir.join("parser.c");
     c_config.file(&parser_path);
