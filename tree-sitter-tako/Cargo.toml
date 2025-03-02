@@ -13,11 +13,15 @@ autoexamples = false
 build = "bindings/rust/build.rs"
 include = ["bindings/rust/*", "grammar.js", "queries/*", "src/*"]
 
+[features]
+c2rust=[]
+wasm=["c2rust"]
+
 [lib]
 path = "bindings/rust/lib.rs"
 
 [dependencies]
-tree-sitter-language = { git = "https://github.com/tree-sitter/tree-sitter" , features = [ "c2rust" ] }
+tree-sitter-language = { git = "https://github.com/tree-sitter/tree-sitter"  }
 tree-sitter-wasm-build-tool = "0.2.2"
 
 [dev-dependencies]
