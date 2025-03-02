@@ -1,6 +1,6 @@
 [package]
 name = "tako"
-version = "0.1.0"
+version = "0.2.0"
 repository = "https://github.com/cypher1/tako"
 description = "The main CLI for tako"
 authors = ["Jay Pratt <jay@skfl.tech>"]
@@ -16,7 +16,7 @@ llvm_backend = [ "takolib/llvm_backend" ]
 
 [dependencies]
 async-trait = "0.1"
-takolib = { path = "../takolib", features = [ "native" ] }
+takolib = { version = "0.2.0", path = "../takolib", features = [ "native" ] }
 tokio = { version = "1.24", features = [ "full" ] }
 log = "0.4"
 warp = "0.3"

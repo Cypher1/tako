@@ -1,6 +1,6 @@
 [package]
 name = "llamada"
-version = "0.1.0"
+version = "0.2.0"
 repository = "https://github.com/cypher1/tako"
 description = "An extensible lambda calculus implementation"
 authors = ["Jay Pratt <jay@skfl.tech>"]
@@ -14,4 +14,4 @@ include = ["src/**/*", "LICENSE.md", "README.md"]
 
 [dependencies]
 pretty_assertions = "1.0"
-better-std = { path = "../better-std", features = [ ] }
+better-std = { version = "0.2.0", path = "../better-std", features = [ ] }
