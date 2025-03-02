@@ -2,7 +2,7 @@ use log::error;
 use std::path::Path;
 
 use smallvec::SmallVec;
-use tree_sitter::{Language, Node as TreeNode, TreeCursor};
+use tree_sitter::{Language, Node as TreeNode};
 use tree_sitter::{Parser as TSParser, Tree};
 
 use tokens::{Symbol, Token};
@@ -297,10 +297,9 @@ struct ParseParams {
     children: SmallVec<NodeId, 2>,
 }
 
-fn handle_subtree<'a>(
-    curr: &mut TreeCursor<'a>,
-    ts_node: TreeNode<'a>,
-    file: &Path,
+fn handle_subtree(
+    ts_node: TreeNode<'_>,
+    _file: &Path,
     input: &str,
     ast: &mut Ast,
     parent_params: &mut ParseParams,
@@ -313,7 +312,7 @@ fn handle_subtree<'a>(
             // BIG assumption being made here...
             continue;
         }
-        let child = handle_subtree(curr, ts_child, file, input, ast, &mut params)?;
+        let child = handle_subtree(ts_child, _file, input, ast, &mut params)?;
 
         // TODO: Check that this subtree is allowed.
 
@@ -580,7 +579,7 @@ fn handle_subtree<'a>(
         // "CALL {:?} {:?}..{:?} {:?}..{:?}: {:?}",
         // contents, start, end, start_pos, end_pos, params.children
         // );
-        assert!(params.children.len() > 0);
+        assert!(!params.children.is_empty());
         let call = ast.add_call(
             Call {
                 inner: params.children[0],
@@ -781,11 +780,9 @@ pub fn parse(file: &Path, input: &str, _tokens: &[Token]) -> Result<Ast, TError>
     // TODO: Handle errors
     println!("Result: {:?}", res);
 
-    let mut ts_curr = res.walk();
-
-    let ts_root = ts_curr.node();
+    let ts_root = res.walk().node();
     let mut params = ParseParams::default();
-    let Some(root) = handle_subtree(&mut ts_curr, ts_root, file, input, &mut ast, &mut params)?
+    let Some(root) = handle_subtree(ts_root, file, input, &mut ast, &mut params)?
     else {
         todo!("Handle file with no root!?")
     };
