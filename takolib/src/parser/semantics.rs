@@ -4,7 +4,7 @@ use super::tokens::Symbol;
 pub enum Literal {
     Bool,    // A boolean of arbitrary size :P (true/false)
     Numeric, // An Integer or Float of arbitrary size
-    String,    // A character or strings of arbitrary size (e.g. UTF-8 or Unicode)
+    String,  // A character or strings of arbitrary size (e.g. UTF-8 or Unicode)
     Color,   // A color of arbitrary size in Hex. e.g. #ff00ff (purple)
     Array,   // An abstract array literal, any of Vector, Array, List, Set, etc. (e.g. [123, 234])
     Map, // An abstract map literal, any of OrderedMap, HashMap, Dictionary, etc. (e.g. { 'a': 123, 'b': 234 })
