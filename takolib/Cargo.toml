@@ -13,7 +13,7 @@ include = ["src/**/*", "LICENSE.md", "README.md"]
 [features]
 #default=["llvm_backend", "native"]
 default=["native"]
-wasm=["wasm-logger", "tree-sitter-tako/wasm"]
+wasm=["wasm-logger", "tree-sitter-tako/wasm", "tree-sitter/wasm"]
 native=["env_logger"]
 llvm_backend=["inkwell", "backend"]
 mlir_backend=["melior", "backend"]
@@ -54,7 +54,7 @@ llamada = { version = "0.2.0", path = "../llamada", features = [ ] }
 better-std = { version = "0.2.0", path = "../better-std", features = [ ] }
 short-typed-index = { version = "0.2.0", path = "../short-typed-index", features = [ ] }
 tree-sitter-tako = { version = "0.2.0", path = "../tree-sitter-tako", features = [ ] }
-tree-sitter = { git = "https://github.com/tree-sitter/tree-sitter" , features = [ "wasm" ] }
+tree-sitter = { git = "https://github.com/tree-sitter/tree-sitter" , features = [ ] }
 entity-component-slab = { version = "0.2.0", path = "../entity-component-slab", features = [ ] }
 test_each_file = "0.3.2"
 paste = "1.0.15"
