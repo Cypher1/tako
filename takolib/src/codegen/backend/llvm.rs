@@ -21,7 +21,7 @@ use std::{
 };
 
 static CONTEXT: LazyLock<Arc<Mutex<Context>>> = LazyLock::new(|| {
-    Arc::new(Mutex::new(Context::create()));
+    Arc::new(Mutex::new(Context::create()))
 });
 
 #[derive(Debug)]
