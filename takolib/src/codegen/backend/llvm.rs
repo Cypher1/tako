@@ -13,7 +13,7 @@ use inkwell::{
     AddressSpace, OptimizationLevel,
 };
 use std::collections::HashMap;
-use std::sync::{Arc, LazyLock, Mutex};
+use std::sync::Arc;
 use std::{
     io::{stderr, stdout, Write},
     path::Path,
