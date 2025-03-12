@@ -20,9 +20,8 @@ use std::{
     process::Command,
 };
 
-static CONTEXT: LazyLock<Arc<Mutex<Context>>> = LazyLock::new(|| {
-    Arc::new(Mutex::new(Context::create()))
-});
+static CONTEXT: LazyLock<Arc<Mutex<Context>>> =
+    LazyLock::new(|| Arc::new(Mutex::new(Context::create())));
 
 #[derive(Debug)]
 pub struct Llvm<'ctx> {

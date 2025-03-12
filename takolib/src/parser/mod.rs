@@ -773,9 +773,7 @@ pub fn parse(file: &Path, input: &str, _tokens: &[Token]) -> Result<Ast, TError>
     };
 
     // TODO: Check that this is okay
-    let tako_lang = unsafe {
-        &*tako_lang
-    };
+    let tako_lang = unsafe { &*tako_lang };
 
     let mut parser = TSParser::new().expect("Parser failed to load?");
     parser
@@ -783,8 +781,10 @@ pub fn parse(file: &Path, input: &str, _tokens: &[Token]) -> Result<Ast, TError>
         .expect("Error loading Tako parser");
 
     let old_tree: Option<&Tree> = None;
-    let Some(res) = parser.parse(input.as_bytes(), old_tree)
-        .expect("Parser failed to load?") else {
+    let Some(res) = parser
+        .parse(input.as_bytes(), old_tree)
+        .expect("Parser failed to load?")
+    else {
         error!("Unknown parser error");
         panic!("Unknown parser error");
     };
