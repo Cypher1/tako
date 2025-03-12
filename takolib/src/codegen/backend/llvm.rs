@@ -20,9 +20,6 @@ use std::{
     process::Command,
 };
 
-static CONTEXT: LazyLock<Arc<Mutex<Context>>> =
-    LazyLock::new(|| Arc::new(Mutex::new(Context::create())));
-
 #[derive(Debug)]
 pub struct Llvm<'ctx> {
     context: &'ctx Context,
@@ -33,7 +30,7 @@ pub struct Llvm<'ctx> {
     target_machine: Option<TargetMachine>,
 }
 
-impl<'ctx> Llvm<'ctx> {
+impl Llvm<'_> {
     fn get_target_machine(&self) -> TargetMachine {
         let target = Target::from_triple(&self.target_triple).unwrap();
 
