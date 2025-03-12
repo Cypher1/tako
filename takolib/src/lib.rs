@@ -73,6 +73,7 @@ pub fn ensure_initialized() {
     build_logger(env_logger::Builder::init);
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[cfg(not(feature = "env_logger"))]
 pub fn ensure_initialized() {
     // TODO: Support this?
