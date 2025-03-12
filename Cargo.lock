@@ -3271,6 +3271,16 @@ dependencies = [
  "cc",
  "tree-sitter",
  "tree-sitter-language",
+ "tree-sitter-wasm-build-tool",
+]
+
+[[package]]
+name = "tree-sitter-wasm-build-tool"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a6958cb1005ebc9a14a9860799f634dc881bcc4d9a58e55834776a6d58891a11"
+dependencies = [
+ "cc",
 ]
 
 [[package]]
