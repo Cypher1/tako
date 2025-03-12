@@ -340,7 +340,7 @@ fn handle_subtree(
     let loc = Location { start, length };
     if ts_node.kind_id() == nt._ident {
         // println!("IDENT {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
-        let t = ast.string_interner.register_str(contents);
+        let t = ast.string_interner.register_str(&contents);
         parent_params.name = Some(t);
         let b = ast.add_identifier(t, loc);
         return Ok(Some(b));
@@ -385,35 +385,35 @@ fn handle_subtree(
     }
     if ts_node.kind_id() == nt._int_literal {
         // println!("INT_LITERAL {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
-        let _s = ast.string_interner.register_str_by_loc(contents, start);
+        let _s = ast.string_interner.register_str_by_loc(&contents, start);
         let t = semantics::Literal::Numeric; // ("123456789");
         let b = ast.add_literal(t, loc);
         return Ok(Some(b));
     }
     if ts_node.kind_id() == nt._float_literal {
         // println!("FLOAT_LITERAL {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
-        let _s = ast.string_interner.register_str_by_loc(contents, start);
+        let _s = ast.string_interner.register_str_by_loc(&contents, start);
         let t = semantics::Literal::Numeric; // ("123456789");
         let b = ast.add_literal(t, loc);
         return Ok(Some(b));
     }
     if ts_node.kind_id() == nt._string_literal {
         // println!("STRIMG_LITERAL {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
-        let _s = ast.string_interner.register_str_by_loc(contents, start);
+        let _s = ast.string_interner.register_str_by_loc(&contents, start);
         let t = semantics::Literal::String; // ("123456789");
         let b = ast.add_literal(t, loc);
         return Ok(Some(b));
     }
     if ts_node.kind_id() == nt._hex_literal {
         // println!("HEX_LITERAL {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
-        let _s = ast.string_interner.register_str_by_loc(contents, start);
+        let _s = ast.string_interner.register_str_by_loc(&contents, start);
         let t = semantics::Literal::Numeric; // ("123456789");
         let b = ast.add_literal(t, loc);
         return Ok(Some(b));
     }
     if ts_node.kind_id() == nt._color {
         // println!("COLOR {:?} {:?}..{:?} {:?}..{:?}", contents, start, end, start_pos, end_pos);
-        let _s = ast.string_interner.register_str_by_loc(contents, start);
+        let _s = ast.string_interner.register_str_by_loc(&contents, start);
         let t = semantics::Literal::Color; // ("123456789");
         let b = ast.add_literal(t, loc);
         return Ok(Some(b));
@@ -766,14 +766,25 @@ pub fn parse(file: &Path, input: &str, _tokens: &[Token]) -> Result<Ast, TError>
 
     // TODO: Put parser in a state to get caching
     // TODO: Set logger.
-    let tako_lang: &Language = &tree_sitter_tako::LANGUAGE.into();
-    let mut parser = TSParser::new();
+    // TODO: Check that this is okay
+    let tako_lang: *const Language = unsafe {
+        let fn_ptr = tree_sitter_tako::LANGUAGE.into_raw();
+        fn_ptr() as *const Language
+    };
+
+    // TODO: Check that this is okay
+    let tako_lang = unsafe {
+        &*tako_lang
+    };
+
+    let mut parser = TSParser::new().expect("Parser failed to load?");
     parser
         .set_language(tako_lang)
         .expect("Error loading Tako parser");
 
     let old_tree: Option<&Tree> = None;
-    let Some(res) = parser.parse(input.as_bytes(), old_tree) else {
+    let Some(res) = parser.parse(input.as_bytes(), old_tree)
+        .expect("Parser failed to load?") else {
         error!("Unknown parser error");
         panic!("Unknown parser error");
     };

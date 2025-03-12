@@ -45,7 +45,16 @@ pub struct Ast {
 macro_rules! construct_lang {
     ($start_value: expr, $( $name: ident ),*) => {
         {
-            let _lang: &Language = &tree_sitter_tako::LANGUAGE.into();
+            // TODO: Check that this is okay
+            let _lang: *const Language = unsafe {
+                let fn_ptr = tree_sitter_tako::LANGUAGE.into_raw();
+                fn_ptr() as *const Language
+            };
+
+            // TODO: Check that this is okay
+            let _lang = unsafe {
+                &*_lang
+            };
 
             paste!{
                 Ast {
