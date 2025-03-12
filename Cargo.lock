@@ -3339,6 +3339,7 @@ name = "tree-sitter-tako"
 version = "0.2.0"
 dependencies = [
  "cc",
+ "tree-sitter-facade-sg",
  "tree-sitter-language 0.1.4",
  "tree-sitter-wasm-build-tool",
 ]
