@@ -23,9 +23,6 @@ path = "bindings/rust/lib.rs"
 [dependencies]
 tree-sitter-language = { git = "https://github.com/tree-sitter/tree-sitter"  }
 
-[dev-dependencies]
-tree-sitter = { git = "https://github.com/tree-sitter/tree-sitter" }
-
 [build-dependencies]
 cc = "1.0.87"
 tree-sitter-wasm-build-tool = "0.2.2"
