@@ -43,11 +43,23 @@ pub const NODE_TYPES: &str = include_str!("../../src/node-types.json");
 
 #[cfg(test)]
 mod tests {
+
+    use tree_sitter::Language;
+
     #[test]
     fn test_can_load_grammar() {
-        let mut parser = tree_sitter::Parser::new();
+        let tako_lang: *const Language = unsafe {
+            let fn_ptr = super::LANGUAGE.into_raw();
+            fn_ptr() as *const Language
+        };
+
+        // TODO: Check that this is okay
+        let tako_lang = unsafe { &*tako_lang };
+
+        let parser = tree_sitter::Parser::new();
         parser
-            .set_language(&super::LANGUAGE.into())
+            .expect("Error loading Tree sitter")
+            .set_language(&tako_lang)
             .expect("Error loading Tako parser");
     }
 }
