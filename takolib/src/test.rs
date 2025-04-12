@@ -57,7 +57,7 @@ fn file_and_options(file: &PathBuf) -> (String, TestConfig) {
 }
 
 #[test_each::path(glob = "examples/*.tk")]
-fn parse_example_files(file: PathBuf) {
+fn parse_example_files(file: &PathBuf) {
     let (contents, setting) = file_and_options(&file);
     if false && setting.todo {
         info!("Skipping todo file: {file:#?}");

@@ -28,13 +28,13 @@ macro_rules! new_expr(
 #[macro_export]
 macro_rules! derive_expr_from(
     { $inner: ident } => {
-        fn get<'a>(&'a self, id: &'a Self::Index) -> &Term<Self::Value, Self::Index> {
+        fn get<'a>(&'a self, id: &'a Self::Index) -> &'a Term<Self::Value, Self::Index> {
             self.$inner.get(id)
         }
-        fn get_mut<'a>(&'a mut self, id: &'a mut Self::Index) -> &mut Term<Self::Value, Self::Index> {
+        fn get_mut<'a>(&'a mut self, id: &'a mut Self::Index) -> &'a mut Term<Self::Value, Self::Index> {
             self.$inner.get_mut(id)
         }
-        fn get_meta<'a>(&'a self, id: &'a Self::Index) -> &Self::Meta {
+        fn get_meta<'a>(&'a self, id: &'a Self::Index) -> &'a Self::Meta {
             self.$inner.get_meta(id)
         }
         fn get_last_id(&self) -> Self::Index {
