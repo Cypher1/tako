@@ -13,7 +13,7 @@ categories = ["gui", "wasm", "web-programming"]
 [dependencies]
 yew = { version="0.21.0", features = [ "csr" ] }
 takolib = { version = "0.2.0", path = "../takolib", features = [ "wasm" ], default-features = false }
-tokio = { version = "1.38", features = ["sync", "macros"] }
-yew-hooks = "0.3.1"
+tokio = { version = "1.44.1", features = ["sync", "macros"] }
+yew-hooks = "0.3.3"
 async-trait = "0.1"
 web-sys = "0.3.77"
