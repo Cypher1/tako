@@ -48,18 +48,28 @@ mod tests {
 
     #[test]
     fn test_can_load_grammar() {
+        println!("HERE1");
         let tako_lang: *const Language = unsafe {
             let fn_ptr = super::LANGUAGE.into_raw();
             fn_ptr() as *const Language
         };
+        println!("HERE2");
 
         // TODO: Check that this is okay
         let tako_lang = unsafe { &*tako_lang };
 
+        println!("HERE3");
         let parser = tree_sitter::Parser::new();
-        parser
-            .expect("Error loading Tree sitter")
-            .set_language(&tako_lang)
+        println!("HERE4");
+        let mut parser = parser;
+            // .expect("Error loading Tree sitter");
+        println!("HERE5");
+
+        let parser = parser
+            .set_language(&tako_lang);
+        println!("HERE6");
+        let _parser = parser
             .expect("Error loading Tako parser");
+        println!("HERE7");
     }
 }
