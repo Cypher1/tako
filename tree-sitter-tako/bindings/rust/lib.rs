@@ -62,14 +62,12 @@ mod tests {
         let parser = tree_sitter::Parser::new();
         println!("HERE4");
         let mut parser = parser;
-            // .expect("Error loading Tree sitter");
+        // .expect("Error loading Tree sitter");
         println!("HERE5");
 
-        let parser = parser
-            .set_language(&tako_lang);
+        let parser = parser.set_language(&tako_lang);
         println!("HERE6");
-        let _parser = parser
-            .expect("Error loading Tako parser");
+        let _parser = parser.expect("Error loading Tako parser");
         println!("HERE7");
     }
 }
