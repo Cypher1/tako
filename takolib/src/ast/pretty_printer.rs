@@ -211,7 +211,7 @@ mod tests {
     use super::*;
     use crate::error::TError;
     use crate::parser::parse;
-    use crate::parser::tokens::lex;
+    use crate::parser::lex;
     use std::path::PathBuf;
 
     fn test_file1() -> PathBuf {
