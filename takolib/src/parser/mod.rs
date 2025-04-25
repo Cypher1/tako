@@ -1,60 +1,41 @@
 use std::path::Path;
 use better_std::include_strs;
-use chumsky::input::Stream;
+use chumsky::extra::Full;
+use chumsky::extra::SimpleState;
 use chumsky::prelude::*;
 use chumsky::pratt::*;
-pub mod tokens;
-use tokens::{Symbol, Token, TokenType};
-use crate::ast::string_interner::StrId;
+use semantics::Literal;
+use smallvec::smallvec;
+use smallvec::SmallVec;
+
+use crate::ast::location::Location;
+use crate::ast::NodeId;
+use crate::ast::Op;
 use crate::{
-    ast::{location::Location, nodes::Op, Ast, Call, Definition, NodeId},
+    ast::Ast,
     error::TError,
 };
+
+pub mod tokens;
 pub mod semantics;
+pub mod lexer;
 pub mod error;
-use chumsky::prelude::*;
-use chumsky::pratt::*;
-use chumsky::extra;
+
+use tokens::{Symbol, Token, TokenType};
+
+pub type Span = SimpleSpan;
+pub type Spanned<T> = (T, Span);
 
 pub const KEYWORDS: &[&str] = include_strs!("keywords.txt");
 
-// TODO: REMOVE
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum OpBinding {
-    PostfixOp,
-    PrefixOp,
-    PrefixOrInfixBinOp,
-    InfixOrPostfixBinOp,
-    InfixBinOp,
-    Open(Symbol),  // the associated Closer
-    Close(Symbol), // the associated Opener
-}
+type ParserConfig<'src, 'ast> = Full<Rich<'src, Token>, SimpleState<Ast>, ()>;
 
-enum Expr {
-    Add(Box<Self>, Box<Self>),
-    Sub(Box<Self>, Box<Self>),
-    Pow(Box<Self>, Box<Self>),
-    Neg(Box<Self>),
-    Factorial(Box<Self>),
-    Deref(Box<Self>),
-    Literal(i32),
-}
+use super::ast::nodes::FMT_STR_STANDARD_ITEM_NUM;
 
-impl std::fmt::Display for Expr {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        match self {
-            Self::Literal(literal) => write!(f, "{literal}"),
-            Self::Factorial(left) => write!(f, "({left}!)"),
-            Self::Deref(left) => write!(f, "(*{left})"),
-            Self::Neg(right) => write!(f, "(-{right})"),
-            Self::Add(left, right) => write!(f, "({left} + {right})"),
-            Self::Sub(left, right) => write!(f, "({left} - {right})"),
-            Self::Pow(left, right) => write!(f, "({left} ^ {right})"),
-        }
-    }
-}
+// TODO: Remove this indirection
+type Par<'src, 'ast> = chumsky::Boxed<'src, 'ast, &'src[Token], NodeId, ParserConfig<'src, 'ast>>;
 
-fn language() -> () {
+fn language<'src: 'ast, 'ast>() -> impl Parser<'src, &'src[Token], (), ParserConfig<'src, 'ast>> {
     use TokenType::*;
 
     // TODO: Compute once.
@@ -63,68 +44,144 @@ fn language() -> () {
     // static ref RIGHT_ASSOCIATIVE: HashSet<Symbol> = hash_set!{
 
     // Tokens
-    let op = any().filter(|op| matches!(op, Op(_)));
-    let comma = just(Comma);
-    let ident = just(Ident);
-    let atom = just(Atom);
-    let number = just(NumberLit);
-    let color = just(ColorLit);
-    let str_lit = just(StringLit);
-    let fmt_str_start = just(FmtStringLitStart);
-    let fmt_str_mid = just(FmtStringLitMid);
-    let fmt_str_end = just(FmtStringLitEnd);
+    let simple_value: Par<'src, 'ast> = select_ref! {
+        Token {kind: Ident, start, length } = extra => {
+            let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+            let t = ast.string_interner.register_str(&ast.contents);
+            ast.add_identifier(t, Location { start: *start, length: *length })
+        },
+        Token {kind: NumberLit, start, length } = extra => {
+            let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+            let _ = ast.string_interner.register_str_by_loc(&ast.contents, *start);
+            ast.add_literal(Literal::Numeric, Location { start: *start, length: *length })
+        },
+        Token {kind: ColorLit, start, length } = extra => {
+            let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+            let _ = ast.string_interner.register_str_by_loc(&ast.contents, *start);
+            ast.add_literal(Literal::Color, Location { start: *start, length: *length })
+        },
+        Token {kind: StringLit, start, length } = extra => {
+            let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+            let _ = ast.string_interner.register_str_by_loc(&ast.contents, *start);
+            ast.add_literal(Literal::String, Location { start: *start, length: *length })
+        },
+    }.boxed();
+
+    // Special Tokens
+    let fmt_str_start = select_ref! {
+        Token {kind: FmtStringLitStart, start, length } = extra => {
+            let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+            ast.add_literal(Literal::String, Location { start: *start, length: *length })
+        },
+    };
+    let fmt_str_mid = select_ref! {
+        Token {kind: FmtStringLitMid, start, length } = extra => {
+            let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+            ast.add_literal(Literal::String, Location { start: *start, length: *length })
+        },
+    };
+    let fmt_str_end = select_ref! {
+        Token {kind: FmtStringLitEnd, start, length } = extra => {
+            let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+            ast.add_literal(Literal::String, Location { start: *start, length: *length })
+        },
+    }.boxed();
+
+    let op = |op| select_ref! {
+        Token {kind: OpType(op), start, length } => Location { start: *start, length: *length }
+    };
+
+    let comma = select_ref! {
+        Token {kind: Comma, start, length } => ()
+    };
 
     // Expressions
     let expr = recursive(|expr| {
-        let fmt_str_body = expr.separated_by(fmt_str_mid).repeated();
-        let fmt_str = fmt_str_start.then(fmt_str_body).fmt_start_end;
+        let fmt_str_body_head = fmt_str_start.then(expr.clone()).map(|(start, node)| {
+            let mut nodes: SmallVec<NodeId, FMT_STR_STANDARD_ITEM_NUM> = SmallVec::new();
+            nodes.push(start);
+            nodes.push(node);
+            nodes
+        });
+        let fmt_str_body = fmt_str_body_head.foldl(
+            fmt_str_mid.then(expr.clone()).repeated(),
+            |mut nodes: SmallVec<NodeId, FMT_STR_STANDARD_ITEM_NUM>, (fstr, node): (NodeId, NodeId)| {
+                nodes.push(fstr);
+                nodes.push(node);
+                nodes
+            }
+        );
+        let fmt_str = fmt_str_body.then(fmt_str_end).map_with(|(mut nodes, fstr), extra| {
+            nodes.push(fstr);
+            let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+            let loc = ast[fstr].location;
+            // TODO: Switch from op to call with built ins?
+            ast.add_op(Op { op: Symbol::Group, args: nodes }, loc)
+        });
 
+        // Single value
+        let parens = expr.clone().delimited_by(op(Symbol::OpenParen), op(Symbol::CloseParen));
+        // TODO:
+        let container = expr.clone().separated_by(comma).delimited_by(op(Symbol::OpenBracket), op(Symbol::CloseBracket));
+        let unordered_container = expr.clone().separated_by(comma).delimited_by(op(Symbol::OpenCurly), op(Symbol::CloseCurly));
+
+        let atom = parens.or(simple_value).or(fmt_str);
+
+        let prefix_op = |prec, op_type: Symbol| {
+            prefix(prec, op(op_type), move |loc, rhs, extra| {
+                let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+                ast.add_op(Op { op: op_type, args: smallvec![rhs] }, loc)
+            })
+        };
+
+        let infix_op = |prec, op_type: Symbol| {
+            infix(prec, op(op_type), move |lhs, loc, rhs, extra| {
+                let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+                ast.add_op(Op { op: op_type, args: smallvec![lhs, rhs] }, loc)
+            })
+        };
+
+        atom.pratt((
+            // Just like in math, we want that if we write -x^2, our parser parses that as -(x^2), so we need it to have
+            // exponents bind tighter than our prefix operators.
+            infix_op(right(3), Symbol::Exp),
+            infix_op(right(3), Symbol::BitXor),
+            // Notice the conflict with our `Expr::Sub`. This will still parse correctly. We want negation to happen before
+            // `+` and `-`, so we set its precedence higher.
+            //prefix(2, op('-'), |_, rhs, _| Expr::Neg(Box::new(rhs))),
+            prefix_op(2, Symbol::Add),
+            prefix_op(2, Symbol::Sub),
+            //prefix(2, op('*'), |_, rhs, _| Expr::Deref(Box::new(rhs))),
+            prefix_op(2, Symbol::LogicalNot),
+            infix_op(left(2), Symbol::Mul),
+            infix_op(left(2), Symbol::Div),
+            // Our `-` and `+` bind the weakest, meaning that even if they occur first in an expression, they will be the
+            // last executed.
+            infix_op(left(1), Symbol::Add),
+            infix_op(left(1), Symbol::Sub),
+        ))
     });
 
-    let expr = atom.pratt((
-        // We want factorial to happen before any negation, so we need its precedence to be higher than `Expr::Neg`.
-        postfix(4, op('!'), |lhs, _, _| Expr::Factorial(Box::new(lhs))),
-        // Just like in math, we want that if we write -x^2, our parser parses that as -(x^2), so we need it to have
-        // exponents bind tighter than our prefix operators.
-        infix(right(3), op('^'), |l, _, r, _| Expr::Pow(Box::new(l), Box::new(r))),
-        // Notice the conflict with our `Expr::Sub`. This will still parse correctly. We want negation to happen before
-        // `+` and `-`, so we set its precedence higher.
-        prefix(2, op('-'), |_, rhs, _| Expr::Neg(Box::new(rhs))),
-        prefix(2, op('*'), |_, rhs, _| Expr::Deref(Box::new(rhs))),
-        // Our `-` and `+` bind the weakest, meaning that even if they occur first in an expression, they will be the
-        // last executed.
-        infix(left(1), op('+'), |l, _, r, _| Expr::Add(Box::new(l), Box::new(r))),
-        infix(left(1), op('-'), |l, _, r, _| Expr::Sub(Box::new(l), Box::new(r))),
-    ))
-        .map(|x| x.to_string());
-
-    let roots = expr.repeated();
-
-    assert_eq!(
-        expr.parse("*1 + -2! - -3^2").into_result(),
-        Ok("(((*1) + (-(2!))) - (-(3 ^ 2)))".to_string()),
-    );
-}
-
-fn token(s: String) -> TokenType {
-    if let Ok(op) = Symbol::try_into(&*s) {
-        TokenType::Op(s)
-    }
-    // TODO: Other types of token
-    Unknown
+    let roots = expr.repeated().collect().map_with(|roots: Vec<NodeId>, extra|{
+        let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+        for root in roots {
+            ast.roots.push(root);
+        }
+        ()
+    });
+    Box::new(roots)
 }
 
 pub fn parse(file: &Path, input: &str, tokens: &[Token]) -> Result<Ast, TError> {
+    let lang = language(); // TODO: Avoid recreating.
+
+    let mut state = SimpleState(
+        Ast::new(file.to_path_buf(), input.to_string()) // TODO: Avoid copy here?
+    );
+
     // TODO: Support for streams?
-    let mut ast = Ast::new(file.to_path_buf());
-
-    let res = parse_file(file, input, tokens, &mut ast)?;
-
-    // TODO: Handle errors
-    println!("Result: {:?}", res);
-    // Done converting to ast
-    ast.roots.push(res);
-    Ok(ast)
+    lang.parse_with_state(tokens, &mut state).unwrap(); // TODO: Handle errors
+    Ok(state.0)
 }
 
 // TODO: Recover tests from ./old_mod.rs

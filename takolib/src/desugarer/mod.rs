@@ -2,7 +2,7 @@ use crate::ast::Ast;
 use crate::ast::NodeData::Definition;
 use crate::ast::{Call, NodeId, Op};
 use crate::error::TError;
-use crate::parser::tokens_new::Symbol;
+use crate::parser::tokens::Symbol;
 use log::trace;
 use smallvec::smallvec;
 use std::path::Path;
@@ -63,7 +63,7 @@ pub fn desugar(_path: &Path, old_ast: &Ast, _root: Option<NodeId>) -> Result<Ast
 mod tests {
     use super::*;
     use crate::parser::parse;
-    use crate::parser::lex;
+    use crate::parser::lexer::lex;
     use std::path::PathBuf;
 
     fn test_path() -> PathBuf {

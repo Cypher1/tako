@@ -2,7 +2,7 @@ use crate::ast::string_interner::{StrId, StringInterner};
 use crate::ast::{Ast, Call, Definition, LiteralId, Node, NodeData, NodeId, OpId};
 use crate::error::TError;
 use crate::parser::semantics::Literal;
-use crate::parser::tokens_new::Symbol;
+use crate::parser::tokens::Symbol;
 use crate::primitives::Prim;
 use log::trace;
 use std::collections::HashMap;
@@ -82,7 +82,6 @@ impl Ctx<'_> {
                 };
                 Ok(value.clone())
             }
-            NodeData::Atom(_id) => todo!(),
             NodeData::Call(call) => {
                 let (_id, Call { inner, args }) = &self.ast[call];
                 for arg in args.iter() {
@@ -273,6 +272,8 @@ impl Ctx<'_> {
             | Symbol::LogicalAndAssign
             | Symbol::LogicalOrAssign
             | Symbol::ModuloAssign => todo!("Support assignment"),
+            Symbol::Group => todo!("Support Group"),
+            Symbol::Escape => panic!("Support Escape"), // TODO: Nah
         })
     }
 }
@@ -282,7 +283,7 @@ mod tests {
     use super::*;
     use crate::error::TError;
     use crate::parser::parse;
-    use crate::parser::lex;
+    use crate::parser::lexer::lex;
     use std::path::PathBuf;
 
     fn test_path() -> PathBuf {

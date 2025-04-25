@@ -7,7 +7,7 @@ mod pretty_printer;
 pub mod string_interner;
 
 use crate::parser::semantics::Literal;
-use crate::parser::tokens_new::Symbol;
+use crate::parser::tokens::Symbol;
 use entity_component_slab::{make_component, make_world};
 use location::Location;
 use pretty_printer::{pretty, pretty_node};
@@ -18,10 +18,17 @@ use string_interner::{Identifier, StringInterner};
 
 type TsNodeId = u16;
 
+
+// TODO: Use https://binrw.rs/ for saving binaries.
+// const MAGIC: [u8; 2] = ['T', 'K'];
+// const AST_VERSION: [u8; 2] = [0, 0];
+// #[derive(BinRead, BinWrite)]
+// #[brw(little, magic = MAGIC)]
 #[derive(Clone, Default, Debug, Hash, PartialEq, Eq)]
 pub struct Ast {
     // TODO(usability): Add a range tree for mapping from locations to nodes.
     // Abstract syntax tree... forest
+    pub contents: String,
     pub filepath: PathBuf,
     pub roots: SmallVec<NodeId, 10>,
     pub nodes: Slab<Node>,
@@ -35,15 +42,14 @@ pub struct Ast {
     pub ops: ChildSlab<Op, NodeId>,
     pub definitions: ChildSlab<Definition, NodeId>,
     pub literals: ChildSlab<Literal, NodeId>,
-    pub atoms: ChildSlab<Atom, NodeId>,
-
     pub string_interner: StringInterner,
 }
 
 impl Ast {
     #[must_use]
-    pub fn new(filepath: PathBuf) -> Self {
+    pub fn new(filepath: PathBuf, contents: String) -> Self {
         Self {
+            contents,
             filepath,
             ..Self::default()
         }
@@ -155,6 +161,7 @@ make_world!(
     NodeData,
     Location,
     |archetype, location| Node {
+        // In theory these could be struct of array'ed.
         id: archetype,
         equivalents: None,
         lowered_to: None,
@@ -165,7 +172,6 @@ make_world!(
 make_component!(Ast, identifiers, Identifier);
 make_component!(Ast, literals, Literal);
 make_component!(Ast, warnings, Warning);
-make_component!(Ast, atoms, Atom);
 make_component!(Ast, calls, Call);
 make_component!(Ast, ops, Op);
 make_component!(Ast, definitions, Definition);

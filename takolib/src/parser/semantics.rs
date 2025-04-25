@@ -1,4 +1,10 @@
+use std::collections::HashMap;
+use std::collections::HashSet;
+
 use super::tokens::Symbol::{self, *};
+use better_std::hash_set;
+use better_std::map;
+use log::trace;
 use lazy_static::lazy_static;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
@@ -216,32 +222,6 @@ impl Symbol {
     #[must_use]
     pub fn is_left_associative(&self) -> bool {
         !(self.is_associative() || self.is_right_associative())
-    }
-
-    #[must_use]
-    pub fn binding_type(&self) -> OpBinding {
-        match self {
-            Escape
-            | BitNot
-            | LogicalNot
-            | GetAddress
-            | Spread
-            | Lambda
-            | Sigma
-            | Forall
-            | Pi
-            | Exists => OpBinding::PrefixOp,
-            Try => OpBinding::PostfixOp,
-            Sub => OpBinding::PrefixOrInfixBinOp,
-            CloseCurly => OpBinding::Close(OpenCurly),
-            CloseParen => OpBinding::Close(OpenParen),
-            CloseBracket => OpBinding::Close(CloseParen),
-            OpenCurly => OpBinding::Open(CloseCurly),
-            OpenParen => OpBinding::Open(CloseParen),
-            OpenBracket => OpBinding::Open(CloseBracket),
-            Sequence => OpBinding::InfixOrPostfixBinOp,
-            _ => OpBinding::InfixBinOp,
-        }
     }
 
     #[must_use]
