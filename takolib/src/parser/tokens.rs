@@ -132,7 +132,7 @@ pub enum TokenType {
     FmtStringLitEnd,
     // If a symbol (normally strings) is too long, we will store it as multiple repeated tokens,
     // of the same kind preceeded by a 'Group' token.
-    Group,
+    // TODO: Group,
 }
 
 impl fmt::Display for TokenType {
@@ -148,7 +148,7 @@ impl fmt::Display for TokenType {
             Self::FmtStringLitStart => write!(f, "the start of a format string literal"),
             Self::FmtStringLitMid => write!(f, "the middle of a format string literal"),
             Self::FmtStringLitEnd => write!(f, "the end of a format string literal"),
-            Self::Group => write!(f, "a long string literal"),
+            // Self::Group => write!(f, "a long string literal"),
         }
     }
 }

@@ -1,6 +1,6 @@
 use std::path::Path;
-use std::ops::Range;
 use better_std::include_strs;
+use chumsky::input::Stream;
 use chumsky::prelude::*;
 use chumsky::pratt::*;
 pub mod tokens;
@@ -11,61 +11,12 @@ use crate::{
     error::TError,
 };
 pub mod semantics;
-
-use semantics::{ ASSOCIATIVE, RIGHT_ASSOCIATIVE };
+pub mod error;
+use chumsky::prelude::*;
+use chumsky::pratt::*;
+use chumsky::extra;
 
 pub const KEYWORDS: &[&str] = include_strs!("keywords.txt");
-
-impl Symbol {
-    #[must_use]
-    pub fn is_associative(&self) -> bool {
-        ASSOCIATIVE.contains(self)
-    }
-
-    #[must_use]
-    pub fn is_right_associative(&self) -> bool {
-        RIGHT_ASSOCIATIVE.contains(self)
-    }
-
-    #[must_use]
-    pub fn is_left_associative(&self) -> bool {
-        !(self.is_associative() || self.is_right_associative())
-    }
-
-    #[must_use]
-    pub fn binding_type(&self) -> OpBinding {
-        match self {
-            Self::Escape
-            | Self::BitNot
-            | Self::LogicalNot
-            | Self::GetAddress
-            | Self::Spread
-            | Self::Lambda
-            | Self::Sigma
-            | Self::Forall
-            | Self::Pi
-            | Self::Exists => OpBinding::PrefixOp,
-            Self::Try => OpBinding::PostfixOp,
-            Self::Sub => OpBinding::PrefixOrInfixBinOp,
-            Self::CloseCurly => OpBinding::Close(Self::OpenCurly),
-            Self::CloseParen => OpBinding::Close(Self::OpenParen),
-            Self::CloseBracket => OpBinding::Close(Self::CloseParen),
-            Self::OpenCurly => OpBinding::Open(Self::CloseCurly),
-            Self::OpenParen => OpBinding::Open(Self::CloseParen),
-            Self::OpenBracket => OpBinding::Open(Self::CloseBracket),
-            Self::Sequence => OpBinding::InfixOrPostfixBinOp,
-            _ => OpBinding::InfixBinOp,
-        }
-    }
-
-    #[must_use]
-    pub fn is_looser(&self, other: Self) -> bool {
-        if *self == other {
-            return self.is_right_associative();
-        }
-        LOOSER_THAN.contains(&(*self, other))
-    }
-}
 
 // TODO: REMOVE
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -79,88 +30,82 @@ pub enum OpBinding {
     Close(Symbol), // the associated Opener
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum ParseError {
-    UnexpectedEof, // TODO: Add context.
-    UnexpectedTokenTypeExpectedOperator {
-        got: TokenType,
-        location: Location,
-    },
-    UnexpectedTokenTypeExpectedAssignment {
-        got: TokenType,
-        location: Location,
-    },
-    UnexpectedTokenType {
-        got: TokenType,
-        location: Location,
-        expected: TokenType,
-    },
-    UnexpectedTokenTypeInExpression {
-        got: TokenType,
-        location: Location,
-    },
-    ParseIntError {
-        message: String,
-        location: Option<Location>,
-    },
-    AmbiguousExpression {
-        left: Symbol,
-        right: Symbol,
-        location: Location,
-    },
-    UnexpectedExpressionInDefinitionArguments {
-        arg: NodeId,
-        arg_str: String,
-        location: Location,
-    },
-    MissingLeftHandSideOfOperator {
-        op: Symbol,
-        bind_type: OpBinding,
-        location: Location,
-    },
-    MissingRightHandSideOfOperator {
-        op: Symbol,
-        bind_type: OpBinding,
-        location: Location,
-    },
-    UnparsedTokens {
-        token: TokenType,
-        location: Location,
-    },
+enum Expr {
+    Add(Box<Self>, Box<Self>),
+    Sub(Box<Self>, Box<Self>),
+    Pow(Box<Self>, Box<Self>),
+    Neg(Box<Self>),
+    Factorial(Box<Self>),
+    Deref(Box<Self>),
+    Literal(i32),
 }
 
-impl ParseError {
-    pub fn location(&self) -> Option<&Location> {
+impl std::fmt::Display for Expr {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            Self::UnexpectedEof => None,
-            Self::ParseIntError { location, .. } => location.as_ref(),
-            Self::UnexpectedTokenTypeExpectedOperator { got: _, location }
-            | Self::UnexpectedTokenTypeExpectedAssignment { got: _, location }
-            | Self::UnexpectedTokenType {
-                got: _,
-                location,
-                expected: _,
-            }
-            | Self::UnexpectedTokenTypeInExpression { got: _, location }
-            | Self::AmbiguousExpression {
-                left: _,
-                right: _,
-                location,
-            }
-            | Self::UnexpectedExpressionInDefinitionArguments { location, .. }
-            | Self::MissingLeftHandSideOfOperator { location, .. } => Some(location),
-            Self::MissingRightHandSideOfOperator { location, .. } => Some(location),
-            Self::UnparsedTokens { location, .. } => Some(location),
+            Self::Literal(literal) => write!(f, "{literal}"),
+            Self::Factorial(left) => write!(f, "({left}!)"),
+            Self::Deref(left) => write!(f, "(*{left})"),
+            Self::Neg(right) => write!(f, "(-{right})"),
+            Self::Add(left, right) => write!(f, "({left} + {right})"),
+            Self::Sub(left, right) => write!(f, "({left} - {right})"),
+            Self::Pow(left, right) => write!(f, "({left} ^ {right})"),
         }
     }
 }
-impl std::fmt::Display for ParseError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{self:?}")
-    }
+
+fn language() -> () {
+    use TokenType::*;
+
+    // TODO: Compute once.
+    // use lazy_static::lazy_static;
+    // lazy_static! {
+    // static ref RIGHT_ASSOCIATIVE: HashSet<Symbol> = hash_set!{
+
+    // Tokens
+    let op = any().filter(|op| matches!(op, Op(_)));
+    let comma = just(Comma);
+    let ident = just(Ident);
+    let atom = just(Atom);
+    let number = just(NumberLit);
+    let color = just(ColorLit);
+    let str_lit = just(StringLit);
+    let fmt_str_start = just(FmtStringLitStart);
+    let fmt_str_mid = just(FmtStringLitMid);
+    let fmt_str_end = just(FmtStringLitEnd);
+
+    // Expressions
+    let expr = recursive(|expr| {
+        let fmt_str_body = expr.separated_by(fmt_str_mid).repeated();
+        let fmt_str = fmt_str_start.then(fmt_str_body).fmt_start_end;
+
+    });
+
+    let expr = atom.pratt((
+        // We want factorial to happen before any negation, so we need its precedence to be higher than `Expr::Neg`.
+        postfix(4, op('!'), |lhs, _, _| Expr::Factorial(Box::new(lhs))),
+        // Just like in math, we want that if we write -x^2, our parser parses that as -(x^2), so we need it to have
+        // exponents bind tighter than our prefix operators.
+        infix(right(3), op('^'), |l, _, r, _| Expr::Pow(Box::new(l), Box::new(r))),
+        // Notice the conflict with our `Expr::Sub`. This will still parse correctly. We want negation to happen before
+        // `+` and `-`, so we set its precedence higher.
+        prefix(2, op('-'), |_, rhs, _| Expr::Neg(Box::new(rhs))),
+        prefix(2, op('*'), |_, rhs, _| Expr::Deref(Box::new(rhs))),
+        // Our `-` and `+` bind the weakest, meaning that even if they occur first in an expression, they will be the
+        // last executed.
+        infix(left(1), op('+'), |l, _, r, _| Expr::Add(Box::new(l), Box::new(r))),
+        infix(left(1), op('-'), |l, _, r, _| Expr::Sub(Box::new(l), Box::new(r))),
+    ))
+        .map(|x| x.to_string());
+
+    let roots = expr.repeated();
+
+    assert_eq!(
+        expr.parse("*1 + -2! - -3^2").into_result(),
+        Ok("(((*1) + (-(2!))) - (-(3 ^ 2)))".to_string()),
+    );
 }
 
-/*
 fn token(s: String) -> TokenType {
     if let Ok(op) = Symbol::try_into(&*s) {
         TokenType::Op(s)
@@ -169,70 +114,8 @@ fn token(s: String) -> TokenType {
     Unknown
 }
 
-// A parser that turns pythonic code with semantic whitespace into a token tree
-fn lexer<'a>() -> impl Parser<'a, str, Vec<Spanned<Token>>> {
-    let tt = recursive(|tt| {
-        // Define some atomic tokens
-        let int = text::int::<'a, &str, _>(10)
-            .from_str()
-            .unwrapped()
-            .map(Token::Int);
-        let ident = text::ascii::ident().map(|s: &str| Token::Ident(s.to_string()));
-
-        let simple_op = one_of("=.:%,");
-        let delims = one_of("{}()[]");
-        let op = simple_op.or(delims)
-            .repeated()
-            .at_least(1)
-            .collect()
-            .map(token);
-
-        let single_token = int.or(op).or(ident);
-        single_token.map_with_span(|tt, span| (tt, span))
-    });
-
-    // Whitespace indentation creates code block token trees
-    text::semantic_indentation(tt, |tts, span| (TokenTree::Tree(Delim::Block, tts), span))
-}
-
-/// Flatten a series of token trees into a single token stream, ready for feeding into the main parser
-fn tts_to_stream(
-    eoi: Span,
-    token_trees: Vec<Spanned<TokenTree>>,
-) -> BoxStream<'static, Token, Span> {
-    use std::iter::once;
-
-    BoxStream::from_nested(eoi, token_trees.into_iter(), |(tt, span)| match tt {
-        // Single tokens remain unchanged
-        TokenTree::Token(token) => Flat::Single((token, span)),
-        // Nested token trees get flattened into their inner contents, surrounded by `Open` and `Close` tokens
-        TokenTree::Tree(delim, tree) => Flat::Many(
-            once((TokenTree::Token(Token::Open(delim)), span.clone()))
-                .chain(tree.into_iter())
-                .chain(once((TokenTree::Token(Token::Close(delim)), span))),
-        ),
-    })
-}
-
-fn parse_file() -> Result<(), TError> {
-    // First, lex the code into some nested token trees
-    let tts = lexer().parse(code).into_output().unwrap();
-
-    println!("--- Token Trees ---\n{:#?}", tts);
-
-    // Next, flatten
-    let eoi = 0..code.chars().count();
-    let mut token_stream = tts_to_stream(eoi, tts);
-
-    // At this point, we have a token stream that can be fed into the main parser! Because this is just an example,
-    // we're instead going to just collect the token stream into a vector and print it.
-
-    let flattened_trees = token_stream.fetch_tokens().collect::<Vec<_>>();
-
-    println!("--- Flattened Token Trees ---\n{:?}", flattened_trees);
-}*/
-
-pub fn parse(file: &Path, input: &str, tokens: &Vec<Token>) -> Result<Ast, TError> {
+pub fn parse(file: &Path, input: &str, tokens: &[Token]) -> Result<Ast, TError> {
+    // TODO: Support for streams?
     let mut ast = Ast::new(file.to_path_buf());
 
     let res = parse_file(file, input, tokens, &mut ast)?;

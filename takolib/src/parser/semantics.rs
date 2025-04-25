@@ -1,4 +1,4 @@
-use super::tokens::Symbol;
+use super::tokens::Symbol::{self, *};
 use lazy_static::lazy_static;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
@@ -36,16 +36,16 @@ impl std::fmt::Display for BindingMode {
 pub const fn op_from_assign_op(s: Symbol) -> Option<Symbol> {
     // TODO(clarity): Move to a symbol module.
     Some(match s {
-        Symbol::AddAssign => Symbol::Add,
-        Symbol::SubAssign => Symbol::Sub,
-        Symbol::DivAssign => Symbol::Div,
-        Symbol::MulAssign => Symbol::Mul,
-        Symbol::AndAssign => Symbol::And,
-        Symbol::OrAssign => Symbol::Or,
-        Symbol::BitXorAssign => Symbol::BitXor,
-        Symbol::LogicalAndAssign => Symbol::LogicalAnd,
-        Symbol::LogicalOrAssign => Symbol::LogicalOr,
-        Symbol::ModuloAssign => Symbol::Modulo,
+        AddAssign => Add,
+        SubAssign => Sub,
+        DivAssign => Div,
+        MulAssign => Mul,
+        AndAssign => And,
+        OrAssign => Or,
+        BitXorAssign => BitXor,
+        LogicalAndAssign => LogicalAnd,
+        LogicalOrAssign => LogicalOr,
+        ModuloAssign => Modulo,
         _ => return None,
     })
 }
@@ -53,36 +53,36 @@ pub const fn op_from_assign_op(s: Symbol) -> Option<Symbol> {
 pub const fn binding_mode_from_op(s: Symbol) -> Option<BindingMode> {
     // TODO(clarity): Move to a symbol module.
     Some(match s {
-        Symbol::Lambda => BindingMode::Given,
-        Symbol::Pi => BindingMode::Forall,
-        Symbol::Forall => BindingMode::Forall,
-        Symbol::Exists => BindingMode::With,
-        Symbol::Sigma => BindingMode::With,
+        Lambda => BindingMode::Given,
+        Pi => BindingMode::Forall,
+        Forall => BindingMode::Forall,
+        Exists => BindingMode::With,
+        Sigma => BindingMode::With,
         _ => return None,
     })
 }
 
 pub const fn is_assign(s: Symbol) -> bool {
     // TODO(clarity): Move to a symbol module.
-    matches!(s, Symbol::Assign) || op_from_assign_op(s).is_some()
+    matches!(s, Assign) || op_from_assign_op(s).is_some()
 }
 
 // TODO: Make lazy / single init.
 lazy_static! {
     // Left associativity is the current default.
-    pub static ref RIGHT_ASSOCIATIVE: HashSet<Symbol> = hash_set!{
-        Symbol::OpenParen,
-        Symbol::OpenCurly,
-        Symbol::OpenBracket,
-        Symbol::Exp,
-        Symbol::Sequence,
+    static ref RIGHT_ASSOCIATIVE: HashSet<Symbol> = hash_set!{
+        OpenParen,
+        OpenCurly,
+        OpenBracket,
+        Exp,
+        Sequence,
     };
-    pub static ref ASSOCIATIVE: HashSet<Symbol> = hash_set!{
-        Symbol::Add,
-        Symbol::Mul,
-        Symbol::And, // Note: LogicalAnd is not associative due to shortcircuiting
-        Symbol::Or, // Note: LogicalOr is not associative due to shortcircuiting
-        Symbol::BitXor,
+    static ref ASSOCIATIVE: HashSet<Symbol> = hash_set!{
+        Add,
+        Mul,
+        And, // Note: LogicalAnd is not associative due to shortcircuiting
+        Or, // Note: LogicalOr is not associative due to shortcircuiting
+        BitXor,
     };
 
     /*
@@ -101,73 +101,73 @@ lazy_static! {
         unary operators: just as usual
     */
     static ref LOOSER_THAN_MAP: HashMap<Symbol, Vec<Symbol>> = map!{
-        Symbol::OpenParen => vec![Symbol::OpenCurly],
-        Symbol::OpenCurly => vec![Symbol::OpenBracket],
-        Symbol::OpenBracket => vec![Symbol::Sequence],
-        Symbol::Sequence => vec![
-            Symbol::Assign,
-            Symbol::AddAssign,
-            Symbol::SubAssign,
-            Symbol::DivAssign,
-            Symbol::MulAssign,
-            Symbol::AndAssign,
-            Symbol::OrAssign,
-            Symbol::BitXorAssign,
-            Symbol::LogicalAndAssign,
-            Symbol::LogicalOrAssign,
-            Symbol::ModuloAssign,
+        OpenParen => vec![OpenCurly],
+        OpenCurly => vec![OpenBracket],
+        OpenBracket => vec![Sequence],
+        Sequence => vec![
+            Assign,
+            AddAssign,
+            SubAssign,
+            DivAssign,
+            MulAssign,
+            AndAssign,
+            OrAssign,
+            BitXorAssign,
+            LogicalAndAssign,
+            LogicalOrAssign,
+            ModuloAssign,
         ],
-        Symbol::Assign => vec![Symbol::LeftPipe],
-        Symbol::AddAssign => vec![Symbol::LeftPipe],
-        Symbol::SubAssign => vec![Symbol::LeftPipe],
-        Symbol::DivAssign => vec![Symbol::LeftPipe],
-        Symbol::MulAssign => vec![Symbol::LeftPipe],
-        Symbol::AndAssign => vec![Symbol::LeftPipe],
-        Symbol::OrAssign => vec![Symbol::LeftPipe],
-        Symbol::BitXorAssign => vec![Symbol::LeftPipe],
-        Symbol::LogicalAndAssign => vec![Symbol::LeftPipe],
-        Symbol::LogicalOrAssign => vec![Symbol::LeftPipe],
-        Symbol::ModuloAssign => vec![Symbol::LeftPipe],
-        Symbol::LeftPipe => vec![Symbol::RightPipe],
-        Symbol::RightPipe => vec![Symbol::Sigma],
-        Symbol::Sigma => vec![Symbol::Lambda],
-        Symbol::Lambda => vec![Symbol::Arrow],
-        Symbol::Arrow => vec![Symbol::DoubleArrow],
-        Symbol::DoubleArrow => vec![Symbol::Forall],
-        Symbol::Forall => vec![Symbol::Pi],
-        Symbol::Pi => vec![Symbol::Exists],
-        Symbol::Exists => vec![
-            Symbol::HasType,
-            Symbol::Eqs,
-            Symbol::NotEqs,
-            Symbol::Lt,
-            Symbol::LtEqs,
-            Symbol::Gt,
-            Symbol::GtEqs,
+        Assign => vec![LeftPipe],
+        AddAssign => vec![LeftPipe],
+        SubAssign => vec![LeftPipe],
+        DivAssign => vec![LeftPipe],
+        MulAssign => vec![LeftPipe],
+        AndAssign => vec![LeftPipe],
+        OrAssign => vec![LeftPipe],
+        BitXorAssign => vec![LeftPipe],
+        LogicalAndAssign => vec![LeftPipe],
+        LogicalOrAssign => vec![LeftPipe],
+        ModuloAssign => vec![LeftPipe],
+        LeftPipe => vec![RightPipe],
+        RightPipe => vec![Sigma],
+        Sigma => vec![Lambda],
+        Lambda => vec![Arrow],
+        Arrow => vec![DoubleArrow],
+        DoubleArrow => vec![Forall],
+        Forall => vec![Pi],
+        Pi => vec![Exists],
+        Exists => vec![
+            HasType,
+            Eqs,
+            NotEqs,
+            Lt,
+            LtEqs,
+            Gt,
+            GtEqs,
         ],
-        Symbol::HasType => vec![Symbol::Add, Symbol::LeftShift, Symbol::RightShift, Symbol::Try],
-        Symbol::Eqs => vec![Symbol::Add, Symbol::LeftShift, Symbol::RightShift, Symbol::Try],
-        Symbol::NotEqs => vec![Symbol::Add, Symbol::LeftShift, Symbol::RightShift, Symbol::Try],
-        Symbol::Lt => vec![Symbol::Add, Symbol::LeftShift, Symbol::RightShift, Symbol::Try],
-        Symbol::LtEqs => vec![Symbol::Add, Symbol::LeftShift, Symbol::RightShift, Symbol::Try],
-        Symbol::Gt => vec![Symbol::Add, Symbol::LeftShift, Symbol::RightShift, Symbol::Try],
-        Symbol::GtEqs => vec![Symbol::Add, Symbol::LeftShift, Symbol::RightShift, Symbol::Try],
-        Symbol::LeftShift => vec![Symbol::BitNot],
-        Symbol::RightShift => vec![Symbol::BitNot],
-        Symbol::Add => vec![Symbol::Sub],
-        Symbol::Sub => vec![Symbol::Div],
-        Symbol::Div => vec![Symbol::Mul],
-        Symbol::Mul => vec![Symbol::Exp],
-        Symbol::Exp => vec![Symbol::And, Symbol::LogicalAnd, Symbol::BitXor, Symbol::Modulo, Symbol::GetAddress],
-        Symbol::And => vec![Symbol::Or],
-        Symbol::Or => vec![Symbol::And],
-        Symbol::LogicalAnd => vec![Symbol::LogicalOr],
-        Symbol::LogicalOr => vec![Symbol::LogicalAnd],
-        Symbol::BitXor => vec![Symbol::BitNot, Symbol::LogicalNot],
-        Symbol::Try => vec![Symbol::Dot],
-        Symbol::Dot => vec![Symbol::Range],
-        Symbol::Range => vec![Symbol::Spread],
-        Symbol::Spread => vec![Symbol::Escape],
+        HasType => vec![Add, LeftShift, RightShift, Try],
+        Eqs => vec![Add, LeftShift, RightShift, Try],
+        NotEqs => vec![Add, LeftShift, RightShift, Try],
+        Lt => vec![Add, LeftShift, RightShift, Try],
+        LtEqs => vec![Add, LeftShift, RightShift, Try],
+        Gt => vec![Add, LeftShift, RightShift, Try],
+        GtEqs => vec![Add, LeftShift, RightShift, Try],
+        LeftShift => vec![BitNot],
+        RightShift => vec![BitNot],
+        Add => vec![Sub],
+        Sub => vec![Div],
+        Div => vec![Mul],
+        Mul => vec![Exp],
+        Exp => vec![And, LogicalAnd, BitXor, Modulo, GetAddress],
+        And => vec![Or],
+        Or => vec![And],
+        LogicalAnd => vec![LogicalOr],
+        LogicalOr => vec![LogicalAnd],
+        BitXor => vec![BitNot, LogicalNot],
+        Try => vec![Dot],
+        Dot => vec![Range],
+        Range => vec![Spread],
+        Spread => vec![Escape],
     };
 
     static ref LOOSER_THAN: HashSet<(Symbol, Symbol)> = {
@@ -200,4 +200,55 @@ lazy_static! {
         }
         looser_than
     };
+}
+
+impl Symbol {
+    #[must_use]
+    pub fn is_associative(&self) -> bool {
+        ASSOCIATIVE.contains(self)
+    }
+
+    #[must_use]
+    pub fn is_right_associative(&self) -> bool {
+        RIGHT_ASSOCIATIVE.contains(self)
+    }
+
+    #[must_use]
+    pub fn is_left_associative(&self) -> bool {
+        !(self.is_associative() || self.is_right_associative())
+    }
+
+    #[must_use]
+    pub fn binding_type(&self) -> OpBinding {
+        match self {
+            Escape
+            | BitNot
+            | LogicalNot
+            | GetAddress
+            | Spread
+            | Lambda
+            | Sigma
+            | Forall
+            | Pi
+            | Exists => OpBinding::PrefixOp,
+            Try => OpBinding::PostfixOp,
+            Sub => OpBinding::PrefixOrInfixBinOp,
+            CloseCurly => OpBinding::Close(OpenCurly),
+            CloseParen => OpBinding::Close(OpenParen),
+            CloseBracket => OpBinding::Close(CloseParen),
+            OpenCurly => OpBinding::Open(CloseCurly),
+            OpenParen => OpBinding::Open(CloseParen),
+            OpenBracket => OpBinding::Open(CloseBracket),
+            Sequence => OpBinding::InfixOrPostfixBinOp,
+            _ => OpBinding::InfixBinOp,
+        }
+    }
+
+    #[must_use]
+    pub fn is_looser(&self, other: Self) -> bool {
+        if *self == other {
+            return self.is_right_associative();
+        }
+        LOOSER_THAN.contains(&(*self, other))
+    }
 }
