@@ -70,6 +70,20 @@ impl Ast {
         }
         eq
     }
+    pub fn add_args(&mut self, node_id: NodeId, args: SmallVec<NodeId, CALL_ARGS_STANDARD_ITEM_NUM>) -> NodeId {
+        let location = self[node_id].location;
+        let id = self[node_id].id.clone();
+        match id {
+            NodeData::Identifier(_) | NodeData::Call(_) => {
+                let call = Call {
+                    inner: node_id,
+                    args,
+                };
+                self.add_call(call, location)
+            }
+            node => todo!("Assignment to non definition head support: {node:?}"),
+        }
+    }
     pub fn add_implementation(&mut self, node_id: NodeId, imp: NodeId) -> NodeId {
         use crate::parser::semantics::BindingMode;
         let location = self[node_id].location;

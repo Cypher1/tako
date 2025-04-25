@@ -174,7 +174,7 @@ fn language<'src, 'ast>() -> impl Parser<'src, &'src [Token], (), ParserConfig<'
             .labelled("an ordered set of values");
 
         let unordered_container = op(Symbol::OpenCurly)
-            .then(many)
+            .then(many.clone())
             .then(op(Symbol::CloseCurly))
             .map_with(|((open, nodes), _close), extra| {
                 let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
@@ -236,13 +236,8 @@ fn language<'src, 'ast>() -> impl Parser<'src, &'src [Token], (), ParserConfig<'
         };
 
         /*
-        Source: https://www.foonathan.net/2017/07/operator-precedence/
-        Inside the categories the relative precedence of the operators is as follows:
-            logical operators: ! > &&,||, but not mixed && and || chains
-            comparison operators: no chaining at all
-            mathematical operators: unary +,- > *,/ > +,-, with the usual associativity
-            bitwise operators: unary ~ before the binary operators, but again no mixed chaining of &, | and ^ and no chaining of the shift operators
-            unary operators: just as usual
+        For reference, some interesting ideas about partial ordering of precedences:
+            - https://www.foonathan.net/2017/07/operator-precedence/
         */
 
         use Symbol::*;
@@ -308,9 +303,23 @@ fn language<'src, 'ast>() -> impl Parser<'src, &'src [Token], (), ParserConfig<'
         // postfix_op(11, Try),
         // infix_op(left(9), DoubleArrow),
         // infix_op(left(8), Arrow),
+        let params = many
+            .clone()
+            .delimited_by(op(Symbol::OpenParen), op(Symbol::CloseParen))
+            .labelled("a set of parameters");
+
+        let callable = expr
+            .clone()
+            .then(params)
+            .map_with(|(lhs, rhs), extra| {
+                let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+                ast.add_args(lhs, rhs)
+            })
+            .labelled("a callable");
 
         let expr = math_expr
             .clone()
+            .or(callable)
             .or(boolean_expr)
             .or(comparison)
             .or(lshift_expr)
