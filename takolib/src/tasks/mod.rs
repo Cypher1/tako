@@ -103,7 +103,7 @@ impl Task for LexFileTask {
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
         trace!("LexFileTask: {path}", path = self.path.display());
-        let tokens = crate::parser::lex(&self.contents);
+        let tokens = crate::parser::lexer::lex(&self.contents);
         let tokens = tokens
             .map(|tokens| ParseFileTask {
                 path: self.path.clone(),

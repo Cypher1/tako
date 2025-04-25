@@ -114,7 +114,7 @@ mod tests {
     use super::*;
     use crate::desugarer::desugar;
     use crate::parser::parse;
-    use crate::parser::lex;
+    use crate::parser::lexer::lex;
     use std::path::PathBuf;
 
     fn test_path() -> PathBuf {
