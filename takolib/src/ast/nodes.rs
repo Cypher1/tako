@@ -6,7 +6,7 @@ use crate::parser::tokens::Symbol;
 use smallvec::SmallVec;
 
 pub const OP_ARGS_STANDARD_ITEM_NUM: usize = 2;
-pub const CALL_ARGS_STANDARD_ITEM_NUM: usize = 5;
+pub const CALL_ARGS_STANDARD_ITEM_NUM: usize = 2;
 pub const FMT_STR_STANDARD_ITEM_NUM: usize = 2; // TODO: Convert to a different store
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
