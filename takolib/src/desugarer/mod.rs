@@ -62,8 +62,8 @@ pub fn desugar(_path: &Path, old_ast: &Ast, _root: Option<NodeId>) -> Result<Ast
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::parse;
     use crate::parser::lexer::lex;
+    use crate::parser::parse;
     use std::path::PathBuf;
 
     fn test_path() -> PathBuf {

@@ -206,8 +206,8 @@ impl std::fmt::Display for PrintNode<'_> {
 mod tests {
     use super::*;
     use crate::error::TError;
-    use crate::parser::parse;
     use crate::parser::lexer::lex;
+    use crate::parser::parse;
     use std::path::PathBuf;
 
     fn test_file1() -> PathBuf {

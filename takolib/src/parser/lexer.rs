@@ -107,10 +107,8 @@ pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> boo
                     (Symbol::And, Symbol::Assign) => Symbol::AndAssign,
                     (Symbol::And, Symbol::And) => Symbol::LogicalAnd,
                     (Symbol::BitXor, Symbol::Assign) => Symbol::BitXorAssign,
-                    (Symbol::Lt, Symbol::Or) => Symbol::LeftPipe,
                     (Symbol::Or, Symbol::Assign) => Symbol::OrAssign,
                     (Symbol::Or, Symbol::Or) => Symbol::LogicalOr,
-                    (Symbol::Or, Symbol::Gt) => Symbol::RightPipe,
                     (Symbol::Lt, Symbol::Lt) => Symbol::LeftShift,
                     (Symbol::Gt, Symbol::Gt) => Symbol::RightShift,
                     (Symbol::Dot, Symbol::Dot) => Symbol::Range,
@@ -195,8 +193,7 @@ pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> boo
     let length = characters.length();
     if length > SymbolLength::MAX as usize {
         assert_eq!(kind, TokenType::StringLit); // TODO(usability): Error here.
-        let mut number_of_tokens =
-            (length + SymbolLength::MAX as usize - 1) / (SymbolLength::MAX as usize);
+        let mut number_of_tokens = length.div_ceil(SymbolLength::MAX as usize);
         if number_of_tokens >= (SymbolLength::MAX as usize) {
             todo!("Token was too long ({length:?}), implement a recursive group thing...");
         }
@@ -237,8 +234,8 @@ fn is_whitespace(chr: char) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::TokenType::{ColorLit, Ident, NumberLit, OpType, StringLit};
+    use super::*;
     use better_std::{assert_eq, assert_str_eq};
     use strum::IntoEnumIterator;
 
@@ -449,7 +446,11 @@ mod tests {
     fn lex_parentheses() {
         let contents = "(\"hello world\"\n)";
         let tokens = setup(contents);
-        let expected = vec![OpType(Symbol::OpenParen), StringLit, OpType(Symbol::CloseParen)];
+        let expected = vec![
+            OpType(Symbol::OpenParen),
+            StringLit,
+            OpType(Symbol::CloseParen),
+        ];
         assert_eq!(
             tokens
                 .iter()
@@ -471,7 +472,11 @@ mod tests {
     fn lex_curlies() {
         let contents = "{\"hello world\"\n}";
         let tokens = setup(contents);
-        let expected = vec![OpType(Symbol::OpenCurly), StringLit, OpType(Symbol::CloseCurly)];
+        let expected = vec![
+            OpType(Symbol::OpenCurly),
+            StringLit,
+            OpType(Symbol::CloseCurly),
+        ];
         assert_eq!(
             tokens
                 .iter()
@@ -493,7 +498,11 @@ mod tests {
     fn lex_brackets() {
         let contents = "[\"hello world\"\n]";
         let tokens = setup(contents);
-        let expected = vec![OpType(Symbol::OpenBracket), StringLit, OpType(Symbol::CloseBracket)];
+        let expected = vec![
+            OpType(Symbol::OpenBracket),
+            StringLit,
+            OpType(Symbol::CloseBracket),
+        ];
         assert_eq!(
             tokens
                 .iter()
@@ -618,6 +627,8 @@ mod tests {
                     | Symbol::Hash
                     | Symbol::MultiCommentOpen
                     | Symbol::MultiCommentClose
+                    | Symbol::Group
+                    | Symbol::Escape
             ) {
                 // Special case
                 continue;

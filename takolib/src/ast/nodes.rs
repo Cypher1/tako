@@ -70,7 +70,7 @@ pub struct Op {
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Definition {
     pub mode: BindingMode,
-    pub name: IdentifierId,
+    pub name: Identifier,
     pub arguments: Option<SmallVec<NodeId, CALL_ARGS_STANDARD_ITEM_NUM>>,
     pub implementation: Option<NodeId>,
 }
