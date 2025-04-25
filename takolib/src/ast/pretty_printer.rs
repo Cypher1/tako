@@ -115,10 +115,6 @@ impl std::fmt::Display for PrintNode<'_> {
                 let (_node_id, node) = self.context().get(*node);
                 write!(f, "Warning {node:?}")?;
             }
-            NodeData::Atom(node) => {
-                let (_node_id, node) = self.context().get(*node);
-                self.print_identifier(f, node.name)?;
-            }
             NodeData::Call(node) => {
                 let (_node_id, node) = self.context().get(*node);
                 let is_ident = matches!(self.context().get(node.inner).id, NodeData::Identifier(_));
@@ -211,7 +207,7 @@ mod tests {
     use super::*;
     use crate::error::TError;
     use crate::parser::parse;
-    use crate::parser::lex;
+    use crate::parser::lexer::lex;
     use std::path::PathBuf;
 
     fn test_file1() -> PathBuf {

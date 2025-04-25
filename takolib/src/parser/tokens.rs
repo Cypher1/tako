@@ -18,6 +18,7 @@ assert_eq_size!([Token; 2], [u8; 8]);
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum OpBinding {
+    // TODO: Remove for chumsky errors!
     PostfixOp,
     PrefixOp,
     PrefixOrInfixBinOp,
@@ -27,10 +28,21 @@ pub enum OpBinding {
     Close(Symbol), // the associated Opener
 }
 
+/*
+macro_rules! senum({ $s: expr } => {{
+    const BYTES: &[u8] = ($s as &str).as_bytes();
+    const CH_0: isize = BYTES[0] as isize;
+    const CH_1: isize = BYTES[1] as isize;
+    // TODO: Check bytes length
+    const M: isize = CH_0 + 256 * CH_1;
+    M
+}});
+*/
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, EnumIter)]
 pub enum Symbol {
     // Ignore symbols
-    Shebang,
+    Shebang, // TODO: Consider using direct comparisons? = senum!("/*"),
     Comment,
     Hash,
     MultiCommentOpen,
@@ -105,11 +117,13 @@ pub enum Symbol {
     Range,
     Spread,
     Escape,
+    // If a symbol (normally strings) is too long, we will store it as multiple repeated tokens,
+    // of the same kind preceeded by a 'Group' token.
+    Group,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum CharacterType {
-    AtomHead,                // '$' on it's own (invalid).
     Whitespace,              // A special discardable token representing whitespace.
     HexSym, // A subset of symbol characters that can be used in Hex strings (e.g. Colors).
     PartialToken(TokenType), // Already a valid token!
@@ -117,10 +131,9 @@ pub enum CharacterType {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum TokenType {
-    Op(Symbol), // An operator (i.e. a known symbol used as a prefix or infix operator).
+    OpType(Symbol), // An operator (i.e. a known symbol used as a prefix or infix operator).
     Comma,      // A regular comma.
     Ident,      // A named value.
-    Atom,       // A symbol starting with a '$', used differently to symbols which have values.
     // Literals (i.e. tokens representing values):
     NumberLit,
     ColorLit,
@@ -130,25 +143,20 @@ pub enum TokenType {
     FmtStringLitStart,
     FmtStringLitMid,
     FmtStringLitEnd,
-    // If a symbol (normally strings) is too long, we will store it as multiple repeated tokens,
-    // of the same kind preceeded by a 'Group' token.
-    // TODO: Group,
 }
 
 impl fmt::Display for TokenType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Op(sym) => write!(f, "a '{sym:?}' symbol"),
-            Self::Comma => write!(f, "a comma"),
-            Self::Ident => write!(f, "an identifier"),
-            Self::Atom => write!(f, "an atom"),
-            Self::NumberLit => write!(f, "a number"),
-            Self::ColorLit => write!(f, "a color"),
-            Self::StringLit => write!(f, "a string literal"),
-            Self::FmtStringLitStart => write!(f, "the start of a format string literal"),
-            Self::FmtStringLitMid => write!(f, "the middle of a format string literal"),
-            Self::FmtStringLitEnd => write!(f, "the end of a format string literal"),
-            // Self::Group => write!(f, "a long string literal"),
+            TokenType::OpType(sym) => write!(f, "a '{sym:?}' symbol"),
+            TokenType::Comma => write!(f, "a comma"),
+            TokenType::Ident => write!(f, "an identifier"),
+            TokenType::NumberLit => write!(f, "a number"),
+            TokenType::ColorLit => write!(f, "a color"),
+            TokenType::StringLit => write!(f, "a string literal"),
+            TokenType::FmtStringLitStart => write!(f, "the start of a format string literal"),
+            TokenType::FmtStringLitMid => write!(f, "the middle of a format string literal"),
+            TokenType::FmtStringLitEnd => write!(f, "the end of a format string literal"),
         }
     }
 }
@@ -195,45 +203,45 @@ const _COMMENT: &str = "//";
 const _MULTI_COMMENT: &str = "/*";
 
 #[inline]
-fn classify_char(ch: char) -> CharacterType {
-    use CharacterType::{AtomHead, HexSym, PartialToken, Whitespace};
-    use TokenType::{Comma, Ident, NumberLit, Op, StringLit};
+pub fn classify_char(ch: char) -> CharacterType {
+    use CharacterType::{HexSym, PartialToken, Whitespace};
+    use TokenType::{Comma, Ident, NumberLit, OpType, StringLit};
+    use Symbol::*;
     PartialToken(match ch {
         '\n' | '\r' | '\t' | ' ' => return Whitespace,
-        '$' => return AtomHead,
         'A'..='F' | 'a'..='f' => return HexSym,
         ',' => Comma,
-        '#' => Op(Symbol::Hash),
-        '~' => Op(Symbol::BitNot),
-        '!' => Op(Symbol::LogicalNot),
-        '@' => Op(Symbol::GetAddress),
-        '%' => Op(Symbol::Modulo),
-        '^' => Op(Symbol::BitXor),
-        '&' => Op(Symbol::And),
-        '*' => Op(Symbol::Mul),
-        '-' => Op(Symbol::Sub),
-        '+' => Op(Symbol::Add),
-        '=' => Op(Symbol::Assign),
-        '<' => Op(Symbol::Lt),
-        '>' => Op(Symbol::Gt),
-        '|' => Op(Symbol::Or),
-        '/' => Op(Symbol::Div),
-        '?' => Op(Symbol::Try),
-        '.' => Op(Symbol::Dot),
-        ':' => Op(Symbol::HasType),
-        ';' => Op(Symbol::Sequence),
-        '(' => Op(Symbol::OpenParen),
-        ')' => Op(Symbol::CloseParen),
-        '{' => Op(Symbol::OpenCurly),
-        '}' => Op(Symbol::CloseCurly),
-        '[' => Op(Symbol::OpenBracket),
-        ']' => Op(Symbol::CloseBracket),
-        '\\' => Op(Symbol::Escape), // Escape?
-        'λ' => Op(Symbol::Lambda),
-        'Π' => Op(Symbol::Pi),
-        'Σ' => Op(Symbol::Sigma),
-        '∀' => Op(Symbol::Forall),
-        '∃' => Op(Symbol::Exists),
+        '#' => OpType(Hash),
+        '~' => OpType(BitNot),
+        '!' => OpType(LogicalNot),
+        '@' => OpType(GetAddress),
+        '%' => OpType(Modulo),
+        '^' => OpType(BitXor),
+        '&' => OpType(And),
+        '*' => OpType(Mul),
+        '-' => OpType(Sub),
+        '+' => OpType(Add),
+        '=' => OpType(Assign),
+        '<' => OpType(Lt),
+        '>' => OpType(Gt),
+        '|' => OpType(Or),
+        '/' => OpType(Div),
+        '?' => OpType(Try),
+        '.' => OpType(Dot),
+        ':' => OpType(HasType),
+        ';' => OpType(Sequence),
+        '(' => OpType(OpenParen),
+        ')' => OpType(CloseParen),
+        '{' => OpType(OpenCurly),
+        '}' => OpType(CloseCurly),
+        '[' => OpType(OpenBracket),
+        ']' => OpType(CloseBracket),
+        '\\' => OpType(Escape), // Escape?
+        'λ' => OpType(Lambda),
+        'Π' => OpType(Pi),
+        'Σ' => OpType(Sigma),
+        '∀' => OpType(Forall),
+        '∃' => OpType(Exists),
         '0'..='9' => NumberLit,
         'A'..='Z' | 'a'..='z' | '_' => Ident, // Overlapped by colors.
         '"' | '\'' => StringLit,
@@ -281,12 +289,8 @@ pub const fn is_assign(s: Symbol) -> bool {
     matches!(s, Symbol::Assign) || op_from_assign_op(s).is_some()
 }
 
-#[inline]
-fn is_whitespace(chr: char) -> bool {
-    classify_char(chr) == CharacterType::Whitespace
-}
 
-impl FromStr for Symbol {
+impl std::str::FromStr for Symbol {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -365,6 +369,7 @@ impl TryFrom<&str> for Symbol {
     type Error = ();
 
     fn try_from(s: &str) -> Result<Symbol, Self::Error> {
+        use std::str::FromStr;
         Symbol::from_str(s)
     }
 }
@@ -378,7 +383,6 @@ impl Into<&str> for &Symbol {
             Comment => "//",
             MultiCommentOpen => "/*",
             MultiCommentClose => "*/",
-            // Basics
             Add => "+",
             Sub => "-",
             Div => "/",
@@ -405,7 +409,6 @@ impl Into<&str> for &Symbol {
             RightShift => ">>",
             LeftPipe => "<|",
             RightPipe => "|>",
-            // Assignment versions
             Assign => "=",
             AddAssign => "+=",
             SubAssign => "-=",
@@ -417,13 +420,11 @@ impl Into<&str> for &Symbol {
             LogicalAndAssign => "&&=",
             LogicalOrAssign => "||=",
             ModuloAssign => "%=",
-            // Quantification
             Lambda => "λ",
             Sigma => "Σ",
             Pi => "Π",
             Forall => "∀",
             Exists => "∃",
-            // Comparisons
             Eqs => "==",
             NotEqs => "!=",
             Lt => "<",
@@ -436,6 +437,8 @@ impl Into<&str> for &Symbol {
             CloseCurly => "}",
             OpenBracket => "[",
             CloseBracket => "]",
+            Escape => "\\",
+            Group => " ", // Group is not a expressable character.
         }
     }
 }
@@ -454,12 +457,42 @@ impl std::fmt::Display for Symbol {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use better_std::assert_eq;
+    use strum::IntoEnumIterator;
+    use CharacterType::*;
+    use TokenType::*;
+    use Symbol::*;
 
     #[test]
     fn round_trip_to_str_try_from() {
         for ch in Symbol::iter() {
             assert_eq!(Symbol::try_from(Into::<&str>::into(ch)), Ok(ch));
         }
+        // TODO: Test error path
     }
-    // TODO: Test error path
+
+    #[test]
+    fn classify_whitespace() {
+        assert_eq!(classify_char(' '), Whitespace);
+        assert_eq!(classify_char('\n'), Whitespace);
+        assert_eq!(classify_char('\r'), Whitespace);
+    }
+
+    #[test]
+    fn classify_parens_and_brackets() {
+        assert_eq!(classify_char('('), PartialToken(OpType(OpenParen)));
+        assert_eq!(classify_char(')'), PartialToken(OpType(CloseParen)));
+        assert_eq!(classify_char('['), PartialToken(OpType(OpenBracket)));
+        assert_eq!(classify_char(']'), PartialToken(OpType(CloseBracket)));
+        assert_eq!(classify_char('{'), PartialToken(OpType(OpenCurly)));
+        assert_eq!(classify_char('}'), PartialToken(OpType(CloseCurly)));
+    }
+
+    #[test]
+    fn classify_number() {
+        assert_eq!(classify_char('0'), PartialToken(NumberLit));
+        assert_eq!(classify_char('1'), PartialToken(NumberLit));
+        assert_eq!(classify_char('2'), PartialToken(NumberLit));
+    }
+
 }

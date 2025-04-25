@@ -35,6 +35,7 @@ path = "src/lib.rs"
 thiserror = "2.0.12"
 bitvec = "1"
 # TODO(perf): Use bitsvec = "0.1.1" when portable_simd is on stable.
+# https://github.com/rust-lang/rust/issues/86656
 log = "0.4"
 pretty_assertions = "1.4.1"
 futures = "0.3"
@@ -59,12 +60,12 @@ tree-sitter = { git = "https://github.com/tree-sitter/tree-sitter" , features = 
 entity-component-slab = { version = "0.2.0", path = "../entity-component-slab", features = [ ] }
 test_each_file = "0.3.4"
 paste = "1.0.15"
-chumsky = { version = "0.10.1", features = ["pratt"] }
+chumsky = { version = "0.10.1", features = ["pratt", "extension"] }
 strum = { version = "0.27.1", features = [ "derive" ] }
+strum_macros = "0.27.1"
 lazy_static = "1.5.0"
 
 [dev-dependencies]
-strum_macros = "0.27.1"
 pretty_assertions = "1.4.1"
 rand = "0.9.1"
 walkdir = "2.5.0"

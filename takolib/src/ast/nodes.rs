@@ -5,6 +5,10 @@ use crate::parser::semantics::BindingMode;
 use crate::parser::tokens::Symbol;
 use smallvec::SmallVec;
 
+pub const OP_ARGS_STANDARD_ITEM_NUM: usize = 2;
+pub const CALL_ARGS_STANDARD_ITEM_NUM: usize = 5;
+pub const FMT_STR_STANDARD_ITEM_NUM: usize = 2; // TODO: Convert to a different store
+
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Node {
     pub id: NodeData,
@@ -28,7 +32,6 @@ pub enum NodeData {
 
     // Variable:
     Identifier(IdentifierId),
-    Atom(AtomId),
 
     // Apply & Abstract:
     Call(CallId),
@@ -52,27 +55,22 @@ pub enum Warning {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
-pub struct Atom {
-    pub name: Identifier,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Call {
     pub inner: NodeId,
-    pub args: SmallVec<NodeId, 2>,
+    pub args: SmallVec<NodeId, CALL_ARGS_STANDARD_ITEM_NUM>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Op {
     pub op: Symbol,
     // TODO(perf): Use left: Option<NodeId>, right: Option<NodeId>
-    pub args: SmallVec<NodeId, 2>,
+    pub args: SmallVec<NodeId, OP_ARGS_STANDARD_ITEM_NUM>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Definition {
     pub mode: BindingMode,
-    pub name: Identifier,
-    pub arguments: Option<SmallVec<NodeId, 2>>,
+    pub name: IdentifierId,
+    pub arguments: Option<SmallVec<NodeId, CALL_ARGS_STANDARD_ITEM_NUM>>,
     pub implementation: Option<NodeId>,
 }

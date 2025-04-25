@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::ast::location::{Location, UserFacingLocation};
-use crate::parser::ParseError;
+use crate::parser::error::ParseError;
 use short_typed_index::TypedIndex;
 use thiserror::Error;
 
