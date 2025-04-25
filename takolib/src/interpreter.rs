@@ -218,8 +218,6 @@ impl Ctx<'_> {
             Symbol::LogicalAnd => todo!(),
             Symbol::LogicalOr => todo!(),
             Symbol::GetAddress => todo!(),
-            Symbol::LeftPipe => todo!(),
-            Symbol::RightPipe => todo!(),
             Symbol::HasType => todo!(),
             Symbol::Arrow | Symbol::DoubleArrow => {
                 // TODO(clarity): Type arrow vs value arrow?
@@ -282,8 +280,8 @@ impl Ctx<'_> {
 mod tests {
     use super::*;
     use crate::error::TError;
-    use crate::parser::parse;
     use crate::parser::lexer::lex;
+    use crate::parser::parse;
     use std::path::PathBuf;
 
     fn test_path() -> PathBuf {

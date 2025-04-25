@@ -4,7 +4,7 @@ use crate::ast::NodeId;
 use crate::error::TError;
 use thiserror::Error;
 
-// TODO: Remove for chumsky errors!
+// TODO: Remove for parser library errors!
 #[derive(Debug, Error, PartialEq, Eq, Ord, PartialOrd, Clone, Hash)]
 pub enum ParseError {
     UnexpectedEof, // TODO: Add context.

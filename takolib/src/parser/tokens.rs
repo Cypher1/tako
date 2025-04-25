@@ -1,9 +1,5 @@
 use crate::ast::location::{IndexIntoFile, Location, SymbolLength};
-use crate::error::TError;
 use crate::parser::semantics::BindingMode;
-use better_std::{assert_eq, todo, *};
-use log::{debug, trace};
-use std::collections::{HashMap, HashSet};
 use std::fmt;
 use strum_macros::EnumIter;
 
@@ -18,7 +14,7 @@ assert_eq_size!([Token; 2], [u8; 8]);
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum OpBinding {
-    // TODO: Remove for chumsky errors!
+    // TODO: Remove for parser library errors!
     PostfixOp,
     PrefixOp,
     PrefixOrInfixBinOp,
@@ -41,12 +37,6 @@ macro_rules! senum({ $s: expr } => {{
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, EnumIter)]
 pub enum Symbol {
-    // Ignore symbols
-    Shebang, // TODO: Consider using direct comparisons? = senum!("/*"),
-    Comment,
-    Hash,
-    MultiCommentOpen,
-    MultiCommentClose,
     // Closes
     CloseBracket,
     CloseCurly,
@@ -69,9 +59,6 @@ pub enum Symbol {
     LogicalAndAssign,
     LogicalOrAssign,
     ModuloAssign,
-    // Pipes...
-    LeftPipe,
-    RightPipe,
 
     // Functions,
     Sigma,
@@ -116,10 +103,15 @@ pub enum Symbol {
     Dot,
     Range,
     Spread,
+
+    // Ignore symbols
     Escape,
-    // If a symbol (normally strings) is too long, we will store it as multiple repeated tokens,
-    // of the same kind preceeded by a 'Group' token.
     Group,
+    Shebang, // TODO: Consider using direct comparisons? = senum!("/*"),
+    Comment,
+    Hash,
+    MultiCommentOpen,
+    MultiCommentClose,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
@@ -129,11 +121,11 @@ pub enum CharacterType {
     PartialToken(TokenType), // Already a valid token!
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum TokenType {
     OpType(Symbol), // An operator (i.e. a known symbol used as a prefix or infix operator).
-    Comma,      // A regular comma.
-    Ident,      // A named value.
+    Comma,          // A regular comma.
+    Ident,          // A named value.
     // Literals (i.e. tokens representing values):
     NumberLit,
     ColorLit,
@@ -158,6 +150,11 @@ impl fmt::Display for TokenType {
             TokenType::FmtStringLitMid => write!(f, "the middle of a format string literal"),
             TokenType::FmtStringLitEnd => write!(f, "the end of a format string literal"),
         }
+    }
+}
+impl fmt::Debug for TokenType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self)
     }
 }
 
@@ -205,8 +202,8 @@ const _MULTI_COMMENT: &str = "/*";
 #[inline]
 pub fn classify_char(ch: char) -> CharacterType {
     use CharacterType::{HexSym, PartialToken, Whitespace};
-    use TokenType::{Comma, Ident, NumberLit, OpType, StringLit};
     use Symbol::*;
+    use TokenType::{Comma, Ident, NumberLit, OpType, StringLit};
     PartialToken(match ch {
         '\n' | '\r' | '\t' | ' ' => return Whitespace,
         'A'..='F' | 'a'..='f' => return HexSym,
@@ -289,7 +286,6 @@ pub const fn is_assign(s: Symbol) -> bool {
     matches!(s, Symbol::Assign) || op_from_assign_op(s).is_some()
 }
 
-
 impl std::str::FromStr for Symbol {
     type Err = ();
 
@@ -326,8 +322,6 @@ impl std::str::FromStr for Symbol {
             "=>" => DoubleArrow,
             "<<" => LeftShift,
             ">>" => RightShift,
-            "<|" => LeftPipe,
-            "|>" => RightPipe,
             // Assignment versions
             "=" => Assign,
             "+=" => AddAssign,
@@ -374,10 +368,10 @@ impl TryFrom<&str> for Symbol {
     }
 }
 
-impl Into<&str> for &Symbol {
-    fn into(self) -> &'static str {
+impl From<&Symbol> for &str {
+    fn from(o: &Symbol) -> &'static str {
         use Symbol::*;
-        match self {
+        match o {
             Hash => "#",
             Shebang => "#!",
             Comment => "//",
@@ -407,8 +401,6 @@ impl Into<&str> for &Symbol {
             DoubleArrow => "=>",
             LeftShift => "<<",
             RightShift => ">>",
-            LeftPipe => "<|",
-            RightPipe => "|>",
             Assign => "=",
             AddAssign => "+=",
             SubAssign => "-=",
@@ -442,9 +434,9 @@ impl Into<&str> for &Symbol {
         }
     }
 }
-impl Into<&str> for Symbol {
-    fn into(self) -> &'static str {
-        (&self).into()
+impl From<Symbol> for &str {
+    fn from(o: Symbol) -> &'static str {
+        (&o).into()
     }
 }
 
@@ -460,8 +452,8 @@ mod tests {
     use better_std::assert_eq;
     use strum::IntoEnumIterator;
     use CharacterType::*;
-    use TokenType::*;
     use Symbol::*;
+    use TokenType::*;
 
     #[test]
     fn round_trip_to_str_try_from() {
@@ -494,5 +486,4 @@ mod tests {
         assert_eq!(classify_char('1'), PartialToken(NumberLit));
         assert_eq!(classify_char('2'), PartialToken(NumberLit));
     }
-
 }
