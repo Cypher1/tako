@@ -5,7 +5,7 @@ use crate::ast::Ast;
 use crate::ast::NodeId;
 use crate::error::Error;
 use crate::lowerer::lower;
-use crate::parser::tokens::{Symbol, Token};
+use crate::parser::tokens::Token;
 use crate::primitives::meta::Meta;
 use crate::primitives::Prim;
 use async_trait::async_trait;

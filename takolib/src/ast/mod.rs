@@ -16,9 +16,6 @@ use smallvec::{smallvec, SmallVec};
 use std::path::PathBuf;
 use string_interner::{Identifier, StringInterner};
 
-type TsNodeId = u16;
-
-
 // TODO: Use https://binrw.rs/ for saving binaries.
 // const MAGIC: [u8; 2] = ['T', 'K'];
 // const AST_VERSION: [u8; 2] = [0, 0];

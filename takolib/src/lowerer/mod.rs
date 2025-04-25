@@ -113,8 +113,8 @@ pub fn lower(_path: &Path, og_ast: &Ast, root: NodeId) -> Result<Llamada, TError
 mod tests {
     use super::*;
     use crate::desugarer::desugar;
-    use crate::parser::parse;
     use crate::parser::lexer::lex;
+    use crate::parser::parse;
     use std::path::PathBuf;
 
     fn test_path() -> PathBuf {
