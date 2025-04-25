@@ -5,7 +5,7 @@ use crate::ast::Ast;
 use crate::ast::NodeId;
 use crate::error::Error;
 use crate::lowerer::lower;
-use crate::parser::tokens::Token;
+use crate::parser::tokens::{Symbol, Token};
 use crate::primitives::meta::Meta;
 use crate::primitives::Prim;
 use async_trait::async_trait;
@@ -103,7 +103,7 @@ impl Task for LexFileTask {
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
         trace!("LexFileTask: {path}", path = self.path.display());
-        let tokens = crate::parser::tokens::lex(&self.contents);
+        let tokens = crate::parser::lex(&self.contents);
         let tokens = tokens
             .map(|tokens| ParseFileTask {
                 path: self.path.clone(),

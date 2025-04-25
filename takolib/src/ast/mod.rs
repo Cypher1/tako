@@ -7,7 +7,7 @@ mod pretty_printer;
 pub mod string_interner;
 
 use crate::parser::semantics::Literal;
-use crate::parser::tokens::Symbol;
+use crate::parser::tokens_new::Symbol;
 use entity_component_slab::{make_component, make_world};
 use location::Location;
 use pretty_printer::{pretty, pretty_node};
@@ -15,7 +15,6 @@ use short_typed_index::TypedIndex;
 use smallvec::{smallvec, SmallVec};
 use std::path::PathBuf;
 use string_interner::{Identifier, StringInterner};
-use tree_sitter::Language;
 
 type TsNodeId = u16;
 
@@ -39,102 +38,15 @@ pub struct Ast {
     pub atoms: ChildSlab<Atom, NodeId>,
 
     pub string_interner: StringInterner,
-    pub node_types: NodeTypes,
-}
-
-macro_rules! construct_lang {
-    ($start_value: expr, $( $name: ident ),*) => {
-        {
-            // TODO: Check that this is okay
-            let _lang: *const Language = unsafe {
-                let fn_ptr = tree_sitter_tako::LANGUAGE.into_raw();
-                fn_ptr() as *const Language
-            };
-
-            // TODO: Check that this is okay
-            let _lang = unsafe {
-                &*_lang
-            };
-
-            paste!{
-                Ast {
-                    node_types: NodeTypes {
-                        $(
-                            [< _ $name>]: _lang.id_for_node_kind(stringify!($name), /*named*/ true),
-                        )*
-                    },
-                    ..$start_value
-                }
-            }
-        }
-    }
 }
 
 impl Ast {
     #[must_use]
     pub fn new(filepath: PathBuf) -> Self {
-        construct_lang!(
-            Self {
-                filepath,
-                ..Self::default()
-            },
-            // TODO: generate from
-            // ./tree_sitter_tako/src/node-types.json | jq "map(.type)"
-            add,
-            and,
-            arrow,
-            assign,
-            binding,
-            bit_and,
-            bit_not,
-            bit_or,
-            bit_xor,
-            block,
-            call,
-            color,
-            container,
-            div,
-            double_arrow,
-            equals,
-            exp,
-            field,
-            format_expression,
-            greater_than,
-            greater_than_equals,
-            has_type,
-            hex_literal,
-            index,
-            left_shift,
-            less_than,
-            less_than_equals,
-            mod,
-            mul,
-            neg,
-            nesting_comment,
-            not,
-            not_equals,
-            or,
-            parens,
-            range,
-            right_shift,
-            sequence,
-            set,
-            shebang,
-            single_line_comment,
-            source_file,
-            spread,
-            string_literal,
-            sub,
-            try,
-            escape_sequence,
-            exists,
-            float_literal,
-            forall,
-            given,
-            heading,
-            ident,
-            int_literal
-        )
+        Self {
+            filepath,
+            ..Self::default()
+        }
     }
 
     #[must_use]

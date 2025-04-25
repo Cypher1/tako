@@ -1,3 +1,5 @@
+#![doc = include_str!("../../README.md")]
+#![deny(missing_docs, clippy::undocumented_unsafe_blocks)]
 #![deny(clippy::all)]
 
 pub mod ast;

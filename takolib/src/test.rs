@@ -70,7 +70,7 @@ fn parse_example_files(file: &Path) {
     }
     info!("Start: {file:#?} ({setting:#?})");
 
-    let tokens = match crate::parser::tokens::lex(&contents) {
+    let tokens = match crate::parser::lex(&contents) {
         Err(e) => {
             assert_eq!(
                 TestResult::LexError,
