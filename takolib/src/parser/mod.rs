@@ -30,13 +30,87 @@ type ParserConfig<'src> = Full<Rich<'src, Token>, SimpleState<Ast>, ()>;
 
 use super::ast::nodes::FMT_STR_STANDARD_ITEM_NUM;
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+pub enum OpKind {
+    Infix,
+    Prefix,
+    Postfix,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+pub struct OpSetup {
+    op: &'static [Symbol],
+    kind: OpKind,
+    contains: &'static [Symbol],
+}
+
+impl OpSetup {
+    const fn new(op: &'static [Symbol], kind: OpKind, contains: &'static [Symbol]) -> Self {
+        Self { op, kind, contains }
+    }
+}
+
+// In precedence order least tightly binding to most.
+const OPS: &[OpSetup] = {
+    use OpKind::*;
+    use Symbol::*;
+
+    // TODO: Use
+    const INSPO: &str = include_str!("../../../tree-sitter-tako/grammar.js");
+    const PREFIX_MATHEMATICAL: &[Symbol] = &[Add, Sub];
+
+    const MATHEMATICAL: &[Symbol] = &[Add, Sub, Exp, Div, Mul, Modulo];
+
+    const LOGICAL: &[Symbol] = &[LogicalNot, LogicalAnd, LogicalOr];
+
+    const BIT: &[Symbol] = &[And, Or, BitNot, BitXor];
+
+    const SHIFT: &[Symbol] = &[LeftShift, RightShift];
+
+    const COMPARISONS: &[Symbol] = &[Eqs, NotEqs, Lt, LtEqs, Gt, GtEqs];
+
+    const ASSIGN: &[Symbol] = &[
+        Assign,
+        AddAssign,
+        SubAssign,
+        DivAssign,
+        MulAssign,
+        AndAssign,
+        OrAssign,
+        BitXorAssign,
+        LogicalAndAssign,
+        LogicalOrAssign,
+        ModuloAssign,
+    ];
+
+    const FUNCS: &[Symbol] = &[
+        Arrow,
+        DoubleArrow, // In case value level and type level must be different.
+    ];
+
+    const ANY_VALUE: &[Symbol] = constcat::concat_slices!(
+        [Symbol]:
+        PREFIX_MATHEMATICAL,
+        MATHEMATICAL,
+        LOGICAL,
+        BIT,
+        SHIFT,
+        COMPARISONS,
+        ASSIGN,
+        FUNCS,
+        &[
+            // Special...
+            GetAddress, Try, Dot, Range, Spread, Sequence, HasType,
+        ]);
+
+    &[
+        OpSetup::new(COMPARISONS, Infix, ANY_VALUE),
+        OpSetup::new(ASSIGN, Infix, ANY_VALUE),
+    ]
+};
+
 fn language<'src, 'ast>() -> impl Parser<'src, &'src [Token], (), ParserConfig<'src>> {
     use TokenType::*;
-
-    // TODO: Compute once.
-    // use lazy_static::lazy_static;
-    // lazy_static! {
-    // static ref RIGHT_ASSOCIATIVE: HashSet<Symbol> = hash_set!{
 
     // Tokens
     let simple_value = select_ref! {
