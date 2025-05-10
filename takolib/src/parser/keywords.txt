@@ -10,6 +10,8 @@ false
 forall
 from
 given
+impl
+implements
 implies
 import
 imports

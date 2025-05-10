@@ -1,0 +1,63 @@
+==================
+Vector Transpose Unsafe
+==================
+#!/usr/bin/env tako
+// test: type error
+
+main() = {
+  x3by2 = Vector.new([
+      [ 0, 1 ],
+      [ 2, 3 ],
+      [ 4, 5 ],
+    ]); // This should be of type Vector(3, 2)
+  x2by3: Vector(2, 2) = x3by2.transpose(); // This should fail in static analysis.
+  print("{x3by2}.transpose() is {x2by3}");
+}
+---
+
+(source_file
+  (shebang)
+  (single_line_comment)
+  (assign
+    (call
+      (ident))
+    (block
+      (sequence
+        (assign
+          (ident)
+          (field
+            (ident)
+            (call
+              (ident)
+              (container
+                (container
+                  (int_literal)
+                  (int_literal))
+                (container
+                  (int_literal)
+                  (int_literal))
+                (container
+                  (int_literal)
+                  (int_literal))))))
+        (single_line_comment)
+        (sequence
+          (assign
+            (has_type
+              (ident)
+              (call
+                (ident)
+                (int_literal)
+                (int_literal)))
+            (field
+              (ident)
+              (call
+                (ident))))
+          (single_line_comment)
+          (sequence
+            (call
+              (ident)
+              (string_literal
+                (format_expression
+                  (ident))
+                (format_expression
+                  (ident))))))))))

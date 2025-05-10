@@ -1,0 +1,75 @@
+==================
+Fibonacci Accumulator
+==================
+#!/usr/bin/env tako
+// test: all
+
+fib_helper(n: T, a: T, b: T, forall T: Nat): T=if(n==0, a, fib_helper(n-1, b, a+b));
+
+fib(n: T, forall T: Nat): T=fib_helper(n, 0, 1);
+
+print(fib(80))
+---
+
+(source_file
+  (shebang)
+  (single_line_comment)
+  (sequence
+    (assign
+      (has_type
+        (call
+          (ident)
+          (has_type
+            (ident)
+            (ident))
+          (has_type
+            (ident)
+            (ident))
+          (has_type
+            (ident)
+            (ident))
+          (has_type
+            (binding
+              (forall)
+              (ident))
+            (ident)))
+        (ident))
+      (call
+        (ident)
+        (equals
+          (ident)
+          (int_literal))
+        (ident)
+        (call
+          (ident)
+          (sub
+            (ident)
+            (int_literal))
+          (ident)
+          (add
+            (ident)
+            (ident)))))
+    (sequence
+      (assign
+        (has_type
+          (call
+            (ident)
+            (has_type
+              (ident)
+              (ident))
+            (has_type
+              (binding
+                (forall)
+                (ident))
+              (ident)))
+          (ident))
+        (call
+          (ident)
+          (ident)
+          (int_literal)
+          (int_literal)))
+      (call
+        (ident)
+        (call
+          (ident)
+          (int_literal))))))

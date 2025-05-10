@@ -1,1129 +1,553 @@
-pub mod semantics;
-pub mod tokens;
-use crate::ast::location::Location;
-use crate::ast::string_interner::Identifier;
-use crate::ast::{Ast, Atom, Call, Contains, Definition, NodeData, NodeId, Op};
-use crate::error::TError;
 use better_std::include_strs;
-use log::{debug, trace};
-use semantics::BindingMode;
+use chumsky::extra::Full;
+use chumsky::extra::SimpleState;
+// TODO: Remove pratt usage?
+use chumsky::pratt::infix;
+use chumsky::pratt::left;
+use chumsky::pratt::prefix;
+use chumsky::pratt::right;
+use chumsky::prelude::*;
+use semantics::op_from_assign_op;
 use semantics::Literal;
 use smallvec::smallvec;
+use smallvec::SmallVec;
 use std::path::Path;
-use thiserror::Error;
-use tokens::{assign_op, binding_mode_operation, is_assign, OpBinding, Symbol, Token, TokenType};
+
+use crate::ast::location::Location;
+use crate::ast::Call;
+use crate::ast::NodeId;
+use crate::ast::Op;
+use crate::{ast::Ast, error::TError};
+
+pub mod error;
+pub mod lexer;
+pub mod semantics;
+pub mod tokens;
+
+use tokens::{Symbol, Token, TokenType};
+
+pub type Span = SimpleSpan;
+pub type Spanned<T> = (T, Span);
 
 pub const KEYWORDS: &[&str] = include_strs!("keywords.txt");
 
-#[derive(Debug, Error, PartialEq, Eq, Ord, PartialOrd, Clone, Hash)]
-pub enum ParseError {
-    UnexpectedEof, // TODO: Add context.
-    UnexpectedTokenTypeExpectedOperator {
-        got: TokenType,
-        location: Location,
-    },
-    UnexpectedTokenTypeExpectedAssignment {
-        got: TokenType,
-        location: Location,
-    },
-    UnexpectedTokenType {
-        got: TokenType,
-        location: Location,
-        expected: TokenType,
-    },
-    UnexpectedTokenTypeInExpression {
-        got: TokenType,
-        location: Location,
-    },
-    ParseIntError {
-        message: String,
-        location: Option<Location>,
-    },
-    AmbiguousExpression {
-        left: Symbol,
-        right: Symbol,
-        location: Location,
-    },
-    UnexpectedExpressionInDefinitionArguments {
-        arg: NodeId,
-        arg_str: String,
-        location: Location,
-    },
-    MissingLeftHandSideOfOperator {
-        op: Symbol,
-        location: Location,
-    },
-    UnparsedTokens {
-        token: TokenType,
-        location: Location,
-    },
+type ParserConfig<'src> = Full<Rich<'src, Token>, SimpleState<Ast>, ()>;
+
+use super::ast::nodes::FMT_STR_STANDARD_ITEM_NUM;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+pub enum OpKind {
+    Infix,
+    Prefix,
+    Postfix,
 }
 
-impl From<std::num::ParseIntError> for ParseError {
-    fn from(error: std::num::ParseIntError) -> Self {
-        Self::ParseIntError {
-            message: error.to_string(),
-            location: None,
-        }
+#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+pub struct OpSetup {
+    op: &'static [Symbol],
+    kind: OpKind,
+    contains: &'static [Symbol],
+}
+
+impl OpSetup {
+    const fn new(op: &'static [Symbol], kind: OpKind, contains: &'static [Symbol]) -> Self {
+        Self { op, kind, contains }
     }
 }
 
-impl ParseError {
-    #[must_use]
-    pub fn location(&self) -> Option<&Location> {
-        match self {
-            Self::UnexpectedEof => None,
-            Self::ParseIntError { location, .. } => location.as_ref(),
-            Self::UnexpectedTokenTypeExpectedOperator { got: _, location }
-            | Self::UnexpectedTokenTypeExpectedAssignment { got: _, location }
-            | Self::UnexpectedTokenType {
-                got: _,
-                location,
-                expected: _,
-            }
-            | Self::UnexpectedTokenTypeInExpression { got: _, location }
-            | Self::AmbiguousExpression {
-                left: _,
-                right: _,
-                location,
-            }
-            | Self::UnexpectedExpressionInDefinitionArguments { location, .. }
-            | Self::MissingLeftHandSideOfOperator { location, .. } => Some(location),
-            Self::UnparsedTokens { location, .. } => Some(location),
+// In precedence order least tightly binding to most.
+const OPS: &[OpSetup] = {
+    use OpKind::*;
+    use Symbol::*;
+
+    // TODO: Use
+    const PREFIX_MATHEMATICAL: &[Symbol] = &[Add, Sub];
+
+    const MATHEMATICAL: &[Symbol] = &[Add, Sub, Exp, Div, Mul, Modulo];
+
+    const LOGICAL: &[Symbol] = &[LogicalNot, LogicalAnd, LogicalOr];
+
+    const BIT: &[Symbol] = &[And, Or, BitNot, BitXor];
+
+    const SHIFT: &[Symbol] = &[LeftShift, RightShift];
+
+    const COMPARISONS: &[Symbol] = &[Eqs, NotEqs, Lt, LtEqs, Gt, GtEqs];
+
+    const ASSIGN: &[Symbol] = &[
+        Assign,
+        AddAssign,
+        SubAssign,
+        DivAssign,
+        MulAssign,
+        AndAssign,
+        OrAssign,
+        BitXorAssign,
+        LogicalAndAssign,
+        LogicalOrAssign,
+        ModuloAssign,
+    ];
+
+    const FUNCS: &[Symbol] = &[
+        Arrow,
+        DoubleArrow, // In case value level and type level must be different.
+    ];
+
+    const ANY_VALUE: &[Symbol] = constcat::concat_slices!(
+    [Symbol]:
+    PREFIX_MATHEMATICAL,
+    MATHEMATICAL,
+    LOGICAL,
+    BIT,
+    SHIFT,
+    COMPARISONS,
+    ASSIGN,
+    FUNCS,
+    &[
+        // Special...
+        GetAddress, Try, Dot, Range, Spread, Sequence, HasType,
+    ]);
+
+    &[
+        OpSetup::new(COMPARISONS, Infix, ANY_VALUE),
+        OpSetup::new(ASSIGN, Infix, ANY_VALUE),
+    ]
+};
+
+fn language<'src, 'ast>() -> impl Parser<'src, &'src [Token], (), ParserConfig<'src>> {
+    use TokenType::*;
+
+    // Tokens
+    let shebang = select_ref! {
+        Token {kind: TokenType::OpType(Symbol::Shebang), start: _, length: _} => {
         }
-    }
-}
+    }; // ?
 
-impl From<ParseError> for TError {
-    fn from(err: ParseError) -> Self {
-        Self::ParseError(err)
+    let simple_value = select_ref! {
+        Token {kind: Ident, start, length } = extra => {
+            let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+            // TODO: Get the str from the Token
+            let s = &ast.contents[(*start as usize)..(start+(*length as u16)) as usize];
+            let t = ast.string_interner.register_str(s);
+            ast.add_identifier(t, Location { start: *start, length: *length })
+        },
+        Token {kind: NumberLit, start, length } = extra => {
+            let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+            // TODO: Get the str from the Token
+            let s = &ast.contents[(*start as usize)..(start+(*length as u16)) as usize];
+            let _ = ast.string_interner.register_str_by_loc(s, *start);
+            ast.add_literal(Literal::Numeric, Location { start: *start, length: *length })
+        },
+        Token {kind: ColorLit, start, length } = extra => {
+            let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+            // TODO: Get the str from the Token
+            let s = &ast.contents[(*start as usize)..(start+(*length as u16)) as usize];
+            let _ = ast.string_interner.register_str_by_loc(s, *start);
+            ast.add_literal(Literal::Color, Location { start: *start, length: *length })
+        },
+        Token {kind: StringLit, start, length } = extra => {
+            let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+            // TODO: Get the str from the Token
+            let s = &ast.contents[(*start as usize)..(start+(*length as u16)) as usize];
+            let _ = ast.string_interner.register_str_by_loc(s, *start);
+            ast.add_literal(Literal::String, Location { start: *start, length: *length })
+        },
     }
-}
+    .labelled("an identifier or literal");
 
-impl std::fmt::Display for ParseError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::UnexpectedEof => write!(f, "Unexpected eof"),
-            Self::UnexpectedTokenTypeExpectedOperator { got, .. } => {
-                write!(f, "Unexpected {got} expected an operator")
-            }
-            Self::UnexpectedTokenTypeExpectedAssignment { got, .. } => {
-                write!(f, "Unexpected {got} expected an assignment")
-            }
-            Self::UnexpectedTokenType { got, expected, .. } => {
-                write!(f, "Unexpected {got} expected {expected}")
-            }
-            Self::UnexpectedTokenTypeInExpression { got, .. } => {
-                write!(f, "Unexpected {got} in expression")
-            }
-            Self::ParseIntError { message, .. } => {
-                write!(f, "{message} expected an integer literal (r.g. 123)")
-            }
-            Self::AmbiguousExpression { left, right, .. } => {
-                write!(f, "This expression could be read two ways, use parens to clarify whether {left} or {right} should be performed first")
-            }
-            Self::UnexpectedExpressionInDefinitionArguments { arg_str, .. } => {
-                write!(f, "Don't know how to convert '{arg_str}' to binding.")
-            }
-            Self::MissingLeftHandSideOfOperator { op, .. } => {
-                write!(
-                    f,
-                    "Operator {op} needs a 'left' side. (e.g. 'a{op}b' rather than '{op}b'"
-                )
-            }
-            Self::UnparsedTokens { token, .. } => {
-                write!(f, "Failed to parse the whole file. Found {token}")
-            }
-        }
-    }
-}
+    // Special Tokens
+    let fmt_str_start = select_ref! {
+        Token {kind: FmtStringLitStart, start, length } = extra => {
+            let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+            ast.add_literal(Literal::String, Location { start: *start, length: *length })
+        },
+    };
+    let fmt_str_mid = select_ref! {
+        Token {kind: FmtStringLitMid, start, length } = extra => {
+            let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+            ast.add_literal(Literal::String, Location { start: *start, length: *length })
+        },
+    };
+    let fmt_str_end = select_ref! {
+        Token {kind: FmtStringLitEnd, start, length } = extra => {
+            let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+            ast.add_literal(Literal::String, Location { start: *start, length: *length })
+        },
+    };
 
-#[derive(Debug)]
-enum BindingOrValue {
-    Identifier(Identifier, Option<NodeId>, Location),
-    Binding(NodeId),
-    Value(NodeId),
-}
+    let op = |op| {
+        select_ref! {
+            Token {kind: OpType(top), start, length } if *top == op => Location { start: *start, length: *length }
+        }.labelled(format!("{}", op))
+    };
 
-#[derive(Debug)]
-struct ParseState<'src, 'toks, T: Iterator<Item = &'toks Token>> {
-    contents: &'src str,
-    ast: Ast,
-    tokens: std::iter::Peekable<T>,
-}
+    let comma = select_ref! {
+        Token {kind: Comma, start: _, length: _ } => ()
+    };
 
-impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
-    fn peek(&mut self) -> Result<&Token, ParseError> {
-        self.tokens.peek().copied().ok_or(ParseError::UnexpectedEof)
-    }
-    fn token(&mut self) -> Option<Token> {
-        self.tokens.next().copied()
-    }
-    fn peek_kind(&mut self) -> Result<TokenType, ParseError> {
-        self.peek().map(|tok| tok.kind)
-    }
-    fn token_if<OnTok>(
-        &mut self,
-        test: impl FnOnce(&Token) -> Result<OnTok, ParseError>,
-    ) -> Result<OnTok, ParseError> {
-        let tk = self.peek()?;
-        let res = test(tk)?;
-        self.token()
-            .expect("Internal error: Token missing after check");
-        Ok(res)
-    }
-    fn token_of_type(&mut self, expected: TokenType) -> Result<Token, ParseError> {
-        self.token_if(|got| {
-            if got.kind == expected {
-                Ok(*got)
-            } else {
-                Err(ParseError::UnexpectedTokenType {
-                    got: got.kind,
-                    location: got.location(),
-                    expected,
-                })
-            }
-        })
-    }
-    fn ident(&mut self) -> Result<Token, ParseError> {
-        self.token_of_type(TokenType::Ident)
-    }
-    fn operator_is(&mut self, sym: Symbol) -> Result<Token, ParseError> {
-        self.token_of_type(TokenType::Op(sym))
-    }
-    fn has_type(&mut self) -> Result<Token, ParseError> {
-        self.operator_is(Symbol::HasType)
-    }
-    fn assignment_op(&mut self, binding: Symbol) -> Result<Symbol, ParseError> {
-        self.token_if(|got| match got.kind {
-            TokenType::Op(assign) if is_assign(assign) && binding.is_looser(assign) => Ok(assign),
-            _ => Err(ParseError::UnexpectedTokenTypeExpectedAssignment {
-                got: got.kind,
-                location: got.location(),
-            }),
-        })
-    }
+    // Expressions
+    let mut expr = Recursive::declare();
 
-    fn get_kind(&mut self, token: &Token) -> TokenType {
-        if token.kind == TokenType::Ident {
-            // TODO(clarity): This should be done in the Tokenizer
-            let src = token.get_src(self.contents);
-            let name = self.ast.string_interner.register_str(src);
-            normalize_keywords_as_ops(&self.ast, name)
-        } else {
-            token.kind
-        }
-    }
-
-    fn require(&mut self, expected_token: TokenType) -> Result<(), TError> {
-        let _token = self.token_of_type(expected_token)?;
-        Ok(())
-    }
-
-    fn binding(&mut self) -> Result<Option<NodeId>, TError> {
-        let Ok(binding) = self.peek().cloned() else {
-            trace!("Unexpected eof when looking for binding");
-            return Ok(None);
-        };
-        let binding_kind = self.get_kind(&binding);
-        let binding = if let TokenType::Op(binding) = binding_kind {
-            binding
-        } else {
-            Symbol::OpenParen
-        };
-        let mode = if let TokenType::Op(binding) = binding_kind {
-            let Some(mode) = binding_mode_operation(binding) else {
-                trace!("Wrong op for binding");
-                return Ok(None);
-            };
-            self.token(); // Consume the mode.
-            mode
-        } else {
-            // Named arg!
-            trace!("Named arg?");
-            BindingMode::Lambda
-        };
-        let Ok(tok) = self.ident() else {
-            trace!("No name found for binding");
-            return Ok(None);
-        };
-        let name = self.name(tok);
-        let location = tok.location();
-        let bindings = None; // TODO: Handling bindings...
-        let ty = if self.has_type().is_ok() {
-            Some(self.expr(Symbol::HasType)?)
-        } else {
-            None
-        };
-        let implementation = if self.assignment_op(binding).is_ok() {
-            Some(self.expr(Symbol::Comma)?)
-        } else {
-            None
-        };
-        let def = self.ast.add_definition(
-            Definition {
-                mode,
-                name,
-                bindings,
-                implementation,
-            },
-            location,
-        );
-        if let Some(ty) = ty {
-            self.ast.add_annotation(def, ty);
-        }
-        Ok(Some(def))
-    }
-
-    fn binding_or_arg(&mut self, has_non_bind_args: &mut bool) -> Result<BindingOrValue, TError> {
-        let value = self.expr(Symbol::Comma)?;
-        let node = &self.ast.get(value);
-        let location = node.location;
-        if let NodeData::Definition(binding) = node.id {
-            trace!("Definition: {binding:?}");
-            return Ok(BindingOrValue::Binding(value));
-        }
-        if let NodeData::Identifier(ident) = node.id {
-            let ty = node.ty;
-            let (_node_id, ident) = self.ast.get_mut(ident);
-            // TODO: Try for an assignment binding...
-            return Ok(BindingOrValue::Identifier(*ident, ty, location));
-        }
-        *has_non_bind_args = true;
-        trace!("Arg value: {value:?}");
-        Ok(BindingOrValue::Value(value))
-    }
-
-    fn handle_bindings(&mut self, bindings: Vec<BindingOrValue>) -> Result<Vec<NodeId>, TError> {
-        let mut args = vec![];
-        for binding in bindings {
-            let binding = match binding {
-                BindingOrValue::Binding(binding) => binding,
-                BindingOrValue::Identifier(ident, ty, location) => {
-                    let ident = self.ast.add_identifier(ident, location);
-                    if let Some(ty) = ty {
-                        self.ast.add_annotation(ident, ty);
-                    }
-                    ident
-                }
-                BindingOrValue::Value(value) => value,
-            };
-            args.push(binding);
-        }
-        Ok(args)
-    }
-
-    fn call_definition_or_repeated(
-        &mut self,
-        name: Token,
-        binding: Symbol,
-    ) -> Result<NodeId, TError> {
-        let name_id = self.name(name);
-        trace!(
-            "Call, definition or repeated: {name:?}: {:?}",
-            self.ast.string_interner.get_str(name_id)
-        );
-        let location = name.location();
-        let mut bindings = vec![];
-        let mut has_args = false;
-        let mut is_a_repeated = false;
-        let mut has_non_bind_args = false; // i.e. this should be a definition...
-        if self.operator_is(Symbol::OpenParen).is_ok() {
-            trace!("has arguments");
-            has_args = true;
-            // Read args...
-            while self.operator_is(Symbol::CloseParen).is_err() {
-                bindings.push(self.binding_or_arg(&mut has_non_bind_args)?);
-                if self.require(TokenType::Op(Symbol::Comma)).is_err() {
-                    self.require(TokenType::Op(Symbol::CloseParen))?;
-                    break;
-                }
-            }
-        } else if self.operator_is(Symbol::OpenBracket).is_ok() {
-            has_args = true;
-            is_a_repeated = true;
-            // Read args...
-            while self.operator_is(Symbol::CloseBracket).is_err() {
-                bindings.push(self.binding_or_arg(&mut has_non_bind_args)?);
-                if self.require(TokenType::Op(Symbol::Comma)).is_err() {
-                    self.require(TokenType::Op(Symbol::CloseBracket))?;
-                    break;
-                }
-            }
-        }
-        let ty = if self.has_type().is_ok() {
-            trace!("HasType started");
-            let ty = self.expr(Symbol::HasType)?;
-            trace!("HasType finished");
-            Some(ty)
-        } else {
-            None
-        };
-        if let Ok(assignment) = self.assignment_op(binding) {
-            let op = assign_op(assignment);
-            let mut implementation = self.expr(assignment)?;
-            if let Some(op) = op {
-                let name = self.identifier(name, location);
-                implementation = self.ast.add_op(
-                    Op {
-                        op,
-                        args: smallvec![name, implementation],
-                    },
-                    location,
-                );
-            }
-            let name = &self.contents
-                [(location.start as usize)..(location.start as usize) + (location.length as usize)];
-            let name = self
-                .ast
-                .string_interner
-                .register_str_by_loc(name, location.start);
-            let mut only_bindings = vec![];
-            for binding in bindings {
-                match binding {
-                    BindingOrValue::Binding(binding) => only_bindings.push(binding),
-                    BindingOrValue::Identifier(name, ty, _location) => {
-                        let def = self.ast.add_definition(
-                            Definition {
-                                mode: BindingMode::Lambda,
-                                name,
-                                bindings: None,
-                                implementation: None,
-                            },
-                            location,
-                        );
-                        if let Some(ty) = ty {
-                            self.ast.add_annotation(def, ty);
-                        }
-                        only_bindings.push(def);
-                    }
-                    BindingOrValue::Value(value) => {
-                        return Err(ParseError::UnexpectedExpressionInDefinitionArguments {
-                            arg: value,
-                            arg_str: format!("{}", self.ast.pretty_node(value)),
-                            location,
-                        }
-                        .into())
-                    }
-                }
-            }
-            let bindings = if has_args {
-                Some(only_bindings.into())
-            } else {
-                None
-            };
-            // TODO: USE bindings
-            trace!("Add definition");
-            if has_non_bind_args {
-                todo!("Concern");
-            }
-            let def = self.ast.add_definition(
-                Definition {
-                    name,
-                    mode: BindingMode::Lambda,
-                    bindings,
-                    implementation: Some(implementation),
-                },
-                location,
-            );
-            if let Some(ty) = ty {
-                return Ok(self.ast.add_annotation(def, ty));
-            }
-            return Ok(def);
-        }
-        if has_args {
-            let inner = self.identifier(name, location);
-            // TODO: USE bindings
-            trace!("Add call");
-            let args = self.handle_bindings(bindings)?.into();
-            if is_a_repeated {
-                todo!("Handle lists and arrays");
-            }
-            let call = self.ast.add_call(Call { inner, args }, location);
-            if let Some(ty) = ty {
-                return Ok(self.ast.add_annotation(call, ty));
-            }
-            return Ok(call);
-        }
-        trace!("Add ident");
-        let ident = self.identifier(name, location);
-        if let Some(ty) = ty {
-            return Ok(self.ast.add_annotation(ident, ty));
-        }
-        Ok(ident)
-    }
-
-    fn file(&mut self) -> Result<NodeId, TError> {
-        let mut left = self.expr(Symbol::OpenParen)?;
-        while let Ok(token) = self.peek().copied() {
-            let right = self.expr(Symbol::OpenParen)?;
-            left = self.ast.add_op(
+    let fmt_str_body_head = fmt_str_start.then(expr.clone()).map(|(start, node)| {
+        let mut nodes: SmallVec<NodeId, FMT_STR_STANDARD_ITEM_NUM> = SmallVec::new();
+        nodes.push(start);
+        nodes.push(node);
+        nodes
+    });
+    let fmt_str_body = fmt_str_body_head.foldl(
+        fmt_str_mid.then(expr.clone()).repeated(),
+        |mut nodes: SmallVec<NodeId, FMT_STR_STANDARD_ITEM_NUM>, (fstr, node): (NodeId, NodeId)| {
+            nodes.push(fstr);
+            nodes.push(node);
+            nodes
+        },
+    );
+    let fmt_str = fmt_str_body
+        .then(fmt_str_end)
+        .map_with(|(mut nodes, fstr), extra| {
+            nodes.push(fstr);
+            let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+            let loc = ast[fstr].location;
+            // TODO: Switch from op to call with built ins?
+            ast.add_op(
                 Op {
-                    op: Symbol::Sequence,
-                    args: smallvec![left, right],
+                    op: Symbol::Group,
+                    args: nodes,
                 },
-                token.location(),
-            );
-        }
-        Ok(left)
-    }
+                loc,
+            )
+        })
+        .labelled("format string");
 
-    fn expr(&mut self, binding: Symbol) -> Result<NodeId, TError> {
-        let Ok(mut token) = self.peek().copied() else {
-            return Err(ParseError::UnexpectedEof.into());
-        };
-        token.kind = self.get_kind(&token);
-        let location = token.location();
-        trace!("Expr: {token:?} (binding {binding:?})");
-        let mut left = if self.operator_is(Symbol::OpenBracket).is_ok() {
-            // TODO: Support tuples.
-            // Tuple, parenthesized expr... etc.
-            let left = self.expr(Symbol::OpenParen)?;
-            self.require(TokenType::Op(Symbol::CloseBracket))?;
-            left
-        } else if self.operator_is(Symbol::OpenCurly).is_ok() {
-            // TODO: Support sequence&dictionary syntax.
-            // Tuple, parenthesized expr... etc.
-            let mut left = self.expr(Symbol::OpenParen)?;
-            let mut joiner = Symbol::Sequence;
-            while self.operator_is(Symbol::CloseCurly).is_err() {
-                // TODO: Clean up sequence generation.
-                // TODO: Check that a sequence / args is of the right structure?
-                let next = self.expr(Symbol::OpenParen)?;
-                left = self.ast.add_op(
-                    Op {
-                        op: joiner,
-                        args: smallvec![left, next],
-                    },
-                    location,
-                );
-                if self.require(TokenType::Op(Symbol::Comma)).is_ok() {
-                    // TODO: Set next joiner
-                    joiner = Symbol::Comma;
-                } else if self.require(TokenType::Op(Symbol::Sequence)).is_ok() {
-                    // TODO: Set next joiner
-                    joiner = Symbol::Sequence;
-                } else {
-                    // Allow it? Maybe...
-                    joiner = Symbol::Sequence;
-                }
-            }
-            left
-        } else if self.operator_is(Symbol::OpenParen).is_ok() {
-            // TODO: Support list syntax.
-            // Tuple, parenthesized expr... etc.
-            let left = self.expr(Symbol::OpenParen)?;
-            self.require(TokenType::Op(Symbol::CloseParen))?;
-            left
-        } else if let TokenType::Op(symbol) = token.kind {
-            if let Some(def_binding) = self.binding()? {
-                trace!("Binding? {def_binding:?}");
-                def_binding
-            } else {
-                let _ = self.token();
-                match symbol.binding_type() {
-                    OpBinding::Open => todo!("Should have already been handled"),
-                    OpBinding::PrefixOp | OpBinding::PrefixOrInfixBinOp => {
-                        let right = self.expr(binding)?;
-                        self.ast.add_op(
-                            Op {
-                                op: symbol,
-                                args: smallvec![right],
-                            },
-                            location,
-                        )
-                    }
-                    _ => {
-                        let st = location.start.into();
-                        let end = std::cmp::min(st + 50, self.contents.len());
-                        debug!("ERROR AT:\n{}", &self.contents[st..end]);
-                        return Err(ParseError::MissingLeftHandSideOfOperator {
-                            op: symbol,
-                            location,
-                        }
-                        .into());
-                    }
-                }
-            }
-        } else if let Ok(token) = self.ident() {
-            self.call_definition_or_repeated(token, binding)?
-        } else if let Ok(token) = self.token_of_type(TokenType::Atom) {
-            self.atom(token, location)
-        } else if let Ok(token) = self.token_of_type(TokenType::NumberLit) {
-            self.number_literal(token, location)
-        } else if let Ok(token) = self.token_of_type(TokenType::StringLit) {
-            self.string_literal(token, location)
-        } else if let Ok(token) = self.token_of_type(TokenType::ColorLit) {
-            self.color_literal(token, location)
-        } else {
-            return Err(ParseError::UnexpectedTokenTypeInExpression {
-                got: token.kind,
-                location,
-            }
-            .into());
-        };
-        trace!("Maybe continue: {left:?} (binding {binding:?})");
-        while let Ok(TokenType::Op(sym)) = self.peek_kind() {
-            if sym.binding_type() == OpBinding::Close {
-                trace!("Closing Expr: {left:?} sym: {sym:?}");
-                break;
-            }
-            if sym != binding && sym.is_looser(binding) && binding.is_looser(sym) {
-                // If both can be inside the other
-                // and they're not associative...
-                // then this is ambiguous and needs parens.
-                return Err(ParseError::AmbiguousExpression {
-                    left: binding,
-                    right: sym,
-                    location,
-                }
-                .into());
-            }
-            if !binding.is_looser(sym) {
-                trace!("Back up Expr: {left:?} binding: {binding:?} inside sym: {sym:?}");
-                break;
-            }
-            trace!("Continuing Expr: {left:?} sym: {sym:?} inside binding: {binding:?}");
-            if sym == Symbol::OpenParen {
-                let token = self.token().expect("Internal error");
-                let location = token.location();
-                // Require an 'apply' to balance it's parens.
-                let mut args = vec![];
-                let mut _has_non_bind_args = false;
-                while self.operator_is(Symbol::CloseParen).is_err() {
-                    let arg = self.binding_or_arg(&mut _has_non_bind_args)?;
-                    args.push(arg);
-                }
-                let args = self.handle_bindings(args)?.into();
-                left = self.ast.add_call(Call { inner: left, args }, location);
-            } else {
-                // TODO: Check that this is the right kind of operator.
-                let token = self.token().expect("Internal error");
-                let right = self.expr(sym)?;
-                let location = token.location();
-                left = self.ast.add_op(
-                    Op {
-                        op: sym,
-                        args: smallvec![left, right],
-                    },
-                    location,
-                );
-            }
-        }
-        trace!("Expr done: {}", self.ast.pretty_node(left));
-        trace!("(next token: {:?})", self.peek());
-        Ok(left)
-    }
+    // Single value
+    let parens = expr
+        .clone()
+        .delimited_by(op(Symbol::OpenParen), op(Symbol::CloseParen))
+        .labelled("parenthesized expression");
 
-    fn name(&mut self, res: Token) -> Identifier {
-        assert!(res.kind == TokenType::Ident);
-        let name = res.get_src(self.contents);
-        trace!("Name: {name}");
-        self.ast
-            .string_interner
-            .register_str_by_loc(name, res.location().start)
-    }
+    // TODO:
+    let many_head = expr.clone().map(|node| {
+        let mut nodes: SmallVec<NodeId, FMT_STR_STANDARD_ITEM_NUM> = SmallVec::new();
+        nodes.push(node);
+        nodes
+    });
+    let many = many_head
+        .foldl(
+            expr.clone().separated_by(comma).allow_trailing(),
+            |mut nodes, node| {
+                nodes.push(node);
+                nodes
+            },
+        )
+        .labelled("a set of values");
 
-    fn identifier(&mut self, res: Token, location: Location) -> NodeId {
-        assert!(res.kind == TokenType::Ident);
-        let name = res.get_src(self.contents);
-        trace!("Identifier: {name}");
-        let name = self.ast.string_interner.register_str(name);
-        self.ast.add_identifier(name, location)
-    }
+    let container = op(Symbol::OpenBracket)
+        .then(many.clone())
+        .then(op(Symbol::CloseBracket))
+        .map_with(|((open, nodes), _close), extra| {
+            let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+            let loc = open; // TODO: Merge with _close
+                            // TODO: Switch from op to call with built ins?
+            ast.add_op(
+                Op {
+                    op: Symbol::Group,
+                    args: nodes,
+                },
+                loc,
+            )
+        })
+        .labelled("an ordered set of values");
 
-    fn atom(&mut self, res: Token, location: Location) -> NodeId {
-        assert!(res.kind == TokenType::Atom);
-        let name = res.get_src(self.contents);
-        trace!("Atom: {name}");
-        let name = self.ast.string_interner.register_str(name);
-        self.ast.add_atom(Atom { name }, location)
-    }
+    let unordered_container = op(Symbol::OpenCurly) // Looks like a block
+        .then(many.clone())
+        .then(op(Symbol::CloseCurly))
+        .map_with(|((open, nodes), _close), extra| {
+            let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+            let loc = open; // TODO: Merge with _close
+                            // TODO: Switch from op to call with built ins?
+            ast.add_op(
+                Op {
+                    op: Symbol::Group,
+                    args: nodes,
+                },
+                loc,
+            )
+        })
+        .labelled("an unordered set of values array");
 
-    fn string_literal(&mut self, res: Token, location: Location) -> NodeId {
-        assert!(res.kind == TokenType::StringLit);
-        trace!("Saving literal: {res:?}");
-        let _id = self
-            .ast
-            .string_interner
-            .register_str_by_loc(res.get_src(self.contents), location.start);
-        self.ast.add_literal(Literal::Text, location)
-    }
+    let args = op(Symbol::OpenParen)
+        .then(many.clone())
+        .then(op(Symbol::CloseParen))
+        .labelled("a set of arguments");
 
-    fn color_literal(&mut self, res: Token, location: Location) -> NodeId {
-        assert!(res.kind == TokenType::ColorLit);
-        trace!("Saving literal: {res:?}");
-        let _id = self
-            .ast
-            .string_interner
-            .register_str_by_loc(res.get_src(self.contents), location.start);
-        self.ast.add_literal(Literal::Color, location)
-    }
+    let call = expr
+        .clone()
+        .then(args) // foo(a, b, c)
+        .map_with(|(inner, ((open, args), _close)), extra| {
+            let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+            let loc = open; // TODO: Merge with _close
+                            // TODO: Switch from op to call with built ins?
+            ast.add_call(
+                Call {
+                    inner,
+                    args,
+                },
+                loc,
+            )
+        })
+        .labelled("a call");
 
-    fn number_literal(&mut self, res: Token, location: Location) -> NodeId {
-        assert!(res.kind == TokenType::NumberLit);
-        trace!("Saving literal: {res:?}");
-        let _id = self
-            .ast
-            .string_interner
-            .register_str_by_loc(res.get_src(self.contents), location.start);
-        self.ast.add_literal(Literal::Numeric, location)
-    }
-}
+    let index = Recursive::declare();
+    let binding = Recursive::declare();
+    let ident = Recursive::declare();
 
-pub fn parse(filepath: &Path, contents: &str, tokens: &[Token]) -> Result<Ast, TError> {
-    trace!("Parse {}: {:?}", filepath.display(), &tokens);
-    let mut state = ParseState {
-        contents,
-        ast: Ast::new(filepath.to_path_buf()),
-        tokens: tokens.iter().peekable(),
+    let untyped_atom = parens
+        .or(container)
+        .or(call)
+        .or(index)
+        .or(binding)
+        .or(ident)
+        .or(unordered_container)
+        .or(simple_value)
+        .or(fmt_str)
+        .labelled("a value");
+
+    let typed_atom = untyped_atom
+        .clone()
+        .then_ignore(op(HasType))
+        .then(untyped_atom.clone())
+        .map_with(|(lhs, rhs), extra| {
+            let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+            ast.add_annotation(lhs, rhs)
+        })
+        .labelled("a typed value");
+
+    let atom = typed_atom.or(untyped_atom);
+
+    let prefix_op = |prec, op_type: Symbol| {
+        prefix(prec, op(op_type), move |loc, rhs, extra| {
+            let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+            ast.add_op(
+                Op {
+                    op: op_type,
+                    args: smallvec![rhs],
+                },
+                loc,
+            )
+        })
     };
-    if !tokens.is_empty() {
-        // Support empty files!
-        let root = state.file()?;
-        state.ast.set_root(root);
-    }
-    // TODO(testing): REMOVE THIS (it's just to test the threading model)
-    // let mut rng = rand::thread_rng();
-    // std::thread::sleep(std::time::Duration::from_secs(rng.gen_range(0..10)));
-    if let Some(token) = state.tokens.next() {
-        Err(ParseError::UnparsedTokens {
-            token: token.kind,
-            location: token.location(),
-        })?;
-    }
-    Ok(state.ast)
-}
 
-fn normalize_keywords_as_ops(ast: &Ast, name: Identifier) -> TokenType {
-    let interner = &ast.string_interner;
-    let op = if name == interner.kw_lambda {
-        Symbol::Lambda
-    } else if name == interner.kw_pi {
-        Symbol::Pi
-    } else if name == interner.kw_forall {
-        Symbol::Forall
-    } else if name == interner.kw_exists {
-        Symbol::Exists
-    } else {
-        return TokenType::Ident;
+    let infix_op = |prec, op_type: Symbol| {
+        infix(prec, op(op_type), move |lhs, loc, rhs, extra| {
+            let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+            ast.add_op(
+                Op {
+                    op: op_type,
+                    args: smallvec![lhs, rhs],
+                },
+                loc,
+            )
+        })
     };
-    TokenType::Op(op)
-}
-
-#[cfg(test)]
-pub mod tests {
-    use super::semantics::Literal;
-    use super::*;
-    use std::path::PathBuf;
-    use tokens::lex;
-
-    fn test_file1() -> PathBuf {
-        "test.tk".into()
-    }
-
-    fn setup(s: &str) -> Result<Ast, TError> {
-        crate::ensure_initialized();
-        let tokens = lex(s)?;
-        parse(&test_file1(), s, &tokens)
-    }
-
-    #[test]
-    fn parse_literal() -> Result<(), TError> {
-        let ast = setup("123")?;
-        // dbg!(&ast);
-        let Ast {
-            roots: _, literals, ..
-        } = ast;
-
-        assert_eq!(
-            literals,
-            vec![(
-                NodeId::from_raw(0),
-                Literal::Numeric, // ("123".to_string()),
-            )]
-            .into(),
-            "Should have parsed a number"
-        );
-
-        Ok(())
-    }
-
-    #[test]
-    fn parse_add_literals() -> Result<(), TError> {
-        let ast = setup("1+2")?;
-        // dbg!(&ast);
-
-        assert_eq!(
-            ast.literals,
-            vec![
-                (
-                    NodeId::from_raw(0),
-                    Literal::Numeric, // ("1".to_string()),
-                ),
-                (
-                    NodeId::from_raw(1),
-                    Literal::Numeric, // ("2".to_string()),
-                )
-            ]
-            .into(),
-            "Should have parsed a number"
-        );
-        assert_eq!(ast.ops.len(), 1);
-        Ok(())
-    }
-
-    #[test]
-    fn parse_negatives() -> Result<(), TError> {
-        let ast = setup("-1*-2")?;
-        // dbg!(&ast);
-
-        assert_eq!(ast.calls.len(), 0);
-        assert_eq!(ast.literals.len(), 2);
-        assert_eq!(ast.ops.len(), 3);
-        Ok(())
-    }
-
-    #[test]
-    fn parse_add_add_literals() -> Result<(), TError> {
-        let ast = setup("1+2+3")?;
-        // dbg!(&ast);
-
-        assert_eq!(ast.calls.len(), 0);
-        assert_eq!(ast.literals.len(), 3);
-        assert_eq!(ast.ops.len(), 2);
-        Ok(())
-    }
-
-    #[test]
-    fn parse_add_mul_literals() -> Result<(), TError> {
-        let ast = setup("1+2*3")?;
-        // dbg!(&ast);
-
-        assert_eq!(ast.calls.len(), 0);
-        assert_eq!(ast.literals.len(), 3);
-        assert_eq!(ast.ops.len(), 2);
-        Ok(())
-    }
-
-    #[test]
-    fn parse_mul_add_literals() -> Result<(), TError> {
-        let ast = setup("1*2+3")?;
-        // dbg!(&ast);
-
-        assert_eq!(ast.calls.len(), 0);
-        assert_eq!(ast.ops.len(), 2);
-        assert_eq!(ast.literals.len(), 3);
-        Ok(())
-    }
-
-    #[test]
-    fn parse_mul_add_literals_with_parens() -> Result<(), TError> {
-        let ast = setup("(1+2)*3")?;
-        // dbg!(&ast);
-
-        assert_eq!(ast.calls.len(), 0);
-        assert_eq!(ast.ops.len(), 2);
-        assert_eq!(ast.literals.len(), 3);
-        Ok(())
-    }
-
-    #[test]
-    fn parse_atom() -> Result<(), TError> {
-        let ast = setup("$x")?;
-        // dbg!(&ast);
-
-        assert_eq!(ast.atoms.len(), 1);
-        Ok(())
-    }
-
-    #[test]
-    fn parse_identifier() -> Result<(), TError> {
-        let ast = setup("x")?;
-        // dbg!(&ast);
-
-        assert_eq!(ast.identifiers.len(), 1);
-        Ok(())
-    }
-
-    #[test]
-    fn parse_call() -> Result<(), TError> {
-        let ast = setup("x()")?;
-        // dbg!(&ast);
-
-        assert_eq!(ast.calls.len(), 1);
-        assert_eq!(ast.identifiers.len(), 1);
-        Ok(())
-    }
-
-    #[test]
-    fn parse_call_unfinished() -> Result<(), TError> {
-        let err = setup("x(");
-        dbg!(&err);
-        assert!(err.is_err());
-        let err = err.unwrap_err();
-        assert_eq!(format!("{err}"), "Unexpected eof");
-        Ok(())
-    }
-
-    #[test]
-    fn parse_call_with_argument() -> Result<(), TError> {
-        let ast = setup("x(12)")?;
-        // dbg!(&ast);
-
-        assert_eq!(ast.literals.len(), 1);
-        assert_eq!(ast.identifiers.len(), 1);
-        assert_eq!(ast.calls.len(), 1);
-        Ok(())
-    }
-
-    #[test]
-    fn parse_lambda() -> Result<(), TError> {
-        let ast = setup("λx -> x")?;
-        // dbg!(&ast);
-
-        assert_eq!(ast.ops.len(), 1);
-        assert_eq!(ast.identifiers.len(), 1);
-        assert_eq!(ast.definitions.len(), 1);
-        Ok(())
-    }
-
-    #[test]
-    fn parse_lambda_keyword() -> Result<(), TError> {
-        let ast = setup("lambda x -> x")?;
-        // dbg!(&ast);
-
-        assert_eq!(ast.ops.len(), 1);
-        assert_eq!(ast.identifiers.len(), 1);
-        assert_eq!(ast.definitions.len(), 1);
-        Ok(())
-    }
-
-    #[test]
-    fn parse_definition() -> Result<(), TError> {
-        let ast = setup("x=1")?;
-        // dbg!(&ast);
-
-        assert_eq!(ast.identifiers.len(), 0);
-        assert_eq!(ast.literals.len(), 1);
-        assert_eq!(ast.definitions.len(), 1);
-        Ok(())
-    }
-
-    #[test]
-    fn parsed_assignment_with_type_annotation_identifier() -> Result<(), TError> {
-        let ast = setup("x:Int=1")?;
-        // dbg!(&ast);
-
-        assert_eq!(ast.identifiers.len(), 1);
-        assert_eq!(ast.literals.len(), 1);
-        assert_eq!(ast.definitions.len(), 1);
-        assert_eq!(ast.atoms.len(), 0);
-        assert_eq!(ast.ops.len(), 0);
-        Ok(())
-    }
-
-    #[test]
-    fn parsed_assignment_with_type_annotation_atom() -> Result<(), TError> {
-        let ast = setup("x:$Int=1")?;
-        // dbg!(&ast);
-
-        assert_eq!(ast.identifiers.len(), 0);
-        assert_eq!(ast.atoms.len(), 1);
-        assert_eq!(ast.literals.len(), 1);
-        assert_eq!(ast.ops.len(), 0);
-        assert_eq!(ast.definitions.len(), 1);
-        Ok(())
-    }
-
-    #[test]
-    fn parsed_assignment_with_type_annotation_expression() -> Result<(), TError> {
-        let ast = setup("x:1=1")?;
-        // dbg!(&ast);
-
-        assert_eq!(ast.identifiers.len(), 0);
-        assert_eq!(ast.atoms.len(), 0);
-        assert_eq!(ast.literals.len(), 2);
-        assert_eq!(ast.ops.len(), 0);
-        assert_eq!(ast.definitions.len(), 1);
-        Ok(())
-    }
-
-    #[test]
-    fn parsed_assignment_with_typed_argument() -> Result<(), TError> {
-        let ast = setup("x(y: Int): Int=1")?;
-        eprintln!("{}", ast.pretty());
-        // dbg!(&ast);
-
-        assert_eq!(ast.identifiers.len(), 3);
-        assert_eq!(ast.atoms.len(), 0);
-        assert_eq!(ast.literals.len(), 1);
-        assert_eq!(ast.ops.len(), 0);
-        assert_eq!(ast.definitions.len(), 2);
-        Ok(())
-    }
-
-    #[test]
-    fn parsed_assignment_with_implicit_args() -> Result<(), TError> {
-        let ast = setup("id(forall T: Type, y: T): T=y")?;
-        eprintln!("{}", &ast.pretty());
-
-        assert_eq!(ast.identifiers.len(), 5);
-        assert_eq!(ast.atoms.len(), 0);
-        assert_eq!(ast.literals.len(), 0);
-        assert_eq!(ast.ops.len(), 0);
-        assert_eq!(ast.definitions.len(), 3);
-        let (_id, def) = &ast.definitions[0];
-        dbg!(def);
-        assert_eq!(def.bindings.as_ref().map(|it| it.len()), None);
-        let (_id, def) = &ast.definitions[1];
-        dbg!(def);
-        assert_eq!(def.bindings.as_ref().map(|it| it.len()), None);
-        let (_id, def) = &ast.definitions[2];
-        dbg!(def);
-        assert_eq!(def.bindings.as_ref().map(|it| it.len()), Some(2));
-        Ok(())
-    }
-
-    #[test]
-    fn parse_add_assign() -> Result<(), TError> {
-        let ast = setup("x+=1")?;
-        // dbg!(&ast);
-
-        assert_eq!(ast.identifiers.len(), 1);
-        assert_eq!(ast.literals.len(), 1);
-        assert_eq!(ast.ops.len(), 1);
-        assert_eq!(ast.definitions.len(), 1);
-        Ok(())
-    }
-
-    #[test]
-    fn parse_tuple() -> Result<(), TError> {
-        let ast = setup("1,2")?;
-        assert_eq!(ast.identifiers.len(), 0);
-        assert_eq!(ast.literals.len(), 2);
-        assert_eq!(ast.ops.len(), 1);
-        assert_eq!(ast.definitions.len(), 0);
-        Ok(())
-    }
-
-    #[test]
-    fn parse_ambiguous_and_with_or() -> Result<(), TError> {
-        let err = setup("a||b&&c");
-        dbg!(&err);
-        assert!(err.is_err());
-        let err = err.unwrap_err();
-        assert_eq!(format!("{err}"), "This expression could be read two ways, use parens to clarify whether || or && should be performed first");
-        Ok(())
-    }
-
-    #[test]
-    fn parse_bare_lambda() -> Result<(), TError> {
-        let _ast = setup("x->x")?;
-        Ok(())
-    }
-
-    #[test]
-    fn parse_var_and_use_as_lambdas() -> Result<(), TError> {
-        let _ast = setup("(x->x)(x=2)")?;
-        Ok(())
-    }
-
-    #[test]
-    fn parse_var_from_expr_and_use_as_lambdas() -> Result<(), TError> {
-        let _ast = setup("(x->x)(x=3+2)")?;
-        Ok(())
-    }
-
-    #[test]
-    fn parse_nested_vars_as_lambdas() -> Result<(), TError> {
-        let _ast = setup("(x->x)(x=((y->(2*y))(y=3)))")?;
-        Ok(())
-    }
-
-    #[test]
-    fn parse_operator_precedence_allowed_comparison_of_expressions1() {
-        let _ast = setup("a * b + c == foo & a").expect("Disallowed syntax");
-    }
-
-    #[test]
-    fn parse_operator_precedence_allowed_comparison_of_expressions2() {
-        let _ast = setup("array + 32 < ~a | b").expect("Disallowed syntax");
-    }
-
-    // #[test]
-    // fn parse_operator_precedence_allowed_comparison_of_expressions_and_container_access() {
-    //     let _ast = setup("array[a] + 32 < ~a | b").expect("Disallowed syntax");
-    // }
-
-    #[test]
-    fn parse_operator_precedence_allowed_logic_operators() {
-        let _ast = setup("a && (!b || c)").expect("Disallowed syntax");
-    }
-
-    #[test]
-    // #[should_panic] // TODO(errors): Implement!
-    fn parse_operator_precedence_disallowed1() {
-        setup("a & b + c").expect("Disallowed syntax");
-    }
-
-    #[test]
-    // #[should_panic] // TODO(errors): Implement!
-    fn parse_operator_precedence_disallowed2() {
-        setup("a << b + 1").expect("Disallowed syntax");
-    }
-
-    #[test]
-    fn parse_atom_atom_in_file() {
-        setup("$a $b").expect("Top level allowed syntax");
-    }
-
-    #[test]
-    #[should_panic] // TODO(errors): Implement!
-    fn parse_atom_atom_in_expr() {
-        setup("($a $b)").expect("Disallowed syntax");
-    }
-
-    #[test]
-    fn parse_empty_file() {
-        setup("").expect("Should succeed on empty file");
-    }
-
-    #[test]
-    fn parse_values_in_fn_args() -> Result<(), TError> {
-        let ast = setup("signum(x)=if(x<0, -1, 1)")?;
-        // dbg!(ast);
-        assert_eq!(ast.calls.len(), 1);
-        assert_eq!(ast.calls[0].1.args.len(), 3);
-        assert_eq!(ast.ops.len(), 2); // Lt and Sub
-        assert_eq!(ast.definitions.len(), 2);
-        Ok(())
-    }
 
     /*
-    TODO(testing): Type annotations:
-        - "12 : Int"
-        - "3 * 4 : Int"
-        - "3 * (4 : Int)"
-        - "(3 * 4) : 12"
-        - "\"hello world\" : String"
-
-    TODO(testing): String literals:
-        - "\"hello world\""
-
-        TODO(testing): Numeric literals:
-        - "-12"
-
-    TODO(testing): Operations:
-        - "14-12"
-        - "\"hello\"+\" world\""
-
-    TODO(testing): Errors:
-        - "\"hello world\"\n7"
-
-    TODO(testing): Definitions:
-        - "f(arg=\"hello world\")"
-        - "mul(x, y)= x*y"
-        - "x()= !\"hello world\";\n7"
+    For reference, some interesting ideas about partial ordering of precedences:
+        - https://www.foonathan.net/2017/07/operator-precedence/
     */
+
+    /*
+    rules: {
+        // TODO: add the actual grammar rules
+        call: ($) => left(PREC.call, seq($.atom, '(', separated($._expression, ','), optional(','), ')')),
+        index: ($) => left(PREC.index, seq($._expression, '[', separated($._expression, ','), optional(','), ']')),
+        _operator_expression: ($) => {
+        return choice(...ALL_OPERATORS.map(([name, _operator_parser]) => {
+            try {
+            return ($)[name]; // Get the parser 'named'.
+            } catch (e) {
+            e.message = `OPERATOR: ${name} ('${operator}') PRECEDENCE: '${precedence}'.\n${e.message}`;
+            throw e;
+            }
+        }));
+        },
+        // TODO: Add control flow statements or functions.
+        break: (_) => "break",
+        continue: (_) => "continue",
+        return: (_) => "return",
+        forall: (_) => "forall",
+        exists: (_) => "exists",
+        given: (_) => "given",
+        binding: ($) => seq(
+        choice(
+            $.forall,
+            $.exists,
+            $.given
+        ),
+        $.ident
+        ),
+        ident: (_) => /[a-zA-Z][a-zA-Z0-9_]*\/,
+        // TODO: Add semver.
+        heading: (_) => /====*[^='"]*====*\/,
+    }
+    */
+
+    use Symbol::*;
+
+    // TODO: Do these manually?
+    let field_expr = atom.pratt((
+        // TODO: left(4), Calls // a.b(x, y) | a.b[x, y] | a.b {x: y} => (a.b)<args>, a : b() => a : (b())
+        infix_op(left(3), HasType), // @a : c => (@a) : c, a.b : c => (a.b) : c, a:b.c => a : (b.c)
+        prefix_op(2, GetAddress),   // @a.b => @(a.b), @a.b() => @(a())
+        infix_op(left(1), Dot),     // a.b
+    ));
+
+    let bit_expr = field_expr.clone().pratt((
+        // TODO: No chaining
+        prefix_op(3, BitNot),
+        infix_op(left(3), BitXor), // TODO: Check
+        infix_op(left(2), Or),
+        infix_op(left(1), And),
+    ));
+
+    let lshift_expr = field_expr.clone().pratt((
+        // TODO: Not chaining.
+        infix_op(left(1), LeftShift),
+    ));
+    let rshift_expr = field_expr.clone().pratt((
+        // TODO: Not chaining.
+        infix_op(left(1), RightShift),
+    ));
+
+    let boolean_expr = field_expr.clone().pratt((
+        prefix_op(3, LogicalNot),
+        infix_op(left(2), LogicalOr),
+        infix_op(left(1), LogicalAnd),
+    ));
+
+    let math_expr = field_expr.clone().pratt((
+        prefix_op(5, Add),
+        prefix_op(5, Sub),
+        infix_op(left(4), Modulo),
+        infix_op(right(3), Exp),
+        infix_op(left(2), Div),
+        infix_op(left(2), Mul),
+        infix_op(left(1), Sub),
+        infix_op(left(1), Add),
+    ));
+
+    let comparison = field_expr.clone().pratt((
+        // TODO: Not chaining.
+        infix_op(left(1), Eqs),
+        infix_op(left(1), NotEqs),
+        infix_op(left(1), Lt),
+        infix_op(left(1), LtEqs),
+        infix_op(left(1), Gt),
+        infix_op(left(1), GtEqs),
+    ));
+
+    let range_expr = field_expr.clone().pratt((
+        // TODO: Not chaining.
+        infix_op(left(1), Range),
+    ));
+
+    // infix_op(left(13), Spread),
+    // postfix_op(11, Try),
+    // infix_op(left(9), DoubleArrow),
+    // infix_op(left(8), Arrow),
+    let params = many
+        .clone()
+        .delimited_by(op(Symbol::OpenParen), op(Symbol::CloseParen))
+        .labelled("a set of parameters");
+
+    let callable = expr
+        .clone()
+        .then(params)
+        .map_with(|(lhs, rhs), extra| {
+            let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+            ast.add_args(lhs, rhs)
+        })
+        .labelled("a callable");
+
+    let assign = select_ref! {
+        Token {
+            kind: OpType ( op @ (
+                Assign
+                | AddAssign
+                | SubAssign
+                | DivAssign
+                | MulAssign
+                | AndAssign
+                | OrAssign
+                | BitXorAssign
+                | LogicalAndAssign
+                | LogicalOrAssign
+                | ModuloAssign
+            )),
+            start, length
+        } => {
+            (op, Location { start: *start, length: *length })
+        },
+    };
+
+    let assignment = expr
+        .clone()
+        .then(assign)
+        .then(expr.clone())
+        .map_with(|((lhs, (assign, loc)), rhs), extra| {
+            let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+            let rhs = if let Some(op) = op_from_assign_op(*assign) {
+                ast.add_op(
+                    Op {
+                        op,
+                        args: smallvec![lhs, rhs],
+                    },
+                    loc,
+                )
+            } else {
+                rhs
+            };
+            ast.add_implementation(lhs, rhs)
+        })
+        .labelled("definition");
+
+    expr.define(
+        math_expr
+            .clone()
+            .or(callable)
+            .or(boolean_expr)
+            .or(comparison)
+            .or(lshift_expr)
+            .or(rshift_expr)
+            .or(bit_expr)
+            .or(range_expr)
+            .or(assignment)
+            .boxed(),
+    );
+
+    let roots =
+        expr.separated_by(op(Symbol::Sequence))
+            .collect()
+            .map_with(|roots: Vec<NodeId>, extra| {
+                let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+                for root in roots {
+                    ast.roots.push(root);
+                }
+            });
+
+    let source_file = roots.clone().or(shebang.ignore_then(roots));
+
+    Box::new(source_file)
 }
+
+pub fn parse(file: &Path, input: &str, tokens: &[Token]) -> Result<Ast, TError> {
+    let lang = language(); // TODO: Avoid recreating.
+
+    let mut state = SimpleState(
+        Ast::new(file.to_path_buf(), input.to_string()), // TODO: Avoid copy here?
+    );
+
+    // TODO: Support for streams?
+    lang.parse_with_state(tokens, &mut state).unwrap(); // TODO: Handle errors
+    Ok(state.0)
+}
+
+// TODO: Recover tests from ./old_mod.rs

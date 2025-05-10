@@ -1,0 +1,61 @@
+==================
+Vector Transpose
+==================
+#!/usr/bin/env tako
+// test: all
+
+main = {
+  x3by2 = Vector.new([
+      [ 0, 1 ],
+      [ 2, 3 ],
+      [ 4, 5 ],
+    ]); // This should be of type Vector(3, 2)
+  x2by3: Vector(2, 3) = x2by3.transpose();
+  print("{x3by2}.transpose() is {x2by3}");
+}
+---
+
+(source_file
+  (shebang)
+  (single_line_comment)
+  (assign
+    (ident)
+    (block
+      (sequence
+        (assign
+          (ident)
+          (field
+            (ident)
+            (call
+              (ident)
+              (container
+                (container
+                  (int_literal)
+                  (int_literal))
+                (container
+                  (int_literal)
+                  (int_literal))
+                (container
+                  (int_literal)
+                  (int_literal))))))
+        (single_line_comment)
+        (sequence
+          (assign
+            (has_type
+              (ident)
+              (call
+                (ident)
+                (int_literal)
+                (int_literal)))
+            (field
+              (ident)
+              (call
+                (ident))))
+          (sequence
+            (call
+              (ident)
+              (string_literal
+                (format_expression
+                  (ident))
+                (format_expression
+                  (ident))))))))))

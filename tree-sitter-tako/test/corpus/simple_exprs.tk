@@ -1,0 +1,296 @@
+==================
+Simple value with postfix sequence
+==================
+
+0;
+
+---
+
+(source_file
+  (sequence
+    (int_literal)))
+
+==================
+Simple values with infix sequence
+==================
+
+0;1
+
+---
+
+(source_file
+  (sequence
+    (int_literal)
+    (int_literal)))
+
+==================
+Simple values with parens
+==================
+
+(0)
+
+---
+
+(source_file
+  (parens
+    (int_literal)))
+
+==================
+Simple values with more parens
+==================
+
+((0))
+
+---
+
+(source_file
+  (parens
+    (parens
+      (int_literal))))
+
+==================
+Simple values with mismatched parens
+==================
+
+((0()
+
+---
+
+(source_file
+  (parens
+    (parens
+      (int_literal)
+      (ERROR))
+    (MISSING ")")))
+
+==================
+Empty Block
+==================
+
+{}
+
+---
+
+(source_file
+  (block))
+
+==================
+Empty Block with suffix sequence
+==================
+
+{};
+
+---
+
+(source_file
+  (sequence
+    (block)))
+
+==================
+Empty Container notation
+==================
+
+[]
+
+---
+
+(source_file
+  (container))
+
+==================
+Container notation with a single value
+==================
+
+[1]
+
+---
+
+(source_file
+  (container
+    (int_literal)))
+
+==================
+Container notation with multiple values
+==================
+
+[1,2,3,4,]
+
+---
+
+(source_file
+  (container
+    (int_literal)
+    (int_literal)
+    (int_literal)
+    (int_literal)))
+
+==================
+Container notation containing multiple identifiers
+==================
+
+[a,b,c,d,]
+
+---
+
+(source_file
+  (container
+    (ident)
+    (ident)
+    (ident)
+    (ident)))
+
+==================
+Container notation containing multiple subexpressions
+==================
+
+[3+a,b*c,c=0,"Wow",]
+
+---
+
+(source_file
+  (container
+    (add
+      (int_literal)
+      (ident))
+    (mul
+      (ident)
+      (ident))
+    (assign
+      (ident)
+      (int_literal))
+    (string_literal)))
+
+==================
+Sequence containing an empty block
+==================
+
+{};
+---
+
+(source_file
+  (sequence
+    (block)))
+
+==================
+Sequence containing a container containing an empty block
+==================
+
+[{}];
+---
+
+(source_file
+  (sequence
+    (container
+      (block))))
+
+==================
+Sequence containing a container containing an empty container
+==================
+
+[[]];
+---
+
+(source_file
+  (sequence
+    (container
+      (container))))
+
+==================
+Sequence containing a block containing an empty block
+==================
+
+{{}};
+---
+
+(source_file
+  (sequence
+    (block
+      (block))))
+
+==================
+Sequence containing parens containing an empty block
+==================
+
+({});
+---
+
+(source_file
+  (sequence
+    (parens
+      (block))))
+
+==================
+Sequence containing a call containing an empty block
+==================
+
+print({});
+---
+
+(source_file
+  (sequence
+    (call
+      (ident)
+      (block))))
+
+==================
+Simple Expressions
+==================
+
+
+#!/usr/bin/env tako
+// test: all
+
+0;
+
+(0);
+
+((0));
+
+{};
+
+[];
+
+[{}];
+
+[[]];
+
+{{}};
+
+({});
+
+print({});
+
+---
+
+(source_file
+  (shebang)
+  (single_line_comment)
+  (sequence
+    (int_literal)
+    (sequence
+      (parens
+        (int_literal))
+      (sequence
+        (parens
+          (parens
+            (int_literal)))
+        (sequence
+          (block)
+          (sequence
+            (container)
+            (sequence
+              (container
+                (block))
+              (sequence
+                (container
+                  (container))
+                (sequence
+                  (block
+                    (block))
+                  (sequence
+                    (parens
+                      (block))
+                    (sequence
+                      (call
+                        (ident)
+                        (block)))))))))))))

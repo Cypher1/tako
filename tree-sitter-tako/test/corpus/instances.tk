@@ -1,0 +1,296 @@
+==================
+Instances
+==================
+#!/usr/bin/env tako
+// test: all
+
+Bounded = Enum
+  .open()
+  .based_on({
+    min(T: Type): T,
+    max(T: Type): T,
+  });
+
+Bounded.add_values(
+  boolean = {
+    min(T)=false,
+    max(T)=true,
+  },
+  integer = {
+    min(T)=0,
+    max(T)=2**64-1,
+  }
+);
+
+Showable = Enum.based_on({
+  to_string(t: Type): String
+}).open();
+
+print(t: Type, forall end: String="\n"): String = system.out.write(t.to_string()+end);
+
+to_base(value: integer, forall base: integer=10) = {
+  out: Char[math.log(Integer.max, base)]="0";
+  i: integer = 0;
+  while(
+    cond = t > 0,
+    loop = {
+      out[-i] = value%10,
+      value=value/10,
+      i=i+1
+    },
+    result = out[-i..],
+  )
+};
+
+Showable.add_values(
+  char(t: Char)=String.from_chars([t]),
+  chars(t: Char[n], forall n: Integer)=String.from_chars(t),
+  string(t: String)=t,
+  integer(t: Integer)=t.to_base(base=10)
+);
+---
+
+(source_file
+  (shebang)
+  (single_line_comment)
+  (sequence
+    (assign
+      (ident)
+      (field
+        (field
+          (ident)
+          (call
+            (ident)))
+        (call
+          (ident)
+          (block
+            (set
+              (has_type
+                (call
+                  (ident)
+                  (has_type
+                    (ident)
+                    (ident)))
+                (ident))
+              (set
+                (has_type
+                  (call
+                    (ident)
+                    (has_type
+                      (ident)
+                      (ident)))
+                  (ident))))))))
+    (sequence
+      (field
+        (ident)
+        (call
+          (ident)
+          (assign
+            (ident)
+            (block
+              (set
+                (assign
+                  (call
+                    (ident)
+                    (ident))
+                  (ident))
+                (set
+                  (assign
+                    (call
+                      (ident)
+                      (ident))
+                    (ident))))))
+          (assign
+            (ident)
+            (block
+              (set
+                (assign
+                  (call
+                    (ident)
+                    (ident))
+                  (int_literal))
+                (set
+                  (assign
+                    (call
+                      (ident)
+                      (ident))
+                    (sub
+                      (exp
+                        (int_literal)
+                        (int_literal))
+                      (int_literal)))))))))
+      (sequence
+        (assign
+          (ident)
+          (field
+            (field
+              (ident)
+              (call
+                (ident)
+                (block
+                  (has_type
+                    (call
+                      (ident)
+                      (has_type
+                        (ident)
+                        (ident)))
+                    (ident)))))
+            (call
+              (ident))))
+        (sequence
+          (assign
+            (has_type
+              (call
+                (ident)
+                (has_type
+                  (ident)
+                  (ident))
+                (assign
+                  (has_type
+                    (binding
+                      (forall)
+                      (ident))
+                    (ident))
+                  (string_literal
+                    (escape_sequence))))
+              (ident))
+            (field
+              (field
+                (ident)
+                (ident))
+              (call
+                (ident)
+                (add
+                  (field
+                    (ident)
+                    (call
+                      (ident)))
+                  (ident)))))
+          (sequence
+            (assign
+              (call
+                (ident)
+                (has_type
+                  (ident)
+                  (ident))
+                (assign
+                  (has_type
+                    (binding
+                      (forall)
+                      (ident))
+                    (ident))
+                  (int_literal)))
+              (block
+                (sequence
+                  (assign
+                    (has_type
+                      (ident)
+                      (index
+                        (ident)
+                        (field
+                          (ident)
+                          (call
+                            (ident)
+                            (field
+                              (ident)
+                              (ident))
+                            (ident)))))
+                    (string_literal))
+                  (sequence
+                    (assign
+                      (has_type
+                        (ident)
+                        (ident))
+                      (int_literal))
+                    (call
+                      (ident)
+                      (assign
+                        (ident)
+                        (greater_than
+                          (ident)
+                          (int_literal)))
+                      (assign
+                        (ident)
+                        (block
+                          (set
+                            (assign
+                              (index
+                                (ident)
+                                (neg
+                                  (ident)))
+                              (mod
+                                (ident)
+                                (int_literal)))
+                            (set
+                              (assign
+                                (ident)
+                                (div
+                                  (ident)
+                                  (int_literal)))
+                              (assign
+                                (ident)
+                                (add
+                                  (ident)
+                                  (int_literal)))))))
+                      (assign
+                        (ident)
+                        (index
+                          (ident)
+                          (range
+                            (neg
+                              (ident))))))))))
+            (sequence
+              (field
+                (ident)
+                (call
+                  (ident)
+                  (assign
+                    (call
+                      (ident)
+                      (has_type
+                        (ident)
+                        (ident)))
+                    (field
+                      (ident)
+                      (call
+                        (ident)
+                        (container
+                          (ident)))))
+                  (assign
+                    (call
+                      (ident)
+                      (has_type
+                        (ident)
+                        (index
+                          (ident)
+                          (ident)))
+                      (has_type
+                        (binding
+                          (forall)
+                          (ident))
+                        (ident)))
+                    (field
+                      (ident)
+                      (call
+                        (ident)
+                        (ident))))
+                  (assign
+                    (call
+                      (ident)
+                      (has_type
+                        (ident)
+                        (ident)))
+                    (ident))
+                  (assign
+                    (call
+                      (ident)
+                      (has_type
+                        (ident)
+                        (ident)))
+                    (field
+                      (ident)
+                      (call
+                        (ident)
+                        (assign
+                          (ident)
+                          (int_literal))))))))))))))
