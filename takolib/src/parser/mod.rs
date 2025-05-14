@@ -281,7 +281,7 @@ fn language<'src, 'ast>() -> impl Parser<'src, &'src [Token], (), ParserConfig<'
 
     let call = expr
         .clone()
-        .then(args) // foo(a, b, c)
+        .then(args.clone()) // foo(a, b, c)
         .map_with(|(inner, ((open, args), _close)), extra| {
             let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
             let loc = open; // TODO: Merge with _close
@@ -296,16 +296,96 @@ fn language<'src, 'ast>() -> impl Parser<'src, &'src [Token], (), ParserConfig<'
         })
         .labelled("a call");
 
-    let index = Recursive::declare();
-    let binding = Recursive::declare();
-    let ident = Recursive::declare();
+    let index = expr
+        .clone()
+        .then(args) // foo[a, b, c]
+        .map_with(|(inner, ((open, args), _close)), extra| {
+            let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+            let loc = open; // TODO: Merge with _close
+                            // TODO: Switch from op to call with built ins?
+            ast.add_call(
+                Call {
+                    inner,
+                    args,
+                },
+                loc,
+            )
+        })
+        .labelled("a call");
+
+    /*
+    For reference, some interesting ideas about partial ordering of precedences:
+        - https://www.foonathan.net/2017/07/operator-precedence/
+    */
+
+    // TODO: Add semver.
+    // TODO: Add headings: /====*[^='"]*====*\/,
+
+    use Symbol::*;
+
+    let params = many
+        .clone()
+        .delimited_by(op(Symbol::OpenParen), op(Symbol::CloseParen))
+        .labelled("a set of parameters");
+
+    let callable = expr
+        .clone()
+        .then(params)
+        .map_with(|(lhs, rhs), extra| {
+            let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+            ast.add_args(lhs, rhs)
+        })
+        .labelled("a callable");
+
+    let assign = select_ref! {
+        Token {
+            kind: OpType ( op @ (
+                Assign
+                | AddAssign
+                | SubAssign
+                | DivAssign
+                | MulAssign
+                | AndAssign
+                | OrAssign
+                | BitXorAssign
+                | LogicalAndAssign
+                | LogicalOrAssign
+                | ModuloAssign
+            )),
+            start, length
+        } => {
+            (op, Location { start: *start, length: *length })
+        },
+    };
+
+    // TODO: Binding types?
+    let assignment = expr
+        .clone()
+        .then(assign)
+        .then(expr.clone())
+        .map_with(|((lhs, (assign, loc)), rhs), extra| {
+            let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
+            let rhs = if let Some(op) = op_from_assign_op(*assign) {
+                ast.add_op(
+                    Op {
+                        op,
+                        args: smallvec![lhs, rhs],
+                    },
+                    loc,
+                )
+            } else {
+                rhs
+            };
+            ast.add_implementation(lhs, rhs)
+        })
+        .labelled("definition");
 
     let untyped_atom = parens
+        .or(callable)
+        .or(assignment)
         .or(container)
         .or(call)
         .or(index)
-        .or(binding)
-        .or(ident)
         .or(unordered_container)
         .or(simple_value)
         .or(fmt_str)
@@ -349,178 +429,45 @@ fn language<'src, 'ast>() -> impl Parser<'src, &'src [Token], (), ParserConfig<'
         })
     };
 
-    /*
-    For reference, some interesting ideas about partial ordering of precedences:
-        - https://www.foonathan.net/2017/07/operator-precedence/
-    */
-
-    /*
-    rules: {
-        // TODO: add the actual grammar rules
-        call: ($) => left(PREC.call, seq($.atom, '(', separated($._expression, ','), optional(','), ')')),
-        index: ($) => left(PREC.index, seq($._expression, '[', separated($._expression, ','), optional(','), ']')),
-        _operator_expression: ($) => {
-        return choice(...ALL_OPERATORS.map(([name, _operator_parser]) => {
-            try {
-            return ($)[name]; // Get the parser 'named'.
-            } catch (e) {
-            e.message = `OPERATOR: ${name} ('${operator}') PRECEDENCE: '${precedence}'.\n${e.message}`;
-            throw e;
-            }
-        }));
-        },
-        // TODO: Add control flow statements or functions.
-        break: (_) => "break",
-        continue: (_) => "continue",
-        return: (_) => "return",
-        forall: (_) => "forall",
-        exists: (_) => "exists",
-        given: (_) => "given",
-        binding: ($) => seq(
-        choice(
-            $.forall,
-            $.exists,
-            $.given
-        ),
-        $.ident
-        ),
-        ident: (_) => /[a-zA-Z][a-zA-Z0-9_]*\/,
-        // TODO: Add semver.
-        heading: (_) => /====*[^='"]*====*\/,
-    }
-    */
-
-    use Symbol::*;
-
     // TODO: Do these manually?
-    let field_expr = atom.pratt((
-        // TODO: left(4), Calls // a.b(x, y) | a.b[x, y] | a.b {x: y} => (a.b)<args>, a : b() => a : (b())
-        infix_op(left(3), HasType), // @a : c => (@a) : c, a.b : c => (a.b) : c, a:b.c => a : (b.c)
-        prefix_op(2, GetAddress),   // @a.b => @(a.b), @a.b() => @(a())
-        infix_op(left(1), Dot),     // a.b
-    ));
-
-    let bit_expr = field_expr.clone().pratt((
-        // TODO: No chaining
-        prefix_op(3, BitNot),
-        infix_op(left(3), BitXor), // TODO: Check
-        infix_op(left(2), Or),
-        infix_op(left(1), And),
-    ));
-
-    let lshift_expr = field_expr.clone().pratt((
-        // TODO: Not chaining.
-        infix_op(left(1), LeftShift),
-    ));
-    let rshift_expr = field_expr.clone().pratt((
-        // TODO: Not chaining.
-        infix_op(left(1), RightShift),
-    ));
-
-    let boolean_expr = field_expr.clone().pratt((
-        prefix_op(3, LogicalNot),
-        infix_op(left(2), LogicalOr),
-        infix_op(left(1), LogicalAnd),
-    ));
-
-    let math_expr = field_expr.clone().pratt((
-        prefix_op(5, Add),
-        prefix_op(5, Sub),
-        infix_op(left(4), Modulo),
-        infix_op(right(3), Exp),
-        infix_op(left(2), Div),
-        infix_op(left(2), Mul),
-        infix_op(left(1), Sub),
-        infix_op(left(1), Add),
-    ));
-
-    let comparison = field_expr.clone().pratt((
-        // TODO: Not chaining.
-        infix_op(left(1), Eqs),
-        infix_op(left(1), NotEqs),
-        infix_op(left(1), Lt),
-        infix_op(left(1), LtEqs),
-        infix_op(left(1), Gt),
-        infix_op(left(1), GtEqs),
-    ));
-
-    let range_expr = field_expr.clone().pratt((
-        // TODO: Not chaining.
-        infix_op(left(1), Range),
-    ));
-
-    // infix_op(left(13), Spread),
-    // postfix_op(11, Try),
-    // infix_op(left(9), DoubleArrow),
-    // infix_op(left(8), Arrow),
-    let params = many
-        .clone()
-        .delimited_by(op(Symbol::OpenParen), op(Symbol::CloseParen))
-        .labelled("a set of parameters");
-
-    let callable = expr
-        .clone()
-        .then(params)
-        .map_with(|(lhs, rhs), extra| {
-            let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
-            ast.add_args(lhs, rhs)
-        })
-        .labelled("a callable");
-
-    let assign = select_ref! {
-        Token {
-            kind: OpType ( op @ (
-                Assign
-                | AddAssign
-                | SubAssign
-                | DivAssign
-                | MulAssign
-                | AndAssign
-                | OrAssign
-                | BitXorAssign
-                | LogicalAndAssign
-                | LogicalOrAssign
-                | ModuloAssign
-            )),
-            start, length
-        } => {
-            (op, Location { start: *start, length: *length })
-        },
-    };
-
-    let assignment = expr
-        .clone()
-        .then(assign)
-        .then(expr.clone())
-        .map_with(|((lhs, (assign, loc)), rhs), extra| {
-            let ast: &mut Ast = std::ops::DerefMut::deref_mut(extra.state());
-            let rhs = if let Some(op) = op_from_assign_op(*assign) {
-                ast.add_op(
-                    Op {
-                        op,
-                        args: smallvec![lhs, rhs],
-                    },
-                    loc,
-                )
-            } else {
-                rhs
-            };
-            ast.add_implementation(lhs, rhs)
-        })
-        .labelled("definition");
-
     expr.define(
-        math_expr
-            .clone()
-            .or(callable)
-            .or(boolean_expr)
-            .or(comparison)
-            .or(lshift_expr)
-            .or(rshift_expr)
-            .or(bit_expr)
-            .or(range_expr)
-            .or(assignment)
-            .boxed(),
+        atom.pratt((
+            // TODO: infix_op(left(13), Spread),
+            // TODO: postfix_op(11, Try),
+            // TODO: infix_op(left(9), DoubleArrow),
+            // TODO: infix_op(left(8), Arrow),
+            // TODO: left(4), Calls // a.b(x, y) | a.b[x, y] | a.b {x: y} => (a.b)<args>, a : b() => a : (b())
+            // TOOD: try: 16,
+            // TODO: spread: 15,
+            // TODO: range: 15,
+            infix_op(left(2), HasType), // @a : c => (@a) : c, a.b : c => (a.b) : c, a:b.c => a : (b.c)
+            prefix_op(2, GetAddress),   // @a.b => @(a.b), @a.b() => @(a())
+            infix_op(left(17), Dot),     // a.b
+            prefix_op(15, BitNot),
+            // TODO: infix_op(left(7), BitXor), // TODO: Check
+            infix_op(left(7), Or),
+            infix_op(left(9), And),
+            // TODO: infix_op(left(10), LeftShift),
+            // TODO: infix_op(left(10), RightShift),
+            // TODO: prefix_op(15, LogicalNot),
+            // TODO: infix_op(left(4), LogicalOr),
+            // TODO: infix_op(left(5), LogicalAnd),
+            prefix_op(11, Add),
+            prefix_op(11, Sub),
+            infix_op(left(12), Modulo),
+            infix_op(right(13), Exp),
+            infix_op(left(12), Div),
+            infix_op(left(12), Mul),
+            infix_op(left(15), Sub),
+            infix_op(left(1), Add),
+            // TODO: Not chaining.
+            infix_op(left(6), Eqs),
+            infix_op(left(6), NotEqs),
+            infix_op(left(6), Lt),
+            infix_op(left(6), LtEqs),
+            infix_op(left(6), Gt),
+            infix_op(left(6), GtEqs),
+        ))
     );
 
     let roots =
