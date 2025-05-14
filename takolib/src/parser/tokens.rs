@@ -373,6 +373,7 @@ impl From<&Symbol> for &str {
     fn from(o: &Symbol) -> &'static str {
         use Symbol::*;
         match o {
+            Comma => ",",
             Hash => "#",
             Shebang => "#!",
             Comment => "//",

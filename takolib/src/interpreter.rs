@@ -272,6 +272,7 @@ impl Ctx<'_> {
             | Symbol::ModuloAssign => todo!("Support assignment"),
             Symbol::Group => todo!("Support Group"),
             Symbol::Escape => panic!("Support Escape"), // TODO: Nah
+            Symbol::Comma => panic!("Support Comma"), // TODO: Nah
         })
     }
 }
