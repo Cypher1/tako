@@ -32,6 +32,7 @@ pub const KEYWORDS: &[&str] = include_strs!("keywords.txt");
 pub enum NudKind {
     #[default]
     None,
+    Drop, // ~a => a
     Prefix, // ~a
     Nested(/* continue */ Symbol, /* end */ Symbol), // (a, b, c, d, e, )
 }
@@ -51,8 +52,24 @@ pub struct OpSetup {
     // ??? contains: &'static [Symbol],
 }
 
+impl OpSetup {
+    pub fn set_nud(&mut self, kind: NudKind) -> Result<(), ()> {
+        if self.nud == NudKind::None {
+            todo!("Error {kind:?}"); // TODO: Error
+        }
+        self.nud = kind;
+        Ok(())
+    }
+    pub fn set_led(&mut self, kind: LedKind) -> Result<(), ()> {
+        if self.led == LedKind::None {
+            todo!("Error {kind:?}"); // TODO: Error
+        }
+        self.led = kind;
+        Ok(())
+    }
+}
+
 // In precedence order least tightly binding to most.
-const OPS: &[OpSetup] = {
     use Symbol::*;
 
     // TODO: Use
@@ -81,32 +98,38 @@ const OPS: &[OpSetup] = {
         LogicalOrAssign,
         ModuloAssign,
     ];
+    const BINDINGS: &[Symbol] = &[
+        Sigma,
+        Lambda,
+        Forall,
+        Pi,
+        Exists,
+    ];
 
-    const FUNCS: &[Symbol] = &[
+const FUNCS: &[Symbol] = &[
         Arrow,
         DoubleArrow, // In case value level and type level must be different.
     ];
 
-    const ANY_VALUE: &[Symbol] = constcat::concat_slices!(
-    [Symbol]:
-    PREFIX_MATHEMATICAL,
-    MATHEMATICAL,
-    LOGICAL,
-    BIT,
-    SHIFT,
-    COMPARISONS,
-    ASSIGN,
-    FUNCS,
-    &[
-        // Special...
-        GetAddress, Try, Dot, Range, Spread, Sequence, HasType,
-    ]);
+const ANY_VALUE: &[Symbol] = constcat::concat_slices!(
+[Symbol]:
+PREFIX_MATHEMATICAL,
+MATHEMATICAL,
+LOGICAL,
+BIT,
+SHIFT,
+COMPARISONS,
+ASSIGN,
+FUNCS,
+&[
+    // Special...
+    GetAddress, Try, Dot, Range, Spread, Sequence, HasType,
+]);
 
-    &[
-        // OpSetup::new(COMPARISONS, Infix, ANY_VALUE),
-        // OpSetup::new(ASSIGN, Infix, ANY_VALUE),
-    ]
-};
+const OPS: &[OpSetup] = &[
+    // OpSetup::new(COMPARISONS, Infix, ANY_VALUE),
+    // OpSetup::new(ASSIGN, Infix, ANY_VALUE),
+];
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct Parser {
@@ -166,10 +189,6 @@ impl Parser {
         self.tok(TokenType::OpType(expected))
     }
 
-    fn shebang(&mut self) -> () {
-        let _ = self.op(Symbol::Shebang);
-    }
-
     fn identifier(&mut self) -> Result<NodeId, ParseError> {
         let Location { start, length } = self.tok(TokenType::Ident)?;
         // TODO: Get the str from the Token
@@ -209,10 +228,6 @@ impl Parser {
         self.lit(TokenType::FmtStringLitEnd, Literal::String)
     }
 
-    fn comma(&mut self) -> Result<Location, ParseError> {
-        self.tok(TokenType::Comma)
-    }
-
     fn fmt_str(&mut self) -> Result<NodeId, ParseError> {
         // TODO: This could be made 'non-special' with a little flag for what is expected next.
         let start = self.fmt_str_start()?;
@@ -239,13 +254,25 @@ impl Parser {
 
     // End of low level parsers.
 
+    fn shebang(&mut self) -> () {
+        let _ = self.op(Symbol::Shebang);
+    }
 
-    fn make_tables() -> HandlerTable {
+    fn comma(&mut self) -> Result<Location, ParseError> {
+        self.op(Symbol::Comma)
+    }
+
+
+    fn make_tables() -> Result<HandlerTable, ()> {
         let mut config = ParserConfigTable::new();
         config.resize(Symbol::iter().len(), OpSetup::default());
         let mut table = HandlerTable::new();
         table.resize(Symbol::iter().len(), None);
 
+        config[Symbol::Shebang as usize] = OpSetup {
+            nud: NudKind::Drop,
+            led: LedKind::None,
+        };
         config[Symbol::OpenParen as usize] = OpSetup {
             nud: NudKind::Nested(Symbol::Comma, Symbol::CloseParen), // ( Value(s) )
             led: LedKind::NestedInfix(Symbol::Comma, Symbol::CloseParen), // Call
@@ -255,10 +282,22 @@ impl Parser {
             led: LedKind::None // TODO: Constructor? a{ b }
         };
         config[Symbol::OpenBracket as usize] = OpSetup {
-            nud: NudKind::Nested(Symbol::Comma, Symbol::CloseBracket), // Unordered Set
+            nud: NudKind::Nested(Symbol::Comma, Symbol::CloseBracket), // Ordered Values
             led: LedKind::NestedInfix(Symbol::Comma, Symbol::CloseBracket), // Index
         };
-        table[Symbol::OpenParen as usize] = OpKind::Nested(Symbol::Comma, Symbol::CloseParen);
+        config[Symbol::Sequence as usize] = OpSetup {
+            nud: NudKind::None,
+            led: LedKind::Infix, // Index
+        };
+        for pref in PREFIX_MATHEMATICAL {
+            config[*pref as usize].set_nud(NudKind::Prefix)?;
+        }
+        for assign in ASSIGN {
+            config[*assign as usize].set_led(LedKind::Infix)?;
+        }
+        for bind in BINDINGS {
+            config[*bind as usize].set_nud(NudKind::Prefix)?;
+        }
 
         table[Symbol::OpenParen as usize] = Some(Arc::new(|s: &mut Parser, head: NodeId| {
             // Single value
@@ -304,7 +343,7 @@ impl Parser {
             Ok(s.ast.add_args(head, nodes))
         }));
 
-        table
+        Ok(table)
     }
 
     pub fn expr(&mut self) -> Result<NodeId, ParseError> {
