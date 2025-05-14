@@ -36,6 +36,7 @@ macro_rules! senum({ $s: expr } => {{
 */
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, EnumIter)]
+#[repr(u8)]
 pub enum Symbol {
     // Closes
     CloseBracket,
@@ -112,6 +113,8 @@ pub enum Symbol {
     Hash,
     MultiCommentOpen,
     MultiCommentClose,
+    // TODO: ?
+    Comma,          // A regular comma.
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
@@ -124,7 +127,6 @@ pub enum CharacterType {
 #[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum TokenType {
     OpType(Symbol), // An operator (i.e. a known symbol used as a prefix or infix operator).
-    Comma,          // A regular comma.
     Ident,          // A named value.
     // Literals (i.e. tokens representing values):
     NumberLit,
@@ -141,7 +143,6 @@ impl fmt::Display for TokenType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             TokenType::OpType(sym) => write!(f, "a '{sym:?}' symbol"),
-            TokenType::Comma => write!(f, "a comma"),
             TokenType::Ident => write!(f, "an identifier"),
             TokenType::NumberLit => write!(f, "a number"),
             TokenType::ColorLit => write!(f, "a color"),
@@ -203,11 +204,11 @@ const _MULTI_COMMENT: &str = "/*";
 pub fn classify_char(ch: char) -> CharacterType {
     use CharacterType::{HexSym, PartialToken, Whitespace};
     use Symbol::*;
-    use TokenType::{Comma, Ident, NumberLit, OpType, StringLit};
+    use TokenType::{Ident, NumberLit, OpType, StringLit};
     PartialToken(match ch {
         '\n' | '\r' | '\t' | ' ' => return Whitespace,
         'A'..='F' | 'a'..='f' => return HexSym,
-        ',' => Comma,
+        ',' => OpType(Comma),
         '#' => OpType(Hash),
         '~' => OpType(BitNot),
         '!' => OpType(LogicalNot),

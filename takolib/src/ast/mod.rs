@@ -74,6 +74,12 @@ impl Ast {
         let location = self[node_id].location;
         let id = self[node_id].id.clone();
         match id {
+            NodeData::Op(op_id) => {
+                let op = &mut self[op_id].1;
+                assert_eq!(op.args.len(), 0); // TODO: Error
+                op.args.extend(args);
+                node_id // TODO: Consider persistent data structures vs mutablilty.
+            }
             NodeData::Identifier(_) | NodeData::Call(_) => {
                 let call = Call {
                     inner: node_id,
