@@ -27,6 +27,29 @@ impl Location {
             length: 0,
         }
     }
+
+    pub fn from_range(start: IndexIntoFile, end: IndexIntoFile) -> Self {
+        // Todo: start<end
+        let start = std::cmp::min(start, end);
+        let length = (std::cmp::max(start, end) - start).try_into().unwrap();
+        Self {
+            start,
+            length
+        }
+    }
+
+    pub fn end(&self) -> IndexIntoFile {
+        self.start+(self.length as u16)
+    }
+
+    pub fn merge(self, other: Self) -> Self {
+        let start = std::cmp::min(self.start, other.start);
+        let end = std::cmp::max(self.end(), other.end());
+        Self {
+            start,
+            length: (end-start) as u8,
+        }
+    }
 }
 
 #[derive(PartialEq, Eq, Clone, Ord, PartialOrd)]
