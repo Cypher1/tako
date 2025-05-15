@@ -14,6 +14,7 @@ use inkwell::{
 };
 use std::collections::HashMap;
 use std::sync::Arc;
+// TODO: Consider async here? tokio or https://crates.io/crates/async-process
 use std::{
     io::{stderr, stdout, Write},
     path::Path,
