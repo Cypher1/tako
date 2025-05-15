@@ -7,6 +7,9 @@ use std::collections::{BTreeSet, HashMap};
 use std::path::PathBuf;
 use tokio::sync::{broadcast, mpsc};
 
+// TODO: Consider moving to a web-based front end?
+// https://crates.io/crates/h2
+
 #[derive(Debug)]
 pub struct Client {
     pub manager_status: HashMap<TaskKind, TaskStats>,
