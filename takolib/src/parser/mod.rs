@@ -1,18 +1,19 @@
 use better_std::include_strs;
 use error::ParseError;
-use smallvec::smallvec;
+use log::debug;
 use semantics::op_from_assign_op;
 use semantics::Literal;
+use smallvec::smallvec;
 use smallvec::SmallVec;
-use strum::IntoEnumIterator;
 use std::collections::VecDeque;
 use std::path::Path;
 use std::sync::Arc;
+use strum::IntoEnumIterator;
 
 use crate::ast::location::Location;
+use crate::ast::Ast;
 use crate::ast::NodeId;
 use crate::ast::Op;
-use crate::ast::Ast;
 use crate::ast::CALL_ARGS_STANDARD_ITEM_NUM;
 use crate::error::TError;
 
@@ -31,16 +32,17 @@ pub const KEYWORDS: &[&str] = include_strs!("keywords.txt");
 pub enum NudKind {
     #[default]
     None,
-    Drop, // ~a => a
-    Prefix, // ~a
+    Standalone,                                      // ~
+    Drop,                                            // ~a => a
+    Prefix,                                          // ~a
     Nested(/* continue */ Symbol, /* end */ Symbol), // (a, b, c, d, e, )
 }
 #[derive(Clone, Default, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum LedKind {
     #[default]
     None,
-    Infix, // a~b
-    Postfix, // a~
+    Infix,                                                // a~b
+    Postfix,                                              // a~
     NestedInfix(/* continue */ Symbol, /* end */ Symbol), // a(b, c, d, )
 }
 
@@ -69,46 +71,40 @@ impl OpSetup {
 }
 
 // In precedence order least tightly binding to most.
-    use Symbol::*;
+use Symbol::*;
 
-    // TODO: Use
-    const PREFIX_MATHEMATICAL: &[Symbol] = &[Add, Sub];
+// TODO: Use
+const PREFIX_MATHEMATICAL: &[Symbol] = &[Add, Sub];
 
-    const MATHEMATICAL: &[Symbol] = &[Add, Sub, Exp, Div, Mul, Modulo];
+const MATHEMATICAL: &[Symbol] = &[Add, Sub, Exp, Div, Mul, Modulo];
 
-    const LOGICAL: &[Symbol] = &[LogicalNot, LogicalAnd, LogicalOr];
+const LOGICAL: &[Symbol] = &[LogicalNot, LogicalAnd, LogicalOr];
 
-    const BIT: &[Symbol] = &[And, Or, BitNot, BitXor];
+const BIT: &[Symbol] = &[And, Or, BitNot, BitXor];
 
-    const SHIFT: &[Symbol] = &[LeftShift, RightShift];
+const SHIFT: &[Symbol] = &[LeftShift, RightShift];
 
-    const COMPARISONS: &[Symbol] = &[Eqs, NotEqs, Lt, LtEqs, Gt, GtEqs];
+const COMPARISONS: &[Symbol] = &[Eqs, NotEqs, Lt, LtEqs, Gt, GtEqs];
 
-    const ASSIGN: &[Symbol] = &[
-        Assign,
-        AddAssign,
-        SubAssign,
-        DivAssign,
-        MulAssign,
-        AndAssign,
-        OrAssign,
-        BitXorAssign,
-        LogicalAndAssign,
-        LogicalOrAssign,
-        ModuloAssign,
-    ];
-    const BINDINGS: &[Symbol] = &[
-        Sigma,
-        Lambda,
-        Forall,
-        Pi,
-        Exists,
-    ];
+const ASSIGN: &[Symbol] = &[
+    Assign,
+    AddAssign,
+    SubAssign,
+    DivAssign,
+    MulAssign,
+    AndAssign,
+    OrAssign,
+    BitXorAssign,
+    LogicalAndAssign,
+    LogicalOrAssign,
+    ModuloAssign,
+];
+const BINDINGS: &[Symbol] = &[Sigma, Lambda, Forall, Pi, Exists];
 
 const FUNCS: &[Symbol] = &[
-        Arrow,
-        DoubleArrow, // In case value level and type level must be different.
-    ];
+    Arrow,
+    DoubleArrow, // In case value level and type level must be different.
+];
 
 const ANY_VALUE: &[Symbol] = constcat::concat_slices!(
 [Symbol]:
@@ -133,7 +129,7 @@ const OPS: &[OpSetup] = &[
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct Parser {
     ast: Ast,
-    config: ParserConfigTable,
+    parse_rules: ParserConfigTable,
     // TODO: Move tokens here, and make immutable, allowing multiple ParseHeads.
     head: ParseHead,
 }
@@ -159,9 +155,16 @@ impl ParseHead {
     }
 
     fn peek_op(&self) -> Result<Symbol, ParseError> {
-        let kind = self.peek()?.kind;
+        let Token {
+            kind,
+            start,
+            length,
+        } = self.peek()?;
         let TokenType::OpType(op) = kind else {
-            todo!("expected op")
+            return Err(ParseError::UnexpectedTokenTypeExpectedOperator {
+                got: kind,
+                location: Location { start, length },
+            });
         };
         Ok(op)
     }
@@ -191,7 +194,7 @@ fn make_tables() -> Result<ParserConfigTable, ()> {
     };
     config[Symbol::OpenCurly as usize] = OpSetup {
         nud: NudKind::Nested(Symbol::Comma, Symbol::CloseCurly), // Unordered Set
-        led: LedKind::None // TODO: Constructor? a{ b }
+        led: LedKind::None,                                      // TODO: Constructor? a{ b }
     };
     config[Symbol::OpenBracket as usize] = OpSetup {
         nud: NudKind::Nested(Symbol::Comma, Symbol::CloseBracket), // Ordered Values
@@ -204,6 +207,9 @@ fn make_tables() -> Result<ParserConfigTable, ()> {
     for pref in PREFIX_MATHEMATICAL {
         config[*pref as usize].set_nud(NudKind::Prefix)?;
     }
+    for pref in MATHEMATICAL {
+        config[*pref as usize].set_led(LedKind::Infix)?;
+    }
     for assign in ASSIGN {
         config[*assign as usize].set_led(LedKind::Infix)?;
     }
@@ -214,13 +220,31 @@ fn make_tables() -> Result<ParserConfigTable, ()> {
 }
 
 impl Parser {
+    fn rule(&self, op: Option<Symbol>) -> OpSetup {
+        let Some(op) = op else {
+            return OpSetup {
+                led: LedKind::None,
+                nud: NudKind::Standalone,
+            };
+        };
+        self.parse_rules[op as usize]
+    }
+
     fn tok(&mut self, expected: TokenType) -> Result<Location, ParseError> {
-        let Token { kind, start, length } = self.head.peek()?;
+        let Token {
+            kind,
+            start,
+            length,
+        } = self.head.peek()?;
         if kind != expected {
-            return Err(ParseError::UnexpectedTokenType { got: kind, location: Location {start, length }, expected });
+            return Err(ParseError::UnexpectedTokenType {
+                got: kind,
+                location: Location { start, length },
+                expected,
+            });
         }
         self.head.eat().unwrap();
-        Ok(Location {start, length})
+        Ok(Location { start, length })
     }
 
     fn op(&mut self, expected: Symbol) -> Result<Location, ParseError> {
@@ -228,19 +252,19 @@ impl Parser {
     }
 
     fn identifier(&mut self) -> Result<NodeId, ParseError> {
-        let Location { start, length } = self.tok(TokenType::Ident)?;
+        let loc = self.tok(TokenType::Ident)?;
         // TODO: Get the str from the Token
-        let s = &self.ast.contents[(start as usize)..(start+(length as u16)) as usize];
+        let s = &self.ast.contents[loc.to_range()];
         let id = self.ast.string_interner.register_str(s);
-        Ok(self.ast.add_identifier(id, Location { start, length }))
+        Ok(self.ast.add_identifier(id, loc))
     }
 
     fn lit(&mut self, kind: TokenType, lit: Literal) -> Result<NodeId, ParseError> {
-        let Location { start, length } = self.tok(kind)?;
+        let loc = self.tok(kind)?;
         // TODO: Get the str from the Token
-        let s = &self.ast.contents[(start as usize)..(start+(length as u16)) as usize];
-        let _ = self.ast.string_interner.register_str_by_loc(s, start);
-        Ok(self.ast.add_literal(lit, Location { start, length}))
+        let s = &self.ast.contents[loc.to_range()];
+        let _ = self.ast.string_interner.register_str_by_loc(s, loc.start);
+        Ok(self.ast.add_literal(lit, loc))
     }
     fn number(&mut self) -> Result<NodeId, ParseError> {
         self.lit(TokenType::NumberLit, Literal::Numeric)
@@ -301,13 +325,29 @@ impl Parser {
     // End of low level parsers.
 
     fn led(&mut self, left: NodeId, inside: Symbol) -> Result<NodeId, ParseError> {
-
-        todo!("led")
+        let tok = self.head.peek()?;
+        // OR
+        let curr = self.head.peek_op().ok();
+        debug!("{curr:?} {tok:?}");
+        debug!("led {:?}", self.rule(curr));
+        match tok.kind {
+            TokenType::Ident => self.identifier(),
+            TokenType::NumberLit => self.number(),
+            _ => todo!("led {tok:?}")
+        }
     }
 
     fn nud(&mut self, inside: Symbol) -> Result<NodeId, ParseError> {
-
-        todo!("nud")
+        let tok = self.head.peek()?;
+        // OR
+        let curr = self.head.peek_op().ok();
+        debug!("{curr:?} {tok:?}");
+        debug!("nud {:?}", self.rule(curr));
+        match tok.kind {
+            TokenType::Ident => self.identifier(),
+            TokenType::NumberLit => self.number(),
+            _ => todo!("nud {tok:?}")
+        }
     }
 
     pub fn expr(&mut self) -> Result<NodeId, ParseError> {
@@ -550,7 +590,7 @@ pub fn parse(file: &Path, input: &str, tokens: &[Token]) -> Result<Ast, TError> 
             tokens: VecDeque::from_iter(tokens.into_iter().copied()),
             stack: Vec::new(),
         },
-        config: make_tables().expect("default config broken"),
+        parse_rules: make_tables().expect("default config broken"),
         ast: Ast::new(file.to_path_buf(), input.to_string()),
     };
 
