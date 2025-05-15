@@ -1,6 +1,5 @@
 use std::{
-    fmt,
-    path::{Path, PathBuf},
+    fmt, ops::Range, path::{Path, PathBuf}
 };
 
 pub type IndexIntoFile = u16;
@@ -26,6 +25,10 @@ impl Location {
             start: 0,
             length: 0,
         }
+    }
+
+    pub fn to_range(&self) -> Range<usize> {
+        (self.start as usize)..(self.start + (self.length as u16)) as usize
     }
 
     pub fn from_range(start: IndexIntoFile, end: IndexIntoFile) -> Self {
