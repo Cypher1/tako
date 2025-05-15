@@ -69,8 +69,7 @@ impl Task for LoadFileTask {
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
         trace!("LoadFileTask: {path}", path = self.path.display());
-        // TODO(perf): Use tokio's async read_to_string.
-        let contents = std::fs::read_to_string(&self.path);
+        let contents = tokio::fs::read_to_string(&self.path).await;
         let contents = contents.map_err(|err| self.decorate_error(err));
         result_sender
             .send((
