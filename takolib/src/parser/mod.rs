@@ -78,7 +78,8 @@ const PREFIX_MATHEMATICAL: &[Symbol] = &[Add, Sub];
 
 const MATHEMATICAL: &[Symbol] = &[Add, Sub, Exp, Div, Mul, Modulo];
 
-const LOGICAL: &[Symbol] = &[LogicalNot, LogicalAnd, LogicalOr];
+const LOGICAL: &[Symbol] = &[LogicalAnd, LogicalOr];
+const PREFIX_LOGICAL: &[Symbol] = &[LogicalAnd, LogicalOr];
 
 const BIT: &[Symbol] = &[And, Or, BitNot, BitXor];
 
@@ -106,20 +107,32 @@ const FUNCS: &[Symbol] = &[
     DoubleArrow, // In case value level and type level must be different.
 ];
 
+const SPECIAL: &[Symbol] = &[
+    HasType,
+    Range,
+    Dot,
+    Sequence,
+];
+const PREFIX_SPECIAL: &[Symbol] = &[
+    GetAddress,
+    Try,
+    Spread,
+];
+
 const ANY_VALUE: &[Symbol] = constcat::concat_slices!(
 [Symbol]:
 PREFIX_MATHEMATICAL,
 MATHEMATICAL,
 LOGICAL,
+PREFIX_LOGICAL,
 BIT,
 SHIFT,
 COMPARISONS,
 ASSIGN,
 FUNCS,
-&[
-    // Special...
-    GetAddress, Try, Dot, Range, Spread, Sequence, HasType,
-]);
+SPECIAL,
+PREFIX_SPECIAL,
+);
 
 const OPS: &[OpSetup] = &[
     // OpSetup::new(COMPARISONS, Infix, ANY_VALUE),
@@ -208,6 +221,18 @@ fn make_tables() -> Result<ParserConfigTable, ()> {
         config[*pref as usize].set_nud(NudKind::Prefix)?;
     }
     for pref in MATHEMATICAL {
+        config[*pref as usize].set_led(LedKind::Infix)?;
+    }
+    for pref in PREFIX_LOGICAL {
+        config[*pref as usize].set_nud(NudKind::Prefix)?;
+    }
+    for pref in LOGICAL {
+        config[*pref as usize].set_led(LedKind::Infix)?;
+    }
+    for pref in PREFIX_SPECIAL {
+        config[*pref as usize].set_nud(NudKind::Prefix)?;
+    }
+    for pref in SPECIAL {
         config[*pref as usize].set_led(LedKind::Infix)?;
     }
     for assign in ASSIGN {
