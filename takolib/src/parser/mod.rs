@@ -133,6 +133,7 @@ const OPS: &[OpSetup] = &[
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct Parser {
     ast: Ast,
+    config: ParserConfigTable,
     // TODO: Move tokens here, and make immutable, allowing multiple ParseHeads.
     head: ParseHead,
 }
@@ -172,6 +173,44 @@ impl ParseHead {
         self.location.start += tok.location().length as u16;
         return Ok(tok);
     }
+}
+
+fn make_tables() -> Result<ParserConfigTable, ()> {
+    let mut config = ParserConfigTable::new();
+    config.resize(Symbol::iter().len(), OpSetup::default());
+    let mut table = HandlerTable::new();
+    table.resize(Symbol::iter().len(), None);
+
+    config[Symbol::Shebang as usize] = OpSetup {
+        nud: NudKind::Drop,
+        led: LedKind::None,
+    };
+    config[Symbol::OpenParen as usize] = OpSetup {
+        nud: NudKind::Nested(Symbol::Comma, Symbol::CloseParen), // ( Value(s) )
+        led: LedKind::NestedInfix(Symbol::Comma, Symbol::CloseParen), // Call
+    };
+    config[Symbol::OpenCurly as usize] = OpSetup {
+        nud: NudKind::Nested(Symbol::Comma, Symbol::CloseCurly), // Unordered Set
+        led: LedKind::None // TODO: Constructor? a{ b }
+    };
+    config[Symbol::OpenBracket as usize] = OpSetup {
+        nud: NudKind::Nested(Symbol::Comma, Symbol::CloseBracket), // Ordered Values
+        led: LedKind::NestedInfix(Symbol::Comma, Symbol::CloseBracket), // Index
+    };
+    config[Symbol::Sequence as usize] = OpSetup {
+        nud: NudKind::None,
+        led: LedKind::Infix, // Index
+    };
+    for pref in PREFIX_MATHEMATICAL {
+        config[*pref as usize].set_nud(NudKind::Prefix)?;
+    }
+    for assign in ASSIGN {
+        config[*assign as usize].set_led(LedKind::Infix)?;
+    }
+    for bind in BINDINGS {
+        config[*bind as usize].set_nud(NudKind::Prefix)?;
+    }
+    Ok(config)
 }
 
 impl Parser {
@@ -251,8 +290,6 @@ impl Parser {
         ))
     }
 
-    // End of low level parsers.
-
     fn shebang(&mut self) -> () {
         let _ = self.op(Symbol::Shebang);
     }
@@ -261,100 +298,27 @@ impl Parser {
         self.op(Symbol::Comma)
     }
 
+    // End of low level parsers.
 
-    fn make_tables() -> Result<HandlerTable, ()> {
-        let mut config = ParserConfigTable::new();
-        config.resize(Symbol::iter().len(), OpSetup::default());
-        let mut table = HandlerTable::new();
-        table.resize(Symbol::iter().len(), None);
+    fn led(&mut self, left: NodeId, inside: Symbol) -> Result<NodeId, ParseError> {
 
-        config[Symbol::Shebang as usize] = OpSetup {
-            nud: NudKind::Drop,
-            led: LedKind::None,
-        };
-        config[Symbol::OpenParen as usize] = OpSetup {
-            nud: NudKind::Nested(Symbol::Comma, Symbol::CloseParen), // ( Value(s) )
-            led: LedKind::NestedInfix(Symbol::Comma, Symbol::CloseParen), // Call
-        };
-        config[Symbol::OpenCurly as usize] = OpSetup {
-            nud: NudKind::Nested(Symbol::Comma, Symbol::CloseCurly), // Unordered Set
-            led: LedKind::None // TODO: Constructor? a{ b }
-        };
-        config[Symbol::OpenBracket as usize] = OpSetup {
-            nud: NudKind::Nested(Symbol::Comma, Symbol::CloseBracket), // Ordered Values
-            led: LedKind::NestedInfix(Symbol::Comma, Symbol::CloseBracket), // Index
-        };
-        config[Symbol::Sequence as usize] = OpSetup {
-            nud: NudKind::None,
-            led: LedKind::Infix, // Index
-        };
-        for pref in PREFIX_MATHEMATICAL {
-            config[*pref as usize].set_nud(NudKind::Prefix)?;
-        }
-        for assign in ASSIGN {
-            config[*assign as usize].set_led(LedKind::Infix)?;
-        }
-        for bind in BINDINGS {
-            config[*bind as usize].set_nud(NudKind::Prefix)?;
-        }
+        todo!("led")
+    }
 
-        table[Symbol::OpenParen as usize] = Some(Arc::new(|s: &mut Parser, head: NodeId| {
-            // Single value
-            let inner = s.expr()?;
-            s.op(Symbol::CloseParen)?;
-            Ok(s.ast.add_args(head, smallvec![inner]))
-        }));
+    fn nud(&mut self, inside: Symbol) -> Result<NodeId, ParseError> {
 
-        table[Symbol::OpenParen as usize] = Some(Arc::new(|s: &mut Parser, head: NodeId| {
-            // Call
-            let mut nodes: SmallVec<NodeId, CALL_ARGS_STANDARD_ITEM_NUM> = SmallVec::new();
-            while s.head.peek_op()? != Symbol::CloseParen {
-                // TODO: Early exit closers.
-                nodes.push(s.expr()?);
-                s.comma()?;
-            }
-            s.op(Symbol::CloseParen)?;
-            // TODO: Location::merge(start, end),
-            Ok(s.ast.add_args(head, nodes))
-        }));
-
-        table[Symbol::OpenBracket as usize] = Some(Arc::new(|s: &mut Parser, head: NodeId| {
-            // Container
-            let mut nodes: SmallVec<NodeId, CALL_ARGS_STANDARD_ITEM_NUM> = SmallVec::new();
-            while s.head.peek_op()? != Symbol::CloseBracket {
-                nodes.push(s.expr()?);
-                s.comma()?;
-            }
-            s.op(Symbol::CloseBracket)?;
-            // TODO: Location::merge(start, end),
-            Ok(s.ast.add_args(head, nodes))
-        }));
-
-        table[Symbol::OpenCurly as usize] = Some(Arc::new(|s: &mut Parser, head: NodeId| {
-            // Unordered Container
-            let mut nodes: SmallVec<NodeId, CALL_ARGS_STANDARD_ITEM_NUM> = SmallVec::new();
-            while s.head.peek_op()? != Symbol::CloseCurly {
-                nodes.push(s.expr()?);
-                s.comma()?;
-            }
-            s.op(Symbol::CloseCurly)?;
-            // TODO: Location::merge(start, end),
-            Ok(s.ast.add_args(head, nodes))
-        }));
-
-        Ok(table)
+        todo!("nud")
     }
 
     pub fn expr(&mut self) -> Result<NodeId, ParseError> {
-        let inside = self.head.stack.last().copied();
-        let head = self.head.peek()?;
-        //match head.kind {
+        let inside = self.head.stack.last().copied().unwrap_or(Symbol::OpenParen);
+        let mut curr = self.nud(inside)?;
 
+        while let Ok(next) = self.led(curr, inside) {
+            curr = next;
+        }
 
-
-        //}
-        // Ok(())
-        todo!()
+        Ok(curr)
     }
 
     pub fn file(&mut self) -> Result<(), ParseError> {
@@ -586,6 +550,7 @@ pub fn parse(file: &Path, input: &str, tokens: &[Token]) -> Result<Ast, TError> 
             tokens: VecDeque::from_iter(tokens.into_iter().copied()),
             stack: Vec::new(),
         },
+        config: make_tables().expect("default config broken"),
         ast: Ast::new(file.to_path_buf(), input.to_string()),
     };
 
