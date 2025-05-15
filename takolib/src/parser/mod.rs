@@ -53,14 +53,14 @@ pub struct OpSetup {
 
 impl OpSetup {
     pub fn set_nud(&mut self, kind: NudKind) -> Result<(), ()> {
-        if self.nud == NudKind::None {
+        if self.nud != NudKind::None {
             todo!("Error {kind:?}"); // TODO: Error
         }
         self.nud = kind;
         Ok(())
     }
     pub fn set_led(&mut self, kind: LedKind) -> Result<(), ()> {
-        if self.led == LedKind::None {
+        if self.led != LedKind::None {
             todo!("Error {kind:?}"); // TODO: Error
         }
         self.led = kind;
