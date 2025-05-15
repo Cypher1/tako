@@ -217,7 +217,7 @@ impl Parser {
     fn tok(&mut self, expected: TokenType) -> Result<Location, ParseError> {
         let Token { kind, start, length } = self.head.peek()?;
         if kind != expected {
-            todo!("expected {expected:?} found {kind:?} at {start}..{end}", start=start, end=start+(length as u16))
+            return Err(ParseError::UnexpectedTokenType { got: kind, location: Location {start, length }, expected });
         }
         self.head.eat().unwrap();
         Ok(Location {start, length})
