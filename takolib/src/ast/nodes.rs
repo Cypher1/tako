@@ -5,7 +5,6 @@ use crate::parser::semantics::BindingMode;
 use crate::parser::tokens::Symbol;
 use smallvec::SmallVec;
 
-pub const OP_ARGS_STANDARD_ITEM_NUM: usize = 2;
 pub const CALL_ARGS_STANDARD_ITEM_NUM: usize = 2;
 pub const FMT_STR_STANDARD_ITEM_NUM: usize = 2; // TODO: Convert to a different store
 
@@ -64,7 +63,7 @@ pub struct Call {
 pub struct Op {
     pub op: Symbol,
     // TODO(perf): Use left: Option<NodeId>, right: Option<NodeId>
-    pub args: SmallVec<NodeId, OP_ARGS_STANDARD_ITEM_NUM>,
+    pub args: SmallVec<NodeId, CALL_ARGS_STANDARD_ITEM_NUM>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
