@@ -1,6 +1,7 @@
 use crate::ast::location::{IndexIntoFile, SymbolLength};
 use crate::error::TError;
-use crate::parser::tokens::{CharacterType, Symbol, TokenType};
+use crate::parser::tokens::{CharacterType, Symbol};
+use crate::parser::TokenType;
 use better_std::{assert_eq, todo};
 use log::debug;
 
@@ -76,8 +77,7 @@ pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> boo
         characters.next();
     }
     // TODO(usability): Work out a better way of printing pretty spaces.
-    use CharacterType::{HexSym, PartialToken};
-    use TokenType::{ColorLit, Ident, NumberLit, OpType, StringLit};
+    use CharacterType::PartialToken;
     let chr = if let Some(chr) = characters.next() {
         chr
     } else {
@@ -88,8 +88,26 @@ pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> boo
     while let Some(chr) = characters.peek() {
         // TODO(perf): these could be bit strings and we could and them.
         kind = match (kind, classify_char(chr)) {
-            (PartialToken(OpType(first)), PartialToken(OpType(second))) => {
-                PartialToken(OpType(match (first, second) {
+            (
+                PartialToken(Symbol::Hash),
+                CharacterType::HexSym | PartialToken(Symbol::NumberLit),
+            ) => PartialToken(Symbol::ColorLit), // Color Literal.
+            (
+                PartialToken(Symbol::ColorLit),
+                CharacterType::HexSym | PartialToken(Symbol::NumberLit),
+            ) => PartialToken(Symbol::ColorLit), // Color Literal.
+            (
+                CharacterType::HexSym | PartialToken(Symbol::Ident),
+                CharacterType::HexSym | PartialToken(Symbol::NumberLit | Symbol::Ident),
+            ) => PartialToken(Symbol::Ident), // Symbol.
+            (PartialToken(Symbol::NumberLit), PartialToken(Symbol::NumberLit)) => {
+                PartialToken(Symbol::NumberLit)
+            } // Continuation
+            (PartialToken(Symbol::NumberLit), PartialToken(Symbol::Ident)) => {
+                PartialToken(Symbol::NumberLit)
+            } // Number with suffix.
+            (PartialToken(first), PartialToken(second)) => {
+                PartialToken(match (first, second) {
                     // Continuation
                     (Symbol::Add, Symbol::Assign) => Symbol::AddAssign,
                     (Symbol::Sub, Symbol::Assign) => Symbol::SubAssign,
@@ -119,30 +137,21 @@ pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> boo
                     (Symbol::Lt, Symbol::Assign) => Symbol::LtEqs,
                     (Symbol::LogicalNot, Symbol::Assign) => Symbol::NotEqs,
                     (_, _) => break,
-                }))
+                })
             }
-            (PartialToken(OpType(Symbol::Hash)), HexSym | PartialToken(NumberLit)) => {
-                PartialToken(ColorLit)
-            } // Color Literal.
-            (PartialToken(ColorLit), HexSym | PartialToken(NumberLit)) => PartialToken(ColorLit), // Color Literal.
-            (HexSym | PartialToken(Ident), HexSym | PartialToken(NumberLit | Ident)) => {
-                PartialToken(Ident)
-            } // Symbol.
-            (PartialToken(NumberLit), PartialToken(NumberLit)) => PartialToken(NumberLit), // Continuation
-            (PartialToken(NumberLit), PartialToken(Ident)) => PartialToken(NumberLit), // Number with suffix.
             _ => break, // Token finished can't continue here.
         };
         characters.next(); // Continue past the character.
     }
     if kind == CharacterType::HexSym {
-        kind = PartialToken(TokenType::Ident); // TODO: Re-understand this.
+        kind = PartialToken(Symbol::Ident); // TODO: Re-understand this.
     }
     let kind = if let PartialToken(kind) = kind {
         kind
     } else {
         todo!("Invalid / unfinished token: {kind:?} {characters:?}");
     };
-    if kind == StringLit {
+    if kind == Symbol::StringLit {
         let quote = characters
             .curr()
             .expect("String literals should start with a quote");
@@ -155,7 +164,7 @@ pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> boo
                 characters.next(); // Skip escaped quotes.
             }
         }
-    } else if kind == OpType(Symbol::Shebang) || kind == OpType(Symbol::Comment) {
+    } else if kind == Symbol::Shebang || kind == Symbol::Comment {
         while let Some(chr) = characters.next() {
             // TODO(perf): use .find
             if chr == '\n' {
@@ -163,9 +172,9 @@ pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> boo
             }
         }
         return lex_head(characters, tokens);
-    } else if kind == OpType(Symbol::MultiCommentClose) {
+    } else if kind == (Symbol::MultiCommentClose) {
         todo!("Recover from this?");
-    } else if kind == OpType(Symbol::MultiCommentOpen) {
+    } else if kind == (Symbol::MultiCommentOpen) {
         // Track depth of mutli line comments
         let mut depth = 1;
         let mut last: char = ' ';
@@ -200,7 +209,7 @@ pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> boo
         tokens.push(Token {
             start: characters.start() as IndexIntoFile,
             length: number_of_tokens as SymbolLength,
-            kind: TokenType::OpType(Symbol::Group),
+            kind: (Symbol::Group),
         });
         let mut length = length;
         while length > 0 {
@@ -234,7 +243,7 @@ fn is_whitespace(chr: char) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::TokenType::{ColorLit, Ident, NumberLit, OpType, StringLit};
+    use super::Symbol::{ColorLit, Ident, NumberLit, StringLit};
     use super::*;
     use better_std::{assert_eq, assert_str_eq};
     use strum::IntoEnumIterator;
@@ -315,7 +324,7 @@ mod tests {
             tokens,
             vec![
                 Token {
-                    kind: OpType(Symbol::Sub),
+                    kind: (Symbol::Sub),
                     start: 0,
                     length: 1
                 },
@@ -396,12 +405,12 @@ mod tests {
                     length: 1
                 },
                 Token {
-                    kind: OpType(Symbol::OpenParen),
+                    kind: (Symbol::OpenParen),
                     start: 1,
                     length: 1
                 },
                 Token {
-                    kind: OpType(Symbol::CloseParen),
+                    kind: (Symbol::CloseParen),
                     start: 2,
                     length: 1
                 }
@@ -420,7 +429,7 @@ mod tests {
             tokens,
             vec![
                 Token {
-                    kind: OpType(Symbol::LogicalNot),
+                    kind: (Symbol::LogicalNot),
                     start: 0,
                     length: 1
                 },
@@ -446,11 +455,7 @@ mod tests {
     fn lex_parentheses() {
         let contents = "(\"hello world\"\n)";
         let tokens = setup(contents);
-        let expected = vec![
-            OpType(Symbol::OpenParen),
-            StringLit,
-            OpType(Symbol::CloseParen),
-        ];
+        let expected = vec![(Symbol::OpenParen), StringLit, (Symbol::CloseParen)];
         assert_eq!(
             tokens
                 .iter()
@@ -472,11 +477,7 @@ mod tests {
     fn lex_curlies() {
         let contents = "{\"hello world\"\n}";
         let tokens = setup(contents);
-        let expected = vec![
-            OpType(Symbol::OpenCurly),
-            StringLit,
-            OpType(Symbol::CloseCurly),
-        ];
+        let expected = vec![(Symbol::OpenCurly), StringLit, (Symbol::CloseCurly)];
         assert_eq!(
             tokens
                 .iter()
@@ -498,11 +499,7 @@ mod tests {
     fn lex_brackets() {
         let contents = "[\"hello world\"\n]";
         let tokens = setup(contents);
-        let expected = vec![
-            OpType(Symbol::OpenBracket),
-            StringLit,
-            OpType(Symbol::CloseBracket),
-        ];
+        let expected = vec![(Symbol::OpenBracket), StringLit, (Symbol::CloseBracket)];
         assert_eq!(
             tokens
                 .iter()
@@ -524,7 +521,7 @@ mod tests {
     fn lex_strings_with_operators() {
         let contents = "!\"hello world\"\n7";
         let tokens = setup(contents);
-        let expected = vec![OpType(Symbol::LogicalNot), StringLit, NumberLit];
+        let expected = vec![Symbol::LogicalNot, StringLit, NumberLit];
         assert_eq!(
             tokens
                 .iter()
@@ -619,9 +616,9 @@ mod tests {
 
     #[test]
     fn can_tokenize_operators() {
-        for symbol in Symbol::iter() {
+        for kind in Symbol::iter() {
             if matches!(
-                symbol,
+                kind,
                 Symbol::Shebang
                     | Symbol::Comment
                     | Symbol::Hash
@@ -633,8 +630,8 @@ mod tests {
                 // Special case
                 continue;
             }
-            let symbol_str = format!("{}", &symbol);
-            let contents = format!("{}123", &symbol);
+            let symbol_str = format!("{}", &kind);
+            let contents = format!("{}123", &kind);
             let tokens = setup(&contents);
             let length = symbol_str.len();
 
@@ -642,7 +639,7 @@ mod tests {
                 tokens,
                 vec![
                     Token {
-                        kind: OpType(symbol),
+                        kind,
                         start: 0,
                         length: length as SymbolLength,
                     },
@@ -652,7 +649,7 @@ mod tests {
                         length: 3,
                     },
                 ],
-                "Failed with operator {symbol}"
+                "Failed with operator {kind}"
             );
             assert_str_eq!(tokens[0].get_src(&contents), symbol_str);
             assert_str_eq!(tokens[1].get_src(&contents), "123");

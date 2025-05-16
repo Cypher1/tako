@@ -1,5 +1,7 @@
 use std::{
-    fmt, ops::Range, path::{Path, PathBuf}
+    fmt,
+    ops::Range,
+    path::{Path, PathBuf},
 };
 
 pub type IndexIntoFile = u16;
@@ -35,14 +37,11 @@ impl Location {
         // Todo: start<end
         let start = std::cmp::min(start, end);
         let length = (std::cmp::max(start, end) - start).try_into().unwrap();
-        Self {
-            start,
-            length
-        }
+        Self { start, length }
     }
 
     pub fn end(&self) -> IndexIntoFile {
-        self.start+(self.length as u16)
+        self.start + (self.length as u16)
     }
 
     pub fn merge(self, other: Self) -> Self {
@@ -50,7 +49,7 @@ impl Location {
         let end = std::cmp::max(self.end(), other.end());
         Self {
             start,
-            length: (end-start) as u8,
+            length: (end - start) as u8,
         }
     }
 }

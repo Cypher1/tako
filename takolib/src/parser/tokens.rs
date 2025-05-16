@@ -6,7 +6,6 @@ use strum_macros::EnumIter;
 use static_assertions::assert_eq_size;
 assert_eq_size!(Symbol, [u8; 1]);
 assert_eq_size!([Symbol; 2], [u8; 2]);
-assert_eq_size!(TokenType, [u8; 1]);
 assert_eq_size!(IndexIntoFile, [u8; 2]);
 assert_eq_size!(SymbolLength, [u8; 1]);
 assert_eq_size!(Token, [u8; 4]);
@@ -102,20 +101,10 @@ pub enum Symbol {
     MultiCommentOpen,
     MultiCommentClose,
     // TODO: ?
-    Comma,          // A regular comma.
-}
+    Comma, // A regular comma.
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
-pub enum CharacterType {
-    Whitespace,              // A special discardable token representing whitespace.
-    HexSym, // A subset of symbol characters that can be used in Hex strings (e.g. Colors).
-    PartialToken(TokenType), // Already a valid token!
-}
-
-#[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
-pub enum TokenType {
-    OpType(Symbol), // An operator (i.e. a known symbol used as a prefix or infix operator).
-    Ident,          // A named value.
+    // Non operator Token types
+    Ident, // A named value.
     // Literals (i.e. tokens representing values):
     NumberLit,
     ColorLit,
@@ -125,31 +114,26 @@ pub enum TokenType {
     FmtStringLitStart,
     FmtStringLitMid,
     FmtStringLitEnd,
+    // TODO: Add semver.
+    // TODO: Add headings: /====*[^='"]*====*\/,
 }
 
-impl fmt::Display for TokenType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            TokenType::OpType(sym) => write!(f, "a '{sym:?}' symbol"),
-            TokenType::Ident => write!(f, "an identifier"),
-            TokenType::NumberLit => write!(f, "a number"),
-            TokenType::ColorLit => write!(f, "a color"),
-            TokenType::StringLit => write!(f, "a string literal"),
-            TokenType::FmtStringLitStart => write!(f, "the start of a format string literal"),
-            TokenType::FmtStringLitMid => write!(f, "the middle of a format string literal"),
-            TokenType::FmtStringLitEnd => write!(f, "the end of a format string literal"),
-        }
-    }
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+pub enum CharacterType {
+    Whitespace,           // A special discardable token representing whitespace.
+    HexSym, // A subset of symbol characters that can be used in Hex strings (e.g. Colors).
+    PartialToken(Symbol), // Already a valid token!
 }
-impl fmt::Debug for TokenType {
+
+impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{}", Into::<&str>::into(self))
     }
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Token {
-    pub kind: TokenType,
+    pub kind: Symbol,
     // These are byte indexes and byte lengths. They may need to be interpreted before being shown
     // to the user.
     pub start: IndexIntoFile,
@@ -192,42 +176,42 @@ const _MULTI_COMMENT: &str = "/*";
 pub fn classify_char(ch: char) -> CharacterType {
     use CharacterType::{HexSym, PartialToken, Whitespace};
     use Symbol::*;
-    use TokenType::{Ident, NumberLit, OpType, StringLit};
+    use Symbol::{Ident, NumberLit, StringLit};
     PartialToken(match ch {
         '\n' | '\r' | '\t' | ' ' => return Whitespace,
         'A'..='F' | 'a'..='f' => return HexSym,
-        ',' => OpType(Comma),
-        '#' => OpType(Hash),
-        '~' => OpType(BitNot),
-        '!' => OpType(LogicalNot),
-        '@' => OpType(GetAddress),
-        '%' => OpType(Modulo),
-        '^' => OpType(BitXor),
-        '&' => OpType(And),
-        '*' => OpType(Mul),
-        '-' => OpType(Sub),
-        '+' => OpType(Add),
-        '=' => OpType(Assign),
-        '<' => OpType(Lt),
-        '>' => OpType(Gt),
-        '|' => OpType(Or),
-        '/' => OpType(Div),
-        '?' => OpType(Try),
-        '.' => OpType(Dot),
-        ':' => OpType(HasType),
-        ';' => OpType(Sequence),
-        '(' => OpType(OpenParen),
-        ')' => OpType(CloseParen),
-        '{' => OpType(OpenCurly),
-        '}' => OpType(CloseCurly),
-        '[' => OpType(OpenBracket),
-        ']' => OpType(CloseBracket),
-        '\\' => OpType(Escape), // Escape?
-        'λ' => OpType(Lambda),
-        'Π' => OpType(Pi),
-        'Σ' => OpType(Sigma),
-        '∀' => OpType(Forall),
-        '∃' => OpType(Exists),
+        ',' => Comma,
+        '#' => Hash,
+        '~' => BitNot,
+        '!' => LogicalNot,
+        '@' => GetAddress,
+        '%' => Modulo,
+        '^' => BitXor,
+        '&' => And,
+        '*' => Mul,
+        '-' => Sub,
+        '+' => Add,
+        '=' => Assign,
+        '<' => Lt,
+        '>' => Gt,
+        '|' => Or,
+        '/' => Div,
+        '?' => Try,
+        '.' => Dot,
+        ':' => HasType,
+        ';' => Sequence,
+        '(' => OpenParen,
+        ')' => CloseParen,
+        '{' => OpenCurly,
+        '}' => CloseCurly,
+        '[' => OpenBracket,
+        ']' => CloseBracket,
+        '\\' => Escape, // Escape?
+        'λ' => Lambda,
+        'Π' => Pi,
+        'Σ' => Sigma,
+        '∀' => Forall,
+        '∃' => Exists,
         '0'..='9' => NumberLit,
         'A'..='Z' | 'a'..='z' | '_' => Ident, // Overlapped by colors.
         '"' | '\'' => StringLit,
@@ -359,80 +343,80 @@ impl TryFrom<&str> for Symbol {
 
 impl From<&Symbol> for &str {
     fn from(o: &Symbol) -> &'static str {
-        use Symbol::*;
         match o {
-            Comma => ",",
-            Hash => "#",
-            Shebang => "#!",
-            Comment => "//",
-            MultiCommentOpen => "/*",
-            MultiCommentClose => "*/",
-            Add => "+",
-            Sub => "-",
-            Div => "/",
-            Mul => "*",
-            Exp => "**",
-            LogicalNot => "!",
-            BitNot => "~",
-            And => "&",
-            BitXor => "^",
-            Or => "|",
-            LogicalAnd => "&&",
-            LogicalOr => "||",
-            Modulo => "%",
-            GetAddress => "@",
-            HasType => ":",
-            Try => "?",
-            Dot => ".",
-            Range => "..",
-            Spread => "...",
-            Sequence => ";",
-            Arrow => "->",
-            DoubleArrow => "=>",
-            LeftShift => "<<",
-            RightShift => ">>",
-            Assign => "=",
-            AddAssign => "+=",
-            SubAssign => "-=",
-            DivAssign => "/=",
-            MulAssign => "*=",
-            AndAssign => "&=",
-            OrAssign => "|=",
-            BitXorAssign => "^=",
-            LogicalAndAssign => "&&=",
-            LogicalOrAssign => "||=",
-            ModuloAssign => "%=",
-            Lambda => "λ",
-            Sigma => "Σ",
-            Pi => "Π",
-            Forall => "∀",
-            Exists => "∃",
-            Eqs => "==",
-            NotEqs => "!=",
-            Lt => "<",
-            Gt => ">",
-            LtEqs => "<=",
-            GtEqs => ">=",
-            OpenParen => "(",
-            CloseParen => ")",
-            OpenCurly => "{",
-            CloseCurly => "}",
-            OpenBracket => "[",
-            CloseBracket => "]",
-            Escape => "\\",
-            Group => " ", // Group is not a expressable character.
+            Symbol::Ident => "an identifier",
+            Symbol::NumberLit => "a number",
+            Symbol::ColorLit => "a color",
+            Symbol::StringLit => "a string literal",
+            Symbol::FmtStringLitStart => "the start of a format string literal",
+            Symbol::FmtStringLitMid => "the middle of a format string literal",
+            Symbol::FmtStringLitEnd => "the end of a format string literal",
+            Symbol::Comma => ",",
+            Symbol::Hash => "#",
+            Symbol::Shebang => "#!",
+            Symbol::Comment => "//",
+            Symbol::MultiCommentOpen => "/*",
+            Symbol::MultiCommentClose => "*/",
+            Symbol::Add => "+",
+            Symbol::Sub => "-",
+            Symbol::Div => "/",
+            Symbol::Mul => "*",
+            Symbol::Exp => "**",
+            Symbol::LogicalNot => "!",
+            Symbol::BitNot => "~",
+            Symbol::And => "&",
+            Symbol::BitXor => "^",
+            Symbol::Or => "|",
+            Symbol::LogicalAnd => "&&",
+            Symbol::LogicalOr => "||",
+            Symbol::Modulo => "%",
+            Symbol::GetAddress => "@",
+            Symbol::HasType => ":",
+            Symbol::Try => "?",
+            Symbol::Dot => ".",
+            Symbol::Range => "..",
+            Symbol::Spread => "...",
+            Symbol::Sequence => ";",
+            Symbol::Arrow => "->",
+            Symbol::DoubleArrow => "=>",
+            Symbol::LeftShift => "<<",
+            Symbol::RightShift => ">>",
+            Symbol::Assign => "=",
+            Symbol::AddAssign => "+=",
+            Symbol::SubAssign => "-=",
+            Symbol::DivAssign => "/=",
+            Symbol::MulAssign => "*=",
+            Symbol::AndAssign => "&=",
+            Symbol::OrAssign => "|=",
+            Symbol::BitXorAssign => "^=",
+            Symbol::LogicalAndAssign => "&&=",
+            Symbol::LogicalOrAssign => "||=",
+            Symbol::ModuloAssign => "%=",
+            Symbol::Lambda => "λ",
+            Symbol::Sigma => "Σ",
+            Symbol::Pi => "Π",
+            Symbol::Forall => "∀",
+            Symbol::Exists => "∃",
+            Symbol::Eqs => "==",
+            Symbol::NotEqs => "!=",
+            Symbol::Lt => "<",
+            Symbol::Gt => ">",
+            Symbol::LtEqs => "<=",
+            Symbol::GtEqs => ">=",
+            Symbol::OpenParen => "(",
+            Symbol::CloseParen => ")",
+            Symbol::OpenCurly => "{",
+            Symbol::CloseCurly => "}",
+            Symbol::OpenBracket => "[",
+            Symbol::CloseBracket => "]",
+            Symbol::Escape => "\\",
+            Symbol::Group => " ", // Group is not a expressable character.
         }
     }
 }
 impl From<Symbol> for &str {
     fn from(o: Symbol) -> &'static str {
         (&o).into()
-    }
-}
-
-impl std::fmt::Display for Symbol {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", Into::<&str>::into(self))
     }
 }
 
@@ -443,7 +427,6 @@ mod tests {
     use strum::IntoEnumIterator;
     use CharacterType::*;
     use Symbol::*;
-    use TokenType::*;
 
     #[test]
     fn round_trip_to_str_try_from() {
@@ -462,12 +445,12 @@ mod tests {
 
     #[test]
     fn classify_parens_and_brackets() {
-        assert_eq!(classify_char('('), PartialToken(OpType(OpenParen)));
-        assert_eq!(classify_char(')'), PartialToken(OpType(CloseParen)));
-        assert_eq!(classify_char('['), PartialToken(OpType(OpenBracket)));
-        assert_eq!(classify_char(']'), PartialToken(OpType(CloseBracket)));
-        assert_eq!(classify_char('{'), PartialToken(OpType(OpenCurly)));
-        assert_eq!(classify_char('}'), PartialToken(OpType(CloseCurly)));
+        assert_eq!(classify_char('('), PartialToken(OpenParen));
+        assert_eq!(classify_char(')'), PartialToken(CloseParen));
+        assert_eq!(classify_char('['), PartialToken(OpenBracket));
+        assert_eq!(classify_char(']'), PartialToken(CloseBracket));
+        assert_eq!(classify_char('{'), PartialToken(OpenCurly));
+        assert_eq!(classify_char('}'), PartialToken(CloseCurly));
     }
 
     #[test]
