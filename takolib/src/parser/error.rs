@@ -1,4 +1,4 @@
-use super::tokens::{Symbol, TokenType};
+use super::tokens::Symbol;
 use crate::ast::location::Location;
 use crate::ast::NodeId;
 use crate::error::TError;
@@ -9,20 +9,20 @@ use thiserror::Error;
 pub enum ParseError {
     UnexpectedEof, // TODO: Add context.
     UnexpectedTokenTypeExpectedOperator {
-        got: TokenType,
+        got: Symbol,
         location: Location,
     },
     UnexpectedTokenTypeExpectedAssignment {
-        got: TokenType,
+        got: Symbol,
         location: Location,
     },
     UnexpectedTokenType {
-        got: TokenType,
+        got: Symbol,
         location: Location,
-        expected: TokenType,
+        expected: Symbol,
     },
     UnexpectedTokenTypeInExpression {
-        got: TokenType,
+        got: Symbol,
         location: Location,
     },
     ParseIntError {
@@ -48,7 +48,7 @@ pub enum ParseError {
         location: Location,
     },
     UnparsedTokens {
-        token: TokenType,
+        token: Symbol,
         location: Location,
     },
 }

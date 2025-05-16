@@ -70,7 +70,11 @@ impl Ast {
         }
         eq
     }
-    pub fn add_args(&mut self, node_id: NodeId, args: SmallVec<NodeId, CALL_ARGS_STANDARD_ITEM_NUM>) -> NodeId {
+    pub fn add_args(
+        &mut self,
+        node_id: NodeId,
+        args: SmallVec<NodeId, CALL_ARGS_STANDARD_ITEM_NUM>,
+    ) -> NodeId {
         let location = self[node_id].location;
         let id = self[node_id].id.clone();
         match id {
