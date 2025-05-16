@@ -28,11 +28,26 @@ use super::ast::nodes::FMT_STR_STANDARD_ITEM_NUM;
 
 pub const KEYWORDS: &[&str] = include_strs!("keywords.txt");
 
+/*
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+pub enum OpBinding {
+    // TODO: Remove for parser library errors!
+    PostfixOp,
+    PrefixOp,
+    PrefixOrInfixBinOp,
+    InfixOrPostfixBinOp,
+    InfixBinOp,
+    Open(Symbol),  // the associated Closer
+    Close(Symbol), // the associated Opener
+}
+*/
+
 #[derive(Clone, Default, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum NudKind {
     #[default]
     None,
-    Standalone,                                      // ~
+    Ident,                                      // ~
+    Lit(Literal),                                      // ~
     Drop,                                            // ~a => a
     Prefix,                                          // ~a
     Nested(/* continue */ Symbol, /* end */ Symbol), // (a, b, c, d, e, )
@@ -56,14 +71,14 @@ pub struct OpSetup {
 impl OpSetup {
     pub fn set_nud(&mut self, kind: NudKind) -> Result<(), ()> {
         if self.nud != NudKind::None {
-            todo!("Error {kind:?}"); // TODO: Error
+            return Err(()); // todo!("Set Nud Error {kind:?} {:?}", self.nud); // TODO: Error
         }
         self.nud = kind;
         Ok(())
     }
     pub fn set_led(&mut self, kind: LedKind) -> Result<(), ()> {
         if self.led != LedKind::None {
-            todo!("Error {kind:?}"); // TODO: Error
+            return Err(()); // todo!("Set Led Error {kind:?} {:?}", self.led); // TODO: Error
         }
         self.led = kind;
         Ok(())
@@ -81,10 +96,9 @@ const MATHEMATICAL: &[Symbol] = &[Add, Sub, Exp, Div, Mul, Modulo];
 const LOGICAL: &[Symbol] = &[LogicalAnd, LogicalOr];
 const PREFIX_LOGICAL: &[Symbol] = &[LogicalAnd, LogicalOr];
 
-const BIT: &[Symbol] = &[And, Or, BitNot, BitXor];
-
+const BIT: &[Symbol] = &[And, Or, BitXor];
+const PREFIX_BIT: &[Symbol] = &[BitNot];
 const SHIFT: &[Symbol] = &[LeftShift, RightShift];
-
 const COMPARISONS: &[Symbol] = &[Eqs, NotEqs, Lt, LtEqs, Gt, GtEqs];
 
 const ASSIGN: &[Symbol] = &[
@@ -126,6 +140,7 @@ MATHEMATICAL,
 LOGICAL,
 PREFIX_LOGICAL,
 BIT,
+PREFIX_BIT,
 SHIFT,
 COMPARISONS,
 ASSIGN,
@@ -151,7 +166,6 @@ struct Parser {
 struct ParseHead {
     tokens: VecDeque<Token>,
     location: Location,
-    stack: Vec<Symbol>, // TODO: The stack.
 }
 
 type Handler = Arc<dyn Fn(&mut Parser, NodeId) -> Result<NodeId, ParseError>>;
@@ -213,45 +227,47 @@ fn make_tables() -> Result<ParserConfigTable, ()> {
         nud: NudKind::Nested(Symbol::Comma, Symbol::CloseBracket), // Ordered Values
         led: LedKind::NestedInfix(Symbol::Comma, Symbol::CloseBracket), // Index
     };
-    config[Symbol::Sequence as usize] = OpSetup {
-        nud: NudKind::None,
-        led: LedKind::Infix, // Index
-    };
-    for pref in PREFIX_MATHEMATICAL {
-        config[*pref as usize].set_nud(NudKind::Prefix)?;
+    for op in PREFIX_MATHEMATICAL {
+        config[*op as usize].set_nud(NudKind::Prefix).expect(&format!("{op:?}"));
     }
-    for pref in MATHEMATICAL {
-        config[*pref as usize].set_led(LedKind::Infix)?;
+    for op in MATHEMATICAL {
+        config[*op as usize].set_led(LedKind::Infix).expect(&format!("{op:?}"));
     }
-    for pref in PREFIX_LOGICAL {
-        config[*pref as usize].set_nud(NudKind::Prefix)?;
+    for op in PREFIX_BIT {
+        config[*op as usize].set_nud(NudKind::Prefix).expect(&format!("{op:?}"));
     }
-    for pref in LOGICAL {
-        config[*pref as usize].set_led(LedKind::Infix)?;
+    for op in BIT {
+        config[*op as usize].set_led(LedKind::Infix).expect(&format!("{op:?}"));
     }
-    for pref in PREFIX_SPECIAL {
-        config[*pref as usize].set_nud(NudKind::Prefix)?;
+    for op in SHIFT {
+        config[*op as usize].set_led(LedKind::Infix).expect(&format!("{op:?}"));
     }
-    for pref in SPECIAL {
-        config[*pref as usize].set_led(LedKind::Infix)?;
+    for op in COMPARISONS {
+        config[*op as usize].set_led(LedKind::Infix).expect(&format!("{op:?}"));
     }
-    for assign in ASSIGN {
-        config[*assign as usize].set_led(LedKind::Infix)?;
+    for op in PREFIX_LOGICAL {
+        config[*op as usize].set_nud(NudKind::Prefix).expect(&format!("{op:?}"));
     }
-    for bind in BINDINGS {
-        config[*bind as usize].set_nud(NudKind::Prefix)?;
+    for op in LOGICAL {
+        config[*op as usize].set_led(LedKind::Infix).expect(&format!("{op:?}"));
+    }
+    for op in PREFIX_SPECIAL {
+        config[*op as usize].set_nud(NudKind::Prefix).expect(&format!("{op:?}"));
+    }
+    for op in SPECIAL {
+        config[*op as usize].set_led(LedKind::Infix).expect(&format!("{op:?}"));
+    }
+    for op in ASSIGN {
+        config[*op as usize].set_led(LedKind::Infix).expect(&format!("{op:?}"));
+    }
+    for op in BINDINGS {
+        config[*op as usize].set_nud(NudKind::Prefix).expect(&format!("{op:?}"));
     }
     Ok(config)
 }
 
 impl Parser {
-    fn rule(&self, op: Option<Symbol>) -> OpSetup {
-        let Some(op) = op else {
-            return OpSetup {
-                led: LedKind::None,
-                nud: NudKind::Standalone,
-            };
-        };
+    fn rule(&self, op: Symbol) -> OpSetup {
         self.parse_rules[op as usize]
     }
 
@@ -276,43 +292,32 @@ impl Parser {
         self.tok(TokenType::OpType(expected))
     }
 
-    fn identifier(&mut self) -> Result<NodeId, ParseError> {
-        let loc = self.tok(TokenType::Ident)?;
+    fn identifier(&mut self, token: Token) -> NodeId {
+        let loc = token.location();
         // TODO: Get the str from the Token
         let s = &self.ast.contents[loc.to_range()];
         let id = self.ast.string_interner.register_str(s);
-        Ok(self.ast.add_identifier(id, loc))
+        self.ast.add_identifier(id, loc)
     }
 
-    fn lit(&mut self, kind: TokenType, lit: Literal) -> Result<NodeId, ParseError> {
-        let loc = self.tok(kind)?;
+    fn lit(&mut self, token: Token, lit: Literal) -> NodeId {
+        let loc = token.location();
         // TODO: Get the str from the Token
         let s = &self.ast.contents[loc.to_range()];
         let _ = self.ast.string_interner.register_str_by_loc(s, loc.start);
-        Ok(self.ast.add_literal(lit, loc))
-    }
-    fn number(&mut self) -> Result<NodeId, ParseError> {
-        self.lit(TokenType::NumberLit, Literal::Numeric)
+        self.ast.add_literal(lit, loc)
     }
 
-    fn color(&mut self) -> Result<NodeId, ParseError> {
-        self.lit(TokenType::ColorLit, Literal::Color)
+    // End of low level parsers.
+
+    /*
+    // TODO: Make into parse configs.
+    fn shebang(&mut self) -> () {
+        let _ = self.op(Symbol::Shebang);
     }
 
-    fn str(&mut self) -> Result<NodeId, ParseError> {
-        self.lit(TokenType::StringLit, Literal::String)
-    }
-
-    fn fmt_str_start(&mut self) -> Result<NodeId, ParseError> {
-        self.lit(TokenType::FmtStringLitStart, Literal::String)
-    }
-
-    fn fmt_str_mid(&mut self) -> Result<NodeId, ParseError> {
-        self.lit(TokenType::FmtStringLitMid, Literal::String)
-    }
-
-    fn fmt_str_end(&mut self) -> Result<NodeId, ParseError> {
-        self.lit(TokenType::FmtStringLitEnd, Literal::String)
+    fn comma(&mut self) -> Result<Location, ParseError> {
+        self.op(Symbol::Comma)
     }
 
     fn fmt_str(&mut self) -> Result<NodeId, ParseError> {
@@ -339,15 +344,7 @@ impl Parser {
         ))
     }
 
-    fn shebang(&mut self) -> () {
-        let _ = self.op(Symbol::Shebang);
-    }
-
-    fn comma(&mut self) -> Result<Location, ParseError> {
-        self.op(Symbol::Comma)
-    }
-
-    // End of low level parsers.
+    // High level parsers
 
     fn led(&mut self, left: NodeId, inside: Symbol) -> Result<NodeId, ParseError> {
         let tok = self.head.peek()?;
@@ -356,8 +353,6 @@ impl Parser {
         debug!("{curr:?} {tok:?}");
         debug!("led {:?}", self.rule(curr));
         match tok.kind {
-            TokenType::Ident => self.identifier(),
-            TokenType::NumberLit => self.number(),
             _ => todo!("led {tok:?}")
         }
     }
@@ -374,18 +369,127 @@ impl Parser {
             _ => todo!("nud {tok:?}")
         }
     }
+    */
 
-    pub fn expr(&mut self) -> Result<NodeId, ParseError> {
-        let inside = self.head.stack.last().copied().unwrap_or(Symbol::OpenParen);
-        let mut curr = self.nud(inside)?;
+    pub fn parse(&mut self) -> Result<(), ParseError> {
+        // Based on https://en.wikipedia.org/wiki/Shunting_yard_algorithm
+        //
+        let mut output: Vec<NodeId> = Vec::new(); // Done subtrees.
+        let mut stack: Vec<Token> = Vec::new(); // Working stack / WIP.
 
-        while let Ok(next) = self.led(curr, inside) {
-            curr = next;
+        /* The functions referred to in this algorithm are simple single argument functions such as sine, inverse or factorial. */
+        /* This implementation does not implement composite functions, functions with a variable number of arguments, or unary operators. */
+
+        while let Some(token) = self.head.tokens.pop_front() {
+            let config = match token.kind {
+                TokenType::OpType(op) => self.rule(op),
+                // TODO: Move all these to the rule table
+                TokenType::Ident => OpSetup {
+                    led: LedKind::None,
+                    nud: NudKind::Ident,
+                },
+                TokenType::NumberLit => OpSetup {
+                    led: LedKind::None,
+                    nud: NudKind::Lit(Literal::Numeric),
+                },
+                TokenType::ColorLit => OpSetup {
+                    led: LedKind::None,
+                    nud: NudKind::Lit(Literal::Color),
+                },
+                TokenType::StringLit | TokenType::FmtStringLitStart | TokenType::FmtStringLitMid | TokenType::FmtStringLitEnd => OpSetup {
+                    led: LedKind::None,
+                    nud: NudKind::Lit(Literal::String),
+                },
+            };
+
+            // If we can contain the previous subtree, we should.
+            match config.led {
+                LedKind::None => {}, // Can't do anything here.
+                LedKind::Infix => {
+                    let Some(left) = output.last().copied() else {
+                        break
+                    };
+                    let can_contain = true;
+                    if !can_contain {
+                        break; // DONE
+                    }
+                    output.pop(); // Use up the left.
+                    let TokenType::OpType(sym) = token.kind else {
+                        todo!("?");
+                    };
+                    let op = self.ast.add_op(
+                        Op {
+                            op: sym,
+                            args: smallvec![left],
+                        },
+                        token.location()
+                    );
+                    stack.push(token);
+                    continue;
+                }
+                LedKind::Postfix => {
+                    let Some(left) = output.last().copied() else {
+                        break
+                    };
+                    let can_contain = true;
+                    if !can_contain {
+                        break; // DONE
+                    }
+                    output.pop(); // Use up the left.
+                    let TokenType::OpType(sym) = token.kind else {
+                        todo!("?");
+                    };
+                    let op = self.ast.add_op(
+                        Op {
+                            op: sym,
+                            args: smallvec![left],
+                        },
+                        token.location()
+                    );
+                    stack.push((op, token)); // Might be done but might also be a Infix...
+                    continue;
+                }
+                LedKind::NestedInfix(separator, end) => {
+                    todo!("nested infix");
+                }
+            }
+            // If we can't, prepare to eat the next subtree.
+            match config.nud {
+                NudKind::None => {}, // Can't do anything here.
+                NudKind::Drop => {
+                    continue;
+                }
+                NudKind::Ident => {
+                    output.push(self.identifier(token));
+                    continue;
+                }
+                NudKind::Lit(literal) => {
+                    output.push(self.lit(token, literal));
+                    continue;
+                }
+                NudKind::Prefix => {
+                    todo!("prefix");
+                }
+                NudKind::Nested(separator, end) => {
+                    todo!("nested");
+                }
+            }
         }
+        /* After the while loop, pop the remaining items from the operator stack into the output queue. */
+        /*
+        while (there are tokens on the operator stack) {
+            /* If the operator token on the top of the stack is a parenthesis, then there are mismatched parentheses. */
+            {assert the_operator_on_top_of_the_stack_is_not_a__left__parenthesis}
+            pop the operator from the operator stack onto the output queue
+        }
+        */
 
-        Ok(curr)
+        // Add all the valid trees that are not subtrees as roots.
+        self.ast.roots.extend(output);
+        Ok(())
     }
 
+    /*
     pub fn file(&mut self) -> Result<(), ParseError> {
         self.shebang();
         while self.head.peek().is_ok() {
@@ -393,7 +497,7 @@ impl Parser {
             self.ast.roots.push(root);
         }
         Ok(())
-    }
+    }*/
 }
 
 /*
@@ -613,14 +717,13 @@ pub fn parse(file: &Path, input: &str, tokens: &[Token]) -> Result<Ast, TError> 
                 length: 0,
             },
             tokens: VecDeque::from_iter(tokens.into_iter().copied()),
-            stack: Vec::new(),
         },
         parse_rules: make_tables().expect("default config broken"),
         ast: Ast::new(file.to_path_buf(), input.to_string()),
     };
 
     // TODO: Support for streams?
-    parser.file()?;
+    parser.parse()?;
 
     let ast = parser.ast;
 

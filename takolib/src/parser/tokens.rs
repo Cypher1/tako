@@ -12,18 +12,6 @@ assert_eq_size!(SymbolLength, [u8; 1]);
 assert_eq_size!(Token, [u8; 4]);
 assert_eq_size!([Token; 2], [u8; 8]);
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
-pub enum OpBinding {
-    // TODO: Remove for parser library errors!
-    PostfixOp,
-    PrefixOp,
-    PrefixOrInfixBinOp,
-    InfixOrPostfixBinOp,
-    InfixBinOp,
-    Open(Symbol),  // the associated Closer
-    Close(Symbol), // the associated Opener
-}
-
 /*
 macro_rules! senum({ $s: expr } => {{
     const BYTES: &[u8] = ($s as &str).as_bytes();
