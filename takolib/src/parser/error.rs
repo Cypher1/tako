@@ -1,4 +1,4 @@
-use super::tokens::{OpBinding, Symbol, TokenType};
+use super::tokens::{Symbol, TokenType};
 use crate::ast::location::Location;
 use crate::ast::NodeId;
 use crate::error::TError;
@@ -41,12 +41,10 @@ pub enum ParseError {
     },
     MissingLeftHandSideOfOperator {
         op: Symbol,
-        bind_type: OpBinding,
         location: Location,
     },
     MissingRightHandSideOfOperator {
         op: Symbol,
-        bind_type: OpBinding,
         location: Location,
     },
     UnparsedTokens {
