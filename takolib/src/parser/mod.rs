@@ -1,20 +1,16 @@
-use better_std::include_strs;
 use error::ParseError;
-use log::debug;
-use semantics::op_from_assign_op;
+// use log::{debug as trace, warn};
+use log::{trace, warn};
 use semantics::Literal;
 use smallvec::smallvec;
-use smallvec::SmallVec;
 use std::collections::VecDeque;
 use std::path::Path;
-use std::sync::Arc;
 use strum::IntoEnumIterator;
 
 use crate::ast::location::Location;
 use crate::ast::Ast;
 use crate::ast::NodeId;
 use crate::ast::Op;
-use crate::ast::CALL_ARGS_STANDARD_ITEM_NUM;
 use crate::error::TError;
 
 pub mod error;
@@ -24,21 +20,8 @@ pub mod tokens;
 
 use tokens::{Symbol, Token};
 
-use super::ast::nodes::FMT_STR_STANDARD_ITEM_NUM;
-
+use better_std::include_strs;
 pub const KEYWORDS: &[&str] = include_strs!("keywords.txt");
-
-/*
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
-pub enum OpBinding {
-    // TODO: Remove for parser library errors!
-    PrefixOp,
-    PrefixOrInfixBinOp,
-    InfixBinOp,
-    Open(Symbol),  // the associated Closer
-    Close(Symbol), // the associated Opener
-}
-*/
 
 #[derive(Clone, Default, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Rule {
@@ -258,8 +241,8 @@ fn make_tables() -> Result<ParserConfigTable, ()> {
     Ok(ParserConfigTable {
         rules: config,
         precedences: vec![
-            OpenParen, CloseParen, Sequence, Assign, Add, Sub, Div, Mul, Exp, HasType, NumberLit,
-            ColorLit, StringLit, Ident, // TODO: Add all
+            Sequence, Assign, Add, Sub, Div, Mul, Exp, HasType, OpenParen, NumberLit, ColorLit,
+            StringLit, Ident, CloseParen, // TODO: Add all
         ],
     })
 }
@@ -332,21 +315,48 @@ impl Parser {
         let op = self.config.precedences[level];
         let rule = self.op_rule(op);
 
-        debug!(">> {tokens:?} #{level:?} {op:?} => {rule:?}", tokens = self.head.tokens);
+        trace!(
+            ">> {tokens:?} #{level:?} {op:?} => {rule:?}",
+            tokens = self.head.tokens
+        );
 
         let old_level = level;
         let level = level + 1; // Inners.
 
         if rule.is_infix {
             let mut left = self.parse_step(level)?;
-            let level = if let Some(level) = rule.level { level } else { level };
+            let level = if let Some(level) = rule.level {
+                level
+            } else {
+                level
+            };
             while let Ok(mut loc) = self.tok(op) {
-                debug!("I> {tokens:?} #{level:?} {op:?} => {rule:?}", tokens = self.head.tokens);
+                trace!(
+                    "I> {tokens:?} #{level:?} {op:?} => {rule:?}",
+                    tokens = self.head.tokens
+                );
                 let right = self.parse_step(if rule.is_right { old_level } else { level })?;
 
                 if let Some(pair) = rule.pair {
                     let end_loc = self.tok(pair)?; // TODO: Handle missing
+                    trace!(
+                        "C> {tokens:?} #{level:?} {op:?} => {rule:?}",
+                        tokens = self.head.tokens
+                    );
                     loc = loc.merge(end_loc);
+                }
+
+                if op == Symbol::OpenParen {
+                    left = self.ast.add_args(left, smallvec![right]); // TODO: Handle commas...
+                    continue;
+                }
+                if op == Symbol::HasType {
+                    left = self.ast.add_annotation(left, right);
+                    continue;
+                }
+                if op == Symbol::Assign {
+                    left = self.ast.add_implementation(left, right);
+                    continue;
                 }
 
                 left = self.ast.add_op(
@@ -362,10 +372,17 @@ impl Parser {
         if rule.is_prefix {
             let mut locs = Vec::new();
             while let Ok(loc) = self.tok(op) {
-                debug!("P> {tokens:?} #{level:?} {op:?} => {rule:?}", tokens = self.head.tokens);
+                trace!(
+                    "P> {tokens:?} #{level:?} {op:?} => {rule:?}",
+                    tokens = self.head.tokens
+                );
                 locs.push(loc);
             }
-            let level = if let Some(level) = rule.level { level } else { level };
+            let level = if let Some(level) = rule.level {
+                level
+            } else {
+                level
+            };
             let mut inner = self.parse_step(level)?;
             if let Some(pair) = rule.pair {
                 for start_loc in locs.iter_mut().rev() {
@@ -389,7 +406,7 @@ impl Parser {
             while let Ok(loc) = self.tok(op) {
                 if rule.warn {
                     // TODO: Add a warning
-                    debug!("DROP: {op} at {loc:?}");
+                    warn!("DROP: {op} at {loc:?}");
                 }
             }
             return self.parse_step(level);
