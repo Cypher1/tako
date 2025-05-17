@@ -112,6 +112,7 @@ const FUNCS: &[Symbol] = &[
 const SPECIAL: &[Symbol] = &[HasType, Range, Dot, Sequence];
 const PREFIX_SPECIAL: &[Symbol] = &[GetAddress, Try, Spread];
 
+/*
 const ANY_VALUE: &[Symbol] = constcat::concat_slices!(
 [Symbol]:
 PREFIX_MATHEMATICAL,
@@ -132,6 +133,7 @@ const OPS: &[Rule] = &[
     // OpSetup::new(COMPARISONS, Infix, ANY_VALUE),
     // OpSetup::new(ASSIGN, Infix, ANY_VALUE),
 ];
+*/
 
 #[derive(Debug)]
 struct Parser {
@@ -211,6 +213,9 @@ fn make_tables() -> Result<ParserConfigTable, ()> {
     for op in SHIFT {
         config[*op as usize].infix();
     }
+    for op in FUNCS {
+        config[*op as usize].infix();
+    }
     for op in COMPARISONS {
         config[*op as usize].infix();
     }
@@ -241,7 +246,7 @@ fn make_tables() -> Result<ParserConfigTable, ()> {
     Ok(ParserConfigTable {
         rules: config,
         precedences: vec![
-            Sequence, Assign, Add, Sub, Div, Mul, Exp, HasType, OpenParen, NumberLit, ColorLit,
+            Sequence, Assign, Arrow, DoubleArrow, Add, Sub, Div, Mul, Exp, HasType, OpenParen, NumberLit, ColorLit,
             StringLit, Ident, CloseParen, // TODO: Add all
         ],
     })
