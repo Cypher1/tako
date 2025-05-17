@@ -1,7 +1,6 @@
 use crate::ast::location::{IndexIntoFile, SymbolLength};
 use crate::error::TError;
 use crate::parser::tokens::{CharacterType, Symbol};
-use crate::parser::TokenType;
 use better_std::{assert_eq, todo};
 use log::debug;
 
@@ -201,7 +200,7 @@ pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> boo
     }
     let length = characters.length();
     if length > SymbolLength::MAX as usize {
-        assert_eq!(kind, TokenType::StringLit); // TODO(usability): Error here.
+        assert_eq!(kind, Symbol::StringLit); // TODO(usability): Error here.
         let mut number_of_tokens = length.div_ceil(SymbolLength::MAX as usize);
         if number_of_tokens >= (SymbolLength::MAX as usize) {
             todo!("Token was too long ({length:?}), implement a recursive group thing...");
@@ -460,7 +459,7 @@ mod tests {
             tokens
                 .iter()
                 .map(|tok| tok.kind)
-                .collect::<Vec<TokenType>>(),
+                .collect::<Vec<Symbol>>(),
             expected
         );
         let expected_strs = vec!["(", "\"hello world\"", ")"];
@@ -482,7 +481,7 @@ mod tests {
             tokens
                 .iter()
                 .map(|tok| tok.kind)
-                .collect::<Vec<TokenType>>(),
+                .collect::<Vec<Symbol>>(),
             expected
         );
         let expected_strs = vec!["{", "\"hello world\"", "}"];
@@ -504,7 +503,7 @@ mod tests {
             tokens
                 .iter()
                 .map(|tok| tok.kind)
-                .collect::<Vec<TokenType>>(),
+                .collect::<Vec<Symbol>>(),
             expected
         );
         let expected_strs = vec!["[", "\"hello world\"", "]"];
@@ -526,7 +525,7 @@ mod tests {
             tokens
                 .iter()
                 .map(|tok| tok.kind)
-                .collect::<Vec<TokenType>>(),
+                .collect::<Vec<Symbol>>(),
             expected
         );
         let expected_strs = vec!["!", "\"hello world\"", "7"];

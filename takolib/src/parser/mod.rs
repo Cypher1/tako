@@ -40,8 +40,6 @@ pub enum OpBinding {
 }
 */
 
-type TokenType = Symbol;
-
 #[derive(Clone, Default, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Rule {
     is_prefix: bool,
@@ -49,12 +47,18 @@ pub struct Rule {
     lit: Option<Literal>,
     pair: Option<Symbol>,
     can_drop: bool,
-    is_left: bool,
+    warn: bool,
+    is_right: bool,
+    level: Option<usize>, // Reset to this level when parsing inside.
 }
 
 impl Rule {
-    fn drop(&mut self) -> &mut Self {
+    fn can_drop(&mut self) -> &mut Self {
         self.can_drop = true;
+        self
+    }
+    fn warn(&mut self) -> &mut Self {
+        self.warn = true; // If drop: is extra.
         self
     }
     fn pair(&mut self, symbol: Symbol) -> &mut Self {
@@ -70,13 +74,18 @@ impl Rule {
         self.is_prefix = true;
         self
     }
-    fn left(&mut self) -> &mut Self {
-        self.is_left = true;
+    fn right(&mut self) -> &mut Self {
+        self.is_right = true;
         self
     }
     fn lit(&mut self, lit: Literal) -> &mut Self {
         assert!(self.lit.is_none());
         self.lit = Some(lit);
+        self
+    }
+    fn level(&mut self, level: usize) -> &mut Self {
+        assert!(self.level.is_none());
+        self.level = Some(level);
         self
     }
 }
@@ -163,8 +172,8 @@ struct ParserConfigTable {
 
 impl ParseHead {
     fn peek(&self) -> Result<Token, ParseError> {
-        let Some(tok) = self.tokens.get(0).copied() else {
-            todo!("expected eof")
+        let Some(tok) = self.tokens.front().copied() else {
+            return Err(ParseError::UnexpectedEof);
         };
         Ok(tok)
     }
@@ -174,31 +183,42 @@ impl ParseHead {
             todo!("expected eof")
         };
         self.location.start += tok.location().length as u16;
-        return Ok(tok);
+        Ok(tok)
     }
 }
 
 fn make_tables() -> Result<ParserConfigTable, ()> {
     let mut config = Vec::<Rule>::new();
     config.resize(Symbol::iter().len(), Rule::default());
-    config[Symbol::Shebang as usize].drop();
+    config[Symbol::NumberLit as usize].lit(Literal::Numeric);
+    config[Symbol::ColorLit as usize].lit(Literal::Color);
+    config[Symbol::StringLit as usize].lit(Literal::String);
+    config[Symbol::FmtStringLitStart as usize].lit(Literal::String);
+    config[Symbol::FmtStringLitMid as usize].lit(Literal::String);
+    config[Symbol::FmtStringLitEnd as usize].lit(Literal::String);
+    config[Symbol::Shebang as usize].can_drop();
     config[Symbol::OpenParen as usize]
         .pair(Symbol::CloseParen)
         .prefix()
-        .infix(); // values or call
+        .infix()
+        .level(0); // values or call
+    config[Symbol::CloseParen as usize].can_drop().warn();
     config[Symbol::OpenBracket as usize]
         .pair(Symbol::CloseBracket)
         .prefix()
-        .infix(); // container or index
+        .infix()
+        .level(0); // container or index
     config[Symbol::OpenCurly as usize]
         .pair(Symbol::CloseCurly)
-        .prefix(); // unordered container
+        .prefix()
+        .level(0); // unordered container
     for op in PREFIX_MATHEMATICAL {
         config[*op as usize].prefix();
     }
     for op in MATHEMATICAL {
         config[*op as usize].infix();
     }
+    config[Symbol::Exp as usize].right();
     for op in PREFIX_BIT {
         config[*op as usize].prefix();
     }
@@ -235,14 +255,13 @@ fn make_tables() -> Result<ParserConfigTable, ()> {
         - https://www.foonathan.net/2017/07/operator-precedence/
     */
 
-    let mut config = ParserConfigTable {
+    Ok(ParserConfigTable {
         rules: config,
         precedences: vec![
-            Sequence, Add, Sub, Div, Mul, NumberLit,
-            // TODO: Add all
+            OpenParen, CloseParen, Sequence, Assign, Add, Sub, Div, Mul, Exp, HasType, NumberLit,
+            ColorLit, StringLit, Ident, // TODO: Add all
         ],
-    };
-    Ok(config)
+    })
 }
 
 impl Parser {
@@ -253,18 +272,18 @@ impl Parser {
     fn rule(&self, kind: Symbol) -> Rule {
         match kind {
             // TODO: Move all these to the rule table
-            TokenType::Ident => Rule::default(), // If we don't know what a thing is it is an identifier, and must be defined elsewhere.
-            TokenType::NumberLit => *Rule::default().lit(Literal::Numeric),
-            TokenType::ColorLit => *Rule::default().lit(Literal::Color),
-            TokenType::StringLit
-            | TokenType::FmtStringLitStart
-            | TokenType::FmtStringLitMid
-            | TokenType::FmtStringLitEnd => *Rule::default().lit(Literal::String),
+            Symbol::Ident => Rule::default(), // If we don't know what a thing is it is an identifier, and must be defined elsewhere.
+            Symbol::NumberLit => *Rule::default().lit(Literal::Numeric),
+            Symbol::ColorLit => *Rule::default().lit(Literal::Color),
+            Symbol::StringLit
+            | Symbol::FmtStringLitStart
+            | Symbol::FmtStringLitMid
+            | Symbol::FmtStringLitEnd => *Rule::default().lit(Literal::String),
             op => self.op_rule(op),
         }
     }
 
-    fn tok(&mut self, expected: TokenType) -> Result<Location, ParseError> {
+    fn tok(&mut self, expected: Symbol) -> Result<Location, ParseError> {
         let Token {
             kind,
             start,
@@ -289,8 +308,7 @@ impl Parser {
         self.ast.add_identifier(id, loc)
     }
 
-    fn lit(&mut self, token: Token, lit: Literal) -> NodeId {
-        let loc = token.location();
+    fn lit(&mut self, lit: Literal, loc: Location) -> NodeId {
         // TODO: Get the str from the Token
         let s = &self.ast.contents[loc.to_range()];
         let _ = self.ast.string_interner.register_str_by_loc(s, loc.start);
@@ -300,33 +318,93 @@ impl Parser {
     // End of low level parsers.
 
     pub fn parse_step(&mut self, level: usize) -> Result<NodeId, ParseError> {
+        // NOTE: If support (a b) or something like that we need to return a vector of nodes
+
         if level >= self.config.precedences.len() {
-            todo!("NO PARSE");
+            if let Some(tok) = self.head.tokens.pop_front() {
+                return Err(ParseError::UnparsedTokens {
+                    token: tok.kind,
+                    location: tok.location(),
+                });
+            }
+            todo!("NO PARSE: {level:?} {tokens:?}", tokens = self.head.tokens);
         }
         let op = self.config.precedences[level];
         let rule = self.op_rule(op);
 
-        debug!("{level:?} => {rule:?}");
+        debug!(">> {tokens:?} #{level:?} {op:?} => {rule:?}", tokens = self.head.tokens);
+
+        let old_level = level;
+        let level = level + 1; // Inners.
+
+        if rule.is_infix {
+            let mut left = self.parse_step(level)?;
+            let level = if let Some(level) = rule.level { level } else { level };
+            while let Ok(mut loc) = self.tok(op) {
+                debug!("I> {tokens:?} #{level:?} {op:?} => {rule:?}", tokens = self.head.tokens);
+                let right = self.parse_step(if rule.is_right { old_level } else { level })?;
+
+                if let Some(pair) = rule.pair {
+                    let end_loc = self.tok(pair)?; // TODO: Handle missing
+                    loc = loc.merge(end_loc);
+                }
+
+                left = self.ast.add_op(
+                    Op {
+                        op,
+                        args: smallvec![left, right],
+                    },
+                    loc,
+                );
+            }
+            return Ok(left);
+        }
         if rule.is_prefix {
-            if let Ok(loc) = self.tok(op) {
-                if let Ok(inner) = self.parse_step(level) {
-                    return Ok(self.ast.add_op(
-                        Op {
-                            op,
-                            args: smallvec![inner],
-                        },
-                        loc,
-                    ));
+            let mut locs = Vec::new();
+            while let Ok(loc) = self.tok(op) {
+                debug!("P> {tokens:?} #{level:?} {op:?} => {rule:?}", tokens = self.head.tokens);
+                locs.push(loc);
+            }
+            let level = if let Some(level) = rule.level { level } else { level };
+            let mut inner = self.parse_step(level)?;
+            if let Some(pair) = rule.pair {
+                for start_loc in locs.iter_mut().rev() {
+                    let end_loc = self.tok(pair)?; // TODO: Handle missing
+                    *start_loc = start_loc.merge(end_loc);
                 }
             }
+
+            for loc in locs.into_iter().rev() {
+                inner = self.ast.add_op(
+                    Op {
+                        op,
+                        args: smallvec![inner],
+                    },
+                    loc,
+                );
+            }
+            return Ok(inner);
         }
-        if rule.is_infix {
-            todo!("infix");
+        if rule.can_drop {
+            while let Ok(loc) = self.tok(op) {
+                if rule.warn {
+                    // TODO: Add a warning
+                    debug!("DROP: {op} at {loc:?}");
+                }
+            }
+            return self.parse_step(level);
         }
         if let Some(lit) = rule.lit {
-            if let Ok(token) = self.tok(op) {}
+            if let Ok(loc) = self.tok(op) {
+                return Ok(self.lit(lit, loc));
+            }
+            return self.parse_step(level);
         }
-        self.parse_step(level + 1) // More specific
+
+        let next = self.head.eat()?;
+        Ok(self.identifier(next))
+        // todo!("Don't know what to do here {op:?} {rule:?}")
+        // self.parse_step(level) // More specific
     }
 
     pub fn parse(&mut self) -> Result<(), ParseError> {
@@ -349,7 +427,7 @@ pub fn parse(file: &Path, input: &str, tokens: &[Token]) -> Result<Ast, TError> 
                 start: 0,
                 length: 0,
             },
-            tokens: VecDeque::from_iter(tokens.into_iter().copied()),
+            tokens: VecDeque::from_iter(tokens.iter().copied()),
         },
         config: make_tables().expect("default config broken"),
         ast: Ast::new(file.to_path_buf(), input.to_string()),

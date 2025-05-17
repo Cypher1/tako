@@ -218,13 +218,15 @@ mod tests {
         crate::ensure_initialized();
         let tokens = lex(s)?;
         let ast = parse(&test_file1(), s, &tokens)?;
+        let roots = ast.roots.clone();
+        let pretty: Vec<String> = roots.into_iter().map(|r| format!("{}", ast.pretty_node(r))).collect();
         assert_eq!(
-            ast.roots.len(),
+            pretty.len(),
             1,
-            "Expect one root, found {}",
-            ast.roots.len()
+            "Expect one root, found {:?}",
+            pretty
         );
-        Ok(format!("{}", ast.pretty()))
+        Ok(pretty[0].clone())
     }
 
     #[test]
