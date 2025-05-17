@@ -135,7 +135,18 @@ impl Ast {
                 };
                 self.add_definition(def, location)
             }
-            node => todo!("Assignment to non definition head support: {node:?}"),
+            NodeData::Op(op_id) => {
+                let op = &self[op_id].1;
+                todo!("Assignment to op: {op:?}") // TODO: Add OP definitions, manipulating the parse rules.
+            }
+            NodeData::Literal(lit_id) => {
+                let lit = &self[lit_id].1;
+                todo!("Assignment to lit: {lit:?}") // TODO: Error out
+            }
+            NodeData::Warning(warning_id) => {
+                let warning = &self[warning_id].1;
+                todo!("Assignment to warning: {warning:?}") // TODO: Return a nested warning?
+            }
         };
         if let Some(ty) = ty {
             self.add_annotation(d, ty)
