@@ -1,6 +1,7 @@
 use error::ParseError;
-// use log::{debug as trace, warn};
-use log::{trace, warn};
+use log::{debug as trace, warn};
+use semantics::BindingMode;
+// use log::{trace, warn};
 use semantics::Literal;
 use smallvec::smallvec;
 use std::collections::VecDeque;
@@ -20,18 +21,17 @@ pub mod tokens;
 
 use tokens::{Symbol, Token};
 
-use better_std::include_strs;
-pub const KEYWORDS: &[&str] = include_strs!("keywords.txt");
-
 #[derive(Clone, Default, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Rule {
     is_prefix: bool,
     is_infix: bool,
+    is_ident: bool,
     lit: Option<Literal>,
     pair: Option<Symbol>,
     can_drop: bool,
     warn: bool,
     is_right: bool,
+    bind: Option<BindingMode>, // Reset to this level when parsing inside.
     level: Option<usize>, // Reset to this level when parsing inside.
 }
 
@@ -49,6 +49,10 @@ impl Rule {
         self.pair = Some(symbol);
         self
     }
+    fn ident(&mut self) -> &mut Self {
+        self.is_ident = true;
+        self
+    }
     fn infix(&mut self) -> &mut Self {
         self.is_infix = true;
         self
@@ -57,7 +61,14 @@ impl Rule {
         self.is_prefix = true;
         self
     }
+    fn bind(&mut self, bind: BindingMode) -> &mut Self {
+        assert!(self.is_prefix);
+        assert!(self.bind.is_none());
+        self.bind = Some(bind);
+        self
+    }
     fn right(&mut self) -> &mut Self {
+        assert!(self.is_infix);
         self.is_right = true;
         self
     }
@@ -67,6 +78,7 @@ impl Rule {
         self
     }
     fn level(&mut self, level: usize) -> &mut Self {
+        assert!(self.is_prefix || self.is_infix);
         assert!(self.level.is_none());
         self.level = Some(level);
         self
@@ -102,14 +114,20 @@ const ASSIGN: &[Symbol] = &[
     LogicalOrAssign,
     ModuloAssign,
 ];
-const BINDINGS: &[Symbol] = &[Sigma, Lambda, Forall, Pi, Exists];
+const BINDINGS: &[(Symbol, BindingMode)] = &[
+    (Sigma, BindingMode::With),
+    (Forall, BindingMode::Forall),
+    (Pi, BindingMode::Forall),
+    (Lambda, BindingMode::Given),
+    (Exists, BindingMode::With),
+];
 
 const FUNCS: &[Symbol] = &[
     Arrow,
     DoubleArrow, // In case value level and type level must be different.
 ];
 
-const SPECIAL: &[Symbol] = &[HasType, Range, Dot, Sequence];
+const SPECIAL: &[Symbol] = &[HasType, Range, Dot, Sequence, Comma];
 const PREFIX_SPECIAL: &[Symbol] = &[GetAddress, Try, Spread];
 
 /*
@@ -234,9 +252,10 @@ fn make_tables() -> Result<ParserConfigTable, ()> {
     for op in ASSIGN {
         config[*op as usize].infix();
     }
-    for op in BINDINGS {
-        config[*op as usize].prefix();
+    for (op, bind) in BINDINGS {
+        config[*op as usize].prefix().bind(*bind);
     }
+    config[Ident as usize].ident();
 
     /*
     For reference, some interesting ideas about partial ordering of precedences:
@@ -246,29 +265,17 @@ fn make_tables() -> Result<ParserConfigTable, ()> {
     Ok(ParserConfigTable {
         rules: config,
         precedences: vec![
-            Sequence, Assign, Arrow, DoubleArrow, Add, Sub, Div, Mul, Exp, HasType, OpenParen, NumberLit, ColorLit,
+            Comma, Sequence, Assign, Arrow, DoubleArrow, Add, Sub, Div, Mul, Exp, HasType,
+            Sigma, Lambda, Forall, Pi, Exists,
+            OpenParen, NumberLit, ColorLit,
             StringLit, Ident, CloseParen, // TODO: Add all
         ],
     })
 }
 
 impl Parser {
-    fn op_rule(&self, op: Symbol) -> Rule {
+    fn rule(&self, op: Symbol) -> Rule {
         self.config.rules[op as usize]
-    }
-
-    fn rule(&self, kind: Symbol) -> Rule {
-        match kind {
-            // TODO: Move all these to the rule table
-            Symbol::Ident => Rule::default(), // If we don't know what a thing is it is an identifier, and must be defined elsewhere.
-            Symbol::NumberLit => *Rule::default().lit(Literal::Numeric),
-            Symbol::ColorLit => *Rule::default().lit(Literal::Color),
-            Symbol::StringLit
-            | Symbol::FmtStringLitStart
-            | Symbol::FmtStringLitMid
-            | Symbol::FmtStringLitEnd => *Rule::default().lit(Literal::String),
-            op => self.op_rule(op),
-        }
     }
 
     fn tok(&mut self, expected: Symbol) -> Result<Location, ParseError> {
@@ -318,7 +325,7 @@ impl Parser {
             todo!("NO PARSE: {level:?} {tokens:?}", tokens = self.head.tokens);
         }
         let op = self.config.precedences[level];
-        let rule = self.op_rule(op);
+        let rule = self.rule(op);
 
         trace!(
             ">> {tokens:?} #{level:?} {op:?} => {rule:?}",
@@ -397,13 +404,17 @@ impl Parser {
             }
 
             for loc in locs.into_iter().rev() {
-                inner = self.ast.add_op(
-                    Op {
-                        op,
-                        args: smallvec![inner],
-                    },
-                    loc,
-                );
+                if let Some(bind) = rule.bind {
+                    inner = self.ast.set_bind(inner, bind);
+                } else {
+                    inner = self.ast.add_op(
+                        Op {
+                            op,
+                            args: smallvec![inner],
+                        },
+                        loc,
+                    );
+                }
             }
             return Ok(inner);
         }
@@ -423,9 +434,12 @@ impl Parser {
             return self.parse_step(level);
         }
 
-        let next = self.head.eat()?;
-        Ok(self.identifier(next))
-        // todo!("Don't know what to do here {op:?} {rule:?}")
+        if rule.is_ident {
+            let next = self.head.eat()?;
+            return Ok(self.identifier(next));
+        }
+
+        todo!("Don't know what to do here {op:?} {rule:?}")
         // self.parse_step(level) // More specific
     }
 

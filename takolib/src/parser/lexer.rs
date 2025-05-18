@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use crate::ast::location::{IndexIntoFile, SymbolLength};
 use crate::error::TError;
 use crate::parser::tokens::{CharacterType, Symbol};
@@ -5,6 +7,9 @@ use better_std::{assert_eq, todo};
 use log::debug;
 
 use super::tokens::{classify_char, Token};
+
+// use better_std::include_strs;
+// pub const KEYWORDS: &[&str] = include_strs!("keywords.txt");
 
 #[derive(Debug)]
 pub struct Characters<'a> {
@@ -84,6 +89,8 @@ pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> boo
     };
     let mut kind = classify_char(chr);
     characters.set_start(); // Start the token!
+    let mut s = String::new(); // TODO: Smol string
+    s.write_char(chr).unwrap();
     while let Some(chr) = characters.peek() {
         // TODO(perf): these could be bit strings and we could and them.
         kind = match (kind, classify_char(chr)) {
@@ -140,12 +147,23 @@ pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> boo
             }
             _ => break, // Token finished can't continue here.
         };
+        s.write_char(chr).unwrap();
         characters.next(); // Continue past the character.
     }
     if kind == CharacterType::HexSym {
         kind = PartialToken(Symbol::Ident); // TODO: Re-understand this.
     }
-    let kind = if let PartialToken(kind) = kind {
+    let kind = if kind == PartialToken(Symbol::Ident) {
+        match &*s {
+            "forall" => Symbol::Forall,
+            "exists" => Symbol::Exists,
+            // REMOVE?
+            "pi" => Symbol::Pi,
+            "sigma" => Symbol::Sigma,
+            "lambda" => Symbol::Lambda,
+            _ => Symbol::Ident,
+        }
+    } else  if let PartialToken(kind) = kind {
         kind
     } else {
         todo!("Invalid / unfinished token: {kind:?} {characters:?}");
@@ -242,7 +260,7 @@ fn is_whitespace(chr: char) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::Symbol::{ColorLit, Ident, NumberLit, StringLit};
+    use super::Symbol::{ColorLit, Ident, Exists, Forall, NumberLit, StringLit};
     use super::*;
     use better_std::{assert_eq, assert_str_eq};
     use strum::IntoEnumIterator;
@@ -312,6 +330,32 @@ mod tests {
                 kind: Ident,
                 start: 0,
                 length: 4
+            }]
+        );
+    }
+
+    #[test]
+    fn lex_head_exists() {
+        let tokens = setup("exists");
+        assert_eq!(
+            tokens,
+            vec![Token {
+                kind: Exists,
+                start: 0,
+                length: 6
+            }]
+        );
+    }
+
+    #[test]
+    fn lex_head_forall() {
+        let tokens = setup("forall");
+        assert_eq!(
+            tokens,
+            vec![Token {
+                kind: Forall,
+                start: 0,
+                length: 6
             }]
         );
     }

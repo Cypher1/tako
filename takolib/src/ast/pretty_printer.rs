@@ -33,11 +33,12 @@ impl PrintNode<'_> {
     fn print_definition_head<'a, T: std::iter::IntoIterator<Item = &'a NodeId>>(
         &self,
         f: &mut fmt::Formatter<'_>,
-        mode: BindingMode,
+        mode: Option<BindingMode>,
         name: Identifier,
         arguments: Option<T>,
         ty: &mut Option<NodeId>,
     ) -> fmt::Result {
+        let mode = mode.unwrap_or(BindingMode::Given);
         if mode != BindingMode::Given {
             write!(f, "{mode} ");
         }
@@ -48,7 +49,7 @@ impl PrintNode<'_> {
             for binding in arguments.into_iter() {
                 let into = if let NodeData::Definition(def) = self.context().get(*binding).id {
                     let (_nodeid, def) = self.context().get(def);
-                    if def.mode != BindingMode::Given {
+                    if def.mode.unwrap_or(BindingMode::Given) != BindingMode::Given {
                         &mut implicits
                     } else {
                         &mut explicits
