@@ -6,7 +6,7 @@ pub mod location;
 mod pretty_printer;
 pub mod string_interner;
 
-use crate::parser::semantics::Literal;
+use crate::parser::semantics::{BindingMode, Literal};
 use crate::parser::tokens::Symbol;
 use entity_component_slab::{make_component, make_world};
 use location::Location;
@@ -94,6 +94,45 @@ impl Ast {
             node => todo!("Assignment to non definition head support: {node:?}"),
         }
     }
+    pub fn set_bind(&mut self, node_id: NodeId, bind: BindingMode) -> NodeId {
+        let id = self[node_id].id.clone();
+        let location = self[node_id].location;
+
+        match id {
+            NodeData::Definition(def_id) => {
+                let def = &mut self[def_id].1;
+                assert!(def.mode.is_none());
+                def.mode = Some(bind);
+                node_id
+            }
+            NodeData::Identifier(id_id) => {
+                let name = self[id_id].1;
+                let def = Definition {
+                    mode: Some(bind),
+                    name,
+                    arguments: None,
+                    implementation: None,
+                };
+                self.add_definition(def, location)
+            }
+            NodeData::Call(call_id) => {
+                let call = &self[call_id].1;
+                let name_id = self[call.inner].id.clone();
+                let name = match name_id {
+                    NodeData::Identifier(name_id) => self[name_id].1,
+                    d => todo!("assignment to {d:?}"),
+                };
+                let def = Definition {
+                    mode: Some(bind),
+                    name,
+                    arguments: Some(call.args.clone()),
+                    implementation: None,
+                };
+                self.add_definition(def, location)
+            }
+            _ => todo!(),
+        }
+    }
     pub fn add_implementation(&mut self, node_id: NodeId, imp: NodeId) -> NodeId {
         use crate::parser::semantics::BindingMode;
         let location = self[node_id].location;
@@ -113,7 +152,7 @@ impl Ast {
             NodeData::Identifier(id_id) => {
                 let name = self[id_id].1;
                 let def = Definition {
-                    mode: BindingMode::Given,
+                    mode: Some(BindingMode::Given),
                     name,
                     arguments: None,
                     implementation: Some(imp),
@@ -128,7 +167,7 @@ impl Ast {
                     d => todo!("assignment to {d:?}"),
                 };
                 let def = Definition {
-                    mode: BindingMode::Given,
+                    mode: Some(BindingMode::Given),
                     name,
                     arguments: Some(call.args.clone()),
                     implementation: Some(imp),
@@ -229,7 +268,7 @@ mod tests {
         );
         let a_prime = ast.string_interner.register_str("a_prime");
         let definition = Definition {
-            mode: BindingMode::Given,
+            mode: Some(BindingMode::Given),
             name: a_prime,
             arguments: None,
             implementation: Some(op),
