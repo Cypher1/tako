@@ -1,9 +1,9 @@
 use error::ParseError;
 use log::{debug as trace, warn};
-use semantics::BindingMode;
 // use log::{trace, warn};
-use semantics::Literal;
+use semantics::{BindingMode, Literal};
 use smallvec::smallvec;
+use smallvec::SmallVec;
 use std::collections::VecDeque;
 use std::path::Path;
 use strum::IntoEnumIterator;
@@ -12,6 +12,7 @@ use crate::ast::location::Location;
 use crate::ast::Ast;
 use crate::ast::NodeId;
 use crate::ast::Op;
+use crate::ast::CALL_ARGS_STANDARD_ITEM_NUM;
 use crate::error::TError;
 
 pub mod error;
@@ -26,11 +27,12 @@ pub struct Rule {
     is_prefix: bool,
     is_infix: bool,
     is_ident: bool,
-    lit: Option<Literal>,
-    pair: Option<Symbol>,
     can_drop: bool,
     warn: bool,
     is_right: bool,
+    // TODO: Bit flag the above!
+    lit: Option<Literal>,
+    pair: Option<Symbol>,
     bind: Option<BindingMode>, // Reset to this level when parsing inside.
     level: Option<usize>, // Reset to this level when parsing inside.
 }
@@ -312,7 +314,13 @@ impl Parser {
 
     // End of low level parsers.
 
-    pub fn parse_step(&mut self, level: usize) -> Result<NodeId, ParseError> {
+    pub fn parse_step_one(&mut self, level: usize) -> Result<NodeId, ParseError> {
+        let results = self.parse_step(level)?;
+        assert_eq!(results.len(), 1);
+        Ok(results[0])
+    }
+
+    pub fn parse_step(&mut self, level: usize) -> Result<SmallVec<NodeId, CALL_ARGS_STANDARD_ITEM_NUM>, ParseError> {
         // NOTE: If support (a b) or something like that we need to return a vector of nodes
 
         if level >= self.config.precedences.len() {
@@ -327,16 +335,11 @@ impl Parser {
         let op = self.config.precedences[level];
         let rule = self.rule(op);
 
-        trace!(
-            ">> {tokens:?} #{level:?} {op:?} => {rule:?}",
-            tokens = self.head.tokens
-        );
-
         let old_level = level;
         let level = level + 1; // Inners.
 
         if rule.is_infix {
-            let mut left = self.parse_step(level)?;
+            let mut left = self.parse_step_one(level)?;
             let level = if let Some(level) = rule.level {
                 level
             } else {
@@ -344,20 +347,21 @@ impl Parser {
             };
             while let Ok(mut loc) = self.tok(op) {
                 trace!(
-                    "I> {tokens:?} #{level:?} {op:?} => {rule:?}",
-                    tokens = self.head.tokens
+                    "I> {tokens:?} #{level:?} {op:?}", // => {rule:?}",
+                    tokens = self.head.tokens.front()
                 );
-                let right = self.parse_step(if rule.is_right { old_level } else { level })?;
+                let right = self.parse_step_one(if rule.is_right { old_level } else { level })?;
 
                 if let Some(pair) = rule.pair {
                     let end_loc = self.tok(pair)?; // TODO: Handle missing
                     trace!(
-                        "C> {tokens:?} #{level:?} {op:?} => {rule:?}",
-                        tokens = self.head.tokens
+                        "C> {tokens:?} #{level:?} {op:?}", // => {rule:?}",
+                        tokens = self.head.tokens.front()
                     );
                     loc = loc.merge(end_loc);
                 }
 
+                // TODO: Functions on Asts?
                 if op == Symbol::OpenParen {
                     left = self.ast.add_args(left, smallvec![right]); // TODO: Handle commas...
                     continue;
@@ -379,14 +383,14 @@ impl Parser {
                     loc,
                 );
             }
-            return Ok(left);
+            return Ok(smallvec![left]);
         }
         if rule.is_prefix {
             let mut locs = Vec::new();
             while let Ok(loc) = self.tok(op) {
                 trace!(
-                    "P> {tokens:?} #{level:?} {op:?} => {rule:?}",
-                    tokens = self.head.tokens
+                    "P> {tokens:?} #{level:?} {op:?}", // => {rule:?}",
+                    tokens = self.head.tokens.front()
                 );
                 locs.push(loc);
             }
@@ -395,7 +399,7 @@ impl Parser {
             } else {
                 level
             };
-            let mut inner = self.parse_step(level)?;
+            let mut inner = self.parse_step_one(level)?;
             if let Some(pair) = rule.pair {
                 for start_loc in locs.iter_mut().rev() {
                     let end_loc = self.tok(pair)?; // TODO: Handle missing
@@ -416,7 +420,7 @@ impl Parser {
                     );
                 }
             }
-            return Ok(inner);
+            return Ok(smallvec![inner]);
         }
         if rule.can_drop {
             while let Ok(loc) = self.tok(op) {
@@ -429,14 +433,22 @@ impl Parser {
         }
         if let Some(lit) = rule.lit {
             if let Ok(loc) = self.tok(op) {
-                return Ok(self.lit(lit, loc));
+                trace!(
+                    "L> {tokens:?} #{level:?} {op:?}", // => {rule:?}",
+                    tokens = self.head.tokens.front()
+                );
+                return Ok(smallvec![self.lit(lit, loc)]);
             }
             return self.parse_step(level);
         }
 
         if rule.is_ident {
+            trace!(
+                "V> {tokens:?} #{level:?} {op:?}", // => {rule:?}",
+                tokens = self.head.tokens.front()
+            );
             let next = self.head.eat()?;
-            return Ok(self.identifier(next));
+            return Ok(smallvec![self.identifier(next)]);
         }
 
         todo!("Don't know what to do here {op:?} {rule:?}")
@@ -447,10 +459,10 @@ impl Parser {
         // Dynamic recursive descent
         // TODO: Data stack for debugging.
         while !self.head.tokens.is_empty() {
-            let root = self.parse_step(0)?;
+            let roots = self.parse_step(0)?;
 
             // Add all the valid trees that are not subtrees as roots.
-            self.ast.roots.push(root);
+            self.ast.roots.extend(roots);
         }
         Ok(())
     }
