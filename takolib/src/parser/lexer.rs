@@ -664,6 +664,13 @@ mod tests {
                 kind,
                 Symbol::Shebang
                     | Symbol::Comment
+                    | Symbol::Ident
+                    | Symbol::NumberLit
+                    | Symbol::ColorLit
+                    | Symbol::StringLit
+                    | Symbol::FmtStringLitStart
+                    | Symbol::FmtStringLitMid
+                    | Symbol::FmtStringLitEnd
                     | Symbol::Hash
                     | Symbol::MultiCommentOpen
                     | Symbol::MultiCommentClose
@@ -692,7 +699,7 @@ mod tests {
                         length: 3,
                     },
                 ],
-                "Failed with operator {kind}"
+                "Failed with operator {kind}: {contents}"
             );
             assert_str_eq!(tokens[0].get_src(&contents), symbol_str);
             assert_str_eq!(tokens[1].get_src(&contents), "123");
