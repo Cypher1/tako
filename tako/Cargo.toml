@@ -20,8 +20,8 @@ takolib = { version = "0.2.0", path = "../takolib", features = [ "native" ] }
 tokio = { version = "1.44.2", features = [ "full" ] }
 log = "0.4"
 warp = "0.3"
-crokey = "1.1.1"
-crossterm = { version = "0.28.1", features = [ "event-stream" ] }
+crokey = "1.2.0"
+crossterm = { version = "0.29.0", features = [ "event-stream" ] }
 directories = "6.0.0"
 notify = "8.0.0"
 shutdown_hooks = "0.1"
