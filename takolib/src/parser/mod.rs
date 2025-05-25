@@ -314,8 +314,12 @@ impl Parser {
 
     // End of low level parsers.
 
-    pub fn parse_step_one(&mut self, level: usize, depth: usize) -> Result<NodeId, ParseError> {
-        let results = self.parse_step(level, depth)?;
+    pub fn get_one(&mut self, results: SmallVec<NodeId, CALL_ARGS_STANDARD_ITEM_NUM>) -> Result<NodeId, ParseError> {
+        if results.len() != 1 {
+            for res in &results {
+                trace!("RESULT(S): {}", self.ast.pretty_node(*res));
+            }
+        }
         assert_eq!(results.len(), 1);
         Ok(results[0])
     }
@@ -333,7 +337,10 @@ impl Parser {
             return Err(ParseError::UnexpectedEof);
         }
         let op = self.config.precedences[level];
+        // TODO: If we looked up the rule based on the next token, not the level
+        // this would just be dynamic Pratt parsing.
         let rule = self.rule(op).clone();
+
         //trace!(
             //"{indent}> {op:?} for {tokens:?}",
             //indent = " ".repeat(depth),
@@ -368,68 +375,82 @@ impl Parser {
                 } else if let Some(lit) = rule.lit {
                     self.lit(lit, start_loc)
                 } else {
-                    let inner = self.parse_step_one(level, depth)?;
+                    let inner = self.parse_step(level, depth)?;
                     if let Some(pair) = rule.pair {
                         let end_loc = self.tok(pair)?; // TODO: Handle missing
+                        trace!(
+                            "{indent}PC> {op:?} #{level:?} {tokens:?}", // => {rule:?}",
+                            indent = " ".repeat(depth),
+                            tokens = self.head.tokens.front()
+                        );
                         start_loc = start_loc.merge(end_loc);
                     }
                     if let Some(bind) = rule.bind {
+                        let inner = self.get_one(inner)?;
                         self.ast.set_bind(inner, bind)
                     } else if op != Symbol::OpenParen {
                         self.ast.add_op(
                             Op {
                                 op,
-                                args: smallvec![inner],
+                                args: inner,
                             },
                             start_loc,
                         )
                     } else {
-                        inner
+                        self.get_one(inner)?
                     }
                 }
             } else {
-                self.parse_step_one(old_level + 1, depth)?
+                let inner = self.parse_step(old_level + 1, depth)?;
+                self.get_one(inner)?
             }
         } else {
-            self.parse_step_one(old_level + 1, depth)?
+            let inner = self.parse_step(old_level + 1, depth)?;
+            self.get_one(inner)?
         };
         if rule.is_infix {
-            let mut args: SmallVec<(NodeId, Location), CALL_ARGS_STANDARD_ITEM_NUM> = smallvec![];
+            let mut args: SmallVec<(SmallVec<NodeId, CALL_ARGS_STANDARD_ITEM_NUM>, Location), CALL_ARGS_STANDARD_ITEM_NUM> = smallvec![];
             while let Ok(mut loc) = self.tok(op) {
                 trace!(
                     "{indent}I> {op:?} #{level:?} {tokens:?}", // => {rule:?}",
                     indent = " ".repeat(depth),
                     tokens = self.head.tokens.front()
                 );
-                let right = self.parse_step_one(level, depth)?;
-
+                let rights = self.parse_step(level, depth)?;
                 if let Some(pair) = rule.pair {
                     let end_loc = self.tok(pair)?; // TODO: Handle missing
                     trace!(
-                        "{indent}C> {op:?} #{level:?} {tokens:?}", // => {rule:?}",
+                        "{indent}PC> {op:?} #{level:?} {tokens:?}", // => {rule:?}",
                         indent = " ".repeat(depth),
                         tokens = self.head.tokens.front()
                     );
                     loc = loc.merge(end_loc);
                 }
-                args.push((right, loc));
+                args.push((rights, loc));
             }
 
             if op == Symbol::Comma {
-                args.insert(0, (left, location));
-                let args: SmallVec<NodeId, CALL_ARGS_STANDARD_ITEM_NUM> = args.into_iter().map(|(l, _loc)| l).collect();
-                return Ok(args);
+                let mut all_args: SmallVec<NodeId, CALL_ARGS_STANDARD_ITEM_NUM> = smallvec![left];
+                for (rights, _loc) in args {
+                    all_args.extend(rights);
+                }
+                return Ok(all_args);
             } else {
                 if rule.is_right && !args.is_empty() {
                     // Reverse the args if needs be.
-                    args.insert(0, (left, location));
-                    (left, _) = args.pop().unwrap();
+                    args.insert(0, (smallvec![left], location));
+                    let (lefts, _) = args.pop().unwrap();
+                    left = self.get_one(lefts)?;
                     args.reverse();
                 }
-                for (mut arg, loc) in args {
+                for (arg_set, loc) in args {
                     // TODO: Functions on Asts?
+                    if op == Symbol::OpenParen {
+                        left = self.ast.add_args(left, arg_set); // TODO: Handle commas...
+                        continue;
+                    }
+                    let mut arg = self.get_one(arg_set)?;
                     left = match op {
-                        Symbol::OpenParen => self.ast.add_args(left, smallvec![arg]), // TODO: Handle commas...
                         Symbol::HasType => self.ast.add_annotation(left, arg),
                         Symbol::Assign => self.ast.add_implementation(left, arg),
                         _ => {

@@ -314,6 +314,7 @@ mod tests {
     }
     #[test]
     fn round_trip_implicit_bindings() -> Result<(), TError> {
+        // HERE
         let out = setup("x(forall T: Int, y: T): T=1")?;
         assert_eq!(out, "x(forall T: Int, y: T): T=1");
         Ok(())
