@@ -267,7 +267,7 @@ fn make_tables() -> Result<ParserConfigTable, ()> {
         rules: config,
         precedences: vec![
             Comma, Sequence, Assign, Arrow,
-            DoubleArrow, Add, Sub, Div, Mul, Exp, HasType,
+            DoubleArrow, Add, Sub, Div, Mul, Exp, Sub /*Neg*/, HasType,
             Eqs, NotEqs, Lt, LtEqs, Gt, GtEqs,
             Sigma, Lambda, Forall, Pi, Exists,
             CloseParen, // TODO: Add all
