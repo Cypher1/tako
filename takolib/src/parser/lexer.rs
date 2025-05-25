@@ -675,7 +675,6 @@ mod tests {
                     | Symbol::MultiCommentOpen
                     | Symbol::MultiCommentClose
                     | Symbol::Group
-                    | Symbol::Escape
             ) {
                 // Special case
                 continue;

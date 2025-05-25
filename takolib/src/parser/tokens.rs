@@ -93,7 +93,6 @@ pub enum Symbol {
     Spread,
 
     // Ignore symbols
-    Escape,
     Group,
     Shebang, // TODO: Consider using direct comparisons? = senum!("/*"),
     Comment,
@@ -206,7 +205,7 @@ pub fn classify_char(ch: char) -> CharacterType {
         '}' => CloseCurly,
         '[' => OpenBracket,
         ']' => CloseBracket,
-        '\\' => Escape, // Escape?
+        '\\' => Group, // Escape?
         'λ' => Lambda,
         'Π' => Pi,
         'Σ' => Sigma,
@@ -326,6 +325,15 @@ impl std::str::FromStr for Symbol {
             "}" => CloseCurly,
             "[" => OpenBracket,
             "]" => CloseBracket,
+            "\\" => Group,
+            "," => Comma,
+            "an identifier" => Ident,
+            "a number" => NumberLit,
+            "a color" => ColorLit,
+            "a string literal" => StringLit,
+            "the start of a format string literal" => FmtStringLitStart,
+            "the middle of a format string literal" => FmtStringLitMid,
+            "the end of a format string literal" => FmtStringLitEnd,
             _ => return Err(()),
         };
         Ok(t)
@@ -409,8 +417,7 @@ impl From<&Symbol> for &str {
             Symbol::CloseCurly => "}",
             Symbol::OpenBracket => "[",
             Symbol::CloseBracket => "]",
-            Symbol::Escape => "\\",
-            Symbol::Group => " ", // Group is not a expressable character.
+            Symbol::Group => "\\",
         }
     }
 }
