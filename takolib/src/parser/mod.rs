@@ -222,6 +222,7 @@ fn make_tables() -> Result<ParserConfigTable, ()> {
     for op in MATHEMATICAL {
         config[*op as usize].infix();
     }
+    config[Symbol::Sequence as usize].right();
     config[Symbol::Exp as usize].right();
     for op in PREFIX_BIT {
         config[*op as usize].prefix();
@@ -270,8 +271,9 @@ fn make_tables() -> Result<ParserConfigTable, ()> {
             DoubleArrow, Add, Sub, Div, Mul, Exp, Sub /*Neg*/, HasType,
             Eqs, NotEqs, Lt, LtEqs, Gt, GtEqs,
             Sigma, Lambda, Forall, Pi, Exists,
-            CloseParen, // TODO: Add all
-            OpenParen, NumberLit, ColorLit, StringLit, Ident,
+            Dot,
+            OpenParen, OpenBracket, OpenCurly, NumberLit, ColorLit, StringLit, Ident,
+            CloseParen, CloseBracket, CloseCurly, // TODO: Add all
         ],
     })
 }

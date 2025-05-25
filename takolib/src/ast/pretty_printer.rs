@@ -334,6 +334,20 @@ mod tests {
     }
 
     #[test]
+    fn round_trip_dot_operator() -> Result<(), TError> {
+        let out = setup("x.y.z")?;
+        assert_eq!(out, "(x.y).z");
+        Ok(())
+    }
+
+    #[test]
+    fn round_trip_dot_operator_with_calls() -> Result<(), TError> {
+        let out = setup("x(a).y(b).z(c)")?;
+        assert_eq!(out, "(x(a).y(b)).z(c)");
+        Ok(())
+    }
+
+    #[test]
     fn round_trip_lambda_with_args() -> Result<(), TError> {
         let out = setup("(x->x)(x=2*3)")?;
         assert_eq!(out, "(x->x)(x=2*3)");
