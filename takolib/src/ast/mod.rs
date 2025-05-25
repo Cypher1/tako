@@ -76,23 +76,11 @@ impl Ast {
         args: SmallVec<NodeId, CALL_ARGS_STANDARD_ITEM_NUM>,
     ) -> NodeId {
         let location = self[node_id].location;
-        let id = self[node_id].id.clone();
-        match id {
-            NodeData::Op(op_id) => {
-                let op = &mut self[op_id].1;
-                assert_eq!(op.args.len(), 0); // TODO: Error
-                op.args.extend(args);
-                node_id // TODO: Consider persistent data structures vs mutablilty.
-            }
-            NodeData::Identifier(_) | NodeData::Call(_) => {
-                let call = Call {
-                    inner: node_id,
-                    args,
-                };
-                self.add_call(call, location)
-            }
-            node => todo!("Assignment to non definition head support: {node:?}"),
-        }
+        let call = Call {
+            inner: node_id,
+            args,
+        };
+        self.add_call(call, location)
     }
     pub fn set_bind(&mut self, node_id: NodeId, bind: BindingMode) -> NodeId {
         let id = self[node_id].id.clone();
