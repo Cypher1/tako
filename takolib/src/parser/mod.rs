@@ -1,6 +1,6 @@
 use error::ParseError;
-use log::{debug as trace, warn};
-// use log::{trace, warn};
+use log::{debug as trace, error};
+// use log::{trace, error};
 use semantics::{BindingMode, Literal};
 use smallvec::smallvec;
 use smallvec::SmallVec;
@@ -53,7 +53,7 @@ impl Rule {
     }
     fn ident(&mut self) -> &mut Self {
         self.is_ident = true;
-        self
+        self.prefix()
     }
     fn infix(&mut self) -> &mut Self {
         self.is_infix = true;
@@ -76,7 +76,7 @@ impl Rule {
     fn lit(&mut self, lit: Literal) -> &mut Self {
         assert!(self.lit.is_none());
         self.lit = Some(lit);
-        self
+        self.prefix()
     }
     fn level(&mut self, level: usize) -> &mut Self {
         assert!(self.is_prefix || self.is_infix);
@@ -204,7 +204,6 @@ fn make_tables() -> Result<ParserConfigTable, ()> {
     config[Symbol::OpenParen as usize]
         .pair(Symbol::CloseParen)
         .prefix()
-        .right()
         .infix()
         .level(0); // values or call
     config[Symbol::CloseParen as usize].can_drop().warn();
@@ -271,9 +270,8 @@ fn make_tables() -> Result<ParserConfigTable, ()> {
             DoubleArrow, Add, Sub, Div, Mul, Exp, HasType,
             Eqs, NotEqs, Lt, LtEqs, Gt, GtEqs,
             Sigma, Lambda, Forall, Pi, Exists,
-            NumberLit, ColorLit, StringLit, Ident,
             CloseParen, // TODO: Add all
-            OpenParen,
+            OpenParen, NumberLit, ColorLit, StringLit, Ident,
         ],
     })
 }
@@ -316,14 +314,15 @@ impl Parser {
 
     // End of low level parsers.
 
-    pub fn parse_step_one(&mut self, level: usize) -> Result<NodeId, ParseError> {
-        let results = self.parse_step(level)?;
+    pub fn parse_step_one(&mut self, level: usize, depth: usize) -> Result<NodeId, ParseError> {
+        let results = self.parse_step(level, depth)?;
         assert_eq!(results.len(), 1);
         Ok(results[0])
     }
 
     /// We return a small vec of nodes to support commas (e.g. `a,b,c`) and prefixed words like `a b`.
-    pub fn parse_step(&mut self, level: usize) -> Result<SmallVec<NodeId, CALL_ARGS_STANDARD_ITEM_NUM>, ParseError> {
+    pub fn parse_step(&mut self, level: usize, depth: usize) -> Result<SmallVec<NodeId, CALL_ARGS_STANDARD_ITEM_NUM>, ParseError> {
+        let location = self.head.location;
         if level >= self.config.precedences.len() {
             if let Some(tok) = self.head.tokens.pop_front() {
                 return Err(ParseError::UnparsedTokens {
@@ -335,149 +334,129 @@ impl Parser {
         }
         let op = self.config.precedences[level];
         let rule = self.rule(op).clone();
-        trace!(
-            "I> {tokens:?} #{level:?} {op:?}", // => {rule:?}",
-            tokens = self.head.tokens.front()
-        );
+        //trace!(
+            //"{indent}> {op:?} for {tokens:?}",
+            //indent = " ".repeat(depth),
+            //tokens = self.head.tokens.front().unwrap_or(&Token { kind: Symbol::Escape, start: 0, length: 0 })
+        //);
         let old_level = level;
         let level = if let Some(level) = rule.level {
             level
         } else {
             level + 1
         };
+        let depth = depth+1;
 
-        if rule.is_infix {
-            let mut left = self.parse_step_one(old_level + 1)?; // We can't use 'level' here or we'd infinitely loop.
-            while let Ok(mut loc) = self.tok(op) {
-                trace!(
-                    "I> {tokens:?} #{level:?} {op:?}", // => {rule:?}",
-                    tokens = self.head.tokens.front()
-                );
-                let right = self.parse_step(level)?;
-
-                if let Some(pair) = rule.pair {
-                    let end_loc = self.tok(pair)?; // TODO: Handle missing
-                    trace!(
-                        "C> {tokens:?} #{level:?} {op:?}", // => {rule:?}",
-                        tokens = self.head.tokens.front()
-                    );
-                    loc = loc.merge(end_loc);
-                }
-
-                // TODO: Functions on Asts?
-                if op == Symbol::OpenParen {
-                    left = self.ast.add_args(left, right); // TODO: Handle commas...
-                    continue;
-                }
-                if op == Symbol::HasType {
-                    assert_eq!(right.len(), 1);
-                    left = self.ast.add_annotation(left, right[0]);
-                    continue;
-                }
-                if op == Symbol::Assign {
-                    assert_eq!(right.len(), 1);
-                    left = self.ast.add_implementation(left, right[0]);
-                    continue;
-                }
-                let mut args = smallvec![left];
-                args.extend(right);
-
-                if op == Symbol::Comma {
-                    return Ok(args);
-                }
-
-                left = self.ast.add_op(
-                    Op {
-                        op,
-                        args,
-                    },
-                    loc,
-                );
-            }
-            return Ok(smallvec![left]);
-        }
-        if rule.is_prefix {
-            trace!(
-                "P? {tokens:?} #{level:?} {op:?}", // => {rule:?}",
-                tokens = self.head.tokens.front()
-            );
-            let mut locs = Vec::new();
-            while let Ok(loc) = self.tok(op) {
-                trace!(
-                    "P> {tokens:?} #{level:?} {op:?}", // => {rule:?}",
-                    tokens = self.head.tokens.front()
-                );
-                locs.push(loc);
-            }
-            let Ok(mut inner) = self.parse_step_one(level) else {
-                todo!("HERE {level:?}");
-            };
-            if let Some(pair) = rule.pair {
-                for start_loc in locs.iter_mut().rev() {
-                    let end_loc = self.tok(pair)?; // TODO: Handle missing
-                    *start_loc = start_loc.merge(end_loc);
-                }
-            }
-
-            for loc in locs.into_iter().rev() {
-                if let Some(bind) = rule.bind {
-                    inner = self.ast.set_bind(inner, bind);
-                } else {
-                    inner = self.ast.add_op(
-                        Op {
-                            op,
-                            args: smallvec![inner],
-                        },
-                        loc,
-                    );
-                }
-            }
-            return Ok(smallvec![inner]);
-        }
         if rule.can_drop {
             while let Ok(loc) = self.tok(op) {
                 if rule.warn {
                     // TODO: Add a warning
-                    warn!("DROP: {op} at {loc:?}");
+                    error!("DROP: {op} at {loc:?}");
                 }
             }
-            return self.parse_step(level);
-        }
-        if let Some(lit) = rule.lit {
-            if let Ok(loc) = self.tok(op) {
-                trace!(
-                    "L> {tokens:?} #{level:?} {op:?}", // => {rule:?}",
-                    tokens = self.head.tokens.front()
-                );
-                return Ok(smallvec![self.lit(lit, loc)]);
-            }
-            return self.parse_step(level);
         }
 
-        if rule.is_ident {
-            if let Ok(tok) = self.tok(op) {
+        let mut left = if rule.is_prefix {
+            if let Ok(mut start_loc) = self.tok(op) {
                 trace!(
-                    "V> {tokens:?} #{level:?} {op:?}", // => {rule:?}",
+                    "{indent}P> {op:?} #{level:?} {tokens:?}", // => {rule:?}",
+                    indent = " ".repeat(depth),
                     tokens = self.head.tokens.front()
                 );
-                return Ok(smallvec![self.identifier(tok)]);
+                if rule.is_ident {
+                    self.identifier(start_loc)
+                } else if let Some(lit) = rule.lit {
+                    self.lit(lit, start_loc)
+                } else {
+                    let inner = self.parse_step_one(level, depth)?;
+                    if let Some(pair) = rule.pair {
+                        let end_loc = self.tok(pair)?; // TODO: Handle missing
+                        start_loc = start_loc.merge(end_loc);
+                    }
+                    if let Some(bind) = rule.bind {
+                        self.ast.set_bind(inner, bind)
+                    } else if op != Symbol::OpenParen {
+                        self.ast.add_op(
+                            Op {
+                                op,
+                                args: smallvec![inner],
+                            },
+                            start_loc,
+                        )
+                    } else {
+                        inner
+                    }
+                }
+            } else {
+                self.parse_step_one(old_level + 1, depth)?
             }
-            return self.parse_step(level);
-        }
+        } else {
+            self.parse_step_one(old_level + 1, depth)?
+        };
+        if rule.is_infix {
+            let mut args: SmallVec<(NodeId, Location), CALL_ARGS_STANDARD_ITEM_NUM> = smallvec![];
+            while let Ok(mut loc) = self.tok(op) {
+                trace!(
+                    "{indent}I> {op:?} #{level:?} {tokens:?}", // => {rule:?}",
+                    indent = " ".repeat(depth),
+                    tokens = self.head.tokens.front()
+                );
+                let right = self.parse_step_one(level, depth)?;
 
-        let tok = self.head.eat()?;
-        trace!(
-            "?> {tokens:?} #{level:?} {op:?} => {rule:?}",
-            tokens = self.head.tokens.front()
-        );
-        Err(ParseError::UnparsedTokens { token: tok.kind, location: tok.location() })
+                if let Some(pair) = rule.pair {
+                    let end_loc = self.tok(pair)?; // TODO: Handle missing
+                    trace!(
+                        "{indent}C> {op:?} #{level:?} {tokens:?}", // => {rule:?}",
+                        indent = " ".repeat(depth),
+                        tokens = self.head.tokens.front()
+                    );
+                    loc = loc.merge(end_loc);
+                }
+                args.push((right, loc));
+            }
+
+            if op == Symbol::Comma {
+                args.insert(0, (left, location));
+                let args: SmallVec<NodeId, CALL_ARGS_STANDARD_ITEM_NUM> = args.into_iter().map(|(l, _loc)| l).collect();
+                return Ok(args);
+            } else {
+                if rule.is_right && !args.is_empty() {
+                    // Reverse the args if needs be.
+                    args.insert(0, (left, location));
+                    (left, _) = args.pop().unwrap();
+                    args.reverse();
+                }
+                for (mut arg, loc) in args {
+                    // TODO: Functions on Asts?
+                    left = match op {
+                        Symbol::OpenParen => self.ast.add_args(left, smallvec![arg]), // TODO: Handle commas...
+                        Symbol::HasType => self.ast.add_annotation(left, arg),
+                        Symbol::Assign => self.ast.add_implementation(left, arg),
+                        _ => {
+                            if rule.is_right {
+                                (left, arg) = (arg, left);
+                            }
+                            self.ast.add_op(
+                                Op {
+                                    op,
+                                    args: smallvec![left, arg],
+                                },
+                                loc,
+                            )
+                        }
+                    };
+                }
+            }
+        };
+        return Ok(smallvec![left]);
     }
 
     pub fn parse(&mut self) -> Result<(), ParseError> {
         // Dynamic recursive descent
         // TODO: Data stack for debugging.
         while !self.head.tokens.is_empty() {
-            let roots = self.parse_step(0)?;
+            let roots = self.parse_step(0, 0)?;
+            trace!("roots {0:?}", roots.len());
 
             // Add all the valid trees that are not subtrees as roots.
             self.ast.roots.extend(roots);
