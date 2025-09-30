@@ -12,7 +12,7 @@ impl<T, U: PartialEq<T>> PartialEq<MultiPretty<T>> for MultiPretty<U> {
 }
 
 /// Make diff to display string as multi-line string
-impl<'a> std::fmt::Debug for MultiPretty<&'a str> {
+impl std::fmt::Debug for MultiPretty<&str> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.0)
     }
