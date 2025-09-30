@@ -737,8 +737,7 @@ pub fn lex_head(characters: &mut Characters<'_>, tokens: &mut Vec<Token>) -> boo
     let length = characters.length();
     if length > SymbolLength::MAX as usize {
         assert_eq!(kind, TokenType::StringLit); // TODO(usability): Error here.
-        let mut number_of_tokens =
-            length.div_ceil(SymbolLength::MAX as usize);
+        let mut number_of_tokens = length.div_ceil(SymbolLength::MAX as usize);
         if number_of_tokens >= (SymbolLength::MAX as usize) {
             todo!("Token was too long ({length:?}), implement a recursive group thing...");
         }
