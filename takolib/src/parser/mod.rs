@@ -152,7 +152,7 @@ struct ParseState<'src, 'toks, T: Iterator<Item = &'toks Token>> {
     tokens: std::iter::Peekable<T>,
 }
 
-impl<'src, 'toks, T: Iterator<Item = &'toks Token>> ParseState<'src, 'toks, T> {
+impl<'toks, T: Iterator<Item = &'toks Token>> ParseState<'_, 'toks, T> {
     fn peek(&mut self) -> Result<&Token, ParseError> {
         self.tokens.peek().copied().ok_or(ParseError::UnexpectedEof)
     }
