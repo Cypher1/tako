@@ -35,6 +35,8 @@ jobs:
         target: wasm32-unknown-unknown
         override: true
         profile: minimal
+    - name: Install fmt
+      run: rustup component add rustfmt
     - name: Install trunk
       uses: jetli/trunk-action@v0.1.0
       with:
