@@ -33,7 +33,7 @@ pub fn run(path: &Path, ast: &Ast, root: Option<NodeId>) -> Result<Prim, TError>
         root
     } else if ast.roots.len() == 1 {
         ast.roots[0]
-    } else if ast.roots.len() == 0 {
+    } else if ast.roots.is_empty() {
         return Err(TError::InternalError {
             message: format!(
                 "Ambiguous run command: No root found for {path}",
@@ -58,7 +58,7 @@ pub fn run(path: &Path, ast: &Ast, root: Option<NodeId>) -> Result<Prim, TError>
     ctx.eval(start)
 }
 
-impl<'a> Ctx<'a> {
+impl Ctx<'_> {
     pub fn eval2(&mut self, args: &[NodeId]) -> Result<[Prim; 2], TError> {
         let l = args.first().expect("requires a left argument");
         let r = args.get(1).expect("requires a right argument");
