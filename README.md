@@ -99,7 +99,7 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 <table>
   <tbody>
     <tr>
-      <td align="center" valign="top" width="14.28%"><a href="https://cypher1.github.io"><img src="https://avatars.githubusercontent.com/u/1120798?v=4?s=100" width="100px;" alt="Jay Pratt"/><br /><sub><b>Jay Pratt</b></sub></a><br /><a href="https://github.com/Cypher1/tako/commits?author=cypher1" title="Code">💻</a> <a href="#design-cypher1" title="Design">🎨</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://cypher1.github.io"><img src="https://avatars.githubusercontent.com/u/1120798?v=4?s=100" width="100px;" alt="Ellie Pratt"/><br /><sub><b>Ellie Pratt</b></sub></a><br /><a href="https://github.com/Cypher1/tako/commits?author=cypher1" title="Code">💻</a> <a href="#design-cypher1" title="Design">🎨</a></td>
     </tr>
   </tbody>
 </table>
