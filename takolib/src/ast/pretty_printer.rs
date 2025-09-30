@@ -21,7 +21,7 @@ pub fn pretty_node(ast: &Ast, node: NodeId) -> impl fmt::Display + fmt::Debug + 
     PrintNode::in_context(ast, node)
 }
 
-impl<'ast> PrintNode<'ast> {
+impl PrintNode<'_> {
     fn print_ty(&self, f: &mut fmt::Formatter<'_>, ty: &mut Option<NodeId>) -> fmt::Result {
         if let Some(ty) = ty.take() {
             write!(f, ": {}", self.child(ty))?;
@@ -82,7 +82,7 @@ impl<'ast> PrintNode<'ast> {
     }
 }
 
-impl<'ast> fmt::Display for PrintNodes<'ast> {
+impl fmt::Display for PrintNodes<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut first = true;
         for node in &**self {
