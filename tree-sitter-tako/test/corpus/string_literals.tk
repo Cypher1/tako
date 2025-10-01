@@ -1,0 +1,20 @@
+==================
+Hello String literal
+==================
+"Hello"
+---
+(source_file (string_literal))
+
+==================
+Hello World String literal
+==================
+"Hello World!"
+---
+(source_file (string_literal))
+
+==================
+Single quoted Hello World String literal
+==================
+'Hello World!'
+---
+(source_file (string_literal))

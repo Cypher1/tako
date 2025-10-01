@@ -1,4 +1,4 @@
-use crate::ast::{Ast, Contains, Node, NodeData, NodeId};
+use crate::ast::{Ast, Node, NodeData, NodeId};
 use crate::error::TError;
 use crate::parser::semantics::Literal;
 use crate::parser::tokens::Symbol;
@@ -31,7 +31,7 @@ pub fn lower(_path: &Path, og_ast: &Ast, root: NodeId) -> Result<Llamada, TError
     for (nodeid, val) in og_ast.literals.iter() {
         let val = match val {
             Literal::Numeric => {
-                let location = ast.get(*nodeid).location;
+                let location = ast[*nodeid].location;
                 let str = ast.string_interner.get_str_by_loc(location.start);
                 trace!("GOT NUMERIC AT {:?} => {:?}", &location, str);
                 let val = str
@@ -44,11 +44,11 @@ pub fn lower(_path: &Path, og_ast: &Ast, root: NodeId) -> Result<Llamada, TError
         };
         let e_id = get_expr(&mut expr, *nodeid, Some(Ext(val)));
         eprintln!("VAL is {:?} = {:?}", e_id, val);
-        let node: &mut Node = ast.get_mut(*nodeid);
+        let node: &mut Node = &mut ast[*nodeid];
         node.lowered_to = Some(e_id);
     }
     for (nodeid, op) in og_ast.ops.iter() {
-        let location = ast.get(*nodeid).location;
+        let location = ast[*nodeid].location;
         eprintln!("OP: {}", ast.pretty_node(*nodeid));
         if op.op == Symbol::DoubleArrow {
             trace!("GOT DoubleArrow OP AT {:?}", &location);
@@ -60,27 +60,27 @@ pub fn lower(_path: &Path, og_ast: &Ast, root: NodeId) -> Result<Llamada, TError
             let var = get_expr(&mut expr, inner, Some(Term::Var(1)));
             // TODO: Add the type info?
             let abs = get_expr(&mut expr, *nodeid, Some(Term::Abs(None, var)));
-            let node: &mut Node = ast.get_mut(*nodeid);
+            let node: &mut Node = &mut ast[*nodeid];
             node.lowered_to = Some(abs);
             continue;
         }
         // TODO!?
     }
     for (nodeid, call) in og_ast.calls.iter() {
-        let location = ast.get(*nodeid).location;
+        let location = ast[*nodeid].location;
         trace!("GOT CALL AT {:?}", &location);
         let inner = call.inner;
         let mut curr = get_expr(&mut expr, inner, None);
         for arg in &call.args {
-            let arg_node: &Node = ast.get(*arg);
+            let arg_node: &Node = &mut ast[*arg];
 
             // Get the implementation of the definition...
-            let arg_def_id = match arg_node.id {
-                NodeData::Definition(def) => def,
-                _ => todo!("WAT"),
+            let arg_def_id = match &arg_node.id {
+                NodeData::Definition(def) => *def,
+                _ => todo!("Unexpected definition node {}", ast.pretty_node(*arg)),
             };
-            let (arg, arg_def) = ast.get(arg_def_id);
-            eprintln!("ARG: {}", ast.pretty_node(*arg));
+            let (arg, arg_def) = &ast[arg_def_id];
+            eprintln!("ARG: {}", &mut ast.pretty_node(*arg));
 
             // Get the llamada expr to match...
             let arg = get_expr(&mut expr, arg_def.implementation.expect("WHAT?"), None);
@@ -88,20 +88,20 @@ pub fn lower(_path: &Path, og_ast: &Ast, root: NodeId) -> Result<Llamada, TError
             eprintln!("CALL is {:?} = {:?} {:?}", new_curr, curr, arg);
             curr = new_curr;
         }
-        let node: &mut Node = ast.get_mut(*nodeid);
+        let node: &mut Node = &mut ast[*nodeid];
         node.lowered_to = Some(curr);
     }
     // TODO: Others...
     // For every abs var and cons
     // Map them in and track them with `.lowered_to`
-    let mut node = ast.get(root);
+    let mut node = &ast[root];
     while let Some(equi) = node.equivalents {
-        node = ast.get(equi);
+        node = &ast[equi];
     }
     let root = node.lowered_to.unwrap_or_else(|| {
         todo!(
             "root wasn't lowered: {:?}\n{}",
-            ast.get(root),
+            ast[root],
             ast.pretty_node(root)
         )
     });
@@ -113,8 +113,8 @@ pub fn lower(_path: &Path, og_ast: &Ast, root: NodeId) -> Result<Llamada, TError
 mod tests {
     use super::*;
     use crate::desugarer::desugar;
+    use crate::parser::lexer::lex;
     use crate::parser::parse;
-    use crate::parser::tokens::lex;
     use std::path::PathBuf;
 
     fn test_path() -> PathBuf {
@@ -174,7 +174,7 @@ mod tests {
 
     #[test]
     fn lower_gives_constant_from_id_id_ap_constant() -> Result<(), TError> {
-        let ast = setup("(x=>x)((x=(x=>x))(x=2))")?;
+        let ast = setup("(x=>x)(x=(x=>x)(x=2))")?;
         let out = lower(&test_path(), &ast, ast.roots[0])?;
         dbg!(&out);
 

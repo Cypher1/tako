@@ -223,6 +223,66 @@ mod tests {
     tests!(CompactNumerals<Empty>);
 
     #[test]
+    fn takolib_lowerer_rev_test() {
+        let mut expr = CompactNumerals::<Empty>::new(ext(2), Empty {});
+        let n = expr.get_last_id();
+        let a = expr.add(Term::Var(1));
+        let abs_a = expr.add(Term::abs(a));
+        let ap = expr.add(Term::App(abs_a, n));
+        let s = expr.add(Term::App(abs_a, ap));
+        *expr.root_mut() = s;
+
+        assert_eq!(format!("{}", &expr), "((a => a) ((a => a) 2))");
+
+        expr.reduce();
+        eprintln!("result: {}", expr.as_context(expr.root()));
+        let result = expr.get(expr.root());
+        assert_eq!(result, &ext(2));
+    }
+
+    #[test]
+    fn takolib_lowerer_test() {
+        let mut expr = CompactNumerals::<Empty>::new(ext(2), Empty {});
+        let n = expr.get_last_id();
+        let a = expr.add(Term::Var(1));
+        let abs_a = expr.add(Term::abs(a));
+        let ap = expr.add(Term::App(abs_a, abs_a));
+        let s = expr.add(Term::App(ap, n));
+        *expr.root_mut() = s;
+
+        assert_eq!(format!("{}", &expr), "(((a => a) (a => a)) 2)");
+
+        expr.reduce();
+        eprintln!("result: {}", expr.as_context(expr.root()));
+        let result = expr.get(expr.root());
+        assert_eq!(result, &ext(2));
+    }
+
+    #[test]
+    fn takolib_lowerer_rev_test2() {
+        let mut expr = CompactNumerals::<Empty>::new(ext(2), Empty {});
+        let n = expr.get_last_id();
+        let a = expr.add(Term::Var(1));
+        let mul = expr.add(ext(NumOp::Mul));
+        let mul2 = expr.add(Term::App(mul, n));
+        let mul2a = expr.add(Term::App(mul2, a));
+        let abs_2a = expr.add(Term::abs(mul2a));
+        let ap = expr.add(Term::App(abs_2a, n));
+        let s = expr.add(Term::App(abs_2a, ap));
+        *expr.root_mut() = s;
+
+        assert_eq!(
+            format!("{}", &expr),
+            "((a => ((Mul 2) a)) ((a => ((Mul 2) a)) 2))"
+        );
+
+        expr.reduce();
+        eprintln!("result: {}", expr.as_context(expr.root()));
+        let result = expr.get(expr.root());
+        assert_eq!(result, &ext(8));
+    }
+
+    #[test]
     fn mul_expr_huge() {
         let mut expr = CompactNumerals::<Empty>::new(ext(NumOp::Mul), Empty {});
         let mul = expr.get_last_id();

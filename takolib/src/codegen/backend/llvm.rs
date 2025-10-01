@@ -13,16 +13,13 @@ use inkwell::{
     AddressSpace, OptimizationLevel,
 };
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+// TODO: Consider async here? tokio or https://crates.io/crates/async-process
 use std::{
     io::{stderr, stdout, Write},
     path::Path,
     process::Command,
 };
-
-lazy_static::lazy_static! {
-    static ref CONTEXT: Arc<Mutex<Context>> = Arc::new(Mutex::new(Context::create()));
-}
 
 #[derive(Debug)]
 pub struct Llvm<'ctx> {
@@ -34,7 +31,7 @@ pub struct Llvm<'ctx> {
     target_machine: Option<TargetMachine>,
 }
 
-impl<'ctx> Llvm<'ctx> {
+impl Llvm<'_> {
     fn get_target_machine(&self) -> TargetMachine {
         let target = Target::from_triple(&self.target_triple).unwrap();
 

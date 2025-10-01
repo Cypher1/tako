@@ -1,13 +1,23 @@
 [workspace]
 resolver = "2"
-default-members=["tako", "takolib", "llamada"]
+default-members=[
+  "better-std",
+  "llamada",
+  "short-typed-index",
+  "entity-component-slab",
+  "tree-sitter-tako",
+  "tako",
+  "takolib"
+]
 members = [
     "better-std",
-    "takolib",
-    "tako",
-    "takoweb",
-    "takobench",
+    "entity-component-slab",
     "llamada",
+    "short-typed-index",
+    "tako",
+    "takobench",
+    "takolib",
+    "takoweb"
 ]
 
 [workspace.package]

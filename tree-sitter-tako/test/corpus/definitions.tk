@@ -1,0 +1,187 @@
+==================
+Constant Definition
+==================
+a=3
+---
+(source_file
+  (assign
+    (ident)
+    (int_literal)
+  )
+)
+==================
+Function Definition
+==================
+test() = 3
+---
+(source_file
+  (assign
+    (call (ident))
+    (int_literal)
+  )
+)
+==================
+Function Definition with argument
+==================
+test(a) = 3
+---
+(source_file
+  (assign
+    (call (ident) (ident))
+    (int_literal)
+  )
+)
+==================
+Function Definition with arguments
+==================
+test(a, b) = 3
+---
+(source_file
+  (assign
+    (call (ident) (ident) (ident))
+    (int_literal)
+  )
+)
+==================
+Function Definition with arguments and trailing comma
+==================
+test(a,b,) = 3
+---
+(source_file
+  (assign
+    (call (ident) (ident) (ident))
+    (int_literal)
+  )
+)
+==================
+Function Definition with argument with default
+==================
+test(a=3) = 3
+---
+(source_file
+  (assign
+    (call (ident) (assign (ident) (int_literal)))
+    (int_literal)
+  )
+)
+==================
+Function Definition with arguments with defaults
+==================
+test(a=3,b=2) = 3
+---
+(source_file
+  (assign
+    (call (ident)
+      (assign (ident) (int_literal))
+      (assign (ident) (int_literal))
+    )
+    (int_literal)
+  )
+)
+==================
+Constant Definition using empty Block
+==================
+test = {
+}
+---
+(source_file
+  (assign
+    (ident)
+    (block)
+  )
+)
+==================
+Constant Definition using Block
+==================
+test = {
+  3
+}
+---
+(source_file
+  (assign
+    (ident)
+    (block (int_literal))
+  )
+)
+==================
+Function Definition using Block
+==================
+test() = {
+  3
+}
+---
+(source_file
+  (assign
+    (call (ident))
+    (block (int_literal))
+  )
+)
+==================
+Function Definition with arguments using Block
+==================
+test(a, b) = {
+  3
+}
+---
+(source_file
+  (assign
+    (call (ident)
+      (ident)
+      (ident)
+    )
+    (block (int_literal))
+  )
+)
+
+==================
+Definition with type
+==================
+test: Num = 3
+---
+(source_file
+  (assign
+    (has_type
+      (ident)
+      (ident)
+    )
+    (int_literal)
+  )
+)
+
+==================
+Definition with type that is an expression
+==================
+test: Float | Int = 3
+---
+(source_file
+  (assign
+    (has_type
+      (ident)
+      (bit_or
+        (ident)
+        (ident)
+      )
+    )
+    (int_literal)
+  )
+)
+
+==================
+Function Definition with arguments and types using Block
+==================
+test(a: AType, b: BType): TestResultType = {
+  3: TestResultType
+}
+---
+(source_file
+  (assign
+    (has_type
+      (call (ident)
+        (has_type (ident) (ident))
+        (has_type (ident) (ident))
+      )
+      (ident)
+    )
+    (block (has_type (int_literal) (ident)))
+  )
+)

@@ -1,18 +1,18 @@
 #!/usr/bin/env tako
-// test: todo
+// test: all
 
 // A simple, untyped  implementation of S expressions.
 SExpr: Type = struct.new(
   func: (args: [Value; n]),
   args: [SExpr; n],
-  {n: Int},
+  forall n: Int,
 )
 
 // A well typed, but little, language using GADTs.
 Expr(
   SubExpr(R: AllowedType): Reference(Expr(SubExpr, R))=Expr,
   R: AllowedType,
-  {AllowedType = Integer|Boolean}
+  forall AllowedType = Integer|Boolean
 ) = gadt.new(
 
   // Control flow:
@@ -20,7 +20,7 @@ Expr(
     cond: SubExpr(R=Boolean),
     then: SubExpr(R=T),
     else: SubExpr(R=T),
-    {T: AllowedType}
+    forall T: AllowedType
   ): Expr(SubExpr, R=T),
 
   // Binary operations:

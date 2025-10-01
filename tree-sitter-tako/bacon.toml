@@ -1,0 +1,6 @@
+
+[jobs.parser]
+command = [ "sh", "-c", "tree-sitter generate && tree-sitter test" ]
+need_stdout = true
+allow_warnings = true
+watch = ["grammar.js", "test"]

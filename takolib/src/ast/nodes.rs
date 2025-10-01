@@ -1,26 +1,29 @@
-use super::contains::Contains;
 use super::location::Location;
-use super::Ast;
+use super::*;
 use crate::ast::string_interner::Identifier;
-use crate::parser::{
-    semantics::{BindingMode, Literal},
-    tokens::Symbol,
-};
-use crate::primitives::typed_index::TypedIndex;
+use crate::parser::semantics::BindingMode;
+use crate::parser::tokens::Symbol;
 use smallvec::SmallVec;
+
+pub const CALL_ARGS_STANDARD_ITEM_NUM: usize = 2;
+pub const FMT_STR_STANDARD_ITEM_NUM: usize = 2; // TODO: Convert to a different store
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Node {
     pub id: NodeData,
     // This could be an expression, function or not specified.
+
+    // TODO(perf): The following should be stored with struct of arrays.
     pub ty: Option<NodeId>,
+    // TODO(perf, clarity): Should not be a linked list.
     pub equivalents: Option<NodeId>,
+    // TODO(perf, clarity): Should not be a usize.
     pub lowered_to: Option<usize>,
     pub location: Location,
 }
-make_contains!(nodes, Node, NodeRef, NodeId, unsafe_add_node);
 
 // TODO(clarity): Use macro for defining and registering each of these.
+// TODO(perf): Consider a tag and index pair as they should all be the same size and shape.
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum NodeData {
     // TODO(clarity): consider how to split this up.
@@ -28,7 +31,6 @@ pub enum NodeData {
 
     // Variable:
     Identifier(IdentifierId),
-    Atom(AtomId),
 
     // Apply & Abstract:
     Call(CallId),
@@ -39,18 +41,8 @@ pub enum NodeData {
 
     // Sugar:
     Definition(DefinitionId),
-    NodeRef(NodeId), // Represents an indirection (i.e. when two things have been found to be
     Warning(WarningId), // Represents a warning.
 }
-
-make_contains!(
-    identifiers,
-    (NodeId, Identifier),
-    Identifier,
-    IdentifierId,
-    add_identifier
-);
-make_contains!(literals, (NodeId, Literal), Literal, LiteralId, add_literal);
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub enum Warning {
@@ -60,61 +52,24 @@ pub enum Warning {
         ty: NodeId,
     },
 }
-make_contains!(warnings, (NodeId, Warning), Warning, WarningId, add_warning);
-
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
-pub struct Atom {
-    pub name: Identifier,
-}
-make_contains!(atoms, (NodeId, Atom), Atom, AtomId, add_atom);
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Call {
     pub inner: NodeId,
-    pub args: SmallVec<NodeId, 2>,
-}
-make_contains!(calls, (NodeId, Call), Call, CallId, add_call);
-
-impl Call {
-    #[cfg(test)]
-    #[must_use]
-    pub fn from_slice(inner: NodeId, args: &[NodeId]) -> Self {
-        Self {
-            inner,
-            args: args.into(),
-        }
-    }
-    #[must_use]
-    pub fn new(inner: NodeId, args: SmallVec<NodeId, 2>) -> Self {
-        Self { inner, args }
-    }
+    pub args: SmallVec<NodeId, CALL_ARGS_STANDARD_ITEM_NUM>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Op {
     pub op: Symbol,
-    pub args: SmallVec<NodeId, 2>, // TODO: Track L/R?
-}
-make_contains!(ops, (NodeId, Op), Op, OpId, add_op);
-
-impl Op {
-    #[must_use]
-    pub fn new(op: Symbol, args: SmallVec<NodeId, 2>) -> Self {
-        Self { op, args }
-    }
+    // TODO(perf): Use left: Option<NodeId>, right: Option<NodeId>
+    pub args: SmallVec<NodeId, CALL_ARGS_STANDARD_ITEM_NUM>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Definition {
-    pub mode: BindingMode,
+    pub mode: Option<BindingMode>,
     pub name: Identifier,
-    pub bindings: Option<SmallVec<NodeId, 2>>,
+    pub arguments: Option<SmallVec<NodeId, CALL_ARGS_STANDARD_ITEM_NUM>>,
     pub implementation: Option<NodeId>,
 }
-make_contains!(
-    definitions,
-    (NodeId, Definition),
-    Definition,
-    DefinitionId,
-    add_definition
-);

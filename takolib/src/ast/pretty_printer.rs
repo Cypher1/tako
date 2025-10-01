@@ -1,7 +1,8 @@
 #![allow(unused)]
-use crate::ast::{string_interner::Identifier, Ast, Contains, Definition, Node, NodeData, NodeId};
+use crate::ast::{string_interner::Identifier, Ast, Definition, Node, NodeData, NodeId};
 use crate::parser::semantics::BindingMode;
 use better_std::as_context;
+use entity_component_slab::ContainsSlab;
 use smallvec::SmallVec;
 use std::fmt;
 use std::fmt::Write;
@@ -32,22 +33,23 @@ impl PrintNode<'_> {
     fn print_definition_head<'a, T: std::iter::IntoIterator<Item = &'a NodeId>>(
         &self,
         f: &mut fmt::Formatter<'_>,
-        mode: BindingMode,
+        mode: Option<BindingMode>,
         name: Identifier,
-        bindings: Option<T>,
+        arguments: Option<T>,
         ty: &mut Option<NodeId>,
     ) -> fmt::Result {
-        if mode != BindingMode::Lambda {
+        let mode = mode.unwrap_or(BindingMode::Given);
+        if mode != BindingMode::Given {
             write!(f, "{mode} ");
         }
         self.print_identifier(f, name)?;
-        if let Some(bindings) = bindings {
+        if let Some(arguments) = arguments {
             let mut implicits = String::new();
             let mut explicits = String::new();
-            for binding in bindings.into_iter() {
+            for binding in arguments.into_iter() {
                 let into = if let NodeData::Definition(def) = self.context().get(*binding).id {
                     let (_nodeid, def) = self.context().get(def);
-                    if def.mode != BindingMode::Lambda {
+                    if def.mode.unwrap_or(BindingMode::Given) != BindingMode::Given {
                         &mut implicits
                     } else {
                         &mut explicits
@@ -108,15 +110,11 @@ impl std::fmt::Display for PrintNode<'_> {
         if let Some(eq) = equivalents {
             return write!(f, "{}", self.child(*eq)); // Watch out for cycles...
         }
-        let mut ty = *ty;
+        let mut ty = *ty; // This is a copy
         match node {
             NodeData::Warning(node) => {
                 let (_node_id, node) = self.context().get(*node);
                 write!(f, "Warning {node:?}")?;
-            }
-            NodeData::Atom(node) => {
-                let (_node_id, node) = self.context().get(*node);
-                self.print_identifier(f, node.name)?;
             }
             NodeData::Call(node) => {
                 let (_node_id, node) = self.context().get(*node);
@@ -156,22 +154,19 @@ impl std::fmt::Display for PrintNode<'_> {
                     write!(f, "Missing {node:?} Literal at {location:?}")?;
                 }
             }
-            NodeData::NodeRef(node) => {
-                write!(f, "{}", self.child(*node))?;
-            }
             NodeData::Definition(node) => {
                 let (_node_id, node) = self.context().get(*node);
                 let Definition {
                     mode,
                     name,
-                    bindings,
+                    arguments,
                     implementation,
                 } = node;
                 self.print_definition_head(
                     f,
                     *mode,
                     *name,
-                    bindings.as_ref().map(|bs| bs.iter()),
+                    arguments.as_ref().map(|bs| bs.iter()),
                     &mut ty,
                 )?;
                 if let Some(implementation) = implementation {
@@ -212,8 +207,8 @@ impl std::fmt::Display for PrintNode<'_> {
 mod tests {
     use super::*;
     use crate::error::TError;
+    use crate::parser::lexer::lex;
     use crate::parser::parse;
-    use crate::parser::tokens::lex;
     use std::path::PathBuf;
 
     fn test_file1() -> PathBuf {
@@ -224,13 +219,15 @@ mod tests {
         crate::ensure_initialized();
         let tokens = lex(s)?;
         let ast = parse(&test_file1(), s, &tokens)?;
+        let roots = ast.roots.clone();
+        let pretty: Vec<String> = roots.into_iter().map(|r| format!("{}", ast.pretty_node(r))).collect();
         assert_eq!(
-            ast.roots.len(),
+            pretty.len(),
             1,
-            "Expect one root, found {}",
-            ast.roots.len()
+            "Expect one root, found {:?}",
+            pretty
         );
-        Ok(format!("{}", ast.pretty()))
+        Ok(pretty[0].clone())
     }
 
     #[test]
@@ -304,7 +301,20 @@ mod tests {
     }
 
     #[test]
+    fn round_trip_implicit_bindings_small() -> Result<(), TError> {
+        let out = setup("forall T: Int")?;
+        assert_eq!(out, "forall T: Int");
+        Ok(())
+    }
+    #[test]
+    fn round_trip_implicit_binding() -> Result<(), TError> {
+        let out = setup("x(forall T: Int): T=1")?;
+        assert_eq!(out, "x(forall T: Int): T=1");
+        Ok(())
+    }
+    #[test]
     fn round_trip_implicit_bindings() -> Result<(), TError> {
+        // HERE
         let out = setup("x(forall T: Int, y: T): T=1")?;
         assert_eq!(out, "x(forall T: Int, y: T): T=1");
         Ok(())
@@ -320,6 +330,20 @@ mod tests {
     fn round_trip_values_in_fn_args() -> Result<(), TError> {
         let out = setup("signum(x)=if(x<0, -1, 1)")?;
         assert_eq!(out, "signum(x)=if(x<0, -1, 1)");
+        Ok(())
+    }
+
+    #[test]
+    fn round_trip_dot_operator() -> Result<(), TError> {
+        let out = setup("x.y.z")?;
+        assert_eq!(out, "(x.y).z");
+        Ok(())
+    }
+
+    #[test]
+    fn round_trip_dot_operator_with_calls() -> Result<(), TError> {
+        let out = setup("x(a).y(b).z(c)")?;
+        assert_eq!(out, "(x(a).y(b)).z(c)");
         Ok(())
     }
 

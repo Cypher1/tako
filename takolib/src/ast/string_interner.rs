@@ -1,8 +1,6 @@
 use super::location::IndexIntoFile;
-use crate::parser::KEYWORDS;
-use crate::primitives::typed_index::TypedIndex;
 use better_std::as_context;
-use num_traits::Bounded;
+use short_typed_index::TypedIndex;
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
@@ -15,48 +13,23 @@ pub type Identifier = StrId;
 use static_assertions::assert_eq_size;
 assert_eq_size!(Identifier, [u8; 8]);
 assert_eq_size!([Identifier; 2], [u8; 16]);
+// This means we can store two identifier references in the AST in the same
+// memory as a &str.
+#[cfg(not(target_family = "wasm"))]
+assert_eq_size!([Identifier; 2], &str);
+// And 3 in the space of a String.
+#[cfg(not(target_family = "wasm"))]
+assert_eq_size!([Identifier; 3], String);
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Default, Debug, Hash, PartialEq, Eq)]
 pub struct StringInterner {
     // This ensures we can look up the string from the hash.
-    // BUT: We can also merge the hashes without losing any information.
+    // BT: We can also merge the hashes without losing any information.
+    // TODO(perf): Look at alternatives to BTreeMap.
+    // Consider indexes into
+    // https://docs.rs/arrayvec/0.7.6/src/arrayvec/array_string.rs.html
     pub loc2string: Arc<BTreeMap<IndexIntoFile, StrId>>,
     pub strings: Arc<BTreeMap<StrId, String>>,
-    pub kw_lambda: StrId,
-    pub kw_pi: StrId,
-    pub kw_forall: StrId,
-    pub kw_exists: StrId,
-    pub kw_use: StrId,
-    pub kw_provide: StrId,
-    pub kw_public: StrId,
-}
-
-impl Default for StringInterner {
-    fn default() -> Self {
-        let mut n = Self {
-            loc2string: Arc::new(BTreeMap::new()),
-            strings: Arc::new(BTreeMap::new()),
-            // These are, temporarily, invalid.
-            kw_lambda: TypedIndex::max_value(),
-            kw_pi: TypedIndex::max_value(),
-            kw_forall: TypedIndex::max_value(),
-            kw_exists: TypedIndex::max_value(),
-            kw_use: TypedIndex::max_value(),
-            kw_provide: TypedIndex::max_value(),
-            kw_public: TypedIndex::max_value(),
-        };
-        n.kw_lambda = n.register_str("lambda");
-        n.kw_pi = n.register_str("pi");
-        n.kw_forall = n.register_str("forall");
-        n.kw_exists = n.register_str("exists");
-        n.kw_use = n.register_str("use");
-        n.kw_provide = n.register_str("provide");
-        n.kw_public = n.register_str("public");
-        for key in KEYWORDS.iter() {
-            n.register_str(key);
-        }
-        n
-    }
 }
 
 as_context!(StrId, StringInterner, InternedString);

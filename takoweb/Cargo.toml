@@ -1,6 +1,6 @@
 [package]
 name = "takoweb"
-version = "0.1.0"
+version = "0.2.0"
 repository = "https://github.com/cypher1/tako"
 description = "A web based UI for tako"
 authors = ["Ellie Pratt <ellie@skfl.tech>"]
@@ -11,9 +11,9 @@ keywords = ["yew", "trunk"]
 categories = ["gui", "wasm", "web-programming"]
 
 [dependencies]
-yew = { version="0.21.0", features=["csr"] }
-takolib = { path = "../takolib", features = [ "wasm" ], default-features = false }
-tokio = { version = "1.38", features = ["sync", "macros"] }
-yew-hooks = "0.3.1"
+yew = { version="0.21.0", features = [ "csr" ] }
+takolib = { version = "0.2.0", path = "../takolib", features = [ "wasm" ], default-features = false }
+tokio = { version = "1.44.1", features = ["sync", "macros"] }
+yew-hooks = "0.3.3"
 async-trait = "0.1"
-web-sys = "0.3.61"
+web-sys = "0.3.77"
