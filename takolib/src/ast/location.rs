@@ -1,5 +1,6 @@
 use std::{
     fmt,
+    ops::Range,
     path::{Path, PathBuf},
 };
 
@@ -25,6 +26,30 @@ impl Location {
         Self {
             start: 0,
             length: 0,
+        }
+    }
+
+    pub fn to_range(&self) -> Range<usize> {
+        (self.start as usize)..(self.start + (self.length as u16)) as usize
+    }
+
+    pub fn from_range(start: IndexIntoFile, end: IndexIntoFile) -> Self {
+        // Todo: start<end
+        let start = std::cmp::min(start, end);
+        let length = (std::cmp::max(start, end) - start).try_into().unwrap();
+        Self { start, length }
+    }
+
+    pub fn end(&self) -> IndexIntoFile {
+        self.start + (self.length as u16)
+    }
+
+    pub fn merge(self, other: Self) -> Self {
+        let start = std::cmp::min(self.start, other.start);
+        let end = std::cmp::max(self.end(), other.end());
+        Self {
+            start,
+            length: (end - start) as u8,
         }
     }
 }

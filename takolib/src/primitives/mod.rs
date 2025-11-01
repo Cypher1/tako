@@ -1,5 +1,3 @@
-#[macro_use]
-pub mod typed_index;
 pub mod meta;
 pub mod tribool;
 

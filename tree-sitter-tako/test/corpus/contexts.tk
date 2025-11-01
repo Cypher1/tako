@@ -1,0 +1,120 @@
+==================
+Contexts
+==================
+test() = {
+  allocator = import("allocator");
+  ptr = allocator.allocate(sizeof(Char)*100);
+  if(ptr == nullptr, {
+    print("Success");
+    exit(0)
+  }, {
+    print("Failure")
+  })
+};
+
+main() = {
+  allocator = import("allocator");
+  logger = import("logger");
+
+  test_logger = logger.new_logger();
+  with(
+    allocator.allocate = allocator.report_oom,
+    system.out = test_logger,
+    system.error = test_logger,
+    run = test
+  );
+
+  print(test_logger)
+}
+---
+
+(source_file
+  (sequence
+    (assign
+      (call
+        (ident))
+      (block
+        (sequence
+          (assign
+            (ident)
+            (call
+              (ident)
+              (string_literal)))
+          (sequence
+            (assign
+              (ident)
+              (field
+                (ident)
+                (call
+                  (ident)
+                  (mul
+                    (call
+                      (ident)
+                      (ident))
+                    (int_literal)))))
+            (call
+              (ident)
+              (equals
+                (ident)
+                (ident))
+              (block
+                (sequence
+                  (call
+                    (ident)
+                    (string_literal))
+                  (call
+                    (ident)
+                    (int_literal))))
+              (block
+                (call
+                  (ident)
+                  (string_literal))))))))
+    (assign
+      (call
+        (ident))
+      (block
+        (sequence
+          (assign
+            (ident)
+            (call
+              (ident)
+              (string_literal)))
+          (sequence
+            (assign
+              (ident)
+              (call
+                (ident)
+                (string_literal)))
+            (sequence
+              (assign
+                (ident)
+                (field
+                  (ident)
+                  (call
+                    (ident))))
+              (sequence
+                (call
+                  (ident)
+                  (assign
+                    (field
+                      (ident)
+                      (ident))
+                    (field
+                      (ident)
+                      (ident)))
+                  (assign
+                    (field
+                      (ident)
+                      (ident))
+                    (ident))
+                  (assign
+                    (field
+                      (ident)
+                      (ident))
+                    (ident))
+                  (assign
+                    (ident)
+                    (ident)))
+                (call
+                  (ident)
+                  (ident))))))))))

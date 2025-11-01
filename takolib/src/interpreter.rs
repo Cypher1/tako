@@ -1,5 +1,5 @@
 use crate::ast::string_interner::{StrId, StringInterner};
-use crate::ast::{Ast, Call, Contains, Definition, LiteralId, Node, NodeData, NodeId, OpId};
+use crate::ast::{Ast, Call, Definition, LiteralId, Node, NodeData, NodeId, OpId};
 use crate::error::TError;
 use crate::parser::semantics::Literal;
 use crate::parser::tokens::Symbol;
@@ -72,20 +72,18 @@ impl Ctx<'_> {
         // TODO(core): implement evaluation of the AST
         let node = node.get(&self.ast.nodes);
         match node.id {
-            NodeData::NodeRef(_id) => todo!(),
             NodeData::Identifier(ident) => {
-                let (_id, name) = self.ast.get(ident);
-                let Some(value) = self.state.get_binding(name) else {
-                    let Some(name) = self.ast.string_interner.get_str(*name) else {
+                let (_id, name) = self.ast[ident];
+                let Some(value) = self.state.get_binding(&name) else {
+                    let Some(name) = self.ast.string_interner.get_str(name) else {
                         panic!("Not found (unknown name): {name:?}");
                     };
                     panic!("Not found: {name}");
                 };
                 Ok(value.clone())
             }
-            NodeData::Atom(_id) => todo!(),
             NodeData::Call(call) => {
-                let (_id, Call { inner, args }) = self.ast.get(call);
+                let (_id, Call { inner, args }) = &self.ast[call];
                 for arg in args.iter() {
                     self.eval(*arg)?;
                 }
@@ -98,10 +96,10 @@ impl Ctx<'_> {
                     Definition {
                         mode: _,
                         name,
-                        bindings,
+                        arguments: bindings,
                         implementation,
                     },
-                ) = self.ast.get(def);
+                ) = &self.ast[def];
                 match bindings {
                     None => {
                         let value =
@@ -124,7 +122,7 @@ impl Ctx<'_> {
             Literal::Numeric => {
                 Prim::I32(s.expect("Should have string for literal").parse::<i32>()?)
             }
-            Literal::Text => todo!("text {lit:?} {s:?}"),
+            Literal::String => todo!("string {lit:?} {s:?}"),
             Literal::Color => todo!("color {lit:?} {s:?}"),
             Literal::Array => todo!("array {lit:?} {s:?}"),
             Literal::Map => todo!("map {lit:?} {s:?}"),
@@ -220,9 +218,6 @@ impl Ctx<'_> {
             Symbol::LogicalAnd => todo!(),
             Symbol::LogicalOr => todo!(),
             Symbol::GetAddress => todo!(),
-            Symbol::LeftPipe => todo!(),
-            Symbol::RightPipe => todo!(),
-            Symbol::Escape => todo!(),
             Symbol::HasType => todo!(),
             Symbol::Arrow | Symbol::DoubleArrow => {
                 // TODO(clarity): Type arrow vs value arrow?
@@ -243,7 +238,6 @@ impl Ctx<'_> {
             Symbol::Dot => todo!(),
             Symbol::Range => todo!(),
             Symbol::Spread => todo!(),
-            Symbol::Comma => todo!(),
             Symbol::Sequence => {
                 let Some(l) = op.args.first() else {
                     panic!("; expects a left and a right. Neither found");
@@ -276,6 +270,10 @@ impl Ctx<'_> {
             | Symbol::LogicalAndAssign
             | Symbol::LogicalOrAssign
             | Symbol::ModuloAssign => todo!("Support assignment"),
+            Symbol::Group => todo!("Support Group"),
+            Symbol::Comma => panic!("Support Comma"),   // TODO: Nah
+            Symbol::Ident => panic!("Support Ident"),   // TODO: Nah
+            _ => panic!("Others????"),                  // TODO: Nah
         })
     }
 }
@@ -284,8 +282,8 @@ impl Ctx<'_> {
 mod tests {
     use super::*;
     use crate::error::TError;
+    use crate::parser::lexer::lex;
     use crate::parser::parse;
-    use crate::parser::tokens::lex;
     use std::path::PathBuf;
 
     fn test_path() -> PathBuf {

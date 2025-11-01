@@ -55,9 +55,16 @@ command = [ "cargo", "run", "--color", "always" ]
 need_stdout = true
 allow_warnings = true
 
+[jobs.parser]
+command = [ "sh", "-c", "cd ./tree-sitter-tako/ && tree-sitter 'test'" ]
+need_stdout = true
+allow_warnings = true
+watch = ["./tree-sitter-tako/grammar.js", "./tree-sitter-tako/test"]
+
 # You may define here keybindings that would be specific to
 # a project, for example a shortcut to launch a specific job.
 # Shortcuts to internal functions (scrolling, toggling, etc.)
 # should go in your personal prefs.toml file instead.
 [keybindings]
 n = "job:nextest"
+p = "job:parser"

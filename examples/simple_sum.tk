@@ -1,6 +1,10 @@
 #!/usr/bin/env tako
 // test: all
 
+a = 3 * 2 + 4;
+
+b(a, c) = a * c + 4;
+
 1/*one*/+2/*two*/+3/*three*/
 
 /* Comment

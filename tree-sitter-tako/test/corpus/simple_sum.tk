@@ -1,0 +1,42 @@
+==================
+Simple Sum
+==================
+1+2+3
+
+---
+(source_file
+    (add
+        left: (add
+            left: (int_literal)
+            right: (int_literal)
+        )
+        right: (int_literal)
+    )
+)
+
+==================
+Simple Sum with comments
+==================
+1/*one*/+2/*two*/+3/*three*/
+
+/* Comment
+/* Double comment */
+/* Second double comment */
+*/
+---
+(source_file
+    (add
+        left: (add
+              left: (int_literal)
+              (nesting_comment)
+              right: (int_literal)
+              )
+        (nesting_comment)
+        right: (int_literal))
+        (nesting_comment)
+        (nesting_comment
+          (nesting_comment)
+          (nesting_comment)
+        )
+)
+

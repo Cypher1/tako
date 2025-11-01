@@ -69,8 +69,7 @@ impl Task for LoadFileTask {
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
         trace!("LoadFileTask: {path}", path = self.path.display());
-        // TODO(perf): Use tokio's async read_to_string.
-        let contents = std::fs::read_to_string(&self.path);
+        let contents = tokio::fs::read_to_string(&self.path).await;
         let contents = contents.map_err(|err| self.decorate_error(err));
         result_sender
             .send((
@@ -103,7 +102,7 @@ impl Task for LexFileTask {
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
         trace!("LexFileTask: {path}", path = self.path.display());
-        let tokens = crate::parser::tokens::lex(&self.contents);
+        let tokens = crate::parser::lexer::lex(&self.contents);
         let tokens = tokens
             .map(|tokens| ParseFileTask {
                 path: self.path.clone(),
