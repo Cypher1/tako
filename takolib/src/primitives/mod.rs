@@ -419,7 +419,7 @@ pub fn bits(mut n: Offset, len: Offset) -> BitVec {
         if n == 0 {
             break;
         }
-        *b = n % 2 != 0;
+        *b = !n.is_multiple_of(2);
         n /= 2;
     }
     v
