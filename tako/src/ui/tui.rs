@@ -115,7 +115,7 @@ impl Tui {
             Event::Key(key_event) => {
                 let combo: KeyCombination =
                     if let Some(combo) = self.key_combiner.transform(key_event) {
-                        combo
+                        combo.normalized()
                     } else {
                         return Ok(());
                     };
@@ -159,7 +159,7 @@ impl Tui {
                             self.input_after_cursor = format!("{last}{}", self.input_after_cursor);
                         }
                     }
-                    key!(shift - enter) => {
+                    key!(ctrl - j) => {
                         self.input.push('\n');
                     }
                     key!(enter) => {
@@ -174,7 +174,12 @@ impl Tui {
                         }
                         self.input_after_cursor = String::new();
                     }
-                    other => {
+                    mut other => {
+                        // Drop shift (it's already normalized)
+                        if other.modifiers.contains(crossterm::event::KeyModifiers::SHIFT) {
+                            other.modifiers.remove(crossterm::event::KeyModifiers::SHIFT);
+                        }
+                        trace!("{:?}", other);
                         if let Some(letter) = other.as_letter() {
                             self.input.push(letter);
                         } else {
