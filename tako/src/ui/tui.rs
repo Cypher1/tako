@@ -176,8 +176,13 @@ impl Tui {
                     }
                     mut other => {
                         // Drop shift (it's already normalized)
-                        if other.modifiers.contains(crossterm::event::KeyModifiers::SHIFT) {
-                            other.modifiers.remove(crossterm::event::KeyModifiers::SHIFT);
+                        if other
+                            .modifiers
+                            .contains(crossterm::event::KeyModifiers::SHIFT)
+                        {
+                            other
+                                .modifiers
+                                .remove(crossterm::event::KeyModifiers::SHIFT);
                         }
                         trace!("{:?}", other);
                         if let Some(letter) = other.as_letter() {
