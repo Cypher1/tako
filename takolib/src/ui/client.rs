@@ -103,7 +103,7 @@ impl Client {
                 if !self.interactive() {
                     println!("{value:?}");
                 }
-                self.history.push(format!("{value:#?}"));
+                self.history.push(format!("> {value:#?}"));
                 if self.oneshot() {
                     return true;
                 }
