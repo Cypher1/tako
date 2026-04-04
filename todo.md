@@ -35,9 +35,9 @@ aliases:
   - [ ] Unions / Enums / GADTs
   - [ ] Monads?
 - [ ] Sugar
-  - [ ] pointer(ty)
-  - [ ] x?.y (mapped .get and .set)
-  - [ ] x?:y (sugar for if x then x else y)
+	- [ ] pointer(ty)
+	- [ ] `x?.y` (mapped `.get` and `.set`)
+	- [ ] `x?:y` (sugar for `if x then x else y`)
 - [ ] Locals (scope management)
 - [ ] Main + command function argument parsing
 - [ ] Conversion to SSA (after parsing)
@@ -95,7 +95,7 @@ aliases:
 - [ ] Write a getting started
 - [ ] Language documentation
 
-## Pain points
+## Pain points (to work on)
 
 - [ ] No way to run machine or low level instructions
 - [ ] No type checking (requirements and exhaustiveness checking)
@@ -135,3 +135,63 @@ aliases:
 - [ ] Multiple entry points possible in a single file
 	- [ ] makeBinary(main, "main") is default but
 	- [ ] makeBinary(test, "unit") is just as valid
+
+
+# Hoare Logic Solving via Hindley Milner
+
+- Each 'time point' has a type
+	- Function name + steps : <code>functionName<sub>t</sub></code>
+	- This type contains:
+		- The `pre`conditions to get to this step
+		- The `post`-conditions (requirements) implied by this step
+		- The in-variants of this step (in both pre & post)
+
+> [!example] A worked example
+> We start with a simple set of statements.
+> ```rust
+> a = 3;
+> a+=1;
+> print(a)
+> ```
+> 
+> These can be annotated with pre and post conditions:
+> ```rust
+> anon1: {
+>	(!exists(a)) or mutable(a)
+>	-| a = 3 |-
+>	exists(a), numeric(a), range(a, 3, 3)
+>}
+> anon2: {
+>	exists(a), numeric(a), range(a, $unknown2, $unknown3)
+>	-| a+= 1 |-
+>	exists(a), numeric(a), range(a, $unknown2+1, $unknown3+1)
+>}
+> anon3: {
+> 	exists(a), printable(a), exists(print)
+> 	-| print(a) |-
+> 	exists(a), printable(a)
+> }
+> ```
+> 
+> The HM solver must merge either
+> ```
+>(anon1 and anon2) and anon3
+ > ```
+ > or
+ > ```
+ > anon1 and (anon2 and anon3)
+ > ```
+ > Either way the result should be
+ > ```rust
+> anon1_to_3: {
+>	((!exists(a)) or mutable(a)), printable(a), exists(print)
+>	-| a = 3; a+= 1; print(a) |-
+>	exists(a), numeric(a), range(a, 4, 4), printable(a)
+>}
+> ```
+> 
+> > [!Important] An invariant
+> > For *consistency*  HM solvers *must* produce the same result, regardless of order of computation.
+> > 
+> > This allows them to solve by graph walking, regardless of the direction of the walk AND also allows solving to happen on different sub-graphs (lines, functions, modules) without a particular ordering of evaluation.
+
