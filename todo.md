@@ -122,19 +122,19 @@ aliases:
 	- [ ] Build is run in the interpreter to generate build effects and config, including any operator overloads needed
 	- [ ] Build config is type checked and auto completed etc.
 	- [ ] Version info as static arg to makePackage?
-- [ ] tako ci
+- [ ] `tako ci`
     - [ ] Runs install deps, builds & type check and tests
 - [ ] "features" are just flags passed to build
 - [ ] Statically declarable arg parsing
 	- [ ] No more `int main(int argc, char* argv[])`
 	- [ ] `main(expression: string, show_working: Arg(bool, "--show-working", default=false), *unknown: Arg[]): ErrorCode {`
-	- [ ] Pass unknowns to tako.cli(unknown) to get "--help", "-h", "--verbose", "-v", "--autocomplete"
+	- [ ] Pass unknowns to `tako.cli(unknown)` to get `"--help"`, `"-h"`, `"--verbose"`, `"-v"`, `"--autocomplete"`
 	- [ ] CLI generator is a default argument to makeBinary & the interpreter state
 	- [ ] It uses Tako's reflection capabilities to do 'run time' code gen, but its statically available because it doesn't produce side effects.
 - [ ] Git hash available in build artefacts
 - [ ] Multiple entry points possible in a single file
-	- [ ] makeBinary(main, "main") is default but
-	- [ ] makeBinary(test, "unit") is just as valid
+	- [ ] `makeBinary(main, "main")` is default but
+	- [ ] `makeBinary(test, "unit")` is just as valid
 
 
 # Hoare Logic Solving via Hindley Milner
@@ -150,20 +150,20 @@ aliases:
 > We start with a simple set of statements.
 > ```rust
 > a = 3;
-> a+=1;
+> a += 1;
 > print(a)
 > ```
 > 
 > These can be annotated with pre and post conditions:
 > ```rust
 > anon1: {
->	(!exists(a)) or mutable(a)
+>	!exists(a) or mutable(a)
 >	-| a = 3 |-
 >	exists(a), numeric(a), range(a, 3, 3)
 >}
 > anon2: {
 >	exists(a), numeric(a), range(a, $unknown2, $unknown3)
->	-| a+= 1 |-
+>	-| a += 1 |-
 >	exists(a), numeric(a), range(a, $unknown2+1, $unknown3+1)
 >}
 > anon3: {
