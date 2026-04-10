@@ -18,6 +18,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f26201604c87b1e01bd3d98f8d5d9a8fcbb815e8cedb41ffccbeb4bf593a35fe"
 
 [[package]]
+name = "adapton"
+version = "0.3.31"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "981c88fc09f4958a2e401bf9022b981781037d88ce8644407da0d9b34f0c9a48"
+
+[[package]]
 name = "aho-corasick"
 version = "1.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2684,6 +2690,7 @@ dependencies = [
 name = "takolib"
 version = "0.2.0"
 dependencies = [
+ "adapton",
  "async-trait",
  "better-std",
  "bitvec",
