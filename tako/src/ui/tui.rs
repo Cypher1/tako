@@ -170,7 +170,7 @@ impl Tui {
                         if !line.is_empty() {
                             trace!("Running {line}");
                             self.client
-                                .send_command(RequestTask::EvalLine(line.to_string()));
+                                .send_command(RequestTask::Eval(line.to_string()));
                         }
                         self.input_after_cursor = String::new();
                     }

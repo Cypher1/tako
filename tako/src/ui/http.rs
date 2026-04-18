@@ -49,7 +49,7 @@ async fn run_server(request_sender: mpsc::UnboundedSender<CompilerRequest>) {
                 let (tx, mut rx) = mpsc::unbounded_channel();
                 request_sender
                     .send(CompilerRequest::RequestTask(
-                        RequestTask::EvalLine(line.to_string()),
+                        RequestTask::Eval(line.to_string()),
                         client_id,
                         tx,
                     ))
