@@ -48,7 +48,7 @@ pub enum AnyTask {
 pub enum RequestTask {
     Build { files: Vec<PathBuf> },
     RunInterpreter { files: Vec<PathBuf> },
-    EvalLine(String),
+    Eval { ast: Ast /* Holding all context and state */, expr: String },
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -107,6 +107,7 @@ impl Task for LexFileTask {
         let tokens = tokens
             .map(|tokens| ParseFileTask {
                 path: self.path.clone(),
+                ast: None,
                 contents: self.contents.clone(),
                 tokens,
             })
@@ -126,6 +127,7 @@ impl Task for LexFileTask {
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct ParseFileTask {
     pub path: PathBuf,
+    pub ast: Option<Ast>,
     pub contents: String,
     pub tokens: Vec<Token>,
 }
@@ -140,7 +142,7 @@ impl Task for ParseFileTask {
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
         trace!("ParseFileTask: {path}", path = self.path.display());
-        let ast = crate::parser::parse(&self.path, &self.contents, &self.tokens)
+        let ast = crate::parser::parse(&self.path, &self.ast, &self.contents, &self.tokens)
             .map_err(|err| self.decorate_error(err));
         result_sender
             .send((
@@ -251,7 +253,7 @@ impl Task for EvalFileTask {
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
         trace!("EvalFileTask: {path}", path = self.path.display());
-        let result = crate::interpreter::run(&self.path, &self.ast, self.root)
+        let result = crate::interpreter::run(&self.path, &self.ast, &self.ast, self.root)
             .map_err(|err| self.decorate_error(err));
         result_sender
             .send((

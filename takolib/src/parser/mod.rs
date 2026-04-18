@@ -671,11 +671,16 @@ impl<'toks, T: Iterator<Item = &'toks Token>> ParseState<'_, 'toks, T> {
     }
 }
 
-pub fn parse(filepath: &Path, contents: &str, tokens: &[Token]) -> Result<Ast, TError> {
+pub fn parse(filepath: &Path, ast: &Option<Ast>, contents: &str, tokens: &[Token]) -> Result<Ast, TError> {
     trace!("Parse {}: {:?}", filepath.display(), &tokens);
+    let ast = if let Some(ast) = ast {
+        ast.clone()
+    } else {
+        Ast::new(filepath.to_path_buf())
+    };
     let mut state = ParseState {
         contents,
-        ast: Ast::new(filepath.to_path_buf()),
+        ast,
         tokens: tokens.iter().peekable(),
     };
     if !tokens.is_empty() {

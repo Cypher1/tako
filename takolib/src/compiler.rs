@@ -1,4 +1,5 @@
 use super::ui::OptionsTrait;
+use crate::ast::Ast;
 use crate::primitives::meta::Meta;
 use crate::primitives::Prim;
 use crate::tasks::manager::TaskManager;
@@ -190,44 +191,48 @@ impl Compiler {
     pub fn parse(
         &self,
         path: PathBuf,
+        ast: Ast,
         contents: Option<String>,
         response_sender: ResultSenderFor<ParseFileTask>,
     ) {
         let (tx, rx) = mpsc::unbounded_channel();
         self.lex(path, contents, tx);
+        // TODO: Add the `ast` to the `rx`.
         Self::with_manager(rx, &self.parse_file_manager, response_sender);
     }
 
     pub fn desugar(
         &self,
         path: PathBuf,
+        ast: Ast,
         contents: Option<String>,
         response_sender: ResultSenderFor<DesugarFileTask>,
     ) {
         let (tx, rx) = mpsc::unbounded_channel();
-        self.parse(path, contents, tx);
+        self.parse(path, ast, contents, tx);
         Self::with_manager(rx, &self.desugar_file_manager, response_sender);
     }
 
     pub fn lower(
         &self,
-        path: PathBuf,
+        og_path: PathBuf,
+        og_ast: Ast,
         contents: Option<String>,
         response_sender: ResultSenderFor<LowerFileTask>,
     ) {
         let (tx1, mut rx1) = mpsc::unbounded_channel();
         // TODO: Static checking should be here.
-        self.desugar(path.clone(), contents, tx1);
+        self.desugar(og_path.clone(), og_ast, contents, tx1);
         let (tx2, rx2) = mpsc::unbounded_channel();
         spawn(async move {
             // TODO: Use a proper map from in paths to out paths.
-            while let Some(EvalFileTask { path: _, ast, root }) = rx1.recv().await {
+            while let Some(EvalFileTask { path: new_path, ast: new_ast, root }) = rx1.recv().await {
                 let Some(root) = root else {
                     todo!("No known root!?")
                 };
                 tx2.send(LowerFileTask {
-                    path: path.clone(),
-                    ast: ast.clone(),
+                    path: new_path.clone(),
+                    ast: new_ast.clone(),
                     root,
                 })
                 .expect("Should be able to send codegen task");
@@ -239,24 +244,26 @@ impl Compiler {
     pub fn eval(
         &self,
         path: PathBuf,
+        ast: Ast,
         contents: Option<String>,
         response_sender: ResultSenderFor<EvalFileTask>,
     ) {
         let (tx, rx) = mpsc::unbounded_channel();
-        self.desugar(path, contents, tx);
+        self.desugar(path, ast, contents, tx);
         Self::with_manager(rx, &self.eval_file_manager, response_sender);
     }
 
     pub fn codegen(
         &self,
         path: PathBuf,
+        og_ast: Ast,
         out_path: PathBuf,
         contents: Option<String>,
         response_sender: ResultSenderFor<CodegenTask>,
     ) {
         let (tx1, mut rx1) = mpsc::unbounded_channel();
         // TODO: Static checking should be here.
-        self.lower(path, contents, tx1);
+        self.lower(path, og_ast, contents, tx1);
         let (tx2, rx2) = mpsc::unbounded_channel();
         spawn(async move {
             // TODO: Use a proper map from in paths to out paths.
@@ -269,7 +276,7 @@ impl Compiler {
             {
                 tx2.send(CodegenTask {
                     path: out_path.clone(),
-                    ast: ast.clone(),
+                    ast,
                     lowered: lowered.clone(),
                     root,
                 })
@@ -300,19 +307,24 @@ impl Compiler {
 
     pub fn start_command(&self, cmd: RequestTask, response_sender: mpsc::UnboundedSender<Prim>) {
         match cmd {
-            RequestTask::EvalLine(line) => {
-                self.eval("interpreter.tk".into(), Some(line), response_sender);
+            RequestTask::Eval { ast, expr } => {
+                // TODO(cypher1): Inject previous context into the eval state here.
+                self.eval("interpreter.tk".into(), ast, Some(expr), response_sender);
             }
             RequestTask::Build { files } => {
                 for file in files {
+                    let ast = Ast::new(file.to_path_buf());
                     let mut file_with_extension = file.clone();
                     file_with_extension.set_extension("out");
-                    self.codegen(file, file_with_extension, None, response_sender.clone());
+                    self.codegen(file, ast, file_with_extension, None, response_sender.clone());
                 }
             }
             RequestTask::RunInterpreter { files } => {
                 for file in files {
-                    self.eval(file, None, response_sender.clone());
+                    // TODO(cypher1): Support context / imports.
+                    //
+                    let ast = Ast::new(file.to_path_buf());
+                    self.eval(file, ast, None, response_sender.clone());
                 }
             }
         }
