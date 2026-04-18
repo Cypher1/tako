@@ -11,12 +11,12 @@ use std::path::Path;
 
 type Name = StrId;
 
-#[derive(Default, Clone, Debug)]
-struct State {
+#[derive(Default, Clone, Debug, Eq, PartialEq)]
+pub struct State {
     names: HashMap<Name, Prim>,
 }
 
-impl State {
+impl Ast {
     fn get_binding(&self, name: &Name) -> Option<&Prim> {
         self.names.get(name)
     }
@@ -25,10 +25,9 @@ impl State {
 struct Ctx<'a> {
     ast: &'a Ast,
     literals: &'a StringInterner,
-    state: State,
 }
 
-pub fn run(path: &Path, ast: &Ast, root: Option<NodeId>) -> Result<Prim, TError> {
+pub fn run(path: &Path, ast: &Ast, root: Option<NodeId>) -> Result<(Ast, Prim), TError> {
     let start = if let Some(root) = root {
         root
     } else if ast.roots.len() == 1 {
@@ -53,9 +52,9 @@ pub fn run(path: &Path, ast: &Ast, root: Option<NodeId>) -> Result<Prim, TError>
     let mut ctx = Ctx {
         ast,
         literals: &ast.string_interner,
-        state: State::default(),
     };
-    ctx.eval(start)
+    let result = ctx.eval(start)?;
+    Ok((ctx.ast.clone(), result)) // TODO: No need to copy here
 }
 
 impl Ctx<'_> {
@@ -75,7 +74,7 @@ impl Ctx<'_> {
             NodeData::NodeRef(_id) => todo!(),
             NodeData::Identifier(ident) => {
                 let (_id, name) = self.ast.get(ident);
-                let Some(value) = self.state.get_binding(name) else {
+                let Some(value) = self.ast.get_binding(name) else {
                     let Some(name) = self.ast.string_interner.get_str(*name) else {
                         panic!("Not found (unknown name): {name:?}");
                     };
@@ -106,7 +105,7 @@ impl Ctx<'_> {
                     None => {
                         let value =
                             self.eval(implementation.expect("Should have implementation"))?;
-                        self.state.names.insert(*name, value);
+                        self.ast.names.insert(*name, value);
                         Ok(Prim::Unit)
                     }
                     _ => todo!("Handle a binding with: {name:?}, {bindings:?}, {implementation:?}"),

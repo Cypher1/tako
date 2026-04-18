@@ -72,7 +72,7 @@ impl Client {
     }
 
     pub fn send_command(&mut self, cmd: RequestTask) {
-        if let RequestTask::EvalLine(line) = &cmd {
+        if let RequestTask::Eval(line) = &cmd {
             self.history.push(line.to_string());
         }
         self.request_sender
