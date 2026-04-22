@@ -291,7 +291,7 @@ impl Task for CodegenTask {
     fn has_file_path(&self) -> Option<&PathBuf> {
         Some(&self.path)
     }
-    #[cfg(not(feature = "backend"))]
+    #[cfg(not(feature = "codegen"))]
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
         trace!(
             "CodegenTask (nobackend): {path}",
@@ -306,7 +306,7 @@ impl Task for CodegenTask {
             .send((self, err))
             .expect("Should be able to send task result to manager");
     }
-    #[cfg(feature = "backend")]
+    #[cfg(feature = "codegen")]
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
         trace!("CodegenTask (backend): {path}", path = self.path.display());
         let result = crate::codegen::codegen(&self.path, &self.ast, Some(self.root))
