@@ -12,10 +12,12 @@ use futures::{future::FutureExt, StreamExt};
 use log::trace;
 use shutdown_hooks::add_shutdown_hook;
 use std::{
-    io::{Write, stdout}, path::PathBuf, time::{Duration, Instant}
+    io::{stdout, Write},
+    path::PathBuf,
+    time::{Duration, Instant},
 };
-use takolib::{ast::Ast, tasks::RequestTask};
 use takolib::ui::{Client, OptionsTrait, UserInterface};
+use takolib::{ast::Ast, tasks::RequestTask};
 use tokio::{
     sync::{mpsc, oneshot},
     time,
@@ -168,9 +170,11 @@ impl Tui {
                         line += &self.input_after_cursor;
                         if !line.is_empty() {
                             trace!("Running {line}");
-                            let ast = Ast::new(PathBuf::from("interpreter.tk"));
-                            self.client
-                                .send_command(RequestTask::Eval{ ast, expr: line.to_string()});
+                            let ast = Some(Ast::new(PathBuf::from("interpreter.tk")));
+                            self.client.send_command(RequestTask::Eval {
+                                ast,
+                                expr: line.to_string(),
+                            });
                         }
                         self.input_after_cursor = String::new();
                     }

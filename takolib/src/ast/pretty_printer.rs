@@ -223,7 +223,7 @@ mod tests {
     fn setup(s: &str) -> Result<String, TError> {
         crate::ensure_initialized();
         let tokens = lex(s)?;
-        let ast = parse(&test_file1(), s, &tokens)?;
+        let ast = parse(&test_file1(), &None, s, &tokens)?;
         assert_eq!(
             ast.roots.len(),
             1,

@@ -46,9 +46,16 @@ pub enum AnyTask {
 /// There's normally only one of these, but it seems elegant to have these fit into the `Task` model.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RequestTask {
-    Build { files: Vec<PathBuf> },
-    RunInterpreter { files: Vec<PathBuf> },
-    Eval { ast: Option<Ast> /* Holding all context and state */, expr: String },
+    Build {
+        files: Vec<PathBuf>,
+    },
+    RunInterpreter {
+        files: Vec<PathBuf>,
+    },
+    Eval {
+        ast: Option<Ast>, /* Holding all context and state */
+        expr: String,
+    },
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]

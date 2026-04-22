@@ -55,7 +55,10 @@ pub async fn interpret(src: &str) -> String {
         .send((tx, Box::<Options>::default()))
         .expect("Send client request failed");
     let mut client = rx.await.expect("Get client failed");
-    client.send_command(RequestTask::Eval(src.to_string()));
+    client.send_command(RequestTask::Eval {
+        ast: None,
+        expr: src.to_string(),
+    });
     let result = client.result_receiver.recv();
     if let Some(result) = result.await {
         result.to_string()

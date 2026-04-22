@@ -85,7 +85,7 @@ fn parse_example_files(file: PathBuf) {
     };
 
     // TODO: Macro or helper?
-    let _ast = match crate::parser::parse(&file, &contents, &tokens) {
+    let _ast = match crate::parser::parse(&file, &None, &contents, &tokens) {
         Err(e) => {
             assert_eq!(
                 setting.expect,

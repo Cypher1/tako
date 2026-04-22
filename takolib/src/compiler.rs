@@ -200,7 +200,13 @@ impl Compiler {
         let (tx2, rx2) = mpsc::unbounded_channel();
         spawn(async move {
             // TODO: Use a proper map from in paths to out paths.
-            while let Some(ParseFileTask { path, ast: _not_populated, contents, tokens }) = rx1.recv().await {
+            while let Some(ParseFileTask {
+                path,
+                ast: _not_populated,
+                contents,
+                tokens,
+            }) = rx1.recv().await
+            {
                 tx2.send(ParseFileTask {
                     path,
                     ast: og_ast.clone(),
@@ -238,7 +244,12 @@ impl Compiler {
         let (tx2, rx2) = mpsc::unbounded_channel();
         spawn(async move {
             // TODO: Use a proper map from in paths to out paths.
-            while let Some(EvalFileTask { path: new_path, ast: new_ast, root }) = rx1.recv().await {
+            while let Some(EvalFileTask {
+                path: new_path,
+                ast: new_ast,
+                root,
+            }) = rx1.recv().await
+            {
                 let Some(root) = root else {
                     todo!("No known root!?")
                 };
@@ -328,7 +339,13 @@ impl Compiler {
                     let ast = Some(Ast::new(file.to_path_buf()));
                     let mut file_with_extension = file.clone();
                     file_with_extension.set_extension("out");
-                    self.codegen(file, ast, file_with_extension, None, response_sender.clone());
+                    self.codegen(
+                        file,
+                        ast,
+                        file_with_extension,
+                        None,
+                        response_sender.clone(),
+                    );
                 }
             }
             RequestTask::RunInterpreter { files } => {
