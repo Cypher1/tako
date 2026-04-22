@@ -7,9 +7,9 @@ pub mod location;
 mod pretty_printer;
 pub mod string_interner;
 
-use crate::{parser::semantics::Literal, primitives::Prim};
 use crate::parser::tokens::Symbol;
 use crate::primitives::typed_index::TypedIndex;
+use crate::{parser::semantics::Literal, primitives::Prim};
 use location::Location;
 use pretty_printer::{pretty, pretty_node};
 use smallvec::smallvec;

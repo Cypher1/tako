@@ -9,7 +9,6 @@ use std::collections::HashMap;
 use std::convert::TryInto;
 use std::path::Path;
 
-
 #[derive(Default, Clone, Debug, Eq, PartialEq)]
 pub struct State {
     names: HashMap<Name, Prim>,
@@ -51,9 +50,7 @@ pub fn run_impl(path: &Path, mut ast: Ast, root: Option<NodeId>) -> Result<(Ast,
             location: None,
         });
     };
-    let mut ctx = Ctx {
-        ast: &mut ast
-    };
+    let mut ctx = Ctx { ast: &mut ast };
     let result = ctx.eval(start)?;
     Ok((ctx.ast.clone(), result)) // TODO: No need to copy here
 }
@@ -295,13 +292,13 @@ mod tests {
     fn setup(s: &str) -> Result<Ast, TError> {
         crate::ensure_initialized();
         let tokens = lex(s)?;
-        parse(&test_path(), s, &tokens)
+        parse(&test_path(), &None, s, &tokens)
     }
 
     #[test]
     fn literal_evals_to_itself() -> Result<(), TError> {
         let ast = setup("123")?;
-        let res = run(&test_path(), &ast, None);
+        let res = run(&test_path(), ast, None);
         assert_eq!(res, Ok(Prim::I32(123)));
         Ok(())
     }
@@ -309,7 +306,7 @@ mod tests {
     #[test]
     fn literal_negatives_multiply_out() -> Result<(), TError> {
         let ast = setup("-3*-2")?;
-        let res = run(&test_path(), &ast, None);
+        let res = run(&test_path(), ast, None);
         assert_eq!(res, Ok(Prim::I32(6)));
         Ok(())
     }
@@ -325,7 +322,7 @@ mod tests {
     #[test]
     fn exp_exp_evals_512() -> Result<(), TError> {
         let ast = setup("2**3**2")?;
-        let res = run(&test_path(), &ast, None);
+        let res = run(&test_path(), ast, None);
         assert_eq!(res, Ok(Prim::I32(512)));
         Ok(())
     }
@@ -333,7 +330,7 @@ mod tests {
     #[test]
     fn exp_var_and_use() -> Result<(), TError> {
         let ast = setup("x=2;x")?;
-        let res = run(&test_path(), &ast, None);
+        let res = run(&test_path(), ast, None);
         assert_eq!(res, Ok(Prim::I32(2)));
         Ok(())
     }
@@ -341,7 +338,7 @@ mod tests {
     #[test]
     fn exp_var_from_expr_and_use() -> Result<(), TError> {
         let ast = setup("x=3+2;x")?;
-        let res = run(&test_path(), &ast, None);
+        let res = run(&test_path(), ast, None);
         assert_eq!(res, Ok(Prim::I32(5)));
         Ok(())
     }
@@ -349,7 +346,7 @@ mod tests {
     #[test]
     fn exp_nested_vars() -> Result<(), TError> {
         let ast = setup("x=(y=3;2*y);x")?;
-        let res = run(&test_path(), &ast, None);
+        let res = run(&test_path(), ast, None);
         assert_eq!(res, Ok(Prim::I32(6)));
         Ok(())
     }
@@ -357,7 +354,7 @@ mod tests {
     #[test]
     fn exp_multiple_statements() -> Result<(), TError> {
         let ast = setup("x=3;y=x+4;2*y")?;
-        let res = run(&test_path(), &ast, None);
+        let res = run(&test_path(), ast, None);
         assert_eq!(res, Ok(Prim::I32(14)));
         Ok(())
     }
@@ -365,7 +362,7 @@ mod tests {
     #[test]
     fn exp_multiple_statements_as_lambdas() -> Result<(), TError> {
         let ast = setup("(x->(y->(2*y))(y=x+4))(x=3)")?;
-        let res = run(&test_path(), &ast, None);
+        let res = run(&test_path(), ast, None);
         assert_eq!(res, Ok(Prim::I32(14)));
         Ok(())
         // TODO: Remove!

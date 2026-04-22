@@ -124,7 +124,7 @@ mod tests {
     fn setup(s: &str) -> Result<Ast, TError> {
         crate::ensure_initialized();
         let tokens = lex(s)?;
-        let ast = parse(&test_path(), s, &tokens)?;
+        let ast = parse(&test_path(), &None, s, &tokens)?;
         Ok(ast)
     }
 

@@ -1,12 +1,12 @@
 use crate::cli_options::{Options, TITLE, VERSION};
 use async_trait::async_trait;
 use log::debug;
-use takolib::ast::Ast;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
+use takolib::ast::Ast;
 use takolib::primitives::Prim;
 use takolib::tasks::RequestTask;
 use takolib::ui::OptionsTrait;
@@ -49,10 +49,13 @@ async fn run_server(request_sender: mpsc::UnboundedSender<CompilerRequest>) {
             let request_sender = request_sender.clone();
             async move {
                 let (tx, mut rx) = mpsc::unbounded_channel();
-                let ast = Ast::new(PathBuf::from("interpreter.tk"));
+                let ast = Some(Ast::new(PathBuf::from("interpreter.tk")));
                 request_sender
                     .send(CompilerRequest::RequestTask(
-                        RequestTask::Eval { ast, expr: line.to_string()},
+                        RequestTask::Eval {
+                            ast,
+                            expr: line.to_string(),
+                        },
                         client_id,
                         tx,
                     ))
