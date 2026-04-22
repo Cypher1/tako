@@ -10,11 +10,11 @@ use std::sync::Arc;
 type StringHash = u64;
 // Ensures that str ids are unique per string but also stable across different files etc.
 pub type StrId = TypedIndex<String, StringHash>;
-pub type Identifier = StrId;
+pub type Name = StrId;
 
 use static_assertions::assert_eq_size;
-assert_eq_size!(Identifier, [u8; 8]);
-assert_eq_size!([Identifier; 2], [u8; 16]);
+assert_eq_size!(Name, [u8; 8]);
+assert_eq_size!([Name; 2], [u8; 16]);
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct StringInterner {

@@ -1,7 +1,7 @@
 pub mod semantics;
 pub mod tokens;
 use crate::ast::location::Location;
-use crate::ast::string_interner::Identifier;
+use crate::ast::string_interner::Name;
 use crate::ast::{Ast, Atom, Call, Contains, Definition, NodeData, NodeId, Op};
 use crate::error::TError;
 use better_std::include_strs;
@@ -140,7 +140,7 @@ impl std::fmt::Display for ParseError {
 
 #[derive(Debug)]
 enum BindingOrValue {
-    Identifier(Identifier, Option<NodeId>, Location),
+    Identifier(Name, Option<NodeId>, Location),
     Binding(NodeId),
     Value(NodeId),
 }
@@ -615,7 +615,7 @@ impl<'toks, T: Iterator<Item = &'toks Token>> ParseState<'_, 'toks, T> {
         Ok(left)
     }
 
-    fn name(&mut self, res: Token) -> Identifier {
+    fn name(&mut self, res: Token) -> Name {
         assert!(res.kind == TokenType::Ident);
         let name = res.get_src(self.contents);
         trace!("Name: {name}");
@@ -700,7 +700,7 @@ pub fn parse(filepath: &Path, ast: &Option<Ast>, contents: &str, tokens: &[Token
     Ok(state.ast)
 }
 
-fn normalize_keywords_as_ops(ast: &Ast, name: Identifier) -> TokenType {
+fn normalize_keywords_as_ops(ast: &Ast, name: Name) -> TokenType {
     let interner = &ast.string_interner;
     let op = if name == interner.kw_lambda {
         Symbol::Lambda

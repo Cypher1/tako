@@ -1,4 +1,4 @@
-use crate::ast::string_interner::{StrId, StringInterner};
+use crate::ast::string_interner::Name;
 use crate::ast::{Ast, Call, Contains, Definition, LiteralId, Node, NodeData, NodeId, OpId};
 use crate::error::TError;
 use crate::parser::semantics::Literal;
@@ -9,7 +9,6 @@ use std::collections::HashMap;
 use std::convert::TryInto;
 use std::path::Path;
 
-type Name = StrId;
 
 #[derive(Default, Clone, Debug, Eq, PartialEq)]
 pub struct State {
@@ -18,16 +17,19 @@ pub struct State {
 
 impl Ast {
     fn get_binding(&self, name: &Name) -> Option<&Prim> {
-        self.names.get(name)
+        self.name_to_value.get(name)
     }
 }
 
 struct Ctx<'a> {
-    ast: &'a Ast,
-    literals: &'a StringInterner,
+    ast: &'a mut Ast, // Allowing computed values to be updated in `name_to_value`.
 }
 
-pub fn run(path: &Path, ast: &Ast, root: Option<NodeId>) -> Result<(Ast, Prim), TError> {
+pub fn run(path: &Path, ast: Ast, root: Option<NodeId>) -> Result<Prim, TError> {
+    let (_, result) = run_impl(path, ast, root)?;
+    Ok(result)
+}
+pub fn run_impl(path: &Path, mut ast: Ast, root: Option<NodeId>) -> Result<(Ast, Prim), TError> {
     let start = if let Some(root) = root {
         root
     } else if ast.roots.len() == 1 {
@@ -50,8 +52,7 @@ pub fn run(path: &Path, ast: &Ast, root: Option<NodeId>) -> Result<(Ast, Prim), 
         });
     };
     let mut ctx = Ctx {
-        ast,
-        literals: &ast.string_interner,
+        ast: &mut ast
     };
     let result = ctx.eval(start)?;
     Ok((ctx.ast.clone(), result)) // TODO: No need to copy here
@@ -69,7 +70,7 @@ impl Ctx<'_> {
     pub fn eval(&mut self, node: NodeId) -> Result<Prim, TError> {
         trace!("Eval: {}", self.ast.pretty_node(node));
         // TODO(core): implement evaluation of the AST
-        let node = node.get(&self.ast.nodes);
+        let node = node.get(&self.ast.nodes).clone();
         match node.id {
             NodeData::NodeRef(_id) => todo!(),
             NodeData::Identifier(ident) => {
@@ -84,13 +85,13 @@ impl Ctx<'_> {
             }
             NodeData::Atom(_id) => todo!(),
             NodeData::Call(call) => {
-                let (_id, Call { inner, args }) = self.ast.get(call);
+                let (_id, Call { inner, args }) = self.ast.get(call).clone();
                 for arg in args.iter() {
                     self.eval(*arg)?;
                 }
-                self.eval(*inner)
+                self.eval(inner)
             }
-            NodeData::Op(id) => self.eval_op(node, id),
+            NodeData::Op(id) => self.eval_op(&node, id),
             NodeData::Definition(def) => {
                 let (
                     _id,
@@ -100,24 +101,24 @@ impl Ctx<'_> {
                         bindings,
                         implementation,
                     },
-                ) = self.ast.get(def);
+                ) = self.ast.get(def).clone();
                 match bindings {
                     None => {
                         let value =
                             self.eval(implementation.expect("Should have implementation"))?;
-                        self.ast.names.insert(*name, value);
+                        self.ast.name_to_value.insert(name, value);
                         Ok(Prim::Unit)
                     }
                     _ => todo!("Handle a binding with: {name:?}, {bindings:?}, {implementation:?}"),
                 }
             }
-            NodeData::Literal(id) => self.eval_lit(node, id),
+            NodeData::Literal(id) => self.eval_lit(&node, id),
             NodeData::Warning(_id) => todo!(),
         }
     }
     pub fn eval_lit(&mut self, node: &Node, id: LiteralId) -> Result<Prim, TError> {
         let (_node_id, lit) = id.get(&self.ast.literals);
-        let s = self.literals.get_str_by_loc(node.location.start);
+        let s = self.ast.string_interner.get_str_by_loc(node.location.start);
         Ok(match lit {
             Literal::Bool => todo!("{lit:?} {s:?}"),
             Literal::Numeric => {
@@ -130,7 +131,7 @@ impl Ctx<'_> {
         })
     }
     pub fn eval_op(&mut self, _node: &Node, id: OpId) -> Result<Prim, TError> {
-        let (_node_id, op) = id.get(&self.ast.ops);
+        let (_node_id, op) = id.get(&self.ast.ops).clone(); // TODO: Consider making these `Copy`.
         Ok(match op.op {
             Symbol::Add => match self.eval2(&op.args)? {
                 [Prim::I32(l), Prim::I32(r)] => Prim::I32(l + r),
@@ -316,7 +317,7 @@ mod tests {
     #[test]
     fn exp_mul_evals_16() -> Result<(), TError> {
         let ast = setup("2**3*2")?;
-        let res = run(&test_path(), &ast, None);
+        let res = run(&test_path(), ast, None);
         assert_eq!(res, Ok(Prim::I32(16)));
         Ok(())
     }

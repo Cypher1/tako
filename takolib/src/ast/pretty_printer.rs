@@ -1,5 +1,5 @@
 #![allow(unused)]
-use crate::ast::{string_interner::Identifier, Ast, Contains, Definition, Node, NodeData, NodeId};
+use crate::ast::{string_interner::Name, Ast, Contains, Definition, Node, NodeData, NodeId};
 use crate::parser::semantics::BindingMode;
 use better_std::as_context;
 use smallvec::SmallVec;
@@ -33,7 +33,7 @@ impl PrintNode<'_> {
         &self,
         f: &mut fmt::Formatter<'_>,
         mode: BindingMode,
-        name: Identifier,
+        name: Name,
         bindings: Option<T>,
         ty: &mut Option<NodeId>,
     ) -> fmt::Result {
@@ -72,7 +72,7 @@ impl PrintNode<'_> {
         self.print_ty(f, ty)
     }
 
-    fn print_identifier(&self, f: &mut fmt::Formatter<'_>, ident: Identifier) -> fmt::Result {
+    fn print_identifier(&self, f: &mut fmt::Formatter<'_>, ident: Name) -> fmt::Result {
         let s = self.context().string_interner.get_str(ident);
         if let Some(s) = s {
             write!(f, "{s}")

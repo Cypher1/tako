@@ -48,7 +48,7 @@ pub enum AnyTask {
 pub enum RequestTask {
     Build { files: Vec<PathBuf> },
     RunInterpreter { files: Vec<PathBuf> },
-    Eval { ast: Ast /* Holding all context and state */, expr: String },
+    Eval { ast: Option<Ast> /* Holding all context and state */, expr: String },
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -253,7 +253,7 @@ impl Task for EvalFileTask {
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
         trace!("EvalFileTask: {path}", path = self.path.display());
-        let result = crate::interpreter::run(&self.path, &self.ast, &self.ast, self.root)
+        let result = crate::interpreter::run(&self.path, self.ast.clone(), self.root)
             .map_err(|err| self.decorate_error(err));
         result_sender
             .send((
