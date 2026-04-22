@@ -190,21 +190,33 @@ impl Compiler {
 
     pub fn parse(
         &self,
-        path: PathBuf,
-        ast: Ast,
-        contents: Option<String>,
+        og_path: PathBuf,
+        og_ast: Option<Ast>,
+        og_contents: Option<String>,
         response_sender: ResultSenderFor<ParseFileTask>,
     ) {
-        let (tx, rx) = mpsc::unbounded_channel();
-        self.lex(path, contents, tx);
-        // TODO: Add the `ast` to the `rx`.
-        Self::with_manager(rx, &self.parse_file_manager, response_sender);
+        let (tx1, mut rx1) = mpsc::unbounded_channel();
+        self.lex(og_path, og_contents, tx1);
+        let (tx2, rx2) = mpsc::unbounded_channel();
+        spawn(async move {
+            // TODO: Use a proper map from in paths to out paths.
+            while let Some(ParseFileTask { path, ast: _not_populated, contents, tokens }) = rx1.recv().await {
+                tx2.send(ParseFileTask {
+                    path,
+                    ast: og_ast.clone(),
+                    contents,
+                    tokens,
+                })
+                .expect("Should be able to send codegen task");
+            }
+        });
+        Self::with_manager(rx2, &self.parse_file_manager, response_sender);
     }
 
     pub fn desugar(
         &self,
         path: PathBuf,
-        ast: Ast,
+        ast: Option<Ast>,
         contents: Option<String>,
         response_sender: ResultSenderFor<DesugarFileTask>,
     ) {
@@ -216,7 +228,7 @@ impl Compiler {
     pub fn lower(
         &self,
         og_path: PathBuf,
-        og_ast: Ast,
+        og_ast: Option<Ast>,
         contents: Option<String>,
         response_sender: ResultSenderFor<LowerFileTask>,
     ) {
@@ -244,7 +256,7 @@ impl Compiler {
     pub fn eval(
         &self,
         path: PathBuf,
-        ast: Ast,
+        ast: Option<Ast>,
         contents: Option<String>,
         response_sender: ResultSenderFor<EvalFileTask>,
     ) {
@@ -256,7 +268,7 @@ impl Compiler {
     pub fn codegen(
         &self,
         path: PathBuf,
-        og_ast: Ast,
+        og_ast: Option<Ast>,
         out_path: PathBuf,
         contents: Option<String>,
         response_sender: ResultSenderFor<CodegenTask>,
@@ -313,7 +325,7 @@ impl Compiler {
             }
             RequestTask::Build { files } => {
                 for file in files {
-                    let ast = Ast::new(file.to_path_buf());
+                    let ast = Some(Ast::new(file.to_path_buf()));
                     let mut file_with_extension = file.clone();
                     file_with_extension.set_extension("out");
                     self.codegen(file, ast, file_with_extension, None, response_sender.clone());
@@ -322,8 +334,7 @@ impl Compiler {
             RequestTask::RunInterpreter { files } => {
                 for file in files {
                     // TODO(cypher1): Support context / imports.
-                    //
-                    let ast = Ast::new(file.to_path_buf());
+                    let ast = Some(Ast::new(file.to_path_buf()));
                     self.eval(file, ast, None, response_sender.clone());
                 }
             }

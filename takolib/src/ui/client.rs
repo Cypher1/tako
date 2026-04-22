@@ -72,8 +72,8 @@ impl Client {
     }
 
     pub fn send_command(&mut self, cmd: RequestTask) {
-        if let RequestTask::Eval(line) = &cmd {
-            self.history.push(line.to_string());
+        if let RequestTask::Eval { ast: _, expr: line } = &cmd {
+            self.history.push(line.to_string()); // Maybe assumes a single line?
         }
         self.request_sender
             .send((cmd, self.result_sender.clone()))

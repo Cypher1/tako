@@ -1,7 +1,7 @@
 use super::contains::Contains;
 use super::location::Location;
 use super::Ast;
-use crate::ast::string_interner::Identifier;
+use crate::ast::string_interner::Name;
 use crate::parser::{
     semantics::{BindingMode, Literal},
     tokens::Symbol,
@@ -45,7 +45,7 @@ pub enum NodeData {
 
 make_contains!(
     identifiers,
-    (NodeId, Identifier),
+    (NodeId, Name),
     Identifier,
     IdentifierId,
     add_identifier
@@ -64,7 +64,7 @@ make_contains!(warnings, (NodeId, Warning), Warning, WarningId, add_warning);
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Atom {
-    pub name: Identifier,
+    pub name: Name,
 }
 make_contains!(atoms, (NodeId, Atom), Atom, AtomId, add_atom);
 
@@ -107,7 +107,7 @@ impl Op {
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Definition {
     pub mode: BindingMode,
-    pub name: Identifier,
+    pub name: Name,
     pub bindings: Option<SmallVec<NodeId, 2>>,
     pub implementation: Option<NodeId>,
 }

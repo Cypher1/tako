@@ -7,15 +7,16 @@ pub mod location;
 mod pretty_printer;
 pub mod string_interner;
 
-use crate::parser::semantics::Literal;
+use crate::{parser::semantics::Literal, primitives::Prim};
 use crate::parser::tokens::Symbol;
 use crate::primitives::typed_index::TypedIndex;
 use location::Location;
 use pretty_printer::{pretty, pretty_node};
 use smallvec::smallvec;
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::Arc;
-use string_interner::{Identifier, StringInterner};
+use string_interner::{Name, StringInterner};
 
 type Container<T> = Arc<Vec<T>>;
 
@@ -32,13 +33,14 @@ pub struct Ast {
 
     // Syntactic constructs:
     pub calls: Container<(NodeId, Call)>, // Convert to this from definition head.
-    pub identifiers: Container<(NodeId, Identifier)>, // Convert to this from definition head.
+    pub identifiers: Container<(NodeId, Name)>, // Convert to this from definition head.
     pub ops: Container<(NodeId, Op)>,
     pub definitions: Container<(NodeId, Definition)>,
     pub literals: Container<(NodeId, Literal)>,
     pub atoms: Container<(NodeId, Atom)>,
 
     pub string_interner: StringInterner,
+    pub name_to_value: BTreeMap<Name, Prim>,
 }
 
 impl Ast {
