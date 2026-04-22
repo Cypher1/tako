@@ -1,10 +1,10 @@
 use crate::error::TError;
 use std::path::Path;
 
-#[cfg(feature = "llvm_backend")]
+#[cfg(feature = "llvm")]
 mod llvm;
 
-#[cfg(feature = "llvm_backend")]
+#[cfg(feature = "llvm")]
 pub fn backend<'ctx>(
     cfg: BackendConfig,
     context: &'ctx <llvm::Llvm<'ctx> as Backend<'ctx>>::Context,
@@ -12,7 +12,7 @@ pub fn backend<'ctx>(
     llvm::Llvm::new(cfg, context)
 }
 
-#[cfg(feature = "llvm_backend")]
+#[cfg(feature = "llvm")]
 pub fn create_context<'ctx>() -> <llvm::Llvm<'ctx> as Backend<'ctx>>::Context {
     llvm::Llvm::create_context()
 }

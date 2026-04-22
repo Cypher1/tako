@@ -1,7 +1,7 @@
 #![deny(clippy::all)]
 
 pub mod ast;
-#[cfg(feature = "backend")]
+#[cfg(feature = "codegen")]
 pub mod codegen;
 pub mod compiler;
 pub mod desugarer;

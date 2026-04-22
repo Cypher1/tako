@@ -13,11 +13,67 @@ use crate::tasks::{
 };
 use crate::ui::Client;
 use log::{debug, trace};
+use qbice::storage::storage_engine::in_memory::InMemoryStorageEngine;
+#[cfg(not(feature = "rocksdb"))]
+use qbice::storage::storage_engine::in_memory::InMemoryStorageEngineFactory;
+use qbice::{Config, Engine};
+use qbice::{Decode, Encode, Executor, Identifiable, Query, StableHash, TrackedEngine};
 use std::fmt::Debug;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tokio::spawn;
 use tokio::sync::{broadcast, mpsc, oneshot};
+
+#[cfg(feature = "rocksdb")]
+async fn get_qbice_engine() -> qbice::Engine<qbice::DefaultConfig> {
+    use qbice::{
+        serialize::Plugin,
+        stable_hash::{SeededStableHasherBuilder, Sip128Hasher},
+        storage::{
+            kv_database::rocksdb::RocksDB,
+            storage_engine::db_backed::{Configuration, DbBackedFactory},
+        },
+        DefaultConfig, Engine,
+    };
+
+    let dir = tempfile::tempdir().expect("Creating temp dir shouldn't fail");
+
+    Engine::<DefaultConfig>::new_with(
+        Plugin::default(),
+        DbBackedFactory::builder()
+            .configuration(Configuration::builder().build())
+            .db_factory(RocksDB::factory(dir.path()))
+            .build(),
+        SeededStableHasherBuilder::<Sip128Hasher>::new(0),
+    )
+    .await
+    .expect("database initialization should never fail")
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Identifiable)]
+pub struct InMemoryDBConfig;
+
+use qbice::stable_hash::{SeededStableHasherBuilder, Sip128Hasher};
+
+impl qbice::config::Config for InMemoryDBConfig {
+    type StorageEngine = InMemoryStorageEngine;
+
+    type BuildStableHasher = SeededStableHasherBuilder<Sip128Hasher>;
+
+    type BuildHasher = std::hash::BuildHasherDefault<fxhash::FxHasher>;
+}
+
+#[cfg(not(feature = "rocksdb"))]
+async fn get_qbice_engine() -> qbice::Engine<InMemoryDBConfig> {
+    use qbice::serialize::Plugin;
+    qbice::Engine::<InMemoryDBConfig>::new_with(
+        Plugin::default(),
+        InMemoryStorageEngineFactory,
+        SeededStableHasherBuilder::<Sip128Hasher>::new(0),
+    )
+    .await
+    .expect("database initialization should never fail")
+}
 
 #[derive(Debug)]
 pub struct Compiler {
@@ -50,6 +106,7 @@ pub struct Compiler {
         mpsc::UnboundedSender<(oneshot::Sender<Client>, Box<dyn OptionsTrait>)>,
     client_launch_request_receiver:
         mpsc::UnboundedReceiver<(oneshot::Sender<Client>, Box<dyn OptionsTrait>)>,
+    // TODO(wip): Port all to qbice
 }
 
 impl Default for Compiler {
@@ -100,7 +157,58 @@ impl Default for Compiler {
     }
 }
 
+// Define query types
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
+pub enum Variable {
+    A,
+    B,
+}
+
+impl Query for Variable {
+    type Value = i32;
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
+pub struct SafeDivide {
+    pub numerator: Variable,
+    pub denominator: Variable,
+}
+
+impl Query for SafeDivide {
+    type Value = Option<i32>;
+}
+
+// Define executor
+struct SafeDivideExecutor;
+
+impl<C: qbice::Config> Executor<SafeDivide, C> for SafeDivideExecutor {
+    async fn execute(&self, query: &SafeDivide, engine: &TrackedEngine<C>) -> Option<i32> {
+        let num = engine.query(&query.numerator).await;
+        let denom = engine.query(&query.denominator).await;
+
+        if denom == 0 {
+            return None;
+        }
+
+        Some(num / denom)
+    }
+
+    // TODO: For others implement `execution_style`
+}
+
 impl Compiler {
+    pub async fn get_engine() -> Arc<Engine<impl Config>> {
+        use std::sync::Arc;
+
+        // Create and configure the engine
+        let mut engine = get_qbice_engine().await;
+
+        engine.register_executor(Arc::new(SafeDivideExecutor));
+        // engine.register_program(passes);
+
+        Arc::new(engine)
+    }
+
     #[must_use]
     pub fn make_client(&self, options: Box<dyn OptionsTrait>) -> crate::ui::Client {
         Client::new(
