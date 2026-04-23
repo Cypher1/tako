@@ -14,11 +14,9 @@ pub mod tasks;
 #[cfg(test)]
 pub mod test;
 pub mod ui;
+pub mod qbice_repro;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
-
-#[cfg(test)]
-use qbice::{Config, Decode, Encode, Executor, Identifiable, Query, StableHash, TrackedEngine};
 
 use crate::compiler::Compiler;
 
@@ -75,102 +73,7 @@ pub fn ensure_initialized() {
 }
 
 pub async fn start() -> Compiler {
-    Compiler::default()
-}
-
-// Define query types
-#[cfg(test)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
-pub enum Variable {
-    A,
-    B,
-}
-
-#[cfg(test)]
-impl Query for Variable {
-    type Value = i32;
-}
-
-#[cfg(test)]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
-pub struct SafeDivide {
-    pub numerator: Variable,
-    pub denominator: Variable,
-}
-
-#[cfg(test)]
-impl Query for SafeDivide {
-    type Value = Option<i32>;
-}
-
-// Define executor
-#[cfg(test)]
-struct SafeDivideExecutor;
-
-#[cfg(test)]
-impl<C: Config> Executor<SafeDivide, C> for SafeDivideExecutor {
-    async fn execute(&self, query: &SafeDivide, engine: &TrackedEngine<C>) -> Option<i32> {
-        let num = engine.query(&query.numerator).await;
-        let denom = engine.query(&query.denominator).await;
-
-        if denom == 0 {
-            return None;
-        }
-
-        Some(num / denom)
-    }
-}
-
-#[tokio::test]
-async fn run_qbice() -> Result<(), Box<dyn std::error::Error>> {
-    use std::sync::Arc;
-    use std::path::Path;
-
-    use qbice::{
-        serialize::Plugin,
-        stable_hash::{SeededStableHasherBuilder, Sip128Hasher},
-        storage::{
-            kv_database::rocksdb::RocksDB,
-            storage_engine::db_backed::{Configuration, DbBackedFactory},
-        },
-        DefaultConfig, Engine, InputSession,
-    };
-
-    let dir = tempfile::tempdir()?;
-
-    // Create and configure the engine
-    let mut engine = Engine::<DefaultConfig>::new_with(
-        Plugin::default(),
-        DbBackedFactory::builder()
-            .configuration(Configuration::builder().build())
-            .db_factory(RocksDB::factory(dir.path()))
-            .build(),
-        SeededStableHasherBuilder::<Sip128Hasher>::new(0),
-    )
-    .await?;
-
-    // Register executor
-    engine.register_executor(Arc::new(SafeDivideExecutor));
-
-    let engine = Arc::new(engine);
-
-    // Set initial inputs
-    {
-        let mut input_session: InputSession<DefaultConfig> = engine.input_session().await;
-        input_session.set_input(Variable::A, 42).await;
-        input_session.set_input(Variable::B, 2).await;
-        input_session.commit().await;
-    }
-
-    // Execute query
-    let tracked_engine = engine.tracked().await;
-    let result = tracked_engine
-        .query(&SafeDivide {
-            numerator: Variable::A,
-            denominator: Variable::B,
-        })
-        .await;
-
-    assert_eq!(result, Some(21));
-    Ok(())
+    let c = Compiler::with_engine().await;
+    assert!(c.engine.is_some()); // TODO: Make private...
+    c
 }
