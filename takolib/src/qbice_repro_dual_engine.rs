@@ -41,9 +41,8 @@ impl<C: Config> Executor<SafeDivide, C> for SafeDivideExecutor {
 }
 
 #[tokio::test]
-async fn run_qbice() -> Result<(), Box<dyn std::error::Error>> {
-    use std::sync::Arc;
-    use qbice::InputSession;
+#[should_panic]
+async fn run_qbice() -> () {
     use qbice::{
         serialize::Plugin,
         stable_hash::{SeededStableHasherBuilder, Sip128Hasher},
@@ -57,7 +56,7 @@ async fn run_qbice() -> Result<(), Box<dyn std::error::Error>> {
     let dir = tempfile::tempdir().expect("Creating temp dir shouldn't fail");
 
     // Create and configure the engine
-    let mut engine = Engine::<DefaultConfig>::new_with(
+    let mut _engine1 = Engine::<DefaultConfig>::new_with(
         Plugin::default(),
         DbBackedFactory::builder()
             .configuration(Configuration::builder().build())
@@ -68,38 +67,16 @@ async fn run_qbice() -> Result<(), Box<dyn std::error::Error>> {
     .await
     .expect("Creating engine shouldn't fail");
 
-    // Register executor
-    engine.register_executor(Arc::new(SafeDivideExecutor));
+    Engine::<DefaultConfig>::new_with(
+        Plugin::default(),
+        DbBackedFactory::builder()
+            .configuration(Configuration::builder().build())
+            .db_factory(RocksDB::factory(dir.path()))
+            .build(),
+        SeededStableHasherBuilder::<Sip128Hasher>::new(0),
+    )
+    .await
+    .expect("Creating engine shouldn't fail");
 
-    let engine = Arc::new(engine);
-
-    // Set initial inputs
-    let mut input_session: InputSession<DefaultConfig> = engine.clone().input_session().await;
-    input_session.set_input(Variable::A, 42).await;
-    input_session.set_input(Variable::B, 2).await;
-    input_session.commit().await;
-
-    // Execute query
-    let tracked_engine1 = engine.clone().tracked().await;
-    let result = tracked_engine1
-        .query(&SafeDivide {
-            numerator: Variable::A,
-            denominator: Variable::B,
-        })
-        .await;
-
-    assert_eq!(result, Some(21));
-
-    // Execute query
-    let tracked_engine2 = engine.clone().tracked().await;
-    let result = tracked_engine2
-        .query(&SafeDivide {
-            numerator: Variable::A,
-            denominator: Variable::B,
-        })
-        .await;
-
-    assert_eq!(result, Some(21));
-
-    Ok(())
+    ()
 }

@@ -15,6 +15,9 @@ pub mod tasks;
 pub mod test;
 pub mod ui;
 pub mod qbice_repro;
+pub mod qbice_repro_async;
+pub mod qbice_repro_volatile;
+pub mod qbice_repro_dual_engine;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
