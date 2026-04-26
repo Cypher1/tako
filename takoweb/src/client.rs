@@ -6,6 +6,7 @@ use takolib::ui::{Client, OptionsTrait, UserInterface};
 use tokio::spawn;
 use tokio::sync::{mpsc, oneshot};
 
+#[allow(unused)]
 #[derive(Debug)]
 struct YewClient {}
 

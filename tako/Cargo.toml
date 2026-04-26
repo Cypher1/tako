@@ -19,7 +19,7 @@ async-trait = "0.1"
 takolib = { path = "../takolib", features = [ "native" ] }
 tokio = { version = "1.52.1", features = [ "full" ] }
 log = "0.4"
-warp = "0.4.2"
+warp = { version = "0.4.2", features = [ "server" ] }
 crokey = "1.4.0"
 crossterm = { version = "0.29.0", features = [ "event-stream" ] }
 directories = "6.0.0"
