@@ -42,7 +42,6 @@ impl<C: Config> Executor<SafeDivide, C> for SafeDivideExecutor {
 
 #[tokio::test]
 async fn run_qbice() -> Result<(), Box<dyn std::error::Error>> {
-    use std::sync::Arc;
     use qbice::InputSession;
     use qbice::{
         serialize::Plugin,
@@ -53,6 +52,7 @@ async fn run_qbice() -> Result<(), Box<dyn std::error::Error>> {
         },
         DefaultConfig, Engine,
     };
+    use std::sync::Arc;
 
     let dir = tempfile::tempdir().expect("Creating temp dir shouldn't fail");
 

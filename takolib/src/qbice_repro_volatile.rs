@@ -38,13 +38,19 @@ struct SafeDivideExecutor;
 #[cfg(test)]
 impl<C: Config> Executor<SafeDivide, C> for SafeDivideExecutor {
     async fn execute(&self, query: &SafeDivide, engine: &TrackedEngine<C>) -> Option<i32> {
-        println!("{num:?}/{denom:?} => ?", num=query.numerator, denom=query.denominator);
+        println!(
+            "{num:?}/{denom:?} => ?",
+            num = query.numerator,
+            denom = query.denominator
+        );
         let numerator = engine.query(&query.numerator).await;
         let denominator = engine.query(&query.denominator).await;
-        return engine.query(&SafeDivideNumeric{
-            numerator,
-            denominator,
-        }).await;
+        return engine
+            .query(&SafeDivideNumeric {
+                numerator,
+                denominator,
+            })
+            .await;
     }
 }
 
@@ -64,7 +70,11 @@ struct SafeDivideNumericExecutor;
 #[cfg(test)]
 impl<C: Config> Executor<SafeDivideNumeric, C> for SafeDivideNumericExecutor {
     async fn execute(&self, query: &SafeDivideNumeric, _engine: &TrackedEngine<C>) -> Option<i32> {
-        println!("  {num:?}/{denom:?} => ?", num=query.numerator, denom=query.denominator);
+        println!(
+            "  {num:?}/{denom:?} => ?",
+            num = query.numerator,
+            denom = query.denominator
+        );
         let num = query.numerator;
         let denom = query.denominator;
 
@@ -73,7 +83,7 @@ impl<C: Config> Executor<SafeDivideNumeric, C> for SafeDivideNumericExecutor {
             return None;
         }
 
-        println!("    {num:?}/{denom:?} => {r}", r=num/denom);
+        println!("    {num:?}/{denom:?} => {r}", r = num / denom);
         Some(num / denom)
     }
 

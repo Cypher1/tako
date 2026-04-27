@@ -483,17 +483,17 @@ async fn run_qbice() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // {
-        // Execute query
-        // NOTE: the tracked engine MUST be dropped before another can be started.
-        let tracked_engine = engine.clone().tracked().await;
-        let result = tracked_engine
-            .query(&SafeDivide {
-                numerator: Variable::A,
-                denominator: Variable::B,
-            })
-            .await;
+    // Execute query
+    // NOTE: the tracked engine MUST be dropped before another can be started.
+    let tracked_engine = engine.clone().tracked().await;
+    let result = tracked_engine
+        .query(&SafeDivide {
+            numerator: Variable::A,
+            denominator: Variable::B,
+        })
+        .await;
 
-        assert_eq!(result, Some(21));
+    assert_eq!(result, Some(21));
     // }
 
     // Set initial inputs
