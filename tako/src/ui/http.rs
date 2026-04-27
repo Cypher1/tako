@@ -13,7 +13,7 @@ use takolib::ui::OptionsTrait;
 use takolib::ui::{Client, UserInterface};
 use tokio::sync::{mpsc, oneshot};
 use tokio::time;
-use warp::hyper::Response;
+use warp::http::Response;
 use warp::Filter;
 
 const TICK: Duration = Duration::from_millis(100);
