@@ -10,6 +10,10 @@ pub mod interpreter;
 pub mod lowerer;
 pub mod parser;
 pub mod primitives;
+pub mod qbice_repro;
+pub mod qbice_repro_async;
+pub mod qbice_repro_dual_engine;
+pub mod qbice_repro_volatile;
 pub mod tasks;
 #[cfg(test)]
 pub mod test;
@@ -72,5 +76,7 @@ pub fn ensure_initialized() {
 }
 
 pub async fn start() -> Compiler {
-    Compiler::default()
+    let c = Compiler::with_engine().await;
+    assert!(c.engine.is_some()); // TODO: Make private...
+    c
 }
