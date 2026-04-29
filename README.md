@@ -18,6 +18,17 @@ These instructions will get you a copy of the project up and running on your loc
 Tako currently uses `cargo` for builds and running tests and git submodules for dependency management.
 
 Installation instructions can be found at <https://rustup.rs/>
+When using LLVM you'll also need an LLVM install of LLVMv17 and an appropriate `LLVM_SYS_170_PREFIX` environment variable.
+```bash
+export LLVM_SYS_170_PREFIX="$LLVM_PATH"
+```
+
+You'll also need `libpolly` and `libz`
+Ubuntu lets you install these easily with
+
+```bash
+sudo apt install libpolly-15-dev libz-dev
+```
 
 ### Building
 
