@@ -57,8 +57,8 @@ fn file_and_options(file: &PathBuf) -> (String, TestConfig) {
 }
 
 #[test_each::path(glob = "examples/*.tk")]
-fn parse_example_files(file: PathBuf) {
-    let (contents, setting) = file_and_options(&file);
+fn parse_example_files(file: &PathBuf) {
+    let (contents, setting) = file_and_options(file);
     if false && setting.todo {
         info!("Skipping todo file: {file:#?}");
         return;
@@ -85,7 +85,7 @@ fn parse_example_files(file: PathBuf) {
     };
 
     // TODO: Macro or helper?
-    let _ast = match crate::parser::parse(&file, &None, &contents, &tokens) {
+    let _ast = match crate::parser::parse(file, &None, &contents, &tokens) {
         Err(e) => {
             assert_eq!(
                 setting.expect,
