@@ -1451,9 +1451,9 @@ checksum = "5e5032e24019045c762d3c0f28f5b6b8bbf38563a65908389bf7978758920897"
 
 [[package]]
 name = "melior"
-version = "0.26.9"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f5c38e8ea1f1bb22ebc7fe311b3adac0e9d3591e7c4d02a3b3b9c89d3e66899c"
+checksum = "7c388c08773539126c32f2a9c65260695ed9e2b9376164ce8b839826e3085d8d"
 dependencies = [
  "melior-macro",
  "mlir-sys",
@@ -1461,9 +1461,9 @@ dependencies = [
 
 [[package]]
 name = "melior-macro"
-version = "0.19.5"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e156c0973fdaaf2930149766775d85ff451e229739562cf50b0453f08024d2a"
+checksum = "7aac876dfce9f514df46c6d4b7267f1fc513126ddc34dfde11909584fdfc87bd"
 dependencies = [
  "comrak",
  "convert_case 0.11.0",
@@ -1517,9 +1517,9 @@ dependencies = [
 
 [[package]]
 name = "mlir-sys"
-version = "210.0.4"
+version = "220.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f376ddc92bf2bad0eba47e20f75923f76306e429273379cedb70eb7e664aab90"
+checksum = "55f8c5781dc23ebe7456f9e9aaecab9eee9e542f7e9051b95b0a31b1d5d4b61f"
 dependencies = [
  "bindgen",
 ]
@@ -2293,9 +2293,9 @@ checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 
 [[package]]
 name = "tblgen"
-version = "0.8.1"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c4e3abe8582a0bb8708d11142c45e8c622f013bc4936d918da42c2aade60e98"
+checksum = "15a6768dc51535aeaecbe812e2a792a77cbef10b1c4529e29bea5864a738dc6a"
 dependencies = [
  "bindgen",
  "cc",
