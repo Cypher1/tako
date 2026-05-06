@@ -33,11 +33,11 @@ path = "src/lib.rs"
 [dependencies]
 thiserror = "2.0.18"
 bitvec = "1"
-log = "0.4"
+log.workspace = true
 pretty_assertions = "1.4.1"
 futures = "0.3"
-tokio = { version = "1.52.1", features = ["sync", "macros", "rt"] }
-async-trait = "0.1"
+tokio = { workspace = true, features = ["sync", "macros"] }
+async-trait.workspace = true
 # Info: https://nnethercote.github.io/2021/12/08/a-brutally-effective-hash-function-in-rust.html
 fxhash = "0.2"
 static_assertions = "1.1"
