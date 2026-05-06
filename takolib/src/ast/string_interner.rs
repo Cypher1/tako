@@ -3,6 +3,7 @@ use crate::parser::KEYWORDS;
 use crate::primitives::typed_index::TypedIndex;
 use better_std::as_context;
 use num_traits::Bounded;
+use qbice::{Decode, Encode, Identifiable, StableHash};
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
@@ -16,7 +17,7 @@ use static_assertions::assert_eq_size;
 assert_eq_size!(Name, [u8; 8]);
 assert_eq_size!([Name; 2], [u8; 16]);
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, StableHash, Identifiable, Encode, Decode)]
 pub struct StringInterner {
     // This ensures we can look up the string from the hash.
     // BUT: We can also merge the hashes without losing any information.

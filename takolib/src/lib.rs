@@ -10,6 +10,7 @@ pub mod interpreter;
 pub mod lowerer;
 pub mod parser;
 pub mod primitives;
+pub mod queries;
 pub mod tasks;
 #[cfg(test)]
 pub mod test;

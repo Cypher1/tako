@@ -13,5 +13,5 @@ include = ["src/**/*", "LICENSE.md", "README.md"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-pretty_assertions = "1.4.1"
-better-std = { path = "../better-std", features = [ ] }
+pretty_assertions.workspace = true
+better-std.workspace = true

@@ -3,6 +3,7 @@ mod contains;
 pub use contains::*;
 mod nodes;
 pub use nodes::*;
+use qbice::{Decode, Encode, Identifiable, StableHash};
 pub mod location;
 mod pretty_printer;
 pub mod string_interner;
@@ -20,7 +21,7 @@ use string_interner::{Name, StringInterner};
 
 type Container<T> = Arc<Vec<T>>;
 
-#[derive(Clone, Default, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Default, Debug, Hash, PartialEq, Eq, StableHash, Identifiable, Encode, Decode)]
 pub struct Ast {
     // TODO(usability): Add a range tree for mapping from locations to nodes.
     // Abstract syntax tree... forest
