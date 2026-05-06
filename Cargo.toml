@@ -19,3 +19,8 @@ opt-level = 3
 
 [profile.release]
 debug = true
+
+[workspace.dependencies]
+async-trait = "0.1"
+tokio = "1.52.2"
+log = "0.4"
