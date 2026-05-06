@@ -34,8 +34,8 @@ path = "src/lib.rs"
 thiserror = "2.0.18"
 bitvec = "1"
 log.workspace = true
-pretty_assertions = "1.4.1"
-futures = "0.3"
+pretty_assertions.workspace = true
+futures.workspace = true
 tokio = { workspace = true, features = ["sync", "macros"] }
 async-trait.workspace = true
 # Info: https://nnethercote.github.io/2021/12/08/a-brutally-effective-hash-function-in-rust.html
@@ -48,8 +48,8 @@ env_logger = { version = "0.11.10", optional = true }
 inkwell = { version = "0.9.0", features = ["llvm18-1"], optional = true }
 wasm-logger = { version = "0.2.0", optional = true }
 smallvec = { version = "2.0.0-alpha.5" }
-llamada = { path = "../llamada", features = [ ] }
-better-std = { path = "../better-std", features = [ ] }
+llamada.workspace = true
+better-std.workspace = true
 test-each = "0.3.1"
 qbice = { version = "0.6.8", default-features = false }
 tempfile = "3.27.0"
@@ -59,6 +59,6 @@ getrandom = "0.4.2"
 [dev-dependencies]
 strum = "0.28.0"
 strum_macros = "0.28.0"
-pretty_assertions = "1.4.1"
+pretty_assertions.workspace = true
 rand = "0.10.1"
 walkdir = "2.5.0"

@@ -9,4 +9,4 @@ default = []
 
 [dependencies]
 criterion = { version = "0.8.2", optional = true }
-takolib = { path = "../takolib" }
+takolib = { workspace = true }

@@ -22,5 +22,10 @@ debug = true
 
 [workspace.dependencies]
 async-trait = "0.1"
+futures = "0.3"
 tokio = "1.52.2"
 log = "0.4"
+pretty_assertions = "1.4.1"
+takolib = { path = "takolib" }
+better-std = { path = "better-std", features = [ ] }
+llamada = { path = "llamada", features = [ ] }
