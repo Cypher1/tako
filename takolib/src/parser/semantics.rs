@@ -1,6 +1,19 @@
 use qbice::{Decode, Encode, Identifiable, StableHash};
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    PartialEq,
+    PartialOrd,
+    Ord,
+    Hash,
+    StableHash,
+    Identifiable,
+    Encode,
+    Decode,
+)]
 pub enum Literal {
     Bool,    // A boolean of arbitrary size :P (true/false)
     Numeric, // An Integer or Float of arbitrary size
@@ -10,7 +23,20 @@ pub enum Literal {
     Map, // An abstract map literal, any of OrderedMap, HashMap, Dictionary, etc. (e.g. { 'a': 123, 'b': 234 })
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    PartialEq,
+    PartialOrd,
+    Ord,
+    Hash,
+    StableHash,
+    Identifiable,
+    Encode,
+    Decode,
+)]
 pub enum BindingMode {
     Lambda, // i.e. value, given x, y
     Pi,     // i.e. dependant type, forall x, y

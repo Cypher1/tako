@@ -414,7 +414,9 @@ impl fmt::Display for TokenType {
     }
 }
 
-#[derive(Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode)]
+#[derive(
+    Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode,
+)]
 pub struct Token {
     pub kind: TokenType,
     // These are byte indexes and byte lengths. They may need to be interpreted before being shown

@@ -22,7 +22,9 @@ pub struct Node {
 make_contains!(nodes, Node, NodeRef, NodeId, unsafe_add_node);
 
 // TODO(clarity): Use macro for defining and registering each of these.
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode)]
+#[derive(
+    Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode,
+)]
 pub enum NodeData {
     // TODO(clarity): consider how to split this up.
     // Use a Array of Enums Structs to Struct of Arrays (i.e. AoES2SoA).
@@ -63,13 +65,17 @@ pub enum Warning {
 }
 make_contains!(warnings, (NodeId, Warning), Warning, WarningId, add_warning);
 
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode)]
+#[derive(
+    Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode,
+)]
 pub struct Atom {
     pub name: Name,
 }
 make_contains!(atoms, (NodeId, Atom), Atom, AtomId, add_atom);
 
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode)]
+#[derive(
+    Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode,
+)]
 pub struct Call {
     pub inner: NodeId,
     pub args: SmallVec<[NodeId; 2]>,
@@ -91,7 +97,9 @@ impl Call {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode)]
+#[derive(
+    Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode,
+)]
 pub struct Op {
     pub op: Symbol,
     pub args: SmallVec<[NodeId; 2]>, // TODO: Track L/R?
@@ -105,7 +113,9 @@ impl Op {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode)]
+#[derive(
+    Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode,
+)]
 pub struct Definition {
     pub mode: BindingMode,
     pub name: Name,

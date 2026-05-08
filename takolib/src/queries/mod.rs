@@ -3,7 +3,11 @@ use std::path::PathBuf;
 use enum_kinds::EnumKind;
 use qbice::{Decode, Encode, Identifiable, Query, StableHash};
 
-use crate::{ast::{Ast, string_interner::Name}, parser::tokens::Token, primitives::Prim};
+use crate::{
+    ast::{string_interner::Name, Ast},
+    parser::tokens::Token,
+    primitives::Prim,
+};
 
 #[derive(EnumKind)]
 #[enum_kind(QueryKind, derive(Hash, Ord, PartialOrd))]

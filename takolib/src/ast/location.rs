@@ -12,7 +12,20 @@ pub type SymbolLength = u8;
 // and `u16` is too small.
 // Source: https://people.csail.mit.edu/smcc/projects/single-file-programs
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    PartialEq,
+    PartialOrd,
+    Ord,
+    Hash,
+    StableHash,
+    Identifiable,
+    Encode,
+    Decode,
+)]
 pub struct Location {
     // These are byte indexes and byte lengths. They may need to be interpreted before being shown
     // to the user.
