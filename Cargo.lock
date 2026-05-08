@@ -1335,7 +1335,7 @@ dependencies = [
  "httpdate",
  "itoa",
  "pin-project-lite",
- "smallvec 1.15.1",
+ "smallvec",
  "tokio",
 ]
 
@@ -1691,7 +1691,7 @@ dependencies = [
  "futures-util",
  "parking_lot",
  "portable-atomic",
- "smallvec 1.15.1",
+ "smallvec",
  "tagptr",
  "uuid",
 ]
@@ -1835,7 +1835,7 @@ dependencies = [
  "cfg-if",
  "libc",
  "redox_syscall",
- "smallvec 1.15.1",
+ "smallvec",
  "windows-link",
 ]
 
@@ -2010,8 +2010,6 @@ dependencies = [
 [[package]]
 name = "qbice"
 version = "0.6.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78ab37f10cdf01eda293c8111f813e699fb01e3abab85b8304add24adf7d9613"
 dependencies = [
  "bon",
  "crossbeam",
@@ -2037,8 +2035,6 @@ dependencies = [
 [[package]]
 name = "qbice_derive"
 version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e1e3daf0bd273faa38b6c8f5dabb2276557a36aa2b9f09c9cf64ba64ea6bea9"
 dependencies = [
  "proc-macro2",
  "qbice_identifiable_derive_lib",
@@ -2049,8 +2045,6 @@ dependencies = [
 [[package]]
 name = "qbice_identifiable_derive"
 version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "27a5793b19be44d14392c4cb0ec6f2cc24d1f9ed5197bebc25d731effb803eab"
 dependencies = [
  "qbice_identifiable_derive_lib",
  "syn 2.0.117",
@@ -2059,8 +2053,6 @@ dependencies = [
 [[package]]
 name = "qbice_identifiable_derive_lib"
 version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4092c73989fc0edc81d67509c8c1677b6500502da7fbf1a25ff665ab47d4f1cc"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2070,18 +2062,16 @@ dependencies = [
 [[package]]
 name = "qbice_serialize"
 version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34e174127c37f75439308fb5f74fb1b7896dbe22ef6d3f9e5155f5941026d5dc"
 dependencies = [
+ "bitvec",
  "dashmap",
  "qbice_serialize_derive",
+ "smallvec",
 ]
 
 [[package]]
 name = "qbice_serialize_derive"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8dfa7244b2051c90d5d642320be677b2a972efcd4ce3d974ed5a7600ff3c8082"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2091,22 +2081,20 @@ dependencies = [
 [[package]]
 name = "qbice_stable_hash"
 version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2c185032bc28a75a023681930f85397abb9a4b9e597627119f40f04dd57ca7c"
 dependencies = [
+ "bitvec",
  "dashmap",
  "flexstr",
  "qbice_serialize",
  "qbice_stable_hash_derive",
  "siphasher",
+ "smallvec",
  "static_assertions",
 ]
 
 [[package]]
 name = "qbice_stable_hash_derive"
 version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "84d190422d77261cdd525680282c5461fa584902b3af15e6365d65779ea2cce1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2116,20 +2104,19 @@ dependencies = [
 [[package]]
 name = "qbice_stable_type_id"
 version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6f9bba58f547cf17d3ad34007a612d0f684152f90bc5af80be561536ca1eb6f"
 dependencies = [
+ "bitvec",
  "qbice_identifiable_derive",
  "qbice_serialize",
  "qbice_stable_hash",
+ "smallvec",
 ]
 
 [[package]]
 name = "qbice_storage"
 version = "0.6.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8850d5857c9181cac052a829f7e01a6dbabd45d64b5a4dfe13e14cef2da3578b"
 dependencies = [
+ "bitvec",
  "bon",
  "crossbeam",
  "crossbeam-channel",
@@ -2144,6 +2131,7 @@ dependencies = [
  "qbice_stable_type_id",
  "rust-rocksdb",
  "scc",
+ "smallvec",
  "thread_local",
  "tokio",
 ]
@@ -2525,12 +2513,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "67b1b7a3b5fe4f1376887184045fcf45c69e92af734b7aaddc05fb777b6fbd03"
 
 [[package]]
-name = "smallvec"
-version = "2.0.0-alpha.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef784004ca8777809dcdad6ac37629f0a97caee4c685fcea805278d81dd8b857"
-
-[[package]]
 name = "socket2"
 version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2650,7 +2632,7 @@ dependencies = [
  "pretty_assertions",
  "qbice",
  "rand",
- "smallvec 2.0.0-alpha.12",
+ "smallvec",
  "static_assertions",
  "strum",
  "strum_macros",

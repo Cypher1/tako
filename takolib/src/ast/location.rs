@@ -3,6 +3,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use qbice::{Decode, Encode, Identifiable, StableHash};
+
 pub type IndexIntoFile = u16;
 pub type SymbolLength = u8;
 // This is chosen as it's large enough to index the whole of
@@ -10,7 +12,7 @@ pub type SymbolLength = u8;
 // and `u16` is too small.
 // Source: https://people.csail.mit.edu/smcc/projects/single-file-programs
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct Location {
     // These are byte indexes and byte lengths. They may need to be interpreted before being shown
     // to the user.

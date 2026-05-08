@@ -14,6 +14,7 @@ pub mod tasks;
 #[cfg(test)]
 pub mod test;
 pub mod ui;
+pub mod queries;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 

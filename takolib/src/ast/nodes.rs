@@ -7,9 +7,10 @@ use crate::parser::{
     tokens::Symbol,
 };
 use crate::primitives::typed_index::TypedIndex;
+use qbice::{Decode, Encode, Identifiable, StableHash};
 use smallvec::SmallVec;
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, StableHash, Identifiable, Encode, Decode)]
 pub struct Node {
     pub id: NodeData,
     // This could be an expression, function or not specified.
@@ -21,7 +22,7 @@ pub struct Node {
 make_contains!(nodes, Node, NodeRef, NodeId, unsafe_add_node);
 
 // TODO(clarity): Use macro for defining and registering each of these.
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode)]
 pub enum NodeData {
     // TODO(clarity): consider how to split this up.
     // Use a Array of Enums Structs to Struct of Arrays (i.e. AoES2SoA).
@@ -52,7 +53,7 @@ make_contains!(
 );
 make_contains!(literals, (NodeId, Literal), Literal, LiteralId, add_literal);
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, StableHash, Identifiable, Encode, Decode)]
 pub enum Warning {
     DoubleAnnotation {
         node_id: NodeId,
@@ -62,16 +63,16 @@ pub enum Warning {
 }
 make_contains!(warnings, (NodeId, Warning), Warning, WarningId, add_warning);
 
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct Atom {
     pub name: Name,
 }
 make_contains!(atoms, (NodeId, Atom), Atom, AtomId, add_atom);
 
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct Call {
     pub inner: NodeId,
-    pub args: SmallVec<NodeId, 2>,
+    pub args: SmallVec<[NodeId; 2]>,
 }
 make_contains!(calls, (NodeId, Call), Call, CallId, add_call);
 
@@ -85,30 +86,30 @@ impl Call {
         }
     }
     #[must_use]
-    pub fn new(inner: NodeId, args: SmallVec<NodeId, 2>) -> Self {
+    pub fn new(inner: NodeId, args: SmallVec<[NodeId; 2]>) -> Self {
         Self { inner, args }
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct Op {
     pub op: Symbol,
-    pub args: SmallVec<NodeId, 2>, // TODO: Track L/R?
+    pub args: SmallVec<[NodeId; 2]>, // TODO: Track L/R?
 }
 make_contains!(ops, (NodeId, Op), Op, OpId, add_op);
 
 impl Op {
     #[must_use]
-    pub fn new(op: Symbol, args: SmallVec<NodeId, 2>) -> Self {
+    pub fn new(op: Symbol, args: SmallVec<[NodeId; 2]>) -> Self {
         Self { op, args }
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct Definition {
     pub mode: BindingMode,
     pub name: Name,
-    pub bindings: Option<SmallVec<NodeId, 2>>,
+    pub bindings: Option<SmallVec<[NodeId; 2]>>,
     pub implementation: Option<NodeId>,
 }
 make_contains!(

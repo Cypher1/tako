@@ -1,5 +1,6 @@
 use super::ui::OptionsTrait;
 use crate::ast::Ast;
+use crate::ast::string_interner::Name;
 use crate::primitives::meta::Meta;
 use crate::primitives::Prim;
 use crate::tasks::manager::TaskManager;
@@ -157,11 +158,16 @@ impl Default for Compiler {
     }
 }
 
-// Define query types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub enum Variable {
     A,
     B,
+}
+// Define query types
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Identifiable, StableHash, Encode, Decode)]
+pub enum Load {
+    LoadFile(Vec<Name>),
+    LoadDependency(Vec<Name>),
 }
 
 impl Query for Variable {

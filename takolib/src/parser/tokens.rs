@@ -4,6 +4,7 @@ use crate::parser::semantics::BindingMode;
 use better_std::{assert_eq, todo, *};
 use lazy_static::lazy_static;
 use log::{debug, trace};
+use qbice::{Decode, Encode, Identifiable, StableHash};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 
@@ -29,7 +30,7 @@ pub enum OpBinding {
     Close,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, StableHash, Encode, Decode)]
 #[cfg_attr(test, derive(EnumIter))]
 pub enum Symbol {
     // Ignore symbols
@@ -377,7 +378,7 @@ pub enum CharacterType {
     PartialToken(TokenType), // Already a valid token!
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, StableHash, Encode, Decode)]
 pub enum TokenType {
     Op(Symbol), // An operator (i.e. a known symbol used as a prefix or infix operator).
     Ident,      // A named value.
@@ -413,7 +414,7 @@ impl fmt::Display for TokenType {
     }
 }
 
-#[derive(Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct Token {
     pub kind: TokenType,
     // These are byte indexes and byte lengths. They may need to be interpreted before being shown

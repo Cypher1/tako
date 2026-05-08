@@ -6,7 +6,9 @@ pub mod tribool;
 use crate::error::TError;
 use crate::primitives::tribool::{all_true, any_true, Tribool};
 use better_std::*;
-use bitvec::prelude::*;
+use bitvec::vec::BitVec;
+use bitvec::bitvec;
+use qbice::{Decode, Encode, Identifiable, StableHash};
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt;
 
@@ -20,7 +22,7 @@ pub type TypeSet = BTreeSet<Val>;
 pub type Pack = BTreeSet<(String, Val)>;
 pub type Frame = HashMap<String, Val>;
 
-#[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Hash)]
+#[derive(PartialEq, Eq, Clone, PartialOrd, Ord, Hash, Identifiable, Encode, Decode, StableHash)]
 pub enum Prim {
     Unit,
     Bool(bool),
@@ -182,7 +184,7 @@ impl Val {
     pub fn unify(&self, other: &Self, env: &mut [Frame]) -> Result<Self, TError> {
         match (self, other) {
             (Variable(name), ty) => {
-                // TODO(correctness) check if already assigned (and if so unify again)
+                // TODO(correctness): check if already assigned (and if so unify again)
                 env.last_mut()
                     .expect("unexpected empty env")
                     .insert(name.to_string(), ty.clone());
@@ -532,6 +534,7 @@ pub fn variable(name: &str) -> Val {
 mod tests {
     use super::*;
     use better_std::assert_eq;
+    use bitvec::prelude::*;
 
     type Res = Result<(), TError>;
 

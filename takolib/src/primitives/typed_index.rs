@@ -1,4 +1,5 @@
 use num_traits::bounds::Bounded;
+use qbice::{Decode, Encode, Identifiable, StableHash};
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
 
@@ -9,6 +10,7 @@ assert_eq_size!(TypedIndex<Vec<u32>, u32>, [u32; 1]);
 assert_eq_size!(Option<TypedIndex<Vec<u32>, u32>>, [u32; 2]); // TODO(perf): Option optimisation
 
 #[repr(transparent)]
+#[derive(Identifiable)]
 pub struct TypedIndex<T, Idx = u32, Container: Index<usize> = Vec<T>> {
     index: Idx,
     ty: PhantomData<T>,
@@ -126,5 +128,37 @@ impl<T, Idx: std::fmt::Debug + std::convert::TryInto<usize> + std::convert::TryF
         let id = Self::next(container)?;
         container.push(value);
         Ok(id)
+    }
+}
+
+impl<T, Idx: StableHash> StableHash for TypedIndex<T, Idx> {
+    fn stable_hash<H: qbice::stable_hash::StableHasher + ?Sized>(&self, state: &mut H) {
+        self.index.stable_hash(state)
+    }
+}
+
+impl<T, Idx: Encode> Encode for TypedIndex<T, Idx> {
+    fn encode<E: qbice::serialize::Encoder + ?Sized>(
+        &self,
+        encoder: &mut E,
+        plugin: &qbice::serialize::Plugin,
+        session: &mut qbice::serialize::session::Session,
+    ) -> std::io::Result<()> {
+        self.index.encode(encoder, plugin, session)
+    }
+}
+impl<T, Idx: Decode> Decode for TypedIndex<T, Idx> {
+    fn decode<D: qbice::serialize::Decoder + ?Sized>(
+        decoder: &mut D,
+        plugin: &qbice::serialize::Plugin,
+        session: &mut qbice::serialize::session::Session,
+    ) -> std::io::Result<Self> {
+        let index = Idx::decode(decoder, plugin, session)?;
+        let res = TypedIndex {
+            index,
+            ty: PhantomData,
+            container: PhantomData,
+        };
+        Ok(res)
     }
 }
