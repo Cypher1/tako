@@ -3,9 +3,10 @@ use std::path::PathBuf;
 use crate::ast::location::{Location, UserFacingLocation};
 use crate::parser::ParseError;
 use crate::primitives::typed_index::TypedIndex;
+use qbice::{Decode, Encode, Identifiable, StableHash};
 use thiserror::Error;
 
-#[derive(Error, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Error, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode)]
 pub enum TError {
     ClangCompilerError {
         error: String,
@@ -72,7 +73,7 @@ impl From<std::num::ParseIntError> for TError {
     }
 }
 
-#[derive(Error, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Error, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct Error {
     pub source: TError,
     pub location: Option<UserFacingLocation>,
