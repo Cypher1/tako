@@ -364,8 +364,10 @@ impl Compiler {
                 root,
             }) = rx1.recv().await
             {
-                let Some(root) = root else {
-                    todo!("No known root!?")
+                let root = if let Some(root) = root {
+                    root
+                } else {
+                    new_ast.roots[0]
                 };
                 tx2.send(LowerFileTask {
                     path: new_path.clone(),
