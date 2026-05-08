@@ -44,7 +44,7 @@ impl Location {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Ord, PartialOrd)]
+#[derive(PartialEq, Eq, Clone, Ord, PartialOrd, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct UserFacingLocation {
     pub filename: PathBuf,
     pub line: u32,

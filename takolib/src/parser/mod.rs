@@ -6,6 +6,7 @@ use crate::ast::{Ast, Atom, Call, Contains, Definition, NodeData, NodeId, Op};
 use crate::error::TError;
 use better_std::include_strs;
 use log::{debug, trace};
+use qbice::{Decode, Encode, Identifiable, StableHash};
 use semantics::BindingMode;
 use semantics::Literal;
 use smallvec::smallvec;
@@ -15,7 +16,7 @@ use tokens::{assign_op, binding_mode_operation, is_assign, OpBinding, Symbol, To
 
 pub const KEYWORDS: &[&str] = include_strs!("keywords.txt");
 
-#[derive(Debug, Error, PartialEq, Eq, Ord, PartialOrd, Clone, Hash)]
+#[derive(Debug, Error, PartialEq, Eq, Ord, PartialOrd, Clone, Hash, StableHash, Identifiable, Encode, Decode)]
 pub enum ParseError {
     UnexpectedEof, // TODO: Add context.
     UnexpectedTokenTypeExpectedOperator {

@@ -7,6 +7,17 @@ use crate::primitives::Prim;
 use backend::{backend, create_context, Backend, BackendConfig, BackendStateTrait};
 use std::path::Path;
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
+pub struct BinaryDescription {
+    // TODO: This should be the result...
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
+pub struct BinaryInfo {
+    info: BinaryDescription,
+    // TODO: This should be the result...
+}
+
 pub fn codegen(path: &Path, _ast: &Ast, _root: Option<NodeId>) -> Result<Prim, TError> {
     let config = BackendConfig {};
     let context = create_context();
