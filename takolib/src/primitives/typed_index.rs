@@ -9,15 +9,16 @@ assert_eq_size!(Option<TypedIndex<Vec<u8>, u8>>, [u8; 2]); // TODO(perf): Option
 assert_eq_size!(TypedIndex<Vec<u32>, u32>, [u32; 1]);
 assert_eq_size!(Option<TypedIndex<Vec<u32>, u32>>, [u32; 2]); // TODO(perf): Option optimisation
 
+// TODO(cleanup): Move to better-std
 #[repr(transparent)]
 #[derive(Identifiable)]
-pub struct TypedIndex<T, Idx = u32, Container: Index<usize> = Vec<T>> {
+pub struct TypedIndex<T, Idx = u32, C: Index<usize> = Vec<T>> {
     index: Idx,
     ty: PhantomData<T>,
-    container: PhantomData<Container>,
+    container: PhantomData<C>,
 }
 
-impl<T, Idx: Bounded, Container: Index<usize>> Bounded for TypedIndex<T, Idx, Container> {
+impl<T, Idx: Bounded, C: Index<usize>> Bounded for TypedIndex<T, Idx, C> {
     fn min_value() -> Self {
         Self::from_raw(<Idx as Bounded>::min_value())
     }
@@ -27,7 +28,7 @@ impl<T, Idx: Bounded, Container: Index<usize>> Bounded for TypedIndex<T, Idx, Co
     }
 }
 
-impl<T, Idx, Container: Index<usize>> TypedIndex<T, Idx, Container> {
+impl<T, Idx, C: Index<usize>> TypedIndex<T, Idx, C> {
     pub const fn from_raw(index: Idx) -> Self {
         Self {
             index,
@@ -87,12 +88,12 @@ impl<T, Idx: Bounded + std::fmt::Debug + PartialEq> std::fmt::Debug for TypedInd
     }
 }
 
-impl<T, Idx: std::fmt::Debug + std::convert::TryInto<usize>, Container: Index<usize>>
-    TypedIndex<T, Idx, Container>
+impl<T, Idx: std::fmt::Debug + std::convert::TryInto<usize>, C: Index<usize>>
+    TypedIndex<T, Idx, C>
 {
-    pub fn get(self, container: &Container) -> &Container::Output
+    pub fn get(self, container: &C) -> &C::Output
     where
-        Container: Index<usize>,
+        C: Index<usize>,
     {
         &container[self
             .index
@@ -100,12 +101,12 @@ impl<T, Idx: std::fmt::Debug + std::convert::TryInto<usize>, Container: Index<us
             .unwrap_or_else(|_| panic!("Index too large for accessing into container as $TYPE"))]
     }
 }
-impl<T, Idx: std::fmt::Debug + std::convert::TryInto<usize>, Container: IndexMut<usize>>
-    TypedIndex<T, Idx, Container>
+impl<T, Idx: std::fmt::Debug + std::convert::TryInto<usize>, C: IndexMut<usize>>
+    TypedIndex<T, Idx, C>
 {
-    pub fn get_mut(self, container: &mut Container) -> &mut Container::Output
+    pub fn get_mut(self, container: &mut C) -> &mut C::Output
     where
-        Container: Index<usize>,
+        C: Index<usize>,
     {
         &mut container[self
             .index
