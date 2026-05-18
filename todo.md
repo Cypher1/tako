@@ -58,6 +58,7 @@ aliases:
   - [ ] tako run
   - [ ] tako doc
   - [ ] tako clean
+- [ ] Update example files and `// test:` headers
 
 ## User code optimisations
 
@@ -86,6 +87,8 @@ aliases:
   - [ ] Parsing the file could be broken up by balanced brackets
   - [ ] This may be premature optimisation the store medium / RAM may be the bottle neck
 - [ ] Remove AST and Info types
+- [ ] Explore algorithms that can be moved to the GPU (e.g. lexing multiple files in parallel, perhaps parsing, scoping, type checking)
+- [ ] [Conversion between Arrays of Structs and Structs of Arrays](https://en.wikipedia.org/wiki/AoS_and_SoA)
 
 ## Communication
 
