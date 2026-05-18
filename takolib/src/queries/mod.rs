@@ -16,7 +16,37 @@ use crate::{
 #[enum_kind(QueryKind, derive(Hash, Ord, PartialOrd))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AnyQuery {
+    // Loading
+    LoadQuery(Load),                                 // name, version? -> string
+    LoadLocalFileQuery(LoadLocalFile),               // path -> string with IO
+    DownloadDependenciesQuery(DownloadDependencies), // name, version -> string with IO
+    // Parsing
+    LexQuery(Lex),                           // name -> token[]
+    ParseFrontMatterQuery(ParseFrontMatter), // name -> [partial] ast, token[]
+    EvalFrontMatterQuery(EvalFrontMatter),   // name -> operator[], macro[], [partial] ast, token[]
+    ParseQuery(Parse),                       // file/name -> [partial]ast, [src]node
+    HandleImportQuery(HandleImport),         // name -> [partial]ast
+    MacroExpandQuery(MacroExpand),           // name -> [partial]ast, [gen]node
+    FindNodeQuery(FindNode),                 // src_pos -> [src]node
+    FindDefinitionQuery(FindDefinition),     // name -> [src]node
+    GetLocationQuery(GetLocation),           // [src]node -> src_pos
+    // Semantic Analysis
+    TypeAtQuery(TypeAt),           // src_pos -> TypeInfo
+    TypeCheckQuery(TypeCheck),     // name -> [typed]ast
+    GetTypeQuery(GetType),         // [src]node -> TypeInfo
+    CheckProofsQuery(CheckProofs), // [gen]node -> [typed]ast, errors[]
+    // Error Reporting
+    ErrorsQuery(Errors),               // name -> (src_pos, error)[]
+    ErrorsAtQuery(ErrorsAt),           // src_pos -> error[]
+    ErrorsForNodeQuery(ErrorsForNode), // [src]node -> error[]
+    // DevTools
+    PrettyPrintQuery(PrettyPrint), // ast, node -> string
+    InterpretQuery(Interpret),     // name -> IO
+    EvalQuery(Eval),               // string -> value with IO
+    EvalNodeQuery(EvalNode),       // [src]node -> value with IO
     // CodeGen
+    OptimizeQuery(Optimize), // [src]node ->  [optimized,lowered,typed]ast, [gen]node
+    LowerQuery(Lower),       // [src]node -> [lowered,typed]ast, [gen]node
     #[cfg(feature = "codegen")]
     CodeGenAllQuery(CodeGenAll), // name -> IO
     #[cfg(feature = "codegen")]
@@ -27,38 +57,8 @@ pub enum AnyQuery {
     WriteCodeGenQuery(WriteCodeGen), // name -> IO
     #[cfg(feature = "codegen")]
     CodeGenQuery(CodeGen), // name -> binary_info
-    OptimizeQuery(Optimize), // [src]node ->  [optimized,lowered,typed]ast, [gen]node
-    LowerQuery(Lower),       // [src]node -> [lowered,typed]ast, [gen]node
     #[cfg(feature = "codegen")]
     SourceMapGenQuery(SourceMapGen), // src -> IO
-    // Semantic Analysis
-    TypeAtQuery(TypeAt),           // src_pos -> TypeInfo
-    TypeCheckQuery(TypeCheck),     // name -> [typed]ast
-    GetTypeQuery(GetType),         // [src]node -> TypeInfo
-    CheckProofsQuery(CheckProofs), // [gen]node -> [typed]ast, errors[]
-    // Parsing
-    FindNodeQuery(FindNode),                 // src_pos -> [src]node
-    GetLocationQuery(GetLocation),           // [src]node -> src_pos
-    ParseQuery(Parse),                       // file/name -> [partial]ast, [src]node
-    FindDefinitionQuery(FindDefinition),     // name -> [src]node
-    EvalFrontMatterQuery(EvalFrontMatter),   // name -> operator[], macro[], [partial] ast, token[]
-    ParseFrontMatterQuery(ParseFrontMatter), // name -> [partial] ast, token[]
-    MacroExpandQuery(MacroExpand),           // name -> [partial]ast, [gen]node
-    HandleImportQuery(HandleImport),         // name -> [partial]ast
-    LexQuery(Lex),                           // name -> token[]
-    // Loading
-    LoadQuery(Load),                                 // name, version? -> string
-    LoadLocalFileQuery(LoadLocalFile),               // path -> string with IO
-    DownloadDependenciesQuery(DownloadDependencies), // name, version -> string with IO
-    // DevTools
-    PrettyPrintQuery(PrettyPrint), // ast, node -> string
-    InterpretQuery(Interpret),     // name -> IO
-    EvalQuery(Eval),               // string -> value with IO
-    EvalNodeQuery(EvalNode),       // [src]node -> value with IO
-    // Error Reporting
-    ErrorsQuery(Errors),               // name -> (src_pos, error)[]
-    ErrorsAtQuery(ErrorsAt),           // src_pos -> error[]
-    ErrorsForNodeQuery(ErrorsForNode), // [src]node -> error[]
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
