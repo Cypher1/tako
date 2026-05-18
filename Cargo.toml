@@ -23,7 +23,7 @@ debug = true
 [workspace.dependencies]
 async-trait = "0.1"
 futures = "0.3"
-tokio = "1.52.2"
+tokio = "1.52.3"
 log = "0.4"
 pretty_assertions = "1.4.1"
 takolib = { path = "takolib" }
