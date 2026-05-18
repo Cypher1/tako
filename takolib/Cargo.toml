@@ -51,8 +51,7 @@ smallvec = { version = "1.15.1" }
 llamada.workspace = true
 better-std.workspace = true
 test-each = "0.3.1"
-#qbice = { version = "0.6.8", default-features = false }
-qbice = { path="../../qbice/crates/qbice", default-features = false, features = ["smallvec", "bitvec"] }
+qbice = { git = "https://github.com/Simmypeet/qbice", branch = "master", default-features = false, features = ["smallvec", "bitvec"] }
 tempfile = "3.27.0"
 uuid = "1.23.1"
 getrandom = "0.4.2"

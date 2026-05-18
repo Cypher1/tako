@@ -20,6 +20,7 @@ use std::sync::Arc;
 use string_interner::{Name, StringInterner};
 
 // TODO(memory): Containers here can be interned via QBICE
+// TODO(memory): Use SoA datastructures to allow caching less memory
 type Container<T> = Arc<Vec<T>>;
 
 #[derive(Clone, Default, Debug, Hash, PartialEq, Eq, StableHash, Identifiable, Encode, Decode)]
