@@ -2,6 +2,7 @@
 aliases:
   - Tako TODOs
 ---
+
 # TODOs
 
 ## MVP
@@ -17,11 +18,11 @@ aliases:
 - [ ] Move globals / std into a file using low level ops (started)
 - [ ] Check for associativity errors (e.g. `a&&b||c`)
 - [ ] Allow operator declaration (with semantics on evaluation order [i.e. which sides are auto converted to lambdas before being sent to the operator])
-  -  Op declarations need:
-    - [ ] Precedence (maybe a set of allowed inner operators rather than a number)
-    - [ ] left or right associativity
-    - [ ] a bin/un-op form (possibly both)
-	- [ ] Convert bin and un-op to calls to the operator functions
+  - Op declarations need:
+  - [ ] Precedence (maybe a set of allowed inner operators rather than a number)
+  - [ ] left or right associativity
+  - [ ] a bin/un-op form (possibly both)
+  - [ ] Convert bin and un-op to calls to the operator functions
 - [ ] Introduce "." notation for identifiers.
 - [ ] Convenient Conditionals / Ifs / Matches
   - [ ] i.e. Shouldn't have to use operators
@@ -42,7 +43,8 @@ aliases:
 - [ ] Main + command function argument parsing
 - [ ] Conversion to SSA (after parsing)
 - [ ] Conversion to stack?
-- [ ] Move source locations out of errors and AST nodes in favour of symbol 'paths'
+- [ ] Move source locations out of `TError`s and AST nodes in favour of symbol 'paths'
+- [ ] Use https://crates.io/crates/ariadne for user facing errors
 - [ ] Look up source locations only when displaying info / errors to the user
 - [ ] Incremental re-parsing
 
@@ -71,8 +73,8 @@ aliases:
 
 ### Compiler optimisations and usability
 
-- [ ] Intern strings
-- [ ] Could use a fast string matching algorithm to quickly count newlines when building error messages, rather than counting them during tokenization
+- [x] Intern strings
+- [ ] Use a fast string matching algorithm to quickly count newlines when building error messages, rather than counting them during tokenization
   - [ ] See [aho_corasick](https://thedan64.github.io/inkwell/aho_corasick/index.html)
 - [ ] For logging and timing purposes, it seems likely that a scope guard pattern would make reporting much more reliable
   - [ ] See [scope_guard](https://crates.io/crates/scopeguard) [Previously](https://thedan64.github.io/inkwell/scopeguard/index.html)
@@ -81,6 +83,7 @@ aliases:
 - [x] Should use [smallvec](https://thedan64.github.io/inkwell/smallvec/index.html) for argument lists and other compiler info
 - [ ] Should experiment with LLVM
   - [ ] Possible via [inkwell](https://thedan64.github.io/inkwell/inkwell/index.html).
+    - See example: https://github.com/Cypher1/inkwell_demo
 - [ ] Explore using worker threads for the parser
   - [ ] Job per file, contributing to a queue of nodes to store
   - [ ] Bunches of nodes to store would be faster to store as groups and could be async from file access
@@ -88,7 +91,10 @@ aliases:
   - [ ] This may be premature optimisation the store medium / RAM may be the bottle neck
 - [ ] Remove AST and Info types
 - [ ] Explore algorithms that can be moved to the GPU (e.g. lexing multiple files in parallel, perhaps parsing, scoping, type checking)
+  - https://github.com/Rust-GPU/rust-gpu/
+  - https://github.com/gfx-rs/wgpu (this can even work in browser)
 - [ ] [Conversion between Arrays of Structs and Structs of Arrays](https://en.wikipedia.org/wiki/AoS_and_SoA)
+- [ ] Download and load dependencies as Bzip2 in memory (https://crates.io/crates/parallel_bzip2_decoder)
 
 ## Communication
 
@@ -117,24 +123,25 @@ aliases:
 - https://rust-hosted-langs.github.io/book/introduction.html
 - https://os.phil-opp.com/kernel-heap/#alignment
 - http://www.paulgraham.com/rootsoflisp.html
+- https://zef-lang.dev/implementation
 
 ## Vision
 
 - [ ] Main programs have a build function alongside main for config
-	- [ ] This means no 2nd language for config, or reduction in expressivity when doing config
-	- [ ] Build is run in the interpreter to generate build effects and config, including any operator overloads needed
-	- [ ] Build config is type checked and auto completed etc.
-	- [ ] Version info as static arg to makePackage?
+  - [ ] This means no 2nd language for config, or reduction in expressivity when doing config
+  - [ ] Build is run in the interpreter to generate build effects and config, including any operator overloads needed
+  - [ ] Build config is type checked and auto completed etc.
+  - [ ] Version info as static arg to makePackage?
 - [ ] tako ci
-    - [ ] Runs install deps, builds & type check and tests
+  - [ ] Runs install deps, builds & type check and tests
 - [ ] "features" are just flags passed to build
 - [ ] Statically declarable arg parsing
-	- [ ] No more `int main(int argc, char* argv[])`
-	- [ ] `main(expression: string, show_working: Arg(bool, "--show-working", default=false), *unknown: Arg[]): ErrorCode {`
-	- [ ] Pass unknowns to tako.cli(unknown) to get "--help", "-h", "--verbose", "-v", "--autocomplete"
-	- [ ] CLI generator is a default argument to makeBinary & the interpreter state
-	- [ ] It uses Tako's reflection capabilities to do 'run time' code gen, but its statically available because it doesn't produce side effects.
+  - [ ] No more `int main(int argc, char* argv[])`
+  - [ ] `main(expression: string, show_working: Arg(bool, "--show-working", default=false), *unknown: Arg[]): ErrorCode {`
+  - [ ] Pass unknowns to tako.cli(unknown) to get "--help", "-h", "--verbose", "-v", "--autocomplete"
+  - [ ] CLI generator is a default argument to makeBinary & the interpreter state
+  - [ ] It uses Tako's reflection capabilities to do 'run time' code gen, but its statically available because it doesn't produce side effects.
 - [ ] Git hash available in build artefacts
 - [ ] Multiple entry points possible in a single file
-	- [ ] makeBinary(main, "main") is default but
-	- [ ] makeBinary(test, "unit") is just as valid
+  - [ ] makeBinary(main, "main") is default but
+  - [ ] makeBinary(test, "unit") is just as valid

@@ -21,19 +21,23 @@ pub enum ParseError {
     UnexpectedEof, // TODO: Add context.
     UnexpectedTokenTypeExpectedOperator {
         got: TokenType,
+        // TODO: Should be a Token ID rather than a location
         location: Location,
     },
     UnexpectedTokenTypeExpectedAssignment {
         got: TokenType,
+        // TODO: Should be a Node ID rather than a Location
         location: Location,
     },
     UnexpectedTokenType {
         got: TokenType,
+        // TODO: Should be a Node ID rather than a Location
         location: Location,
         expected: TokenType,
     },
     UnexpectedTokenTypeInExpression {
         got: TokenType,
+        // TODO: Should be a Node ID rather than a Location
         location: Location,
     },
     ParseIntError {
@@ -43,19 +47,23 @@ pub enum ParseError {
     AmbiguousExpression {
         left: Symbol,
         right: Symbol,
+        // TODO: Should be a Node ID rather than a Location
         location: Location,
     },
     UnexpectedExpressionInDefinitionArguments {
         arg: NodeId,
         arg_str: String,
+        // TODO: Should be a Node ID rather than a Location
         location: Location,
     },
     MissingLeftHandSideOfOperator {
         op: Symbol,
+        // TODO: Should be a Node ID rather than a Location
         location: Location,
     },
     UnparsedTokens {
         token: TokenType,
+        // TODO: Should be a Node ID rather than a Location
         location: Location,
     },
 }
