@@ -1,3 +1,5 @@
+mod executors;
+
 use enum_kinds::EnumKind;
 use qbice::{Decode, Encode, Identifiable, Query, StableHash};
 use std::collections::BTreeMap;
@@ -64,12 +66,12 @@ pub enum AnyQuery {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub enum FileRef {
     File(PathBuf),
+    InMemory(PathBuf, String),
     Dependency {
         name: String,
         version: String,
         internal_path: PathBuf,
     },
-    InMemory(PathBuf, String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
@@ -295,7 +297,7 @@ pub struct Load {
 }
 
 impl Query for Load {
-    type Value = String;
+    type Value = Result<String, TError>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]

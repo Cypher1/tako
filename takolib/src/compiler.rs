@@ -163,12 +163,6 @@ pub enum Variable {
     A,
     B,
 }
-// Define query types
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Identifiable, StableHash, Encode, Decode)]
-pub enum Load {
-    LoadFile(Vec<Name>),
-    LoadDependency(Vec<Name>),
-}
 
 impl Query for Variable {
     type Value = i32;

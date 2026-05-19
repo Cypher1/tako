@@ -6,6 +6,9 @@ use crate::primitives::typed_index::TypedIndex;
 use qbice::{Decode, Encode, Identifiable, StableHash};
 use thiserror::Error;
 
+/**
+Tako's primary internal error type (non-user-facing)
+*/
 #[derive(Error, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode)]
 pub enum TError {
     ClangCompilerError {
@@ -15,6 +18,7 @@ pub enum TError {
     ParseError(ParseError),
     InternalError {
         message: String,
+        // TODO: Should be a Node ID rather than a Location
         location: Option<Location>,
     },
 }
@@ -73,6 +77,10 @@ impl From<std::num::ParseIntError> for TError {
     }
 }
 
+/**
+Tako's user facing error type
+Contains an internal error with markup for humans
+*/
 #[derive(Error, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct Error {
     pub source: TError,
