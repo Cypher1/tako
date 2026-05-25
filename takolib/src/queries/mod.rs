@@ -19,9 +19,7 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AnyQuery {
     // Loading
-    LoadQuery(Load),                                 // name, version? -> string
-    LoadLocalFileQuery(LoadLocalFile),               // path -> string with IO
-    DownloadDependenciesQuery(DownloadDependencies), // name, version -> string with IO
+    LoadQuery(Load),                         // name, version? -> string
     // Parsing
     LexQuery(Lex),                           // name -> token[]
     ParseFrontMatterQuery(ParseFrontMatter), // name -> [partial] ast, token[]
@@ -80,7 +78,7 @@ pub struct Desugar {
 }
 
 impl Query for Desugar {
-    type Value = Ast;
+    type Value = Result<Ast, TError>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
@@ -89,7 +87,7 @@ pub struct Lower {
 }
 
 impl Query for Lower {
-    type Value = Ast;
+    type Value = Result<Ast, TError>;
 }
 
 #[cfg(feature = "codegen")]
@@ -100,7 +98,7 @@ pub struct CodeGenAll {
 
 #[cfg(feature = "codegen")]
 impl Query for CodeGenAll {
-    type Value = BTreeMap<Name, BinaryInfo>;
+    type Value = Result<BTreeMap<Name, BinaryInfo>;
 }
 
 #[cfg(feature = "codegen")]
@@ -111,7 +109,7 @@ pub struct EnnumerateBinaries {
 
 #[cfg(feature = "codegen")]
 impl Query for EnnumerateBinaries {
-    type Value = BTreeMap<Name, BinaryDescription>;
+    type Value = Result<BTreeMap<Name, BinaryDescription>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
@@ -120,7 +118,7 @@ pub struct WriteCodeGenAll {
 }
 
 impl Query for WriteCodeGenAll {
-    type Value = ();
+    type Value = Result<(), TError>;
 }
 
 #[cfg(feature = "codegen")]
@@ -132,7 +130,7 @@ pub struct CodeGen {
 
 #[cfg(feature = "codegen")]
 impl Query for CodeGen {
-    type Value = BinaryInfo;
+    type Value = Result<BinaryInfo, TError>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
@@ -142,7 +140,7 @@ pub struct WriteCodeGen {
 }
 
 impl Query for WriteCodeGen {
-    type Value = ();
+    type Value = Result<(), TError>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
@@ -154,7 +152,7 @@ pub struct Eval {
 
 impl Query for Eval {
     // A set of context values would be useful here...
-    type Value = Prim;
+    type Value = Result<Prim, TError>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
@@ -164,7 +162,7 @@ pub struct Optimize {
 }
 
 impl Query for Optimize {
-    type Value = (Ast, NodeId);
+    type Value = Result<(Ast, NodeId), TError>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
@@ -174,7 +172,7 @@ pub struct TypeAt {
 }
 
 impl Query for TypeAt {
-    type Value = (Ast, NodeId); // NodeId should point to the TypeInfo to pretty print.
+    type Value = Result<(Ast, NodeId); // NodeId should point to the TypeInfo to pretty print.
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
@@ -184,7 +182,7 @@ pub struct TypeCheck {
 }
 
 impl Query for TypeCheck {
-    type Value = (Ast, NodeId); // With the type info added.
+    type Value = Result<(Ast, NodeId); // With the type info added.
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
@@ -194,7 +192,7 @@ pub struct CheckProofs {
 }
 
 impl Query for CheckProofs {
-    type Value = (Ast, NodeId, Vec<TError>);
+    type Value = Result<(Ast, NodeId, Vec<TError>);
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
@@ -204,7 +202,7 @@ pub struct GetType {
 }
 
 impl Query for GetType {
-    type Value = (Ast, NodeId); // With the type info added.
+    type Value = Result<(Ast, NodeId); // With the type info added.
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
@@ -214,7 +212,7 @@ pub struct FindNode {
 }
 
 impl Query for FindNode {
-    type Value = (Ast, NodeId);
+    type Value = Result<(Ast, NodeId), TError>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
@@ -224,7 +222,7 @@ pub struct GetLocation {
 }
 
 impl Query for GetLocation {
-    type Value = (FileRef, Location);
+    type Value = Result<(FileRef, Location), TError>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
@@ -233,7 +231,7 @@ pub struct Parse {
 }
 
 impl Query for Parse {
-    type Value = Ast;
+    type Value = Result<Ast, TError>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
@@ -243,7 +241,7 @@ pub struct FindDefinition {
 }
 
 impl Query for FindDefinition {
-    type Value = (Ast, NodeId);
+    type Value = Result<(Ast, NodeId), TError>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
@@ -252,7 +250,7 @@ pub struct EvalFrontMatter {
 }
 
 impl Query for EvalFrontMatter {
-    type Value = (Ast, usize); // Number of tokens to skip
+    type Value = Result<(Ast, usize); // Number of tokens to skip
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
@@ -261,7 +259,7 @@ pub struct ParseFrontMatter {
 }
 
 impl Query for ParseFrontMatter {
-    type Value = Ast;
+    type Value = Result<Ast, TError>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
@@ -270,7 +268,7 @@ pub struct MacroExpand {
 }
 
 impl Query for MacroExpand {
-    type Value = Ast;
+    type Value = Result<Ast, TError>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
@@ -279,7 +277,7 @@ pub struct HandleImport {
 }
 
 impl Query for HandleImport {
-    type Value = Ast;
+    type Value = Result<Ast, TError>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
@@ -288,7 +286,7 @@ pub struct Lex {
 }
 
 impl Query for Lex {
-    type Value = Vec<Token>;
+    type Value = Result<Vec<Token>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
@@ -301,32 +299,13 @@ impl Query for Load {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
-pub struct LoadLocalFile {
-    file: PathBuf,
-}
-
-impl Query for LoadLocalFile {
-    type Value = String;
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
-pub struct DownloadDependencies {
-    file: PathBuf,
-    version: String,
-}
-
-impl Query for DownloadDependencies {
-    type Value = String;
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct PrettyPrint {
     ast: Ast,
     entry: NodeId,
 }
 
 impl Query for PrettyPrint {
-    type Value = String;
+    type Value = Result<String, TError>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
@@ -336,7 +315,7 @@ pub struct Interpret {
 }
 
 impl Query for Interpret {
-    type Value = ();
+    type Value = Result<(), TError>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
@@ -346,7 +325,7 @@ pub struct EvalNode {
 }
 
 impl Query for EvalNode {
-    type Value = Prim;
+    type Value = Result<Prim, TError>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]

@@ -26,3 +26,16 @@ impl<C: qbice::Config> Executor<Load, C> for LoadExecutor {
         qbice::ExecutionStyle::ExternalInput
     }
 }
+
+#[derive(Clone, Copy, Debug)]
+struct LexExecutor;
+
+impl<C: qbice::Config> Executor<Lex, C> for LexExecutor {
+    async fn execute(&self, query: &Lex, engine: &TrackedEngine<C>) -> Result<Vec<Token>, TError> {
+        let contents = engine.query(Load {
+            file: query.entry,
+        });
+        use crate::parser::tokens::lex;
+        lex(contents)
+    }
+}
