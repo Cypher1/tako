@@ -7,6 +7,7 @@ use crate::parser::{
     tokens::Symbol,
 };
 use crate::primitives::typed_index::TypedIndex;
+use crate::queries::FileRef;
 use qbice::{Decode, Encode, Identifiable, StableHash};
 use smallvec::SmallVec;
 
@@ -33,6 +34,8 @@ pub enum NodeData {
     Identifier(IdentifierId),
     Atom(AtomId),
 
+    // Imports:
+    Import(ImportId),
     // Apply & Abstract:
     Call(CallId),
     Op(OpId),
@@ -72,6 +75,21 @@ pub struct Atom {
     pub name: Name,
 }
 make_contains!(atoms, (NodeId, Atom), Atom, AtomId, add_atom);
+
+#[derive(
+    Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode,
+)]
+pub struct Import {
+    entry: FileRef,
+}
+make_contains!(imports, (NodeId, Import), Import, ImportId, add_import);
+
+impl Import {
+    #[must_use]
+    pub fn new(entry: FileRef) -> Self {
+        Self { entry }
+    }
+}
 
 #[derive(
     Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode,

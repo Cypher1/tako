@@ -35,6 +35,7 @@ pub struct Ast {
     pub warnings: Container<(NodeId, Warning)>,
 
     // Syntactic constructs:
+    pub imports: Container<(NodeId, Import)>,
     pub calls: Container<(NodeId, Call)>, // Convert to this from definition head.
     pub identifiers: Container<(NodeId, Name)>, // Convert to this from definition head.
     pub ops: Container<(NodeId, Op)>,

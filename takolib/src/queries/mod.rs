@@ -23,9 +23,9 @@ pub enum AnyQuery {
     // Parsing
     LexQuery(Lex),                           // name -> token[]
     ParseFrontMatterQuery(ParseFrontMatter), // name -> [partial] ast, token[]
-    EvalFrontMatterQuery(EvalFrontMatter),   // name -> operator[], macro[], [partial] ast, token[]
     ParseQuery(Parse),                       // file/name -> [partial]ast, [src]node
-    HandleImportQuery(HandleImport),         // name -> [partial]ast
+    HandleImportQuery(HandleImport),         // name[] -> [partial]ast
+    ResolveAstQuery(ResolveAst),           // file -> [partial, resolved]ast
     MacroExpandQuery(MacroExpand),           // name -> [partial]ast, [gen]node
     FindNodeQuery(FindNode),                 // src_pos -> [src]node
     FindDefinitionQuery(FindDefinition),     // name -> [src]node
@@ -61,7 +61,7 @@ pub enum AnyQuery {
     SourceMapGenQuery(SourceMapGen), // src -> IO
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode)]
 pub enum FileRef {
     File(PathBuf),
     InMemory(PathBuf, String),
@@ -70,6 +70,15 @@ pub enum FileRef {
         version: String,
         internal_path: PathBuf,
     },
+}
+impl FileRef {
+    fn to_path_buf(&self) -> PathBuf {
+        match self {
+            Self::File(pathbuf) => pathbuf.to_owned(),
+            Self::InMemory(pathbuf, _) => pathbuf.to_owned(),
+            Self::Dependency { name, version, internal_path } => PathBuf::from("tako://").join(PathBuf::from(name)).join(PathBuf::from(version)).join(internal_path), // TODO(correctness): Check that these paths are usable.
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
@@ -98,7 +107,7 @@ pub struct CodeGenAll {
 
 #[cfg(feature = "codegen")]
 impl Query for CodeGenAll {
-    type Value = Result<BTreeMap<Name, BinaryInfo>;
+    type Value = Result<BTreeMap<Name, BinaryInfo>>;
 }
 
 #[cfg(feature = "codegen")]
@@ -109,7 +118,7 @@ pub struct EnnumerateBinaries {
 
 #[cfg(feature = "codegen")]
 impl Query for EnnumerateBinaries {
-    type Value = Result<BTreeMap<Name, BinaryDescription>;
+    type Value = Result<BTreeMap<Name, BinaryDescription>>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
@@ -172,7 +181,7 @@ pub struct TypeAt {
 }
 
 impl Query for TypeAt {
-    type Value = Result<(Ast, NodeId); // NodeId should point to the TypeInfo to pretty print.
+    type Value = Result<(Ast, NodeId), TError>; // NodeId should point to the TypeInfo to pretty print.
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
@@ -182,7 +191,7 @@ pub struct TypeCheck {
 }
 
 impl Query for TypeCheck {
-    type Value = Result<(Ast, NodeId); // With the type info added.
+    type Value = Result<(Ast, NodeId), TError>; // With the type info added.
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
@@ -192,7 +201,7 @@ pub struct CheckProofs {
 }
 
 impl Query for CheckProofs {
-    type Value = Result<(Ast, NodeId, Vec<TError>);
+    type Value = Result<(Ast, NodeId, Vec<TError>), TError>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
@@ -202,7 +211,7 @@ pub struct GetType {
 }
 
 impl Query for GetType {
-    type Value = Result<(Ast, NodeId); // With the type info added.
+    type Value = Result<(Ast, NodeId), TError>; // With the type info added.
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
@@ -245,15 +254,6 @@ impl Query for FindDefinition {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
-pub struct EvalFrontMatter {
-    entry: FileRef,
-}
-
-impl Query for EvalFrontMatter {
-    type Value = Result<(Ast, usize); // Number of tokens to skip
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct ParseFrontMatter {
     entry: FileRef,
 }
@@ -274,9 +274,19 @@ impl Query for MacroExpand {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct HandleImport {
     entry: FileRef,
+    import: FileRef,
 }
 
 impl Query for HandleImport {
+    type Value = Result<Ast, TError>;
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
+pub struct ResolveAst {
+    entry: FileRef,
+}
+
+impl Query for ResolveAst {
     type Value = Result<Ast, TError>;
 }
 
@@ -286,7 +296,7 @@ pub struct Lex {
 }
 
 impl Query for Lex {
-    type Value = Result<Vec<Token>;
+    type Value = Result<Vec<Token>, TError>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
