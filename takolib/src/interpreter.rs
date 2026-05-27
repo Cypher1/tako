@@ -1,5 +1,8 @@
 use crate::ast::string_interner::Name;
-use crate::ast::{Ast, Call, Contains, Definition, LiteralId, Node, NodeData, NodeId, OpId};
+use crate::ast::{
+    Ast, Call, Contains, Definition, Import, LiteralId, Node, NodeData, NodeId, OpId,
+};
+use crate::queries::FileRef;
 use crate::error::TError;
 use crate::parser::semantics::Literal;
 use crate::parser::tokens::Symbol;
@@ -7,7 +10,6 @@ use crate::primitives::Prim;
 use log::trace;
 use std::collections::HashMap;
 use std::convert::TryInto;
-use std::path::Path;
 
 #[derive(Default, Clone, Debug, Eq, PartialEq)]
 pub struct State {
@@ -24,11 +26,11 @@ struct Ctx<'a> {
     ast: &'a mut Ast, // Allowing computed values to be updated in `name_to_value`.
 }
 
-pub fn run(path: &Path, ast: Ast, root: Option<NodeId>) -> Result<Prim, TError> {
+pub fn run(path: &FileRef, ast: Ast, root: Option<NodeId>) -> Result<Prim, TError> {
     let (_, result) = run_impl(path, ast, root)?;
     Ok(result)
 }
-pub fn run_impl(path: &Path, mut ast: Ast, root: Option<NodeId>) -> Result<(Ast, Prim), TError> {
+pub fn run_impl(path: &FileRef, mut ast: Ast, root: Option<NodeId>) -> Result<(Ast, Prim), TError> {
     let start = if let Some(root) = root {
         root
     } else if ast.roots.len() == 1 {
@@ -37,7 +39,6 @@ pub fn run_impl(path: &Path, mut ast: Ast, root: Option<NodeId>) -> Result<(Ast,
         return Err(TError::InternalError {
             message: format!(
                 "Ambiguous run command: No root found for {path}",
-                path = path.display()
             ),
             location: None,
         });
@@ -45,7 +46,6 @@ pub fn run_impl(path: &Path, mut ast: Ast, root: Option<NodeId>) -> Result<(Ast,
         return Err(TError::InternalError {
             message: format!(
                 "Ambiguous run command: Multiple roots found for {path}",
-                path = path.display()
             ),
             location: None,
         });
@@ -81,6 +81,10 @@ impl Ctx<'_> {
                 Ok(value.clone())
             }
             NodeData::Atom(_id) => todo!(),
+            NodeData::Import(import) => {
+                let (_id, Import { entry }) = self.ast.get(import).clone();
+                todo!("self.eval_file({entry:?})")
+            }
             NodeData::Call(call) => {
                 let (_id, Call { inner, args }) = self.ast.get(call).clone();
                 for arg in args.iter() {
@@ -130,6 +134,7 @@ impl Ctx<'_> {
     pub fn eval_op(&mut self, _node: &Node, id: OpId) -> Result<Prim, TError> {
         let (_node_id, op) = id.get(&self.ast.ops).clone(); // TODO: Consider making these `Copy`.
         Ok(match op.op {
+            Symbol::Import => unreachable!("import should be converted to Import"),
             Symbol::Add => match self.eval2(&op.args)? {
                 [Prim::I32(l), Prim::I32(r)] => Prim::I32(l + r),
                 _ => todo!(),
@@ -283,16 +288,17 @@ mod tests {
     use crate::error::TError;
     use crate::parser::parse;
     use crate::parser::tokens::lex;
-    use std::path::PathBuf;
+    use crate::queries::FileRef;
 
-    fn test_path() -> PathBuf {
-        "test.tk".into()
+    fn test_path(s: &str) -> FileRef {
+        FileRef::InMemory("test.tk".into(), s.to_owned())
     }
 
     fn setup(s: &str) -> Result<Ast, TError> {
+        let file = test_path(s);
         crate::ensure_initialized();
         let tokens = lex(s)?;
-        parse(&test_path(), &None, s, &tokens)
+        parse(&file, &None, s, &tokens)
     }
 
     #[test]

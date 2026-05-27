@@ -10,12 +10,12 @@ pub mod string_interner;
 
 use crate::parser::tokens::Symbol;
 use crate::primitives::typed_index::TypedIndex;
+use crate::queries::FileRef;
 use crate::{parser::semantics::Literal, primitives::Prim};
 use location::Location;
 use pretty_printer::{pretty, pretty_node};
 use smallvec::smallvec;
 use std::collections::BTreeMap;
-use std::path::PathBuf;
 use std::sync::Arc;
 use string_interner::{Name, StringInterner};
 
@@ -27,7 +27,7 @@ type Container<T> = Arc<Vec<T>>;
 pub struct Ast {
     // TODO(usability): Add a range tree for mapping from locations to nodes.
     // Abstract syntax tree... forest
-    pub filepath: PathBuf,
+    pub fileref: FileRef,
     pub roots: Container<NodeId>,
     pub nodes: Container<Node>,
 
@@ -49,9 +49,9 @@ pub struct Ast {
 
 impl Ast {
     #[must_use]
-    pub fn new(filepath: PathBuf) -> Self {
+    pub fn new(fileref: FileRef) -> Self {
         Self {
-            filepath,
+            fileref,
             ..Self::default()
         }
     }

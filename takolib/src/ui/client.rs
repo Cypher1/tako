@@ -2,16 +2,16 @@ use super::OptionsTrait;
 use crate::error::Error;
 use crate::primitives::Prim;
 use crate::tasks::{RequestTask, StatusReport, TaskKind, TaskStats};
+use crate::queries::FileRef;
 use log::trace;
 use std::collections::{BTreeSet, HashMap};
-use std::path::PathBuf;
 use tokio::sync::{broadcast, mpsc};
 
 #[derive(Debug)]
 pub struct Client {
     pub manager_status: HashMap<TaskKind, TaskStats>,
     pub history: Vec<String>, // TODO(usability): Mark Input v output.
-    pub errors_for_file: HashMap<Option<PathBuf>, BTreeSet<Error>>,
+    pub errors_for_file: HashMap<Option<FileRef>, BTreeSet<Error>>,
     pub options: Box<dyn OptionsTrait>,
     stats_requester: broadcast::Sender<()>,
     task_manager_status_receiver: broadcast::Receiver<StatusReport>,
@@ -19,9 +19,9 @@ pub struct Client {
     pub result_receiver: mpsc::UnboundedReceiver<Prim>,
     result_sender: mpsc::UnboundedSender<Prim>,
     #[allow(unused)]
-    file_watch_requester: mpsc::UnboundedSender<PathBuf>,
+    file_watch_requester: mpsc::UnboundedSender<FileRef>,
     #[allow(unused)]
-    file_updater: broadcast::Receiver<PathBuf>,
+    file_updater: broadcast::Receiver<FileRef>,
 }
 
 impl Client {
@@ -30,8 +30,8 @@ impl Client {
         stats_requester: broadcast::Sender<()>,
         task_manager_status_receiver: broadcast::Receiver<StatusReport>,
         request_sender: mpsc::UnboundedSender<(RequestTask, mpsc::UnboundedSender<Prim>)>,
-        file_watch_requester: mpsc::UnboundedSender<PathBuf>,
-        file_updater: broadcast::Receiver<PathBuf>,
+        file_watch_requester: mpsc::UnboundedSender<FileRef>,
+        file_updater: broadcast::Receiver<FileRef>,
         options: Box<dyn OptionsTrait>,
     ) -> Self {
         let (result_sender, result_receiver) = mpsc::unbounded_channel();
@@ -92,7 +92,7 @@ impl Client {
             Ok(StatusReport { kind, stats, errors }) = self.task_manager_status_receiver.recv() => {
                 trace!("TaskManager status: {kind:?} => {stats}\nerrors: {errors:#?}");
                 for (_id, err) in errors {
-                    let file = err.location.as_ref().map(|loc| loc.filename.clone());
+                    let file = err.location.as_ref().map(|loc| loc.file.clone());
                     let errs = self.errors_for_file.entry(file).or_default();
                     errs.insert(err);
                 }

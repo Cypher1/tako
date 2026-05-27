@@ -8,6 +8,7 @@ use crate::lowerer::lower;
 use crate::parser::tokens::Token;
 use crate::primitives::meta::Meta;
 use crate::primitives::Prim;
+use crate::queries::FileRef;
 use async_trait::async_trait;
 use enum_kinds::EnumKind;
 use llamada::Llamada;
@@ -16,7 +17,6 @@ pub use manager::{StatusReport, TaskStats};
 pub use status::*;
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::path::PathBuf;
 pub use task_trait::TaskId;
 use task_trait::{Task, UpdateSenderFor};
 
@@ -47,10 +47,10 @@ pub enum AnyTask {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RequestTask {
     Build {
-        files: Vec<PathBuf>,
+        files: Vec<FileRef>,
     },
     RunInterpreter {
-        files: Vec<PathBuf>,
+        files: Vec<FileRef>,
     },
     Eval {
         ast: Option<Ast>, /* Holding all context and state */
@@ -60,7 +60,7 @@ pub enum RequestTask {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct LoadFileTask {
-    pub path: PathBuf,
+    pub file: FileRef,
     pub invalidate: Meta<bool>,
 }
 
@@ -71,20 +71,20 @@ impl Task for LoadFileTask {
     fn invalidate(&self) -> bool {
         *self.invalidate
     }
-    fn has_file_path(&self) -> Option<&PathBuf> {
-        Some(&self.path)
+    fn has_file(&self) -> Option<FileRef> {
+        Some(self.file.clone())
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        trace!("LoadFileTask: {path}", path = self.path.display());
+        trace!("LoadFileTask: {file}", file = self.file);
         // TODO(perf): Use tokio's async read_to_string.
-        let contents = std::fs::read_to_string(&self.path);
+        let contents = std::fs::read_to_string(&self.file.to_path_buf().1);
         let contents = contents.map_err(|err| self.decorate_error(err));
         result_sender
             .send((
                 self.clone(),
                 match contents {
                     Ok(result) => Update::FinalResult(LexFileTask {
-                        path: self.path,
+                        file: self.file,
                         contents: result,
                     }),
                     Err(err) => Update::Failed(err),
@@ -96,7 +96,7 @@ impl Task for LoadFileTask {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct LexFileTask {
-    pub path: PathBuf,
+    pub file: FileRef,
     pub contents: String,
 }
 
@@ -105,15 +105,15 @@ impl Task for LexFileTask {
     type Output = ParseFileTask;
     const TASK_KIND: TaskKind = TaskKind::LexFile;
 
-    fn has_file_path(&self) -> Option<&PathBuf> {
-        Some(&self.path)
+    fn has_file(&self) -> Option<&FileRef> {
+        Some(&self.file)
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        trace!("LexFileTask: {path}", path = self.path.display());
+        trace!("LexFileTask: {file}", file = self.file);
         let tokens = crate::parser::tokens::lex(&self.contents);
         let tokens = tokens
             .map(|tokens| ParseFileTask {
-                path: self.path.clone(),
+                file: self.file.clone(),
                 ast: None,
                 contents: self.contents.clone(),
                 tokens,
@@ -133,7 +133,7 @@ impl Task for LexFileTask {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct ParseFileTask {
-    pub path: PathBuf,
+    pub file: FileRef,
     pub ast: Option<Ast>,
     pub contents: String,
     pub tokens: Vec<Token>,
@@ -144,19 +144,19 @@ impl Task for ParseFileTask {
     type Output = DesugarFileTask; // For now, we'll just store the AST itself.
     const TASK_KIND: TaskKind = TaskKind::ParseFile;
 
-    fn has_file_path(&self) -> Option<&PathBuf> {
-        Some(&self.path)
+    fn has_file(&self) -> Option<&FileRef> {
+        Some(&self.file)
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        trace!("ParseFileTask: {path}", path = self.path.display());
-        let ast = crate::parser::parse(&self.path, &self.ast, &self.contents, &self.tokens)
+        trace!("ParseFileTask: {file}", file = self.file);
+        let ast = crate::parser::parse(&self.file, &self.ast, &self.contents, &self.tokens)
             .map_err(|err| self.decorate_error(err));
         result_sender
             .send((
                 self.clone(),
                 match ast {
                     Ok(result) => Update::FinalResult(DesugarFileTask {
-                        path: self.path,
+                        file: self.file,
                         ast: result,
                         root: None, // Dont assume which root to run (yet?)
                     }),
@@ -169,7 +169,7 @@ impl Task for ParseFileTask {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct DesugarFileTask {
-    pub path: PathBuf,
+    pub file: FileRef,
     pub ast: Ast,
     pub root: Option<NodeId>,
 }
@@ -181,19 +181,19 @@ impl Task for DesugarFileTask {
 
     const TASK_KIND: TaskKind = TaskKind::DesugarFile;
 
-    fn has_file_path(&self) -> Option<&PathBuf> {
-        Some(&self.path)
+    fn has_file(&self) -> Option<&FileRef> {
+        Some(&self.file)
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        trace!("DesugarFileTask: {path}", path = self.path.display());
-        let ast = crate::desugarer::desugar(&self.path, &self.ast, self.root)
+        trace!("DesugarFileTask: {file}", file = self.file);
+        let ast = crate::desugarer::desugar(&self.file, &self.ast, self.root)
             .map_err(|err| self.decorate_error(err));
         result_sender
             .send((
                 self.clone(),
                 match ast {
                     Ok(result) => Update::FinalResult(EvalFileTask {
-                        path: self.path,
+                        file: self.file,
                         ast: result,
                         root: None,
                     }),
@@ -206,7 +206,7 @@ impl Task for DesugarFileTask {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct LowerFileTask {
-    pub path: PathBuf,
+    pub file: FileRef,
     pub ast: Ast,
     pub root: NodeId,
 }
@@ -218,19 +218,19 @@ impl Task for LowerFileTask {
 
     const TASK_KIND: TaskKind = TaskKind::LowerFile;
 
-    fn has_file_path(&self) -> Option<&PathBuf> {
-        Some(&self.path)
+    fn has_file(&self) -> Option<&FileRef> {
+        Some(&self.file)
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        trace!("LowerFileTask: {path}", path = self.path.display());
+        trace!("LowerFileTask: {file}", file = self.file);
         let result =
-            lower(&self.path, &self.ast, self.root).map_err(|err| self.decorate_error(err));
+            lower(&self.file, &self.ast, self.root).map_err(|err| self.decorate_error(err));
         result_sender
             .send((
                 self.clone(),
                 match result {
                     Ok(result) => Update::FinalResult(CodegenTask {
-                        path: self.path,
+                        file: self.file,
                         ast: self.ast,
                         lowered: result,
                         root: self.root,
@@ -244,7 +244,7 @@ impl Task for LowerFileTask {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct EvalFileTask {
-    pub path: PathBuf,
+    pub file: FileRef,
     pub ast: Ast,
     pub root: Option<NodeId>,
 }
@@ -255,12 +255,12 @@ impl Task for EvalFileTask {
     const TASK_KIND: TaskKind = TaskKind::EvalFile;
     const RESULT_IS_CACHABLE: bool = false;
 
-    fn has_file_path(&self) -> Option<&PathBuf> {
-        Some(&self.path)
+    fn has_file(&self) -> Option<&FileRef> {
+        Some(&self.file)
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        trace!("EvalFileTask: {path}", path = self.path.display());
-        let result = crate::interpreter::run(&self.path, self.ast.clone(), self.root)
+        trace!("EvalFileTask: {file}", file = self.file);
+        let result = crate::interpreter::run(&self.file, self.ast.clone(), self.root)
             .map_err(|err| self.decorate_error(err));
         result_sender
             .send((
@@ -276,7 +276,7 @@ impl Task for EvalFileTask {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct CodegenTask {
-    pub path: PathBuf,
+    pub file: FileRef,
     pub ast: Ast,
     pub lowered: Llamada,
     pub root: NodeId,
@@ -288,15 +288,12 @@ impl Task for CodegenTask {
     const TASK_KIND: TaskKind = TaskKind::Codegen;
     const RESULT_IS_CACHABLE: bool = false;
 
-    fn has_file_path(&self) -> Option<&PathBuf> {
-        Some(&self.path)
+    fn has_file(&self) -> Option<&FileRef> {
+        Some(&self.file)
     }
     #[cfg(not(feature = "codegen"))]
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        trace!(
-            "CodegenTask (nobackend): {path}",
-            path = self.path.display()
-        );
+        trace!("CodegenTask (nobackend): {file}", file = self.file);
         use crate::error::TError;
         let err = Update::Failed(self.decorate_error(TError::InternalError {
             location: None,
@@ -308,8 +305,8 @@ impl Task for CodegenTask {
     }
     #[cfg(feature = "codegen")]
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        trace!("CodegenTask (backend): {path}", path = self.path.display());
-        let result = crate::codegen::codegen(&self.path, &self.ast, Some(self.root))
+        trace!("CodegenTask (backend): {file}", file = self.file);
+        let result = crate::codegen::codegen(&self.file, &self.ast, Some(self.root))
             .map_err(|err| self.decorate_error(err));
         result_sender
             .send((

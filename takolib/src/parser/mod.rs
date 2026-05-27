@@ -2,21 +2,35 @@ pub mod semantics;
 pub mod tokens;
 use crate::ast::location::Location;
 use crate::ast::string_interner::Name;
-use crate::ast::{Ast, Atom, Call, Contains, Definition, NodeData, NodeId, Op};
+use crate::ast::{Ast, Atom, Call, Contains, Definition, Import, NodeData, NodeId, Op};
 use crate::error::TError;
+use crate::queries::FileRef;
 use better_std::include_strs;
 use log::{debug, trace};
 use qbice::{Decode, Encode, Identifiable, StableHash};
 use semantics::BindingMode;
 use semantics::Literal;
 use smallvec::smallvec;
-use std::path::Path;
+use std::path::PathBuf;
 use thiserror::Error;
 use tokens::{assign_op, binding_mode_operation, is_assign, OpBinding, Symbol, Token, TokenType};
 
 pub const KEYWORDS: &[&str] = include_strs!("keywords.txt");
 
-#[derive(Debug, Error, PartialEq, Eq, Ord, PartialOrd, Clone, Hash, StableHash, Identifiable, Encode, Decode)]
+#[derive(
+    Debug,
+    Error,
+    PartialEq,
+    Eq,
+    Ord,
+    PartialOrd,
+    Clone,
+    Hash,
+    StableHash,
+    Identifiable,
+    Encode,
+    Decode,
+)]
 pub enum ParseError {
     UnexpectedEof, // TODO: Add context.
     UnexpectedTokenTypeExpectedOperator {
@@ -534,13 +548,23 @@ impl<'toks, T: Iterator<Item = &'toks Token>> ParseState<'_, 'toks, T> {
                     OpBinding::Open => todo!("Should have already been handled"),
                     OpBinding::PrefixOp | OpBinding::PrefixOrInfixBinOp => {
                         let right = self.expr(binding)?;
-                        self.ast.add_op(
-                            Op {
-                                op: symbol,
-                                args: smallvec![right],
-                            },
-                            location,
-                        )
+                        if symbol == Symbol::Import {
+                            // TODO(feature): Force evaluate `right`.
+                            self.ast.add_import(
+                                Import {
+                                    entry: crate::queries::FileRef::File(PathBuf::from("todo")),
+                                },
+                                location,
+                            )
+                        } else {
+                            self.ast.add_op(
+                                Op {
+                                    op: symbol,
+                                    args: smallvec![right],
+                                },
+                                location,
+                            )
+                        }
                     }
                     _ => {
                         let st = location.start.into();
@@ -681,16 +705,16 @@ impl<'toks, T: Iterator<Item = &'toks Token>> ParseState<'_, 'toks, T> {
 }
 
 pub fn parse(
-    filepath: &Path,
+    fileref: &FileRef,
     ast: &Option<Ast>,
     contents: &str,
     tokens: &[Token],
 ) -> Result<Ast, TError> {
-    trace!("Parse {}: {:?}", filepath.display(), &tokens);
+    trace!("Parse {}: {:?}", fileref, &tokens);
     let ast = if let Some(ast) = ast {
         ast.clone()
     } else {
-        Ast::new(filepath.to_path_buf())
+        Ast::new(fileref.clone())
     };
     let mut state = ParseState {
         contents,
@@ -724,6 +748,8 @@ fn normalize_keywords_as_ops(ast: &Ast, name: Name) -> TokenType {
         Symbol::Forall
     } else if name == interner.kw_exists {
         Symbol::Exists
+    } else if name == interner.kw_import {
+        Symbol::Import
     } else {
         return TokenType::Ident;
     };
@@ -734,17 +760,18 @@ fn normalize_keywords_as_ops(ast: &Ast, name: Name) -> TokenType {
 pub mod tests {
     use super::semantics::Literal;
     use super::*;
-    use std::path::PathBuf;
+    use crate::queries::FileRef;
     use tokens::lex;
 
-    fn test_file1() -> PathBuf {
-        "test.tk".into()
+    fn test_file1(s: &str) -> FileRef {
+        FileRef::InMemory("test.tk".into(), s.to_owned())
     }
 
     fn setup(s: &str) -> Result<Ast, TError> {
         crate::ensure_initialized();
+        let file = test_file1(s);
         let tokens = lex(s)?;
-        parse(&test_file1(), &None, s, &tokens)
+        parse(&file, &None, s, &tokens)
     }
 
     #[test]

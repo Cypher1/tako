@@ -13,10 +13,12 @@ include = ["src/**/*", "LICENSE.md", "README.md"]
 [features]
 default=["native"]
 wasm=["wasm-logger", "uuid/rng-rand", "getrandom/wasm_js"]
-native=["env_logger", "rocksdb"]
+native_linux=["env_logger", "rocksdb"]
+native=["env_logger", "fjall"]
 llvm=["inkwell", "codegen"]
 codegen=[] # signals that 'a' codegen backend is active.
 rocksdb=["qbice/rocksdb", "qbice/default-config"]
+fjall=["qbice/fjall"]
 
 [lib]
 name = "takolib"

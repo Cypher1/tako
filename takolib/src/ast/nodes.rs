@@ -80,7 +80,7 @@ make_contains!(atoms, (NodeId, Atom), Atom, AtomId, add_atom);
     Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode,
 )]
 pub struct Import {
-    entry: FileRef,
+    pub entry: FileRef,
 }
 make_contains!(imports, (NodeId, Import), Import, ImportId, add_import);
 

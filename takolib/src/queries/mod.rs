@@ -4,6 +4,7 @@ use enum_kinds::EnumKind;
 use qbice::{Decode, Encode, Identifiable, Query, StableHash};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
+use std::fmt;
 
 #[cfg(feature = "codegen")]
 use crate::codegen::{BinaryDescription, BinaryInfo};
@@ -73,11 +74,31 @@ pub enum FileRef {
         internal_path: PathBuf,
     },
 }
-impl FileRef {
-    fn to_path_buf(&self) -> PathBuf {
+impl Default for FileRef {
+    fn default() -> Self {
+        Self::InMemory(PathBuf::new(), String::new())
+    }
+}
+
+impl std::fmt::Display for FileRef {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::File(pathbuf) => pathbuf.to_owned(),
-            Self::InMemory(pathbuf, _) => pathbuf.to_owned(),
+            Self::File(pathbuf) => write!(f, "{}", pathbuf.display()),
+            Self::InMemory(pathbuf, _) => write!(f, "mem://{}", pathbuf.display()),
+            Self::Dependency {
+                name,
+                version,
+                internal_path,
+            } => write!(f, "{name}@{version}: {}", internal_path.display()),
+        }
+    }
+}
+
+impl FileRef {
+    pub fn to_path_buf(&self) -> (Option<PathBuf>, PathBuf) {
+        match self {
+            Self::File(pathbuf) => (None, pathbuf.to_owned()),
+            Self::InMemory(pathbuf, _) => (None, pathbuf.to_owned()),
             Self::Dependency {
                 name,
                 version,
@@ -88,15 +109,18 @@ impl FileRef {
                     .expect("Should produce a valid path");
                 // let config_dir = project_dirs
                 //      .config_dir(); // "Roaming" / synced config dir
-                let cache_dir = project_dirs
-                    .cache_dir();
+                let cache_dir = project_dirs.cache_dir();
                 // TODO: Get file from bzip2.
                 // TODO: Return as a enum of PathBuf or BzipPath + Subpath
-                cache_dir
-                    .join(PathBuf::from("packages"))
-                    .join(PathBuf::from(name))
-                    .join(PathBuf::from(version))
-                    .join(internal_path)
+                (
+                    Some(
+                        cache_dir
+                            .join(PathBuf::from("packages"))
+                            .join(PathBuf::from(name))
+                            .join(PathBuf::from(version)),
+                    ),
+                    internal_path.to_path_buf(),
+                )
             }
         }
     }

@@ -1,4 +1,5 @@
 #![allow(unused)]
+use crate::ast::Import;
 use crate::ast::{string_interner::Name, Ast, Contains, Definition, Node, NodeData, NodeId};
 use crate::parser::semantics::BindingMode;
 use better_std::as_context;
@@ -117,6 +118,10 @@ impl std::fmt::Display for PrintNode<'_> {
             NodeData::Atom(node) => {
                 let (_node_id, node) = self.context().get(*node);
                 self.print_identifier(f, node.name)?;
+            }
+            NodeData::Import(import) => {
+                let (_id, Import { entry }) = self.context().get(*import).clone();
+                write!(f, "import {entry:?}")?;
             }
             NodeData::Call(node) => {
                 let (_node_id, node) = self.context().get(*node);

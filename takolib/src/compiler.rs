@@ -2,6 +2,7 @@ use super::ui::OptionsTrait;
 use crate::ast::Ast;
 use crate::primitives::meta::Meta;
 use crate::primitives::Prim;
+use crate::queries::FileRef;
 use crate::tasks::manager::TaskManager;
 pub use crate::tasks::manager::{StatusReport, TaskStats};
 pub use crate::tasks::status::*;
@@ -19,7 +20,6 @@ use qbice::storage::storage_engine::in_memory::InMemoryStorageEngineFactory;
 use qbice::{Config, Engine};
 use qbice::{Decode, Encode, Executor, Identifiable, Query, StableHash, TrackedEngine};
 use std::fmt::Debug;
-use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tokio::spawn;
 use tokio::sync::{broadcast, mpsc, oneshot};
@@ -95,12 +95,12 @@ pub struct Compiler {
     task_stats_receiver: mpsc::UnboundedReceiver<StatusReport>,
     #[allow(unused)]
     task_stats_request_receiver: broadcast::Receiver<()>,
-    file_watch_request_sender: mpsc::UnboundedSender<PathBuf>,
+    file_watch_request_sender: mpsc::UnboundedSender<FileRef>,
     #[allow(unused)]
-    file_watch_request_receiver: mpsc::UnboundedReceiver<PathBuf>,
-    file_update_sender: broadcast::Sender<PathBuf>,
+    file_watch_request_receiver: mpsc::UnboundedReceiver<FileRef>,
+    file_update_sender: broadcast::Sender<FileRef>,
     #[allow(unused)]
-    file_update_receiver: broadcast::Receiver<PathBuf>,
+    file_update_receiver: broadcast::Receiver<FileRef>,
     // TODO(clarity): Make pub fields private and add methods.
     pub client_launch_request_sender:
         mpsc::UnboundedSender<(oneshot::Sender<Client>, Box<dyn OptionsTrait>)>,
@@ -244,29 +244,29 @@ impl Compiler {
         TaskManager::<T>::start(manager, task_receiver, result_sender);
     }
 
-    pub fn watch_file(&self, path: PathBuf) {
-        if let Err(e) = self.file_watch_request_sender.send(path) {
+    pub fn watch_file(&self, file: FileRef) {
+        if let Err(e) = self.file_watch_request_sender.send(file) {
             debug!("Error while requesting file watching: {e:?}");
         }
     }
 
-    pub fn load_file(&self, path: PathBuf, response_sender: ResultSenderFor<LoadFileTask>) {
-        self.watch_file(path.clone());
+    pub fn load_file(&self, file: FileRef, response_sender: ResultSenderFor<LoadFileTask>) {
+        self.watch_file(file.clone());
         let (tx, rx) = mpsc::unbounded_channel();
         let mut file_update_receiver = self.file_update_sender.subscribe();
         if let Err(e) = tx.send(LoadFileTask {
-            path: path.clone(),
+            file: file.clone(),
             invalidate: Meta(false),
         }) {
             debug!("Error while posting file load task: {e:?}");
         }
         spawn(async move {
-            while let Ok(updated_path) = file_update_receiver.recv().await {
-                if path != updated_path {
+            while let Ok(updated_file) = file_update_receiver.recv().await {
+                if file != updated_file {
                     continue;
                 }
                 if let Err(e) = tx.send(LoadFileTask {
-                    path: path.clone(),
+                    file: file.clone(),
                     invalidate: Meta(true),
                 }) {
                     debug!("Error while posting file load task: {e:?}");
@@ -279,17 +279,17 @@ impl Compiler {
 
     pub fn lex(
         &self,
-        path: PathBuf,
+        file: FileRef,
         contents: Option<String>,
         response_sender: ResultSenderFor<LexFileTask>,
     ) {
         let (tx, rx) = mpsc::unbounded_channel();
         if let Some(contents) = contents {
-            if tx.send(LexFileTask { path, contents }).is_err() {
+            if tx.send(LexFileTask { file, contents }).is_err() {
                 return;
             }
         } else {
-            self.load_file(path, tx);
+            self.load_file(file, tx);
         }
         // IDEA: Look into Streams
         Self::with_manager(rx, &self.lex_file_manager, response_sender);
@@ -297,25 +297,25 @@ impl Compiler {
 
     pub fn parse(
         &self,
-        og_path: PathBuf,
+        og_file: FileRef,
         og_ast: Option<Ast>,
         og_contents: Option<String>,
         response_sender: ResultSenderFor<ParseFileTask>,
     ) {
         let (tx1, mut rx1) = mpsc::unbounded_channel();
-        self.lex(og_path, og_contents, tx1);
+        self.lex(og_file, og_contents, tx1);
         let (tx2, rx2) = mpsc::unbounded_channel();
         spawn(async move {
-            // TODO: Use a proper map from in paths to out paths.
+            // TODO: Use a proper map from in files to out files.
             while let Some(ParseFileTask {
-                path,
+                file,
                 ast: _not_populated,
                 contents,
                 tokens,
             }) = rx1.recv().await
             {
                 tx2.send(ParseFileTask {
-                    path,
+                    file,
                     ast: og_ast.clone(),
                     contents,
                     tokens,
@@ -328,31 +328,31 @@ impl Compiler {
 
     pub fn desugar(
         &self,
-        path: PathBuf,
+        file: FileRef,
         ast: Option<Ast>,
         contents: Option<String>,
         response_sender: ResultSenderFor<DesugarFileTask>,
     ) {
         let (tx, rx) = mpsc::unbounded_channel();
-        self.parse(path, ast, contents, tx);
+        self.parse(file, ast, contents, tx);
         Self::with_manager(rx, &self.desugar_file_manager, response_sender);
     }
 
     pub fn lower(
         &self,
-        og_path: PathBuf,
+        og_file: FileRef,
         og_ast: Option<Ast>,
         contents: Option<String>,
         response_sender: ResultSenderFor<LowerFileTask>,
     ) {
         let (tx1, mut rx1) = mpsc::unbounded_channel();
         // TODO: Static checking should be here.
-        self.desugar(og_path.clone(), og_ast, contents, tx1);
+        self.desugar(og_file.clone(), og_ast, contents, tx1);
         let (tx2, rx2) = mpsc::unbounded_channel();
         spawn(async move {
-            // TODO: Use a proper map from in paths to out paths.
+            // TODO: Use a proper map from in files to out files.
             while let Some(EvalFileTask {
-                path: new_path,
+                file: new_file,
                 ast: new_ast,
                 root,
             }) = rx1.recv().await
@@ -363,7 +363,7 @@ impl Compiler {
                     new_ast.roots[0]
                 };
                 tx2.send(LowerFileTask {
-                    path: new_path.clone(),
+                    file: new_file.clone(),
                     ast: new_ast.clone(),
                     root,
                 })
@@ -375,39 +375,39 @@ impl Compiler {
 
     pub fn eval(
         &self,
-        path: PathBuf,
+        file: FileRef,
         ast: Option<Ast>,
         contents: Option<String>,
         response_sender: ResultSenderFor<EvalFileTask>,
     ) {
         let (tx, rx) = mpsc::unbounded_channel();
-        self.desugar(path, ast, contents, tx);
+        self.desugar(file, ast, contents, tx);
         Self::with_manager(rx, &self.eval_file_manager, response_sender);
     }
 
     pub fn codegen(
         &self,
-        path: PathBuf,
+        file: FileRef,
         og_ast: Option<Ast>,
-        out_path: PathBuf,
+        out_file: FileRef,
         contents: Option<String>,
         response_sender: ResultSenderFor<CodegenTask>,
     ) {
         let (tx1, mut rx1) = mpsc::unbounded_channel();
         // TODO: Static checking should be here.
-        self.lower(path, og_ast, contents, tx1);
+        self.lower(file, og_ast, contents, tx1);
         let (tx2, rx2) = mpsc::unbounded_channel();
         spawn(async move {
-            // TODO: Use a proper map from in paths to out paths.
+            // TODO: Use a proper map from in files to out files.
             while let Some(CodegenTask {
-                path: _,
+                file: _,
                 ast,
                 root,
                 lowered,
             }) = rx1.recv().await
             {
                 tx2.send(CodegenTask {
-                    path: out_path.clone(),
+                    file: out_file.clone(),
                     ast,
                     lowered: lowered.clone(),
                     root,
@@ -445,7 +445,7 @@ impl Compiler {
             }
             RequestTask::Build { files } => {
                 for file in files {
-                    let ast = Some(Ast::new(file.to_path_buf()));
+                    let ast = Some(Ast::new(file));
                     let mut file_with_extension = file.clone();
                     file_with_extension.set_extension("out");
                     self.codegen(
@@ -460,7 +460,7 @@ impl Compiler {
             RequestTask::RunInterpreter { files } => {
                 for file in files {
                     // TODO(cypher1): Support context / imports.
-                    let ast = Some(Ast::new(file.to_path_buf()));
+                    let ast = Some(Ast::new(file.clone()));
                     self.eval(file, ast, None, response_sender.clone());
                 }
             }

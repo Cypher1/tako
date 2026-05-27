@@ -5,9 +5,9 @@ use crate::error::TError;
 use crate::parser::tokens::Symbol;
 use log::trace;
 use smallvec::smallvec;
-use std::path::Path;
+use crate::queries::FileRef;
 
-pub fn desugar(_path: &Path, old_ast: &Ast, _root: Option<NodeId>) -> Result<Ast, TError> {
+pub fn desugar(_file: &FileRef, old_ast: &Ast, _root: Option<NodeId>) -> Result<Ast, TError> {
     let mut ast = old_ast.clone();
     let mut new_seqs = vec![];
     for (node_id, op) in ast.ops.iter() {
@@ -60,16 +60,17 @@ mod tests {
     use super::*;
     use crate::parser::parse;
     use crate::parser::tokens::lex;
-    use std::path::PathBuf;
+    use crate::queries::FileRef;
 
-    fn test_path() -> PathBuf {
-        "test.tk".into()
+    fn test_file(s: &str) -> FileRef {
+        FileRef::InMemory("test.tk".into(), s.to_owned())
     }
 
     fn setup(s: &str) -> Result<Ast, TError> {
         crate::ensure_initialized();
+        let file = test_file(s);
         let tokens = lex(s)?;
-        let ast = parse(&test_path(), &None, s, &tokens)?;
+        let ast = parse(&file, &None, s, &tokens)?;
         Ok(ast)
     }
 

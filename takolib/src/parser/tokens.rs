@@ -75,6 +75,7 @@ pub enum Symbol {
     // Sugar for forall.
     Pi,     // For compatibility with other systems.
     Exists, // Sigma
+    Import,
 
     // Comparisons
     Eqs,
@@ -276,6 +277,7 @@ impl Symbol {
             | Self::Sigma
             | Self::Forall
             | Self::Pi
+            | Self::Import
             | Self::Exists => OpBinding::PrefixOp,
             Self::Try => OpBinding::PostfixOp,
             Self::Sub => OpBinding::PrefixOrInfixBinOp,
@@ -300,6 +302,7 @@ impl std::fmt::Display for Symbol {
             f,
             "{}",
             match self {
+                Self::Import => "import",
                 Self::Hash => "#",
                 Self::Shebang => "#!",
                 Self::Comment => "//",
@@ -605,6 +608,7 @@ pub fn lex(contents: &str) -> Result<Vec<Token>, TError> {
     let mut chars = Characters::new(contents);
     let mut tokens = Vec::with_capacity(1000); // TODO(perf): Bench mark & tune?
     while lex_head(&mut chars, &mut tokens) {}
+    tokens.shrink_to_fit(); // no need to keep the extra memory
     Ok(tokens)
 }
 
@@ -1195,6 +1199,7 @@ mod tests {
                 Symbol::Shebang
                     | Symbol::Comment
                     | Symbol::Hash
+                    | Symbol::Import
                     | Symbol::MultiCommentOpen
                     | Symbol::MultiCommentClose
             ) {

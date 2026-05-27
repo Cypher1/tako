@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use crate::queries::FileRef;
 
 use crate::ast::location::{Location, UserFacingLocation};
 use crate::parser::ParseError;
@@ -9,7 +9,20 @@ use thiserror::Error;
 /**
 Tako's primary internal error type (non-user-facing)
 */
-#[derive(Error, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode)]
+#[derive(
+    Error,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    StableHash,
+    Identifiable,
+    Encode,
+    Decode,
+)]
 pub enum TError {
     ClangCompilerError {
         error: String,
@@ -81,7 +94,9 @@ impl From<std::num::ParseIntError> for TError {
 Tako's user facing error type
 Contains an internal error with markup for humans
 */
-#[derive(Error, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode)]
+#[derive(
+    Error, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode,
+)]
 pub struct Error {
     pub source: TError,
     pub location: Option<UserFacingLocation>,
@@ -93,7 +108,7 @@ impl Error {
     #[must_use]
     pub fn new(
         source: TError,
-        path: Option<&PathBuf>,
+        file: Option<FileRef>,
         contents: Option<&str>,
         module: Option<&()>,
     ) -> Self {
@@ -102,11 +117,11 @@ impl Error {
             TError::ParseError(err) => err.location(),
             TError::InternalError { location, .. } => location.as_ref(),
         };
-        let location = match (path, contents, location, module) {
-            (Some(path), Some(contents), Some(location), _module) => {
-                Some(UserFacingLocation::from(path, contents, location))
+        let location = match (file, contents, location, module) {
+            (Some(file), Some(contents), Some(location), _module) => {
+                Some(UserFacingLocation::from(file, contents, location))
             }
-            (Some(path), _, _, _) => Some(UserFacingLocation::from_path(path)),
+            (Some(file), _, _, _) => Some(UserFacingLocation::from_file(file)),
             _ => None, // TODO(: There's more options here...
         };
         Self { source, location }

@@ -1,11 +1,11 @@
 use async_trait::async_trait;
 use std::hash::Hasher;
-use std::path::PathBuf;
 use tokio::sync::mpsc;
 
 use super::status::Update;
 use super::TaskKind;
 use crate::error::{Error, TError};
+use crate::queries::FileRef;
 
 type TaskHash = u64;
 pub type TaskId = TaskHash;
@@ -64,7 +64,7 @@ pub trait Task: std::fmt::Debug + Clone + std::hash::Hash + Eq + Sized + Send {
         }
     }
 
-    fn has_file_path(&self) -> Option<&PathBuf> {
+    fn has_file(&self) -> Option<&FileRef> {
         None
     }
     fn has_source(&self) -> Option<&str> {
@@ -84,7 +84,7 @@ pub trait Task: std::fmt::Debug + Clone + std::hash::Hash + Eq + Sized + Send {
     fn decorate_error<E: Into<TError>>(&self, error: E) -> Error {
         Error::new(
             error.into(),
-            self.has_file_path(),
+            self.has_file().clone(),
             self.has_source(),
             self.has_module(),
         )

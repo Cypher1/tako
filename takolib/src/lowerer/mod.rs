@@ -2,19 +2,19 @@ use crate::ast::{Ast, Contains, Node, NodeData, NodeId};
 use crate::error::TError;
 use crate::parser::semantics::Literal;
 use crate::parser::tokens::Symbol;
+use crate::queries::FileRef;
 use better_std::todo;
 use llamada::base_types::Empty;
 use llamada::Term::Ext;
 use llamada::{Expr, Llamada};
 use log::trace;
 use std::collections::HashMap;
-use std::path::Path;
 
 type Value = <Llamada as Expr>::Value;
 type Index = <Llamada as Expr>::Index;
 type Term = llamada::Term<Value, Index>;
 
-pub fn lower(_path: &Path, og_ast: &Ast, root: NodeId) -> Result<Llamada, TError> {
+pub fn lower(_path: &FileRef, og_ast: &Ast, root: NodeId) -> Result<Llamada, TError> {
     let mut ast = og_ast.clone();
     let mut expr = Llamada::new(Term::Var(0), Empty);
     let mut ast_to_expr = HashMap::new();
@@ -115,16 +115,17 @@ mod tests {
     use crate::desugarer::desugar;
     use crate::parser::parse;
     use crate::parser::tokens::lex;
-    use std::path::PathBuf;
+    use crate::queries::FileRef;
 
-    fn test_path() -> PathBuf {
-        "test.tk".into()
+    fn test_path(s: &str) -> FileRef {
+        FileRef::InMemory("test.tk".into(), s.to_owned())
     }
 
     fn setup(s: &str) -> Result<Ast, TError> {
         crate::ensure_initialized();
+        let file = test_path(s);
         let tokens = lex(s)?;
-        let ast = parse(&test_path(), &None, s, &tokens)?;
+        let ast = parse(&file, &None, s, &tokens)?;
         Ok(ast)
     }
 

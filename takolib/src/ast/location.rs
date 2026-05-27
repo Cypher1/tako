@@ -1,8 +1,5 @@
-use std::{
-    fmt,
-    path::{Path, PathBuf},
-};
-
+use std::fmt;
+use crate::queries::FileRef;
 use qbice::{Decode, Encode, Identifiable, StableHash};
 
 pub type IndexIntoFile = u16;
@@ -46,7 +43,7 @@ impl Location {
 
 #[derive(PartialEq, Eq, Clone, Ord, PartialOrd, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct UserFacingLocation {
-    pub filename: PathBuf,
+    pub file: FileRef,
     pub line: u32,
     pub col: u32,
 }
@@ -59,7 +56,7 @@ impl std::fmt::Display for UserFacingLocation {
 
 impl std::fmt::Debug for UserFacingLocation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.filename.display())?;
+        write!(f, "{}", self.file)?;
         if self.line != 0 || self.col != 0 {
             write!(f, ":{}:{}", self.line, self.col)?;
         }
@@ -68,23 +65,23 @@ impl std::fmt::Debug for UserFacingLocation {
 }
 
 impl UserFacingLocation {
-    fn new(filename: &Path, line: u32, col: u32) -> Self {
+    fn new(file: FileRef, line: u32, col: u32) -> Self {
         Self {
-            filename: filename.to_path_buf(),
+            file,
             line,
             col,
         }
     }
 
     #[must_use]
-    pub fn from_path(path: &Path) -> Self {
-        Self::new(path, 0, 0)
+    pub fn from_file(file: FileRef) -> Self {
+        Self::new(file, 0, 0)
     }
 
     #[must_use]
-    pub fn from(path: &Path, contents: &str, location: &Location) -> Self {
+    pub fn from(file: FileRef, contents: &str, location: &Location) -> Self {
         // TODO(usability): Consider walking the module tree to get a fully qualified module name.
-        let mut loc = Self::new(path, 1, 1);
+        let mut loc = Self::new(file, 1, 1);
         let mut contents = contents.chars().peekable();
         for _ in 0..location.start {
             loc.next(&mut contents);
