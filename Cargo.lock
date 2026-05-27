@@ -2629,6 +2629,7 @@ dependencies = [
  "async-trait",
  "better-std",
  "bitvec",
+ "directories",
  "enum-kinds",
  "env_logger",
  "futures",

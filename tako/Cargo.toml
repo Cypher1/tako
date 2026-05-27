@@ -12,17 +12,17 @@ categories = ["gui", "wasm", "web-programming"]
 include = ["src/**/*", "LICENSE.md", "README.md"]
 
 [features]
-llvm = [ "takolib/llvm" ]
+llvm = ["takolib/llvm"]
 
 [dependencies]
 async-trait.workspace = true
-takolib = { workspace = true, features = [ "native" ] }
+takolib = { workspace = true, features = ["native"] }
 tokio = { workspace = true, features = ["full"] }
 log.workspace = true
-warp = { version = "0.4.3", features = [ "server" ] }
+warp = { version = "0.4.3", features = ["server"] }
 crokey = "1.4.0"
-crossterm = { version = "0.29.0", features = [ "event-stream" ] }
-directories = "6.0.0"
+crossterm = { version = "0.29.0", features = ["event-stream"] }
+directories.workspace = true
 notify = "8.2.0"
 shutdown_hooks = "0.1"
 futures.workspace = true

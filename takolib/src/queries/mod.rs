@@ -8,7 +8,7 @@ use std::path::PathBuf;
 #[cfg(feature = "codegen")]
 use crate::codegen::{BinaryDescription, BinaryInfo};
 use crate::{
-    ast::{Ast, NodeId, location::Location, string_interner::Name},
+    ast::{location::Location, string_interner::Name, Ast, NodeId},
     error::{Error, TError},
     parser::tokens::Token,
     primitives::Prim,
@@ -19,13 +19,13 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AnyQuery {
     // Loading
-    LoadQuery(Load),                         // name, version? -> string
+    LoadQuery(Load), // name, version? -> string
     // Parsing
     LexQuery(Lex),                           // name -> token[]
     ParseFrontMatterQuery(ParseFrontMatter), // name -> [partial] ast, token[]
     ParseQuery(Parse),                       // file/name -> [partial]ast, [src]node
     HandleImportQuery(HandleImport),         // name[] -> [partial]ast
-    ResolveAstQuery(ResolveAst),           // file -> [partial, resolved]ast
+    ResolveAstQuery(ResolveAst),             // file -> [partial, resolved]ast
     MacroExpandQuery(MacroExpand),           // name -> [partial]ast, [gen]node
     FindNodeQuery(FindNode),                 // src_pos -> [src]node
     FindDefinitionQuery(FindDefinition),     // name -> [src]node
@@ -61,7 +61,9 @@ pub enum AnyQuery {
     SourceMapGenQuery(SourceMapGen), // src -> IO
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode,
+)]
 pub enum FileRef {
     File(PathBuf),
     InMemory(PathBuf, String),
@@ -76,7 +78,26 @@ impl FileRef {
         match self {
             Self::File(pathbuf) => pathbuf.to_owned(),
             Self::InMemory(pathbuf, _) => pathbuf.to_owned(),
-            Self::Dependency { name, version, internal_path } => PathBuf::from("tako://").join(PathBuf::from(name)).join(PathBuf::from(version)).join(internal_path), // TODO(correctness): Check that these paths are usable.
+            Self::Dependency {
+                name,
+                version,
+                internal_path,
+            } => {
+                // TODO: Make into a query kind of thing?
+                let project_dirs = directories::ProjectDirs::from("dev", "takolang", "tako")
+                    .expect("Should produce a valid path");
+                // let config_dir = project_dirs
+                //      .config_dir(); // "Roaming" / synced config dir
+                let cache_dir = project_dirs
+                    .cache_dir();
+                // TODO: Get file from bzip2.
+                // TODO: Return as a enum of PathBuf or BzipPath + Subpath
+                cache_dir
+                    .join(PathBuf::from("packages"))
+                    .join(PathBuf::from(name))
+                    .join(PathBuf::from(version))
+                    .join(internal_path)
+            }
         }
     }
 }
