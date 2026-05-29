@@ -5,6 +5,7 @@ use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use takolib::ast::Ast;
 use takolib::primitives::Prim;
@@ -49,7 +50,7 @@ async fn run_server(request_sender: mpsc::UnboundedSender<CompilerRequest>) {
             let request_sender = request_sender.clone();
             async move {
                 let (tx, mut rx) = mpsc::unbounded_channel();
-                let ast = Some(Ast::new(PathBuf::from("interpreter.tk")));
+                let ast = Arc::new(Ast::new(PathBuf::from("interpreter.tk")));
                 request_sender
                     .send(CompilerRequest::RequestTask(
                         RequestTask::Eval {

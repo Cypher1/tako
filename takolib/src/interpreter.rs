@@ -26,11 +26,11 @@ struct Ctx<'a> {
     ast: &'a mut Ast, // Allowing computed values to be updated in `name_to_value`.
 }
 
-pub fn run(path: &FileRef, ast: Ast, root: Option<NodeId>) -> Result<Prim, TError> {
-    let (_, result) = run_impl(path, ast, root)?;
+pub fn run(ast: Ast, root: Option<NodeId>) -> Result<Prim, TError> {
+    let (_, result) = run_impl(ast, root)?;
     Ok(result)
 }
-pub fn run_impl(path: &FileRef, mut ast: Ast, root: Option<NodeId>) -> Result<(Ast, Prim), TError> {
+pub fn run_impl(mut ast: Ast, root: Option<NodeId>) -> Result<(Ast, Prim), TError> {
     let start = if let Some(root) = root {
         root
     } else if ast.roots.len() == 1 {
@@ -38,14 +38,16 @@ pub fn run_impl(path: &FileRef, mut ast: Ast, root: Option<NodeId>) -> Result<(A
     } else if ast.roots.is_empty() {
         return Err(TError::InternalError {
             message: format!(
-                "Ambiguous run command: No root found for {path}",
+                "Ambiguous run command: No root found for {file}",
+                file = ast.fileref
             ),
             location: None,
         });
     } else {
         return Err(TError::InternalError {
             message: format!(
-                "Ambiguous run command: Multiple roots found for {path}",
+                "Ambiguous run command: Multiple roots found for {file}",
+                file = ast.fileref
             ),
             location: None,
         });
@@ -295,16 +297,16 @@ mod tests {
     }
 
     fn setup(s: &str) -> Result<Ast, TError> {
-        let file = test_path(s);
         crate::ensure_initialized();
+        let ast = Ast::new("test.tk".into());
         let tokens = lex(s)?;
-        parse(&file, &None, s, &tokens)
+        parse(&ast, s, &tokens)
     }
 
     #[test]
     fn literal_evals_to_itself() -> Result<(), TError> {
         let ast = setup("123")?;
-        let res = run(&test_path(), ast, None);
+        let res = run(ast, None);
         assert_eq!(res, Ok(Prim::I32(123)));
         Ok(())
     }
@@ -312,7 +314,7 @@ mod tests {
     #[test]
     fn literal_negatives_multiply_out() -> Result<(), TError> {
         let ast = setup("-3*-2")?;
-        let res = run(&test_path(), ast, None);
+        let res = run(ast, None);
         assert_eq!(res, Ok(Prim::I32(6)));
         Ok(())
     }
@@ -320,7 +322,7 @@ mod tests {
     #[test]
     fn exp_mul_evals_16() -> Result<(), TError> {
         let ast = setup("2**3*2")?;
-        let res = run(&test_path(), ast, None);
+        let res = run(ast, None);
         assert_eq!(res, Ok(Prim::I32(16)));
         Ok(())
     }
@@ -328,7 +330,7 @@ mod tests {
     #[test]
     fn exp_exp_evals_512() -> Result<(), TError> {
         let ast = setup("2**3**2")?;
-        let res = run(&test_path(), ast, None);
+        let res = run(ast, None);
         assert_eq!(res, Ok(Prim::I32(512)));
         Ok(())
     }
@@ -336,7 +338,7 @@ mod tests {
     #[test]
     fn exp_var_and_use() -> Result<(), TError> {
         let ast = setup("x=2;x")?;
-        let res = run(&test_path(), ast, None);
+        let res = run(ast, None);
         assert_eq!(res, Ok(Prim::I32(2)));
         Ok(())
     }
@@ -344,7 +346,7 @@ mod tests {
     #[test]
     fn exp_var_from_expr_and_use() -> Result<(), TError> {
         let ast = setup("x=3+2;x")?;
-        let res = run(&test_path(), ast, None);
+        let res = run(ast, None);
         assert_eq!(res, Ok(Prim::I32(5)));
         Ok(())
     }
@@ -352,7 +354,7 @@ mod tests {
     #[test]
     fn exp_nested_vars() -> Result<(), TError> {
         let ast = setup("x=(y=3;2*y);x")?;
-        let res = run(&test_path(), ast, None);
+        let res = run(ast, None);
         assert_eq!(res, Ok(Prim::I32(6)));
         Ok(())
     }
@@ -360,7 +362,7 @@ mod tests {
     #[test]
     fn exp_multiple_statements() -> Result<(), TError> {
         let ast = setup("x=3;y=x+4;2*y")?;
-        let res = run(&test_path(), ast, None);
+        let res = run(ast, None);
         assert_eq!(res, Ok(Prim::I32(14)));
         Ok(())
     }
@@ -368,7 +370,7 @@ mod tests {
     #[test]
     fn exp_multiple_statements_as_lambdas() -> Result<(), TError> {
         let ast = setup("(x->(y->(2*y))(y=x+4))(x=3)")?;
-        let res = run(&test_path(), ast, None);
+        let res = run(ast, None);
         assert_eq!(res, Ok(Prim::I32(14)));
         Ok(())
         // TODO: Remove!

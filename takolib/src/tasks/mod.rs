@@ -17,6 +17,7 @@ pub use manager::{StatusReport, TaskStats};
 pub use status::*;
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::sync::Arc;
 pub use task_trait::TaskId;
 use task_trait::{Task, UpdateSenderFor};
 
@@ -53,7 +54,7 @@ pub enum RequestTask {
         files: Vec<FileRef>,
     },
     Eval {
-        ast: Option<Ast>, /* Holding all context and state */
+        ast: Arc<Ast>, /* Holding all context and state */
         expr: String,
     },
 }
@@ -113,8 +114,7 @@ impl Task for LexFileTask {
         let tokens = crate::parser::tokens::lex(&self.contents);
         let tokens = tokens
             .map(|tokens| ParseFileTask {
-                file: self.file.clone(),
-                ast: None,
+                ast: Arc::new(Ast::new(self.file.clone())),
                 contents: self.contents.clone(),
                 tokens,
             })
@@ -133,8 +133,7 @@ impl Task for LexFileTask {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct ParseFileTask {
-    pub file: FileRef,
-    pub ast: Option<Ast>,
+    pub ast: Arc<Ast>,
     pub contents: String,
     pub tokens: Vec<Token>,
 }
@@ -145,18 +144,17 @@ impl Task for ParseFileTask {
     const TASK_KIND: TaskKind = TaskKind::ParseFile;
 
     fn has_file(&self) -> Option<&FileRef> {
-        Some(&self.file)
+        Some(&self.ast.fileref)
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        trace!("ParseFileTask: {file}", file = self.file);
-        let ast = crate::parser::parse(&self.file, &self.ast, &self.contents, &self.tokens)
+        trace!("ParseFileTask: {file}", file = self.ast.fileref);
+        let ast = crate::parser::parse(&self.ast, &self.contents, &self.tokens)
             .map_err(|err| self.decorate_error(err));
         result_sender
             .send((
                 self.clone(),
                 match ast {
                     Ok(result) => Update::FinalResult(DesugarFileTask {
-                        file: self.file,
                         ast: result,
                         root: None, // Dont assume which root to run (yet?)
                     }),
@@ -169,7 +167,6 @@ impl Task for ParseFileTask {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct DesugarFileTask {
-    pub file: FileRef,
     pub ast: Ast,
     pub root: Option<NodeId>,
 }
@@ -182,18 +179,17 @@ impl Task for DesugarFileTask {
     const TASK_KIND: TaskKind = TaskKind::DesugarFile;
 
     fn has_file(&self) -> Option<&FileRef> {
-        Some(&self.file)
+        Some(&self.ast.fileref)
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        trace!("DesugarFileTask: {file}", file = self.file);
-        let ast = crate::desugarer::desugar(&self.file, &self.ast, self.root)
+        trace!("DesugarFileTask: {file}", file = self.ast.fileref);
+        let ast = crate::desugarer::desugar(&self.ast, self.root)
             .map_err(|err| self.decorate_error(err));
         result_sender
             .send((
                 self.clone(),
                 match ast {
                     Ok(result) => Update::FinalResult(EvalFileTask {
-                        file: self.file,
                         ast: result,
                         root: None,
                     }),
@@ -206,7 +202,6 @@ impl Task for DesugarFileTask {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct LowerFileTask {
-    pub file: FileRef,
     pub ast: Ast,
     pub root: NodeId,
 }
@@ -218,19 +213,20 @@ impl Task for LowerFileTask {
 
     const TASK_KIND: TaskKind = TaskKind::LowerFile;
 
-    fn has_file(&self) -> Option<&FileRef> {
-        Some(&self.file)
+    fn has_file(&self) -> Option<&PathBuf> {
+        Some(&self.ast.fileref)
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        trace!("LowerFileTask: {file}", file = self.file);
+        trace!("LowerFileTask: {file}", file = self.ast.fileref);
         let result =
-            lower(&self.file, &self.ast, self.root).map_err(|err| self.decorate_error(err));
+            lower(&self.ast, self.root).map_err(|err| self.decorate_error(err));
+        let mut out_file = self.ast.fileref.clone();
+        out_file.set_extension(".out");
         result_sender
             .send((
                 self.clone(),
                 match result {
                     Ok(result) => Update::FinalResult(CodegenTask {
-                        file: self.file,
                         ast: self.ast,
                         lowered: result,
                         root: self.root,
@@ -244,7 +240,6 @@ impl Task for LowerFileTask {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct EvalFileTask {
-    pub file: FileRef,
     pub ast: Ast,
     pub root: Option<NodeId>,
 }
@@ -256,11 +251,11 @@ impl Task for EvalFileTask {
     const RESULT_IS_CACHABLE: bool = false;
 
     fn has_file(&self) -> Option<&FileRef> {
-        Some(&self.file)
+        Some(&self.ast.fileref)
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        trace!("EvalFileTask: {file}", file = self.file);
-        let result = crate::interpreter::run(&self.file, self.ast.clone(), self.root)
+        trace!("EvalFileTask: {file}", file = self.ast.fileref);
+        let result = crate::interpreter::run(self.ast.clone(), self.root)
             .map_err(|err| self.decorate_error(err));
         result_sender
             .send((
@@ -276,7 +271,7 @@ impl Task for EvalFileTask {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct CodegenTask {
-    pub file: FileRef,
+    pub out_path: PathBuf,
     pub ast: Ast,
     pub lowered: Llamada,
     pub root: NodeId,
@@ -289,11 +284,15 @@ impl Task for CodegenTask {
     const RESULT_IS_CACHABLE: bool = false;
 
     fn has_file(&self) -> Option<&FileRef> {
-        Some(&self.file)
+        Some(&self.ast.filepath)
     }
+
     #[cfg(not(feature = "codegen"))]
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        trace!("CodegenTask (nobackend): {file}", file = self.file);
+        trace!(
+            "CodegenTask (nobackend): {file}",
+            file = self.ast.fileref,
+        );
         use crate::error::TError;
         let err = Update::Failed(self.decorate_error(TError::InternalError {
             location: None,

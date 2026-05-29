@@ -1,5 +1,7 @@
 use async_trait::async_trait;
+use takolib::ast::Ast;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use takolib::tasks::RequestTask;
 use takolib::ui::{Client, OptionsTrait, UserInterface};
@@ -57,7 +59,7 @@ pub async fn interpret(src: &str) -> String {
         .expect("Send client request failed");
     let mut client = rx.await.expect("Get client failed");
     client.send_command(RequestTask::Eval {
-        ast: None,
+        ast: Arc::new(Ast::new("example.tk".into())),
         expr: src.to_string(),
     });
     let result = client.result_receiver.recv();

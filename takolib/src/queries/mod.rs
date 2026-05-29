@@ -74,6 +74,7 @@ pub enum FileRef {
         internal_path: PathBuf,
     },
 }
+
 impl Default for FileRef {
     fn default() -> Self {
         Self::InMemory(PathBuf::new(), String::new())

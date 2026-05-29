@@ -87,8 +87,7 @@ impl<C: qbice::Config> Executor<Parse, C> for ParseExecutor {
                 entry: query.entry.clone(),
             })
             .await?;
-        let ast = parse(&query.entry, &Some(ast), &contents, &tokens)?;
-        Ok(ast)
+        parse(&ast, &contents, &tokens)
     }
 }
 

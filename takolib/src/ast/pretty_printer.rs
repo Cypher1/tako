@@ -219,6 +219,7 @@ mod tests {
     use crate::error::TError;
     use crate::parser::parse;
     use crate::parser::tokens::lex;
+use crate::test;
     use std::path::PathBuf;
 
     fn test_file1() -> PathBuf {
@@ -228,7 +229,8 @@ mod tests {
     fn setup(s: &str) -> Result<String, TError> {
         crate::ensure_initialized();
         let tokens = lex(s)?;
-        let ast = parse(&test_file1(), &None, s, &tokens)?;
+        let ast = Ast::new(test_file1());
+        let ast = parse(&ast, s, &tokens)?;
         assert_eq!(
             ast.roots.len(),
             1,

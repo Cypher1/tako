@@ -7,7 +7,7 @@ use log::trace;
 use smallvec::smallvec;
 use crate::queries::FileRef;
 
-pub fn desugar(_file: &FileRef, old_ast: &Ast, _root: Option<NodeId>) -> Result<Ast, TError> {
+pub fn desugar(old_ast: &Ast, _root: Option<NodeId>) -> Result<Ast, TError> {
     let mut ast = old_ast.clone();
     let mut new_seqs = vec![];
     for (node_id, op) in ast.ops.iter() {
@@ -68,15 +68,15 @@ mod tests {
 
     fn setup(s: &str) -> Result<Ast, TError> {
         crate::ensure_initialized();
-        let file = test_file(s);
+        let ast = Ast::new(test_path());
         let tokens = lex(s)?;
-        let ast = parse(&file, &None, s, &tokens)?;
+        let ast = parse(&ast, s, &tokens)?;
         Ok(ast)
     }
 
     fn desugars_to(s: &str, exp: &str) -> Result<(), TError> {
         let ast = setup(s)?;
-        let res = desugar(&test_path(), &ast, None)?;
+        let res = desugar(&ast, None)?;
         let res_pretty = format!("{}", res.pretty());
         assert_eq!(res_pretty, exp);
         Ok(())

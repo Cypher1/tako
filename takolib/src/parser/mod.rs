@@ -705,20 +705,14 @@ impl<'toks, T: Iterator<Item = &'toks Token>> ParseState<'_, 'toks, T> {
 }
 
 pub fn parse(
-    fileref: &FileRef,
-    ast: &Option<Ast>,
+    ast: &Ast,
     contents: &str,
     tokens: &[Token],
 ) -> Result<Ast, TError> {
-    trace!("Parse {}: {:?}", fileref, &tokens);
-    let ast = if let Some(ast) = ast {
-        ast.clone()
-    } else {
-        Ast::new(fileref.clone())
-    };
+    trace!("Parse {}: {:?}", ast.fileref, &tokens);
     let mut state = ParseState {
         contents,
-        ast,
+        ast: ast.clone(),
         tokens: tokens.iter().peekable(),
     };
     if !tokens.is_empty() {
@@ -770,8 +764,9 @@ pub mod tests {
     fn setup(s: &str) -> Result<Ast, TError> {
         crate::ensure_initialized();
         let file = test_file1(s);
+        let ast = Ast::new(file);
         let tokens = lex(s)?;
-        parse(&file, &None, s, &tokens)
+        parse(&ast, s, &tokens)
     }
 
     #[test]

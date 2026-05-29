@@ -14,7 +14,7 @@ type Value = <Llamada as Expr>::Value;
 type Index = <Llamada as Expr>::Index;
 type Term = llamada::Term<Value, Index>;
 
-pub fn lower(_path: &FileRef, og_ast: &Ast, root: NodeId) -> Result<Llamada, TError> {
+pub fn lower(og_ast: &Ast, root: NodeId) -> Result<Llamada, TError> {
     let mut ast = og_ast.clone();
     let mut expr = Llamada::new(Term::Var(0), Empty);
     let mut ast_to_expr = HashMap::new();
@@ -124,15 +124,16 @@ mod tests {
     fn setup(s: &str) -> Result<Ast, TError> {
         crate::ensure_initialized();
         let file = test_path(s);
+        let ast = Ast::new(file);
         let tokens = lex(s)?;
-        let ast = parse(&file, &None, s, &tokens)?;
+        let ast = parse(&ast, s, &tokens)?;
         Ok(ast)
     }
 
     #[test]
     fn lower_gives_constant_from_constant() -> Result<(), TError> {
         let ast = setup("21")?;
-        let out = lower(&test_path(), &ast, ast.roots[0])?;
+        let out = lower(&ast, ast.roots[0])?;
         dbg!(&out);
 
         eprintln!("{out}");
@@ -146,7 +147,7 @@ mod tests {
     #[test]
     fn lower_gives_constant_from_id_ap_constant() -> Result<(), TError> {
         let ast = setup("(x=>x)(x=2)")?;
-        let out = lower(&test_path(), &ast, ast.roots[0])?;
+        let out = lower(&ast, ast.roots[0])?;
         dbg!(&out);
 
         eprintln!("{out}");
@@ -160,9 +161,9 @@ mod tests {
     #[test]
     fn lower_gives_constant_from_use_var_after_decl() -> Result<(), TError> {
         let ast = setup("x=2; x")?;
-        let ast = desugar(&test_path(), &ast, None)?;
+        let ast = desugar(&ast, None)?;
         eprintln!("Desugared to: {}", ast.pretty());
-        let out = lower(&test_path(), &ast, ast.roots[0])?;
+        let out = lower(&ast, ast.roots[0])?;
         dbg!(&out);
 
         eprintln!("{out}");
@@ -176,7 +177,7 @@ mod tests {
     #[test]
     fn lower_gives_constant_from_id_id_ap_constant() -> Result<(), TError> {
         let ast = setup("(x=>x)((x=(x=>x))(x=2))")?;
-        let out = lower(&test_path(), &ast, ast.roots[0])?;
+        let out = lower(&ast, ast.roots[0])?;
         dbg!(&out);
 
         eprintln!("{out}");

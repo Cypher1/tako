@@ -297,25 +297,22 @@ impl Compiler {
 
     pub fn parse(
         &self,
-        og_file: FileRef,
-        og_ast: Option<Ast>,
+        og_ast: Arc<Ast>,
         og_contents: Option<String>,
         response_sender: ResultSenderFor<ParseFileTask>,
     ) {
         let (tx1, mut rx1) = mpsc::unbounded_channel();
-        self.lex(og_file, og_contents, tx1);
+        self.lex(&og_ast.filepath, og_contents, tx1);
         let (tx2, rx2) = mpsc::unbounded_channel();
         spawn(async move {
             // TODO: Use a proper map from in files to out files.
             while let Some(ParseFileTask {
-                file,
-                ast: _not_populated,
+                ast: _,
                 contents,
                 tokens,
             }) = rx1.recv().await
             {
                 tx2.send(ParseFileTask {
-                    file,
                     ast: og_ast.clone(),
                     contents,
                     tokens,
@@ -328,31 +325,28 @@ impl Compiler {
 
     pub fn desugar(
         &self,
-        file: FileRef,
-        ast: Option<Ast>,
+        ast: Arc<Ast>,
         contents: Option<String>,
         response_sender: ResultSenderFor<DesugarFileTask>,
     ) {
         let (tx, rx) = mpsc::unbounded_channel();
-        self.parse(file, ast, contents, tx);
+        self.parse(ast, contents, tx);
         Self::with_manager(rx, &self.desugar_file_manager, response_sender);
     }
 
     pub fn lower(
         &self,
-        og_file: FileRef,
-        og_ast: Option<Ast>,
+        og_ast: Arc<Ast>,
         contents: Option<String>,
         response_sender: ResultSenderFor<LowerFileTask>,
     ) {
         let (tx1, mut rx1) = mpsc::unbounded_channel();
         // TODO: Static checking should be here.
-        self.desugar(og_file.clone(), og_ast, contents, tx1);
+        self.desugar(og_ast, contents, tx1);
         let (tx2, rx2) = mpsc::unbounded_channel();
         spawn(async move {
             // TODO: Use a proper map from in files to out files.
             while let Some(EvalFileTask {
-                file: new_file,
                 ast: new_ast,
                 root,
             }) = rx1.recv().await
@@ -363,7 +357,6 @@ impl Compiler {
                     new_ast.roots[0]
                 };
                 tx2.send(LowerFileTask {
-                    file: new_file.clone(),
                     ast: new_ast.clone(),
                     root,
                 })
@@ -375,39 +368,37 @@ impl Compiler {
 
     pub fn eval(
         &self,
-        file: FileRef,
-        ast: Option<Ast>,
+        ast: Arc<Ast>,
         contents: Option<String>,
         response_sender: ResultSenderFor<EvalFileTask>,
     ) {
         let (tx, rx) = mpsc::unbounded_channel();
-        self.desugar(file, ast, contents, tx);
+        self.desugar(ast, contents, tx);
         Self::with_manager(rx, &self.eval_file_manager, response_sender);
     }
 
     pub fn codegen(
         &self,
-        file: FileRef,
-        og_ast: Option<Ast>,
-        out_file: FileRef,
+        og_ast: Arc<Ast>,
+        out_path: PathBuf,
         contents: Option<String>,
         response_sender: ResultSenderFor<CodegenTask>,
     ) {
         let (tx1, mut rx1) = mpsc::unbounded_channel();
         // TODO: Static checking should be here.
-        self.lower(file, og_ast, contents, tx1);
+        self.lower(og_ast, contents, tx1);
         let (tx2, rx2) = mpsc::unbounded_channel();
         spawn(async move {
             // TODO: Use a proper map from in files to out files.
             while let Some(CodegenTask {
-                file: _,
+                out_path: _,
                 ast,
                 root,
                 lowered,
             }) = rx1.recv().await
             {
                 tx2.send(CodegenTask {
-                    file: out_file.clone(),
+                    out_path: out_path.clone(),
                     ast,
                     lowered: lowered.clone(),
                     root,
@@ -440,16 +431,15 @@ impl Compiler {
     pub fn start_command(&self, cmd: RequestTask, response_sender: mpsc::UnboundedSender<Prim>) {
         match cmd {
             RequestTask::Eval { ast, expr } => {
-                // TODO(cypher1): Inject previous context into the eval state here.
-                self.eval("interpreter.tk".into(), ast, Some(expr), response_sender);
+                self.eval(ast, Some(expr), response_sender);
             }
             RequestTask::Build { files } => {
                 for file in files {
                     let ast = Some(Ast::new(file));
                     let mut file_with_extension = file.clone();
                     file_with_extension.set_extension("out");
+                    let ast = Arc::new(Ast::new(file.to_path_buf()));
                     self.codegen(
-                        file,
                         ast,
                         file_with_extension,
                         None,
@@ -460,8 +450,8 @@ impl Compiler {
             RequestTask::RunInterpreter { files } => {
                 for file in files {
                     // TODO(cypher1): Support context / imports.
-                    let ast = Some(Ast::new(file.clone()));
-                    self.eval(file, ast, None, response_sender.clone());
+                    let ast = Arc::new(Ast::new(file.to_path_buf()));
+                    self.eval(ast, None, response_sender.clone());
                 }
             }
         }

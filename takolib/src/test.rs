@@ -4,6 +4,8 @@ use std::fs;
 use std::path::PathBuf;
 use test_each;
 
+use crate::ast::Ast;
+
 const TEST_CONFIG_PREFIX: &str = "// test: ";
 
 #[derive(Debug, Default, Eq, PartialEq, Ord, PartialOrd)]
@@ -85,7 +87,8 @@ fn parse_example_files(file: &PathBuf) {
     };
 
     // TODO: Macro or helper?
-    let _ast = match crate::parser::parse(file, &None, &contents, &tokens) {
+    let ast = Ast::new(file.clone());
+    let _ast = match crate::parser::parse(&ast, &contents, &tokens) {
         Err(e) => {
             assert_eq!(
                 setting.expect,
