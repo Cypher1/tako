@@ -84,7 +84,7 @@ pub trait Task: std::fmt::Debug + Clone + std::hash::Hash + Eq + Sized + Send {
     fn decorate_error<E: Into<TError>>(&self, error: E) -> Error {
         Error::new(
             error.into(),
-            self.has_file().clone(),
+            self.has_file().cloned(),
             self.has_source(),
             self.has_module(),
         )

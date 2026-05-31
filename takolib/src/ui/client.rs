@@ -1,8 +1,8 @@
 use super::OptionsTrait;
 use crate::error::Error;
 use crate::primitives::Prim;
-use crate::tasks::{RequestTask, StatusReport, TaskKind, TaskStats};
 use crate::queries::FileRef;
+use crate::tasks::{RequestTask, StatusReport, TaskKind, TaskStats};
 use log::trace;
 use std::collections::{BTreeSet, HashMap};
 use tokio::sync::{broadcast, mpsc};

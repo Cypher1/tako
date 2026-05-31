@@ -224,8 +224,8 @@ impl<'ctx> BackendStateTrait for LlvmState<'ctx> {
     }
 
     fn create_binary(&self, bin_path: &Path) -> Result<(), TError> {
-        let mut elf_path = bin_path.to_path_buf();
-        elf_path.set_extension("elf");
+        let mut elf_path = bin_path.to_path_buf(); // TODO(correctness): Handle in-memory files
+        elf_path.set_extension("elf"); // TODO(correctness): Merge source zip path and out path.
         let target_machine = self.backend.get_target_machine();
         assert!(
             target_machine

@@ -2,7 +2,6 @@ use crate::ast::string_interner::Name;
 use crate::ast::{
     Ast, Call, Contains, Definition, Import, LiteralId, Node, NodeData, NodeId, OpId,
 };
-use crate::queries::FileRef;
 use crate::error::TError;
 use crate::parser::semantics::Literal;
 use crate::parser::tokens::Symbol;
@@ -298,7 +297,7 @@ mod tests {
 
     fn setup(s: &str) -> Result<Ast, TError> {
         crate::ensure_initialized();
-        let ast = Ast::new("test.tk".into());
+        let ast = Ast::new(test_path(s));
         let tokens = lex(s)?;
         parse(&ast, s, &tokens)
     }

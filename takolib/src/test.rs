@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use test_each;
 
 use crate::ast::Ast;
+use crate::queries::FileRef;
 
 const TEST_CONFIG_PREFIX: &str = "// test: ";
 
@@ -87,7 +88,7 @@ fn parse_example_files(file: &PathBuf) {
     };
 
     // TODO: Macro or helper?
-    let ast = Ast::new(file.clone());
+    let ast = Ast::new(FileRef::File(file.to_owned()));
     let _ast = match crate::parser::parse(&ast, &contents, &tokens) {
         Err(e) => {
             assert_eq!(

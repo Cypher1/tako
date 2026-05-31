@@ -3,8 +3,8 @@ mod executors;
 use enum_kinds::EnumKind;
 use qbice::{Decode, Encode, Identifiable, Query, StableHash};
 use std::collections::BTreeMap;
-use std::path::PathBuf;
 use std::fmt;
+use std::path::PathBuf;
 
 #[cfg(feature = "codegen")]
 use crate::codegen::{BinaryDescription, BinaryInfo};

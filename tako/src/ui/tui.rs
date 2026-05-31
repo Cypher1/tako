@@ -12,10 +12,15 @@ use futures::{future::FutureExt, StreamExt};
 use log::trace;
 use shutdown_hooks::add_shutdown_hook;
 use std::{
-    io::{Write, stdout}, path::PathBuf, sync::Arc, time::{Duration, Instant}
+    io::{stdout, Write},
+    sync::Arc,
+    time::{Duration, Instant},
 };
-use takolib::ui::{Client, OptionsTrait, UserInterface};
 use takolib::{ast::Ast, tasks::RequestTask};
+use takolib::{
+    queries::FileRef,
+    ui::{Client, OptionsTrait, UserInterface},
+};
 use tokio::{
     sync::{mpsc, oneshot},
     time,
@@ -168,7 +173,10 @@ impl Tui {
                         line += &self.input_after_cursor;
                         if !line.is_empty() {
                             trace!("Running {line}");
-                            let ast = Arc::new(Ast::new(PathBuf::from("interpreter.tk")));
+                            let ast = Arc::new(Ast::new(FileRef::InMemory(
+                                "interpreter.tk".into(),
+                                line.to_string(),
+                            )));
                             self.client.send_command(RequestTask::Eval {
                                 ast,
                                 expr: line.to_string(),

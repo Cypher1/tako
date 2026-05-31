@@ -219,17 +219,17 @@ mod tests {
     use crate::error::TError;
     use crate::parser::parse;
     use crate::parser::tokens::lex;
-use crate::test;
-    use std::path::PathBuf;
+    use crate::queries::FileRef;
+    use crate::test;
 
-    fn test_file1() -> PathBuf {
-        "test.tk".into()
+    fn test_file1(s: &str) -> FileRef {
+        FileRef::InMemory("test.tk".into(), s.to_owned())
     }
 
     fn setup(s: &str) -> Result<String, TError> {
         crate::ensure_initialized();
+        let ast = Ast::new(test_file1(s));
         let tokens = lex(s)?;
-        let ast = Ast::new(test_file1());
         let ast = parse(&ast, s, &tokens)?;
         assert_eq!(
             ast.roots.len(),

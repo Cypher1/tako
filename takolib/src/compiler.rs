@@ -20,6 +20,7 @@ use qbice::storage::storage_engine::in_memory::InMemoryStorageEngineFactory;
 use qbice::{Config, Engine};
 use qbice::{Decode, Encode, Executor, Identifiable, Query, StableHash, TrackedEngine};
 use std::fmt::Debug;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tokio::spawn;
 use tokio::sync::{broadcast, mpsc, oneshot};
@@ -302,7 +303,7 @@ impl Compiler {
         response_sender: ResultSenderFor<ParseFileTask>,
     ) {
         let (tx1, mut rx1) = mpsc::unbounded_channel();
-        self.lex(&og_ast.filepath, og_contents, tx1);
+        self.lex(og_ast.fileref.clone(), og_contents, tx1);
         let (tx2, rx2) = mpsc::unbounded_channel();
         spawn(async move {
             // TODO: Use a proper map from in files to out files.
@@ -346,11 +347,7 @@ impl Compiler {
         let (tx2, rx2) = mpsc::unbounded_channel();
         spawn(async move {
             // TODO: Use a proper map from in files to out files.
-            while let Some(EvalFileTask {
-                ast: new_ast,
-                root,
-            }) = rx1.recv().await
-            {
+            while let Some(EvalFileTask { ast: new_ast, root }) = rx1.recv().await {
                 let root = if let Some(root) = root {
                     root
                 } else {
@@ -435,22 +432,17 @@ impl Compiler {
             }
             RequestTask::Build { files } => {
                 for file in files {
-                    let ast = Some(Ast::new(file));
-                    let mut file_with_extension = file.clone();
-                    file_with_extension.set_extension("out");
-                    let ast = Arc::new(Ast::new(file.to_path_buf()));
-                    self.codegen(
-                        ast,
-                        file_with_extension,
-                        None,
-                        response_sender.clone(),
-                    );
+                    // TODO(correctness): Handle in-memory files
+                    let (_source_zip, mut out_path) = file.clone().to_path_buf(); // TODO(correctness): Merge source zip path and out path.
+                    let ast = Arc::new(Ast::new(file.clone()));
+                    out_path.set_extension("out");
+                    self.codegen(ast, out_path, None, response_sender.clone());
                 }
             }
             RequestTask::RunInterpreter { files } => {
                 for file in files {
                     // TODO(cypher1): Support context / imports.
-                    let ast = Arc::new(Ast::new(file.to_path_buf()));
+                    let ast = Arc::new(Ast::new(file));
                     self.eval(ast, None, response_sender.clone());
                 }
             }

@@ -552,7 +552,7 @@ impl<'toks, T: Iterator<Item = &'toks Token>> ParseState<'_, 'toks, T> {
                             // TODO(feature): Force evaluate `right`.
                             self.ast.add_import(
                                 Import {
-                                    entry: crate::queries::FileRef::File(PathBuf::from("todo")),
+                                    entry: FileRef::File(PathBuf::from("todo")),
                                 },
                                 location,
                             )
@@ -704,11 +704,7 @@ impl<'toks, T: Iterator<Item = &'toks Token>> ParseState<'_, 'toks, T> {
     }
 }
 
-pub fn parse(
-    ast: &Ast,
-    contents: &str,
-    tokens: &[Token],
-) -> Result<Ast, TError> {
+pub fn parse(ast: &Ast, contents: &str, tokens: &[Token]) -> Result<Ast, TError> {
     trace!("Parse {}: {:?}", ast.fileref, &tokens);
     let mut state = ParseState {
         contents,

@@ -5,7 +5,6 @@ use crate::error::TError;
 use crate::parser::tokens::Symbol;
 use log::trace;
 use smallvec::smallvec;
-use crate::queries::FileRef;
 
 pub fn desugar(old_ast: &Ast, _root: Option<NodeId>) -> Result<Ast, TError> {
     let mut ast = old_ast.clone();
@@ -68,7 +67,7 @@ mod tests {
 
     fn setup(s: &str) -> Result<Ast, TError> {
         crate::ensure_initialized();
-        let ast = Ast::new(test_path());
+        let ast = Ast::new(test_file(s));
         let tokens = lex(s)?;
         let ast = parse(&ast, s, &tokens)?;
         Ok(ast)

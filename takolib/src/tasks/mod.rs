@@ -17,6 +17,7 @@ pub use manager::{StatusReport, TaskStats};
 pub use status::*;
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::path::PathBuf;
 use std::sync::Arc;
 pub use task_trait::TaskId;
 use task_trait::{Task, UpdateSenderFor};
@@ -55,7 +56,7 @@ pub enum RequestTask {
     },
     Eval {
         ast: Arc<Ast>, /* Holding all context and state */
-        expr: String,
+        expr: String,  // TODO(cleanup): Remove, move all into Ast
     },
 }
 
@@ -72,8 +73,8 @@ impl Task for LoadFileTask {
     fn invalidate(&self) -> bool {
         *self.invalidate
     }
-    fn has_file(&self) -> Option<FileRef> {
-        Some(self.file.clone())
+    fn has_file(&self) -> Option<&FileRef> {
+        Some(&self.file)
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
         trace!("LoadFileTask: {file}", file = self.file);
@@ -183,8 +184,8 @@ impl Task for DesugarFileTask {
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
         trace!("DesugarFileTask: {file}", file = self.ast.fileref);
-        let ast = crate::desugarer::desugar(&self.ast, self.root)
-            .map_err(|err| self.decorate_error(err));
+        let ast =
+            crate::desugarer::desugar(&self.ast, self.root).map_err(|err| self.decorate_error(err));
         result_sender
             .send((
                 self.clone(),
@@ -213,21 +214,22 @@ impl Task for LowerFileTask {
 
     const TASK_KIND: TaskKind = TaskKind::LowerFile;
 
-    fn has_file(&self) -> Option<&PathBuf> {
+    fn has_file(&self) -> Option<&FileRef> {
         Some(&self.ast.fileref)
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
         trace!("LowerFileTask: {file}", file = self.ast.fileref);
-        let result =
-            lower(&self.ast, self.root).map_err(|err| self.decorate_error(err));
-        let mut out_file = self.ast.fileref.clone();
-        out_file.set_extension(".out");
+        let result = lower(&self.ast, self.root).map_err(|err| self.decorate_error(err));
+        // TODO(correctness): Handle in mem files
+        let (_source_zip, mut out_path) = self.ast.fileref.to_path_buf(); // TODO(correctness): Merge source zip path and out path.
+        out_path.set_extension(".out");
         result_sender
             .send((
                 self.clone(),
                 match result {
                     Ok(result) => Update::FinalResult(CodegenTask {
                         ast: self.ast,
+                        out_path,
                         lowered: result,
                         root: self.root,
                     }),
@@ -284,15 +286,12 @@ impl Task for CodegenTask {
     const RESULT_IS_CACHABLE: bool = false;
 
     fn has_file(&self) -> Option<&FileRef> {
-        Some(&self.ast.filepath)
+        Some(&self.ast.fileref)
     }
 
     #[cfg(not(feature = "codegen"))]
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        trace!(
-            "CodegenTask (nobackend): {file}",
-            file = self.ast.fileref,
-        );
+        trace!("CodegenTask (nobackend): {file}", file = self.ast.fileref,);
         use crate::error::TError;
         let err = Update::Failed(self.decorate_error(TError::InternalError {
             location: None,

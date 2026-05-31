@@ -1,6 +1,6 @@
-use std::fmt;
 use crate::queries::FileRef;
 use qbice::{Decode, Encode, Identifiable, StableHash};
+use std::fmt;
 
 pub type IndexIntoFile = u16;
 pub type SymbolLength = u8;
@@ -66,11 +66,7 @@ impl std::fmt::Debug for UserFacingLocation {
 
 impl UserFacingLocation {
     fn new(file: FileRef, line: u32, col: u32) -> Self {
-        Self {
-            file,
-            line,
-            col,
-        }
+        Self { file, line, col }
     }
 
     #[must_use]

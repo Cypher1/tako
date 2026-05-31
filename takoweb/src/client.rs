@@ -1,7 +1,7 @@
 use async_trait::async_trait;
-use takolib::ast::Ast;
 use std::path::PathBuf;
 use std::sync::Arc;
+use takolib::ast::Ast;
 
 use takolib::tasks::RequestTask;
 use takolib::ui::{Client, OptionsTrait, UserInterface};
