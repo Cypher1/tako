@@ -16,7 +16,6 @@ use crate::ui::Client;
 use log::{debug, trace};
 #[cfg(not(feature = "rocksdb"))]
 use qbice::{Config, Engine};
-use qbice::{Decode, Encode, Identifiable, Query, StableHash};
 use std::fmt::Debug;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -105,27 +104,6 @@ impl Default for Compiler {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
-pub enum Variable {
-    A,
-    B,
-}
-
-impl Query for Variable {
-    type Value = i32;
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
-pub struct SafeDivide {
-    pub numerator: Variable,
-    pub denominator: Variable,
-}
-
-impl Query for SafeDivide {
-    type Value = Option<i32>;
-}
-
-// Define executor
 impl Compiler {
     pub async fn get_engine() -> Arc<Engine<impl Config>> {
         use std::sync::Arc;
