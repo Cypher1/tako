@@ -114,8 +114,34 @@ impl Compiler {
         engine.register_executor(Arc::new(crate::queries::executors::LexExecutor));
         engine.register_executor(Arc::new(crate::queries::executors::ParseFrontMatterExecutor));
         engine.register_executor(Arc::new(crate::queries::executors::HandleImportExecutor));
-        engine.register_executor(Arc::new(crate::queries::executors::ResolveAstExecutor));
         engine.register_executor(Arc::new(crate::queries::executors::ParseExecutor));
+        engine.register_executor(Arc::new(crate::queries::executors::ResolveAstExecutor));
+        engine.register_executor(Arc::new(crate::queries::executors::MacroExpandExecutor));
+        engine.register_executor(Arc::new(crate::queries::executors::FindNodeExecutor));
+        engine.register_executor(Arc::new(crate::queries::executors::FindDefinitionExecutor));
+        engine.register_executor(Arc::new(crate::queries::executors::GetLocationExecutor));
+        engine.register_executor(Arc::new(crate::queries::executors::TypeAtExecutor));
+        engine.register_executor(Arc::new(crate::queries::executors::TypeCheckExecutor));
+        engine.register_executor(Arc::new(crate::queries::executors::GetTypeExecutor));
+        engine.register_executor(Arc::new(crate::queries::executors::CheckProofsExecutor));
+        engine.register_executor(Arc::new(crate::queries::executors::ErrorsExecutor));
+        engine.register_executor(Arc::new(crate::queries::executors::ErrorsAtExecutor));
+        engine.register_executor(Arc::new(crate::queries::executors::ErrorsForNodeExecutor));
+        engine.register_executor(Arc::new(crate::queries::executors::PrettyPrintExecutor));
+        engine.register_executor(Arc::new(crate::queries::executors::InterpretExecutor));
+        engine.register_executor(Arc::new(crate::queries::executors::EvalExecutor));
+        engine.register_executor(Arc::new(crate::queries::executors::EvalNodeExecutor));
+        engine.register_executor(Arc::new(crate::queries::executors::OptimizeExecutor));
+        engine.register_executor(Arc::new(crate::queries::executors::LowerExecutor));
+        #[cfg(feature = "codegen")]
+        {
+            engine.register_executor(Arc::new(crate::queries::executors::CodeGenAllExecutor));
+            engine.register_executor(Arc::new(crate::queries::executors::WriteCodeGenAllExecutor));
+            engine.register_executor(Arc::new(crate::queries::executors::EnnumerateBinariesExecutor));
+            engine.register_executor(Arc::new(crate::queries::executors::WriteCodeGenExecutor));
+            engine.register_executor(Arc::new(crate::queries::executors::CodeGenExecutor));
+            engine.register_executor(Arc::new(crate::queries::executors::SourceMapGenExecutor));
+        }
         Arc::new(engine)
     }
 

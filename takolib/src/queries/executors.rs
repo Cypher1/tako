@@ -12,6 +12,7 @@ impl<C: qbice::Config> Executor<Load, C> for LoadExecutor {
     async fn execute(&self, query: &Load, _engine: &TrackedEngine<C>) -> Result<String, TError> {
         // TODO(correctness): Look at  notify::recommended_watcher
         // See `tako/src/main.rs` `WatchFileTask`
+        // TODO(perf): Use tokio's async read_to_string.
         match &query.file {
             FileRef::File(path) => Ok(std::fs::read_to_string(path)?),
             FileRef::InMemory(_path, contents) => Ok(contents.clone()),
@@ -115,7 +116,7 @@ pub struct ResolveAstExecutor;
 
 impl<C: qbice::Config> Executor<ResolveAst, C> for ResolveAstExecutor {
     async fn execute(&self, query: &ResolveAst, engine: &TrackedEngine<C>) -> Result<Ast, TError> {
-        let ast = engine
+        let mut ast = engine
             .query(&Parse {
                 entry: query.entry.clone(),
             })
@@ -132,10 +133,425 @@ impl<C: qbice::Config> Executor<ResolveAst, C> for ResolveAstExecutor {
         }
 
         while let Some(res) = set.join_next().await {
-            let _imported_ast = res.expect("JoinError while merging imports?");
-            // TODO(correctness): Merge asts.
-            // ast.merge(imported_ast);
+            let res = res.expect("JoinError while merging imports?");
+            let imported_ast = res?;
+            ast.merge(&imported_ast);
         }
         Ok(ast) // Return it for merging with others.
     }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct MacroExpandExecutor;
+
+impl<C: qbice::Config> Executor<MacroExpand, C> for MacroExpandExecutor {
+    async fn execute(&self, query: &MacroExpand, engine: &TrackedEngine<C>) -> Result<Ast, TError> {
+        let ast = engine
+            .query(&ResolveAst {
+                entry: query.entry.clone(),
+            })
+            .await?;
+        // TODO(correctness): Implement macro expansion.
+        Ok(ast)
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct FindNodeExecutor;
+
+impl<C: qbice::Config> Executor<FindNode, C> for FindNodeExecutor {
+    async fn execute(&self, query: &FindNode, engine: &TrackedEngine<C>) -> Result<(Ast, NodeId), TError> {
+        let _ast = engine
+            .query(&MacroExpand {
+                entry: query.entry.clone(),
+            })
+            .await?;
+        // TODO(correctness): Implement Node finding.
+        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
+        // Ok((_ast, _node_id))
+    }
+
+    fn execution_style() -> qbice::ExecutionStyle { qbice::ExecutionStyle::Projection }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct FindDefinitionExecutor;
+
+impl<C: qbice::Config> Executor<FindDefinition, C> for FindDefinitionExecutor {
+    async fn execute(&self, query: &FindDefinition, engine: &TrackedEngine<C>) -> Result<(Ast, DefinitionId), TError> {
+        let _ast = engine
+            .query(&MacroExpand {
+                entry: query.entry.clone(),
+            })
+            .await?;
+        // TODO(correctness): Implement Definition finding.
+        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
+        // Ok((_ast, _node_id))
+    }
+
+    fn execution_style() -> qbice::ExecutionStyle { qbice::ExecutionStyle::Projection }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct GetLocationExecutor;
+
+impl<C: qbice::Config> Executor<GetLocation, C> for GetLocationExecutor {
+    async fn execute(&self, query: &GetLocation, engine: &TrackedEngine<C>) -> Result<(Ast, NodeId), TError> {
+        let _ast = engine
+            .query(&MacroExpand {
+                entry: query.entry.clone(),
+            })
+            .await?;
+        // TODO(correctness): Implement Definition finding.
+        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
+        // Ok((_ast, _node_id))
+    }
+
+    fn execution_style() -> qbice::ExecutionStyle { qbice::ExecutionStyle::Projection }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct TypeAtExecutor;
+
+impl<C: qbice::Config> Executor<TypeAt, C> for TypeAtExecutor {
+    async fn execute(&self, query: &TypeAt, engine: &TrackedEngine<C>) -> Result<(Ast, NodeId), TError> {
+        let _ast = engine
+            .query(&MacroExpand {
+                entry: query.entry.clone(),
+            })
+            .await?;
+        // TODO(correctness): Implement Definition finding.
+        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
+        // Ok((_ast, _node_id))
+    }
+
+    fn execution_style() -> qbice::ExecutionStyle { qbice::ExecutionStyle::Projection }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct TypeCheckExecutor;
+
+impl<C: qbice::Config> Executor<TypeCheck, C> for TypeCheckExecutor {
+    async fn execute(&self, query: &TypeCheck, engine: &TrackedEngine<C>) -> Result<(Ast, NodeId), TError> {
+        let _ast = engine
+            .query(&MacroExpand {
+                entry: query.entry.clone(),
+            })
+            .await?;
+        // TODO(correctness): Implement Definition finding.
+        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
+        // Ok((_ast, _node_id))
+    }
+
+    fn execution_style() -> qbice::ExecutionStyle { qbice::ExecutionStyle::Projection }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct GetTypeExecutor;
+
+impl<C: qbice::Config> Executor<GetType, C> for GetTypeExecutor {
+    async fn execute(&self, query: &GetType, engine: &TrackedEngine<C>) -> Result<(Ast, NodeId), TError> {
+        let _ast = engine
+            .query(&MacroExpand {
+                entry: query.entry.clone(),
+            })
+            .await?;
+        // TODO(correctness): Implement Definition finding.
+        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
+        // Ok((_ast, _node_id))
+    }
+
+    fn execution_style() -> qbice::ExecutionStyle { qbice::ExecutionStyle::Projection }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct CheckProofExecutor;
+
+impl<C: qbice::Config> Executor<CheckProof, C> for CheckProofExecutor {
+    async fn execute(&self, query: &CheckProof, engine: &TrackedEngine<C>) -> Result<(Ast, NodeId), TError> {
+        let _ast = engine
+            .query(&MacroExpand {
+                entry: query.entry.clone(),
+            })
+            .await?;
+        // TODO(correctness): Implement Definition finding.
+        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
+        // Ok((_ast, _node_id))
+    }
+
+    fn execution_style() -> qbice::ExecutionStyle { qbice::ExecutionStyle::Projection }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct ErrorsExecutor;
+
+impl<C: qbice::Config> Executor<Errors, C> for ErrorsExecutor {
+    async fn execute(&self, query: &Errors, engine: &TrackedEngine<C>) -> Result<(Ast, NodeId), TError> {
+        let _ast = engine
+            .query(&MacroExpand {
+                entry: query.entry.clone(),
+            })
+            .await?;
+        // TODO(correctness): Implement Definition finding.
+        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
+        // Ok((_ast, _node_id))
+    }
+
+    fn execution_style() -> qbice::ExecutionStyle { qbice::ExecutionStyle::Projection }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct ErrorsAtExecutor;
+
+impl<C: qbice::Config> Executor<ErrorsAt, C> for ErrorsAtExecutor {
+    async fn execute(&self, query: &ErrorsAt, engine: &TrackedEngine<C>) -> Result<(Ast, NodeId), TError> {
+        let _ast = engine
+            .query(&MacroExpand {
+                entry: query.entry.clone(),
+            })
+            .await?;
+        // TODO(correctness): Implement Definition finding.
+        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
+        // Ok((_ast, _node_id))
+    }
+
+    fn execution_style() -> qbice::ExecutionStyle { qbice::ExecutionStyle::Projection }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct ErrorsForNodeExecutor;
+
+impl<C: qbice::Config> Executor<ErrorsForNode, C> for ErrorsForNodeExecutor {
+    async fn execute(&self, query: &ErrorsForNode, engine: &TrackedEngine<C>) -> Result<(Ast, NodeId), TError> {
+        let _ast = engine
+            .query(&MacroExpand {
+                entry: query.entry.clone(),
+            })
+            .await?;
+        // TODO(correctness): Implement Definition finding.
+        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
+        // Ok((_ast, _node_id))
+    }
+
+    fn execution_style() -> qbice::ExecutionStyle { qbice::ExecutionStyle::Projection }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct PrettyPrintExecutor;
+
+impl<C: qbice::Config> Executor<PrettyPrint, C> for PrettyPrintExecutor {
+    async fn execute(&self, query: &PrettyPrint, engine: &TrackedEngine<C>) -> Result<(Ast, NodeId), TError> {
+        let _ast = engine
+            .query(&MacroExpand {
+                entry: query.entry.clone(),
+            })
+            .await?;
+        // TODO(correctness): Implement Definition finding.
+        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
+        // Ok((_ast, _node_id))
+    }
+
+    fn execution_style() -> qbice::ExecutionStyle { qbice::ExecutionStyle::Projection }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct InterpretExecutor;
+
+impl<C: qbice::Config> Executor<Interpret, C> for InterpretExecutor {
+    async fn execute(&self, query: &Interpret, engine: &TrackedEngine<C>) -> Result<(Ast, NodeId), TError> {
+        let _ast = engine
+            .query(&MacroExpand {
+                entry: query.entry.clone(),
+            })
+            .await?;
+        // TODO(correctness): Implement Definition finding.
+        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
+        // Ok((_ast, _node_id))
+    }
+
+    fn execution_style() -> qbice::ExecutionStyle { qbice::ExecutionStyle::Projection }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct EvalExecutor;
+
+impl<C: qbice::Config> Executor<Eval, C> for EvalExecutor {
+    async fn execute(&self, query: &Eval, engine: &TrackedEngine<C>) -> Result<(Ast, NodeId), TError> {
+        let _ast = engine
+            .query(&MacroExpand {
+                entry: query.entry.clone(),
+            })
+            .await?;
+        // TODO(correctness): Implement Definition finding.
+        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
+        // Ok((_ast, _node_id))
+    }
+
+    fn execution_style() -> qbice::ExecutionStyle { qbice::ExecutionStyle::Projection }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct EvalNodeExecutor;
+
+impl<C: qbice::Config> Executor<EvalNode, C> for EvalNodeExecutor {
+    async fn execute(&self, query: &EvalNode, engine: &TrackedEngine<C>) -> Result<(Ast, NodeId), TError> {
+        let _ast = engine
+            .query(&MacroExpand {
+                entry: query.entry.clone(),
+            })
+            .await?;
+        // TODO(correctness): Implement Definition finding.
+        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
+        // Ok((_ast, _node_id))
+    }
+
+    fn execution_style() -> qbice::ExecutionStyle { qbice::ExecutionStyle::Projection }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct OptimizeExecutor;
+
+impl<C: qbice::Config> Executor<Optimize, C> for OptimizeExecutor {
+    async fn execute(&self, query: &Optimize, engine: &TrackedEngine<C>) -> Result<(Ast, NodeId), TError> {
+        let _ast = engine
+            .query(&MacroExpand {
+                entry: query.entry.clone(),
+            })
+            .await?;
+        // TODO(correctness): Implement Definition finding.
+        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
+        // Ok((_ast, _node_id))
+    }
+
+    fn execution_style() -> qbice::ExecutionStyle { qbice::ExecutionStyle::Projection }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct LowerExecutor;
+
+impl<C: qbice::Config> Executor<Lower, C> for LowerExecutor {
+    async fn execute(&self, query: &Lower, engine: &TrackedEngine<C>) -> Result<(Ast, NodeId), TError> {
+        let _ast = engine
+            .query(&MacroExpand {
+                entry: query.entry.clone(),
+            })
+            .await?;
+        // TODO(correctness): Implement Definition finding.
+        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
+        // Ok((_ast, _node_id))
+    }
+
+    fn execution_style() -> qbice::ExecutionStyle { qbice::ExecutionStyle::Projection }
+}
+
+#[cfg(feature = "codegen")]
+mod codegen {
+
+#[derive(Clone, Copy, Debug)]
+pub struct CodeGenAllExecutor;
+
+impl<C: qbice::Config> Executor<CodeGenAll, C> for CodeGenAllExecutor {
+    async fn execute(&self, query: &CodeGenAll, engine: &TrackedEngine<C>) -> Result<(Ast, NodeId), TError> {
+        let _ast = engine
+            .query(&MacroExpand {
+                entry: query.entry.clone(),
+            })
+            .await?;
+        // TODO(correctness): Implement Definition finding.
+        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
+        // Ok((_ast, _node_id))
+    }
+
+    fn execution_style() -> qbice::ExecutionStyle { qbice::ExecutionStyle::Projection }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct WriteCodeGenAllExecutor;
+
+impl<C: qbice::Config> Executor<WriteCodeGenAll, C> for WriteCodeGenAllExecutor {
+    async fn execute(&self, query: &WriteCodeGenAll, engine: &TrackedEngine<C>) -> Result<(Ast, NodeId), TError> {
+        let _ast = engine
+            .query(&MacroExpand {
+                entry: query.entry.clone(),
+            })
+            .await?;
+        // TODO(correctness): Implement Definition finding.
+        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
+        // Ok((_ast, _node_id))
+    }
+
+    fn execution_style() -> qbice::ExecutionStyle { qbice::ExecutionStyle::Projection }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct EnumerateBinariesExecutor;
+
+impl<C: qbice::Config> Executor<EnumerateBinaries, C> for EnumerateBinariesExecutor {
+    async fn execute(&self, query: &EnumerateBinaries, engine: &TrackedEngine<C>) -> Result<(Ast, NodeId), TError> {
+        let _ast = engine
+            .query(&MacroExpand {
+                entry: query.entry.clone(),
+            })
+            .await?;
+        // TODO(correctness): Implement Definition finding.
+        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
+        // Ok((_ast, _node_id))
+    }
+
+    fn execution_style() -> qbice::ExecutionStyle { qbice::ExecutionStyle::Projection }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct WriteCodeGenAllExecutor;
+
+impl<C: qbice::Config> Executor<WriteCodeGenAll, C> for WriteCodeGenAllExecutor {
+    async fn execute(&self, query: &WriteCodeGenAll, engine: &TrackedEngine<C>) -> Result<(Ast, NodeId), TError> {
+        let _ast = engine
+            .query(&MacroExpand {
+                entry: query.entry.clone(),
+            })
+            .await?;
+        // TODO(correctness): Implement Definition finding.
+        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
+        // Ok((_ast, _node_id))
+    }
+
+    fn execution_style() -> qbice::ExecutionStyle { qbice::ExecutionStyle::Projection }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct CodeGenExecutor;
+
+impl<C: qbice::Config> Executor<CodeGen, C> for CodeGenExecutor {
+    async fn execute(&self, query: &CodeGen, engine: &TrackedEngine<C>) -> Result<(Ast, NodeId), TError> {
+        let _ast = engine
+            .query(&MacroExpand {
+                entry: query.entry.clone(),
+            })
+            .await?;
+        // TODO(correctness): Implement Definition finding.
+        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
+        // Ok((_ast, _node_id))
+    }
+
+    fn execution_style() -> qbice::ExecutionStyle { qbice::ExecutionStyle::Projection }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct SourceMapGenExecutor;
+
+impl<C: qbice::Config> Executor<SourceMapGen, C> for SourceMapGenExecutor {
+    async fn execute(&self, query: &SourceMapGen, engine: &TrackedEngine<C>) -> Result<(Ast, NodeId), TError> {
+        let _ast = engine
+            .query(&MacroExpand {
+                entry: query.entry.clone(),
+            })
+            .await?;
+        // TODO(correctness): Implement Definition finding.
+        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
+        // Ok((_ast, _node_id))
+    }
+
+    fn execution_style() -> qbice::ExecutionStyle { qbice::ExecutionStyle::Projection }
+}
 }

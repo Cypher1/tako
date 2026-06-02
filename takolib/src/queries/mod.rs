@@ -282,7 +282,7 @@ impl Query for GetLocation {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct Parse {
-    entry: FileRef,
+    pub(crate) entry: FileRef,
 }
 
 impl Query for Parse {
@@ -338,7 +338,7 @@ impl Query for ResolveAst {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct Lex {
-    entry: FileRef,
+    pub(crate) entry: FileRef,
 }
 
 impl Query for Lex {
@@ -347,7 +347,7 @@ impl Query for Lex {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct Load {
-    file: FileRef,
+    pub(crate) file: FileRef,
 }
 
 impl Query for Load {

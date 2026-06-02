@@ -44,6 +44,8 @@ pub struct Ast {
     pub atoms: Container<(NodeId, Atom)>,
 
     pub string_interner: StringInterner,
+    // TODO(perf): Consider using SCC map.
+    // TODO(perf): Consider computing these in a query and dropping them from this datastructure.
     pub name_to_value: BTreeMap<Name, Prim>,
 }
 
@@ -67,6 +69,11 @@ impl Ast {
 }
 
 impl Ast {
+    pub fn merge(&mut self, _other: &Ast) {
+        // TODO(correctness): Merge asts.
+        todo!("Implement merge via copy and shifting indexes");
+    }
+
     pub fn make_node<T>(&mut self, value: T, location: Location) -> NodeId
     where
         Self: Contains<(NodeId, T)>,

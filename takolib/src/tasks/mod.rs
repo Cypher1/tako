@@ -9,6 +9,9 @@ use crate::parser::tokens::Token;
 use crate::primitives::meta::Meta;
 use crate::primitives::Prim;
 use crate::queries::FileRef;
+use crate::queries::Lex;
+use crate::queries::Load;
+use crate::queries::Parse;
 use async_trait::async_trait;
 use enum_kinds::EnumKind;
 use llamada::Llamada;
@@ -78,8 +81,12 @@ impl Task for LoadFileTask {
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
         trace!("LoadFileTask: {file}", file = self.file);
-        // TODO(perf): Use tokio's async read_to_string.
-        let contents = std::fs::read_to_string(&self.file.to_path_buf().1);
+        // TODO(perf): Don't re-init per-run.
+        let engine = crate::compiler::Compiler::get_engine().await;
+        let tracked_engine = engine.tracked().await;
+        let contents = tracked_engine.query(&Load {
+           file: self.file.clone()
+        }).await;
         let contents = contents.map_err(|err| self.decorate_error(err));
         result_sender
             .send((
@@ -112,7 +119,11 @@ impl Task for LexFileTask {
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
         trace!("LexFileTask: {file}", file = self.file);
-        let tokens = crate::parser::tokens::lex(&self.contents);
+        let engine = crate::compiler::Compiler::get_engine().await;
+        let tracked_engine = engine.tracked().await;
+        let tokens = tracked_engine.query(&Lex {
+           entry: self.file.clone()
+        }).await;
         let tokens = tokens
             .map(|tokens| ParseFileTask {
                 ast: Arc::new(Ast::new(self.file.clone())),
@@ -149,7 +160,11 @@ impl Task for ParseFileTask {
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
         trace!("ParseFileTask: {file}", file = self.ast.fileref);
-        let ast = crate::parser::parse(&self.ast, &self.contents, &self.tokens)
+        let engine = crate::compiler::Compiler::get_engine().await;
+        let tracked_engine = engine.tracked().await;
+        let ast = tracked_engine.query(&Parse {
+           entry: self.ast.fileref.clone()
+        }).await
             .map_err(|err| self.decorate_error(err));
         result_sender
             .send((
