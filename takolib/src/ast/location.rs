@@ -31,6 +31,13 @@ pub struct Location {
 }
 
 impl Location {
+    #[must_use]
+    pub fn all() -> Self {
+        Self {
+            start: 0,
+            length: 0,
+        }
+    }
     #[cfg(test)]
     #[must_use]
     pub fn dummy_for_test() -> Self {

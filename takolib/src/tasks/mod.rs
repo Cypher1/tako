@@ -84,9 +84,11 @@ impl Task for LoadFileTask {
         // TODO(perf): Don't re-init per-run.
         let engine = crate::compiler::Compiler::get_engine().await;
         let tracked_engine = engine.tracked().await;
-        let contents = tracked_engine.query(&Load {
-           file: self.file.clone()
-        }).await;
+        let contents = tracked_engine
+            .query(&Load {
+                file: self.file.clone(),
+            })
+            .await;
         let contents = contents.map_err(|err| self.decorate_error(err));
         result_sender
             .send((
@@ -121,9 +123,11 @@ impl Task for LexFileTask {
         trace!("LexFileTask: {file}", file = self.file);
         let engine = crate::compiler::Compiler::get_engine().await;
         let tracked_engine = engine.tracked().await;
-        let tokens = tracked_engine.query(&Lex {
-           entry: self.file.clone()
-        }).await;
+        let tokens = tracked_engine
+            .query(&Lex {
+                entry: self.file.clone(),
+            })
+            .await;
         let tokens = tokens
             .map(|tokens| ParseFileTask {
                 ast: Arc::new(Ast::new(self.file.clone())),
@@ -162,9 +166,11 @@ impl Task for ParseFileTask {
         trace!("ParseFileTask: {file}", file = self.ast.fileref);
         let engine = crate::compiler::Compiler::get_engine().await;
         let tracked_engine = engine.tracked().await;
-        let ast = tracked_engine.query(&Parse {
-           entry: self.ast.fileref.clone()
-        }).await
+        let ast = tracked_engine
+            .query(&Parse {
+                entry: self.ast.fileref.clone(),
+            })
+            .await
             .map_err(|err| self.decorate_error(err));
         result_sender
             .send((

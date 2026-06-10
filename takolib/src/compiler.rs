@@ -126,7 +126,6 @@ impl Compiler {
         engine.register_executor(Arc::new(crate::queries::executors::CheckProofsExecutor));
         engine.register_executor(Arc::new(crate::queries::executors::ErrorsExecutor));
         engine.register_executor(Arc::new(crate::queries::executors::ErrorsAtExecutor));
-        engine.register_executor(Arc::new(crate::queries::executors::ErrorsForNodeExecutor));
         engine.register_executor(Arc::new(crate::queries::executors::PrettyPrintExecutor));
         engine.register_executor(Arc::new(crate::queries::executors::InterpretExecutor));
         engine.register_executor(Arc::new(crate::queries::executors::EvalExecutor));

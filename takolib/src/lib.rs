@@ -5,6 +5,7 @@ pub mod ast;
 pub mod codegen;
 pub mod compiler;
 pub mod desugarer;
+pub mod engine;
 pub mod error;
 pub mod interpreter;
 pub mod lowerer;
@@ -15,7 +16,6 @@ pub mod tasks;
 #[cfg(test)]
 pub mod test;
 pub mod ui;
-pub mod engine;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 

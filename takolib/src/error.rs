@@ -90,6 +90,16 @@ impl From<std::num::ParseIntError> for TError {
     }
 }
 
+impl TError {
+    pub fn location(&self) -> Option<&Location> {
+        match &self {
+            TError::ClangCompilerError { .. } => None,
+            TError::ParseError(err) => err.location(),
+            TError::InternalError { location, .. } => location.as_ref(),
+        }
+    }
+}
+
 /**
 Tako's user facing error type
 Contains an internal error with markup for humans
@@ -112,11 +122,7 @@ impl Error {
         contents: Option<&str>,
         module: Option<&()>,
     ) -> Self {
-        let location = match &source {
-            TError::ClangCompilerError { .. } => None,
-            TError::ParseError(err) => err.location(),
-            TError::InternalError { location, .. } => location.as_ref(),
-        };
+        let location = source.location();
         let location = match (file, contents, location, module) {
             (Some(file), Some(contents), Some(location), _module) => {
                 Some(UserFacingLocation::from(file, contents, location))

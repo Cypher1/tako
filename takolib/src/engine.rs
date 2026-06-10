@@ -56,19 +56,18 @@ pub(crate) struct FjallConfig;
 #[cfg(feature = "fjall")]
 impl Config for FjallConfig {
     type StorageEngine = DbBacked<Fjall>;
-    type BuildStableHasher = qbice::stable_hash::SeededStableHasherBuilder<
-        qbice::stable_hash::Sip128Hasher,
-    >;
+    type BuildStableHasher =
+        qbice::stable_hash::SeededStableHasherBuilder<qbice::stable_hash::Sip128Hasher>;
     type BuildHasher = fxhash::FxBuildHasher;
 }
 
 #[cfg(feature = "fjall")]
 pub(crate) async fn get_qbice_engine() -> qbice::Engine<FjallConfig> {
     use qbice::{
-        Engine, serialize::Plugin, stable_hash::{SeededStableHasherBuilder, Sip128Hasher}, storage::{
-            kv_database::fjall::Fjall,
-            storage_engine::db_backed::DbBackedFactory,
-        }
+        serialize::Plugin,
+        stable_hash::{SeededStableHasherBuilder, Sip128Hasher},
+        storage::{kv_database::fjall::Fjall, storage_engine::db_backed::DbBackedFactory},
+        Engine,
     };
 
     let dir = tempfile::tempdir().expect("Creating temp dir shouldn't fail");

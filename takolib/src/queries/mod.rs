@@ -9,7 +9,11 @@ use std::path::PathBuf;
 #[cfg(feature = "codegen")]
 use crate::codegen::{BinaryDescription, BinaryInfo};
 use crate::{
-    ast::{location::Location, string_interner::Name, Ast, NodeId},
+    ast::{
+        location::{Location, UserFacingLocation},
+        string_interner::Name,
+        Ast, NodeId,
+    },
     error::{Error, TError},
     parser::tokens::Token,
     primitives::Prim,
@@ -37,9 +41,8 @@ pub enum AnyQuery {
     GetTypeQuery(GetType),         // [src]node -> TypeInfo
     CheckProofsQuery(CheckProofs), // [gen]node -> [typed]ast, errors[]
     // Error Reporting
-    ErrorsQuery(Errors),               // name -> (src_pos, error)[]
-    ErrorsAtQuery(ErrorsAt),           // src_pos -> error[]
-    ErrorsForNodeQuery(ErrorsForNode), // [src]node -> error[]
+    ErrorsQuery(Errors),     // name -> (src_pos, error)[]
+    ErrorsAtQuery(ErrorsAt), // src_pos -> error[]
     // DevTools
     PrettyPrintQuery(PrettyPrint), // ast, node -> string
     InterpretQuery(Interpret),     // name -> IO
@@ -129,7 +132,7 @@ impl FileRef {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct Desugar {
-    file: FileRef,
+    entry: FileRef,
 }
 
 impl Query for Desugar {
@@ -138,7 +141,7 @@ impl Query for Desugar {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct Lower {
-    file: FileRef,
+    entry: FileRef,
 }
 
 impl Query for Lower {
@@ -148,7 +151,7 @@ impl Query for Lower {
 #[cfg(feature = "codegen")]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct CodeGenAll {
-    root: FileRef,
+    entry: FileRef,
 }
 
 #[cfg(feature = "codegen")]
@@ -159,7 +162,7 @@ impl Query for CodeGenAll {
 #[cfg(feature = "codegen")]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct EnnumerateBinaries {
-    root: FileRef,
+    entry: FileRef,
 }
 
 #[cfg(feature = "codegen")]
@@ -169,7 +172,7 @@ impl Query for EnnumerateBinaries {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct WriteCodeGenAll {
-    root: FileRef,
+    entry: FileRef,
 }
 
 impl Query for WriteCodeGenAll {
@@ -212,8 +215,8 @@ impl Query for Eval {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct Optimize {
+    entry: FileRef,
     root: NodeId,
-    ast: Ast,
 }
 
 impl Query for Optimize {
@@ -233,7 +236,7 @@ impl Query for TypeAt {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct TypeCheck {
     entry: FileRef,
-    ast: Ast,
+    // ast: Ast,
 }
 
 impl Query for TypeCheck {
@@ -243,7 +246,6 @@ impl Query for TypeCheck {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct CheckProofs {
     entry: FileRef,
-    ast: Ast,
 }
 
 impl Query for CheckProofs {
@@ -252,8 +254,8 @@ impl Query for CheckProofs {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct GetType {
+    entry: FileRef,
     node: NodeId,
-    ast: Ast,
 }
 
 impl Query for GetType {
@@ -272,7 +274,7 @@ impl Query for FindNode {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct GetLocation {
-    context: Ast,
+    entry: FileRef,
     node: NodeId,
 }
 
@@ -357,27 +359,28 @@ impl Query for Load {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct PrettyPrint {
     ast: Ast,
-    entry: NodeId,
+    root: NodeId,
 }
 
 impl Query for PrettyPrint {
-    type Value = Result<String, TError>;
+    type Value = String;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct Interpret {
-    file: FileRef,
-    entry: Option<Name>,
+    entry: FileRef,
+    start: Option<Name>,
 }
 
 impl Query for Interpret {
-    type Value = Result<(), TError>;
+    type Value = Result<Prim, TError>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct EvalNode {
     ast: Ast,
-    entry: NodeId,
+    entry: FileRef,
+    start: NodeId,
 }
 
 impl Query for EvalNode {
@@ -390,25 +393,15 @@ pub struct Errors {
 }
 
 impl Query for Errors {
-    type Value = BTreeMap<Location, Vec<Error>>;
+    type Value = BTreeMap<UserFacingLocation, Vec<Error>>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct ErrorsAt {
     file: FileRef,
-    location: Location,
+    location: UserFacingLocation,
 }
 
 impl Query for ErrorsAt {
     type Value = Vec<Error>;
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
-pub struct ErrorsForNode {
-    ast: Ast,
-    node: NodeId,
-}
-
-impl Query for ErrorsForNode {
-    type Value = Vec<TError>;
 }
