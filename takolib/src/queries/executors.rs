@@ -174,8 +174,7 @@ impl<C: qbice::Config> Executor<FindNode, C> for FindNodeExecutor {
             })
             .await?;
         // TODO(correctness): Implement Node finding.
-        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
-        // Ok((_ast, _node_id))
+        todo!("Something like ast.get_at_location(query.location)?;")
     }
 
     fn execution_style() -> qbice::ExecutionStyle {
@@ -198,8 +197,7 @@ impl<C: qbice::Config> Executor<FindDefinition, C> for FindDefinitionExecutor {
             })
             .await?;
         // TODO(correctness): Implement Definition finding.
-        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
-        // Ok((_ast, _node_id))
+        todo!("Something like ast.get_at_location(query.location)?;")
     }
 
     fn execution_style() -> qbice::ExecutionStyle {
@@ -222,8 +220,7 @@ impl<C: qbice::Config> Executor<GetLocation, C> for GetLocationExecutor {
             })
             .await?;
         // TODO(correctness): Implement Definition finding.
-        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
-        // Ok((_ast, _node_id))
+        todo!("Something like ast.get_at_location(query.location)?;")
     }
 
     fn execution_style() -> qbice::ExecutionStyle {
@@ -246,8 +243,7 @@ impl<C: qbice::Config> Executor<TypeAt, C> for TypeAtExecutor {
             })
             .await?;
         // TODO(correctness): Implement Definition finding.
-        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
-        // Ok((_ast, _node_id))
+        todo!("Something like ast.get_at_location(query.location)?;")
     }
 
     fn execution_style() -> qbice::ExecutionStyle {
@@ -270,8 +266,7 @@ impl<C: qbice::Config> Executor<TypeCheck, C> for TypeCheckExecutor {
             })
             .await?;
         // TODO(correctness): Implement Definition finding.
-        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
-        // Ok((_ast, _node_id))
+        todo!("Something like ast.get_at_location(query.location)?;")
     }
 
     fn execution_style() -> qbice::ExecutionStyle {
@@ -294,8 +289,7 @@ impl<C: qbice::Config> Executor<GetType, C> for GetTypeExecutor {
             })
             .await?;
         // TODO(correctness): Implement Definition finding.
-        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
-        // Ok((_ast, _node_id))
+        todo!("Something like ast.get_at_location(query.location)?;")
     }
 
     fn execution_style() -> qbice::ExecutionStyle {
@@ -318,8 +312,7 @@ impl<C: qbice::Config> Executor<CheckProofs, C> for CheckProofsExecutor {
             })
             .await?;
         // TODO(correctness): Implement Definition finding.
-        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
-        // Ok((_ast, _node_id))
+        todo!("Something like ast.get_at_location(query.location)?;")
     }
 
     fn execution_style() -> qbice::ExecutionStyle {
@@ -336,60 +329,36 @@ impl<C: qbice::Config> Executor<Errors, C> for ErrorsExecutor {
         query: &Errors,
         engine: &TrackedEngine<C>,
     ) -> BTreeMap<UserFacingLocation, Vec<Error>> {
-        let mut error_map: BTreeMap<UserFacingLocation, Vec<Error>> = BTreeMap::new();
-
-        // source: TError,
-        // file: Option<FileRef>,
-        // contents: Option<&str>,
-        // module: Option<&()>,
+        let contents = engine
+            .query(&Load {
+                file: query.file.clone(),
+            })
+            .await
+            .ok();
 
         let maybe_proofs = engine
             .query(&CheckProofs {
                 entry: query.file.clone(),
             })
             .await;
-        match maybe_proofs {
-            Err(err) => {
-                error_map
-                    .entry(UserFacingLocation::from_file(query.file.clone()))
-                    .or_insert(Vec::new())
-                    .push(err);
-            }
-            Ok((_proofs_ast, _new_root, errors)) => {
-                for err in errors {
-                    // TODO: Refactor with a lambda.
-                    match err.location() {
-                        Some(loc) => {
-                            let contents = engine
-                                .query(&Load {
-                                    file: query.file.clone(),
-                                })
-                                .await;
-                            match contents {
-                                Ok(contents) => {
-                                    let loc = UserFacingLocation::from(
-                                        query.file.clone(),
-                                        &contents,
-                                        loc,
-                                    );
-                                    error_map.entry(loc).or_insert(Vec::new()).push(err);
-                                }
-                                // TODO(error reporting): Contents missing..
-                                Err(err) => {
-                                    error_map
-                                        .entry(UserFacingLocation::from_file(query.file))
-                                        .or_insert(Vec::new())
-                                        .push(err);
-                                }
-                            }
-                        }
-                        None => {
-                            let loc = UserFacingLocation::from_file(query.file.clone());
-                            error_map.entry(loc).or_insert(Vec::new()).push(err);
-                        }
-                    };
-                }
-            }
+
+        let errors = match maybe_proofs {
+            Err(err) => vec![err],
+            Ok((_proofs_ast, _new_root, errors)) => errors,
+        };
+
+        let mut error_map: BTreeMap<UserFacingLocation, Vec<Error>> = BTreeMap::new();
+        for source in errors {
+            let location = UserFacingLocation::from(
+                query.file.clone(),
+                contents.as_deref(),
+                source.location(),
+            );
+            let err = Error {
+                source,
+                location: Some(location.clone()),
+            };
+            error_map.entry(location).or_default().push(err);
         }
         error_map
     }
@@ -441,8 +410,7 @@ impl<C: qbice::Config> Executor<Interpret, C> for InterpretExecutor {
             })
             .await?;
         // TODO(correctness): Implement Definition finding.
-        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
-        // Ok((_ast, _node_id))
+        todo!("Something like ast.get_at_location(query.location)?;")
     }
 
     fn execution_style() -> qbice::ExecutionStyle {
@@ -461,8 +429,7 @@ impl<C: qbice::Config> Executor<Eval, C> for EvalExecutor {
             })
             .await?;
         // TODO(correctness): Implement Definition finding.
-        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
-        // Ok((_ast, _node_id))
+        todo!("Something like ast.get_at_location(query.location)?;")
     }
 
     fn execution_style() -> qbice::ExecutionStyle {
@@ -481,8 +448,7 @@ impl<C: qbice::Config> Executor<EvalNode, C> for EvalNodeExecutor {
             })
             .await?;
         // TODO(correctness): Implement Definition finding.
-        let _value = todo!("Something like ast.eval(query.???)?;");
-        // Ok((_ast, _node_id))
+        todo!("Something like ast.eval(query.???)?;")
     }
 
     fn execution_style() -> qbice::ExecutionStyle {
@@ -505,8 +471,7 @@ impl<C: qbice::Config> Executor<Optimize, C> for OptimizeExecutor {
             })
             .await?;
         // TODO(correctness): Implement Definition finding.
-        let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
-        // Ok((_ast, _node_id))
+        todo!("Something like ast.get_at_location(query.location)?;")
     }
 
     fn execution_style() -> qbice::ExecutionStyle {
@@ -551,8 +516,7 @@ mod codegen {
                 })
                 .await?;
             // TODO(correctness): Implement Definition finding.
-            let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
-            // Ok((_ast, _node_id))
+            todo!("Something like ast.get_at_location(query.location)?;")
         }
 
         fn execution_style() -> qbice::ExecutionStyle {
@@ -575,8 +539,7 @@ mod codegen {
                 })
                 .await?;
             // TODO(correctness): Implement Definition finding.
-            let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
-            // Ok((_ast, _node_id))
+            todo!("Something like ast.get_at_location(query.location)?;")
         }
 
         fn execution_style() -> qbice::ExecutionStyle {
@@ -599,8 +562,7 @@ mod codegen {
                 })
                 .await?;
             // TODO(correctness): Implement Definition finding.
-            let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
-            // Ok((_ast, _node_id))
+            todo!("Something like ast.get_at_location(query.location)?;")
         }
 
         fn execution_style() -> qbice::ExecutionStyle {
@@ -623,8 +585,7 @@ mod codegen {
                 })
                 .await?;
             // TODO(correctness): Implement Definition finding.
-            let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
-            // Ok((_ast, _node_id))
+            todo!("Something like ast.get_at_location(query.location)?;")
         }
 
         fn execution_style() -> qbice::ExecutionStyle {
@@ -647,8 +608,7 @@ mod codegen {
                 })
                 .await?;
             // TODO(correctness): Implement Definition finding.
-            let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
-            // Ok((_ast, _node_id))
+            todo!("Something like ast.get_at_location(query.location)?;")
         }
 
         fn execution_style() -> qbice::ExecutionStyle {
@@ -671,8 +631,7 @@ mod codegen {
                 })
                 .await?;
             // TODO(correctness): Implement Definition finding.
-            let _node_id = todo!("Something like ast.get_at_location(query.location)?;");
-            // Ok((_ast, _node_id))
+            todo!("Something like ast.get_at_location(query.location)?;")
         }
 
         fn execution_style() -> qbice::ExecutionStyle {

@@ -120,16 +120,10 @@ impl Error {
         source: TError,
         file: Option<FileRef>,
         contents: Option<&str>,
-        module: Option<&()>,
+        _module: Option<&()>, // TODO(correctness): Support name spacing.
     ) -> Self {
         let location = source.location();
-        let location = match (file, contents, location, module) {
-            (Some(file), Some(contents), Some(location), _module) => {
-                Some(UserFacingLocation::from(file, contents, location))
-            }
-            (Some(file), _, _, _) => Some(UserFacingLocation::from_file(file)),
-            _ => None, // TODO(: There's more options here...
-        };
+        let location = file.map(|file| UserFacingLocation::from(file, contents, location));
         Self { source, location }
     }
 }

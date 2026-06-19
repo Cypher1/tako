@@ -6,8 +6,7 @@ use qbice::storage::kv_database::fjall::Fjall;
 #[cfg(feature = "fjall")]
 use qbice::storage::storage_engine::db_backed::{Configuration, DbBacked};
 use qbice::storage::storage_engine::in_memory::InMemoryStorageEngine;
-#[cfg(not(feature = "rocksdb"))]
-use qbice::{Config, Identifiable};
+use qbice::Identifiable;
 use std::fmt::Debug;
 
 #[cfg(feature = "rocksdb")]
@@ -54,7 +53,7 @@ impl qbice::config::Config for InMemoryDBConfig {
 pub(crate) struct FjallConfig;
 
 #[cfg(feature = "fjall")]
-impl Config for FjallConfig {
+impl qbice::config::Config for FjallConfig {
     type StorageEngine = DbBacked<Fjall>;
     type BuildStableHasher =
         qbice::stable_hash::SeededStableHasherBuilder<qbice::stable_hash::Sip128Hasher>;
@@ -90,7 +89,7 @@ pub(crate) async fn get_qbice_engine() -> qbice::Engine<InMemoryDBConfig> {
     use qbice::serialize::Plugin;
     qbice::Engine::<InMemoryDBConfig>::new_with(
         Plugin::default(),
-        InMemoryStorageEngineFactory,
+        InMemoryStorageEngine,
         SeededStableHasherBuilder::<Sip128Hasher>::new(0),
     )
     .await
