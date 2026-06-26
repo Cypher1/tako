@@ -7,8 +7,60 @@ use crate::primitives::Prim;
 use backend::{backend, create_context, Backend, BackendConfig, BackendStateTrait};
 use std::path::Path;
 
+#[derive(Default, EnumIter, Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
+pub enum InstructionSet {
+    #[default]
+    LLVM,
+    // TODO(feature): Support for X86.
+    // TODO(feature): Support for ARM.
+    // TODO(feature): Support for MLIR.
+    // TODO(feature): Support for WASM.
+    // TODO(feature): Support for JS.
+    // TODO(feature): Support for JVM.
+    // TODO(feature): Support for PythonByteCode.
+    // TODO(feature): Support for RISCV.
+}
+
+#[derive(Default, EnumIter, Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
+pub enum OperatingSystemFamily {
+    #[default]
+    Linux, // Including ChromeOS, Android, BSD,
+    // TODO(feature): Support for Windows.
+    // TODO(feature): Support for MacOSX.
+    // TODO(feature): Support an Agnostic OS target.
+    // TODO(feature): Consider adding Android and iOS as separate targets.
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
+pub struct Target {
+    os: OperatingSystemFamily,
+    os_version: String,
+    instruction_set: InstructionSet,
+    instruction_set_version: String,
+    // TODO(feature): Support for specific chipsets.
+    // TODO(feature): Support for configurable features.
+}
+
+impl Target {
+    fn isPOSIX(&self) {
+        true
+        // !matches!(self.os, Windows)
+    }
+}
+
+#[derive(Default, EnumIter, Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
+pub enum OutputType {
+    Executable,
+    // TODO(feature): Support for Interpretable.
+    // TODO(feature): Support for Object Files (.o).
+    // TODO(feature): Support for Libraries (.a, .so, .dll).
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct BinaryDescription {
+    mode: OutputType,
+    targets: Vec<Target>,
+
     // TODO: This should be the result...
 }
 
