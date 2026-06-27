@@ -324,8 +324,8 @@ impl Task for CodegenTask {
     }
     #[cfg(feature = "codegen")]
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {
-        trace!("CodegenTask (backend): {file}", file = self.file);
-        let result = crate::codegen::codegen(&self.file, &self.ast, Some(self.root))
+        trace!("CodegenTask (backend): {file}", file = self.ast.fileref);
+        let result = crate::codegen::codegen(&self.ast, Some(self.root))
             .map_err(|err| self.decorate_error(err));
         result_sender
             .send((

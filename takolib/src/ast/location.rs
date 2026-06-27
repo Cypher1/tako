@@ -83,12 +83,16 @@ impl UserFacingLocation {
 
     #[must_use]
     pub fn from(file: FileRef, contents: Option<&str>, location: Option<&Location>) -> Self {
-        let contents = if let Some(contents) = contents { contents } else {
+        let contents = if let Some(contents) = contents {
+            contents
+        } else {
             // TODO(correctness): Report range anyway?
-            return Self::from_file(file) // Can't convert location into line & row without contents.
+            return Self::from_file(file); // Can't convert location into line & row without contents.
         };
-        let location = if let Some(location) = location { location } else {
-            return Self::from_file(file) // Can't convert location into line & row without file.
+        let location = if let Some(location) = location {
+            location
+        } else {
+            return Self::from_file(file); // Can't convert location into line & row without file.
         };
         // TODO(usability): Consider walking the module tree to get a fully qualified module name.
         let mut loc = Self::new(file, 1, 1);

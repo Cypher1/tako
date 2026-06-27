@@ -499,17 +499,22 @@ impl<C: qbice::Config> Executor<Lower, C> for LowerExecutor {
 }
 
 #[cfg(feature = "codegen")]
-mod codegen {
+pub(crate) mod codegen {
+
+    use futures::{stream::FuturesUnordered, StreamExt};
+    use itertools::Itertools;
+
+    use super::*;
 
     #[derive(Clone, Copy, Debug)]
-    pub struct CodeGenAllExecutor;
+    pub struct CodeGenExecutor;
 
-    impl<C: qbice::Config> Executor<CodeGenAll, C> for CodeGenAllExecutor {
+    impl<C: qbice::Config> Executor<CodeGen, C> for CodeGenExecutor {
         async fn execute(
             &self,
-            query: &CodeGenAll,
+            query: &CodeGen,
             engine: &TrackedEngine<C>,
-        ) -> Result<(Ast, NodeId), TError> {
+        ) -> Result<BinaryInfo, TError> {
             let _ast = engine
                 .query(&MacroExpand {
                     entry: query.entry.clone(),
@@ -525,14 +530,14 @@ mod codegen {
     }
 
     #[derive(Clone, Copy, Debug)]
-    pub struct WriteCodeGenAllExecutor;
+    pub struct CodeGenAllExecutor;
 
-    impl<C: qbice::Config> Executor<WriteCodeGenAll, C> for WriteCodeGenAllExecutor {
+    impl<C: qbice::Config> Executor<CodeGenAll, C> for CodeGenAllExecutor {
         async fn execute(
             &self,
-            query: &WriteCodeGenAll,
+            query: &CodeGenAll,
             engine: &TrackedEngine<C>,
-        ) -> Result<(Ast, NodeId), TError> {
+        ) -> Result<BTreeMap<Name, BinaryInfo>, TError> {
             let _ast = engine
                 .query(&MacroExpand {
                     entry: query.entry.clone(),
@@ -540,6 +545,74 @@ mod codegen {
                 .await?;
             // TODO(correctness): Implement Definition finding.
             todo!("Something like ast.get_at_location(query.location)?;")
+        }
+
+        fn execution_style() -> qbice::ExecutionStyle {
+            qbice::ExecutionStyle::Projection
+        }
+    }
+
+    #[derive(Clone, Copy, Debug)]
+    pub struct WriteCodeGenExecutor;
+
+    impl<C: qbice::Config> Executor<WriteCodeGen, C> for WriteCodeGenExecutor {
+        async fn execute(
+            &self,
+            query: &WriteCodeGen,
+            engine: &TrackedEngine<C>,
+        ) -> Result<(), TError> {
+            let binary = engine
+                .query(&CodeGenAll {
+                    entry: query.entry.clone(),
+                })
+                .await?;
+            // TODO(correctness): Implement Definition finding.
+            todo!("Something like ast.get_at_location(query.location)?;")
+        }
+    }
+
+    #[derive(Clone, Copy, Debug)]
+    pub struct WriteCodeGenAllExecutor;
+
+    impl<C: qbice::Config> Executor<WriteCodeGenAll, C> for WriteCodeGenAllExecutor {
+        async fn execute(&self, query: &WriteCodeGenAll, engine: &TrackedEngine<C>) -> Vec<TError> {
+            let binaries = engine
+                .query(&EnumerateBinaries {
+                    entry: query.entry.clone(),
+                })
+                .await;
+            let binaries = match binaries {
+                Ok(binaries) => binaries,
+                Err(err) => return vec![err],
+            };
+
+            #[inline]
+            async fn write_code_gen<C: qbice::Config>(
+                query: WriteCodeGen,
+                engine: TrackedEngine<C>,
+            ) -> Result<(), TError> {
+                // TODO(cleanup): Work out why this function works but the same code inline doesn't.
+                engine.query(&query).await
+            }
+
+            let results: FuturesUnordered<_> = binaries
+                .into_iter()
+                .map(move |(entry_name, target)| {
+                    // Able to be moved to a different thread.
+                    write_code_gen(
+                        WriteCodeGen {
+                            entry: query.entry.clone(),
+                            entry_name,
+                            target,
+                        },
+                        engine.clone(),
+                    )
+                })
+                .collect();
+
+            let results: Vec<Result<(), TError>> = results.collect().await;
+            let (_results, errors): (Vec<()>, Vec<_>) = results.into_iter().partition_result();
+            errors
         }
 
         fn execution_style() -> qbice::ExecutionStyle {
@@ -555,53 +628,7 @@ mod codegen {
             &self,
             query: &EnumerateBinaries,
             engine: &TrackedEngine<C>,
-        ) -> Result<(Ast, NodeId), TError> {
-            let _ast = engine
-                .query(&MacroExpand {
-                    entry: query.entry.clone(),
-                })
-                .await?;
-            // TODO(correctness): Implement Definition finding.
-            todo!("Something like ast.get_at_location(query.location)?;")
-        }
-
-        fn execution_style() -> qbice::ExecutionStyle {
-            qbice::ExecutionStyle::Projection
-        }
-    }
-
-    #[derive(Clone, Copy, Debug)]
-    pub struct WriteCodeGenAllExecutor;
-
-    impl<C: qbice::Config> Executor<WriteCodeGenAll, C> for WriteCodeGenAllExecutor {
-        async fn execute(
-            &self,
-            query: &WriteCodeGenAll,
-            engine: &TrackedEngine<C>,
-        ) -> Result<(Ast, NodeId), TError> {
-            let _ast = engine
-                .query(&MacroExpand {
-                    entry: query.entry.clone(),
-                })
-                .await?;
-            // TODO(correctness): Implement Definition finding.
-            todo!("Something like ast.get_at_location(query.location)?;")
-        }
-
-        fn execution_style() -> qbice::ExecutionStyle {
-            qbice::ExecutionStyle::Projection
-        }
-    }
-
-    #[derive(Clone, Copy, Debug)]
-    pub struct CodeGenExecutor;
-
-    impl<C: qbice::Config> Executor<CodeGen, C> for CodeGenExecutor {
-        async fn execute(
-            &self,
-            query: &CodeGen,
-            engine: &TrackedEngine<C>,
-        ) -> Result<(Ast, NodeId), TError> {
+        ) -> Result<BTreeMap<Name, BinaryDescription>, TError> {
             let _ast = engine
                 .query(&MacroExpand {
                     entry: query.entry.clone(),
@@ -624,7 +651,30 @@ mod codegen {
             &self,
             query: &SourceMapGen,
             engine: &TrackedEngine<C>,
-        ) -> Result<(Ast, NodeId), TError> {
+        ) -> Result<(), TError> {
+            let _ast = engine
+                .query(&MacroExpand {
+                    entry: query.entry.clone(),
+                })
+                .await?;
+            // TODO(correctness): Implement Definition finding.
+            todo!("Something like ast.get_at_location(query.location)?;")
+        }
+
+        fn execution_style() -> qbice::ExecutionStyle {
+            qbice::ExecutionStyle::Projection
+        }
+    }
+
+    #[derive(Clone, Copy, Debug)]
+    pub struct SourceMapGenAllExecutor;
+
+    impl<C: qbice::Config> Executor<SourceMapGenAll, C> for SourceMapGenAllExecutor {
+        async fn execute(
+            &self,
+            query: &SourceMapGenAll,
+            engine: &TrackedEngine<C>,
+        ) -> Result<(), TError> {
             let _ast = engine
                 .query(&MacroExpand {
                     entry: query.entry.clone(),

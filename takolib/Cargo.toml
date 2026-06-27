@@ -11,7 +11,7 @@ keywords = ["compiler", "programming", "language"]
 include = ["src/**/*", "LICENSE.md", "README.md"]
 
 [features]
-default=["native"]
+default=["native", "llvm"]
 wasm=["wasm-logger", "uuid/rng-rand", "getrandom/wasm_js"]
 native_linux=["env_logger", "rocksdb"]
 native=["env_logger", "fjall"]
@@ -58,10 +58,11 @@ qbice = { git = "https://github.com/Simmypeet/qbice", branch = "master", default
 tempfile = "3.27.0"
 uuid = "1.23.1"
 getrandom = "0.4.2"
-
-[dev-dependencies]
 strum = "0.28.0"
 strum_macros = "0.28.0"
+itertools = "0.15.0"
+
+[dev-dependencies]
 pretty_assertions.workspace = true
 rand = "0.10.1"
 walkdir = "2.5.0"

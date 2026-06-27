@@ -13,11 +13,13 @@ use inkwell::{
     AddressSpace, OptimizationLevel,
 };
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 use std::{
     io::{stderr, stdout, Write},
-    path::Path,
     process::Command,
+};
+use std::{
+    path::Path,
+    sync::{Arc, Mutex},
 };
 
 lazy_static::lazy_static! {
@@ -259,7 +261,8 @@ pub mod tests {
     use std::path::PathBuf;
 
     fn test_build_output_dir() -> PathBuf {
-        Path::new("/tmp/tako_tests/llvm_backend").to_path_buf()
+        // TODO(correctness): Use temp_dir crate.
+        PathBuf::from("/tmp/tako_tests/llvm_backend")
     }
 
     #[test]

@@ -2,8 +2,10 @@ pub use crate::tasks::manager::{StatusReport, TaskStats};
 pub use crate::tasks::status::*;
 pub use crate::tasks::task_trait::TaskId;
 #[cfg(feature = "fjall")]
+#[cfg(not(feature = "rocksdb"))]
 use qbice::storage::kv_database::fjall::Fjall;
 #[cfg(feature = "fjall")]
+#[cfg(not(feature = "rocksdb"))]
 use qbice::storage::storage_engine::db_backed::{Configuration, DbBacked};
 use qbice::storage::storage_engine::in_memory::InMemoryStorageEngine;
 use qbice::Identifiable;
@@ -49,10 +51,12 @@ impl qbice::config::Config for InMemoryDBConfig {
 }
 
 #[cfg(feature = "fjall")]
+#[cfg(not(feature = "rocksdb"))]
 #[derive(Debug, Default, Clone, Copy, Identifiable, Hash, Ord, PartialOrd, Eq, PartialEq)]
 pub(crate) struct FjallConfig;
 
 #[cfg(feature = "fjall")]
+#[cfg(not(feature = "rocksdb"))]
 impl qbice::config::Config for FjallConfig {
     type StorageEngine = DbBacked<Fjall>;
     type BuildStableHasher =
@@ -61,6 +65,7 @@ impl qbice::config::Config for FjallConfig {
 }
 
 #[cfg(feature = "fjall")]
+#[cfg(not(feature = "rocksdb"))]
 pub(crate) async fn get_qbice_engine() -> qbice::Engine<FjallConfig> {
     use qbice::{
         serialize::Plugin,

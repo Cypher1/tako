@@ -56,13 +56,15 @@ pub enum AnyQuery {
     #[cfg(feature = "codegen")]
     WriteCodeGenAllQuery(WriteCodeGenAll), // name -> (name, binary_info)[]
     #[cfg(feature = "codegen")]
-    EnnumerateBinariesQuery(EnnumerateBinaries), // name -> binary_info[]
+    EnumerateBinariesQuery(EnumerateBinaries), // name -> binary_info[]
     #[cfg(feature = "codegen")]
     WriteCodeGenQuery(WriteCodeGen), // name -> IO
     #[cfg(feature = "codegen")]
     CodeGenQuery(CodeGen), // name -> binary_info
     #[cfg(feature = "codegen")]
-    SourceMapGenQuery(SourceMapGen), // src -> IO
+    SourceMapGenQuery(SourceMapGen), // src & binary -> IO
+    #[cfg(feature = "codegen")]
+    SourceMapGenAllQuery(SourceMapGenAll), // src -> IO
 }
 
 #[derive(
@@ -156,18 +158,18 @@ pub struct CodeGenAll {
 
 #[cfg(feature = "codegen")]
 impl Query for CodeGenAll {
-    type Value = Result<BTreeMap<Name, BinaryInfo>>;
+    type Value = Result<BTreeMap<Name, BinaryInfo>, TError>;
 }
 
 #[cfg(feature = "codegen")]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
-pub struct EnnumerateBinaries {
+pub struct EnumerateBinaries {
     entry: FileRef,
 }
 
 #[cfg(feature = "codegen")]
-impl Query for EnnumerateBinaries {
-    type Value = Result<BTreeMap<Name, BinaryDescription>>;
+impl Query for EnumerateBinaries {
+    type Value = Result<BTreeMap<Name, BinaryDescription>, TError>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
@@ -176,7 +178,7 @@ pub struct WriteCodeGenAll {
 }
 
 impl Query for WriteCodeGenAll {
-    type Value = Result<(), TError>;
+    type Value = Vec<TError>;
 }
 
 #[cfg(feature = "codegen")]
@@ -194,10 +196,34 @@ impl Query for CodeGen {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct WriteCodeGen {
     entry: FileRef,
-    entry_name: Option<Name>,
+    entry_name: Name,
+    target: BinaryDescription,
 }
 
 impl Query for WriteCodeGen {
+    type Value = Result<(), TError>;
+}
+
+#[cfg(feature = "codegen")]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
+pub struct SourceMapGen {
+    entry: FileRef,
+    entry_name: Name,
+}
+
+#[cfg(feature = "codegen")]
+impl Query for SourceMapGen {
+    type Value = Result<(), TError>;
+}
+
+#[cfg(feature = "codegen")]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
+pub struct SourceMapGenAll {
+    entry: FileRef,
+}
+
+#[cfg(feature = "codegen")]
+impl Query for SourceMapGenAll {
     type Value = Result<(), TError>;
 }
 
