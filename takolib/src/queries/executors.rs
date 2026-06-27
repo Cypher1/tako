@@ -26,6 +26,7 @@ impl<C: qbice::Config> Executor<Load, C> for LoadExecutor {
             } => {
                 // Download the dependency if it's not already down
                 // Load the file from there.
+                // Should be bzip2'd but only decompressed in memory
                 todo!("{name}@{version} / {internal_path:?}");
             }
         }

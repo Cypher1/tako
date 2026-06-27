@@ -89,7 +89,7 @@ aliases:
   - [ ] Bunches of nodes to store would be faster to store as groups and could be async from file access
   - [ ] Parsing the file could be broken up by balanced brackets
   - [ ] This may be premature optimisation the store medium / RAM may be the bottle neck
-- [ ] Remove AST and Info types
+- [~] Remove AST and Info types
 - [ ] Explore algorithms that can be moved to the GPU (e.g. lexing multiple files in parallel, perhaps parsing, scoping, type checking)
   - https://github.com/Rust-GPU/rust-gpu/
   - https://github.com/gfx-rs/wgpu (this can even work in browser)
