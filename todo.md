@@ -145,3 +145,13 @@ aliases:
 - [ ] Multiple entry points possible in a single file
   - [ ] makeBinary(main, "main") is default but
   - [ ] makeBinary(test, "unit") is just as valid
+
+## Cleanup work (porting to QBICE)
+
+- [ ] `TaskManager` is removed and replaced with calls into `engine.query` using `AnyQuery` for the CLI and HTTP client support.
+- [ ] All `Task` infrastructure is removed.
+- [ ] No `std::fs` usage in `tako` or `takolib` (outside tests) (use `tokio::fs` instead).
+- [ ] Added `queries/get_value.rs` + a tiny `GetValue` query.
+- [ ] Added a test that queries a file twice and sees the same value (engine‑caching works).
+- [ ] `cargo check` + `cargo test --features rocksdb` passes.
+- [ ] Run `cargo clippy` and ensure zero warnings related to storage.
