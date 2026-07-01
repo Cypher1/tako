@@ -11,7 +11,7 @@ keywords = ["compiler", "programming", "language"]
 include = ["src/**/*", "LICENSE.md", "README.md"]
 
 [features]
-default=["native", "llvm"]
+default=["native"]
 wasm=["wasm-logger", "uuid/rng-rand", "getrandom/wasm_js"]
 native_linux=["env_logger", "rocksdb"]
 native=["env_logger", "fjall"]

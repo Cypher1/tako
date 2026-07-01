@@ -193,6 +193,7 @@ impl Query for CodeGen {
     type Value = Result<BinaryInfo, TError>;
 }
 
+#[cfg(feature = "codegen")]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct WriteCodeGen {
     entry: FileRef,
@@ -200,6 +201,7 @@ pub struct WriteCodeGen {
     target: BinaryDescription,
 }
 
+#[cfg(feature = "codegen")]
 impl Query for WriteCodeGen {
     type Value = Result<(), TError>;
 }
