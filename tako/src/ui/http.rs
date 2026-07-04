@@ -9,7 +9,6 @@ use std::time::{Duration, Instant};
 use takolib::ast::Ast;
 use takolib::primitives::Prim;
 use takolib::queries::FileRef;
-use takolib::tasks::RequestTask;
 use takolib::ui::OptionsTrait;
 use takolib::ui::{Client, UserInterface};
 use tokio::sync::{mpsc, oneshot};

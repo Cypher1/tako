@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use takolib::ast::Ast;
 
-use takolib::tasks::RequestTask;
 use takolib::ui::{Client, OptionsTrait, UserInterface};
 use tokio::spawn;
 use tokio::sync::{mpsc, oneshot};

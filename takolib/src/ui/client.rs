@@ -2,14 +2,12 @@ use super::OptionsTrait;
 use crate::error::Error;
 use crate::primitives::Prim;
 use crate::queries::FileRef;
-use crate::tasks::{RequestTask, StatusReport, TaskKind, TaskStats};
 use log::trace;
 use std::collections::{BTreeSet, HashMap};
 use tokio::sync::{broadcast, mpsc};
 
 #[derive(Debug)]
 pub struct Client {
-    pub manager_status: HashMap<TaskKind, TaskStats>,
     pub history: Vec<String>, // TODO(usability): Mark Input v output.
     pub errors_for_file: HashMap<Option<FileRef>, BTreeSet<Error>>,
     pub options: Box<dyn OptionsTrait>,

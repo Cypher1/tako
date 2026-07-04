@@ -3,15 +3,6 @@ use crate::ast::Ast;
 use crate::primitives::meta::Meta;
 use crate::primitives::Prim;
 use crate::queries::FileRef;
-use crate::tasks::manager::TaskManager;
-pub use crate::tasks::manager::{StatusReport, TaskStats};
-pub use crate::tasks::status::*;
-pub use crate::tasks::task_trait::TaskId;
-use crate::tasks::task_trait::{ResultSenderFor, Task, TaskReceiverFor};
-use crate::tasks::{
-    CodegenTask, DesugarFileTask, EvalFileTask, LexFileTask, LoadFileTask, LowerFileTask,
-    ParseFileTask, RequestTask,
-};
 use crate::ui::Client;
 use log::{debug, trace};
 use qbice::{Config, Engine};

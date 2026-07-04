@@ -16,7 +16,7 @@ use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
-use takolib::{ast::Ast, tasks::RequestTask};
+use takolib::ast::Ast;
 use takolib::{
     queries::FileRef,
     ui::{Client, OptionsTrait, UserInterface},
