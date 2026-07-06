@@ -2,7 +2,7 @@ pub(crate) mod executors;
 
 use enum_kinds::EnumKind;
 use qbice::{Decode, Encode, Identifiable, Query, StableHash};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::path::PathBuf;
 
@@ -131,6 +131,49 @@ impl FileRef {
         }
     }
 }
+
+#[derive(Default, Debug, Clone, Copy)]
+pub struct TaskStats {
+    num_requests: u32,
+    total_num_results: u32,
+    num_already_running: u32,
+    num_cached: u32,
+    num_failed: u32,
+    num_succeeded: u32,
+}
+
+type TaskHash = u64;
+pub type TaskId = TaskHash;
+
+#[derive(Debug, Clone)]
+pub struct StatusReport {
+    pub kind: QueryKind,
+    pub stats: TaskStats,
+    pub errors: HashMap<TaskId, BTreeMap<UserFacingLocation, Vec<Error>>>,
+}
+
+impl StatusReport {
+    #[must_use]
+    pub fn new(kind: QueryKind) -> Self {
+        Self {
+            kind,
+            stats: TaskStats::default(),
+            errors: HashMap::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
+pub struct ErrorsAt {
+pub file: FileRef,
+pub location: UserFacingLocation,
+}
+
+impl Query for ErrorsAt {
+type Value = Vec<Error>;
+}
+
+
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct Desugar {
