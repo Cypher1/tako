@@ -134,7 +134,7 @@ impl FileRef {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct Desugar {
-    entry: FileRef,
+    pub entry: FileRef,
 }
 
 impl Query for Desugar {
@@ -143,7 +143,7 @@ impl Query for Desugar {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct Lower {
-    entry: FileRef,
+    pub entry: FileRef,
 }
 
 impl Query for Lower {
@@ -153,7 +153,7 @@ impl Query for Lower {
 #[cfg(feature = "codegen")]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct CodeGenAll {
-    entry: FileRef,
+    pub entry: FileRef,
 }
 
 #[cfg(feature = "codegen")]
@@ -164,7 +164,7 @@ impl Query for CodeGenAll {
 #[cfg(feature = "codegen")]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct EnumerateBinaries {
-    entry: FileRef,
+    pub entry: FileRef,
 }
 
 #[cfg(feature = "codegen")]
@@ -174,7 +174,7 @@ impl Query for EnumerateBinaries {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct WriteCodeGenAll {
-    entry: FileRef,
+    pub entry: FileRef,
 }
 
 impl Query for WriteCodeGenAll {
@@ -184,8 +184,8 @@ impl Query for WriteCodeGenAll {
 #[cfg(feature = "codegen")]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct CodeGen {
-    entry: FileRef,
-    entry_name: Option<Name>,
+    pub entry: FileRef,
+    pub entry_name: Option<Name>,
 }
 
 #[cfg(feature = "codegen")]
@@ -196,9 +196,9 @@ impl Query for CodeGen {
 #[cfg(feature = "codegen")]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct WriteCodeGen {
-    entry: FileRef,
-    entry_name: Name,
-    target: BinaryDescription,
+    pub entry: FileRef,
+    pub entry_name: Name,
+    pub target: BinaryDescription,
 }
 
 #[cfg(feature = "codegen")]
@@ -209,8 +209,8 @@ impl Query for WriteCodeGen {
 #[cfg(feature = "codegen")]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct SourceMapGen {
-    entry: FileRef,
-    entry_name: Name,
+    pub entry: FileRef,
+    pub entry_name: Name,
 }
 
 #[cfg(feature = "codegen")]
@@ -221,7 +221,7 @@ impl Query for SourceMapGen {
 #[cfg(feature = "codegen")]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct SourceMapGenAll {
-    entry: FileRef,
+    pub entry: FileRef,
 }
 
 #[cfg(feature = "codegen")]
@@ -231,8 +231,8 @@ impl Query for SourceMapGenAll {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct Eval {
-    entry: FileRef,
-    entry_name: Option<Name>,
+    pub entry: FileRef,
+    pub entry_name: Option<Name>,
     // TODO: Add context variables.
 }
 
@@ -243,8 +243,8 @@ impl Query for Eval {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct Optimize {
-    entry: FileRef,
-    root: NodeId,
+    pub entry: FileRef,
+    pub root: NodeId,
 }
 
 impl Query for Optimize {
@@ -253,8 +253,8 @@ impl Query for Optimize {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct TypeAt {
-    entry: FileRef,
-    location: Location,
+    pub entry: FileRef,
+    pub location: Location,
 }
 
 impl Query for TypeAt {
@@ -263,8 +263,8 @@ impl Query for TypeAt {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct TypeCheck {
-    entry: FileRef,
-    // ast: Ast,
+    pub entry: FileRef,
+    // pub ast: Ast,
 }
 
 impl Query for TypeCheck {
@@ -273,7 +273,7 @@ impl Query for TypeCheck {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct CheckProofs {
-    entry: FileRef,
+    pub entry: FileRef,
 }
 
 impl Query for CheckProofs {
@@ -282,8 +282,8 @@ impl Query for CheckProofs {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct GetType {
-    entry: FileRef,
-    node: NodeId,
+    pub entry: FileRef,
+    pub node: NodeId,
 }
 
 impl Query for GetType {
@@ -292,8 +292,8 @@ impl Query for GetType {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct FindNode {
-    entry: FileRef,
-    location: Location,
+    pub entry: FileRef,
+    pub location: Location,
 }
 
 impl Query for FindNode {
@@ -302,8 +302,8 @@ impl Query for FindNode {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct GetLocation {
-    entry: FileRef,
-    node: NodeId,
+    pub entry: FileRef,
+    pub node: NodeId,
 }
 
 impl Query for GetLocation {
@@ -312,7 +312,7 @@ impl Query for GetLocation {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct Parse {
-    pub(crate) entry: FileRef,
+    pub entry: FileRef,
 }
 
 impl Query for Parse {
@@ -321,8 +321,8 @@ impl Query for Parse {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct FindDefinition {
-    entry: FileRef,
-    name: Name,
+    pub entry: FileRef,
+    pub name: Name,
 }
 
 impl Query for FindDefinition {
@@ -331,7 +331,7 @@ impl Query for FindDefinition {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct ParseFrontMatter {
-    entry: FileRef,
+    pub entry: FileRef,
 }
 
 impl Query for ParseFrontMatter {
@@ -340,7 +340,7 @@ impl Query for ParseFrontMatter {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct MacroExpand {
-    entry: FileRef,
+    pub entry: FileRef,
 }
 
 impl Query for MacroExpand {
@@ -349,8 +349,8 @@ impl Query for MacroExpand {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct HandleImport {
-    entry: FileRef,
-    import: FileRef,
+    pub entry: FileRef,
+    pub import: FileRef,
 }
 
 impl Query for HandleImport {
@@ -359,7 +359,7 @@ impl Query for HandleImport {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct ResolveAst {
-    entry: FileRef,
+    pub entry: FileRef,
 }
 
 impl Query for ResolveAst {
@@ -368,7 +368,7 @@ impl Query for ResolveAst {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct Lex {
-    pub(crate) entry: FileRef,
+    pub entry: FileRef,
 }
 
 impl Query for Lex {
@@ -377,7 +377,7 @@ impl Query for Lex {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct Load {
-    pub(crate) file: FileRef,
+    pub file: FileRef,
 }
 
 impl Query for Load {
@@ -386,8 +386,8 @@ impl Query for Load {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct PrettyPrint {
-    ast: Ast,
-    root: NodeId,
+    pub ast: Ast,
+    pub root: NodeId,
 }
 
 impl Query for PrettyPrint {
@@ -396,8 +396,8 @@ impl Query for PrettyPrint {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct Interpret {
-    entry: FileRef,
-    start: Option<Name>,
+    pub entry: FileRef,
+    pub start: Option<Name>,
 }
 
 impl Query for Interpret {
@@ -406,9 +406,9 @@ impl Query for Interpret {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct EvalNode {
-    ast: Ast,
-    entry: FileRef,
-    start: NodeId,
+    pub ast: Ast,
+    pub entry: FileRef,
+    pub start: NodeId,
 }
 
 impl Query for EvalNode {
@@ -417,7 +417,7 @@ impl Query for EvalNode {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct Errors {
-    file: FileRef,
+    pub file: FileRef,
 }
 
 impl Query for Errors {
@@ -426,8 +426,8 @@ impl Query for Errors {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct ErrorsAt {
-    file: FileRef,
-    location: UserFacingLocation,
+    pub file: FileRef,
+    pub location: UserFacingLocation,
 }
 
 impl Query for ErrorsAt {

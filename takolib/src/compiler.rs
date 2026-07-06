@@ -1,15 +1,12 @@
 use super::ui::OptionsTrait;
 use crate::ast::Ast;
-use crate::primitives::meta::Meta;
 use crate::primitives::Prim;
 use crate::queries::{AnyQuery, FileRef};
 use crate::ui::Client;
 use log::{debug, trace};
 use qbice::{Config, Engine};
 use std::fmt::Debug;
-use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
-use tokio::spawn;
+use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc, oneshot};
 
 #[derive(Debug)]

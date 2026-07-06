@@ -1,7 +1,7 @@
 use super::OptionsTrait;
-use crate::error::Error;
+use crate::{error::Error, queries::AnyQuery};
 use crate::primitives::Prim;
-use crate::queries::FileRef;
+use crate::queries::{Eval, FileRef};
 use log::trace;
 use std::collections::{BTreeSet, HashMap};
 use tokio::sync::{broadcast, mpsc};
@@ -12,10 +12,7 @@ pub struct Client {
     pub errors_for_file: HashMap<Option<FileRef>, BTreeSet<Error>>,
     pub options: Box<dyn OptionsTrait>,
     stats_requester: broadcast::Sender<()>,
-    task_manager_status_receiver: broadcast::Receiver<StatusReport>,
-    request_sender: mpsc::UnboundedSender<(RequestTask, mpsc::UnboundedSender<Prim>)>,
-    pub result_receiver: mpsc::UnboundedReceiver<Prim>,
-    result_sender: mpsc::UnboundedSender<Prim>,
+    request_sender: mpsc::UnboundedSender<(AnyQuery, mpsc::UnboundedSender<Prim>)>,
     #[allow(unused)]
     file_watch_requester: mpsc::UnboundedSender<FileRef>,
     #[allow(unused)]
@@ -26,23 +23,17 @@ impl Client {
     #[must_use]
     pub fn new(
         stats_requester: broadcast::Sender<()>,
-        task_manager_status_receiver: broadcast::Receiver<StatusReport>,
-        request_sender: mpsc::UnboundedSender<(RequestTask, mpsc::UnboundedSender<Prim>)>,
+        request_sender: mpsc::UnboundedSender<(AnyQuery, mpsc::UnboundedSender<Prim>)>,
         file_watch_requester: mpsc::UnboundedSender<FileRef>,
         file_updater: broadcast::Receiver<FileRef>,
         options: Box<dyn OptionsTrait>,
     ) -> Self {
-        let (result_sender, result_receiver) = mpsc::unbounded_channel();
         Self {
             stats_requester,
-            task_manager_status_receiver,
-            manager_status: HashMap::default(),
             history: Vec::default(),
             errors_for_file: HashMap::default(),
             request_sender,
             options,
-            result_receiver,
-            result_sender,
             file_watch_requester,
             file_updater,
         }
@@ -51,9 +42,9 @@ impl Client {
     pub fn start(&mut self) {
         let files = self.options.files().clone();
         self.send_command(if self.options.interpreter() {
-            RequestTask::RunInterpreter { files }
+            AnyQuery::RunInterpreter { files }
         } else {
-            RequestTask::Build { files }
+            AnyQuery::Build { files }
         });
     }
 
@@ -69,12 +60,13 @@ impl Client {
         self.options.oneshot()
     }
 
-    pub fn send_command(&mut self, cmd: RequestTask) {
-        if let RequestTask::Eval { ast: _, expr: line } = &cmd {
-            self.history.push(line.to_string()); // Maybe assumes a single line?
+    pub fn send_command(&mut self, cmd: AnyQuery) {
+        if let AnyQuery::EvalQuery(Eval { entry, entry_name }) = &cmd {
+            let line = format!("{entry}");
+            self.history.push(line); // Maybe assumes a single line?
         }
         self.request_sender
-            .send((cmd, self.result_sender.clone()))
+            .send((cmd, result_sender))
             .expect("Request sender closed");
     }
 
