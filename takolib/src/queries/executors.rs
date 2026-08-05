@@ -554,12 +554,12 @@ pub(crate) mod codegen {
     }
 
     #[derive(Clone, Copy, Debug)]
-    pub struct WriteCodeGenExecutor;
+    pub struct BuildExecutor;
 
-    impl<C: qbice::Config> Executor<WriteCodeGen, C> for WriteCodeGenExecutor {
+    impl<C: qbice::Config> Executor<Build, C> for BuildExecutor {
         async fn execute(
             &self,
-            query: &WriteCodeGen,
+            query: &Build,
             engine: &TrackedEngine<C>,
         ) -> Result<(), TError> {
             let binary = engine
@@ -573,10 +573,10 @@ pub(crate) mod codegen {
     }
 
     #[derive(Clone, Copy, Debug)]
-    pub struct WriteCodeGenAllExecutor;
+    pub struct BuildAllExecutor;
 
-    impl<C: qbice::Config> Executor<WriteCodeGenAll, C> for WriteCodeGenAllExecutor {
-        async fn execute(&self, query: &WriteCodeGenAll, engine: &TrackedEngine<C>) -> Vec<TError> {
+    impl<C: qbice::Config> Executor<BuildAll, C> for BuildAllExecutor {
+        async fn execute(&self, query: &BuildAll, engine: &TrackedEngine<C>) -> Vec<TError> {
             let binaries = engine
                 .query(&EnumerateBinaries {
                     entry: query.entry.clone(),
@@ -589,7 +589,7 @@ pub(crate) mod codegen {
 
             #[inline]
             async fn write_code_gen<C: qbice::Config>(
-                query: WriteCodeGen,
+                query: Build,
                 engine: TrackedEngine<C>,
             ) -> Result<(), TError> {
                 // TODO(cleanup): Work out why this function works but the same code inline doesn't.
@@ -601,7 +601,7 @@ pub(crate) mod codegen {
                 .map(move |(entry_name, target)| {
                     // Able to be moved to a different thread.
                     write_code_gen(
-                        WriteCodeGen {
+                        Build {
                             entry: query.entry.clone(),
                             entry_name,
                             target,

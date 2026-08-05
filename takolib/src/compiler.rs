@@ -1,7 +1,7 @@
 use super::ui::OptionsTrait;
 use crate::ast::Ast;
 use crate::primitives::Prim;
-use crate::queries::{AnyQuery, FileRef};
+use crate::queries::{AnyQuery, FileRef, StatusReport};
 use crate::ui::Client;
 use log::{debug, trace};
 use qbice::{Config, Engine};
@@ -101,8 +101,8 @@ impl Compiler {
             use crate::queries::executors::codegen::*;
             engine.register_executor(Arc::new(CodeGenExecutor));
             engine.register_executor(Arc::new(CodeGenAllExecutor));
-            engine.register_executor(Arc::new(WriteCodeGenExecutor));
-            engine.register_executor(Arc::new(WriteCodeGenAllExecutor));
+            engine.register_executor(Arc::new(BuildExecutor));
+            engine.register_executor(Arc::new(BuildAllExecutor));
             engine.register_executor(Arc::new(SourceMapGenExecutor));
             engine.register_executor(Arc::new(SourceMapGenAllExecutor));
             engine.register_executor(Arc::new(EnumerateBinariesExecutor));
@@ -147,12 +147,12 @@ impl Compiler {
         }
     }
 
-    pub fn start_command(&self, cmd: RequestTask, response_sender: mpsc::UnboundedSender<Prim>) {
+    pub fn start_command(&self, cmd: AnyQuery, response_sender: mpsc::UnboundedSender<Prim>) {
         match cmd {
-            RequestTask::Eval { ast, expr } => {
+            AnyQuery::Eval { ast, expr } => {
                 self.eval(ast, Some(expr), response_sender);
             }
-            RequestTask::Build { files } => {
+            AnyQuery::Build { files } => {
                 for file in files {
                     // TODO(correctness): Handle in-memory files
                     let (_source_zip, mut out_path) = file.clone().to_path_buf(); // TODO(correctness): Merge source zip path and out path.
@@ -161,7 +161,7 @@ impl Compiler {
                     self.codegen(ast, out_path, None, response_sender.clone());
                 }
             }
-            RequestTask::RunInterpreter { files } => {
+            AnyQuery::RunInterpreter { files } => {
                 for file in files {
                     // TODO(cypher1): Support context / imports.
                     let ast = Arc::new(Ast::new(file));

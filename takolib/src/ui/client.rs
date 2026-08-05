@@ -1,7 +1,7 @@
 use super::OptionsTrait;
 use crate::{error::Error, queries::AnyQuery};
 use crate::primitives::Prim;
-use crate::queries::{Eval, FileRef};
+use crate::queries::{Eval, FileRef, Interpret, StatusReport};
 use log::trace;
 use std::collections::{BTreeSet, HashMap};
 use tokio::sync::{broadcast, mpsc};
@@ -39,12 +39,13 @@ impl Client {
         }
     }
 
-    pub fn start(&mut self) {
-        let files = self.options.files().clone();
+    pub fn start(&mut self) -> String {
+        let entry = self.options.file();
+        let start = self.options.start();
         self.send_command(if self.options.interpreter() {
-            AnyQuery::RunInterpreter { files }
+            AnyQuery::InterpretQuery(Interpret { entry, start })
         } else {
-            AnyQuery::Build { files }
+            AnyQuery::Build { file: entry }
         });
     }
 
@@ -60,14 +61,17 @@ impl Client {
         self.options.oneshot()
     }
 
-    pub fn send_command(&mut self, cmd: AnyQuery) {
+    pub fn send_command(&mut self, cmd: AnyQuery) -> String {
         if let AnyQuery::EvalQuery(Eval { entry, entry_name }) = &cmd {
             let line = format!("{entry}");
             self.history.push(line); // Maybe assumes a single line?
         }
+        let (tx, rx) = tokio::sync::oneshot::channel();
         self.request_sender
-            .send((cmd, result_sender))
+            .send((cmd, tx))
             .expect("Request sender closed");
+        rx.await
+            .expect("No response")
     }
 
     pub fn get_stats(&mut self) {

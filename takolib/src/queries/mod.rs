@@ -54,11 +54,11 @@ pub enum AnyQuery {
     #[cfg(feature = "codegen")]
     CodeGenAllQuery(CodeGenAll), // name -> IO
     #[cfg(feature = "codegen")]
-    WriteCodeGenAllQuery(WriteCodeGenAll), // name -> (name, binary_info)[]
+    WriteCodeGenAllQuery(BuildAll), // name -> (name, binary_info)[]
     #[cfg(feature = "codegen")]
     EnumerateBinariesQuery(EnumerateBinaries), // name -> binary_info[]
     #[cfg(feature = "codegen")]
-    WriteCodeGenQuery(WriteCodeGen), // name -> IO
+    WriteCodeGenQuery(Build), // name -> IO
     #[cfg(feature = "codegen")]
     CodeGenQuery(CodeGen), // name -> binary_info
     #[cfg(feature = "codegen")]
@@ -136,8 +136,6 @@ impl FileRef {
 pub struct TaskStats {
     num_requests: u32,
     total_num_results: u32,
-    num_already_running: u32,
-    num_cached: u32,
     num_failed: u32,
     num_succeeded: u32,
 }
@@ -162,18 +160,6 @@ impl StatusReport {
         }
     }
 }
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
-pub struct ErrorsAt {
-pub file: FileRef,
-pub location: UserFacingLocation,
-}
-
-impl Query for ErrorsAt {
-type Value = Vec<Error>;
-}
-
-
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct Desugar {
@@ -216,11 +202,11 @@ impl Query for EnumerateBinaries {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
-pub struct WriteCodeGenAll {
+pub struct BuildAll {
     pub entry: FileRef,
 }
 
-impl Query for WriteCodeGenAll {
+impl Query for BuildAll {
     type Value = Vec<TError>;
 }
 
@@ -238,14 +224,14 @@ impl Query for CodeGen {
 
 #[cfg(feature = "codegen")]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
-pub struct WriteCodeGen {
+pub struct Build {
     pub entry: FileRef,
     pub entry_name: Name,
     pub target: BinaryDescription,
 }
 
 #[cfg(feature = "codegen")]
-impl Query for WriteCodeGen {
+impl Query for Build {
     type Value = Result<(), TError>;
 }
 
