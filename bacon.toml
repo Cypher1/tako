@@ -33,6 +33,12 @@ command = ["cargo", "test", "--color", "always"]
 need_stdout = true
 watch = ["tests"]
 
+[jobs.todo]
+command = ["bash", "-c", "echo \"$(git grep -E \"(todo!|TODO)\" -- **/*.rs | wc -l) in $(git ls-files | grep '\\.rs$' | wc -l) files ($(git ls-files | grep '\\.rs$' | xargs cat | wc -l) lines)\"; git grep --color -n -E \"(todo!|TODO).*\" -- **/*.rs | sed 's/  */ /'"]
+#command = ["git", "grep", "-E", "--color", "(todo\\!|TODO)", "--", "**/*.rs"]
+need_stdout = true
+watch = ["tests"]
+
 [jobs.doc]
 command = ["cargo", "doc", "--color", "always", "--no-deps"]
 need_stdout = false
@@ -61,3 +67,4 @@ allow_warnings = true
 # should go in your personal prefs.toml file instead.
 [keybindings]
 n = "job:nextest"
+shift-t = "job:todo"

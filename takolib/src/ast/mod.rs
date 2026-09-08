@@ -3,28 +3,31 @@ mod contains;
 pub use contains::*;
 mod nodes;
 pub use nodes::*;
+use qbice::{Decode, Encode, Identifiable, StableHash};
 pub mod location;
 mod pretty_printer;
 pub mod string_interner;
 
 use crate::parser::tokens::Symbol;
 use crate::primitives::typed_index::TypedIndex;
+use crate::queries::FileRef;
 use crate::{parser::semantics::Literal, primitives::Prim};
 use location::Location;
 use pretty_printer::{pretty, pretty_node};
 use smallvec::smallvec;
 use std::collections::BTreeMap;
-use std::path::PathBuf;
 use std::sync::Arc;
 use string_interner::{Name, StringInterner};
 
+// TODO(memory): Containers here can be interned via QBICE
+// TODO(memory): Use SoA datastructures to allow caching less memory
 type Container<T> = Arc<Vec<T>>;
 
-#[derive(Clone, Default, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Default, Debug, Hash, PartialEq, Eq, StableHash, Identifiable, Encode, Decode)]
 pub struct Ast {
     // TODO(usability): Add a range tree for mapping from locations to nodes.
     // Abstract syntax tree... forest
-    pub filepath: PathBuf,
+    pub fileref: FileRef,
     pub roots: Container<NodeId>,
     pub nodes: Container<Node>,
 
@@ -32,6 +35,7 @@ pub struct Ast {
     pub warnings: Container<(NodeId, Warning)>,
 
     // Syntactic constructs:
+    pub imports: Container<(NodeId, Import)>,
     pub calls: Container<(NodeId, Call)>, // Convert to this from definition head.
     pub identifiers: Container<(NodeId, Name)>, // Convert to this from definition head.
     pub ops: Container<(NodeId, Op)>,
@@ -40,14 +44,16 @@ pub struct Ast {
     pub atoms: Container<(NodeId, Atom)>,
 
     pub string_interner: StringInterner,
+    // TODO(perf): Consider using SCC map.
+    // TODO(perf): Consider computing these in a query and dropping them from this datastructure.
     pub name_to_value: BTreeMap<Name, Prim>,
 }
 
 impl Ast {
     #[must_use]
-    pub fn new(filepath: PathBuf) -> Self {
+    pub fn new(fileref: FileRef) -> Self {
         Self {
-            filepath,
+            fileref,
             ..Self::default()
         }
     }
@@ -63,6 +69,11 @@ impl Ast {
 }
 
 impl Ast {
+    pub fn merge(&mut self, _other: &Ast) {
+        // TODO(correctness): Merge asts.
+        todo!("Implement merge via copy and shifting indexes");
+    }
+
     pub fn make_node<T>(&mut self, value: T, location: Location) -> NodeId
     where
         Self: Contains<(NodeId, T)>,

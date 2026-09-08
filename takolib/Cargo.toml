@@ -1,7 +1,7 @@
 [package]
 name = "takolib"
 version = "0.2.0"
-repository = "https://github.com/cypher1/tako"
+repository = "https://github.com/compilersEllie/tako"
 description = "The core implementation of tako"
 authors = ["Ellie Pratt <ellie@skfl.tech>"]
 edition = "2021"
@@ -11,12 +11,14 @@ keywords = ["compiler", "programming", "language"]
 include = ["src/**/*", "LICENSE.md", "README.md"]
 
 [features]
-default=["native"]
+default=["native", "llvm"]
 wasm=["wasm-logger", "uuid/rng-rand", "getrandom/wasm_js"]
-native=["env_logger", "rocksdb"]
+native_linux=["env_logger", "rocksdb"]
+native=["env_logger", "fjall"]
 llvm=["inkwell", "codegen"]
 codegen=[] # signals that 'a' codegen backend is active.
 rocksdb=["qbice/rocksdb", "qbice/default-config"]
+fjall=["qbice/fjall"]
 
 [lib]
 name = "takolib"
@@ -33,11 +35,12 @@ path = "src/lib.rs"
 [dependencies]
 thiserror = "2.0.18"
 bitvec = "1"
-log = "0.4"
-pretty_assertions = "1.4.1"
-futures = "0.3"
-tokio = { version = "1.52.1", features = ["sync", "macros", "rt"] }
-async-trait = "0.1"
+log.workspace = true
+pretty_assertions.workspace = true
+futures.workspace = true
+tokio = { workspace = true, features = ["sync", "macros"] }
+async-trait.workspace = true
+directories.workspace = true
 # Info: https://nnethercote.github.io/2021/12/08/a-brutally-effective-hash-function-in-rust.html
 fxhash = "0.2"
 static_assertions = "1.1"
@@ -47,18 +50,19 @@ lazy_static = "1.5.0"
 env_logger = { version = "0.11.10", optional = true }
 inkwell = { version = "0.9.0", features = ["llvm18-1"], optional = true }
 wasm-logger = { version = "0.2.0", optional = true }
-smallvec = { version = "2.0.0-alpha.5" }
-llamada = { path = "../llamada", features = [ ] }
-better-std = { path = "../better-std", features = [ ] }
+smallvec = { version = "1.15.1" }
+llamada.workspace = true
+better-std.workspace = true
 test-each = "0.3.1"
-qbice = { version = "0.6.8", default-features = false }
+qbice = { git = "https://github.com/Simmypeet/qbice", branch = "master", default-features = false, features = ["smallvec", "bitvec"] }
 tempfile = "3.27.0"
 uuid = "1.23.1"
 getrandom = "0.4.2"
-
-[dev-dependencies]
 strum = "0.28.0"
 strum_macros = "0.28.0"
-pretty_assertions = "1.4.1"
+itertools = "0.15.0"
+
+[dev-dependencies]
+pretty_assertions.workspace = true
 rand = "0.10.1"
 walkdir = "2.5.0"

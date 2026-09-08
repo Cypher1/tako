@@ -1,61 +1,51 @@
 use super::OptionsTrait;
-use crate::error::Error;
+use crate::{error::Error, queries::AnyQuery};
 use crate::primitives::Prim;
-use crate::tasks::{RequestTask, StatusReport, TaskKind, TaskStats};
+use crate::queries::{Eval, FileRef, Interpret, StatusReport};
 use log::trace;
 use std::collections::{BTreeSet, HashMap};
-use std::path::PathBuf;
 use tokio::sync::{broadcast, mpsc};
 
 #[derive(Debug)]
 pub struct Client {
-    pub manager_status: HashMap<TaskKind, TaskStats>,
     pub history: Vec<String>, // TODO(usability): Mark Input v output.
-    pub errors_for_file: HashMap<Option<PathBuf>, BTreeSet<Error>>,
+    pub errors_for_file: HashMap<Option<FileRef>, BTreeSet<Error>>,
     pub options: Box<dyn OptionsTrait>,
     stats_requester: broadcast::Sender<()>,
-    task_manager_status_receiver: broadcast::Receiver<StatusReport>,
-    request_sender: mpsc::UnboundedSender<(RequestTask, mpsc::UnboundedSender<Prim>)>,
-    pub result_receiver: mpsc::UnboundedReceiver<Prim>,
-    result_sender: mpsc::UnboundedSender<Prim>,
+    request_sender: mpsc::UnboundedSender<(AnyQuery, mpsc::UnboundedSender<Prim>)>,
     #[allow(unused)]
-    file_watch_requester: mpsc::UnboundedSender<PathBuf>,
+    file_watch_requester: mpsc::UnboundedSender<FileRef>,
     #[allow(unused)]
-    file_updater: broadcast::Receiver<PathBuf>,
+    file_updater: broadcast::Receiver<FileRef>,
 }
 
 impl Client {
     #[must_use]
     pub fn new(
         stats_requester: broadcast::Sender<()>,
-        task_manager_status_receiver: broadcast::Receiver<StatusReport>,
-        request_sender: mpsc::UnboundedSender<(RequestTask, mpsc::UnboundedSender<Prim>)>,
-        file_watch_requester: mpsc::UnboundedSender<PathBuf>,
-        file_updater: broadcast::Receiver<PathBuf>,
+        request_sender: mpsc::UnboundedSender<(AnyQuery, mpsc::UnboundedSender<Prim>)>,
+        file_watch_requester: mpsc::UnboundedSender<FileRef>,
+        file_updater: broadcast::Receiver<FileRef>,
         options: Box<dyn OptionsTrait>,
     ) -> Self {
-        let (result_sender, result_receiver) = mpsc::unbounded_channel();
         Self {
             stats_requester,
-            task_manager_status_receiver,
-            manager_status: HashMap::default(),
             history: Vec::default(),
             errors_for_file: HashMap::default(),
             request_sender,
             options,
-            result_receiver,
-            result_sender,
             file_watch_requester,
             file_updater,
         }
     }
 
-    pub fn start(&mut self) {
-        let files = self.options.files().clone();
+    pub fn start(&mut self) -> String {
+        let entry = self.options.file();
+        let start = self.options.start();
         self.send_command(if self.options.interpreter() {
-            RequestTask::RunInterpreter { files }
+            AnyQuery::InterpretQuery(Interpret { entry, start })
         } else {
-            RequestTask::Build { files }
+            AnyQuery::Build { file: entry }
         });
     }
 
@@ -71,13 +61,17 @@ impl Client {
         self.options.oneshot()
     }
 
-    pub fn send_command(&mut self, cmd: RequestTask) {
-        if let RequestTask::Eval { ast: _, expr: line } = &cmd {
-            self.history.push(line.to_string()); // Maybe assumes a single line?
+    pub fn send_command(&mut self, cmd: AnyQuery) -> String {
+        if let AnyQuery::EvalQuery(Eval { entry, entry_name }) = &cmd {
+            let line = format!("{entry}");
+            self.history.push(line); // Maybe assumes a single line?
         }
+        let (tx, rx) = tokio::sync::oneshot::channel();
         self.request_sender
-            .send((cmd, self.result_sender.clone()))
+            .send((cmd, tx))
             .expect("Request sender closed");
+        rx.await
+            .expect("No response")
     }
 
     pub fn get_stats(&mut self) {
@@ -92,7 +86,7 @@ impl Client {
             Ok(StatusReport { kind, stats, errors }) = self.task_manager_status_receiver.recv() => {
                 trace!("TaskManager status: {kind:?} => {stats}\nerrors: {errors:#?}");
                 for (_id, err) in errors {
-                    let file = err.location.as_ref().map(|loc| loc.filename.clone());
+                    let file = err.location.as_ref().map(|loc| loc.file.clone());
                     let errs = self.errors_for_file.entry(file).or_default();
                     errs.insert(err);
                 }

@@ -1,7 +1,7 @@
 [package]
 name = "tako"
 version = "0.1.0"
-repository = "https://github.com/cypher1/tako"
+repository = "https://github.com/compilersEllie/tako"
 description = "The main CLI for tako"
 authors = ["Ellie Pratt <ellie@skfl.tech>"]
 edition = "2021"
@@ -12,18 +12,18 @@ categories = ["gui", "wasm", "web-programming"]
 include = ["src/**/*", "LICENSE.md", "README.md"]
 
 [features]
-llvm = [ "takolib/llvm" ]
+llvm = ["takolib/llvm"]
 
 [dependencies]
-async-trait = "0.1"
-takolib = { path = "../takolib", features = [ "native" ] }
-tokio = { version = "1.52.1", features = [ "full" ] }
-log = "0.4"
-warp = { version = "0.4.2", features = [ "server" ] }
+async-trait.workspace = true
+takolib = { workspace = true, features = ["native"] }
+tokio = { workspace = true, features = ["full"] }
+log.workspace = true
+warp = { version = "0.4.3", features = ["server"] }
 crokey = "1.4.0"
-crossterm = { version = "0.29.0", features = [ "event-stream" ] }
-directories = "6.0.0"
+crossterm = { version = "0.29.0", features = ["event-stream"] }
+directories.workspace = true
 notify = "8.2.0"
 shutdown_hooks = "0.1"
-futures = "0.3"
+futures.workspace = true
 html-escape = "0.2.13"

@@ -13,11 +13,13 @@ use inkwell::{
     AddressSpace, OptimizationLevel,
 };
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 use std::{
     io::{stderr, stdout, Write},
-    path::Path,
     process::Command,
+};
+use std::{
+    path::Path,
+    sync::{Arc, Mutex},
 };
 
 lazy_static::lazy_static! {
@@ -224,8 +226,8 @@ impl<'ctx> BackendStateTrait for LlvmState<'ctx> {
     }
 
     fn create_binary(&self, bin_path: &Path) -> Result<(), TError> {
-        let mut elf_path = bin_path.to_path_buf();
-        elf_path.set_extension("elf");
+        let mut elf_path = bin_path.to_path_buf(); // TODO(correctness): Handle in-memory files
+        elf_path.set_extension("elf"); // TODO(correctness): Merge source zip path and out path.
         let target_machine = self.backend.get_target_machine();
         assert!(
             target_machine
@@ -259,7 +261,8 @@ pub mod tests {
     use std::path::PathBuf;
 
     fn test_build_output_dir() -> PathBuf {
-        Path::new("/tmp/tako_tests/llvm_backend").to_path_buf()
+        // TODO(correctness): Use temp_dir crate.
+        PathBuf::from("/tmp/tako_tests/llvm_backend")
     }
 
     #[test]

@@ -5,9 +5,9 @@ use yew::{function_component, html, Callback, Html};
 pub fn repo_status() -> Html {
     html! {
         <>
-          <a class="navbar-item" href="https://github.com/Cypher1/tako/blob/main/README.md#contributors"><img src="https://img.shields.io/badge/all_contributors-1-orange.svg?style=flat-square)" alt="All contributors"/></a>
-          <a class="navbar-item" href="https://github.com/Cypher1/tako/actions"><img src="https://github.com/Cypher1/tako/workflows/Rust/badge.svg" alt="Build Status"/></a>
-          <a class="navbar-item" href="https://github.com/Cypher1/tako/issues"><img src="https://img.shields.io/github/issues/Cypher1/tako.svg" alt="GitHub issues"/></a>
+          <a class="navbar-item" href="https://github.com/compilersEllie/tako/blob/main/README.md#contributors"><img src="https://img.shields.io/badge/all_contributors-1-orange.svg?style=flat-square)" alt="All contributors"/></a>
+          <a class="navbar-item" href="https://github.com/compilersEllie/tako/actions"><img src="https://github.com/compilersEllie/tako/workflows/Rust/badge.svg" alt="Build Status"/></a>
+          <a class="navbar-item" href="https://github.com/compilersEllie/tako/issues"><img src="https://img.shields.io/github/issues/compilersEllie/tako.svg" alt="GitHub issues"/></a>
         </>
     }
 }
@@ -27,8 +27,8 @@ pub fn navbar() -> Html {
             <img class="logo" src="./static/tako.png" alt="Tako octopus logo" />
             <strong>{"Tako"}</strong>
           </a>
-          <a class="navbar-item" href="https://github.com/Cypher1/tako/#getting-started"> {"Getting started"} </a>
-          <a class="navbar-item" href="https://github.com/Cypher1/tako/wiki"> {"Docs"} </a>
+          <a class="navbar-item" href="https://github.com/compilersEllie/tako/#getting-started"> {"Getting started"} </a>
+          <a class="navbar-item" href="https://github.com/compilersEllie/tako/wiki"> {"Docs"} </a>
           <RepoStatus></RepoStatus>
           <button {onclick} class={format!("navbar-burger {}", if *is_active { "is-active" } else { "" })} aria-label="menu" aria-expanded="false" data-target="navbarMenu">
             <span aria-hidden="true"></span>
@@ -41,7 +41,7 @@ pub fn navbar() -> Html {
           </div>
           <div class="navbar-end">
             <div class="navbar-item">
-              <a class="navbar-item" href="https://github.com/Cypher1/tako">
+              <a class="navbar-item" href="https://github.com/compilersEllie/tako">
               {"View the project on\u{00a0}"}<strong>{"Github!"}</strong>
               </a>
             </div>

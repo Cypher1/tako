@@ -1,106 +1,27 @@
 use super::ui::OptionsTrait;
 use crate::ast::Ast;
-use crate::primitives::meta::Meta;
 use crate::primitives::Prim;
-use crate::tasks::manager::TaskManager;
-pub use crate::tasks::manager::{StatusReport, TaskStats};
-pub use crate::tasks::status::*;
-pub use crate::tasks::task_trait::TaskId;
-use crate::tasks::task_trait::{ResultSenderFor, Task, TaskReceiverFor};
-use crate::tasks::{
-    CodegenTask, DesugarFileTask, EvalFileTask, LexFileTask, LoadFileTask, LowerFileTask,
-    ParseFileTask, RequestTask,
-};
+use crate::queries::{AnyQuery, FileRef, StatusReport};
 use crate::ui::Client;
 use log::{debug, trace};
-use qbice::storage::storage_engine::in_memory::InMemoryStorageEngine;
-#[cfg(not(feature = "rocksdb"))]
-use qbice::storage::storage_engine::in_memory::InMemoryStorageEngineFactory;
 use qbice::{Config, Engine};
-use qbice::{Decode, Encode, Executor, Identifiable, Query, StableHash, TrackedEngine};
 use std::fmt::Debug;
-use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
-use tokio::spawn;
+use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc, oneshot};
-
-#[cfg(feature = "rocksdb")]
-async fn get_qbice_engine() -> qbice::Engine<qbice::DefaultConfig> {
-    use qbice::{
-        serialize::Plugin,
-        stable_hash::{SeededStableHasherBuilder, Sip128Hasher},
-        storage::{
-            kv_database::rocksdb::RocksDB,
-            storage_engine::db_backed::{Configuration, DbBackedFactory},
-        },
-        DefaultConfig, Engine,
-    };
-
-    let dir = tempfile::tempdir().expect("Creating temp dir shouldn't fail");
-
-    Engine::<DefaultConfig>::new_with(
-        Plugin::default(),
-        DbBackedFactory::builder()
-            .configuration(Configuration::builder().build())
-            .db_factory(RocksDB::factory(dir.path()))
-            .build(),
-        SeededStableHasherBuilder::<Sip128Hasher>::new(0),
-    )
-    .await
-    .expect("database initialization should never fail")
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Identifiable)]
-pub struct InMemoryDBConfig;
-
-use qbice::stable_hash::{SeededStableHasherBuilder, Sip128Hasher};
-
-impl qbice::config::Config for InMemoryDBConfig {
-    type StorageEngine = InMemoryStorageEngine;
-
-    type BuildStableHasher = SeededStableHasherBuilder<Sip128Hasher>;
-
-    type BuildHasher = std::hash::BuildHasherDefault<fxhash::FxHasher>;
-}
-
-#[cfg(not(feature = "rocksdb"))]
-async fn get_qbice_engine() -> qbice::Engine<InMemoryDBConfig> {
-    use qbice::serialize::Plugin;
-    qbice::Engine::<InMemoryDBConfig>::new_with(
-        Plugin::default(),
-        InMemoryStorageEngineFactory,
-        SeededStableHasherBuilder::<Sip128Hasher>::new(0),
-    )
-    .await
-    .expect("database initialization should never fail")
-}
 
 #[derive(Debug)]
 pub struct Compiler {
     // IDEA: Make a trait...
-    request_receiver: mpsc::UnboundedReceiver<(RequestTask, mpsc::UnboundedSender<Prim>)>,
-    load_file_manager: Arc<Mutex<TaskManager<LoadFileTask>>>,
-    lex_file_manager: Arc<Mutex<TaskManager<LexFileTask>>>,
-    parse_file_manager: Arc<Mutex<TaskManager<ParseFileTask>>>,
-    desugar_file_manager: Arc<Mutex<TaskManager<DesugarFileTask>>>,
-    lower_file_manager: Arc<Mutex<TaskManager<LowerFileTask>>>,
-    eval_file_manager: Arc<Mutex<TaskManager<EvalFileTask>>>,
-    codegen_manager: Arc<Mutex<TaskManager<CodegenTask>>>,
+    query_receiver: mpsc::UnboundedReceiver<(AnyQuery, mpsc::UnboundedSender<Prim>)>,
     // Broadcast the accumulation to all clients.
-    pub task_stats_requester: broadcast::Sender<()>,
     pub status_sender: broadcast::Sender<StatusReport>,
     pub status_receiver: broadcast::Receiver<StatusReport>,
-    request_sender: mpsc::UnboundedSender<(RequestTask, mpsc::UnboundedSender<Prim>)>,
+    file_watch_request_sender: mpsc::UnboundedSender<FileRef>,
     #[allow(unused)]
-    task_stats_receiver: mpsc::UnboundedReceiver<StatusReport>,
+    file_watch_request_receiver: mpsc::UnboundedReceiver<FileRef>,
+    file_update_sender: broadcast::Sender<FileRef>,
     #[allow(unused)]
-    task_stats_request_receiver: broadcast::Receiver<()>,
-    file_watch_request_sender: mpsc::UnboundedSender<PathBuf>,
-    #[allow(unused)]
-    file_watch_request_receiver: mpsc::UnboundedReceiver<PathBuf>,
-    file_update_sender: broadcast::Sender<PathBuf>,
-    #[allow(unused)]
-    file_update_receiver: broadcast::Receiver<PathBuf>,
+    file_update_receiver: broadcast::Receiver<FileRef>,
     // TODO(clarity): Make pub fields private and add methods.
     pub client_launch_request_sender:
         mpsc::UnboundedSender<(oneshot::Sender<Client>, Box<dyn OptionsTrait>)>,
@@ -120,33 +41,22 @@ impl Default for Compiler {
         let (client_launch_request_sender, client_launch_request_receiver) =
             mpsc::unbounded_channel();
         Self {
-            request_receiver,
-            load_file_manager: Self::manager(&task_stats_sender, &task_stats_requester),
-            lex_file_manager: Self::manager(&task_stats_sender, &task_stats_requester),
-            parse_file_manager: Self::manager(&task_stats_sender, &task_stats_requester),
-            desugar_file_manager: Self::manager(&task_stats_sender, &task_stats_requester),
-            lower_file_manager: Self::manager(&task_stats_sender, &task_stats_requester),
-            eval_file_manager: Self::manager(&task_stats_sender, &task_stats_requester),
-            codegen_manager: Self::manager(&task_stats_sender, &task_stats_requester),
+            query_receiver: request_receiver,
             // TODO(features): More passes:
-            // - type_check_inside_module: TaskManager<>,
+            // - type_check_inside_module
             // Produces type checked (and optimizable) modules **AND**
             // partially type checked (but) mergable-modules.
             // Pair-wise merging of type checking information???
-            // - type_check_merge_module_sets: TaskManager<>,
+            // - type_check_merge_module_sets
             // Produces type checked (and optimizable) modules **AND**
             // Partially type checked (but) mergable-modules
-            // - optimization: TaskManager<>,
-            // - code_generation: TaskManager<>,
-            // - binary_generation: TaskManager<>,
-            // - load_into_interpreter: TaskManager<>,
-            // - run_in_interpreter: TaskManager<>,
+            // - optimization
+            // - code_generation
+            // - binary_generation
+            // - load_into_interpreter
+            // - run_in_interpreter
             status_sender,
             status_receiver,
-            task_stats_request_receiver,
-            task_stats_receiver,
-            task_stats_requester,
-            request_sender,
             file_watch_request_sender,
             file_watch_request_receiver,
             file_update_sender,
@@ -157,55 +67,46 @@ impl Default for Compiler {
     }
 }
 
-// Define query types
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
-pub enum Variable {
-    A,
-    B,
-}
-
-impl Query for Variable {
-    type Value = i32;
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
-pub struct SafeDivide {
-    pub numerator: Variable,
-    pub denominator: Variable,
-}
-
-impl Query for SafeDivide {
-    type Value = Option<i32>;
-}
-
-// Define executor
-struct SafeDivideExecutor;
-
-impl<C: qbice::Config> Executor<SafeDivide, C> for SafeDivideExecutor {
-    async fn execute(&self, query: &SafeDivide, engine: &TrackedEngine<C>) -> Option<i32> {
-        let num = engine.query(&query.numerator).await;
-        let denom = engine.query(&query.denominator).await;
-
-        if denom == 0 {
-            return None;
-        }
-
-        Some(num / denom)
-    }
-
-    // TODO: For others implement `execution_style`
-}
-
 impl Compiler {
     pub async fn get_engine() -> Arc<Engine<impl Config>> {
         use std::sync::Arc;
 
         // Create and configure the engine
-        let mut engine = get_qbice_engine().await;
-
-        engine.register_executor(Arc::new(SafeDivideExecutor));
-        // engine.register_program(passes);
-
+        let mut engine = crate::engine::get_qbice_engine().await;
+        use crate::queries::executors::*;
+        engine.register_executor(Arc::new(LoadExecutor));
+        engine.register_executor(Arc::new(LexExecutor));
+        engine.register_executor(Arc::new(ParseFrontMatterExecutor));
+        engine.register_executor(Arc::new(HandleImportExecutor));
+        engine.register_executor(Arc::new(ParseExecutor));
+        engine.register_executor(Arc::new(ResolveAstExecutor));
+        engine.register_executor(Arc::new(MacroExpandExecutor));
+        engine.register_executor(Arc::new(FindNodeExecutor));
+        engine.register_executor(Arc::new(FindDefinitionExecutor));
+        engine.register_executor(Arc::new(GetLocationExecutor));
+        engine.register_executor(Arc::new(TypeAtExecutor));
+        engine.register_executor(Arc::new(TypeCheckExecutor));
+        engine.register_executor(Arc::new(GetTypeExecutor));
+        engine.register_executor(Arc::new(CheckProofsExecutor));
+        engine.register_executor(Arc::new(ErrorsExecutor));
+        engine.register_executor(Arc::new(ErrorsAtExecutor));
+        engine.register_executor(Arc::new(PrettyPrintExecutor));
+        engine.register_executor(Arc::new(InterpretExecutor));
+        engine.register_executor(Arc::new(EvalExecutor));
+        engine.register_executor(Arc::new(EvalNodeExecutor));
+        engine.register_executor(Arc::new(OptimizeExecutor));
+        engine.register_executor(Arc::new(LowerExecutor));
+        #[cfg(feature = "codegen")]
+        {
+            use crate::queries::executors::codegen::*;
+            engine.register_executor(Arc::new(CodeGenExecutor));
+            engine.register_executor(Arc::new(CodeGenAllExecutor));
+            engine.register_executor(Arc::new(BuildExecutor));
+            engine.register_executor(Arc::new(BuildAllExecutor));
+            engine.register_executor(Arc::new(SourceMapGenExecutor));
+            engine.register_executor(Arc::new(SourceMapGenAllExecutor));
+            engine.register_executor(Arc::new(EnumerateBinariesExecutor));
+        }
         Arc::new(engine)
     }
 
@@ -221,200 +122,10 @@ impl Compiler {
         )
     }
 
-    fn manager<T: Task + 'static>(
-        task_stats_sender: &mpsc::UnboundedSender<StatusReport>,
-        task_stats_requester: &broadcast::Sender<()>,
-    ) -> Arc<Mutex<TaskManager<T>>> {
-        let manager = Arc::new(Mutex::new(TaskManager::<T>::new()));
-        {
-            let manager = manager.clone();
-            let task_stats_sender = task_stats_sender.clone();
-            let task_stats_requester = task_stats_requester.subscribe();
-            spawn(async move {
-                TaskManager::report_stats(manager, task_stats_requester, task_stats_sender).await;
-            });
-        }
-        manager
-    }
-
-    fn with_manager<T: Task + 'static>(
-        task_receiver: TaskReceiverFor<T>,
-        manager: &Arc<Mutex<TaskManager<T>>>,
-        result_sender: ResultSenderFor<T>,
-    ) {
-        TaskManager::<T>::start(manager, task_receiver, result_sender);
-    }
-
-    pub fn watch_file(&self, path: PathBuf) {
-        if let Err(e) = self.file_watch_request_sender.send(path) {
+    pub fn watch_file(&self, file: FileRef) {
+        if let Err(e) = self.file_watch_request_sender.send(file) {
             debug!("Error while requesting file watching: {e:?}");
         }
-    }
-
-    pub fn load_file(&self, path: PathBuf, response_sender: ResultSenderFor<LoadFileTask>) {
-        self.watch_file(path.clone());
-        let (tx, rx) = mpsc::unbounded_channel();
-        let mut file_update_receiver = self.file_update_sender.subscribe();
-        if let Err(e) = tx.send(LoadFileTask {
-            path: path.clone(),
-            invalidate: Meta(false),
-        }) {
-            debug!("Error while posting file load task: {e:?}");
-        }
-        spawn(async move {
-            while let Ok(updated_path) = file_update_receiver.recv().await {
-                if path != updated_path {
-                    continue;
-                }
-                if let Err(e) = tx.send(LoadFileTask {
-                    path: path.clone(),
-                    invalidate: Meta(true),
-                }) {
-                    debug!("Error while posting file load task: {e:?}");
-                    return;
-                }
-            }
-        });
-        Self::with_manager(rx, &self.load_file_manager, response_sender);
-    }
-
-    pub fn lex(
-        &self,
-        path: PathBuf,
-        contents: Option<String>,
-        response_sender: ResultSenderFor<LexFileTask>,
-    ) {
-        let (tx, rx) = mpsc::unbounded_channel();
-        if let Some(contents) = contents {
-            if tx.send(LexFileTask { path, contents }).is_err() {
-                return;
-            }
-        } else {
-            self.load_file(path, tx);
-        }
-        // IDEA: Look into Streams
-        Self::with_manager(rx, &self.lex_file_manager, response_sender);
-    }
-
-    pub fn parse(
-        &self,
-        og_path: PathBuf,
-        og_ast: Option<Ast>,
-        og_contents: Option<String>,
-        response_sender: ResultSenderFor<ParseFileTask>,
-    ) {
-        let (tx1, mut rx1) = mpsc::unbounded_channel();
-        self.lex(og_path, og_contents, tx1);
-        let (tx2, rx2) = mpsc::unbounded_channel();
-        spawn(async move {
-            // TODO: Use a proper map from in paths to out paths.
-            while let Some(ParseFileTask {
-                path,
-                ast: _not_populated,
-                contents,
-                tokens,
-            }) = rx1.recv().await
-            {
-                tx2.send(ParseFileTask {
-                    path,
-                    ast: og_ast.clone(),
-                    contents,
-                    tokens,
-                })
-                .expect("Should be able to send codegen task");
-            }
-        });
-        Self::with_manager(rx2, &self.parse_file_manager, response_sender);
-    }
-
-    pub fn desugar(
-        &self,
-        path: PathBuf,
-        ast: Option<Ast>,
-        contents: Option<String>,
-        response_sender: ResultSenderFor<DesugarFileTask>,
-    ) {
-        let (tx, rx) = mpsc::unbounded_channel();
-        self.parse(path, ast, contents, tx);
-        Self::with_manager(rx, &self.desugar_file_manager, response_sender);
-    }
-
-    pub fn lower(
-        &self,
-        og_path: PathBuf,
-        og_ast: Option<Ast>,
-        contents: Option<String>,
-        response_sender: ResultSenderFor<LowerFileTask>,
-    ) {
-        let (tx1, mut rx1) = mpsc::unbounded_channel();
-        // TODO: Static checking should be here.
-        self.desugar(og_path.clone(), og_ast, contents, tx1);
-        let (tx2, rx2) = mpsc::unbounded_channel();
-        spawn(async move {
-            // TODO: Use a proper map from in paths to out paths.
-            while let Some(EvalFileTask {
-                path: new_path,
-                ast: new_ast,
-                root,
-            }) = rx1.recv().await
-            {
-                let Some(root) = root else {
-                    todo!("No known root!?")
-                };
-                tx2.send(LowerFileTask {
-                    path: new_path.clone(),
-                    ast: new_ast.clone(),
-                    root,
-                })
-                .expect("Should be able to send codegen task");
-            }
-        });
-        Self::with_manager(rx2, &self.lower_file_manager, response_sender);
-    }
-
-    pub fn eval(
-        &self,
-        path: PathBuf,
-        ast: Option<Ast>,
-        contents: Option<String>,
-        response_sender: ResultSenderFor<EvalFileTask>,
-    ) {
-        let (tx, rx) = mpsc::unbounded_channel();
-        self.desugar(path, ast, contents, tx);
-        Self::with_manager(rx, &self.eval_file_manager, response_sender);
-    }
-
-    pub fn codegen(
-        &self,
-        path: PathBuf,
-        og_ast: Option<Ast>,
-        out_path: PathBuf,
-        contents: Option<String>,
-        response_sender: ResultSenderFor<CodegenTask>,
-    ) {
-        let (tx1, mut rx1) = mpsc::unbounded_channel();
-        // TODO: Static checking should be here.
-        self.lower(path, og_ast, contents, tx1);
-        let (tx2, rx2) = mpsc::unbounded_channel();
-        spawn(async move {
-            // TODO: Use a proper map from in paths to out paths.
-            while let Some(CodegenTask {
-                path: _,
-                ast,
-                root,
-                lowered,
-            }) = rx1.recv().await
-            {
-                tx2.send(CodegenTask {
-                    path: out_path.clone(),
-                    ast,
-                    lowered: lowered.clone(),
-                    root,
-                })
-                .expect("Should be able to send codegen task");
-            }
-        });
-        Self::with_manager(rx2, &self.codegen_manager, response_sender);
     }
 
     pub async fn run_loop(mut self) {
@@ -422,7 +133,7 @@ impl Compiler {
         loop {
             trace!("Waiting in compiler run loop");
             tokio::select! {
-                Some((cmd, response_sender)) = self.request_receiver.recv() => {
+                Some((cmd, response_sender)) = self.query_receiver.recv() => {
                     trace!("Got request");
                     self.start_command(cmd, response_sender);
                 }
@@ -436,31 +147,25 @@ impl Compiler {
         }
     }
 
-    pub fn start_command(&self, cmd: RequestTask, response_sender: mpsc::UnboundedSender<Prim>) {
+    pub fn start_command(&self, cmd: AnyQuery, response_sender: mpsc::UnboundedSender<Prim>) {
         match cmd {
-            RequestTask::Eval { ast, expr } => {
-                // TODO(cypher1): Inject previous context into the eval state here.
-                self.eval("interpreter.tk".into(), ast, Some(expr), response_sender);
+            AnyQuery::Eval { ast, expr } => {
+                self.eval(ast, Some(expr), response_sender);
             }
-            RequestTask::Build { files } => {
+            AnyQuery::Build { files } => {
                 for file in files {
-                    let ast = Some(Ast::new(file.to_path_buf()));
-                    let mut file_with_extension = file.clone();
-                    file_with_extension.set_extension("out");
-                    self.codegen(
-                        file,
-                        ast,
-                        file_with_extension,
-                        None,
-                        response_sender.clone(),
-                    );
+                    // TODO(correctness): Handle in-memory files
+                    let (_source_zip, mut out_path) = file.clone().to_path_buf(); // TODO(correctness): Merge source zip path and out path.
+                    let ast = Arc::new(Ast::new(file.clone()));
+                    out_path.set_extension("out");
+                    self.codegen(ast, out_path, None, response_sender.clone());
                 }
             }
-            RequestTask::RunInterpreter { files } => {
+            AnyQuery::RunInterpreter { files } => {
                 for file in files {
-                    // TODO(cypher1): Support context / imports.
-                    let ast = Some(Ast::new(file.to_path_buf()));
-                    self.eval(file, ast, None, response_sender.clone());
+                    // TODO(compilersEllie): Support context / imports.
+                    let ast = Arc::new(Ast::new(file));
+                    self.eval(ast, None, response_sender.clone());
                 }
             }
         }

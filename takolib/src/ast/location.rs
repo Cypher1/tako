@@ -1,7 +1,6 @@
-use std::{
-    fmt,
-    path::{Path, PathBuf},
-};
+use crate::queries::FileRef;
+use qbice::{Decode, Encode, Identifiable, StableHash};
+use std::fmt;
 
 pub type IndexIntoFile = u16;
 pub type SymbolLength = u8;
@@ -10,7 +9,20 @@ pub type SymbolLength = u8;
 // and `u16` is too small.
 // Source: https://people.csail.mit.edu/smcc/projects/single-file-programs
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    PartialEq,
+    PartialOrd,
+    Ord,
+    Hash,
+    StableHash,
+    Identifiable,
+    Encode,
+    Decode,
+)]
 pub struct Location {
     // These are byte indexes and byte lengths. They may need to be interpreted before being shown
     // to the user.
@@ -19,6 +31,13 @@ pub struct Location {
 }
 
 impl Location {
+    #[must_use]
+    pub fn all() -> Self {
+        Self {
+            start: 0,
+            length: 0,
+        }
+    }
     #[cfg(test)]
     #[must_use]
     pub fn dummy_for_test() -> Self {
@@ -29,9 +48,9 @@ impl Location {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Ord, PartialOrd)]
+#[derive(PartialEq, Eq, Clone, Ord, PartialOrd, Hash, StableHash, Identifiable, Encode, Decode)]
 pub struct UserFacingLocation {
-    pub filename: PathBuf,
+    pub file: FileRef,
     pub line: u32,
     pub col: u32,
 }
@@ -44,7 +63,7 @@ impl std::fmt::Display for UserFacingLocation {
 
 impl std::fmt::Debug for UserFacingLocation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.filename.display())?;
+        write!(f, "{}", self.file)?;
         if self.line != 0 || self.col != 0 {
             write!(f, ":{}:{}", self.line, self.col)?;
         }
@@ -53,23 +72,30 @@ impl std::fmt::Debug for UserFacingLocation {
 }
 
 impl UserFacingLocation {
-    fn new(filename: &Path, line: u32, col: u32) -> Self {
-        Self {
-            filename: filename.to_path_buf(),
-            line,
-            col,
-        }
+    fn new(file: FileRef, line: u32, col: u32) -> Self {
+        Self { file, line, col }
     }
 
     #[must_use]
-    pub fn from_path(path: &Path) -> Self {
-        Self::new(path, 0, 0)
+    pub fn from_file(file: FileRef) -> Self {
+        Self::new(file, 0, 0)
     }
 
     #[must_use]
-    pub fn from(path: &Path, contents: &str, location: &Location) -> Self {
+    pub fn from(file: FileRef, contents: Option<&str>, location: Option<&Location>) -> Self {
+        let contents = if let Some(contents) = contents {
+            contents
+        } else {
+            // TODO(correctness): Report range anyway?
+            return Self::from_file(file); // Can't convert location into line & row without contents.
+        };
+        let location = if let Some(location) = location {
+            location
+        } else {
+            return Self::from_file(file); // Can't convert location into line & row without file.
+        };
         // TODO(usability): Consider walking the module tree to get a fully qualified module name.
-        let mut loc = Self::new(path, 1, 1);
+        let mut loc = Self::new(file, 1, 1);
         let mut contents = contents.chars().peekable();
         for _ in 0..location.start {
             loc.next(&mut contents);

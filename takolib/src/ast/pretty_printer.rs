@@ -1,4 +1,5 @@
 #![allow(unused)]
+use crate::ast::Import;
 use crate::ast::{string_interner::Name, Ast, Contains, Definition, Node, NodeData, NodeId};
 use crate::parser::semantics::BindingMode;
 use better_std::as_context;
@@ -118,6 +119,10 @@ impl std::fmt::Display for PrintNode<'_> {
                 let (_node_id, node) = self.context().get(*node);
                 self.print_identifier(f, node.name)?;
             }
+            NodeData::Import(import) => {
+                let (_id, Import { entry }) = self.context().get(*import).clone();
+                write!(f, "import {entry:?}")?;
+            }
             NodeData::Call(node) => {
                 let (_node_id, node) = self.context().get(*node);
                 let is_ident = matches!(self.context().get(node.inner).id, NodeData::Identifier(_));
@@ -214,16 +219,18 @@ mod tests {
     use crate::error::TError;
     use crate::parser::parse;
     use crate::parser::tokens::lex;
-    use std::path::PathBuf;
+    use crate::queries::FileRef;
+    use crate::test;
 
-    fn test_file1() -> PathBuf {
-        "test.tk".into()
+    fn test_file1(s: &str) -> FileRef {
+        FileRef::InMemory("test.tk".into(), s.to_owned())
     }
 
     fn setup(s: &str) -> Result<String, TError> {
         crate::ensure_initialized();
+        let ast = Ast::new(test_file1(s));
         let tokens = lex(s)?;
-        let ast = parse(&test_file1(), &None, s, &tokens)?;
+        let ast = parse(&ast, s, &tokens)?;
         assert_eq!(
             ast.roots.len(),
             1,

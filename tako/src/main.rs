@@ -37,7 +37,7 @@ impl Task for WatchFileTask {
     type Output = LoadFileTask;
     const TASK_KIND: TaskKind = TaskKind::WatchFile;
 
-    fn has_file_path(&self) -> Option<&PathBuf> {
+    fn has_file(&self) -> Option<&PathBuf> {
         Some(&self.path)
     }
     async fn perform(self, result_sender: UpdateSenderFor<Self>) {

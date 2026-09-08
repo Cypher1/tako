@@ -5,12 +5,13 @@ pub mod ast;
 pub mod codegen;
 pub mod compiler;
 pub mod desugarer;
+pub mod engine;
 pub mod error;
 pub mod interpreter;
 pub mod lowerer;
 pub mod parser;
 pub mod primitives;
-pub mod tasks;
+pub mod queries;
 #[cfg(test)]
 pub mod test;
 pub mod ui;

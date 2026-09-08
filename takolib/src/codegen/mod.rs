@@ -5,9 +5,82 @@ use crate::ast::{Ast, NodeId};
 use crate::error::TError;
 use crate::primitives::Prim;
 use backend::{backend, create_context, Backend, BackendConfig, BackendStateTrait};
-use std::path::Path;
+use qbice::{Decode, Encode, Identifiable, StableHash};
+use std::path::PathBuf;
+use strum_macros::EnumIter;
 
-pub fn codegen(path: &Path, _ast: &Ast, _root: Option<NodeId>) -> Result<Prim, TError> {
+#[derive(
+    Default, EnumIter, Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode,
+)]
+pub enum InstructionSet {
+    #[default]
+    LLVM,
+    // TODO(feature): Support for X86.
+    // TODO(feature): Support for ARM.
+    // TODO(feature): Support for MLIR.
+    // TODO(feature): Support for WASM.
+    // TODO(feature): Support for JS.
+    // TODO(feature): Support for JVM.
+    // TODO(feature): Support for PythonByteCode.
+    // TODO(feature): Support for RISCV.
+}
+
+#[derive(
+    Default, EnumIter, Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode,
+)]
+pub enum OperatingSystemFamily {
+    #[default]
+    Linux, // Including ChromeOS, Android, BSD,
+           // TODO(feature): Support for Windows.
+           // TODO(feature): Support for MacOSX.
+           // TODO(feature): Support an Agnostic OS target.
+           // TODO(feature): Consider adding Android and iOS as separate targets.
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
+pub struct Target {
+    os: OperatingSystemFamily,
+    os_version: String,
+    instruction_set: InstructionSet,
+    instruction_set_version: String,
+    // TODO(feature): Support for specific chipsets.
+    // TODO(feature): Support for configurable features.
+}
+
+impl Target {
+    #[allow(unused)]
+    pub(crate) fn is_posix(&self) -> bool {
+        true
+        // !matches!(self.os, Windows)
+    }
+}
+
+#[derive(
+    Default, EnumIter, Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode,
+)]
+pub enum OutputType {
+    #[default]
+    Executable,
+    // TODO(feature): Support for Interpretable.
+    // TODO(feature): Support for Object Files (.o).
+    // TODO(feature): Support for Libraries (.a, .so, .dll).
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
+pub struct BinaryDescription {
+    mode: OutputType,
+    targets: Vec<Target>,
+    // TODO: This should be the result...
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, StableHash, Identifiable, Encode, Decode)]
+pub struct BinaryInfo {
+    mode: OutputType,
+    target: Target,
+    bytes: Vec<u8>, // TODO(feature): Consider other encodings.
+}
+
+pub fn codegen(ast: &Ast, _root: Option<NodeId>) -> Result<Prim, TError> {
     let config = BackendConfig {};
     let context = create_context();
     {
@@ -29,43 +102,55 @@ pub fn codegen(path: &Path, _ast: &Ast, _root: Option<NodeId>) -> Result<Prim, T
             unsafe {
                 cg.build_return(Some(&*argc));
             }
-            cg.create_binary(path)?;
-            Ok(Prim::Str(path.display().to_string()))
+            // TODO(correctness, performance): This is a simple 1:1 mapping from source to output,
+            // but these should be in memeory or better.
+            let (zip_path, source_path) = ast.fileref.to_path_buf();
+            let mut out_path = zip_path.unwrap_or(PathBuf::from(""));
+            out_path.push(source_path);
+            cg.create_binary(&out_path)?;
+            Ok(Prim::Str(format!("{}", ast.fileref)))
         }
     }
 }
 
 #[cfg(test)]
 pub mod tests {
-    use crate::parser::{parse, tokens::lex};
+    use crate::{
+        parser::{parse, tokens::lex},
+        queries::FileRef,
+    };
 
     use super::*;
     use std::path::PathBuf;
 
     fn test_build_output_dir() -> PathBuf {
-        Path::new("/tmp/tako_tests/llvm_backend").to_path_buf()
-    }
-    fn test_file1() -> PathBuf {
-        test_build_output_dir().join("test.tk")
+        // TODO(correctness): Use tmpdir crate.
+        PathBuf::from("/tmp/tako_tests/llvm_backend")
     }
 
-    fn setup(s: &str) -> Result<(PathBuf, Ast, NodeId), TError> {
+    fn test_file1(s: &str) -> FileRef {
+        let path = test_build_output_dir().join("test.tk");
+        FileRef::InMemory(path, s.to_owned())
+    }
+
+    fn setup(s: &str) -> Result<(Ast, NodeId), TError> {
         crate::ensure_initialized();
         std::fs::create_dir_all(test_build_output_dir()).expect("Make test output dir");
 
-        let path = test_file1();
+        let file = test_file1(s);
         let tokens = lex(s)?;
-        let ast = parse(&path, s, &tokens)?;
+        let ast = Ast::new(file);
+        let ast = parse(&ast, s, &tokens)?;
         assert!(!ast.roots.is_empty());
         let root = ast.roots[0];
-        Ok((path, ast, root))
+        Ok((ast, root))
     }
 
     #[test]
     fn can_print_hello_world_using_codegen() -> Result<(), TError> {
-        let (path, ast, root) = setup("x=1")?;
+        let (ast, root) = setup("x=1")?;
 
-        codegen(&path, &ast, Some(root))?;
+        codegen(&ast, Some(root))?;
 
         // TODO: Run and check hello world program's output.
         Ok(())

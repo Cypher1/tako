@@ -1,5 +1,7 @@
 use crate::ast::string_interner::Name;
-use crate::ast::{Ast, Call, Contains, Definition, LiteralId, Node, NodeData, NodeId, OpId};
+use crate::ast::{
+    Ast, Call, Contains, Definition, Import, LiteralId, Node, NodeData, NodeId, OpId,
+};
 use crate::error::TError;
 use crate::parser::semantics::Literal;
 use crate::parser::tokens::Symbol;
@@ -7,7 +9,6 @@ use crate::primitives::Prim;
 use log::trace;
 use std::collections::HashMap;
 use std::convert::TryInto;
-use std::path::Path;
 
 #[derive(Default, Clone, Debug, Eq, PartialEq)]
 pub struct State {
@@ -24,11 +25,11 @@ struct Ctx<'a> {
     ast: &'a mut Ast, // Allowing computed values to be updated in `name_to_value`.
 }
 
-pub fn run(path: &Path, ast: Ast, root: Option<NodeId>) -> Result<Prim, TError> {
-    let (_, result) = run_impl(path, ast, root)?;
+pub fn run(ast: Ast, root: Option<NodeId>) -> Result<Prim, TError> {
+    let (_, result) = run_impl(ast, root)?;
     Ok(result)
 }
-pub fn run_impl(path: &Path, mut ast: Ast, root: Option<NodeId>) -> Result<(Ast, Prim), TError> {
+pub fn run_impl(mut ast: Ast, root: Option<NodeId>) -> Result<(Ast, Prim), TError> {
     let start = if let Some(root) = root {
         root
     } else if ast.roots.len() == 1 {
@@ -36,16 +37,16 @@ pub fn run_impl(path: &Path, mut ast: Ast, root: Option<NodeId>) -> Result<(Ast,
     } else if ast.roots.is_empty() {
         return Err(TError::InternalError {
             message: format!(
-                "Ambiguous run command: No root found for {path}",
-                path = path.display()
+                "Ambiguous run command: No root found for {file}",
+                file = ast.fileref
             ),
             location: None,
         });
     } else {
         return Err(TError::InternalError {
             message: format!(
-                "Ambiguous run command: Multiple roots found for {path}",
-                path = path.display()
+                "Ambiguous run command: Multiple roots found for {file}",
+                file = ast.fileref
             ),
             location: None,
         });
@@ -81,6 +82,10 @@ impl Ctx<'_> {
                 Ok(value.clone())
             }
             NodeData::Atom(_id) => todo!(),
+            NodeData::Import(import) => {
+                let (_id, Import { entry }) = self.ast.get(import).clone();
+                todo!("self.eval_file({entry:?})")
+            }
             NodeData::Call(call) => {
                 let (_id, Call { inner, args }) = self.ast.get(call).clone();
                 for arg in args.iter() {
@@ -130,6 +135,7 @@ impl Ctx<'_> {
     pub fn eval_op(&mut self, _node: &Node, id: OpId) -> Result<Prim, TError> {
         let (_node_id, op) = id.get(&self.ast.ops).clone(); // TODO: Consider making these `Copy`.
         Ok(match op.op {
+            Symbol::Import => unreachable!("import should be converted to Import"),
             Symbol::Add => match self.eval2(&op.args)? {
                 [Prim::I32(l), Prim::I32(r)] => Prim::I32(l + r),
                 _ => todo!(),
@@ -283,22 +289,23 @@ mod tests {
     use crate::error::TError;
     use crate::parser::parse;
     use crate::parser::tokens::lex;
-    use std::path::PathBuf;
+    use crate::queries::FileRef;
 
-    fn test_path() -> PathBuf {
-        "test.tk".into()
+    fn test_path(s: &str) -> FileRef {
+        FileRef::InMemory("test.tk".into(), s.to_owned())
     }
 
     fn setup(s: &str) -> Result<Ast, TError> {
         crate::ensure_initialized();
+        let ast = Ast::new(test_path(s));
         let tokens = lex(s)?;
-        parse(&test_path(), &None, s, &tokens)
+        parse(&ast, s, &tokens)
     }
 
     #[test]
     fn literal_evals_to_itself() -> Result<(), TError> {
         let ast = setup("123")?;
-        let res = run(&test_path(), ast, None);
+        let res = run(ast, None);
         assert_eq!(res, Ok(Prim::I32(123)));
         Ok(())
     }
@@ -306,7 +313,7 @@ mod tests {
     #[test]
     fn literal_negatives_multiply_out() -> Result<(), TError> {
         let ast = setup("-3*-2")?;
-        let res = run(&test_path(), ast, None);
+        let res = run(ast, None);
         assert_eq!(res, Ok(Prim::I32(6)));
         Ok(())
     }
@@ -314,7 +321,7 @@ mod tests {
     #[test]
     fn exp_mul_evals_16() -> Result<(), TError> {
         let ast = setup("2**3*2")?;
-        let res = run(&test_path(), ast, None);
+        let res = run(ast, None);
         assert_eq!(res, Ok(Prim::I32(16)));
         Ok(())
     }
@@ -322,7 +329,7 @@ mod tests {
     #[test]
     fn exp_exp_evals_512() -> Result<(), TError> {
         let ast = setup("2**3**2")?;
-        let res = run(&test_path(), ast, None);
+        let res = run(ast, None);
         assert_eq!(res, Ok(Prim::I32(512)));
         Ok(())
     }
@@ -330,7 +337,7 @@ mod tests {
     #[test]
     fn exp_var_and_use() -> Result<(), TError> {
         let ast = setup("x=2;x")?;
-        let res = run(&test_path(), ast, None);
+        let res = run(ast, None);
         assert_eq!(res, Ok(Prim::I32(2)));
         Ok(())
     }
@@ -338,7 +345,7 @@ mod tests {
     #[test]
     fn exp_var_from_expr_and_use() -> Result<(), TError> {
         let ast = setup("x=3+2;x")?;
-        let res = run(&test_path(), ast, None);
+        let res = run(ast, None);
         assert_eq!(res, Ok(Prim::I32(5)));
         Ok(())
     }
@@ -346,7 +353,7 @@ mod tests {
     #[test]
     fn exp_nested_vars() -> Result<(), TError> {
         let ast = setup("x=(y=3;2*y);x")?;
-        let res = run(&test_path(), ast, None);
+        let res = run(ast, None);
         assert_eq!(res, Ok(Prim::I32(6)));
         Ok(())
     }
@@ -354,7 +361,7 @@ mod tests {
     #[test]
     fn exp_multiple_statements() -> Result<(), TError> {
         let ast = setup("x=3;y=x+4;2*y")?;
-        let res = run(&test_path(), ast, None);
+        let res = run(ast, None);
         assert_eq!(res, Ok(Prim::I32(14)));
         Ok(())
     }
@@ -362,7 +369,7 @@ mod tests {
     #[test]
     fn exp_multiple_statements_as_lambdas() -> Result<(), TError> {
         let ast = setup("(x->(y->(2*y))(y=x+4))(x=3)")?;
-        let res = run(&test_path(), ast, None);
+        let res = run(ast, None);
         assert_eq!(res, Ok(Prim::I32(14)));
         Ok(())
         // TODO: Remove!

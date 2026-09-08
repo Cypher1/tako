@@ -4,8 +4,8 @@
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 [![Cherry](./takoweb/static/tako.png)](https://takolang.dev)
-[![Build Status](https://github.com/Cypher1/tako/workflows/Rust/badge.svg)](https://github.com/Cypher1/tako/actions)
-[![GitHub issues](https://img.shields.io/github/issues/Cypher1/tako.svg)](https://github.com/Cypher1/tako/issues)
+[![Build Status](https://github.com/compilersEllie/tako/workflows/Rust/badge.svg)](https://github.com/compilersEllie/tako/actions)
+[![GitHub issues](https://img.shields.io/github/issues/compilersEllie/tako.svg)](https://github.com/compilersEllie/tako/issues)
 
 An experimental programming language for ergonomic software verification using [Hoare Logic](https://en.wikipedia.org/wiki/Hoare_logic).
 
@@ -71,7 +71,7 @@ Running the tests is also a single step.
 cargo test
 ```
 
-Note: Currently this tests using an optimised build as some of the tests rely on rust optimisations that decrease stack usage. Tracking bug: <https://github.com/Cypher1/tako/issues/179>
+Note: Currently this tests using an optimised build as some of the tests rely on rust optimisations that decrease stack usage. Tracking bug: <https://github.com/compilersEllie/tako/issues/179>
 
 ## Installation
 
@@ -91,7 +91,7 @@ Please read the [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) and [CONTRIBUTING.md](C
 
 ## Versioning
 
-We will use [SemVer](http://semver.org/) for versioning. There are no versions currently available, but see the [tags on this repository](https://github.com/Cypher1/tako/tags).
+We will use [SemVer](http://semver.org/) for versioning. There are no versions currently available, but see the [tags on this repository](https://github.com/compilersEllie/tako/tags).
 
 ## License
 
@@ -110,7 +110,7 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 <table>
   <tbody>
     <tr>
-      <td align="center" valign="top" width="14.28%"><a href="https://cypher1.github.io"><img src="https://avatars.githubusercontent.com/u/1120798?v=4?s=100" width="100px;" alt="Ellie Pratt"/><br /><sub><b>Ellie Pratt</b></sub></a><br /><a href="https://github.com/Cypher1/tako/commits?author=cypher1" title="Code">💻</a> <a href="#design-cypher1" title="Design">🎨</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://compilersEllie.github.io"><img src="https://avatars.githubusercontent.com/u/1120798?v=4?s=100" width="100px;" alt="Ellie Pratt"/><br /><sub><b>Ellie Pratt</b></sub></a><br /><a href="https://github.com/compilersEllie/tako/commits?author=compilersEllie" title="Code">💻</a> <a href="#design-compilersEllie" title="Design">🎨</a></td>
     </tr>
   </tbody>
 </table>

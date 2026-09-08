@@ -1,11 +1,28 @@
-use std::path::PathBuf;
+use crate::queries::FileRef;
 
 use crate::ast::location::{Location, UserFacingLocation};
 use crate::parser::ParseError;
 use crate::primitives::typed_index::TypedIndex;
+use qbice::{Decode, Encode, Identifiable, StableHash};
 use thiserror::Error;
 
-#[derive(Error, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+/**
+Tako's primary internal error type (non-user-facing)
+*/
+#[derive(
+    Error,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    StableHash,
+    Identifiable,
+    Encode,
+    Decode,
+)]
 pub enum TError {
     ClangCompilerError {
         error: String,
@@ -14,6 +31,7 @@ pub enum TError {
     ParseError(ParseError),
     InternalError {
         message: String,
+        // TODO: Should be a Node ID rather than a Location
         location: Option<Location>,
     },
 }
@@ -72,7 +90,23 @@ impl From<std::num::ParseIntError> for TError {
     }
 }
 
-#[derive(Error, Clone, PartialEq, Eq, PartialOrd, Ord)]
+impl TError {
+    pub fn location(&self) -> Option<&Location> {
+        match &self {
+            TError::ClangCompilerError { .. } => None,
+            TError::ParseError(err) => err.location(),
+            TError::InternalError { location, .. } => location.as_ref(),
+        }
+    }
+}
+
+/**
+Tako's user facing error type
+Contains an internal error with markup for humans
+*/
+#[derive(
+    Error, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode,
+)]
 pub struct Error {
     pub source: TError,
     pub location: Option<UserFacingLocation>,
@@ -84,22 +118,12 @@ impl Error {
     #[must_use]
     pub fn new(
         source: TError,
-        path: Option<&PathBuf>,
+        file: Option<FileRef>,
         contents: Option<&str>,
-        module: Option<&()>,
+        _module: Option<&()>, // TODO(correctness): Support name spacing.
     ) -> Self {
-        let location = match &source {
-            TError::ClangCompilerError { .. } => None,
-            TError::ParseError(err) => err.location(),
-            TError::InternalError { location, .. } => location.as_ref(),
-        };
-        let location = match (path, contents, location, module) {
-            (Some(path), Some(contents), Some(location), _module) => {
-                Some(UserFacingLocation::from(path, contents, location))
-            }
-            (Some(path), _, _, _) => Some(UserFacingLocation::from_path(path)),
-            _ => None, // TODO(: There's more options here...
-        };
+        let location = source.location();
+        let location = file.map(|file| UserFacingLocation::from(file, contents, location));
         Self { source, location }
     }
 }

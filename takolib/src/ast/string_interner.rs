@@ -3,6 +3,7 @@ use crate::parser::KEYWORDS;
 use crate::primitives::typed_index::TypedIndex;
 use better_std::as_context;
 use num_traits::Bounded;
+use qbice::{Decode, Encode, Identifiable, StableHash};
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
@@ -16,7 +17,7 @@ use static_assertions::assert_eq_size;
 assert_eq_size!(Name, [u8; 8]);
 assert_eq_size!([Name; 2], [u8; 16]);
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, StableHash, Identifiable, Encode, Decode)]
 pub struct StringInterner {
     // This ensures we can look up the string from the hash.
     // BUT: We can also merge the hashes without losing any information.
@@ -26,6 +27,7 @@ pub struct StringInterner {
     pub kw_pi: StrId,
     pub kw_forall: StrId,
     pub kw_exists: StrId,
+    pub kw_import: StrId,
     pub kw_use: StrId,
     pub kw_provide: StrId,
     pub kw_public: StrId,
@@ -41,6 +43,7 @@ impl Default for StringInterner {
             kw_pi: TypedIndex::max_value(),
             kw_forall: TypedIndex::max_value(),
             kw_exists: TypedIndex::max_value(),
+            kw_import: TypedIndex::max_value(),
             kw_use: TypedIndex::max_value(),
             kw_provide: TypedIndex::max_value(),
             kw_public: TypedIndex::max_value(),
@@ -49,6 +52,7 @@ impl Default for StringInterner {
         n.kw_pi = n.register_str("pi");
         n.kw_forall = n.register_str("forall");
         n.kw_exists = n.register_str("exists");
+        n.kw_import = n.register_str("import");
         n.kw_use = n.register_str("use");
         n.kw_provide = n.register_str("provide");
         n.kw_public = n.register_str("public");
@@ -132,5 +136,19 @@ pub mod tests {
         let id = interner.register_str_by_loc(word, loc as u16);
         assert_eq!(interner.get_str(id), Some("123"));
         assert_eq!(interner.get_str_by_loc(loc as u16), Some("123"));
+    }
+
+    #[test]
+    fn get_keyword_by_name() {
+        let mut interner = setup();
+        let og = "import \"foo/bar/baz.tk\"";
+        let loc = 0;
+        let len = 6;
+        let word = &og[loc..loc + len];
+        assert_eq!(word, "import");
+        let id = interner.register_str_by_loc(word, loc as u16);
+        assert_eq!(interner.get_str(id), Some("import"));
+        assert_eq!(interner.get_str_by_loc(loc as u16), Some("import"));
+        assert_eq!(id, interner.kw_import);
     }
 }

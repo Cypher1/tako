@@ -1,7 +1,6 @@
 use crate::ui::Mode as UiMode;
 use log::warn;
-use std::path::PathBuf;
-use takolib::ui::OptionsTrait;
+use takolib::{queries::FileRef, ui::OptionsTrait};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Command {
@@ -13,7 +12,7 @@ pub enum Command {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Options {
     pub executable_location: String,
-    pub files: Vec<PathBuf>,
+    pub files: Vec<FileRef>,
     pub cmd: Command,
     pub interpreter_args: Vec<String>,
     pub ui_mode: UiMode,
@@ -30,7 +29,7 @@ impl OptionsTrait for Options {
         self.cmd == Command::Build || self.cmd == Command::Interpret
     }
 
-    fn files(&self) -> &Vec<PathBuf> {
+    fn files(&self) -> &Vec<FileRef> {
         &self.files
     }
 
@@ -56,7 +55,7 @@ impl Options {
     #[must_use]
     pub fn with_file(self, filename: &str) -> Self {
         let mut files = self.files;
-        files.push(filename.into());
+        files.push(FileRef::File(filename.into()));
         Self { files, ..self }
     }
 
@@ -106,7 +105,7 @@ impl Options {
                     // This is the first argument, so it should be the 'main'.
                     opts.interpreter_args.push(f.clone());
                 }
-                opts.files.push(f.into());
+                opts.files.push(FileRef::File(f.into()));
             }
         }
         opts

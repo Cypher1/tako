@@ -4,6 +4,7 @@ use crate::parser::semantics::BindingMode;
 use better_std::{assert_eq, todo, *};
 use lazy_static::lazy_static;
 use log::{debug, trace};
+use qbice::{Decode, Encode, Identifiable, StableHash};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 
@@ -29,7 +30,7 @@ pub enum OpBinding {
     Close,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, StableHash, Encode, Decode)]
 #[cfg_attr(test, derive(EnumIter))]
 pub enum Symbol {
     // Ignore symbols
@@ -74,6 +75,7 @@ pub enum Symbol {
     // Sugar for forall.
     Pi,     // For compatibility with other systems.
     Exists, // Sigma
+    Import,
 
     // Comparisons
     Eqs,
@@ -275,6 +277,7 @@ impl Symbol {
             | Self::Sigma
             | Self::Forall
             | Self::Pi
+            | Self::Import
             | Self::Exists => OpBinding::PrefixOp,
             Self::Try => OpBinding::PostfixOp,
             Self::Sub => OpBinding::PrefixOrInfixBinOp,
@@ -299,6 +302,7 @@ impl std::fmt::Display for Symbol {
             f,
             "{}",
             match self {
+                Self::Import => "import",
                 Self::Hash => "#",
                 Self::Shebang => "#!",
                 Self::Comment => "//",
@@ -377,7 +381,7 @@ pub enum CharacterType {
     PartialToken(TokenType), // Already a valid token!
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, StableHash, Encode, Decode)]
 pub enum TokenType {
     Op(Symbol), // An operator (i.e. a known symbol used as a prefix or infix operator).
     Ident,      // A named value.
@@ -413,7 +417,9 @@ impl fmt::Display for TokenType {
     }
 }
 
-#[derive(Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(
+    Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash, StableHash, Identifiable, Encode, Decode,
+)]
 pub struct Token {
     pub kind: TokenType,
     // These are byte indexes and byte lengths. They may need to be interpreted before being shown
@@ -602,6 +608,7 @@ pub fn lex(contents: &str) -> Result<Vec<Token>, TError> {
     let mut chars = Characters::new(contents);
     let mut tokens = Vec::with_capacity(1000); // TODO(perf): Bench mark & tune?
     while lex_head(&mut chars, &mut tokens) {}
+    tokens.shrink_to_fit(); // no need to keep the extra memory
     Ok(tokens)
 }
 
@@ -1192,6 +1199,7 @@ mod tests {
                 Symbol::Shebang
                     | Symbol::Comment
                     | Symbol::Hash
+                    | Symbol::Import
                     | Symbol::MultiCommentOpen
                     | Symbol::MultiCommentClose
             ) {

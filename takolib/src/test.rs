@@ -4,6 +4,9 @@ use std::fs;
 use std::path::PathBuf;
 use test_each;
 
+use crate::ast::Ast;
+use crate::queries::FileRef;
+
 const TEST_CONFIG_PREFIX: &str = "// test: ";
 
 #[derive(Debug, Default, Eq, PartialEq, Ord, PartialOrd)]
@@ -59,7 +62,7 @@ fn file_and_options(file: &PathBuf) -> (String, TestConfig) {
 #[test_each::path(glob = "examples/*.tk")]
 fn parse_example_files(file: &PathBuf) {
     let (contents, setting) = file_and_options(file);
-    if false && setting.todo {
+    if setting.todo {
         info!("Skipping todo file: {file:#?}");
         return;
     }
@@ -85,7 +88,8 @@ fn parse_example_files(file: &PathBuf) {
     };
 
     // TODO: Macro or helper?
-    let _ast = match crate::parser::parse(file, &None, &contents, &tokens) {
+    let ast = Ast::new(FileRef::File(file.to_owned()));
+    let _ast = match crate::parser::parse(&ast, &contents, &tokens) {
         Err(e) => {
             assert_eq!(
                 setting.expect,

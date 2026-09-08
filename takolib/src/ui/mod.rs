@@ -1,8 +1,7 @@
-use std::path::PathBuf;
-
 use async_trait::async_trait;
 
 mod client;
+use crate::queries::FileRef;
 pub use client::Client;
 use log::trace;
 use tokio::sync::{mpsc, oneshot};
@@ -15,7 +14,8 @@ pub enum UserAction {
 #[async_trait]
 pub trait OptionsTrait: std::fmt::Debug + Send {
     fn interpreter(&self) -> bool;
-    fn files(&self) -> &Vec<PathBuf>;
+    fn file(&self) -> &FileRef;
+    fn start(&self) -> &str;
     fn interactive(&self) -> bool;
     fn oneshot(&self) -> bool;
 }
