@@ -83,7 +83,7 @@ aliases:
 - [x] Should use [smallvec](https://thedan64.github.io/inkwell/smallvec/index.html) for argument lists and other compiler info
 - [ ] Should experiment with LLVM
   - [ ] Possible via [inkwell](https://thedan64.github.io/inkwell/inkwell/index.html).
-    - See example: https://github.com/Cypher1/inkwell_demo
+    - See example: https://github.com/compilersEllie/inkwell_demo
 - [ ] Explore using worker threads for the parser
   - [ ] Job per file, contributing to a queue of nodes to store
   - [ ] Bunches of nodes to store would be faster to store as groups and could be async from file access

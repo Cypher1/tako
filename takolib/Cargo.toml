@@ -1,7 +1,7 @@
 [package]
 name = "takolib"
 version = "0.2.0"
-repository = "https://github.com/cypher1/tako"
+repository = "https://github.com/compilersEllie/tako"
 description = "The core implementation of tako"
 authors = ["Ellie Pratt <ellie@skfl.tech>"]
 edition = "2021"

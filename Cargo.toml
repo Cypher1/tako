@@ -12,7 +12,7 @@ members = [
 
 [workspace.package]
 homepage = "https://takolang.dev"
-repository = "https://github.com/cypher1/tako"
+repository = "https://github.com/compilersEllie/tako"
 
 [profile.test]
 opt-level = 3

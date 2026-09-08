@@ -163,7 +163,7 @@ impl Compiler {
             }
             AnyQuery::RunInterpreter { files } => {
                 for file in files {
-                    // TODO(cypher1): Support context / imports.
+                    // TODO(compilersEllie): Support context / imports.
                     let ast = Arc::new(Ast::new(file));
                     self.eval(ast, None, response_sender.clone());
                 }
